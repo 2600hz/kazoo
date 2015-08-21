@@ -10,10 +10,11 @@
 
 -include("../knm.hrl").
 
--export([normalize/1, is_normalized/1
+-export([normalize/1, normalize/2
+         ,is_normalized/1
          ,is_npan/1 ,is_1npan/1
          ,to_db/1
-         ,is_reconcilable/1
+         ,is_reconcilable/1, is_reconcilable/2
          ,classify/1, available_classifiers/0
          ,available_converters/0, default/0
         ]).
@@ -23,6 +24,7 @@
 -define(CONVERTER_MOD, wh_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
+-define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
 
 -define(CLASSIFIER_TOLLFREE_US
         ,wh_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})$">>}
@@ -88,6 +90,9 @@
 normalize(<<_/binary>> = Num) ->
     (?CONVERTER_MOD):normalize(Num).
 
+normalize(<<_/binary>> = Num, AccountId) ->
+    (?CONVERTER_MOD):normalize(Num, AccountId).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -133,8 +138,26 @@ to_db(_) ->
 %%--------------------------------------------------------------------
 -spec is_reconcilable(ne_binary()) -> boolean().
 is_reconcilable(Number) ->
-    Regex = whapps_config:get_binary(?KNM_CONFIG_CAT, <<"reconcile_regex">>, ?DEFAULT_RECONCILE_REGEX),
+    Regex = whapps_config:get_binary(
+              ?KNM_CONFIG_CAT
+              ,?KEY_RECONCILE_REGEX
+              ,?DEFAULT_RECONCILE_REGEX
+             ),
     Num = normalize(Number),
+    is_reconcilable_by_regex(Num, Regex).
+
+-spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
+is_reconcilable(Number, AccountId) ->
+    Regex = whapps_account_config:get_global(
+              AccountId
+              ,?KNM_CONFIG_CAT
+              ,?KEY_RECONCILE_REGEX
+              ,?DEFAULT_RECONCILE_REGEX
+             ),
+    Num = normalize(Number, AccountId),
+    is_reconcilable_by_regex(Num, Regex).
+
+is_reconcilable_by_regex(Num, Regex) ->
     case re:run(Num, Regex) of
         'nomatch' ->
             lager:debug("number '~s' is not reconcilable", [Num]),
@@ -143,6 +166,7 @@ is_reconcilable(Number) ->
             lager:debug("number '~s' can be reconciled, proceeding", [Num]),
             'true'
     end.
+
 
 %%--------------------------------------------------------------------
 %% @public
