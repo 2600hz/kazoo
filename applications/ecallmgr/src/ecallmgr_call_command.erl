@@ -619,8 +619,10 @@ prepare_app(Node, UUID, JObj) ->
     case ecallmgr_fs_channel:fetch(Target, 'record') of
         {'ok', #channel{node=Node
                         ,answered=IsAnswered
+                        ,group_id=CDR
                        }} ->
             lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
+            _ = ecallmgr_fs_command:set(Node, UUID, ?CCV(<<?CALL_GROUP_ID>>), CDR),
             maybe_answer(Node, UUID, IsAnswered),
             {'execute', Node, UUID, JObj, Target};
         {'ok', #channel{node=OtherNode}} ->
