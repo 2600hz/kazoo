@@ -178,7 +178,7 @@ load_callflow(DocId, Context) ->
 validate_request(CallflowId, Context) ->
     JObj = cb_context:req_data(Context),
     OriginalNumbers = wh_json:get_ne_value(<<"numbers">>, JObj, []),
-    try [wnm_util:to_e164(Number) || Number <- OriginalNumbers] of
+    try normalize_numbers(OriginalNumbers) of
         [] -> prepare_patterns(CallflowId, Context);
         Numbers ->
             C = cb_context:set_req_data(Context
@@ -191,10 +191,10 @@ validate_request(CallflowId, Context) ->
             C = cb_context:add_validation_error(
                   <<"numbers">>
                   ,<<"type">>
-                      ,wh_json:from_list(
-                         [{<<"message">>, <<"Value is not of type array">>}
-                          ,{<<"cause">>, OriginalNumbers}
-                         ])
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"Value is not of type array">>}
+                      ,{<<"cause">>, OriginalNumbers}
+                     ])
                   ,Context
                  ),
             validate_unique_numbers(
@@ -203,6 +203,10 @@ validate_request(CallflowId, Context) ->
               ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
              )
     end.
+
+-spec normalize_numbers(ne_binaries()) -> ne_binaries().
+normalize_numbers(Ns) ->
+    [knm_converters:normalize(N) || N <- Ns].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -232,7 +236,8 @@ prepare_patterns(CallflowId, Context) ->
             check_callflow_schema(CallflowId, Context)
     end.
 
--spec validate_unique_numbers(api_binary(), ne_binaries(), cb_context:context()) -> cb_context:context().
+-spec validate_unique_numbers(api_binary(), ne_binaries(), cb_context:context()) ->
+                                     cb_context:context().
 validate_unique_numbers(CallflowId, Numbers, Context) ->
     validate_unique_numbers(CallflowId, Numbers, Context, cb_context:account_db(Context)).
 
@@ -264,8 +269,11 @@ check_callflow_schema(CallflowId, Context) ->
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, kzd_callflow:type()}],
-    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
+    cb_context:set_doc(Context
+                       ,wh_doc:set_type(cb_context:doc(Context)
+                                        ,kzd_callflow:type()
+                                       )
+                      );
 on_successful_validation(CallflowId, Context) ->
     crossbar_doc:load_merge(CallflowId, Context).
 
@@ -305,8 +313,8 @@ validate_callflow_element_schema(Context, Module, Data) ->
 validate_callflow_element(Context, <<"record_call">>, Data) ->
     Max = wh_media_util:max_recording_time_limit(),
     TimeLimit = wh_json:get_integer_value(<<"time_limit">>, Data),
-    try wh_json:get_value(<<"action">>, Data) =:= <<"start">> andalso
-             TimeLimit > Max
+    try wh_json:get_value(<<"action">>, Data) =:= <<"start">>
+             andalso TimeLimit > Max
     of
         'true' ->
             lager:debug("the requested time limit is too damn high"),
@@ -326,10 +334,10 @@ validate_callflow_element(Context, <<"record_call">>, Data) ->
             cb_context:add_validation_error(
               <<"time_limit">>
               ,<<"type">>
-                  ,wh_json:from_list(
-                     [{<<"message">>, <<"Must be an integer">>}
-                      ,{<<"cause">>, TimeLimit}
-                     ])
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Must be an integer">>}
+                  ,{<<"cause">>, TimeLimit}
+                 ])
               ,Context
              )
     end;
@@ -379,11 +387,12 @@ maybe_reconcile_numbers(Context) ->
             AssignTo = cb_context:account_id(Context),
             AuthBy = cb_context:auth_account_id(Context),
 
-            _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
-                 || Number <- sets:to_list(NewNumbers)
-                ],
+            _Numbers = [knm_number:reconcile(Number, AssignTo, AuthBy)
+                        || Number <- sets:to_list(NewNumbers)
+                       ],
             Context
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -405,24 +414,45 @@ track_assignment('post', Context) ->
                     Num =/= <<"undefined">>
                 ],
 
-    lager:debug("assign ~p, unassign ~p", [Assigned, Unassigned]),
-    wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned ++ Assigned);
+    Updates = apply_assignment_updates(Unassigned ++ Assigned),
+    log_assignment_updates(Updates);
 track_assignment('put', Context) ->
     NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     Assigned =  [{Num, kzd_callflow:type()}
                  || Num <- NewNums,
                     Num =/= <<"undefined">>
                 ],
-    lager:debug("assign ~p", [Assigned]),
-    wh_number_manager:track_assignment(cb_context:account_id(Context), Assigned);
+
+    Updates = apply_assignment_updates(Assigned),
+    log_assignment_updates(Updates);
 track_assignment('delete', Context) ->
     Nums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     Unassigned =  [{Num, <<>>}
                    || Num <- Nums,
                       Num =/= <<"undefined">>
                   ],
-    lager:debug("unassign ~p", [Unassigned]),
-    wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned).
+    Updates = apply_assignment_updates(Unassigned),
+    log_assignment_updates(Updates).
+
+-type assignment_updates() :: [{ne_binary(), knm_number:knm_number_return()}].
+
+-spec apply_assignment_updates([{ne_binary(), api_binary()}]) ->
+                                      assignment_updates().
+apply_assignment_updates(Updates) ->
+    [{DID, knm_number:assign_to_app(DID, Assign)}
+     || {DID, Assign} <- Updates
+    ].
+
+-spec log_assignment_updates(assignment_updates()) -> 'ok'.
+log_assignment_updates(Updates) ->
+    _ = [log_assignment_update(Update) || Update <- Updates],
+    'ok'.
+
+-spec log_assignment_update({ne_binary(), knm_number:knm_number_return()}) -> 'ok'.
+log_assignment_update({DID, {'ok', _Number}}) ->
+    lager:debug("successfully updated ~s", [DID]);
+log_assignment_update({DID, {'error', E}}) ->
+    lager:debug("failed to update ~s: ~p", [DID, E]).
 
 %%--------------------------------------------------------------------
 %% @private
