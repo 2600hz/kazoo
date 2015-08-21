@@ -222,17 +222,21 @@ delete(Num, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_state(ne_binary(), ne_binary()) -> knm_number_return().
--spec change_state(ne_binary(), ne_binary(), wh_proplist()) -> knm_number_return().
+-spec change_state(ne_binary() | knm_number(), ne_binary()) ->
+                          knm_number_return().
+-spec change_state(ne_binary() | knm_number(), ne_binary(), wh_proplist()) ->
+                          knm_number_return().
 change_state(Num, State) ->
     change_state(Num, State, knm_phone_number:default_options()).
 
-change_state(Num, State, Options) ->
+change_state(<<_/binary>> = Num, State, Options) ->
     case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
             maybe_change_state(Number, State)
-    end.
+    end;
+change_state(Number, State, _Options) ->
+    maybe_change_state(Number, State).
 
 %%--------------------------------------------------------------------
 %% @public
