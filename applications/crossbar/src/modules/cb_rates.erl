@@ -171,7 +171,7 @@ delete(Context, _RateId) ->
 
 -spec validate_number(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_number(Phonenumber, Context) ->
-    case wnm_util:is_reconcilable(Phonenumber) of
+    case knm_converters:is_reconcilable(Phonenumber) of
         'true' ->
             rate_for_number(wnm_util:to_e164(Phonenumber), Context);
         'false' ->

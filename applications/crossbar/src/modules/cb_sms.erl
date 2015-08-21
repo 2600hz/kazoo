@@ -185,7 +185,7 @@ on_successful_validation(Context) ->
     {ToNum, ToOptions} = build_number(wh_json:get_value(<<"to">>, JObj)),
     ToUser =
         case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false')
-            andalso wnm_util:is_reconcilable(filter_number(ToNum), AccountId)
+            andalso knm_converters:is_reconcilable(filter_number(ToNum), AccountId)
         of
             'true' -> wnm_util:to_e164(filter_number(ToNum), AccountId);
             'false' -> ToNum
@@ -195,7 +195,7 @@ on_successful_validation(Context) ->
     {FromNum, FromOptions} = build_number(wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId))),
     FromUser =
         case whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false')
-            andalso wnm_util:is_reconcilable(filter_number(FromNum), AccountId)
+            andalso knm_converters:is_reconcilable(filter_number(FromNum), AccountId)
         of
             'true' -> wnm_util:to_e164(filter_number(FromNum), AccountId);
             'false' -> FromNum

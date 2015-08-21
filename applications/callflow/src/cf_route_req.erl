@@ -180,7 +180,7 @@ callflow_should_respond(Call) ->
         <<"sys_info">> ->
             timer:sleep(500),
             Number = whapps_call:request_user(Call),
-            (not wnm_util:is_reconcilable(Number));
+            (not knm_converters:is_reconcilable(Number));
         'undefined' -> 'true';
         _Else -> 'false'
     end.

@@ -89,7 +89,7 @@ update_numbers(Services, []) ->
     Services;
 update_numbers(Services, [JObj|JObjs]) ->
     Number = wh_doc:id(JObj),
-    case wnm_util:is_reconcilable(Number) of
+    case knm_converters:is_reconcilable(Number) of
         'false' -> Services;
         'true' ->
             Routines = [fun(S) -> update_number_quantities(S, JObj) end
