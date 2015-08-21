@@ -215,14 +215,14 @@ get_call_duration(JObj) ->
 -spec invite_format(ne_binary(), ne_binary()) -> wh_proplist().
 invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
-     ,{<<"To-DID">>, wnm_util:to_e164(To)}
+     ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
 invite_format(<<"e164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}
-     ,{<<"To-DID">>, wnm_util:to_e164(To)}
+     ,{<<"To-DID">>, knm_converters:normalize(To)}
     ];
 invite_format(<<"e164_without_plus">>, To) ->
-    case wnm_util:to_e164(To) of
+    case knm_converters:normalize(To) of
         <<$+, PluslessDID/binary>> ->
             lager:info("while processing 'e164_without_plus' flag, DID ~s converted to E.164 with truncated '+': ~s",[To, PluslessDID]),
             [{<<"Invite-Format">>, <<"e164">>}

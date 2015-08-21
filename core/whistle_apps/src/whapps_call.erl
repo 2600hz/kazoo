@@ -237,7 +237,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
     Call1#whapps_call{
         call_id=CallId
         ,request=Request
-        ,request_user=wnm_util:to_e164(RequestUser)
+        ,request_user=knm_converters:normalize(RequestUser)
         ,request_realm=RequestRealm
         ,from=From
         ,from_user=FromUser
@@ -665,7 +665,7 @@ callee_id_number(#whapps_call{callee_id_number=CIDNumber}) -> CIDNumber.
 set_request(Request, #whapps_call{}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     Call#whapps_call{request=Request
-                     ,request_user=wnm_util:to_e164(RequestUser)
+                     ,request_user=knm_converters:normalize(RequestUser)
                      ,request_realm=RequestRealm
                     }.
 

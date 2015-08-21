@@ -173,7 +173,7 @@ delete(Context, _RateId) ->
 validate_number(Phonenumber, Context) ->
     case knm_converters:is_reconcilable(Phonenumber) of
         'true' ->
-            rate_for_number(wnm_util:to_e164(Phonenumber), Context);
+            rate_for_number(knm_converters:normalize(Phonenumber), Context);
         'false' ->
             cb_context:add_validation_error(
               <<"number format">>

@@ -184,7 +184,7 @@ try_failover_e164(State, ToDID) ->
 -spec get_endpoint_data(wh_json:object()) -> {'endpoint', wh_json:object()}.
 get_endpoint_data(JObj) ->
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    ToDID = wnm_util:to_e164(ToUser),
+    ToDID = knm_converters:normalize(ToUser),
     case wh_number_manager:lookup_account_by_number(ToDID) of
         {'ok', AccountId, NumberProps} ->
             get_endpoint_data(JObj, ToDID, AccountId, NumberProps);

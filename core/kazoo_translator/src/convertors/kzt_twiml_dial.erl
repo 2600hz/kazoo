@@ -21,7 +21,7 @@
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
 
-    case wnm_util:to_e164(cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts))) of
+    case knm_converters:normalize(cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts))) of
         <<>> ->
             lager:debug("no text to dial, using only xml elements"),
             exec(Call, kz_xml:elements(DialMeTxts), Attrs);
@@ -35,7 +35,7 @@ exec(Call
       ]
      ,Attrs) ->
     lager:debug("single <Number>"),
-    case wnm_util:to_e164(cleanup_dial_me(kz_xml:texts_to_binary(Number))) of
+    case knm_converters:normalize(cleanup_dial_me(kz_xml:texts_to_binary(Number))) of
         <<>> ->
             lager:debug("no dialable Number in tag, continuing"),
             {'ok', Call};
@@ -263,7 +263,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
     _Url = props:get_value('url', Props),
     _Method = props:get_value('method', Props),
 
-    DialMe = wnm_util:to_e164(kz_xml:texts_to_binary(Number)),
+    DialMe = knm_converters:normalize(kz_xml:texts_to_binary(Number)),
 
     lager:debug("maybe add number ~s: send ~s", [DialMe, SendDigits]),
 

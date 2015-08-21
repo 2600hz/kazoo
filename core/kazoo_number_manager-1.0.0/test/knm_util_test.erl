@@ -52,7 +52,7 @@ prop_to_e164() ->
             ,range(2002000000,19999999999)
             ,begin
                  BinNum = wh_util:to_binary(Number),
-                 E164 = wnm_util:to_e164(BinNum),
+                 E164 = knm_converters:normalize(BinNum),
                  case byte_size(BinNum) of
                      11 -> E164 =:= <<$+, BinNum/binary>>;
                      10 -> E164 =:= <<$+, $1, BinNum/binary>>;
@@ -76,7 +76,7 @@ proper_test_() ->
 to_e164_test() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
     Ans = <<"+12234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(wnm_util:to_e164(N), Ans) end, Ns).
+    lists:foreach(fun(N) -> ?assertEqual(knm_converters:normalize(N), Ans) end, Ns).
 
 to_npan_test() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
