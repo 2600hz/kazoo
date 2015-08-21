@@ -255,15 +255,7 @@ normalize_view_results(JObj, Acc) ->
 check_pin(Context) ->
     case unique_pin(Context) of
         'empty' -> create(Context);
-        _ ->
-            cb_context:add_validation_error(
-                <<"cccp">>
-                ,<<"unique">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Pin already exists">>}
-                 ])
-                ,Context
-            )
+        _ -> error_pin_exists(Context)
     end.
 
 -spec check_cid(cb_context:context()) -> cb_context:context().
@@ -272,34 +264,56 @@ check_cid(Context) ->
     CID = wh_json:get_value(<<"cid">>, ReqData),
     case knm_converters:is_reconcilable(CID) of
         'false' ->
-            cb_context:add_validation_error(
-              <<"cccp">>
-              ,<<"unique">>
-                  ,wh_json:from_list(
-                     [{<<"message">>, <<"Number is non reconcilable">>}
-                      ,{<<"cause">>, CID}
-                     ])
-              ,Context
-             );
+            error_number_is_not_reconcilable(Context, CID);
         'true' ->
             ReqData2 = wh_json:set_value(<<"cid">>, knm_converters:normalize(CID), ReqData),
             Context2 = cb_context:set_req_data(Context, ReqData2),
             case unique_cid(Context2) of
                 'empty' -> create(Context2);
-                _ ->
-                    cb_context:add_validation_error(
-                        <<"cccp">>
-                        ,<<"unique">>
-                        ,wh_json:from_list([
-                            {<<"message">>, <<"CID already exists">>}
-                            ,{<<"cause">>, CID}
-                         ])
-                        ,Context
-                    )
+                _ -> error_cid_exists(Context2, CID)
             end
 
     end.
--spec unique_cid(cb_context:context()) -> {'ok', list()} | 'empty' | 'error'.
+
+-spec error_pin_exists(cb_context:context()) -> cb_context:context().
+error_pin_exists(Context) ->
+    cb_context:add_validation_error(
+      <<"cccp">>
+      ,<<"unique">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Pin already exists">>}]
+        )
+      ,Context
+     ).
+
+-spec error_number_is_not_reconcilable(cb_context:context(), ne_binary()) ->
+                                              cb_context:context().
+error_number_is_not_reconcilable(Context, CID) ->
+    cb_context:add_validation_error(
+      <<"cccp">>
+      ,<<"unique">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Number is non reconcilable">>}
+          ,{<<"cause">>, CID}
+         ])
+      ,Context
+     ).
+
+error_cid_exists(Context, CID) ->
+    cb_context:add_validation_error(
+      <<"cccp">>
+      ,<<"unique">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"CID already exists">>}
+          ,{<<"cause">>, CID}
+         ])
+      ,Context
+     ).
+
+-spec unique_cid(cb_context:context()) ->
+                        {'ok', list()} |
+                        'empty' |
+                        'error'.
 unique_cid(Context) ->
     CID = wh_json:get_value(<<"cid">>, cb_context:req_data(Context)),
     cccp_util:authorize(CID, <<"cccps/cid_listing">>).
