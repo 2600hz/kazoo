@@ -22,7 +22,6 @@
 -export([handle_message_delivery/2]).
 
 -include("stepswitch.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -47,6 +46,8 @@
 
 -define(ATOM(X), wh_util:to_atom(X, 'true')).
 -define(SMS_POOL(A,B,C), ?ATOM(<<A/binary,"_", B/binary, "_", C/binary>>) ).
+
+-define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 
 %%%===================================================================
 %%% API

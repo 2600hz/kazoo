@@ -8,8 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(cf_attributes).
 
--include("callflow.hrl").
-
 -export([temporal_rules/1]).
 -export([groups/1, groups/2]).
 -export([caller_id/2]).
@@ -23,6 +21,10 @@
 -export([owner_ids/2]).
 -export([maybe_get_assigned_number/3]).
 -export([maybe_get_account_default_number/4]).
+
+-include("callflow.hrl").
+
+-define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 
 %%-----------------------------------------------------------------------------
 %% @public
