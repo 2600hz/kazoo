@@ -7,7 +7,8 @@
 
 -define(KNM_CACHE, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
--define(KNM_DB_PREFIX, <<"numbers/">>).
+-define(KNM_DB_PREFIX_L, "numbers/").
+-define(KNM_DB_PREFIX, <<?KNM_DB_PREFIX_L>>).
 
 -define(FEATURE_OUTBOUND_CNAM, <<"outbound_cnam">>).
 -define(FEATURE_INBOUND_CNAM, <<"inbound_cnam">>).
