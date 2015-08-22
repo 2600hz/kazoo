@@ -105,6 +105,8 @@
 
 -export([node_name/0, node_hostname/0]).
 
+-export([delete_file/1]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -1197,6 +1199,14 @@ node_name() ->
 node_hostname() ->
     [_Name, Host] = binary:split(to_binary(node()), <<"@">>),
     Host.
+
+-spec delete_file(file:name()) -> 'ok'.
+delete_file(Filename) ->
+    case file:delete(Filename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:debug("deleting file ~s failed : ~p", [Filename, _E])
+    end.
 
 -ifdef(TEST).
 
