@@ -219,7 +219,7 @@ get_orig_port(Prop) ->
         Port -> Port
     end.
 
--spec get_sip_interface_from_db(ne_binary()) -> ne_binary().
+-spec get_sip_interface_from_db(ne_binaries()) -> ne_binary().
 get_sip_interface_from_db([FsPath]) ->
     NetworkMap = ecallmgr_config:get(<<"network_map">>, wh_json:new()),
     case map_fs_path_to_sip_profile(FsPath, NetworkMap) of
@@ -231,7 +231,7 @@ get_sip_interface_from_db([FsPath]) ->
             Else
     end.
 
--spec map_fs_path_to_sip_profile(ne_binary(), wh_json:object()) -> ne_binary().
+-spec map_fs_path_to_sip_profile(ne_binary(), wh_json:object()) -> api_binary().
 map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
     SIPInterfaceObj = wh_json:filter(fun({K, _}) ->
                                wh_network_utils:verify_cidr(FsPath, K)
