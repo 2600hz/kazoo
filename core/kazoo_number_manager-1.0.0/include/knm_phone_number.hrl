@@ -47,8 +47,9 @@
 -define(DASH_KEY, <<"dash_e911">>).
 -define(VITELITY_KEY, <<"vitelity_e911">>).
 
--define(LOCAL_CARRIER, <<"knm_local">>).
--define(DEFAULT_CARRIER_MODULES, [?LOCAL_CARRIER]).
+-define(CARRIER_OTHER, <<"knm_other">>).
+-define(CARRIER_LOCAL, <<"knm_local">>).
+-define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
