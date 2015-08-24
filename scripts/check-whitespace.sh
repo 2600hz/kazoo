@@ -5,4 +5,10 @@ echo "Files with trailing whitespace:"
 
 ws="$(echo -ne ' \t\v')"
 
-git grep -IE "[$ws]$" -- $* | cut -d: -f1 | sort -u && false || true
+count=0
+for file in $(git grep -IE "[$ws]$" -- $* | cut -d: -f1 | sort -u); do
+    echo "$file"
+    ((count++))
+done
+
+exit $count

@@ -66,7 +66,7 @@ add_conference_params(ConfigName, Profile) ->
     Conference = get_conference(ConfigName),
     Props = props:filter_undefined(
               [{<<"max-members">>, max_participants(Conference)}
-              %% ,{<<"max-members-sound">>, <<"tone_stream://v=-7;>=2;+=.1;%(377,7,577,770);v=-7;>=3;+=.1;%(877,0,377,477)">>}
+               ,{<<"max-members-sound">>, max_members_sound(Conference)}
               ]),
     wh_json:set_values(Props, Profile).
 
@@ -75,6 +75,14 @@ max_participants(Conference) ->
     case whapps_conference:max_participants(Conference) of
         N when is_integer(N), N > 1 -> N;
         _Else -> 'undefined'
+    end.
+
+-spec max_members_sound(whapps_conference:conference()) -> api_binary().
+max_members_sound(Conference) ->
+    case whapps_conference:play_exit_tone(Conference) of
+        'false' -> 'undefined';
+        'true' -> ?EXIT_TONE;
+        Media -> Media
     end.
 
 -spec get_conference(ne_binary()) -> whapps_conference:conference().

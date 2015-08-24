@@ -105,7 +105,7 @@ send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
     freeswitch:api(Node, 'uuid_kill', wh_util:to_list(UUID));
 send_cmd(Node, UUID, "conference", Args) ->
-    Args1 = iolist_to_binary([UUID, " conference:", Args, ",park inline"]),
+    Args1 = iolist_to_binary([UUID, " conference:", Args, " inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
     freeswitch:api(Node, 'uuid_transfer', wh_util:to_list(Args1));
 send_cmd(Node, _UUID, "transfer", Args) ->
