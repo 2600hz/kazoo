@@ -52,6 +52,7 @@
 -define(DESCENDANT_LISTING_BY_STATE, <<"port_requests/listing_by_descendant_state">>).
 
 -define(DESCENDANTS, <<"descendants">>).
+-define(COMMENTS, <<"comments">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
         ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
@@ -172,7 +173,9 @@ allowed_methods(_Id, ?PORT_CANCELED) ->
 allowed_methods(_Id, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+  allowed_methods(_Id, ?COMMENTS) ->
+    [?HTTP_GET, ?HTTP_POST].
 
 allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
@@ -202,6 +205,7 @@ resource_exists(_Id, ?PORT_REJECT) -> 'true';
 resource_exists(_Id, ?PORT_CANCELED) -> 'true';
 resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
 resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
+resource_exists(_Id, ?COMMENTS) -> 'true';
 resource_exists(_Id, _Unknown) -> 'false'.
 
 resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
@@ -329,91 +333,13 @@ validate(Context, Id, ?PORT_CANCELED) ->
 validate(Context, Id, ?PORT_ATTACHMENT) ->
     validate_attachments(Context, Id, cb_context:req_verb(Context));
 validate(Context, Id, ?PATH_TOKEN_LOA) ->
-    generate_loa(read(Context, Id)).
+    generate_loa(read(Context, Id));
+validate(Context, Id, ?COMMENTS) ->
+    validate_comments(Context, Id, cb_context:req_verb(Context)).
 
 validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
 
--spec validate_load_summary(cb_context:context(), ne_binary()) ->
-                                    cb_context:context().
-validate_load_summary(Context, ?PORT_COMPLETE = Type) ->
-    case cb_modules_util:range_view_options(Context, ?MAX_RANGE, <<"modified">>) of
-        {From, To} -> load_summary_by_range(Context, Type, From, To);
-        Context1 -> Context1
-    end;
-validate_load_summary(Context, ?PORT_CANCELED = Type) ->
-    case cb_modules_util:range_view_options(Context, ?MAX_RANGE, <<"modified">>) of
-        {From, To} -> load_summary_by_range(Context, Type, From, To);
-        Context1 -> Context1
-    end;
-validate_load_summary(Context, <<_/binary>> = Type) ->
-    lager:debug("loading summary for ~s", [Type]),
-    load_summary(cb_context:set_should_paginate(Context, 'false')
-                  ,[{'startkey', [cb_context:account_id(Context), Type, wh_json:new()]}
-                    ,{'endkey', [cb_context:account_id(Context), Type]}
-                   ]
-                 ).
-
--spec validate_port_request(cb_context:context(), http_method()) ->
-                                    cb_context:context().
-validate_port_request(Context, ?HTTP_GET) ->
-    summary(Context);
-validate_port_request(Context, ?HTTP_PUT) ->
-    create(Context).
-
--spec validate_port_request(cb_context:context(), ne_binary(), http_method()) ->
-                                   cb_context:context().
-validate_port_request(Context, Id, ?HTTP_GET) ->
-    read(Context, Id);
-validate_port_request(Context, Id, ?HTTP_POST) ->
-    update(Context, Id);
-validate_port_request(Context, Id, ?HTTP_DELETE) ->
-    is_deletable(crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB))).
-
--spec validate_port_request(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
-                                   cb_context:context().
-validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_POST) ->
-    maybe_move_state(Context, Id, ?PORT_SUBMITTED);
-validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_POST) ->
-    maybe_move_state(Context, Id, ?PORT_PENDING);
-validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_POST) ->
-    maybe_move_state(Context, Id, ?PORT_SCHEDULED);
-validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_POST) ->
-    maybe_move_state(Context, Id, ?PORT_COMPLETE);
-validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_POST) ->
-    maybe_move_state(Context, Id, ?PORT_REJECT);
-validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_POST) ->
-    maybe_move_state(Context, Id, ?PORT_CANCELED).
-
--spec validate_attachments(cb_context:context(), ne_binary(), http_method()) ->
-                                 cb_context:context().
-validate_attachments(Context, Id, ?HTTP_GET) ->
-    summary_attachments(Context, Id);
-validate_attachments(Context, Id, ?HTTP_PUT) ->
-    read(Context, Id).
-
--spec validate_attachment(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
-                                 cb_context:context().
-validate_attachment(Context, Id, AttachmentId, ?HTTP_GET) ->
-    load_attachment(Id, AttachmentId, Context);
-validate_attachment(Context, Id, AttachmentId, ?HTTP_POST) ->
-    load_attachment(Id, AttachmentId, Context);
-validate_attachment(Context, Id, AttachmentId, ?HTTP_DELETE) ->
-    is_deletable(load_attachment(Id, AttachmentId, Context)).
-
--spec is_deletable(cb_context:context()) -> cb_context:context().
--spec is_deletable(cb_context:context(), ne_binary()) -> cb_context:context().
-is_deletable(Context) ->
-    is_deletable(Context, wh_port_request:current_state(cb_context:doc(Context))).
-is_deletable(Context, ?PORT_UNCONFIRMED) -> Context;
-is_deletable(Context, ?PORT_REJECT) -> Context;
-is_deletable(Context, ?PORT_CANCELED) -> Context;
-is_deletable(Context, _PortState) ->
-    lager:debug("port is in state ~s, can't modify", [_PortState]),
-    cb_context:add_system_error('invalid_method'
-                                ,<<"port request is not modifiable in this state">>
-                                ,Context
-                               ).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -568,7 +494,19 @@ post(Context, Id, ?PORT_CANCELED) ->
               ,<<"failed to send port cancel email">>
               ,Context
              )
-    end.
+    end;
+post(Context, Id, ?COMMENTS) ->
+    Comments = wh_json:get_value(?COMMENTS, cb_context:req_data(Context), []),
+    Updater =
+        fun(Doc) ->
+            wh_json:set_value(?COMMENTS, Comments, Doc)
+        end,
+    only_return_comments(
+        do_post(
+            cb_context:update_doc(Context, Updater)
+            ,Id
+        )
+    ).
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -591,10 +529,10 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
 
 -spec do_post(cb_context:context(), path_token()) -> cb_context:context().
 do_post(Context, Id) ->
-    Context1 = crossbar_doc:save(
-                 update_port_request_for_save(Context)
-                ),
-
+    Context1 =
+        crossbar_doc:save(
+            update_port_request_for_save(Context)
+        ),
     case cb_context:resp_status(Context1) of
         'success' ->
             _ = maybe_send_port_comment_notification(Context1, Id),
@@ -618,6 +556,154 @@ delete(Context, _Id) ->
 delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
     crossbar_doc:delete_attachment(Id, AttachmentName, Context).
 
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_comments(cb_context:context(), ne_binary(), http_method()) ->
+                                    cb_context:context().
+validate_comments(Context, Id, ?HTTP_GET) ->
+    only_return_comments(load_port_request(Context, Id));
+validate_comments(Context, Id, ?HTTP_POST) ->
+    load_port_request(Context, Id).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec only_return_comments(cb_context:context()) -> cb_context:context().
+only_return_comments(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Comments = wh_json:get_value(<<"comments">>, cb_context:doc(Context), []),
+            cb_context:set_resp_data(
+                Context
+                ,wh_json:from_list([{<<"comments">>, Comments}])
+            );
+        _ -> Context
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec load_port_request(cb_context:context(), ne_binary()) -> cb_context:context().
+load_port_request(Context, Id) ->
+    crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_load_summary(cb_context:context(), ne_binary()) ->
+                                    cb_context:context().
+validate_load_summary(Context, ?PORT_COMPLETE = Type) ->
+    case cb_modules_util:range_view_options(Context, ?MAX_RANGE, <<"modified">>) of
+        {From, To} -> load_summary_by_range(Context, Type, From, To);
+        Context1 -> Context1
+    end;
+validate_load_summary(Context, ?PORT_CANCELED = Type) ->
+    case cb_modules_util:range_view_options(Context, ?MAX_RANGE, <<"modified">>) of
+        {From, To} -> load_summary_by_range(Context, Type, From, To);
+        Context1 -> Context1
+    end;
+validate_load_summary(Context, <<_/binary>> = Type) ->
+    lager:debug("loading summary for ~s", [Type]),
+    load_summary(cb_context:set_should_paginate(Context, 'false')
+                  ,[{'startkey', [cb_context:account_id(Context), Type, wh_json:new()]}
+                    ,{'endkey', [cb_context:account_id(Context), Type]}
+                   ]
+                 ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_port_request(cb_context:context(), http_method()) ->
+                                    cb_context:context().
+-spec validate_port_request(cb_context:context(), ne_binary(), http_method()) ->
+                                   cb_context:context().
+-spec validate_port_request(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
+                                   cb_context:context().
+validate_port_request(Context, ?HTTP_GET) ->
+    summary(Context);
+validate_port_request(Context, ?HTTP_PUT) ->
+    create(Context).
+
+validate_port_request(Context, Id, ?HTTP_GET) ->
+    read(Context, Id);
+validate_port_request(Context, Id, ?HTTP_POST) ->
+    update(Context, Id);
+validate_port_request(Context, Id, ?HTTP_DELETE) ->
+    is_deletable(load_port_request(Context, Id)).
+
+validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_SUBMITTED);
+validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_PENDING);
+validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_SCHEDULED);
+validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_COMPLETE);
+validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_REJECT);
+validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_POST) ->
+    maybe_move_state(Context, Id, ?PORT_CANCELED).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_attachments(cb_context:context(), ne_binary(), http_method()) ->
+                                 cb_context:context().
+validate_attachments(Context, Id, ?HTTP_GET) ->
+    summary_attachments(Context, Id);
+validate_attachments(Context, Id, ?HTTP_PUT) ->
+    read(Context, Id).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_attachment(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
+                                 cb_context:context().
+validate_attachment(Context, Id, AttachmentId, ?HTTP_GET) ->
+    load_attachment(Id, AttachmentId, Context);
+validate_attachment(Context, Id, AttachmentId, ?HTTP_POST) ->
+    load_attachment(Id, AttachmentId, Context);
+validate_attachment(Context, Id, AttachmentId, ?HTTP_DELETE) ->
+    is_deletable(load_attachment(Id, AttachmentId, Context)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_deletable(cb_context:context()) -> cb_context:context().
+-spec is_deletable(cb_context:context(), ne_binary()) -> cb_context:context().
+is_deletable(Context) ->
+    is_deletable(Context, wh_port_request:current_state(cb_context:doc(Context))).
+is_deletable(Context, ?PORT_UNCONFIRMED) -> Context;
+is_deletable(Context, ?PORT_REJECT) -> Context;
+is_deletable(Context, ?PORT_CANCELED) -> Context;
+is_deletable(Context, _PortState) ->
+    lager:debug("port is in state ~s, can't modify", [_PortState]),
+    cb_context:add_system_error('invalid_method'
+                                ,<<"port request is not modifiable in this state">>
+                                ,Context
+                               ).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -637,7 +723,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Context, Id) ->
-    Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    Context1 = load_port_request(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
             PubDoc = wh_port_request:public_fields(cb_context:doc(Context1)),
@@ -929,8 +1015,7 @@ leak_pvt_fields(Res, JObj) ->
 %%--------------------------------------------------------------------
 -spec summary_attachments(cb_context:context(), ne_binary()) -> cb_context:context().
 summary_attachments(Context, Id) ->
-    Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
-
+    Context1 = load_port_request(Context, Id),
     As = wh_doc:attachments(cb_context:doc(Context1), wh_json:new()),
     cb_context:set_resp_data(Context1
                              ,wh_port_request:normalize_attachments(As)
@@ -1144,7 +1229,7 @@ load_attachment(AttachmentId, Context) ->
 -spec maybe_move_state(cb_context:context(), ne_binary(), ne_binary()) ->
                               cb_context:context().
 maybe_move_state(Context, Id, PortState) ->
-    Context1 = crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    Context1 = load_port_request(Context, Id),
     case cb_context:resp_status(Context1) =:= 'success'
         andalso wh_port_request:maybe_transition(cb_context:doc(Context1), PortState)
     of
