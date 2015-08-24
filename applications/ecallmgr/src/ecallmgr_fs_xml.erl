@@ -172,8 +172,9 @@ conference_resp_xml([_|_]=Resp) ->
     ConfigurationEl = config_el(<<"conference.conf">>, <<"Built by Kazoo">>
                                 ,[AdvertiseEl, ProfilesEl, CallerControlsEl, ChatPermsEl]
                                ),
+    SectionEl = section_el(<<"configuration">>, ConfigurationEl),
 
-    {'ok', xmerl:export([ConfigurationEl], 'fs_xml')};
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
 conference_resp_xml(Resp) -> conference_resp_xml(wh_json:to_proplist(Resp)).
 
 conference_profiles_xml(Profiles) when is_list(Profiles) ->
