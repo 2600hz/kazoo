@@ -12,6 +12,7 @@
 -export([allowed_app/2]).
 -export([is_authorized/3]).
 -export([load_default_apps/0]).
+-export([create_apps_store_doc/1]).
 
 -include("crossbar.hrl").
 
@@ -96,6 +97,21 @@ load_default_apps() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec create_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+create_apps_store_doc(Account) ->
+    Doc = kz_apps_store:new(Account),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    couch_mgr:save_doc(AccountDb, Doc).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 get_apps_store_doc(Account) ->
     case kz_apps_store:fetch(Account) of
@@ -103,10 +119,6 @@ get_apps_store_doc(Account) ->
             cb_apps_maintenance:migrate(Account);
         Result -> Result
     end.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private

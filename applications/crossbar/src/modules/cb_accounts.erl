@@ -285,6 +285,7 @@ put(Context) ->
         C ->
             Tree = kz_account:tree(JObj),
             _ = maybe_update_descendants_count(Tree),
+            _ = create_apps_store_doc(AccountId),
             leak_pvt_fields(C)
     catch
         'throw':C ->
@@ -325,6 +326,7 @@ delete(Context, Account) ->
             _ = maybe_update_descendants_count(kz_account:tree(cb_context:doc(Context1))),
             Context1
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -334,6 +336,16 @@ delete(Context, Account) ->
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
     _ = wh_util:spawn('crossbar_util', 'descendants_count', [lists:last(Tree)]),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_apps_store_doc(ne_binary()) -> 'ok'.
+create_apps_store_doc(AccountId) ->
+    _ = wh_util:spawn('cb_apps_util', 'create_apps_store_doc', [AccountId]),
     'ok'.
 
 %%--------------------------------------------------------------------
