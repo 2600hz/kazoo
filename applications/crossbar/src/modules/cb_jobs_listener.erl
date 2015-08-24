@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -24,6 +24,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -133,11 +134,15 @@ select_carrier_module(Job) ->
     ResourceId = wh_json:get_value(<<"resource_id">>, Job),
     case kz_datamgr:open_cache_doc(?WH_OFFNET_DB, ResourceId) of
         {'ok', _} ->
-            lager:debug("found resource ~s in ~s, using wnm_other", [ResourceId, ?WH_OFFNET_DB]),
-            <<"wnm_other">>;
+            lager:debug("found resource ~s in ~s, using ~s"
+                        ,[ResourceId, ?WH_OFFNET_DB, ?CARRIER_OTHER]
+                       ),
+            ?CARRIER_OTHER;
         {'error', _E} ->
-            lager:debug("resource ~s is not a system resource(~p), using wnm_local", [ResourceId, _E]),
-            <<"wnm_local">>
+            lager:debug("resource ~s is not a system resource(~p), using ~s"
+                        ,[ResourceId, _E, ?CARRIER_LOCAL]
+                       ),
+            ?CARRIER_LOCAL
     end.
 
 -spec maybe_create_number(wh_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
@@ -154,29 +159,36 @@ maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     end.
 
 -spec create_number(wh_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
-                                 wh_json:object().
-create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
-    try wh_number_manager:create_number(Number
-                                        ,AccountId
-                                        ,AuthAccountId
-                                        ,build_number_properties(Job)
-                                        ,'false'
-                                        ,CarrierModule
-                                       )
-    of
-        {'ok', NumberJObj} ->
-            lager:debug("successfully created number ~s for account ~s", [Number, AccountId]),
-            update_status(wh_json:set_value([?KEY_SUCCESS, Number], NumberJObj, Job)
+                           wh_json:object().
+create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
+    Options = [{<<"assigned_to">>, AccountId}
+               ,{<<"auth_by">>, AuthAccountId}
+               ,{<<"state">>, ?NUMBER_STATE_AVAILABLE}
+               ,{<<"public_fields">>, build_number_properties(Job)}
+               ,{<<"dry_run">>, 'false'}
+               ,{<<"module_name">>, CarrierModule}
+              ],
+    try knm_number:create(DID, Options) of
+        {'ok', Number} ->
+            PhoneNumber = knm_number:phone_number(Number),
+            lager:debug("successfully created number ~s for account ~s"
+                        ,[knm_phone_number:number(PhoneNumber), AccountId]
+                       ),
+            update_status(wh_json:set_value([?KEY_SUCCESS, Number]
+                                            ,knm_phone_number:to_public_json(PhoneNumber)
+                                            ,Job
+                                           )
                           ,<<"running">>
                          );
         {Failure, JObj} ->
-            update_with_failure(Job, AccountId, Number, Failure, JObj)
+            update_with_failure(Job, AccountId, DID, Failure, JObj)
     catch
         E:_R ->
-            lager:debug("exception creating number ~s for account ~s: ~s: ~p", [Number, AccountId, E, _R]),
-            update_status(wh_json:set_value([<<"errors">>, Number]
-                                            ,wh_json:from_list([{<<"reason">>, wh_util:to_binary(E)}
-                                                               ])
+            lager:debug("exception creating number ~s for account ~s: ~s: ~p"
+                        ,[DID, AccountId, E, _R]
+                       ),
+            update_status(wh_json:set_value([<<"errors">>, DID]
+                                            ,wh_json:from_list([{<<"reason">>, wh_util:to_binary(E)}])
                                             ,Job
                                            )
                           ,<<"running">>
