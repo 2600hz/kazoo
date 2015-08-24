@@ -36,7 +36,7 @@
          ,auth_by/1 ,set_auth_by/2, is_authorized/1
          ,dry_run/1 ,set_dry_run/2
          ,locality/1 ,set_locality/2
-         ,doc/1
+         ,doc/1, set_doc/2
         ]).
 
 -export([default_options/0]).
@@ -151,7 +151,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
     Now = wh_util:current_tstamp(),
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"_id">>, number(N)}
+        [{<<"_id">>, ?MODULE:number(N)}
          ,{?PVT_DB_NAME, number_db(N)}
          ,{?PVT_ASSIGNED_TO, assigned_to(N)}
          ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
@@ -461,6 +461,10 @@ set_locality(N, JObj) ->
 -spec doc(knm_number()) -> wh_json:object().
 doc(#knm_phone_number{doc=Doc}) -> Doc.
 
+-spec set_doc(knm_number(), wh_json:object()) -> knm_number().
+set_doc(N, JObj) ->
+    N#knm_phone_number{doc=JObj}.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -513,7 +517,7 @@ save_to_number_db(Number) ->
     JObj = to_json(Number),
     case couch_mgr:ensure_saved(NumberDb, JObj) of
         {'error', _R}=E ->
-            lager:error("failed to save ~s in ~s", [number(Number), NumberDb]),
+            lager:error("failed to save ~s in ~s", [?MODULE:number(Number), NumberDb]),
             E;
         {'ok', Doc} -> {'ok', from_json(Doc)}
     end.
@@ -524,12 +528,12 @@ save_to_number_db(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_assignment(knm_number()) -> number_return().
-handle_assignment(Number) ->
-    lager:debug("handling assignment for ~s", [number(Number)]),
-    case maybe_assign(Number) of
+handle_assignment(PhoneNumber) ->
+    lager:debug("handling assignment for ~s", [?MODULE:number(PhoneNumber)]),
+    case maybe_assign(PhoneNumber) of
         {'error', _R}=E ->E;
         {'ok', _} ->
-            maybe_unassign(Number)
+            maybe_unassign(PhoneNumber)
     end.
 
 %%--------------------------------------------------------------------
@@ -542,7 +546,7 @@ maybe_assign(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
         'true' ->
-            lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
+            lager:debug("assigned_to is is empty for ~s, ignoring", [?MODULE:number(Number)]),
             {'ok', Number};
         'false' -> assign(Number, AssignedTo)
     end.
@@ -552,10 +556,10 @@ assign(Number, AssignedTo) ->
     AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
     case couch_mgr:ensure_saved(AccountDb, to_json(Number)) of
         {'error', _R}=E ->
-            lager:error("failed to assign number ~s to ~s", [number(Number), AccountDb]),
+            lager:error("failed to assign number ~s to ~s", [?MODULE:number(Number), AccountDb]),
             E;
         {'ok', JObj} ->
-            lager:debug("assigned number ~s to ~s", [number(Number), AccountDb]),
+            lager:debug("assigned number ~s to ~s", [?MODULE:number(Number), AccountDb]),
             {'ok', from_json(JObj)}
     end.
 
@@ -570,17 +574,21 @@ maybe_unassign(Number) ->
     PrevAssignedTo = prev_assigned_to(Number),
     case wh_util:is_empty(PrevAssignedTo) of
         'true' ->
-            lager:debug("prev_assigned_to is is empty for ~s, ignoring", [number(Number)]),
+            lager:debug("prev_assigned_to is is empty for ~s, ignoring"
+                        ,[?MODULE:number(Number)]
+                       ),
             {'ok', Number};
         'false' ->
             maybe_unassign(Number, PrevAssignedTo)
     end.
 
 maybe_unassign(Number, PrevAssignedTo) ->
-    Num = number(Number),
+    Num = ?MODULE:number(Number),
     case get_number_in_account(PrevAssignedTo, Num) of
         {'error', 'not_found'} ->
-            lager:debug("number ~s was not found in ~s, no need to unassign", [Num, PrevAssignedTo]),
+            lager:debug("number ~s was not found in ~s, no need to unassign"
+                        ,[Num, PrevAssignedTo]
+                       ),
             {'ok', Number};
         {'ok', _} -> unassign(Number, PrevAssignedTo);
         {'error', _R} -> unassign(Number, PrevAssignedTo)
@@ -591,10 +599,14 @@ unassign(Number, PrevAssignedTo) ->
     AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
     case couch_mgr:del_doc(AccountDb, to_json(Number)) of
         {'error', _R}=E ->
-            lager:error("failed to unassign number ~s from ~s", [number(Number), AccountDb]),
+            lager:error("failed to unassign number ~s from ~s"
+                        ,[?MODULE:number(Number), AccountDb]
+                       ),
             E;
         {'ok', _} ->
-            lager:debug("unassigned number ~s from ~s", [number(Number), AccountDb]),
+            lager:debug("unassigned number ~s from ~s"
+                        ,[?MODULE:number(Number), AccountDb]
+                       ),
             {'ok', Number}
     end.
 
@@ -603,7 +615,9 @@ unassign(Number, PrevAssignedTo) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_number_in_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec get_number_in_account(ne_binary(), ne_binary()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', _}.
 get_number_in_account(AccountId, Num) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_cache_doc(AccountDb, Num).
@@ -632,7 +646,9 @@ maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
         'true' ->
-            lager:debug("assigned_to is is empty for ~s, ignoring", [number(Number)]),
+            lager:debug("assigned_to is is empty for ~s, ignoring"
+                        ,[?MODULE:number(Number)]
+                       ),
             {'ok', Number};
         'false' ->
             AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),

@@ -47,7 +47,6 @@ init() ->
 %%--------------------------------------------------------------------
 -spec current_state(wh_json:object()) -> api_binary().
 current_state(JObj) ->
-    lager:debug("current state: ~p", [JObj]),
     wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING).
 
 %%--------------------------------------------------------------------
@@ -74,21 +73,23 @@ public_fields(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
-get(Number) when is_binary(Number) ->
+-spec get(ne_binary() | knm_phone_number:knm_number()) ->
+                 {'ok', wh_json:object()} |
+                 {'error', 'not_found'}.
+get(<<_/binary>> = DID) ->
     case
         couch_mgr:get_results(
-            ?KZ_PORT_REQUESTS_DB
-            ,<<"port_requests/port_in_numbers">>
-            ,[{'key', Number}
-              ,'include_docs'
-             ]
-        )
+          ?KZ_PORT_REQUESTS_DB
+          ,<<"port_requests/port_in_numbers">>
+          ,[{'key', DID}
+            ,'include_docs'
+           ]
+         )
     of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [Port]} -> {'ok', wh_json:get_value(<<"doc">>, Port)};
         {'error', _E} ->
-            lager:debug("failed to query for port number '~s': ~p", [Number, _E]),
+            lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
             {'error', 'not_found'}
     end;
 get(Number) ->
@@ -262,7 +263,7 @@ completed_port(PortReq) ->
 transition_numbers(PortReq) ->
     Numbers = wh_json:get_keys(<<"numbers">>, PortReq),
     PortOps = [enable_number(N) || N <- Numbers],
-    case lists:all(fun(X) -> wh_util:is_true(X) end, PortOps) of
+    case lists:all(fun wh_util:is_true/1, PortOps) of
         'true' ->
             lager:debug("all numbers ported, removing from port request"),
             ClearedPortRequest = clear_numbers_from_port(PortReq),
@@ -422,7 +423,8 @@ fetch_and_send(Url, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), any()) -> 'error' | 'ok'.
+-spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), iolist()) ->
+                              'error' | 'ok'.
 send_attachement(Url, Id, Name, Options, Attachment) ->
     ContentType = wh_json:get_value(<<"content_type">>, Options),
 

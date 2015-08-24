@@ -103,10 +103,72 @@ get_number(Num, Options) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), wh_proplist()) -> knm_number_return().
 create(Num, Props) ->
-    Updates = create_updaters(Num, Props),
-    wrap_phone_number_return(
-      knm_phone_number:setters(knm_phone_number:new(), Updates)
+    create_or_load(Num, Props).
+
+create_or_load(Num, Props) ->
+    create_or_load(Num, Props, knm_phone_number:fetch(Num)).
+
+create_or_load(Num, Props, {'error', 'not_found'}) ->
+    case can_create_number(Num, Props) of
+        {'error', _}=E -> E;
+        'true' ->
+            Updates = create_updaters(Num, Props),
+            reserve_available(knm_phone_number:setters(knm_phone_number:new(), Updates))
+    end;
+create_or_load(_Num, _Props, {'error', _}=E) -> E;
+create_or_load(Num, Props, {'ok', PhoneNumber}) ->
+    case knm_phone_number:state(PhoneNumber) of
+        ?NUMBER_STATE_AVAILABLE ->
+            Updates = create_updaters(Num, Props),
+
+            reserve_available(knm_phone_number:setters(PhoneNumber, Updates));
+        _State ->
+            {'error', 'number_exists'}
+    end.
+
+reserve_available(PhoneNumber) ->
+    reserve_available(PhoneNumber, is_authorized_operation(PhoneNumber)).
+
+reserve_available(_PhoneNumber, 'false') ->
+    {'error', 'unauthorized'};
+reserve_available(PhoneNumber, 'true') ->
+    maybe_change_state(
+      update_reserved_history(PhoneNumber)
+      ,?NUMBER_STATE_RESERVED
      ).
+
+is_authorized_operation(PhoneNumber) ->
+    wh_util:is_in_account_hierarchy(
+      knm_phone_number:auth_by(PhoneNumber)
+      ,knm_phone_number:assigned_to(PhoneNumber)
+     ).
+
+-spec can_create_number(ne_binary(), wh_proplist()) -> boolean().
+can_create_number(Num, Props) ->
+    case account_can_create_number(Props) of
+        'true' -> is_number_not_porting(Num);
+        {'error', _}=E -> E
+    end.
+
+-spec account_can_create_number(wh_proplist()) ->
+                                       'true' |
+                                       {'error', 'unauthorized'}.
+account_can_create_number(Props) ->
+    case props:get_value(<<"auth_by">>, Props) of
+        'undefined' -> 'false';
+        AccountId ->
+            {'ok', JObj} = kz_account:fetch(AccountId),
+            kz_account:allow_number_additions(JObj)
+    end.
+
+-spec is_number_not_porting(ne_binary()) ->
+                                   'true' |
+                                   {'error', 'number_is_porting'}.
+is_number_not_porting(Num) ->
+    case knm_port_request:get(Num) of
+        {'ok', _Doc} -> {'error', 'number_is_porting'};
+        {'error', 'not_found'} -> 'true'
+    end.
 
 -spec create_updaters(ne_binary(), wh_proplist()) ->
                              knm_phone_number:set_functions().
@@ -122,7 +184,8 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
        ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
        ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, ?DEFAULT_AUTH_BY)}
        ,{fun knm_phone_number:set_dry_run/2, props:is_true(<<"dry_run">>, Props, 'false')}
-       ,fun knm_phone_number:save/1
+       ,{fun knm_phone_number:set_module_name/2, props:get_binary_value(<<"module_name">>, Props)}
+       ,{fun knm_phone_number:set_doc/2, props:get_value(<<"public_fields">>, Props)}
       ]).
 
 %%--------------------------------------------------------------------
@@ -608,7 +671,7 @@ check_account(PhoneNumber) ->
             State = knm_phone_number:state(PhoneNumber),
             Num = knm_phone_number:number(PhoneNumber),
             Props = [{'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
-                     ,{'local', Module =:= ?LOCAL_CARRIER}
+                     ,{'local', Module =:= ?CARRIER_LOCAL}
                      ,{'number', Num}
                      ,{'account_id', AssignedTo}
                      ,{'prepend', feature_prepend(PhoneNumber)}
@@ -691,7 +754,7 @@ should_force_outbound(?NUMBER_STATE_PORT_IN, Module, _ForceOutbound) ->
 should_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
     whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_out_outbound">>, 'true')
         orelse force_module_outbound(Module);
-should_force_outbound(_State, ?LOCAL_CARRIER, _ForceOutbound) ->
+should_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
     force_local_outbound();
 should_force_outbound(_State, _Module, ForceOutbound) ->
     ForceOutbound.
@@ -709,7 +772,7 @@ force_outbound_feature(PhoneNumber) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec force_module_outbound(ne_binary()) -> boolean().
-force_module_outbound(?LOCAL_CARRIER) -> force_local_outbound();
+force_module_outbound(?CARRIER_LOCAL) -> force_local_outbound();
 force_module_outbound(_Mod) -> 'false'.
 
 %%--------------------------------------------------------------------
