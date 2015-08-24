@@ -845,6 +845,7 @@ fax_specific(Props) ->
     props:filter_undefined(
       [{<<"Fax-Success">>, get_fax_success(Props)}
        ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
+       ,{<<"Fax-T38-Used">>, get_fax_t38_used(Props)}
        ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
        ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
        ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
@@ -979,6 +980,13 @@ get_fax_success(Props) ->
     case props:get_value(<<"variable_fax_success">>, Props) of
         'undefined' -> 'undefined';
         Else -> Else =/= <<"0">>
+    end.
+
+-spec get_fax_t38_used(wh_proplist()) -> api_boolean().
+get_fax_t38_used(Props) ->
+    case props:get_value(<<"variable_has_t38">>, Props) of
+        'undefined' -> 'undefined';
+        Else -> Else =:= <<"true">>
     end.
 
 -spec get_fax_ecm_used(wh_proplist()) -> api_boolean().
