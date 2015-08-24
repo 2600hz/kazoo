@@ -22,10 +22,8 @@ handle_req(JObj, Props) ->
     Call = whapps_call:from_route_req(JObj),
     
     ANumber = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
-    FMCConfig = fmc_db:get_fmc_config(),
-    lager:debug("FMC Config is ~p", [FMCConfig]),
-    FMCHeaderValue = wh_json:get_value([<<"Custom-SIP-Headers">>, wh_json:get_value(<<"x_fmc_header">>, FMCConfig)], JObj),
-    FMCHeaderValueRegexp = wh_json:get_value(<<"x_fmc_regexp">>, FMCConfig),
+    FMCHeaderValue = wh_json:get_value([<<"Custom-SIP-Headers">>, whapps_config:get(<<"fmc">>, <<"x_fmc_header">>)], JObj),
+    FMCHeaderValueRegexp = whapps_config:get(<<"fmc">>, <<"x_fmc_regexp">>),
     FMCHeaderValue1 = binary_to_list(FMCHeaderValue),
     FMCHeaderValueRegexp1 = binary_to_list(FMCHeaderValueRegexp),
     ExtractedFMCValue = case re:run(FMCHeaderValue1, FMCHeaderValueRegexp1) of
@@ -35,7 +33,7 @@ handle_req(JObj, Props) ->
                                 ExtractedValue = lists:sublist(FMCHeaderValue1, Pos + 1, Len),
                                 list_to_binary(ExtractedValue)
                         end,
-    Result = fmc_db:get_fmc_item(ANumber, ExtractedFMCValue),
+    Result = find_fmc_item(ANumber, ExtractedFMCValue),
     
     %% do magic to determine if we should respond...
     %% update the call kvs with which module to use (tone or echo)
@@ -46,7 +44,7 @@ handle_req(JObj, Props) ->
             ControllerQ = props:get_value('queue', Props),
             send_route_response(ControllerQ, JObj),
             UpdatedCall = whapps_call:kvs_store(<<"fmc_action">>, {Action, JObj}, Call),
-            whapps_call:cache(UpdatedCall, ?APP_NAME);
+            whapps_call:cache(UpdatedCall, ?FMC_ROUTE_REQ_SECTION);
         {'error', Error} ->
             lager:info("FMC does not know what to do with this! Error is ~p", [Error])
     end.
@@ -63,3 +61,28 @@ send_route_response(ControllerQ, JObj) ->
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
     lager:debug("Park response is ~p", [Resp]),
     whapps_util:amqp_pool_send(Resp, Publisher).
+
+-spec find_fmc_item(ne_binary(), ne_binary()) -> 'ok'.
+find_fmc_item(ANumber, ExtractedFMCValue) ->
+    lager:debug("Find for an FMC record where A-Number is ~p and FMC Value is ~p...", [ANumber, ExtractedFMCValue]),
+    case couch_mgr:get_all_results(?WH_FMC_DB, <<"fmc_devices/crossbar_listing">>) of
+        {'ok', JObjs} ->
+            JObjFMCNumbers = [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
+            JObjsFiltered = [JObj || JObj <- JObjFMCNumbers,
+                (wnm_util:normalize_number(wh_json:get_value(<<"a_number">>, JObj)) == wnm_util:normalize_number(ANumber))
+                    andalso (wh_json:get_value(<<"x_fmc_value">>, JObj) == ExtractedFMCValue)],
+            case JObjsFiltered of
+                [] ->
+                    lager:debug("FMC record wasn't found"),
+                    {'error', 'not_found'};
+                [JObjFiltered] ->
+                    lager:debug("FMC record found: ~p", [JObjFiltered]),
+                    {'ok', JObjFiltered};
+                JObjsFiltered ->
+                    lager:debug("Error: more than one FMC record with same data: ", [JObjsFiltered]),
+                    {'error', 'found_more_than_one'}
+            end;
+        Error ->
+            lager:debug("Error on find operation: ~p", [Error]),
+            Error
+    end.

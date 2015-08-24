@@ -1,18 +1,8 @@
 {
-    "_id": "fmc_item",
-    "description": "FMC item",
+    "_id": "fmc_device",
+    "description": "FMC Device",
     "id": "http://json-schema.org/draft-03/schema#",
     "properties": {
-        "a_number": {
-            "description": "A-Number which processed by FMC app",
-            "required": true,
-            "type": "string"
-        },
-        "account_id": {
-            "description": "Account ID where the internal mobile device should be",
-            "required": true,
-            "type": "string"
-        },
         "device_id": {
             "description": "Device ID of the account which will be used as caller",
             "required": true,

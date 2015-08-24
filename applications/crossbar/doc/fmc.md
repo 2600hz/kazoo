@@ -4,7 +4,7 @@ Title: FMC application
 Language: en-US
 */
 
-The FMC is an application which provides ability to transform an incoming external call from mobile phone as if it was an internal call from mobile device of existing Kazoo account.
+The FMC is an application which provides ability to call on internal short numbers from cell phones and also transform an incoming external call from mobile phone as if it was an internal call from mobile device of existing Kazoo account.
 
 ## Configuration
 
@@ -21,20 +21,16 @@ Ex:
 }
 ```
 
-## FMC Numbers
+## FMC Devices
 
 The structure of an FMC Number document is next:
 
-* `a_number`: An A-number of the external caller which should be processed by FMC app.
 * `x_fmc_value`: FMC value which will be used to distinct different call sources while the A-number can be the same.
-* `account_id`: An account ID which will be used to find corresponding device in it.
 * `device_id`: An device ID which will be used as new caller of the original call.
 
 Ex:
 ```
 {
-    "a_number": "+18881112121",
-    "account_id": "d0b7cf8509c7f5f1c45c1c6f7bb2fc3a",
     "device_id": "3edfc45563963dc267161ec868a8638e",
     "x_fmc_value": "210001"
 }
@@ -44,40 +40,40 @@ Ex:
 
 ### FMC Configuration URI
 
-`/v1/fmc`
+`/v2/system_configs/fmc`
 
 #### GET - Get current configuration:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/fmc
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/system_configs/fmc
 
 #### PUT - Set new configuration:
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/fmc -d '{"data": {"x_fmc_header": "X-FMC-Header", "x_fmc_regexp": "^X-FMC-(.+)$"}}'
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/system_configs -d '{"data": {"id": "fmc","x_fmc_header": "X-FMC-Header", "x_fmc_regexp": "^X-FMC-(.+)$"}}'
 
 #### POST - Update existing configuration:
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/fmc -d '{"data": {"x_fmc_header": "X-FMC-Header", "x_fmc_regexp": "^X-FMC-(.+)$"}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/system_configs/fmc -d '{"data": {"x_fmc_header": "X-FMC-Header", "x_fmc_regexp": "^X-FMC-(.+)$"}}'
 
-### FMC Numbers URI
+### FMC Devices URI
 
-`/v1/fmc/numbers`
+`/v2/accounts/{ACCOUNT_ID}/fmc_devices`
 
-#### GET - Get all existing FMC Numbers:
+#### GET - Get all existing FMC Devices:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/fmc/numbers
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/fmc_devices
 
-#### GET - Get existing FMC Number by ID:
+#### GET - Get existing FMC Device by ID:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/fmc/numbers/{NUMBER_ID}
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/fmc_devices/{FMC_DEVICE_ID}
 
-#### PUT - Create new FMC Number:
+#### PUT - Create new FMC Device:
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/fmc/numbers -d '{"data": {"a_number": "+79231839498", "account_id": "d0b7cf8509c7f5f1c45c1c6f7bb2fc3a", "device_id": "3edfc45563963dc267161ec868a8638e", "x_fmc_value": "1"}}'
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/fmc_devices -d '{"data": {"device_id": "3edfc45563963dc267161ec868a8638e", "x_fmc_value": "1"}}'
 
-#### POST - Update existing FMC Number:
+#### POST - Update existing FMC Device:
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/fmc/numbers/{NUMBER_ID} -d '{"data": {"a_number": "+79231839498", "account_id": "d0b7cf8509c7f5f1c45c1c6f7bb2fc3a", "device_id": "3edfc45563963dc267161ec868a8638e", "x_fmc_value": "1"}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/fmc_devices/{FMC_DEVICE_ID} -d '{"data": {"device_id": "3edfc45563963dc267161ec868a8638e", "x_fmc_value": "1"}}'
 
-#### DELETE - Remove existing FMC Number:
+#### DELETE - Remove existing FMC Device:
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/fmc/numbers/{NUMBER_ID}
+    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/fmc_devices/{FMC_DEVICE_ID}

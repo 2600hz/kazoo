@@ -24,7 +24,7 @@ handle_req(JObj, Props) ->
             [{MsgId, CallId, _Call}] = fmc_ets:get(MsgId),
             put('callid', CallId),
             lager:debug("FMC CallID from dict is ~p", [CallId]),
-            case whapps_call:retrieve(CallId, ?APP_NAME) of
+            case whapps_call:retrieve(CallId, ?FMC_ROUTE_WIN_SECTION) of
                 {'ok', C} ->
                     lager:info("Starting to prepare route_win for callflow"),
                     lager:debug("Retrieved call is ~p", [C]),
