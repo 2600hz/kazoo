@@ -151,7 +151,7 @@ on_successful_validation(ListId, Context) ->
 -spec check_list_entry_schema(path_token(), api_binary(), cb_context:context()) -> cb_context:context().
 check_list_entry_schema(ListId, EntryId, Context) ->
     OnSuccess = fun(C) -> entry_schema_success(C, ListId, EntryId) end,
-    ReqData = wh_json:set_value(<<"list">>, ListId, cb_context:req_data(Context)),
+    ReqData = wh_json:set_value(<<"list_id">>, ListId, cb_context:req_data(Context)),
     cb_context:validate_request_data(<<"list_entries">>, cb_context:set_req_data(Context, ReqData), OnSuccess).
 
 -spec entry_schema_success(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
