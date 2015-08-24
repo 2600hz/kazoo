@@ -79,9 +79,8 @@ max_participants(Conference) ->
 
 -spec max_members_sound(whapps_conference:conference()) -> api_binary().
 max_members_sound(Conference) ->
-    case whapps_conference:play_exit_tone(Conference) of
-        'false' -> 'undefined';
-        'true' -> ?EXIT_TONE;
+    case whapps_conference:max_members_media(Conference) of
+        'undefined' -> wh_media_util:get_prompt(?DEFAULT_MAX_MEMBERS_MEDIA);
         Media -> Media
     end.
 

@@ -216,7 +216,7 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
     case MaxParticipants =/= 0 andalso Participants >= MaxParticipants of
         'false' -> add_participant_to_conference(JObj, Conference, Call, Srv);
         'true' ->
-            _ = whapps_call_command:b_prompt(<<"conf-max_participants">>, Call),
+            _ = whapps_call_command:b_prompt(?DEFAULT_MAX_MEMBERS_MEDIA, Call),
             whapps_call_command:hangup(Call)
     end.
 

@@ -84,6 +84,7 @@
 -define(DEFAULT_ADVERTISE_CONFIG, 'undefined').
 -define(DEFAULT_CHAT_CONFIG, 'undefined').
 
--define(CONFERENCE_HRL, 'true').
+-define(DEFAULT_MAX_MEMBERS_MEDIA, <<"conf-max_participants">>).
 
+-define(CONFERENCE_HRL, 'true').
 -endif.

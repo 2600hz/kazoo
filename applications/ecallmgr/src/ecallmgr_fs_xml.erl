@@ -718,6 +718,13 @@ param_el(<<"moh-sound">> = Name, MediaName) ->
                              ,xml_attrib('value', Value)
                             ]
                };
+param_el(<<"max-members-sound">> = Name, MediaName) ->
+    Value = ecallmgr_util:media_path(MediaName, wh_util:get_callid(), wh_json:new()),
+    #xmlElement{name='param'
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('value', Value)
+                            ]
+               };
 param_el(Name, Value) ->
     #xmlElement{name='param'
                 ,attributes=[xml_attrib('name', Name)
