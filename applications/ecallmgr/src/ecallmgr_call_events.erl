@@ -662,7 +662,7 @@ generic_call_event_props(Props) ->
 callee_call_event_props(Props) ->
     UUID = get_call_id(Props),
     case wh_cache:peek_local(?ECALLMGR_GROUP_CACHE, {'channel', UUID}) of
-        {'ok', Channel} ->
+        {'ok', Channel} when Channel#channel.callee_number =/= 'undefined' ->
             [{<<"Callee-ID-Number">>, Channel#channel.callee_number}
              ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}
             ];
