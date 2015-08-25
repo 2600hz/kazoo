@@ -704,21 +704,20 @@ load_apps(AccountId, UserId) ->
     FilteredApps = filter_apps(Apps, AccountId, UserId),
     format_apps(AccountId, UserId, FilteredApps).
 
+%%--------------------------------------------------------------------
 %% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec filter_apps(wh_json:objects(), ne_binary(), ne_binary()) ->
                          wh_json:objects().
 filter_apps(Apps, AccountId, UserId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'error', _R} ->
-            lager:error("failed to load account ~s", [AccountId]),
-            Apps;
-        {'ok', AccountDoc} ->
-            OnlyAuthorized = fun(App) ->
-                                     cb_apps_util:is_authorized(AccountDoc, UserId, App)
-                             end,
-            lists:filter(OnlyAuthorized, Apps)
-    end.
+    OnlyAuthorized =
+        fun(App) ->
+            AppId = wh_doc:id(App),
+            cb_apps_util:is_authorized(AccountId, UserId, AppId)
+        end,
+    lists:filter(OnlyAuthorized, Apps).
 
 %%--------------------------------------------------------------------
 %% @private

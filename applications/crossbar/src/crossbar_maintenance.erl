@@ -93,6 +93,7 @@ migrate_account_data(Account) ->
     _ = migrate_ring_group_callflow(Account),
     _ = cb_vmboxes:migrate(Account),
     _ = cb_lists_v2:maybe_migrate(Account),
+    _ = cb_apps_maintenance:migrate(Account),
     'no_return'.
 
 -spec add_missing_modules(atoms(), atoms()) -> 'no_return'.
@@ -854,16 +855,17 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
 -spec maybe_update_app(file:filename(), wh_json:object(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
     CurrentDocId  = wh_doc:id(JObj),
-    CurrentApiUrl = wh_json:get_value([<<"value">>, <<"api_url">>], JObj),
+    ApiUrlKey = <<"api_url">>,
+    CurrentApiUrl = wh_json:get_value([<<"value">>, ApiUrlKey], JObj),
 
-    case wh_json:get_value(<<"api_url">>, MetaData) of
-	'undefined'   -> io:format(" not updating api_url, it is undefined~n");
-	CurrentApiUrl -> io:format(" not updating api_url, it is unchanged~n");
+    case wh_json:get_value(ApiUrlKey, MetaData) of
+	'undefined'   -> io:format(" not updating ~s, it is undefined~n", [ApiUrlKey]);
+	CurrentApiUrl -> io:format(" not updating ~s, it is unchanged~n", [ApiUrlKey]);
 	NewApiUrl ->
-	    Update = [{<<"api_url">>, NewApiUrl}],
+	    Update = [{ApiUrlKey, NewApiUrl}],
 	    case couch_mgr:update_doc(MasterAccountDb, CurrentDocId, Update) of
-		{'ok', _NJObj} -> io:format(" updated api_url to ~s~n", [NewApiUrl]);
-		{'error', Err} -> io:format(" error updating api_url: ~p~n", [Err])
+		{'ok', _NJObj} -> io:format(" updated ~s to ~s~n", [ApiUrlKey, NewApiUrl]);
+		{'error', Err} -> io:format(" error updating ~s: ~p~n", [ApiUrlKey, Err])
 	    end
     end,
 
@@ -932,7 +934,7 @@ maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb) ->
 -type image_path() :: {wh_json:object(), file:filename()}.
 -type image_paths() :: [image_path()].
 
--spec update_images(file:filename(), ne_binary(), image_paths(), ne_binary()) -> 'ok'.
+-spec update_images(ne_binary(), ne_binary(), image_paths(), ne_binary()) -> 'ok'.
 update_images(AppId, MasterAccountDb, ImagePaths, Type) ->
     try read_images(ImagePaths) of
         {'ok', Images} -> add_images(AppId, MasterAccountDb, Images)
