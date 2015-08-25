@@ -45,6 +45,7 @@
               ,knm_numbers/0
               ,number_options/0
               ,knm_number_return/0
+              ,dry_run_return/0
              ]).
 
 -type number_option() :: {'pending_port', boolean()} |
@@ -105,68 +106,87 @@ get_number(Num, Options) ->
 create(Num, Props) ->
     attempt(fun create_or_load/2, [Num, Props]).
 
+-spec create_or_load(ne_binary(), wh_proplist()) ->
+                            knm_number().
+-spec create_or_load(ne_binary(), wh_proplist(), number_return()) ->
+                            knm_number().
 create_or_load(Num, Props) ->
     create_or_load(Num, Props, knm_phone_number:fetch(Num)).
 
 create_or_load(Num, Props, {'error', 'not_found'}) ->
-    case can_create_number(Num, Props) of
-        {'error', _}=E -> E;
-        'true' ->
-            Updates = create_updaters(Num, Props),
-            reserve_available(knm_phone_number:setters(knm_phone_number:new(), Updates))
-    end;
-create_or_load(_Num, _Props, {'error', _}=E) -> E;
+    ensure_can_create(Num, Props),
+    Updates = create_updaters(Num, Props),
+    PhoneNumber = create_available(
+                    knm_phone_number:setters(knm_phone_number:new(), Updates)
+                   ),
+    create_phone_number(set_phone_number(new(), PhoneNumber));
 create_or_load(Num, Props, {'ok', PhoneNumber}) ->
     case knm_phone_number:state(PhoneNumber) of
         ?NUMBER_STATE_AVAILABLE ->
             Updates = create_updaters(Num, Props),
-
-            reserve_available(knm_phone_number:setters(PhoneNumber, Updates));
+            create_phone_number(
+              set_phone_number(new()
+                               ,knm_phone_number:setters(PhoneNumber, Updates)
+                              )
+             );
         _State ->
-            {'error', 'number_exists'}
+            knm_errors:number_exists(Num)
     end.
 
-reserve_available(PhoneNumber) ->
-    reserve_available(PhoneNumber, is_authorized_operation(PhoneNumber)).
+-spec create_phone_number(knm_number()) -> knm_number().
+create_phone_number(Number) ->
+    Routines = [fun knm_number_states:to_reserved/1
+                ,fun save_number/1
+                ,fun dry_run_or_number/1
+               ],
+    apply_number_routines(Number, Routines).
 
-reserve_available(_PhoneNumber, 'false') ->
-    {'error', 'unauthorized'};
-reserve_available(PhoneNumber, 'true') ->
-    maybe_change_state(
-      update_reserved_history(PhoneNumber)
-      ,?NUMBER_STATE_RESERVED
-     ).
+-spec create_available(knm_phone_number:knm_number()) ->
+                              knm_number().
+-spec create_available(knm_phone_number:knm_number(), api_binary()) ->
+                              knm_number().
+create_available(PhoneNumber) ->
+    create_available(PhoneNumber, knm_phone_number:auth_by(PhoneNumber)).
 
-is_authorized_operation(PhoneNumber) ->
-    wh_util:is_in_account_hierarchy(
-      knm_phone_number:auth_by(PhoneNumber)
-      ,knm_phone_number:assigned_to(PhoneNumber)
-     ).
+create_available(_PhoneNumber, 'undefined') ->
+    knm_errors:unauthorized();
+create_available(PhoneNumber, _AuthBy) ->
+    create_phone_number(PhoneNumber).
 
--spec can_create_number(ne_binary(), wh_proplist()) -> boolean().
-can_create_number(Num, Props) ->
-    case account_can_create_number(Props) of
-        'true' -> is_number_not_porting(Num);
-        {'error', _}=E -> E
+save_number(Number) ->
+    Number.
+
+dry_run_or_number(Number) ->
+    case knm_phone_number:dry_run(phone_number(Number)) of
+        'true' -> dry_run_response(Number);
+        'false' -> Number
     end.
 
--spec account_can_create_number(wh_proplist()) ->
-                                       'true' |
-                                       {'error', 'unauthorized'}.
-account_can_create_number(Props) ->
+-spec dry_run_response(knm_number()) -> dry_run_return().
+dry_run_response(Number) ->
+    {'dry_run', services(Number), charges(Number, <<"activation">>)}.
+
+-spec ensure_can_create(ne_binary(), wh_proplist()) -> 'true'.
+ensure_can_create(Num, Props) ->
+    ensure_account_can_create(Props)
+        andalso ensure_number_is_not_porting(Num).
+
+-spec ensure_account_can_create(wh_proplist()) -> 'true'.
+ensure_account_can_create(Props) ->
     case props:get_value(<<"auth_by">>, Props) of
-        'undefined' -> 'false';
+        'undefined' -> knm_errors:unauthorized();
         AccountId ->
             {'ok', JObj} = kz_account:fetch(AccountId),
-            kz_account:allow_number_additions(JObj)
+            case kz_account:allow_number_additions(JObj) of
+                'true' -> 'true';
+                'false' -> knm_errors:unauthorized()
+            end
     end.
 
--spec is_number_not_porting(ne_binary()) ->
-                                   'true' |
-                                   {'error', 'number_is_porting'}.
-is_number_not_porting(Num) ->
+-spec ensure_number_is_not_porting(ne_binary()) -> 'true'.
+ensure_number_is_not_porting(Num) ->
     case knm_port_request:get(Num) of
-        {'ok', _Doc} -> {'error', 'number_is_porting'};
+        {'ok', _Doc} -> throw({'error', 'number_is_porting', Num});
         {'error', 'not_found'} -> 'true'
     end.
 
@@ -878,11 +898,10 @@ charges(#knm_number{charges=Charges}, Key) ->
 set_charges(#knm_number{charges=Charges}=Number, Key, Amount) ->
     Number#knm_number{charges=props:set_value(Key, Amount, Charges)}.
 
--spec attempt(fun(), list()) ->
-                     {'ok', knm_number()} |
-                     {'error', knm_errors:error()}.
+-spec attempt(fun(), list()) -> knm_number_return().
 attempt(Fun, Args) ->
     try apply(Fun, Args) of
+        #knm_number{}=N -> {'ok', N};
         Resp -> Resp
     catch
         'throw':{'error', Reason} ->
@@ -900,3 +919,13 @@ num_to_did(#knm_number{}=Number) ->
     num_to_did(phone_number(Number));
 num_to_did(PhoneNumber) ->
     knm_phone_number:number(PhoneNumber).
+
+-type number_routine() :: fun((knm_number()) ->
+                                     knm_number() | dry_run_return()
+                                         ).
+-type number_routines() :: [number_routine()].
+-spec apply_number_routines(knm_number(), number_routines()) ->
+                                   knm_number() |
+                                   dry_run_return().
+apply_number_routines(Number, Routines) ->
+    lists:foldl(fun(F, N) -> F(N) end, Number, Routines).
