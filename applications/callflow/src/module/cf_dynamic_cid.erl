@@ -6,8 +6,8 @@
 %%%   "media_id":"id_of_media"
 %%%   // optional after this
 %%%   "interdigit_timeout":2000
-%%%   "id":"01fc6_change_me_294234d2324497" // the list referenced above is kept in this document
-%%%                                         // required for  action:"list"
+%%%   "id":"{LIST_ID}" // the list referenced above is kept in a couchdb document with this id
+%%%                    // required for  action:"list"
 %%% }
 %%% @end
 %%% @contributors
