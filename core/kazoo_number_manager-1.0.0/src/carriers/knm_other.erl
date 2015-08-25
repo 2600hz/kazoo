@@ -93,20 +93,14 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            knm_number_return().
--spec acquire_number(knm_number:knm_number(), boolean()) ->
-                            knm_number_return().
+                            {'ok', knm_number:knm_number()}.
 
 acquire_number(Number) ->
-    acquire_number(Number, knm_phone_number:dry_run(knm_number:phone_number(Number))).
-
-acquire_number(Number, 'true') -> {'ok', Number};
-acquire_number(Number, 'false') ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     DefaultCountry = whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
-            {'error', 'missing_provider_url'};
+            knm_errors:unspecified('missing_provider_url', Number);
         Url ->
             Hosts = case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"endpoints">>) of
                         'undefined' -> [];
@@ -124,12 +118,14 @@ acquire_number(Number, 'false') ->
             Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/order">>,
             case ibrowse:send_req(wh_util:to_list(Uri), [], 'put', wh_json:encode(ReqBody)) of
                 {'error', Reason} ->
-                    {'error', Reason};
+                    knm_errors:unspecified(Reason, Number);
                 {'ok', "200", _Headers, Body} ->
                     format_acquire_resp(Number, wh_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
-                    lager:error("number lookup failed to ~s with ~s: ~s", [Uri, _Status, Body]),
-                    {'error', 'lookup_failed'}
+                    lager:error("number lookup failed to ~s with ~s: ~s"
+                                ,[Uri, _Status, Body]
+                               ),
+                    knm_errors:unspecified('lookup_failed', Number)
             end
     end.
 
@@ -333,7 +329,7 @@ format_blocks_resp_fold([{Num, JObj}|T], Numbers) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec format_acquire_resp(knm_number:knm_number(), wh_json:object()) ->
-                                 knm_number_return().
+                                 {'ok', knm_number:knm_number()}.
 format_acquire_resp(Number, Body) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     JObj = wh_json:get_value([<<"data">>, Num], Body, wh_json:new()),
@@ -349,7 +345,7 @@ format_acquire_resp(Number, Body) ->
             {'ok', Number1};
         Error ->
             lager:error("number lookup resp error: ~p", [Error]),
-            {'error', 'lookup_resp_error'}
+            knm_errors:unspecified('lookup_resp_error', Number)
     end.
 
 %%--------------------------------------------------------------------

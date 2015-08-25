@@ -22,9 +22,12 @@
 
 -define(KNM_SW_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".simwood">>).
 
--define(SW_NUMBER_URL, whapps_config:get_string(?KNM_SW_CONFIG_CAT
-                                                ,<<"numbers_api_url">>
-                                                ,<<"https://api.simwood.com/v3/numbers">>)).
+-define(SW_NUMBER_URL
+        ,whapps_config:get_string(?KNM_SW_CONFIG_CAT
+                                  ,<<"numbers_api_url">>
+                                  ,<<"https://api.simwood.com/v3/numbers">>
+                                 )
+       ).
 
 -define(SW_ACCOUNT_ID, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"simwood_account_id">>, <<>>)).
 -define(SW_AUTH_USERNAME, whapps_config:get_string(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
@@ -49,23 +52,20 @@ find_numbers(Prefix, Quantity, _Options) ->
 %% Acquire a given number from Simwood.com
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(knm_phone_number:knm_number()) -> number_return().
--spec acquire_number(knm_phone_number:knm_number(), boolean()) -> number_return().
+-spec acquire_number(knm_number:knm_number()) ->
+                            {'ok', knm_number:knm_number()}.
 
 acquire_number(Number) ->
-    acquire_number(Number, knm_phone_number:dry_run(Number)).
-
-acquire_number(Number, 'true') -> {'ok', Number};
-acquire_number(Number, 'false') ->
+    PhoneNumber = knm_number:phone_number(Number),
     Num =
-        case knm_phone_number:number(Number) of
+        case knm_phone_number:number(PhoneNumber) of
             <<$+, N/binary>> -> N;
             N -> N
         end,
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Num)]),
     case query_simwood(URL, 'put') of
         {'ok', _Body} -> {'ok', Number};
-        {'error', _R}=Error -> Error
+        {'error', Error} -> knm_errors:unspecified(Error, Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -74,10 +74,11 @@ acquire_number(Number, 'false') ->
 %% Return number back to Simwood.com
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_phone_number:knm_number()) -> number_return().
+-spec disconnect_number(knm_number:knm_number()) -> knm_number_return().
 disconnect_number(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
     Num =
-        case knm_phone_number:number(Number) of
+        case knm_phone_number:number(PhoneNumber) of
             <<$+, N/binary>> -> N;
             N -> N
         end,
@@ -92,7 +93,7 @@ disconnect_number(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_number()) -> 'true'.
+-spec is_number_billable(knm_number:knm_number()) -> 'true'.
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------

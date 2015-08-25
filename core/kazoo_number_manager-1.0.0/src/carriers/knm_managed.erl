@@ -100,14 +100,8 @@ is_number_billable(_Number) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            knm_number_return().
--spec acquire_number(knm_number:knm_number(), boolean()) ->
-                            knm_number_return().
+                            {'ok', knm_number:knm_number()}.
 acquire_number(Number) ->
-    acquire_number(Number, knm_phone_number:dry_run(knm_number:phone_number(Number))).
-
-acquire_number(Number, 'true') -> {'ok', Number};
-acquire_number(Number, 'false') ->
     PhoneNumber = knm_number:phone_number(Number),
     Num = knm_phone_number:number(PhoneNumber),
     AssignTo = knm_phone_number:assigned_to(PhoneNumber),
@@ -181,11 +175,12 @@ save_doc(JObj) ->
     end.
 
 -spec update_doc(knm_number:knm_number(), wh_proplist()) ->
-                        knm_number_return().
+                        {'ok', knm_number:knm_number()}.
 update_doc(Number, UpdateProps) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case couch_mgr:update_doc(?WH_MANAGED, wh_doc:id(Doc), UpdateProps) of
-        {'error', _}=E -> E;
+        {'error', Error} ->
+            knm_errors:unspecified(Error, Number);
         {'ok', UpdatedDoc} ->
             {'ok'
              ,knm_number:set_phone_number(
@@ -198,7 +193,7 @@ update_doc(Number, UpdateProps) ->
 -spec create_managed_db() -> 'ok'.
 create_managed_db() ->
     _ = couch_mgr:db_create(?WH_MANAGED),
-    _ = couch_mgr:revise_doc_from_file(?WH_MANAGED, 'whistle_number_manager', ?MANAGED_VIEW_FILE),
+    _ = couch_mgr:revise_doc_from_file(?WH_MANAGED, 'kazoo_number_manager', ?MANAGED_VIEW_FILE),
     'ok'.
 
 -spec should_lookup_cnam() -> 'true'.
