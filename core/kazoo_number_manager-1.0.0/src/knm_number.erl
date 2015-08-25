@@ -103,7 +103,7 @@ get_number(Num, Options) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), wh_proplist()) -> knm_number_return().
 create(Num, Props) ->
-    create_or_load(Num, Props).
+    attempt(fun create_or_load/2, [Num, Props]).
 
 create_or_load(Num, Props) ->
     create_or_load(Num, Props, knm_phone_number:fetch(Num)).
@@ -877,3 +877,26 @@ charges(#knm_number{charges=Charges}, Key) ->
 
 set_charges(#knm_number{charges=Charges}=Number, Key, Amount) ->
     Number#knm_number{charges=props:set_value(Key, Amount, Charges)}.
+
+-spec attempt(fun(), list()) ->
+                     {'ok', knm_number()} |
+                     {'error', knm_errors:error()}.
+attempt(Fun, Args) ->
+    try apply(Fun, Args) of
+        Resp -> Resp
+    catch
+        'throw':{'error', Reason} ->
+            {'error', knm_errors:to_json(Reason)};
+        'throw':{'error', Reason, Number} ->
+            {'error', knm_errors:to_json(Reason, num_to_did(Number))};
+        'throw':{'error', Reason, Number, Cause} ->
+            {'error', knm_errors:to_json(Reason, num_to_did(Number), Cause)}
+    end.
+
+-spec num_to_did(ne_binary() | knm_number() | knm_phone_number:knm_number()) ->
+                        ne_binary().
+num_to_did(<<_/binary>> = DID) -> DID;
+num_to_did(#knm_number{}=Number) ->
+    num_to_did(phone_number(Number));
+num_to_did(PhoneNumber) ->
+    knm_phone_number:number(PhoneNumber).
