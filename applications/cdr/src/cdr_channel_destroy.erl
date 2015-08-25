@@ -77,6 +77,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 ,fun set_call_priority/3
                 ,fun maybe_set_e164_destination/3
                 ,fun is_conference/3
+                ,fun set_group/3
                 ,fun save_cdr/3
                ],
 
@@ -127,6 +128,9 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
 -spec set_doc_id(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_doc_id(_, Timestamp, JObj) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
+%% we should consider this because there is a lost channel in case of 
+%% nightmare transfers
+%%    CallId = wh_util:rand_hex_binary(16),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     wh_doc:set_id(JObj, DocId).
 
@@ -161,6 +165,17 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
                                    ,wh_json:delete_key(CCVKey, JObj)
                                   )
     end.
+
+-spec set_group(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+set_group(_AccountId, _Timestamp, JObj) ->
+    GroupKey = [<<"custom_channel_vars">>, <<"call_group_id">>],
+    <<Time:11/binary, "-", Key/binary>> = Group = wh_json:get_value(GroupKey, JObj),
+    wh_json:set_values(
+      [{<<"group_time">>, wh_util:to_integer(Time)}
+       ,{<<"group_key">>, Key}
+       ,{<<"group_id">>, Group}
+      ], wh_json:delete_key(GroupKey, JObj)
+      ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->
