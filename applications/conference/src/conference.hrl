@@ -28,46 +28,8 @@
                                  ,{<<"enter-sound">>, ?ENTRY_TONE}
                                 ]).
 
--define(DEFAULT_CALLER_CONTROLS_CONFIG, [wh_json:from_list([{<<"action">>, <<"vol talk dn">>}
-                                                            ,{<<"digits">>, <<"1">>}
-                                                           ])
-                                         ,wh_json:from_list([{<<"action">>, <<"vol talk zero">>}
-                                                             ,{<<"digits">>, <<"2">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"vol talk up">>}
-                                                             ,{<<"digits">>, <<"3">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"vol listen dn">>}
-                                                             ,{<<"digits">>, <<"4">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"vol listen zero">>}
-                                                             ,{<<"digits">>, <<"5">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"vol listen up">>}
-                                                             ,{<<"digits">>, <<"6">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"energy dn">>}
-                                                             ,{<<"digits">>, <<"7">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"energy equ">>}
-                                                             ,{<<"digits">>, <<"8">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"energy up">>}
-                                                             ,{<<"digits">>, <<"9">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"mute">>}
-                                                             ,{<<"digits">>, <<"0">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"deaf mute">>}
-                                                             ,{<<"digits">>, <<"*">>}
-                                                            ])
-                                         ,wh_json:from_list([{<<"action">>, <<"hangup">>}
-                                                             ,{<<"digits">>, <<"#">>}
-                                                            ])
-                                        ]).
-
 -define(CALLER_CONTROLS(ConfigName, Default)
-        ,whapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName], Default)
+        ,whapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName], [])
        ).
 -define(CALLER_CONTROLS(ConfigName), ?CALLER_CONTROLS(ConfigName, 'undefined')).
 
