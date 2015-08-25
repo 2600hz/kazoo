@@ -77,7 +77,6 @@ publish_new_job(Context) ->
     AccountId = cb_context:account_id(Context),
     JobId = wh_doc:id(cb_context:doc(Context)),
     ReqId = cb_context:req_id(Context),
-
     publish(AccountId, JobId, ReqId).
 
 -spec publish(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.

@@ -90,20 +90,21 @@ create_discovery(#number{number=Number
 -spec create_available(wnm_number()) -> wnm_number().
 create_available(#number{auth_by='undefined'}=N) ->
     error_unauthorized(N);
-create_available(#number{number=Number
-                         ,auth_by=AuthBy
-                         ,number_doc=Doc
-                         ,module_name=ModName
+create_available(#number{number = Number
+                         ,auth_by = AuthBy
+                         ,number_doc = Doc
+                         ,module_name = ModName
+                         ,assign_to = Account
                         }=N) ->
     Num = wnm_util:normalize_number(Number),
-    ModuleName = module_name(ModName),
     Updates = [{<<"_id">>, Num}
-               ,{<<"pvt_module_name">>, ModuleName}
+               ,{<<"pvt_module_name">>, module_name(ModName)}
                ,{<<"pvt_module_data">>, wh_json:new()}
                ,{?PVT_NUMBER_STATE, ?NUMBER_STATE_AVAILABLE}
                ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
                ,{<<"pvt_created">>, wh_util:current_tstamp()}
                ,{<<"pvt_authorizing_account">>, AuthBy}
+               ,{<<"pvt_resource_db">>, wh_util:format_account_id(Account, 'encoded')}
               ],
     JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
     json_to_record(JObj, 'true', N).
