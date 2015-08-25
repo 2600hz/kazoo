@@ -18,6 +18,9 @@
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, ?MILLISECONDS_IN_SECOND).
 
+-define(DEFAULT_DEBUG_CHANNEL, 'false' ).
+-define(DEBUG_CHANNEL, ecallmgr_config:get_boolean(<<"debug_channel">>, ?DEFAULT_DEBUG_CHANNEL) ).
+
 -export([start_link/2]).
 -export([graceful_shutdown/2]).
 -export([shutdown/2]).
@@ -655,26 +658,10 @@ generic_call_event_props(Props) ->
      ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
      ,{<<"Channel-Loopback-Bowout">>, props:get_value(<<"variable_loopback_bowout">>, Props)}
      ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_value(<<"variable_loopback_bowout_on_execute">>, Props)}
+     ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+     ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
      | callee_call_event_props(Props) ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
-
--spec callee_call_event_props(wh_proplist()) -> wh_proplist().
-callee_call_event_props(Props) ->
-    UUID = get_call_id(Props),
-    case wh_cache:peek_local(?ECALLMGR_GROUP_CACHE, {'channel', UUID}) of
-        {'ok', Channel} when Channel#channel.callee_number =/= 'undefined' ->
-            [{<<"Callee-ID-Number">>, Channel#channel.callee_number}
-             ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}
-            ];
-        _ ->
-            [{<<"Callee-ID-Number">>, props:get_first_defined([<<"variable_effective_callee_id_number">>
-                                                               ,<<"Caller-Callee-ID-Number">>
-                                                              ], Props)}
-             ,{<<"Callee-ID-Name">>, props:get_first_defined([<<"variable_effective_callee_id_name">>
-                                                              ,<<"Caller-Callee-ID-Name">>
-                                                             ], Props)}
-            ]
-    end.
 
 -spec publish_event(wh_proplist()) -> 'ok'.
 publish_event(Props) ->
@@ -773,7 +760,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
      ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
-     ,{<<"Channel-Call-State">>, wh_json:from_list(lists:sort(fun({A,_}, {B,_}) -> A =< B end, Props))}
+     | maybe_debug_channel(Props, ?DEBUG_CHANNEL)
     ];
 specific_call_event_props(<<"RECORD_START">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -1147,6 +1134,33 @@ store_recording(Props, CallId, Node) ->
 media_transfer_method(Props) ->
     kzd_freeswitch:ccv(Props, <<"Media-Transfer-Method">>, <<"put">>).
 
+<<<<<<< HEAD
 -spec get_is_loopback(api_binary()) -> atom().
 get_is_loopback('undefined') -> 'undefined';
 get_is_loopback(_) -> 'true'.
+=======
+-spec callee_call_event_props(wh_proplist()) -> wh_proplist().
+callee_call_event_props(Props) ->
+    UUID = get_call_id(Props),
+    case wh_cache:peek_local(?ECALLMGR_GROUP_CACHE, {'channel', UUID}) of
+        {'ok', Channel} when Channel#channel.callee_number =/= 'undefined' ->
+            [{<<"Callee-ID-Number">>, Channel#channel.callee_number}
+             ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}
+            ];
+        _ ->
+            [{<<"Callee-ID-Number">>, props:get_first_defined([<<"variable_effective_callee_id_number">>
+                                                               ,<<"Caller-Callee-ID-Number">>
+                                                              ], Props)}
+             ,{<<"Callee-ID-Name">>, props:get_first_defined([<<"variable_effective_callee_id_name">>
+                                                              ,<<"Caller-Callee-ID-Name">>
+                                                             ], Props)}
+            ]
+    end.
+
+maybe_debug_channel(_Props, 'false') -> [];
+maybe_debug_channel(Props, 'true') ->
+    [
+    {<<"Channel-Call-State">>, wh_json:from_list(lists:sort(fun({A,_}, {B,_}) -> A =< B end, Props))}
+    ].
+  
+>>>>>>> KAZOO-3795 add variables to channel estroy and optional debug channel
