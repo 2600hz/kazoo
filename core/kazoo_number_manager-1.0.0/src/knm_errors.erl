@@ -13,6 +13,8 @@
          ,invalid_state_transition/3
          ,no_change_required/1
          ,service_restriction/1
+         ,carrier_not_specified/1
+         ,unspecified/2
         ]).
 
 -export([to_json/1, to_json/2, to_json/3]).
@@ -50,6 +52,15 @@ no_change_required(Number) ->
 -spec service_restriction(ne_binary()) -> no_return().
 service_restriction(Message) ->
     throw({'error', 'service_restriction', Message}).
+
+-spec carrier_not_specified(knm_number:knm_number()) -> no_return().
+carrier_not_specified(Number) ->
+    throw({'error', 'carrier_not_specified', Number}).
+
+-spec unspecified(atom() | ne_binary(), knm_number:knm_number()) ->
+                         no_return().
+unspecified(Error, Number) ->
+    throw({'error', Error, Number}).
 
 %%--------------------------------------------------------------------
 %% @public
