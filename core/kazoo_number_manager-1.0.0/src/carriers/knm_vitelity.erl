@@ -44,15 +44,12 @@ find_numbers(Prefix, Quantity, Opts) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(knm_phone_number:knm_number()) -> number_return().
--spec acquire_number(knm_phone_number:knm_number(), boolean()) -> number_return().
+-spec acquire_number(knm_number:knm_number()) ->
+                            {'ok', knm_number:knm_number()}.
 
 acquire_number(Number) ->
-    acquire_number(Number, knm_phone_number:dry_run(Number)).
-
-acquire_number(Number, 'true') -> {'ok', Number};
-acquire_number(Number, 'false') ->
-    DID = knm_phone_number:number(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    DID = knm_phone_number:number(PhoneNumber),
     case knm_converters:classify(DID) of
         <<"tollfree_us">> ->
             query_vitelity(
@@ -83,9 +80,10 @@ acquire_number(Number, 'false') ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_phone_number:knm_number()) -> number_return().
+-spec disconnect_number(knm_number:knm_number()) -> knm_number_return().
 disconnect_number(Number) ->
-    DID = knm_phone_number:number(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    DID = knm_phone_number:number(PhoneNumber),
     lager:debug("attempting to disconnect ~s", [DID]),
     query_vitelity(
       Number
@@ -392,17 +390,17 @@ get_routesip() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec query_vitelity(knm_phone_number:knm_number(), ne_binary()) ->
-                            number_return().
+-spec query_vitelity(knm_number:knm_number(), ne_binary()) ->
+                            {'ok', knm_number:knm_number()}.
 query_vitelity(Number, URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
             process_xml_resp(Number, RespXML);
-        {'error', _R} ->
-            lager:debug("error querying: ~p", [_R]),
-            {'error', 'failed_query_carrier'}
+        {'error', Error} ->
+            lager:debug("error querying: ~p", [Error]),
+            knm_errors:unspecified(Error, Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -411,15 +409,15 @@ query_vitelity(Number, URI) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_resp(knm_phone_number:knm_number(), text()) ->
-                              number_return().
+-spec process_xml_resp(knm_number:knm_number(), text()) ->
+                              {'ok', knm_number:knm_number()}.
 process_xml_resp(Number, XML) ->
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
     catch
         _E:_R ->
             lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
-            {'error', 'failed_decode_resp'}
+            knm_errors:unspecified('failed_decode_resp', Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -428,8 +426,8 @@ process_xml_resp(Number, XML) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_content_tag(knm_phone_number:knm_number(), xml_el()) ->
-                                     number_return().
+-spec process_xml_content_tag(knm_number:knm_number(), xml_el()) ->
+                                     {'ok', knm_number:knm_number()}.
 process_xml_content_tag(Number, #xmlElement{name='content'
                                             ,content=Children
                                            }) ->
@@ -438,7 +436,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
         <<"fail">> ->
             Msg = knm_vitelity_util:xml_resp_error_msg(Els),
             lager:debug("xml status is 'fail': ~s", [Msg]),
-            {'error', Msg};
+            knm_errors:unspecified(Msg, Number);
         <<"ok">> ->
             lager:debug("successful provisioning"),
             {'ok', Number}

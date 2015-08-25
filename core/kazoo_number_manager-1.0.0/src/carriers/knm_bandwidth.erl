@@ -66,7 +66,8 @@ find_numbers(Search, Quanity, _) ->
         {'ok', Xml} -> process_numbers_search_resp(Xml)
     end.
 
--spec process_numbers_search_resp(string()) -> {'ok', knm_phone_number:knm_numbers()}.
+-spec process_numbers_search_resp(string()) ->
+                                         {'ok', knm_phone_number:knm_numbers()}.
 process_numbers_search_resp(Xml) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
     Resp = [begin
@@ -84,30 +85,28 @@ process_numbers_search_resp(Xml) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(knm_phone_number:knm_number()) -> number_return().
--spec acquire_number(knm_phone_number:knm_number(), boolean()) -> number_return().
+-spec acquire_number(knm_number:knm_number()) ->
+                            {'ok', knm_number:knm_number()}.
 
 acquire_number(Number) ->
-    acquire_number(Number, knm_phone_number:dry_run(Number)).
-
-acquire_number(Number, 'true') -> {'ok', Number};
-acquire_number(Number, 'false') ->
     Debug = whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true'),
     case whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true') of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
             {'ok', Number};
         'false' ->
-            {'error', 'provisioning_disabled'};
+            knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
             acquire_and_provision_number(Number)
     end.
 
--spec acquire_and_provision_number(knm_phone_number:knm_number()) -> number_return().
+-spec acquire_and_provision_number(knm_number:knm_number()) ->
+                                          {'ok', knm_number:knm_number()}.
 acquire_and_provision_number(Number) ->
-    AuthBy = knm_phone_number:auth_by(Number),
-    AssignedTo = knm_phone_number:assigned_to(Number),
-    Data = knm_phone_number:carrier_data(Number),
+    PhoneNumber = knm_number:phone_number(Number),
+    AuthBy = knm_phone_number:auth_by(PhoneNumber),
+    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
+    Data = knm_phone_number:carrier_data(PhoneNumber),
     Id = wh_json:get_string_value(<<"number_id">>, Data),
     Hosts = case whapps_config:get(?KNM_BW_CONFIG_CAT, <<"endpoints">>) of
                 'undefined' -> [];
@@ -133,11 +132,14 @@ acquire_and_provision_number(Number) ->
              | Hosts
             ],
     case make_numbers_request('basicNumberOrder', Props) of
-        {'error', _R}=Error -> Error;
+        {'error', Error} ->
+            knm_errors:unspecified(Error, Number);
         {'ok', Xml} ->
             Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
             Data = number_order_response_to_json(Response),
-            {'ok', knm_phone_number:set_carrier_data(Number, Data)}
+            knm_number:set_phone_number(
+              knm_phone_number:set_carrier_data(PhoneNumber, Data)
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -146,8 +148,8 @@ acquire_and_provision_number(Number) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_phone_number:knm_number()) ->
-                               {'ok', knm_phone_number:knm_number()}.
+-spec disconnect_number(knm_number:knm_number()) ->
+                               {'ok', knm_number:knm_number()}.
 disconnect_number(Number) ->
     {'ok', Number}.
 
