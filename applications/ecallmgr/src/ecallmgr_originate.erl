@@ -540,6 +540,7 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
 get_channel_vars(JObj, FetchId) ->
     CCVs = [{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
             ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
+            ,{[<<"Custom-Channel-Vars">>, <<?CALL_GROUP_ID>>], ?CALL_GROUP_DEFAULT}
            ],
     Vars = maybe_add_loopback(JObj, CCVs),
     J = wh_json:set_values(Vars, JObj),
