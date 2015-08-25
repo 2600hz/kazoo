@@ -754,10 +754,18 @@ props_to_update(Props) ->
 update_callee(UUID, Props) ->
     {'ok', Channel} = fetch(UUID, 'record'),
     [{#channel.callee_number, 
-      maybe_update_callee_field(props:get_value(<<"Caller-Callee-ID-Number">>, Props), Channel#channel.callee_number)
+      maybe_update_callee_field(
+        props:get_first_defined([<<"variable_effective_callee_id_number">>
+                                 ,<<"Caller-Callee-ID-Number">>
+                                ], Props),        
+        Channel#channel.callee_number)
      }
      ,{#channel.callee_name, 
-      maybe_update_callee_field(props:get_value(<<"Caller-Callee-ID-Name">>, Props), Channel#channel.callee_name)
+      maybe_update_callee_field(
+        props:get_first_defined([<<"variable_effective_callee_id_name">>
+                                 ,<<"Caller-Callee-ID-Name">>
+                                ], Props),        
+         Channel#channel.callee_name)
       }
     ].
 
