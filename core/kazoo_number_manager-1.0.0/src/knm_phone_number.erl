@@ -22,13 +22,14 @@
          ,new/0
          ,number/1, set_number/2
          ,number_db/1 ,set_number_db/2
+         ,assign_to/1, set_assign_to/2
          ,assigned_to/1 ,set_assigned_to/2
          ,prev_assigned_to/1 ,set_prev_assigned_to/2
          ,used_by/1 ,set_used_by/2
          ,features/1 ,set_features/2
          ,feature/2 ,set_feature/3
          ,state/1 ,set_state/2
-         ,reserve_history/1 ,set_reserve_history/2
+         ,reserve_history/1 ,set_reserve_history/2, add_reserve_history/2
          ,ported_in/1 ,set_ported_in/2
          ,module_name/1 ,set_module_name/2
          ,carrier_data/1 ,set_carrier_data/2
@@ -45,6 +46,7 @@
 
 -record(knm_phone_number, {number :: ne_binary()
                            ,number_db :: ne_binary()
+                           ,assign_to :: api_binary()
                            ,assigned_to :: api_binary()
                            ,prev_assigned_to :: api_binary()
                            ,used_by :: api_binary()
@@ -277,7 +279,8 @@ set_number(N, Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec number_db(knm_number()) -> ne_binary().
-number_db(#knm_phone_number{number_db=Db}) -> Db.
+number_db(#knm_phone_number{number_db=NumberDb}) ->
+    NumberDb.
 
 -spec set_number_db(knm_number(), ne_binary()) -> knm_number().
 set_number_db(N, NumberDb) ->
@@ -288,12 +291,26 @@ set_number_db(N, NumberDb) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec assign_to(knm_number()) -> ne_binary().
+assign_to(#knm_phone_number{assign_to=AssignTo}) ->
+    AssignTo.
+
+-spec set_assign_to(knm_number(), ne_binary()) -> knm_number().
+set_assign_to(N, AssignTo) ->
+    N#knm_phone_number{assign_to=AssignTo}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec assigned_to(knm_number()) -> ne_binary().
-assigned_to(#knm_phone_number{assigned_to=AssignedTo}) -> AssignedTo.
+assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
+    AssignedTo.
 
 -spec set_assigned_to(knm_number(), ne_binary()) -> knm_number().
-set_assigned_to(N, AccountId) ->
-    N#knm_phone_number{assigned_to=AccountId}.
+set_assigned_to(N, AssignedTo) ->
+    N#knm_phone_number{assigned_to=AssignedTo}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -301,11 +318,12 @@ set_assigned_to(N, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prev_assigned_to(knm_number()) -> ne_binary().
-prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) -> PrevAssignedTo.
+prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) ->
+    PrevAssignedTo.
 
 -spec set_prev_assigned_to(knm_number(), ne_binary()) -> knm_number().
-set_prev_assigned_to(N, AccountId) ->
-    N#knm_phone_number{prev_assigned_to=AccountId}.
+set_prev_assigned_to(N, PrevAssignedTo) ->
+    N#knm_phone_number{prev_assigned_to=PrevAssignedTo}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -368,6 +386,10 @@ reserve_history(#knm_phone_number{reserve_history=History}) -> History.
 -spec set_reserve_history(knm_number(), ne_binaries()) -> knm_number().
 set_reserve_history(N, History) ->
     N#knm_phone_number{reserve_history=History}.
+
+-spec add_reserve_history(knm_number(), ne_binary()) -> knm_number().
+add_reserve_history(N, AccountId) ->
+    N#knm_phone_number{reserve_history=[AccountId | reserve_history(N)]}.
 
 %%--------------------------------------------------------------------
 %% @public
