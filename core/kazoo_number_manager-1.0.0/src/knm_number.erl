@@ -24,6 +24,7 @@
 
 -export([phone_number/1, set_phone_number/2
          ,services/1, set_services/2
+         ,billing_id/1, set_billing_id/2
          ,transactions/1
          ,add_transaction/2
          ,errors/1
@@ -34,6 +35,7 @@
 
 -record(knm_number, {knm_phone_number :: knm_phone_number:knm_number()
                      ,services :: wh_services:services()
+                     ,billing_id :: api_binary()
                      ,transactions = [] :: wh_transaction:transactions()
                      ,errors = [] :: list()
                      ,charges = [] :: [{ne_binary(), integer()}]
@@ -883,6 +885,14 @@ services(#knm_number{services=Services}) -> Services.
 -spec set_services(knm_number(), wh_services:services()) -> knm_number().
 set_services(#knm_number{}=Number, Services) ->
     Number#knm_number{services=Services}.
+
+-spec billing_id(knm_number()) -> api_binary().
+billing_id(#knm_number{billing_id=BillingId}) ->
+    BillingId.
+
+-spec set_billing_id(knm_number(), ne_binary()) -> knm_number().
+set_billing_id(#knm_number{}=Number, BillingId) ->
+    Number#knm_number{billing_id=BillingId}.
 
 -spec transactions(knm_number()) -> wh_transaction:transactions().
 transactions(#knm_number{transactions=Transactions}) -> Transactions.
