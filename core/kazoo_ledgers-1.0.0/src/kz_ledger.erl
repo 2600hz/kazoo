@@ -70,7 +70,9 @@ debit(Name, Amount, Account, Desc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), integer(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', ledger()} | {'error', _}.
+-spec create(ne_binary(), integer(), ne_binary(), api_binary(), ne_binary()) ->
+                    {'ok', ledger()} |
+                    {'error', _}.
 create(Name, Amount, Account, Desc, Type) ->
     Routines = [
         fun(L) -> kazoo_ledger:set_name(L, Name) end
