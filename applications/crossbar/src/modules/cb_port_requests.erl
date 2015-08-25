@@ -52,7 +52,6 @@
 -define(DESCENDANT_LISTING_BY_STATE, <<"port_requests/listing_by_descendant_state">>).
 
 -define(DESCENDANTS, <<"descendants">>).
--define(COMMENTS, <<"comments">>).
 
 -define(UNFINISHED_PORT_REQUEST_LIFETIME
         ,whapps_config:get_integer(?MY_CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
@@ -173,9 +172,7 @@ allowed_methods(_Id, ?PORT_CANCELED) ->
 allowed_methods(_Id, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
-    [?HTTP_GET];
-  allowed_methods(_Id, ?COMMENTS) ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_GET].
 
 allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
@@ -205,7 +202,6 @@ resource_exists(_Id, ?PORT_REJECT) -> 'true';
 resource_exists(_Id, ?PORT_CANCELED) -> 'true';
 resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
 resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
-resource_exists(_Id, ?COMMENTS) -> 'true';
 resource_exists(_Id, _Unknown) -> 'false'.
 
 resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
@@ -333,9 +329,7 @@ validate(Context, Id, ?PORT_CANCELED) ->
 validate(Context, Id, ?PORT_ATTACHMENT) ->
     validate_attachments(Context, Id, cb_context:req_verb(Context));
 validate(Context, Id, ?PATH_TOKEN_LOA) ->
-    generate_loa(read(Context, Id));
-validate(Context, Id, ?COMMENTS) ->
-    validate_comments(Context, Id, cb_context:req_verb(Context)).
+    generate_loa(read(Context, Id)).
 
 validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(Context, Id, AttachmentId, cb_context:req_verb(Context)).
@@ -494,19 +488,7 @@ post(Context, Id, ?PORT_CANCELED) ->
               ,<<"failed to send port cancel email">>
               ,Context
              )
-    end;
-post(Context, Id, ?COMMENTS) ->
-    Comments = wh_json:get_value(?COMMENTS, cb_context:req_data(Context), []),
-    Updater =
-        fun(Doc) ->
-            wh_json:set_value(?COMMENTS, Comments, Doc)
-        end,
-    only_return_comments(
-        do_post(
-            cb_context:update_doc(Context, Updater)
-            ,Id
-        )
-    ).
+    end.
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -559,35 +541,6 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec validate_comments(cb_context:context(), ne_binary(), http_method()) ->
-                                    cb_context:context().
-validate_comments(Context, Id, ?HTTP_GET) ->
-    only_return_comments(load_port_request(Context, Id));
-validate_comments(Context, Id, ?HTTP_POST) ->
-    load_port_request(Context, Id).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec only_return_comments(cb_context:context()) -> cb_context:context().
-only_return_comments(Context) ->
-    case cb_context:resp_status(Context) of
-        'success' ->
-            Comments = wh_json:get_value(<<"comments">>, cb_context:doc(Context), []),
-            cb_context:set_resp_data(
-                Context
-                ,wh_json:from_list([{<<"comments">>, Comments}])
-            );
-        _ -> Context
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
