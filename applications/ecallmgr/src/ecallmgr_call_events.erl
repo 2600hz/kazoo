@@ -1134,11 +1134,10 @@ store_recording(Props, CallId, Node) ->
 media_transfer_method(Props) ->
     kzd_freeswitch:ccv(Props, <<"Media-Transfer-Method">>, <<"put">>).
 
-<<<<<<< HEAD
 -spec get_is_loopback(api_binary()) -> atom().
 get_is_loopback('undefined') -> 'undefined';
 get_is_loopback(_) -> 'true'.
-=======
+
 -spec callee_call_event_props(wh_proplist()) -> wh_proplist().
 callee_call_event_props(Props) ->
     UUID = get_call_id(Props),
@@ -1160,7 +1159,5 @@ callee_call_event_props(Props) ->
 maybe_debug_channel(_Props, 'false') -> [];
 maybe_debug_channel(Props, 'true') ->
     [
-    {<<"Channel-Call-State">>, wh_json:from_list(lists:sort(fun({A,_}, {B,_}) -> A =< B end, Props))}
+    {<<"Channel-Log">>, wh_json:from_list(lists:sort(fun({A,_}, {B,_}) -> A =< B end, Props))}
     ].
-  
->>>>>>> KAZOO-3795 add variables to channel estroy and optional debug channel

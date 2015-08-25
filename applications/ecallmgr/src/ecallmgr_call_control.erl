@@ -406,7 +406,7 @@ handle_info({'event', [CallId | Props]}, #state{call_id=CallId
                     CDR = wh_json:get_value(<<"group_id">>, Channel),
                     wh_cache:store_local(?ECALLMGR_GROUP_CACHE, CallId, CDR),
                     ecallmgr_fs_command:set(Node, OtherUUID, ?CCV(<<?CALL_GROUP_ID>>), CDR),
-                    ecallmgr_fs_command:set(Node, OtherLeg, ?CCV(<<?CALL_GROUP_ID>>), CDR),                    
+                    ecallmgr_fs_command:set(Node, OtherLeg, ?CCV(<<?CALL_GROUP_ID>>), CDR),
                     {'noreply', handle_sofia_replaced(ReplacedBy, State)};
                 _Else ->
                     lager:info("sofia replaced on our channel but different fetch id~n"),

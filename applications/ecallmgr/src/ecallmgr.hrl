@@ -330,11 +330,11 @@
                                    ,'sofia::intercepted'
                                   ]).
 -define(IS_SOFIA_TRANSFER(N), lists:member(wh_util:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
-  
+
 -define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'
                            ,'sofia::transferor', 'sofia::transferee'
                            ,'sofia::replaced','sofia::intercepted'
-                           ,'sofia::register'                           
+                           ,'sofia::register'
                            ,'conference::maintenance'
                            ,'spandsp::txfaxresult'
                            ,'spandsp::rxfaxresult'

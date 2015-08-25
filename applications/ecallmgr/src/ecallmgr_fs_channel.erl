@@ -583,10 +583,10 @@ channel_resp_dialprefix(ReqProps, Channel, ChannelVars) ->
                ,{<<"sip_h_X-ecallmgr_replaces-call-id">>, props:get_value(<<"replaces-call-id">>, ReqProps)}
                ,{<<"sip_h_X-ecallmgr_refer-from-channel-id">>, props:get_value(<<"refer-from-channel-id">>, ReqProps)}
                ,{<<"sip_h_X-ecallmgr_refer-for-channel-id">>, props:get_value(<<"refer-for-channel-id">>, ReqProps)}
-              
+
                ,{<<"sip_h_X-ecallmgr_Account-ID">>, props:get_value(<<"Account-ID">>, ChannelVars)}
                ,{<<"sip_h_X-ecallmgr_Realm">>, props:get_value(<<"Realm">>, ChannelVars)}
-              ]),    
+              ]),
     X = string:join([wh_util:to_list(<<K/binary, "='", (wh_util:to_binary(V))/binary, "'">>) || {K, V}  <- Props], ","),
     wh_util:to_binary(["[", X, "]"]).
 
@@ -737,7 +737,7 @@ props_to_update(Props) ->
                             ,{#channel.reseller_id, props:get_value(<<"Reseller-ID">>, CCVs)}
                             ,{#channel.reseller_billing, props:get_value(<<"Reseller-Billing">>, CCVs)}
                             ,{#channel.precedence, wh_util:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))}
-                            ,{#channel.realm, props:get_value(<<"Realm">>, CCVs, get_realm(Props))}             
+                            ,{#channel.realm, props:get_value(<<"Realm">>, CCVs, get_realm(Props))}
                             ,{#channel.username, props:get_value(<<"Username">>, CCVs, get_username(Props))}
                             ,{#channel.import_moh, props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'}
                             ,{#channel.answered, props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>}
@@ -753,18 +753,18 @@ props_to_update(Props) ->
 -spec update_callee(binary(), wh_proplist()) -> wh_proplist().
 update_callee(UUID, Props) ->
     {'ok', Channel} = fetch(UUID, 'record'),
-    [{#channel.callee_number, 
+    [{#channel.callee_number,
       maybe_update_callee_field(
         props:get_first_defined([<<"variable_effective_callee_id_number">>
                                  ,<<"Caller-Callee-ID-Number">>
-                                ], Props),        
+                                ], Props),
         Channel#channel.callee_number)
      }
-     ,{#channel.callee_name, 
+     ,{#channel.callee_name,
       maybe_update_callee_field(
         props:get_first_defined([<<"variable_effective_callee_id_name">>
                                  ,<<"Caller-Callee-ID-Name">>
-                                ], Props),        
+                                ], Props),
          Channel#channel.callee_name)
       }
     ].
@@ -810,7 +810,7 @@ maybe_update_group_id(Props, Node) ->
             CoreUUID = props:get_value(<<"Core-UUID">>, Props),
             maybe_update_group_id(Props, Node, {CoreUUID, RemoteUUID})
     end.
-        
+
 -spec maybe_update_group_id(wh_proplist(), atom(), tuple()) -> 'ok'.
 maybe_update_group_id(_Props, _Node, {CoreUUID, CoreUUID}) -> 'ok';
 maybe_update_group_id(Props, Node, _) ->
@@ -832,4 +832,4 @@ new(Props, Node) ->
     ecallmgr_fs_channels:new(props_to_record(Props, Node)).
 
 
-        
+
