@@ -289,7 +289,7 @@ originate_quickcall(Endpoints, Call, Context) ->
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, maybe_auto_answer(Endpoints, AutoAnswer)}
+               ,{<<"Endpoints">>, update_endpoints(CallId, AutoAnswer, Endpoints)}
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
@@ -297,7 +297,6 @@ originate_quickcall(Endpoints, Call, Context) ->
                ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
                ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
                ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
-               ,{<<"Outbound-Call-ID">>, CallId}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, 'false'}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
@@ -308,11 +307,16 @@ originate_quickcall(Endpoints, Call, Context) ->
     JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
     crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec maybe_auto_answer(wh_json:objects(), boolean()) -> wh_json:objects().
-maybe_auto_answer([Endpoint], AutoAnswer) ->
-    [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint)];
-maybe_auto_answer(Endpoints, _) ->
-    Endpoints.
+-spec update_endpoints(ne_binary(), boolean(), wh_json:objects()) -> wh_json:objects().
+update_endpoints(CallId, AutoAnswer, [Endpoint]) ->
+    WithAA = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint),
+    [set_outbound_call_id(CallId, WithAA)];
+update_endpoints(CallId, _AutoAnswer, Endpoints) ->
+    [set_outbound_call_id(CallId, Endpoint) || Endpoint <- Endpoints].
+
+-spec set_outbound_call_id(ne_binary(), wh_json:object()) -> wh_json:object().
+set_outbound_call_id(CallId, Endpoint) ->
+    wh_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
 
 -spec get_application_data(cb_context:context()) -> wh_json:object().
 -spec get_application_data_from_nouns(req_nouns()) -> wh_json:object().
@@ -326,15 +330,14 @@ get_application_data_from_nouns(?USERS_QCALL_NOUNS(_UserId, Number)) ->
 get_application_data_from_nouns(_Nouns) ->
     wh_json:from_list([{<<"Route">>, <<"0">>}]).
 
+-define(DEFAULT_TIMEOUT_S, 30).
 -spec get_timeout(cb_context:context()) -> pos_integer().
 get_timeout(Context) ->
-    Default = 30,
-    Minimum = 3,
-    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, Default)) of
-        Timeout when Timeout > Minimum -> Timeout;
-        _ -> Default
+    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, ?DEFAULT_TIMEOUT_S)) of
+        Timeout when is_integer(Timeout), Timeout > 3 -> Timeout;
+        _ -> ?DEFAULT_TIMEOUT_S
     catch
-        _:_ -> Default
+        _:_ -> ?DEFAULT_TIMEOUT_S
     end.
 
 -spec get_ignore_early_media(cb_context:context()) -> boolean().

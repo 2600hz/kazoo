@@ -156,12 +156,13 @@ is_superduper_admin(JObj) ->
 allow_number_additions(JObj) ->
     wh_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
 
--spec fetch(ne_binary()) -> {'ok', doc()} |
+-spec fetch(api_binary()) -> {'ok', doc()} |
                             {'error', _}.
+fetch('undefined') ->
+    {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-
     couch_mgr:open_cache_doc(AccountDb, AccountId).
 
 -spec trial_expiration(doc()) -> api_integer().

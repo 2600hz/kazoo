@@ -90,26 +90,49 @@
 %% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS
-        ,[<<"Route">>, <<"To-User">>
-          ,<<"To-Realm">>, <<"To-DID">>, <<"To-URI">>
-          ,<<"To-IP">>, <<"To-Username">>
-          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-          ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
-          ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-          ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"Custom-SIP-Headers">>, <<"Presence-ID">>
+        ,[<<"Auth-Password">>
+          ,<<"Auth-Realm">>
+          ,<<"Auth-User">>
+          ,<<"Bypass-Media">>
+          ,<<"Callee-ID-Name">>
+          ,<<"Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>
+          ,<<"Caller-ID-Number">>
+          ,<<"Codecs">>
           ,<<"Custom-Channel-Vars">>
-          ,<<"Auth-User">>, <<"Auth-Password">>, <<"Auth-Realm">>
-          ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
-          ,<<"Proxy-Zone">>, <<"Proxy-IP">>
-          ,<<"Forward-IP">>, <<"SIP-Transport">>
-          ,<<"Ignore-Completed-Elsewhere">>
-          ,<<"SIP-Interface">>
-          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
-          ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
+          ,<<"Custom-SIP-Headers">>
+          ,<<"Enable-T38-Fax">>
+          ,<<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Gateway">>
+          ,<<"Enable-T38-Passthrough">>
+          ,<<"Endpoint-Delay">>
+          ,<<"Endpoint-Options">>
+          ,<<"Endpoint-Progress-Timeout">>
+          ,<<"Endpoint-Timeout">>
+          ,<<"Endpoint-Type">>
           ,<<"Failover">>
+          ,<<"Force-Fax">>
+          ,<<"Forward-IP">>
+          ,<<"Hold-Media">>
+          ,<<"Ignore-Completed-Elsewhere">>
+          ,<<"Ignore-Early-Media">>
+          ,<<"Outbound-Call-ID">>
+          ,<<"Outbound-Callee-ID-Name">>
+          ,<<"Outbound-Callee-ID-Number">>
+          ,<<"Outbound-Caller-ID-Name">>
+          ,<<"Outbound-Caller-ID-Number">>
+          ,<<"Presence-ID">>
+          ,<<"Proxy-IP">>
+          ,<<"Proxy-Zone">>
+          ,<<"Route">>
+          ,<<"SIP-Interface">>
+          ,<<"SIP-Transport">>
+          ,<<"To-DID">>
+          ,<<"To-IP">>
+          ,<<"To-Realm">>
+          ,<<"To-URI">>
+          ,<<"To-User">>
+          ,<<"To-Username">>
          ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
