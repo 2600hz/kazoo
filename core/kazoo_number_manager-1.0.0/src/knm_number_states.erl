@@ -81,7 +81,7 @@ move_to_reserved_state(Number) ->
      ).
 
 -spec move_phone_number_to_reserved_state(knm_phone_number:knm_number(), api_binary()) ->
-                                     knm_phone_number:knm_number().
+                                                 knm_phone_number:knm_number().
 move_phone_number_to_reserved_state(PhoneNumber, 'undefined') ->
     Setters = [{fun knm_phone_number:set_assigned_to/2
                 ,knm_phone_number:assign_to(PhoneNumber)

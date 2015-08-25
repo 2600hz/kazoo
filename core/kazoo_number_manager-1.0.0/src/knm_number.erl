@@ -116,10 +116,10 @@ create_or_load(Num, Props) ->
 create_or_load(Num, Props, {'error', 'not_found'}) ->
     ensure_can_create(Num, Props),
     Updates = create_updaters(Num, Props),
-    PhoneNumber = create_available(
-                    knm_phone_number:setters(knm_phone_number:new(), Updates)
-                   ),
-    create_phone_number(set_phone_number(new(), PhoneNumber));
+    Number = create_available(
+               knm_phone_number:setters(knm_phone_number:new(), Updates)
+              ),
+    create_phone_number(Number);
 create_or_load(Num, Props, {'ok', PhoneNumber}) ->
     case knm_phone_number:state(PhoneNumber) of
         ?NUMBER_STATE_AVAILABLE ->
@@ -151,11 +151,15 @@ create_available(PhoneNumber) ->
 create_available(_PhoneNumber, 'undefined') ->
     knm_errors:unauthorized();
 create_available(PhoneNumber, _AuthBy) ->
-    create_phone_number(PhoneNumber).
+    create_phone_number(set_phone_number(new(), PhoneNumber)).
 
+-spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
     Number.
 
+-spec dry_run_or_number(knm_number()) ->
+                               dry_run_return() |
+                               knm_number().
 dry_run_or_number(Number) ->
     case knm_phone_number:dry_run(phone_number(Number)) of
         'true' -> dry_run_response(Number);
@@ -202,9 +206,9 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
        ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_IN_SERVICE)}
        ,{fun knm_phone_number:set_ported_in/2, props:is_true(<<"ported_in">>, Props, 'false')}
        ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
-       ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props, ?DEFAULT_AUTH_BY)}
+       ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props)}
        ,{fun knm_phone_number:set_dry_run/2, props:is_true(<<"dry_run">>, Props, 'false')}
-       ,{fun knm_phone_number:set_module_name/2, props:get_binary_value(<<"module_name">>, Props)}
+       ,{fun knm_phone_number:set_module_name/2, props:get_binary_value(<<"module_name">>, Props, ?DEFAULT_CARRIER_MODULE)}
        ,{fun knm_phone_number:set_doc/2, props:get_value(<<"public_fields">>, Props)}
       ]).
 
