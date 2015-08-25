@@ -41,6 +41,7 @@
          ,all/2, any/2
         ]).
 
+-export([copy/2]).
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3
          ,get_values/1, get_values/2
@@ -580,6 +581,13 @@ get_first_defined([H|T], JObj, Default) ->
     case ?MODULE:get_value(H, JObj) of
         'undefined' -> get_first_defined(T, JObj, Default);
         V -> V
+    end.
+
+-spec copy(key(), object() | objects()) -> list(object()) | list().
+copy(Key, JObj) ->
+    case get_value(Key, JObj, 'undefined') of
+        'undefined' -> [];
+        Value       -> [{Key, Value}]
     end.
 
 -spec get_value(key(), object() | objects()) ->
