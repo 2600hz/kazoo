@@ -271,7 +271,8 @@ default_bleg_cid(Call, Context) ->
                                 ,wh_json:merge_jobjs(cb_context:query_string(Context), Defaults)
                                ).
 
--spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) -> cb_context:context().
+-spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) ->
+                                 cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
     AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
@@ -327,11 +328,13 @@ get_application_data_from_nouns(_Nouns) ->
 
 -spec get_timeout(cb_context:context()) -> pos_integer().
 get_timeout(Context) ->
-    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 30)) of
-        Timeout when Timeout > 3 -> Timeout;
-        _ -> 30
+    Default = 30,
+    Minimum = 3,
+    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, Default)) of
+        Timeout when Timeout > Minimum -> Timeout;
+        _ -> Default
     catch
-        _:_ -> 30
+        _:_ -> Default
     end.
 
 -spec get_ignore_early_media(cb_context:context()) -> boolean().

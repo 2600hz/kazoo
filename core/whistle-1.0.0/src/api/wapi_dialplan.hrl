@@ -41,20 +41,34 @@
 
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS
-        ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
-          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-          ,<<"Dial-Endpoint-Method">>, <<"Insert-At">>
-          ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
-          ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
-          ,<<"SIP-Transport">>, <<"Custom-SIP-Headers">>
+        ,[<<"B-Leg-Events">>
+          ,<<"Callee-ID-Name">>
+          ,<<"Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>
+          ,<<"Caller-ID-Number">>
+          ,<<"Continue-On-Fail">>
+          ,<<"Custom-Channel-Vars">>
+          ,<<"Custom-SIP-Headers">>
+          ,<<"Dial-Endpoint-Method">>
+          ,<<"Enable-T38-Fax">>
+          ,<<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Gateway">>
+          ,<<"Enable-T38-Passthrough">>
+          ,<<"Force-Fax">>
+          ,<<"Hold-Media">>
           ,<<"Ignore-Completed-Elsewhere">>
-          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
-          ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
-          ,<<"B-Leg-Events">>
+          ,<<"Ignore-Early-Media">>
           ,<<"Ignore-Forward">>
+          ,<<"Insert-At">>
+          ,<<"Media">>
+          ,<<"Outbound-Callee-ID-Name">>
+          ,<<"Outbound-Callee-ID-Number">>
+          ,<<"Outbound-Caller-ID-Name">>
+          ,<<"Outbound-Caller-ID-Number">>
+          ,<<"Ringback">>
+          ,<<"SIP-Transport">>
+          ,<<"Secure-RTP">>
+          ,<<"Timeout">>
          ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
