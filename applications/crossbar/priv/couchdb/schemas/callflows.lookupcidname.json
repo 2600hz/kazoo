@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.lookupcidname",
+    "description": "Validator for the Lookup callflow element",
+    "properties": {
+        "lists": {
+            "description": "Array of list ids",
+            "items": {
+                "type": "string"
+            },
+            "name": "Array of list ids",
+            "required": "true",
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
