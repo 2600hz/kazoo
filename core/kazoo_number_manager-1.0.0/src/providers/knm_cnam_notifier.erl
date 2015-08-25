@@ -128,7 +128,7 @@ publish_cnam_update(Number, 'false') ->
     Features = knm_phone_number:features(PhoneNumber),
     Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
               ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
-              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?LOCAL_CARRIER}
+              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
               ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
               ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
               ,{<<"Cnam">>, wh_json:get_value(?FEATURE_CNAM, Features, wh_json:new())}
