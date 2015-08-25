@@ -1112,7 +1112,7 @@ Activation Charges</val>
 <val>147.0</val>
 </width>
 <height>
-<val>44.0</val>
+<val>61.0</val>
 </height>
 <subject>
 <ref refid="a7a719eb-4a80-11e5-aaf9-f0def12b153d"/>
@@ -1138,7 +1138,7 @@ Activation Charges</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (79.5, 40.93333333333334)]</val>
+<val>[(0.0, 0.0), (79.5, 50.56666666666666)]</val>
 </points>
 <head-connection>
 <ref refid="4e3eb6b2-4a80-11e5-aaf9-f0def12b153d"/>
@@ -1172,7 +1172,7 @@ Activation Charges</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 843.0, 182.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 843.0, 199.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -1181,7 +1181,7 @@ Activation Charges</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (1.5, 53.0)]</val>
+<val>[(0.0, 0.0), (1.5, 36.0)]</val>
 </points>
 <head-connection>
 <ref refid="a7a719ec-4a80-11e5-aaf9-f0def12b153d"/>
@@ -1277,6 +1277,7 @@ Activation Charges</val>
 </incoming>
 <name>
 <val>Create Number JObj
+State = Available
 JObj-&gt;#number{}</val>
 </name>
 <outgoing>
