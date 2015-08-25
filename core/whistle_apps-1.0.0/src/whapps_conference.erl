@@ -33,6 +33,7 @@
 -export([moderator_join_muted/1, set_moderator_join_muted/2]).
 -export([moderator_join_deaf/1, set_moderator_join_deaf/2]).
 -export([max_participants/1, set_max_participants/2]).
+-export([max_members_media/1, set_max_members_media/2]).
 -export([require_moderator/1, set_require_moderator/2]).
 -export([wait_for_moderator/1, set_wait_for_moderator/2]).
 -export([play_name_on_join/1, set_play_name_on_join/2]).
@@ -68,9 +69,9 @@
 -define(BRIDGE_PWD, whapps_config:get(<<"conferences">>, <<"bridge_password">>, wh_util:rand_hex_binary(12))).
 
 -record(whapps_conference, {
-          id :: api_binary()                                 %% the conference id
+          id :: api_binary()                                  %% the conference id
           ,focus :: api_binary()                              %% the conference focus
-          ,profile = <<"default">> :: api_binary()            %% conference profile (config settings)
+          ,profile = <<"undefined">> :: api_binary()          %% conference profile (config settings)
           ,controller_q :: api_binary()                       %% the controller queue, for responses
           ,bridge_username = ?BRIDGE_USER :: ne_binary()      %% the username used for a conference bridge
           ,bridge_password = ?BRIDGE_PWD :: ne_binary()       %% the password used for a conference bridge
@@ -82,6 +83,7 @@
           ,moderator_join_muted = 'false' :: boolean()        %% should the moderator join muted
           ,moderator_join_deaf = 'false' :: boolean()         %% should the moderator join deaf
           ,max_participants = 0 :: non_neg_integer()          %% max number of participants
+          ,max_members_media :: api_binary()                  %% media to play instead of allowing new users to conference
           ,require_moderator = 'false' :: boolean()           %% does the conference require a moderator
           ,wait_for_moderator = 'false' :: boolean()          %% can members wait for a moderator
           ,play_name_on_join = 'false' :: boolean()           %% should participants have their name played on join
@@ -126,6 +128,7 @@ from_json(JObj, Conference) ->
       ,moderator_join_muted = wh_json:is_true(<<"Moderator-Join-Muted">>, JObj, moderator_join_muted(Conference))
       ,moderator_join_deaf = wh_json:is_true(<<"Moderator-Join-Deaf">>, JObj, moderator_join_deaf(Conference))
       ,max_participants = wh_json:get_integer_value(<<"Max-Participants">>, JObj, max_participants(Conference))
+      ,max_members_media = wh_json:get_ne_value(<<"Max-Members-Media">>, JObj, max_members_media(Conference))
       ,require_moderator = wh_json:is_true(<<"Require-Moderator">>, JObj, require_moderator(Conference))
       ,wait_for_moderator = wh_json:is_true(<<"Wait-For-Moderator">>, JObj, wait_for_moderator(Conference))
       ,play_name_on_join = wh_json:is_true(<<"Play-Name-On-Join">>, JObj, play_name_on_join(Conference))
@@ -177,6 +180,7 @@ to_proplist(#whapps_conference{}=Conference) ->
      ,{<<"Moderator-Join-Muted">>, moderator_join_muted(Conference)}
      ,{<<"Moderator-Join-Deaf">>, moderator_join_deaf(Conference)}
      ,{<<"Max-Participants">>, max_participants(Conference)}
+     ,{<<"Max-Members-Media">>, max_members_media(Conference)}
      ,{<<"Require-Moderator">>, require_moderator(Conference)}
      ,{<<"Wait-For-Moderator">>, wait_for_moderator(Conference)}
      ,{<<"Play-Name-On-Join">>, play_name_on_join(Conference)}
@@ -220,13 +224,14 @@ from_conference_doc(JObj, Conference) ->
       ,moderator_join_muted = wh_json:is_true(<<"join_muted">>, Moderator, moderator_join_muted(Conference))
       ,moderator_join_deaf = wh_json:is_true(<<"join_deaf">>, Moderator, moderator_join_deaf(Conference))
       ,max_participants = wh_json:get_integer_value(<<"max_participants">>, JObj, max_participants(Conference))
+      ,max_members_media = wh_json:get_ne_value(<<"max_members_media">>, JObj, max_members_media(Conference))
       ,require_moderator = wh_json:is_true(<<"require_moderator">>, JObj, require_moderator(Conference))
       ,wait_for_moderator = wh_json:is_true(<<"wait_for_moderator">>, JObj, wait_for_moderator(Conference))
       ,conference_doc = JObj
      }.
 
 -type updater_1() :: fun((whapps_conference:conference()) -> whapps_conference:conference()).
--type updater_2() :: {fun((term(), whapps_conference:conference()) -> whapps_conference:conference()), term()}.
+-type updater_2() :: {fun((_, whapps_conference:conference()) -> whapps_conference:conference()), _}.
 -type updaters() :: [updater_1() | updater_2(),...].
 -spec update(updaters(), whapps_conference:conference()) -> whapps_conference:conference().
 update(Updaters, Conference) ->
@@ -367,6 +372,13 @@ max_participants(#whapps_conference{max_participants=MaxParticipants}) ->
 set_max_participants(MaxParticipants, Conference) when is_integer(MaxParticipants) ->
     Conference#whapps_conference{max_participants=MaxParticipants}.
 
+-spec max_members_media(whapps_conference:conference()) -> api_binary().
+max_members_media(#whapps_conference{max_members_media = Value}) -> Value.
+
+-spec set_max_members_media(ne_binary(), whapps_conference:conference()) -> whapps_conference:conference().
+set_max_members_media(Value, Conference) when is_binary(Value) ->
+    Conference#whapps_conference{max_members_media = Value}.
+
 -spec require_moderator(whapps_conference:conference()) -> boolean().
 require_moderator(#whapps_conference{require_moderator=RequireModerator}) ->
     RequireModerator.
@@ -455,11 +467,11 @@ kvs_fetch_keys( #whapps_conference{kvs=Dict}) ->
 kvs_filter(Pred, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:filter(Pred, Dict)}.
 
--spec kvs_find(term(), whapps_conference:conference()) -> {'ok', term()} | 'error'.
+-spec kvs_find(_, whapps_conference:conference()) -> {'ok', _} | 'error'.
 kvs_find(Key, #whapps_conference{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
 
--spec kvs_fold(fun((term(), term(), term()) -> term()), term(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_fold(fun((_, _, _) -> _), _, whapps_conference:conference()) -> whapps_conference:conference().
 kvs_fold(Fun, Acc0, #whapps_conference{kvs=Dict}) ->
     orddict:fold(Fun, Acc0, Dict).
 
@@ -468,15 +480,15 @@ kvs_from_proplist(List, #whapps_conference{kvs=Dict}=Conference) ->
     L = orddict:from_list([{wh_util:to_binary(K), V} || {K, V} <- List]),
     Conference#whapps_conference{kvs=orddict:merge(fun(_, V, _) -> V end, L, Dict)}.
 
--spec kvs_is_key(term(), whapps_conference:conference()) -> boolean().
+-spec kvs_is_key(_, whapps_conference:conference()) -> boolean().
 kvs_is_key(Key, #whapps_conference{kvs=Dict}) ->
     orddict:is_key(wh_util:to_binary(Key), Dict).
 
--spec kvs_map(fun((term(), term()) -> term()), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_map(fun((_, _) -> _), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_map(Pred, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:map(Pred, Dict)}.
 
--spec kvs_store(term(), term(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_store(_, _, whapps_conference:conference()) -> whapps_conference:conference().
 kvs_store(Key, Value, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:store(wh_util:to_binary(Key), Value, Dict)}.
 
@@ -490,15 +502,15 @@ kvs_store_proplist(List, #whapps_conference{kvs=Dict}=Conference) ->
 kvs_to_proplist(#whapps_conference{kvs=Dict}) ->
     orddict:to_list(Dict).
 
--spec kvs_update(term(), fun((term()) -> term()), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_update(_, fun((_) -> _), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_update(Key, Fun, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:update(wh_util:to_binary(Key), Fun, Dict)}.
 
--spec kvs_update(term(), fun((term()) -> term()), term(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_update(_, fun((_) -> _), _, whapps_conference:conference()) -> whapps_conference:conference().
 kvs_update(Key, Fun, Initial, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:update(wh_util:to_binary(Key), Fun, Initial, Dict)}.
 
--spec kvs_update_counter(term(), number(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_update_counter(_, number(), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_update_counter(Key, Number, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
 

@@ -33,10 +33,10 @@ convert(FromFormat0, ToFormat0, Bin) ->
     Response = case os:cmd(Cmd) of
                    "success" ->
                        case file:read_file(ToFile) of
-                           {'ok', PDF} -> 
+                           {'ok', PDF} ->
                                lager:debug("convert file ~s to ~s succeeded", [FromFile, ToFile]),
                                {'ok', PDF};
-                           {'error', _R}=E -> 
+                           {'error', _R}=E ->
                                lager:debug("unable to read converted file ~s : ~p", [ToFile, _R]),
                                E
                        end;

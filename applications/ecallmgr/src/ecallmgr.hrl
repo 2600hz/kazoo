@@ -82,7 +82,7 @@
                  }).
 
 -type channel() :: #channel{}.
--type channels() :: [channel(),...] | [].
+-type channels() :: [channel()].
 
 -record(conference, {name :: api_binary() | '$1' | '_'
                      ,uuid :: api_binary() | '$1' | '_'
@@ -105,7 +105,7 @@
                     }).
 
 -type conference() :: #conference{}.
--type conferences() :: [conference(),...] | [].
+-type conferences() :: [conference()].
 
 -record(participant, {uuid :: api_binary() | '$1' | '_'
                       ,node :: atom() | '$2' | '_'

@@ -105,7 +105,7 @@ send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
     freeswitch:api(Node, 'uuid_kill', wh_util:to_list(UUID));
 send_cmd(Node, UUID, "conference", Args) ->
-    Args1 = iolist_to_binary([UUID, " conference:", Args, ",park inline"]),
+    Args1 = iolist_to_binary([UUID, " conference:", Args, " inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
     freeswitch:api(Node, 'uuid_transfer', wh_util:to_list(Args1));
 send_cmd(Node, _UUID, "transfer", Args) ->
@@ -920,6 +920,7 @@ media_path(<<?LOCAL_MEDIA_PATH, _/binary>> = FSPath, _Type, _UUID, _) -> FSPath;
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(URI);
 media_path(<<?HTTP_GET_PREFIX, _/binary>> = Media, _Type, _UUID, _) -> Media;
+media_path(<<"$", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(MediaName, Type, UUID, JObj) ->
     case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->
