@@ -57,7 +57,7 @@
                            ,module_name :: ne_binary()
                            ,carrier_data :: wh_json:object()
                            ,region :: ne_binary()
-                           ,auth_by = ?DEFAULT_AUTH_BY :: ne_binary()
+                           ,auth_by :: api_binary()
                            ,dry_run = 'false' :: boolean()
                            ,locality :: wh_json:object()
                            ,doc :: wh_json:object()
@@ -291,7 +291,7 @@ set_number_db(N, NumberDb) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_to(knm_number()) -> ne_binary().
+-spec assign_to(knm_number()) -> api_binary().
 assign_to(#knm_phone_number{assign_to=AssignTo}) ->
     AssignTo.
 
@@ -304,7 +304,7 @@ set_assign_to(N, AssignTo) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assigned_to(knm_number()) -> ne_binary().
+-spec assigned_to(knm_number()) -> api_binary().
 assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
     AssignedTo.
 
@@ -444,7 +444,7 @@ set_region(N, Region) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec auth_by(knm_number()) -> ne_binary().
+-spec auth_by(knm_number()) -> api_binary().
 auth_by(#knm_phone_number{auth_by=AuthBy}) -> AuthBy.
 
 -spec set_auth_by(knm_number(), ne_binary()) -> knm_number().

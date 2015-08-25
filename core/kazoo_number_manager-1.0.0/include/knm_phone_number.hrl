@@ -57,5 +57,12 @@
 -define(CARRIER_LOCAL, <<"knm_local">>).
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
+-define(DEFAULT_CARRIER_MODULE
+        ,whapps_config:get_binary(?KNM_CONFIG_CAT
+                                  ,<<"available_module_name">>
+                                  ,?CARRIER_LOCAL
+                                 )
+       ).
+
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
