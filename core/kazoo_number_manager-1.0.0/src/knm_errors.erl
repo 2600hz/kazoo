@@ -8,6 +8,12 @@
 %%%-------------------------------------------------------------------
 -module(knm_errors).
 
+-export([unauthorized/0
+         ,number_exists/1
+         ,invalid_state_transition/3
+         ,no_change_required/1
+        ]).
+
 -export([to_json/1, to_json/2, to_json/3]).
 
 -include("knm.hrl").
@@ -16,6 +22,29 @@
 -type error() :: wh_json:object().
 
 -export_type([error/0]).
+
+-spec unauthorized() -> no_return().
+unauthorized() ->
+    throw({'error', 'unauthorized'}).
+
+-spec number_exists(ne_binary()) -> no_return().
+number_exists(DID) ->
+    throw({'error', 'number_exists', DID}).
+
+-spec invalid_state_transition(knm_number:knm_number(), ne_binary(), ne_binary()) ->
+                                      no_return().
+invalid_state_transition(Number, FromState, ToState) ->
+    throw({'error'
+           ,'invalid_state_transition'
+           ,Number
+           ,iolist_to_binary(["from ", FromState
+                              ," to ", ToState
+                             ])
+          }).
+
+-spec no_change_required(knm_number:knm_number()) -> no_return().
+no_change_required(Number) ->
+    throw({'error', 'no_change_required', Number}).
 
 %%--------------------------------------------------------------------
 %% @public
