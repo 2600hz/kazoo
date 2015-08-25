@@ -24,6 +24,7 @@ to_reserved(Number, ?NUMBER_STATE_RESERVED) ->
                 ,fun is_auth_by_authorized/1
                 ,fun update_reserve_history/1
                 ,fun move_to_reserved_state/1
+                ,fun knm_services:activate_phone_number/1
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_DISCOVERY) ->
