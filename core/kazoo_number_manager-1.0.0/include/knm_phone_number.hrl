@@ -5,11 +5,17 @@
 
 -define(DEFAULT_AUTH_BY, <<"system">>).
 
--type number_return() :: {'ok', knm_phone_number:knm_number()} |
-                         {'error', _}.
+-type number_return() ::
+        {'ok', knm_phone_number:knm_number()} |
+        {'error', _}.
 
--type knm_number_return() :: {'ok', knm_number:knm_number()} |
-                             {'error', _}.
+-type dry_run_return() ::
+        {'dry_run', wh_services:services(), non_neg_integer()}.
+
+-type knm_number_return() ::
+        {'ok', knm_number:knm_number()} |
+        dry_run_return() |
+        {'error', knm_errors:error()}.
 
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_ASSIGNED_TO, <<"pvt_assigned_to">>).
