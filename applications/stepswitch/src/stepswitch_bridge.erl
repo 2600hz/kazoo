@@ -319,6 +319,17 @@ build_bridge(#state{endpoints=Endpoints
             ])
           ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
          ),
+
+    EndpointFilter = fun(Element) ->
+        case Element of
+            {<<"Outbound-Caller-ID-Number">>, Number} -> false;
+            {<<"Outbound-Caller-ID-Name">>, Name}     -> false;
+            _OtherValues                              -> true
+        end
+    end,
+
+    FmtEndpoints = format_endpoints(Endpoints, Number, JObj, AccountId, EndpointFilter),
+
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
@@ -339,24 +350,24 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
        ,{<<"B-Leg-Events">>, wh_json:get_list_value(<<"B-Leg-Events">>, JObj, [])}
-       ,{<<"Endpoints">>, format_endpoints(Endpoints, Number, JObj, AccountId)}
+       ,{<<"Endpoints">>, FmtEndpoints}
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec format_endpoints(wh_json:objects(), api_binary(), wh_json:object(), api_binary()) ->
+-spec format_endpoints(wh_json:objects(), api_binary(), wh_json:object(), api_binary(), fun()) ->
                               wh_json:objects().
-format_endpoints(Endpoints, Number, JObj, AccountId) ->
+format_endpoints(Endpoints, Number, JObj, AccountId, Filter) ->
     SIPHeaders = stepswitch_util:get_sip_headers(JObj),
 
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
                                              ], JObj),
-    [format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm)
+    [format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm, Filter)
      || Endpoint <- Endpoints
     ].
 
--spec format_endpoint(wh_json:object(), api_binary(), api_binary(), api_object(), api_binary()) -> wh_json:object().
-format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm) ->
+-spec format_endpoint(wh_json:object(), api_binary(), api_binary(), api_object(), api_binary(), fun()) -> wh_json:object().
+format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm, Filter) ->
     FormattedEndpoint =
         stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
                                     ,props:get_value(<<"Formatters">>
@@ -365,7 +376,8 @@ format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm) ->
                                                     )
                                     ,'outbound'
                                    ),
-    maybe_endpoint_format_from(FormattedEndpoint, Number, DefaultRealm).
+    FilteredEndpoint = wh_json:filter(Filter, FormattedEndpoint),
+    maybe_endpoint_format_from(FilteredEndpoint, Number, DefaultRealm).
 
 -spec maybe_add_sip_headers(wh_json:object(), api_object()) -> wh_json:object().
 maybe_add_sip_headers(Endpoint, 'undefined') -> Endpoint;
