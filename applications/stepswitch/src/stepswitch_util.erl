@@ -116,23 +116,35 @@ cache_key_number(Number) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial(ne_binary(), wh_json:object()) -> api_binary().
-correct_shortdial(Number, JObj) ->
-    CIDNum = wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
-                                        ,<<"Emergency-Caller-ID-Number">>
-                                       ], JObj),
+-spec correct_shortdial(ne_binary(), ne_binary() | wh_json:object()) -> api_binary().
+correct_shortdial(<<"+", Number/binary>>, CIDNum) ->
+    correct_shortdial(Number, CIDNum);
+correct_shortdial(Number, <<"+", CIDNum/binary>>) ->
+    correct_shortdial(Number, CIDNum);
+correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
     MaxCorrection = whapps_config:get_integer(?SS_CONFIG_CAT, <<"max_shortdial_correction">>, 5),
+    MinCorrection = whapps_config:get_integer(?SS_CONFIG_CAT, <<"min_shortdial_correction">>, 2),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
-        Length when Length =< MaxCorrection, Length > 0 ->
-            CorrectedNumber = wnm_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>),
+        Length when Length =< MaxCorrection, Length >= MinCorrection ->
+            Correction = binary:part(CIDNum, 0, Length),
+            CorrectedNumber = wnm_util:to_e164(<<Correction/binary, Number/binary>>),
             lager:debug("corrected shortdial ~s via CID ~s to ~s"
-                        ,[Number, CIDNum, CorrectedNumber]),
+                       ,[Number, CIDNum, CorrectedNumber]),
             CorrectedNumber;
         _ ->
             lager:debug("unable to correct shortdial ~s via CID ~s"
                         ,[Number, CIDNum]),
             'undefined'
-    end.
+    end;
+correct_shortdial(Number, JObj) ->
+    CIDNum = wh_json:get_first_defined(
+               [<<"Outbound-Caller-ID-Number">>
+                ,<<"Emergency-Caller-ID-Number">>
+               ]
+               ,JObj
+               ,Number
+              ),
+    correct_shortdial(Number, CIDNum).
 
 -spec get_sip_headers(wh_json:object()) -> api_object().
 get_sip_headers(JObj) ->

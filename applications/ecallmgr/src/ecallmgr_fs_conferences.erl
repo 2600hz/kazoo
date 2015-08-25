@@ -804,7 +804,7 @@ sync_participants(Participants, Node) ->
     'ok'.
 
 print_summary('$end_of_table') ->
-    io:format("No conferences found!~n", []);
+    io:format("No conferences found!~n");
 print_summary(Match) ->
     io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+~n"),
     io:format("| Name                             | Node                                               | Participants | Uptime(sec) | Account-ID                       |~n"),
@@ -828,7 +828,7 @@ print_summary({[#conference{name=Name
     print_summary(ets:select(Continuation), Count + 1).
 
 print_details('$end_of_table') ->
-    io:format("No conferences found!~n", []);
+    io:format("No conferences found!~n");
 print_details(Match) ->
     print_details(Match, 0).
 

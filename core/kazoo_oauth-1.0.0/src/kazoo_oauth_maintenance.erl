@@ -32,5 +32,5 @@ register_oauth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
 
 -spec register_common_providers() -> 'ok'.
 register_common_providers() ->
-    {'ok', _} = couch_mgr:load_doc_from_file(?KZ_OAUTH_DB, 'kazoo_oauth', <<"google.json">>),
+    {'ok', _} = couch_mgr:revise_doc_from_file(?KZ_OAUTH_DB, 'kazoo_oauth', <<"google.json">>),
     'ok'.

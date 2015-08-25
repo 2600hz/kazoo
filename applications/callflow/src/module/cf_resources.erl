@@ -66,34 +66,42 @@ handle_bridge_failure(Cause, Code, Call) ->
 build_offnet_request(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
-    props:filter_undefined([{<<"Resource-Type">>, <<"audio">>}
-                            ,{<<"Application-Name">>, <<"bridge">>}
-                            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
-                            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-                            ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-                            ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-                            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-                            ,{<<"Call-ID">>, cf_exe:callid(Call)}
-                            ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
-                            ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
-                            ,{<<"Account-ID">>, whapps_call:account_id(Call)}
-                            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-                            ,{<<"Media">>, wh_json:get_first_defined([<<"media">>, <<"Media">>], Data)}
-                            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
-                            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
-                            ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
-                            ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
-                            ,{<<"Flags">>, get_flags(Data, Call)}
-                            ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
-                            ,{<<"Fax-T38-Enabled">>, get_t38_enabled(Call)}
-                            ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
-                            ,{<<"To-DID">>, get_to_did(Data, Call)}
-                            ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
-                            ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
-                            ,{<<"Inception">>, get_inception(Call)}
-                            ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
-                            | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
-                           ]).
+    props:filter_undefined(
+      [{<<"Resource-Type">>, <<"audio">>}
+       ,{<<"Application-Name">>, <<"bridge">>}
+       ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
+       ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
+       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+       ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
+       ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
+       ,{<<"Call-ID">>, cf_exe:callid(Call)}
+       ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
+       ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
+       ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+       ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+       ,{<<"Media">>, wh_json:get_first_defined([<<"media">>, <<"Media">>], Data)}
+       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
+       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
+       ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
+       ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
+       ,{<<"Flags">>, get_flags(Data, Call)}
+       ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
+       ,{<<"Fax-T38-Enabled">>, get_t38_enabled(Call)}
+       ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
+       ,{<<"To-DID">>, get_to_did(Data, Call)}
+       ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
+       ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
+       ,{<<"Inception">>, get_inception(Call)}
+       ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
+       ,{<<"Custom-Channel-Vars">>, get_channel_vars(Call)}
+       | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+      ]).
+
+-spec get_channel_vars(whapps_call:call()) -> wh_json:object().
+get_channel_vars(Call) ->
+    wh_json:from_list(
+      [{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}]
+     ).
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().
 get_bypass_e164(Data) ->

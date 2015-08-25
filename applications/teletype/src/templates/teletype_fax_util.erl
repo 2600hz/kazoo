@@ -16,90 +16,40 @@
 -include("../teletype.hrl").
 
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
-
-port_options(FromFile, ToFormat) ->
-    Args = [FromFile
-            ,<<ToFormat/binary, ":-">>
-           ],
-    ['binary'
-     ,'stderr_to_stdout'
-     ,'stream'
-     ,'eof'
-     ,{'args', [wh_util:to_list(Arg) || Arg <- Args]}
-    ].
+-define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
 
 convert(FromFormat, FromFormat, Bin) ->
     {'ok', Bin};
 convert(FromFormat0, ToFormat0, Bin) ->
-    OldFlag = process_flag('trap_exit', 'true'),
-
     FromFormat = valid_format(FromFormat0),
     ToFormat = valid_format(ToFormat0),
-
-    FromFile = save_filename(FromFormat, Bin),
-
-    PortOptions = port_options(FromFile, ToFormat),
-
-    Response =
-        try open_port({'spawn_executable', "/usr/bin/convert"}, PortOptions) of
-            Port -> convert(Port, Bin)
-        catch
-            _E:_R ->
-                lager:debug("failed to open port with '~p': ~s: ~p", [PortOptions, _E, _R]),
-                {'error', 'port_failure'}
-        end,
-    process_flag('trap_exit', OldFlag),
-    'ok' = file:delete(FromFile),
+    Filename = wh_util:rand_hex_binary(8),
+    FromFile = <<"/tmp/", Filename/binary, ".", FromFormat/binary>>,
+    ToFile = <<"/tmp/", Filename/binary, ".", ToFormat/binary>>,
+    'ok' = file:write_file(FromFile, Bin),
+    ConvertCmd = whapps_config:get_binary(?FAX_CONFIG_CAT, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
+    Cmd = io_lib:format(ConvertCmd, [ToFile, FromFile]),
+    lager:debug("running conversion command: ~s", [Cmd]),
+    Response = case os:cmd(Cmd) of
+                   "success" ->
+                       case file:read_file(ToFile) of
+                           {'ok', PDF} ->
+                               lager:debug("convert file ~s to ~s succeeded", [FromFile, ToFile]),
+                               {'ok', PDF};
+                           {'error', _R}=E ->
+                               lager:debug("unable to read converted file ~s : ~p", [ToFile, _R]),
+                               E
+                       end;
+                   Else ->
+                       lager:debug("could not convert file ~s : ~p", [FromFile, Else]),
+                       {'error', Else}
+               end,
+    _ = wh_util:delete_file(FromFile),
+    _ = wh_util:delete_file(ToFile),
     Response.
-
-save_filename(Ext, Bin) ->
-    Filename = <<"/tmp/", (wh_util:rand_hex_binary(4))/binary, ".", Ext/binary>>,
-    'ok' = file:write_file(Filename, Bin),
-    Filename.
 
 valid_format(<<"tiff">>) -> <<"tif">>;
 valid_format(Format) -> Format.
-
-convert(Port, Bin) ->
-    try erlang:port_command(Port, Bin) of
-        'true' -> wait_for_results(Port)
-    catch
-        _E:_R ->
-            lager:debug("failed to send data to port: ~s: ~p", [_E, _R]),
-            catch erlang:port_close(Port),
-            {'error', 'command_failure'}
-    end.
-
-wait_for_results(Port) ->
-    wait_for_results(Port, []).
-wait_for_results(Port, Acc) ->
-    receive
-        {Port, {'data', Msg}} ->
-            wait_for_results(Port, [Acc | [Msg]]);
-        {Port, {'exit_status', 0}} ->
-            lager:debug("port exited successfully"),
-            {'ok', iolist_to_binary(Acc)};
-        {Port, 'eof'} ->
-            lager:debug("recv EOF from port"),
-            {'ok', iolist_to_binary(Acc)};
-        {Port, {'exit_status', _Status}} ->
-            lager:debug("port exit status: ~p", [_Status]),
-            {'error', iolist_to_binary(Acc)};
-        {'EXIT', Port, 'epipe'} ->
-            {'ok', iolist_to_binary(Acc)};
-        {'EXIT', Port, Reason} ->
-            lager:debug("port exited: ~p", [Reason]),
-            {'error', iolist_to_binary(Acc)};
-        _Msg ->
-            lager:debug("recv msg ~p", [_Msg]),
-            wait_for_results(Port, Acc)
-    after
-        ?MILLISECONDS_IN_MINUTE ->
-            lager:debug("port timed out: ~p", [Acc]),
-            lager:debug("port info: ~p", [erlang:port_info(Port)]),
-            catch erlang:port_close(Port),
-            {'error', iolist_to_binary(Acc)}
-    end.
 
 -spec get_fax_doc(wh_json:object()) -> wh_json:object().
 -spec get_fax_doc(wh_json:object(), boolean()) -> wh_json:object().

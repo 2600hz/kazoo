@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
@@ -11,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Options) ->
     'true' = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
@@ -47,24 +48,35 @@ welcome_to_conference(Call, Srv, DiscoveryJObj) ->
 -spec maybe_collect_conference_id(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
 maybe_collect_conference_id(Call, Srv, DiscoveryJObj) ->
     case wh_json:get_value(<<"Conference-Doc">>, DiscoveryJObj) of
-        'undefined' -> collect_conference_id(Call, Srv);
+        'undefined' -> collect_conference_id(Call, Srv, DiscoveryJObj);
         Doc ->
             N = wh_json:get_value(<<"name">>, Doc, wh_util:rand_hex_binary(8)),
             lager:debug("conf doc (~s) set instead of conf id", [N]),
-            Conference = whapps_conference:set_id(N, create_conference(Doc, <<"none">>, Call)),
+            Conference0 = whapps_conference:set_id(N, create_conference(Doc, <<"none">>, Call)),
+            Conference = maybe_set_conference_tones(Conference0, DiscoveryJObj),  %% MAY remove this line
             maybe_collect_conference_pin(Conference, Call, Srv)
     end.
 
--spec collect_conference_id(whapps_call:call(), pid()) -> 'ok'.
-collect_conference_id(Call, Srv) ->
+-spec collect_conference_id(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
+collect_conference_id(Call, Srv, DiscoveryJObj) ->
     {'ok', JObj} = conf_participant:discovery_event(Srv),
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     case validate_conference_id(ConferenceId, Call) of
-        {'ok', Conference} ->
+        {'ok', Conference0} ->
+            Conference = maybe_set_conference_tones(Conference0, DiscoveryJObj),
             maybe_collect_conference_pin(Conference, Call, Srv);
         {'error', _} ->
             discovery_failed(Call, Srv)
     end.
+
+-spec maybe_set_conference_tones(whapps_conference:conference(), wh_json:object()) ->
+                                  whapps_conference:conference().
+maybe_set_conference_tones(Conference, JObj) ->
+    ShouldPlayOnEntry = wh_json:get_ne_value(<<"Play-Entry-Tone">>, JObj, whapps_conference:play_entry_tone(Conference)),
+    ShouldPlayOnExit = wh_json:get_ne_value(<<"Play-Exit-Tone">>, JObj, whapps_conference:play_exit_tone(Conference)),
+    whapps_conference:set_play_entry_tone(ShouldPlayOnEntry
+                                          ,whapps_conference:set_play_exit_tone(ShouldPlayOnExit, Conference)
+                                         ).
 
 -spec maybe_collect_conference_pin(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 maybe_collect_conference_pin(Conference, Call, Srv) ->
@@ -201,10 +213,10 @@ wait_for_creation(Conference, After) ->
 handle_search_resp(JObj, Conference, Call, Srv) ->
     MaxParticipants =  whapps_conference:max_participants(Conference),
     Participants = length(wh_json:get_value(<<"Participants">>, JObj, [])),
-    case (MaxParticipants =/= 0) andalso (Participants >= MaxParticipants) of
+    case MaxParticipants =/= 0 andalso Participants >= MaxParticipants of
         'false' -> add_participant_to_conference(JObj, Conference, Call, Srv);
         'true' ->
-            _ = whapps_call_command:b_prompt(<<"conf-max_participants">>, Call),
+            _ = whapps_call_command:b_prompt(?DEFAULT_MAX_MEMBERS_MEDIA, Call),
             whapps_call_command:hangup(Call)
     end.
 
@@ -252,13 +264,13 @@ discovery_failed(Call, _) -> whapps_call_command:hangup(Call).
 
 -spec validate_conference_id(api_binary(), whapps_call:call()) ->
                                     {'ok', whapps_conference:conference()} |
-                                    {'error', term()}.
+                                    {'error', _}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
 
 -spec validate_conference_id(api_binary(), whapps_call:call(), pos_integer()) ->
                                     {'ok', whapps_conference:conference()} |
-                                    {'error', term()}.
+                                    {'error', _}.
 validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
     lager:debug("caller has failed to provide a valid conference number to many times"),
     _ = whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
@@ -391,10 +403,8 @@ validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
 -spec create_conference(wh_json:object(), binary(), whapps_call:call()) ->
                                whapps_conference:conference().
 create_conference(JObj, Digits, Call) ->
-    Conference = whapps_conference:set_call(Call
-                                            ,whapps_conference:from_conference_doc(JObj)
-                                           ),
-
+    Doc = whapps_conference:from_conference_doc(JObj),
+    Conference = whapps_conference:set_call(Call, Doc),
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
     case {lists:member(Digits, MemberNumbers)
@@ -402,10 +412,10 @@ create_conference(JObj, Digits, Call) ->
          }
     of
         {'true', 'false'} ->
-            lager:debug("the digits used to find the conference where unambiguously a member"),
+            lager:debug("the digits used to find the conference were unambiguously a member"),
             whapps_conference:set_moderator('false', Conference);
         {'false', 'true'} ->
-            lager:debug("the digits used to find the conference where unambiguously a moderator"),
+            lager:debug("the digits used to find the conference were unambiguously a moderator"),
             whapps_conference:set_moderator('true', Conference);
         %% the conference number is ambiguous regarding member: either both have the same number
         %%   or they joined by the discovery event having the conference id

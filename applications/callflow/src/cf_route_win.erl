@@ -273,8 +273,7 @@ update_ccvs(Call) ->
                ,{<<"Caller-ID-Number">>, CIDNumber}
                | get_incoming_security(Call)
               ]),
-    Call1 = whapps_call:kvs_erase(['prepend_cid_name', 'prepend_cid_number'], Call),
-    whapps_call:set_custom_channel_vars(Props, Call1).
+    whapps_call:set_custom_channel_vars(Props, Call).
 
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
 maybe_start_metaflow(Call) ->

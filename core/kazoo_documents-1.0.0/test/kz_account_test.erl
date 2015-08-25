@@ -50,9 +50,9 @@ trial_time_test_() ->
        ,?_assertEqual('false', kz_account:trial_has_expired(Active))
       }
      ,{"testing that current trial accounts have proper time left computed"
-       ,?_assertEqual(10000, kz_account:trial_time_left(Active))
+       ,?_assertEqual(10000, kz_account:trial_time_left(Active, Now))
       }
      ,{"testing that expired trial accounts have proper time since expiration computed"
-       ,?_assertEqual(-10000, kz_account:trial_time_left(Passed))
+       ,?_assertEqual(-10000, kz_account:trial_time_left(Passed, Now))
       }
     ].

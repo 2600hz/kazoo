@@ -872,14 +872,17 @@ build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
 %% Conference command helpers
 %% @end
 %%--------------------------------------------------------------------
+get_conf_id_and_profile(JObj) ->
+    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
+    ProfileName = wh_json:get_ne_value(<<"Profile">>, JObj, <<"undefined">>),
+    {ConfName, ProfileName}.
+
 -spec get_conference_app(atom(), ne_binary(), wh_json:object(), boolean()) ->
                                 {ne_binary(), ne_binary(), atom()} |
                                 {ne_binary(), 'noop' | ne_binary()}.
 get_conference_app(ChanNode, UUID, JObj, 'true') ->
-    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
-
     case ecallmgr_fs_conferences:node(ConfName) of
         {'error', 'not_found'} ->
             maybe_start_conference_on_our_node(ChanNode, UUID, JObj);
@@ -896,9 +899,9 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             ecallmgr_util:export(ConfNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
             {<<"conference">>, Cmd, ConfNode}
     end;
+
 get_conference_app(ChanNode, UUID, JObj, 'false') ->
-    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
     maybe_set_nospeak_flags(ChanNode, UUID, JObj),
     %% ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
@@ -907,8 +910,7 @@ get_conference_app(ChanNode, UUID, JObj, 'false') ->
                                                 {ne_binary(), ne_binary(), atom()} |
                                                 {ne_binary(), 'noop' | ne_binary()}.
 maybe_start_conference_on_our_node(ChanNode, UUID, JObj) ->
-    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
 
     lager:debug("conference ~s hasn't been started yet", [ConfName]),
@@ -952,10 +954,10 @@ get_conference_flags(JObj) ->
             Flags = lists:foldl(fun maybe_add_conference_flag/2, [<<>>], L),
             All = case maybe_add_conference_flag(KV, []) of
                 [] -> tl(Flags);
-                [<<",">> | T] -> T ++ Flags;
-                Fs -> Fs ++ Flags
+                [<<",">> | T] -> [T | Flags];
+                Fs -> [Fs | Flags]
             end,
-            <<"+flags{", (iolist_to_binary(All))/binary, "}">>
+            iolist_to_binary(["+flags{", All, "}"])
     end.
 
 maybe_add_conference_flag({K, V}, Acc) ->
@@ -980,7 +982,7 @@ wait_for_conference(ConfName) ->
 %% Store command helpers
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store'| 'store_vm' | 'fax', wh_json:object()) -> any().
+-spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store'| 'store_vm' | 'fax', wh_json:object()) -> _.
 stream_over_http(Node, UUID, File, 'put'=Method, 'store'=Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
@@ -1020,12 +1022,12 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
         'fax' -> send_store_fax_call_event(UUID, Result)
     end.
 
--spec maybe_send_detailed_alert(boolean(), atom(), ne_binary(), ne_binary(), 'store' | 'fax', term()) -> any().
+-spec maybe_send_detailed_alert(boolean(), atom(), ne_binary(), ne_binary(), 'store' | 'fax', _) -> _.
 maybe_send_detailed_alert('true', _, _, _, _, _) -> 'ok';
 maybe_send_detailed_alert(_, Node, UUID, File, Type, Reason) ->
     send_detailed_alert(Node, UUID, File, Type, Reason).
 
--spec send_detailed_alert(atom(), ne_binary(), ne_binary(), 'store' | 'fax', term()) -> any().
+-spec send_detailed_alert(atom(), ne_binary(), ne_binary(), 'store' | 'fax', _) -> _.
 send_detailed_alert(Node, UUID, File, Type, Reason) ->
     wh_notify:detailed_alert("Failed to store ~s: media file ~s for call ~s on ~s "
                              ,[Type, File, UUID, Node]
