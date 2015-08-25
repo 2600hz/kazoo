@@ -632,12 +632,6 @@ generic_call_event_props(Props) ->
      ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
                                                       ,<<"Caller-Caller-ID-Name">>
                                                      ], Props)}
-     ,{<<"Callee-ID-Number">>, props:get_first_defined([<<"variable_effective_callee_id_number">>
-                                                        ,<<"Caller-Callee-ID-Number">>
-                                                       ], Props)}
-     ,{<<"Callee-ID-Name">>, props:get_first_defined([<<"variable_effective_callee_id_name">>
-                                                      ,<<"Caller-Callee-ID-Name">>
-                                                     ], Props)}
      ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
@@ -661,8 +655,26 @@ generic_call_event_props(Props) ->
      ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
      ,{<<"Channel-Loopback-Bowout">>, props:get_value(<<"variable_loopback_bowout">>, Props)}
      ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_value(<<"variable_loopback_bowout_on_execute">>, Props)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | callee_call_event_props(Props) ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec callee_call_event_props(wh_proplist()) -> wh_proplist().
+callee_call_event_props(Props) ->
+    UUID = get_call_id(Props),
+    case wh_cache:peek_local(?ECALLMGR_GROUP_CACHE, {'channel', UUID}) of
+        {'ok', Channel} ->
+            [{<<"Callee-ID-Number">>, Channel#channel.callee_number}
+             ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}
+            ];
+        _ ->
+            [{<<"Callee-ID-Number">>, props:get_first_defined([<<"variable_effective_callee_id_number">>
+                                                               ,<<"Caller-Callee-ID-Number">>
+                                                              ], Props)}
+             ,{<<"Callee-ID-Name">>, props:get_first_defined([<<"variable_effective_callee_id_name">>
+                                                              ,<<"Caller-Callee-ID-Name">>
+                                                             ], Props)}
+            ]
+    end.
 
 -spec publish_event(wh_proplist()) -> 'ok'.
 publish_event(Props) ->

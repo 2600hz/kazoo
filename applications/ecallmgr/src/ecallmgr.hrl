@@ -81,6 +81,8 @@
                   ,to_tag :: api_binary() | '_'
                   ,from_tag :: api_binary() | '_'
                   ,group_id :: api_binary() | '$5' | '_'
+                  ,callee_number :: api_binary() | '$5' | '_'
+                  ,callee_name :: api_binary() | '$5' | '_'
                  }).
 
 -type channel() :: #channel{}.

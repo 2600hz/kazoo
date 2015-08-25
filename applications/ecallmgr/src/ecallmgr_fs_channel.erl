@@ -617,6 +617,8 @@ process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
         'false' -> 'ok'
     end;
 process_specific_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
+    {'ok', Channel} = fetch(UUID, 'record'),
+    wh_cache:store_local(?ECALLMGR_GROUP_CACHE, {'channel', UUID}, Channel),
     _ = ecallmgr_fs_channels:destroy(UUID, Node),
     maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
@@ -626,7 +628,10 @@ process_specific_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
 process_specific_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
-    ecallmgr_fs_channels:update(UUID, #channel.other_leg, OtherLeg),
+    ecallmgr_fs_channels:updates(UUID, props:filter_undefined(
+                                   [{#channel.other_leg, OtherLeg}
+                                    | update_callee(UUID, Props)
+                                   ])),
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, UUID);
 process_specific_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
@@ -742,7 +747,23 @@ props_to_update(Props) ->
                             ,{#channel.to_tag, props:get_value(<<"variable_sip_to_tag">>, Props)}
                             ,{#channel.from_tag, props:get_value(<<"variable_sip_from_tag">>, Props)}
                             ,{#channel.group_id, props:get_value(<<?CALL_GROUP_ID>>, CCVs)}
+                            | update_callee(UUID, Props)
                            ]).
+
+-spec update_callee(binary(), wh_proplist()) -> wh_proplist().
+update_callee(UUID, Props) ->
+    {'ok', Channel} = fetch(UUID, 'record'),
+    [{#channel.callee_number, 
+      maybe_update_callee_field(props:get_value(<<"Caller-Callee-ID-Number">>, Props), Channel#channel.callee_number)
+     }
+     ,{#channel.callee_name, 
+      maybe_update_callee_field(props:get_value(<<"Caller-Callee-ID-Name">>, Props), Channel#channel.callee_name)
+      }
+    ].
+
+-spec maybe_update_callee_field(api_binary(), api_binary()) -> api_binary().
+maybe_update_callee_field(Value, 'undefined') -> Value;
+maybe_update_callee_field(_Value, Existing) -> Existing.
 
 -spec get_other_leg(ne_binary(), wh_proplist()) -> api_binary().
 get_other_leg(UUID, Props) ->
