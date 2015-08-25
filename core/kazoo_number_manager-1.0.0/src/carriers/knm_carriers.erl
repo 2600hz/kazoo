@@ -11,11 +11,12 @@
 
 -include("../knm.hrl").
 
--export([find/1, find/2, find/3]).
--export([check/1, check/2]).
--export([list_modules/0]).
--export([maybe_acquire/1]).
--export([disconnect/1]).
+-export([find/1, find/2, find/3
+         ,check/1, check/2
+         ,list_modules/0
+         ,acquire/1
+         ,disconnect/1
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,18 +110,23 @@ list_modules() ->
 %% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_acquire(knm_phone_number:knm_number()) -> number_return().
--spec maybe_acquire(knm_phone_number:knm_number(), ne_binary(), boolean()) -> number_return().
-maybe_acquire(Number) ->
-    Module = knm_phone_number:module_name(Number),
-    DryRun = knm_phone_number:dry_run(Number),
-    maybe_acquire(Number, Module, DryRun).
+-spec acquire(knm_phone_number:knm_number()) -> knm_number:knm_number().
+-spec acquire(knm_phone_number:knm_number(), ne_binary(), boolean()) ->
+                     knm_number:knm_number().
+acquire(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    Module = knm_phone_number:module_name(PhoneNumber),
+    DryRun = knm_phone_number:dry_run(PhoneNumber),
+    acquire(Number, Module, DryRun).
 
-maybe_acquire(Number, _Mod, 'true') ->
-    {'ok', Number};
-maybe_acquire(Number, <<_/binary>> = Mod, 'false') ->
+acquire(Number, 'undefined', _DryRun) ->
+    knm_errors:carrier_not_specified(Number);
+acquire(Number, _Mod, 'true') ->
+    Number;
+acquire(Number, <<_/binary>> = Mod, 'false') ->
     Module = wh_util:to_atom(Mod, 'true'),
-    Module:acquire_number(Number).
+    {'ok', Number1} = Module:acquire_number(Number),
+    Number1.
 
 %%--------------------------------------------------------------------
 %% @public
