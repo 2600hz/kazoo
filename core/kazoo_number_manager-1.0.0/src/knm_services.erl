@@ -144,11 +144,11 @@ maybe_update_services(Number, 'false') ->
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_phone_number(knm_number:knm_number()) ->
-                                   knm_number_return().
+                                   knm_number:knm_number().
 -spec activate_phone_number(knm_number:knm_number(), ne_binary()) ->
-                                   knm_number_return().
+                                   knm_number:knm_number().
 -spec activate_phone_number(knm_number:knm_number(), ne_binary(), integer()) ->
-                                   knm_number_return().
+                                   knm_number:knm_number().
 activate_phone_number(Number) ->
     BillingId = fetch_billing_id(Number),
     activate_phone_number(Number, BillingId).
@@ -171,21 +171,19 @@ activate_phone_number(Number, BillingId, Units) ->
 
     case wh_services:check_bookkeeper(BillingId, TotalCharges) of
         'false' ->
-            lager:error(
-              "not enough credit to activate number for $~p"
-              ,[wht_util:units_to_dollars(Units)]
-             ),
-            {'error', 'not_enough_credit'};
+            Message = io_lib:format("not enough credit to activate number for $~p"
+                                    ,[wht_util:units_to_dollars(Units)]
+                                   ),
+            lager:error(Message),
+            knm_errors:service_restriction(Message);
         'true' ->
             Transaction = create_transaction(Number, Units),
 
-            {'ok'
-             ,knm_number:set_charges(
-                knm_number:add_transaction(Number, Transaction)
-                ,?KEY_ACTIVATION_CHARGES
-                ,TotalCharges
-               )
-            }
+            knm_number:set_charges(
+              knm_number:add_transaction(Number, Transaction)
+              ,?KEY_ACTIVATION_CHARGES
+              ,TotalCharges
+             )
     end.
 
 %%%===================================================================

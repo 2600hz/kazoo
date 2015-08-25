@@ -12,6 +12,7 @@
          ,number_exists/1
          ,invalid_state_transition/3
          ,no_change_required/1
+         ,service_restriction/1
         ]).
 
 -export([to_json/1, to_json/2, to_json/3]).
@@ -45,6 +46,10 @@ invalid_state_transition(Number, FromState, ToState) ->
 -spec no_change_required(knm_number:knm_number()) -> no_return().
 no_change_required(Number) ->
     throw({'error', 'no_change_required', Number}).
+
+-spec service_restriction(ne_binary()) -> no_return().
+service_restriction(Message) ->
+    throw({'error', 'service_restriction', Message}).
 
 %%--------------------------------------------------------------------
 %% @public
