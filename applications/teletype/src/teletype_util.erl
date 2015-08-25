@@ -621,14 +621,20 @@ is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId) ->
               ,MasterAccountId
              );
         _Otherwise ->
-            lager:debug("master account is mute, ~s not enabled", [TemplateId]),
-            'false'
+            is_notice_enabled_default(TemplateKey)
     end.
 
 -spec is_notice_enabled_default(ne_binary()) -> boolean().
-is_notice_enabled_default(Key) ->
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    is_account_notice_enabled(MasterAccountId, Key, MasterAccountId).
+is_notice_enabled_default(TemplateKey) ->
+    TemplateId = teletype_templates:doc_id(TemplateKey),
+    case couch_mgr:open_cache_doc(?WH_CONFIG_DB, TemplateId) of
+        {'ok', TemplateJObj} ->
+            lager:debug("system has ~s, checking if enabled", [TemplateId]),
+            kz_notification:is_enabled(TemplateJObj);
+        _Otherwise ->
+            lager:debug("system is mute, ~s not enabled", [TemplateId]),
+            'false'
+    end.
 
 -spec find_addresses(wh_json:object(), wh_json:object(), ne_binary()) ->
                             email_map().
