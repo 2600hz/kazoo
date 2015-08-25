@@ -13,24 +13,27 @@
 -include("knm.hrl").
 
 -type reason() :: atom() | ne_binary().
--type num() :: api_binary() | knm_phone_number:knm_number().
+-type error() :: wh_json:object().
+
+-export_type([error/0]).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec to_json(reason()) -> wh_json:object().
--spec to_json(reason(), num()) ->
-                     wh_json:object().
+-spec to_json(reason()) ->
+                     error().
+-spec to_json(reason(), api_binary()) ->
+                     error().
+-spec to_json(reason(), api_binary(), api_binary()) ->
+                     error().
 to_json(Reason)->
     to_json(Reason, 'undefined').
 
 to_json(Reason, Num)->
     to_json(Reason, Num, 'undefined').
 
--spec to_json(reason(), num(), api_binary()) ->
-                     wh_json:object().
 to_json('not_found', Num, _Cause) ->
     Message = <<"number ", Num/binary, " not found">>,
     build_error(404, 'not_found', Message, Num);
@@ -58,22 +61,14 @@ to_json(Reason, _Num, Cause) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec build_error(integer(), atom(), ne_binary(), api_binary()) -> wh_json:object().
+-spec build_error(integer(), atom(), api_binary(), api_binary()) ->
+                         error().
 build_error(Code, Error, Message, Cause) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"code">>, Code}
-         ,{<<"error">>, to_binary(Error)}
-         ,{<<"cause">>, to_binary(Cause)}
-         ,{<<"message">>, to_binary(Message)}
+         ,{<<"error">>, Error}
+         ,{<<"cause">>, Cause}
+         ,{<<"message">>, Message}
         ])
      ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec to_binary(any()) -> binary().
-to_binary('undefined') -> 'undefined';
-to_binary(Any) -> wh_util:to_binary(Any).
