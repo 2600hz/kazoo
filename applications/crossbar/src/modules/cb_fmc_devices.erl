@@ -112,9 +112,10 @@ read(Context) ->
     {'ok', JObjs} = couch_mgr:get_all_results(?WH_FMC_DB, <<"fmc_devices/crossbar_listing">>),
     Doc = [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
     Doc1 = [JObj || JObj <- Doc, wh_json:get_value(<<"account_id">>, JObj) =:= cb_context:account_id(Context)],
-    lager:debug("read/1: Doc1 is ~p", [Doc1]),
-    Context1 = cb_context:set_doc(Context, Doc1),
-    Context2 = cb_context:set_resp_data(Context1, Doc1),
+    Doc2 = remove_unneeded_fields(Doc1),
+    lager:debug("read/1: Doc1 is ~p", [Doc2]),
+    Context1 = cb_context:set_doc(Context, Doc2),
+    Context2 = cb_context:set_resp_data(Context1, Doc2),
     cb_context:set_resp_status(Context2, 'success').
 
 %%--------------------------------------------------------------------
@@ -134,8 +135,10 @@ read(Context, Id) ->
         AccountId ->
             lager:debug("read/2: AccountId is ~p", [AccountId]),
             Doc1 = wh_doc:public_fields(Doc),
-            Context1 = cb_context:set_doc(Context, Doc1),
-            Context2 = cb_context:set_resp_data(Context1, Doc1),
+            Doc2 = remove_unneeded_fields(Doc1),
+            lager:debug("read/2: Doc2 is ~p", [Doc2]),
+            Context1 = cb_context:set_doc(Context, Doc2),
+            Context2 = cb_context:set_resp_data(Context1, Doc2),
             cb_context:set_resp_status(Context2, 'success');
         _ ->
             cb_context:set_resp_status(Context, 'error')
@@ -255,3 +258,13 @@ on_successful_validation(Id, Context) ->
             Doc = wh_json:set_value(<<"pvt_type">>, <<"fmc_device">>, cb_context:doc(Context)),
             cb_context:set_doc(Context, Doc)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_unneeded_fields(wh_json:object()) -> wh_json:object().
+remove_unneeded_fields(JObjs) ->
+    [wh_json:delete_keys([<<"a_number">>, <<"account_id">>], JObj) || JObj <- JObjs].
