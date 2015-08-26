@@ -71,6 +71,7 @@ start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     _ = [wh_util:ensure_started(App) || App <- ['crypto'
                                                 ,'inets'
+                                                ,'ssl'
                                                 ,'lager'
                                                 ,'whistle_amqp'
                                                 ,'whistle_couch'
