@@ -117,9 +117,13 @@ maybe_find_resource(_NumberProps, JObj) ->
 add_resource_id(JObj, ResourceProps) ->
     ResourceId = props:get_value('resource_id', ResourceProps),
     wh_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
-                        ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
-                        ,{?CCV(<<"Authorizing-ID">>), ResourceId}
                         ,{?CCV(<<"Global-Resource">>), props:get_is_true('global', ResourceProps)}
+                       %% TODO
+                       %% we need to make sure that Authorizing-ID is used
+                       %% with Authorizing-Type in ALL whapps
+                       %% when this is done remove the comments
+                       %% ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                       %% ,{?CCV(<<"Authorizing-ID">>), ResourceId}
                        ]
                        ,JObj
                       ).
