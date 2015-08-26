@@ -6,6 +6,8 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Sponsored by Conversant Ltd,
+%%%     implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(cf_util).
 
@@ -720,6 +722,12 @@ apply_dialplan(Number, DialPlan) ->
 
 -spec maybe_apply_dialplan(wh_json:keys(), wh_json:object(), ne_binary()) -> ne_binary().
 maybe_apply_dialplan([], _, Number) -> Number;
+maybe_apply_dialplan([<<"system">>], DialPlan, Number) ->
+    SystemDialPlans = load_system_dialplans(wh_json:get_value(<<"system">>, DialPlan)),
+    SystemRegexs = wh_json:get_keys(SystemDialPlans),
+    maybe_apply_dialplan(SystemRegexs, SystemDialPlans, Number);
+maybe_apply_dialplan([<<"system">>|Regexs], DialPlan, Number) ->
+    maybe_apply_dialplan(Regexs ++ [<<"system">>], DialPlan, Number);
 maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
@@ -731,6 +739,26 @@ maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
             Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
             Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
             <<Prefix/binary, Root/binary, Suffix/binary>>
+    end.
+
+-spec load_system_dialplans(ne_binaries()) -> wh_json:object().
+load_system_dialplans(Names) ->
+    LowerNames = [wh_util:to_lower_binary(Name) || Name <- Names],
+    case whapps_config:get_all_kvs(<<"dialplans">>) of
+        Plans when is_list(Plans) ->
+            lists:foldl(
+              fun({Key, Val}, Acc) ->
+                      Name = wh_util:to_lower_binary(wh_json:get_value(<<"name">>, Val)),
+                      case lists:member(Name, LowerNames) of
+                          'true' -> wh_json:set_value(Key, Val, Acc);
+                          'false' -> Acc
+                      end
+              end
+              ,wh_json:new()
+              ,Plans
+             );
+        Error ->
+            lager:notice("cannot get system dial plans ~p", [Error])
     end.
 
 -spec encryption_method_map(api_object(), api_binaries() | wh_json:object()) -> api_object().
