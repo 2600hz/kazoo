@@ -201,17 +201,7 @@ find_channel('user_name' = Key, UserName, [StatusJObj|JObjs], Acc) ->
     find_channel(Key, UserName, JObjs, [FoundUsernameChannels | Acc]).
 
 hangup_channels(Channels, {Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}) ->
-    lists:foreach(fun(JObjChannel) ->
-        CallId = wh_json:get_value(<<"Call-ID">>, JObjChannel),
-        case whapps_call:retrieve(CallId, ?APP_NAME) of
-            % TODO: Need to retrieve #whapps_call properly
-            {'ok', Call} ->
-                lager:debug("Hangup channel with CallID ~p", [CallId]),
-                whapps_call_command:hangup(Call);
-            {'error', _R} ->
-                lager:debug("failed to retrieve cached call: ~p", [_R])
-        end
-    end, Channels),
+    lists:foreach(fun(JObjChannel) -> cm_util:hangup_call(wh_json:get_value(<<"Bridge-ID">>, JObjChannel)) end, Channels),
     send_disconnect_resp({Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}).
 
 send_disconnect_resp({Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}) ->

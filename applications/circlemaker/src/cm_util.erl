@@ -17,7 +17,8 @@
          ,put_session_timeout/2
          ,get_session_timeout/1
          ,put_interim_update/2
-         ,get_interim_update/1]).
+         ,get_interim_update/1
+         ,hangup_call/1]).
 
 -include("circlemaker.hrl").
 
@@ -220,3 +221,13 @@ get_interim_update(AccountId) ->
         {'undefined', Interval} -> Interval;
         {Interval, _} ->Interval
     end.
+
+-spec hangup_call(ne_binary()) -> 'ok'.
+hangup_call(CallId) ->
+    lager:debug("Hangup channel with CallID ~p", [CallId]),
+    HangupCallEvt = [{<<"Call-ID">>, CallId}
+                     ,{<<"Reason">>, <<"hangup">>}
+                     ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+    wapi_call:publish_hangup_call(CallId, HangupCallEvt).

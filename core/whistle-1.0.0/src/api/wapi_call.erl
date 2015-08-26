@@ -31,6 +31,8 @@
 -export([usurp_control/1, usurp_control_v/1]).
 -export([usurp_publisher/1, usurp_publisher_v/1]).
 
+-export([hangup_call/1, hangup_call_v/1]).
+
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 
@@ -53,6 +55,8 @@
 
 -export([publish_usurp_control/2, publish_usurp_control/3]).
 -export([publish_usurp_publisher/2, publish_usurp_publisher/3]).
+
+-export([publish_hangup_call/2, publish_hangup_call/3]).
 
 -export([get_status/1]).
 -export([event_routing_key/2]).
@@ -209,6 +213,14 @@
                                     ,{<<"Event-Name">>, <<"usurp_control">>}
                                    ]).
 -define(CALL_USURP_CONTROL_TYPES, []).
+
+%% Hangup Call
+-define(HANGUP_CALL_HEADERS, [<<"Call-ID">>, <<"Fetch-ID">>]).
+-define(OPTIONAL_HANGUP_CALL_HEADERS, [<<"Reason">>, <<"Media-Node">>]).
+-define(HANGUP_CALL_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                             ,{<<"Event-Name">>, <<"hangup_call">>}
+                            ]).
+-define(HANGUP_CALL_TYPES, []).
 
 %% Usurp Call Event Publisher
 -define(PUBLISHER_USURP_CONTROL_HEADERS, [<<"Call-ID">>, <<"Reference">>]).
@@ -443,6 +455,24 @@ usurp_control_v(JObj) -> usurp_control_v(wh_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec hangup_call(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+hangup_call(Prop) when is_list(Prop) ->
+    case hangup_call_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?HANGUP_CALL_HEADERS, ?OPTIONAL_HANGUP_CALL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for hangup_call"}
+    end;
+hangup_call(JObj) -> hangup_call(wh_json:to_proplist(JObj)).
+
+-spec hangup_call_v(api_terms()) -> boolean().
+hangup_call_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?HANGUP_CALL_HEADERS, ?HANGUP_CALL_VALUES, ?HANGUP_CALL_TYPES);
+hangup_call_v(JObj) -> hangup_call_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Format a call id update from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
 -spec usurp_publisher(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 usurp_publisher(Prop) when is_list(Prop) ->
     case usurp_publisher_v(Prop) of
@@ -625,6 +655,14 @@ publish_usurp_control(CallId, JObj) ->
 publish_usurp_control(CallId, JObj, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('usurp_control', CallId), Payload, ContentType).
+
+-spec publish_hangup_call(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_hangup_call(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_hangup_call(CallId, JObj) ->
+    publish_hangup_call(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_hangup_call(CallId, JObj, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?HANGUP_CALL_VALUES, fun ?MODULE:hangup_call/1),
+    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('hangup_call', CallId), Payload, ContentType).
 
 -spec publish_usurp_publisher(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_usurp_publisher(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

@@ -137,7 +137,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% try to handlecall more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
     Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', [<<"usurp_control">>]}
+                          ,{'restrict_to', [<<"usurp_control">>, <<"hangup_call">>]}
                          ]}
                 ,{'dialplan', []}
                 ,{'self', []}
@@ -222,6 +222,8 @@ handle_call_events(JObj, Props) ->
                 'false' -> gen_listener:cast(Srv, {'usurp_control', JObj});
                 'true' -> 'ok'
             end;
+        <<"hangup_call">> ->
+            gen_listener:cast(Srv, {'hangup_call', JObj});
         _Else -> 'ok'
     end.
 
@@ -299,6 +301,8 @@ handle_cast('stop', State) ->
 handle_cast({'usurp_control', _}, State) ->
     lager:debug("the call has been usurped by an external process"),
     {'stop', 'normal', State};
+handle_cast({'hangup_call', JObj}, State) ->
+    {'noreply', handle_hangup_call(JObj, State)};
 handle_cast({'update_node', Node}, #state{node=OldNode}=State) ->
     lager:debug("channel has moved from ~s to ~s", [OldNode, Node]),
     {'noreply', State#state{node=Node}};
@@ -851,6 +855,27 @@ publish_leg_removal(Props) ->
                                               ,'undefined'
                                               ,ecallmgr_call_events:swap_call_legs(Props)),
     ecallmgr_call_events:publish_event(Event).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_hangup_call(wh_json:object(), state()) -> state().
+handle_hangup_call(JObj, State) ->
+    lager:debug("hangup_call event handled"),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    % need to create a message and sent wapi_dialplan:
+    Command = [{<<"Application-Name">>, <<"hangup">>}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    ControlQ = State#state.control_q,
+    ControllerQ = State#state.controller_q,
+    Prop = props:insert_value(<<"Call-ID">>, CallId, Command) ++
+           wh_api:default_headers(ControllerQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION),
+    wapi_dialplan:publish_command(ControlQ, props:filter_undefined(Prop)),
+    State.
 
 %%--------------------------------------------------------------------
 %% @private

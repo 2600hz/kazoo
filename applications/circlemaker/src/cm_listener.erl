@@ -144,7 +144,8 @@ handle_accounting_req(JObj, _Props) ->
     case whapps_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_CREATE">>} ->
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-            maybe_start_session_timer(AccountId, CallId),
+            BridgeId = wh_json:get_value(<<"Bridge-ID">>, JObj),
+            maybe_start_session_timer(AccountId, BridgeId),
             maybe_start_interim_update_timer(AccountId, CallId),
             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
                                         ,{<<"Acct-Delay-Time">>, 0}
@@ -153,7 +154,8 @@ handle_accounting_req(JObj, _Props) ->
             cm_pool_mgr:do_request(JObj1);
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-            maybe_cancel_session_timer(AccountId, CallId),
+            BridgeId = wh_json:get_value(<<"Bridge-ID">>, JObj),
+            maybe_cancel_session_timer(AccountId, BridgeId),
             maybe_cancel_interim_update_timer(AccountId, CallId),
             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
                                         ,{<<"Acct-Delay-Time">>, 0}
@@ -171,7 +173,7 @@ maybe_start_session_timer(AccountId, CallId) ->
     end.
 
 handle_hangup_by_session_timeout(CallId) ->
-    whapps_call_command:hangup(CallId),
+    cm_util:hangup_call(CallId),
     ets:delete(?ETS_SESSION_TIMEOUT, CallId).
 
 maybe_cancel_session_timer(AccountId, CallId) ->
