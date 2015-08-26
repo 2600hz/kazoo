@@ -280,6 +280,7 @@ start_receive_fax(#state{call=Call
     LocalFile = get_fs_filename(NewState),
     send_status(NewState, list_to_binary(["New Fax from ", whapps_call:caller_id_number(Call)]), ?FAX_START, 'undefined'),
     whapps_call_command:answer(Call),
+    lager:debug("receive fax t.38 ~p / ~p", [ResourceFlag, ReceiveFlag]),
     whapps_call_command:receive_fax(ResourceFlag, ReceiveFlag, LocalFile, Call),
     {'noreply', NewState}.
 
