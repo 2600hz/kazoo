@@ -14,6 +14,8 @@
          ,deactivate_features/2
          ,maybe_update_services/1
          ,activate_phone_number/1
+         ,activation_charges/1
+         ,phone_number_activation_charges/1
         ]).
 
 -include("knm.hrl").
@@ -181,7 +183,7 @@ activate_phone_number(Number, BillingId, Units) ->
 
             knm_number:set_charges(
               knm_number:add_transaction(Number, Transaction)
-              ,?KEY_ACTIVATION_CHARGES
+              ,?KEY_NUMBER_ACTIVATION_CHARGES
               ,TotalCharges
              )
     end.
@@ -287,3 +289,9 @@ set_activation_reason(Transaction, _LedgetId, AccountId, Key) ->
     wh_transaction:set_reason(<<"sub_account_", Key/binary, "_activation">>
                               ,wh_transaction:set_sub_account_info(AccountId, Transaction)
                              ).
+
+phone_number_activation_charges(Number) ->
+    knm_number:charges(Number, ?KEY_NUMBER_ACTIVATION_CHARGES).
+
+activation_charges(Number) ->
+    knm_number:charges(Number, ?KEY_ACTIVATION_CHARGES).
