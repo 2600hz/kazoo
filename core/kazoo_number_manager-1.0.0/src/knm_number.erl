@@ -170,7 +170,10 @@ dry_run_or_number(Number) ->
 
 -spec dry_run_response(knm_number()) -> dry_run_return().
 dry_run_response(Number) ->
-    {'dry_run', services(Number), charges(Number, <<"activation">>)}.
+    {'dry_run'
+     ,services(Number)
+     ,knm_services:phone_number_activation_charges(Number)
+    }.
 
 -spec ensure_can_create(ne_binary(), wh_proplist()) -> 'true'.
 ensure_can_create(Num, Props) ->
