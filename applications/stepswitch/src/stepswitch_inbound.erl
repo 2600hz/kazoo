@@ -104,7 +104,7 @@ maybe_find_resource(_NumberProps, JObj) ->
     case stepswitch_resources:reverse_lookup(JObj) of
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
-            Routines = [fun maybe_add_resource_id/2
+            Routines = [fun add_resource_id/2
                         ,fun maybe_add_t38_settings/2
                        ],
             lists:foldl(fun(F, J) ->  F(J, ResourceProps) end
@@ -113,27 +113,16 @@ maybe_find_resource(_NumberProps, JObj) ->
                        )
     end.
 
--spec maybe_add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
-maybe_add_resource_id(JObj, ResourceProps) ->
+-spec add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
+add_resource_id(JObj, ResourceProps) ->
     ResourceId = props:get_value('resource_id', ResourceProps),
-    case props:get_is_true('global', ResourceProps) of
-        'false' ->
-            wh_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
-                                ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
-                                ,{?CCV(<<"Authorizing-ID">>), ResourceId}
-                                ,{?CCV(<<"Global-Resource">>), 'false'}
-                               ]
-                              ,JObj
-                             );
-        'true' ->
-            wh_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
-                                ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
-                                ,{?CCV(<<"Authorizing-ID">>), ResourceId}
-                                ,{?CCV(<<"Global-Resource">>), 'true'}
-                               ]
-                              ,JObj
-                             )
-    end.
+    wh_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
+                        ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                        ,{?CCV(<<"Authorizing-ID">>), ResourceId}
+                        ,{?CCV(<<"Global-Resource">>), props:get_is_true('global', ResourceProps)}
+                       ]
+                       ,JObj
+                      ).
 
 -spec maybe_add_t38_settings(wh_json:object(), wh_proplist()) -> wh_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
