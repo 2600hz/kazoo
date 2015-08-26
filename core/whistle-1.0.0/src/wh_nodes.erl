@@ -477,7 +477,7 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
             Req = advertise_payload(Node),
             wh_amqp_worker:cast(Req, fun wapi_nodes:publish_advertise/1)
     catch
-        _Exc:_Err -> lager:debug("error publishing node info : ~p : ~p", [_Exc, _Err])
+        _E:_N -> lager:debug("error creating node ~p : ~p", [_E, _N])
     end,
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
