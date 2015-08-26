@@ -134,6 +134,9 @@
 -export([is_json/1, is_host_available/0]).
 -export([encode/1]).
 
+-export([bind_exchanges/3 , bind_exchanges/4]).
+-export([federation_exchange/0]).
+
 -ifdef(TEST).
 -export([trim/3]).
 -endif.
@@ -381,7 +384,27 @@ basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
 basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop)
   when is_list(Payload) ->
     basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
+basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props) ->
+    case get('$amqp_federation_message') of
+      'true' ->
+          do_federated_publish(Exchange, RoutingKey, Payload, ContentType, Props),
+          do_basic_publish(Exchange, RoutingKey, Payload, ContentType, Props);
+      'no-local' ->
+          do_federated_publish(Exchange, RoutingKey, Payload, ContentType, Props);
+      _ ->
+          do_basic_publish(Exchange, RoutingKey, Payload, ContentType, Props)
+    end.
+
+-spec do_federated_publish(ne_binary(), binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+do_federated_publish(Exchange, <<>>, Payload, ContentType, Props) ->
+    do_basic_publish(?EXCHANGE_FEDERATION, Exchange, Payload, ContentType, Props);
+do_federated_publish(Exchange, Exchange, Payload, ContentType, Props) ->
+    do_basic_publish(?EXCHANGE_FEDERATION, Exchange, Payload, ContentType, Props);
+do_federated_publish(Exchange, RoutingKey, Payload, ContentType, Props) ->
+    do_basic_publish(?EXCHANGE_FEDERATION, <<Exchange/binary, ".", RoutingKey/binary>>, Payload, ContentType, Props).
+
+-spec do_basic_publish(ne_binary(), binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+do_basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
   when is_binary(Exchange),
        is_binary(RoutingKey),
        is_binary(ContentType),
@@ -443,6 +466,10 @@ presence_exchange() ->
 -spec targeted_exchange() -> 'ok'.
 targeted_exchange() ->
     new_exchange(?EXCHANGE_TARGETED, ?TYPE_TARGETED).
+
+-spec federation_exchange() -> 'ok'.
+federation_exchange() ->
+    new_exchange(?EXCHANGE_FEDERATION, ?TYPE_FEDERATION).
 
 -spec nodes_exchange() -> 'ok'.
 nodes_exchange() ->
@@ -870,9 +897,36 @@ bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
 bind_q_to_exchange(Queue, Routing, Exchange) ->
     bind_q_to_exchange(Queue, Routing, Exchange, []).
 bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
+  case  wh_util:is_true(get('$federator_listener')) of
+      'true' -> do_bind_q_to_federated(Queue, Routing, Exchange, Options);
+      _ -> do_bind_q_to_exchange(Queue, Routing, Exchange, Options)
+  end.
+
+-spec do_bind_q_to_federated(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+do_bind_q_to_federated(Queue, Queue, Exchange, Options) ->
+    do_bind_q_to_exchange(Queue, Exchange, ?EXCHANGE_FEDERATION,  Options);
+do_bind_q_to_federated(Queue, <<>>, Exchange, Options) ->
+    do_bind_q_to_exchange(Queue, Exchange, ?EXCHANGE_FEDERATION,  Options);
+do_bind_q_to_federated(Queue, RoutingKey, Exchange, Options) ->
+    do_bind_q_to_exchange(Queue, <<Exchange/binary, ".", RoutingKey/binary>>, ?EXCHANGE_FEDERATION, Options).
+
+-spec do_bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+do_bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     QB = #'queue.bind'{
             queue = Queue %% what queue does the binding attach to?
             ,exchange = Exchange %% what exchange does the binding attach to?
+            ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
+            ,nowait = ?P_GET('nowait', Options, 'false')
+            ,arguments = []
+           },
+    wh_amqp_channel:command(QB).
+
+bind_exchanges(From, To, Routing) ->
+    bind_exchanges(From, To, Routing, []).
+bind_exchanges(From, To, Routing, Options) ->
+    QB = #'exchange.bind'{
+            source = From %% what exchange does the binding attach from?
+            ,destination = To %% what exchange does the binding attach to?
             ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
             ,nowait = ?P_GET('nowait', Options, 'false')
             ,arguments = []
@@ -946,6 +1000,23 @@ unbind_q_from_registrar(Queue, Routing) ->
 -spec unbind_q_from_exchange(ne_binary(), ne_binary(), ne_binary()) ->
                                     'ok' | {'error', _}.
 unbind_q_from_exchange(Queue, Routing, Exchange) ->
+  case  wh_util:is_true(get('$federator_listener')) of
+      'true' -> do_unbind_q_from_federated(Queue, Routing, Exchange);
+      _ -> do_unbind_q_from_exchange(Queue, Routing, Exchange)
+  end.
+
+-spec do_unbind_q_from_federated(ne_binary(), ne_binary(), ne_binary()) ->
+                                    'ok' | {'error', _}.
+do_unbind_q_from_federated(Queue, <<>>, Exchange) ->
+    do_unbind_q_from_exchange(Queue, Exchange, ?EXCHANGE_FEDERATION);
+do_unbind_q_from_federated(Queue, Queue, Exchange) ->
+    do_unbind_q_from_exchange(Queue, Exchange, ?EXCHANGE_FEDERATION);
+do_unbind_q_from_federated(Queue, RoutingKey, Exchange) ->
+    do_unbind_q_from_exchange(Queue, <<Exchange/binary, ".", RoutingKey/binary>>, ?EXCHANGE_FEDERATION).
+
+-spec do_unbind_q_from_exchange(ne_binary(), ne_binary(), ne_binary()) ->
+                                    'ok' | {'error', _}.
+do_unbind_q_from_exchange(Queue, Routing, Exchange) ->
     QU = #'queue.unbind'{
             queue = Queue
             ,exchange = Exchange

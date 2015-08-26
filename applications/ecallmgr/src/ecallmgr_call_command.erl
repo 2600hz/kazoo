@@ -1070,38 +1070,42 @@ chk_store_vm_result(Res, Node, UUID, _, JobId, Reply) ->
 
 -spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary() | {ne_binary(), api_binary()}) -> 'ok'.
 send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
-    ChannelProps =
-        case ecallmgr_fs_channel:channel_data(Node, UUID) of
-            {'ok', Ps} -> Ps;
+    UUIDProps =
+        case ecallmgr_fs_channel:renew(Node, UUID) of
+            {'ok', P} -> P;
             {'error', _Err} -> []
         end,
 
-    BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, <<"store">>),
-    ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
-    wh_amqp_worker:cast(ApiProps, fun wapi_call:publish_event/1);
+    BaseEvent = base_store_call_event(UUIDProps, UUID, MediaTransResults, File),
+    Event = maybe_include_ccvs(BaseEvent, UUIDProps),
+
+    wh_amqp_worker:cast(Event, fun wapi_call:publish_event/1);
 send_store_call_event(Node, UUID, MediaTransResults) ->
     send_store_call_event(Node, UUID, {MediaTransResults, 'undefined'}).
 
--spec maybe_add_ccvs(wh_proplist(), wh_proplist()) -> wh_proplist().
-maybe_add_ccvs(BaseProps, ChannelProps) ->
-    case ecallmgr_util:custom_channel_vars(ChannelProps) of
-        [] -> BaseProps;
-        CustomProp ->
+-spec maybe_include_ccvs(wh_proplist(), kzd_freeswitch:doc()) ->
+                                wh_proplist().
+maybe_include_ccvs(Event, Props) ->
+    case ecallmgr_util:custom_channel_vars(Props) of
+        [] -> Event;
+        CustomProps ->
             props:set_value(<<"Custom-Channel-Vars">>
-                            ,wh_json:from_list(CustomProp)
-                            ,BaseProps
+                            ,wh_json:from_list(CustomProps)
+                            ,Event
                            )
     end.
 
--spec build_base_store_event_props(ne_binary(), wh_proplist(), ne_binary(), api_binary(), ne_binary()) -> wh_proplist().
-build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, App) ->
+-spec base_store_call_event(kzd_freeswitch:doc(), ne_binary(), ne_binary(), api_binary()) ->
+                                   wh_proplist().
+base_store_call_event(Prop, UUID, MediaTransResults, File) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
+
     props:filter_undefined(
-      [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps, Timestamp)}
+      [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
        ,{<<"Call-ID">>, UUID}
-       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, ChannelProps, <<>>)}
-       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps, <<"HANGUP">>)}
-       ,{<<"Application-Name">>, App}
+       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Prop, <<>>)}
+       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
+       ,{<<"Application-Name">>, <<"store">>}
        ,{<<"Application-Response">>, MediaTransResults}
        ,{<<"Application-Data">>, File}
        | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)

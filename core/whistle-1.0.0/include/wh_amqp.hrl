@@ -133,12 +133,18 @@
 -define(EXCHANGE_REGISTRAR, <<"registrar">>).
 -define(TYPE_REGISTRAR, <<"topic">>).
 
+%% Federation Exchange
+%% - For federation related communication
+-define(EXCHANGE_FEDERATION, <<"federation">>).
+-define(TYPE_FEDERATION, <<"topic">>).
+
 -type wh_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
                            #'queue.bind'{} | #'queue.unbind'{} |
                            #'basic.consume'{} | #'basic.cancel'{} |
                            #'basic.ack'{} | #'basic.nack'{} |
                            #'basic.qos'{} |
                            #'exchange.declare'{} |
+                           #'exchange.bind'{} |
                            #'confirm.select'{} |
                            #'channel.flow'{} | #'channel.flow_ok'{} |
                            '_' | 'undefined'.
@@ -214,6 +220,7 @@
 
 -type basic_publish() :: #'basic.publish'{}.
 -type basic_deliver() :: #'basic.deliver'{}.
+-type basic_info() :: #'P_basic'{}.
 -type amqp_msg() :: #'amqp_msg'{}.
 
 -define(AMQP_HIDDEN_TAG, <<"hidden">>).

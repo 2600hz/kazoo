@@ -168,8 +168,9 @@ set_account_id(UUID, Value) ->
                    {'ok', channel()} |
                    {'error', 'timeout' | 'badarg'}.
 renew(Node, UUID) ->
-    case channel_data(Node, UUID) of
-        {'ok', Props} ->
+    case freeswitch:api(Node, 'uuid_dump', UUID) of
+        {'ok', Dump} ->
+            Props = ecallmgr_util:eventstr_to_proplist(Dump),
             {'ok', props_to_record(Props, Node)};
         {'error', _}=E -> E
     end.

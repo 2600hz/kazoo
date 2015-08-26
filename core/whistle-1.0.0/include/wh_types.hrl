@@ -223,5 +223,7 @@
 -type xml_thing() :: xml_el() | xml_text().
 -type xml_things() :: xml_els() | xml_texts().
 
+-define(FEDERATION_MESSAGE,  <<"AMQP-Federation-Message">>).
+
 -define(WHISTLE_TYPES_INCLUDED, 'true').
 -endif.

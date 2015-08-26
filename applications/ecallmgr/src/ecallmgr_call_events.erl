@@ -665,8 +665,14 @@ publish_event(Props) ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
-    wapi_call:publish_event(Props).
+    maybe_federated_event(lists:member(props:get_value(<<"Event-Name">>, Props), ?FS_FEDERATED_EVENTS), Props).
 
+-spec maybe_federated_event(boolean(), wh_proplist()) -> 'ok'.
+maybe_federated_event('true', Props) ->
+    wh_federation:cast(Props, fun wapi_call:publish_event/1);
+maybe_federated_event('false', Props) ->
+    wapi_call:publish_event(Props).
+  
 -spec is_masquerade(wh_proplist()) -> boolean().
 is_masquerade(Props) ->
     case props:get_value(<<"Event-Subclass">>, Props) of

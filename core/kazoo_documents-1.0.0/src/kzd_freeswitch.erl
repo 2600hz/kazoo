@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%-------------------------------------------------------------------
 %%% @copyright (C) 2015, 2600Hz
 %%% @doc
 %%% FreeSWITCH proplists
@@ -12,7 +12,7 @@
          ,caller_id_number/1, caller_id_number/2
          ,call_id/1
          ,other_leg_call_id/1
-         ,call_direction/1
+         ,call_direction/1, call_direction/2
          ,resource_type/1, resource_type/2
          ,channel_authorized/1
          ,hunt_destination_number/1
@@ -46,6 +46,9 @@
 
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 -define(CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
+
+-type doc() :: wh_proplist().
+-export_type([doc/0]).
 
 -spec caller_id_name(wh_proplist()) -> api_binary().
 -spec caller_id_name(wh_proplist(), Default) -> ne_binary() | Default.
@@ -87,8 +90,11 @@ other_leg_call_id(Props) ->
     props:get_value(<<"Other-Leg-Unique-ID">>, Props).
 
 -spec call_direction(wh_proplist()) -> api_binary().
+-spec call_direction(wh_proplist(), Default) -> ne_binary() | Default.
 call_direction(Props) ->
-    props:get_binary_value(<<"Call-Direction">>, Props).
+    call_direction(Props, 'undefined').
+call_direction(Props, Default) ->
+    props:get_binary_value(<<"Call-Direction">>, Props, Default).
 
 -spec resource_type(wh_proplist()) -> api_binary().
 -spec resource_type(wh_proplist(), Default) -> ne_binary() | Default.
