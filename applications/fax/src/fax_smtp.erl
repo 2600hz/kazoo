@@ -645,7 +645,7 @@ add_fax_document(#state{doc='undefined'
 add_fax_document(#state{doc=Doc}=State) ->
     lager:debug("add fax document called but already has a doc : ~p", [Doc]),
     {'ok', State}.
-    
+
 
 %% ====================================================================
 %% Internal functions
