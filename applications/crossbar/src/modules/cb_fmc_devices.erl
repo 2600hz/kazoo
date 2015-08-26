@@ -21,7 +21,6 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"fmc_devices/crossbar_listing">>).
--define(FMC_DB, <<"fmc">>).
 
 %%%===================================================================
 %%% API
@@ -110,7 +109,7 @@ validate_fmc_device(Context, Id, ?HTTP_DELETE) ->
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
     lager:debug("read/1: Context is ~p", [Context]),
-    {'ok', JObjs} = couch_mgr:get_all_results(?FMC_DB, <<"fmc_devices/crossbar_listing">>),
+    {'ok', JObjs} = couch_mgr:get_all_results(?WH_FMC_DB, <<"fmc_devices/crossbar_listing">>),
     Doc = [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
     Doc1 = [JObj || JObj <- Doc, wh_json:get_value(<<"account_id">>, JObj) =:= cb_context:account_id(Context)],
     lager:debug("read/1: Doc1 is ~p", [Doc1]),
@@ -128,7 +127,7 @@ read(Context) ->
 read(Context, Id) ->
     lager:debug("read/2: Context is ~p", [Context]),
     lager:debug("read/2: Id is ~p", [Id]),
-    {'ok', Doc} = couch_mgr:open_doc(?FMC_DB, Id),
+    {'ok', Doc} = couch_mgr:open_doc(?WH_FMC_DB, Id),
     lager:debug("read/2: Doc is ~p", [Doc]),
     AccountId = cb_context:account_id(Context),
     case wh_json:get_value(<<"account_id">>, Doc) of
@@ -164,7 +163,7 @@ put(Context) ->
             ANumber = wh_json:get_value([<<"call_forward">>, <<"number">>], DeviceDoc),
             Doc1 = wh_json:set_value(<<"a_number">>, ANumber, Doc),
             lager:debug("put/1: Doc1 is ~p", [Doc1]),
-            {'ok', _} = couch_mgr:save_doc(?FMC_DB, Doc1),
+            {'ok', _} = couch_mgr:save_doc(?WH_FMC_DB, Doc1),
             cb_context:set_doc(Context, Doc1);
         _ ->
             cb_context:set_resp_status(Context, 'error')
@@ -181,7 +180,7 @@ put(Context) ->
 post(Context, Id) ->
     lager:debug("post/2: Context is ~p", [Context]),
     lager:debug("post/2: Id is ~p", [Id]),
-    case couch_mgr:open_doc(?FMC_DB, Id) of
+    case couch_mgr:open_doc(?WH_FMC_DB, Id) of
         {'ok', Doc} ->
             lager:debug("post/1: Doc is ~p", [Doc]),
             AccountId = cb_context:account_id(Context),
@@ -200,7 +199,7 @@ post(Context, Id) ->
                             ANumber = wh_json:get_value([<<"call_forward">>, <<"number">>], DeviceDoc),
                             Doc2 = wh_json:set_value(<<"a_number">>, ANumber, Doc1),
                             lager:debug("post/2: Doc2 is ~p", [Doc2]),
-                            {'ok', _} = couch_mgr:save_doc(?FMC_DB, Doc2),
+                            {'ok', _} = couch_mgr:save_doc(?WH_FMC_DB, Doc2),
                             cb_context:set_doc(Context, Doc2);
                         _ ->
                             cb_context:set_resp_status(Context, 'error')
@@ -222,13 +221,13 @@ post(Context, Id) ->
 delete(Context, Id) ->
     lager:debug("delete/2: Context is ~p", [Context]),
     lager:debug("delete/2: Id is ~p", [Context]),
-    {'ok', SavedDoc} = couch_mgr:open_doc(?FMC_DB, Id),
+    {'ok', SavedDoc} = couch_mgr:open_doc(?WH_FMC_DB, Id),
     lager:debug("delete/2: SavedDoc is ~p", [SavedDoc]),
     AccountId = cb_context:account_id(Context),
     lager:debug("delete/2: AccountId is ~p", [AccountId]),
     case wh_json:get_value(<<"account_id">>, SavedDoc) of
         AccountId ->
-            {'ok', _} = couch_mgr:del_doc(?FMC_DB, Id),
+            {'ok', _} = couch_mgr:del_doc(?WH_FMC_DB, Id),
             lager:debug("delete/2: document deleted"),
             cb_context:set_resp_status(Context, 'success');
         _ ->
@@ -247,7 +246,7 @@ on_successful_validation('undefined', Context) ->
     Doc = wh_json:set_value(<<"pvt_type">>, <<"fmc_device">>, cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc);
 on_successful_validation(Id, Context) ->
-    case couch_mgr:open_doc(?FMC_DB, Id) of
+    case couch_mgr:open_doc(?WH_FMC_DB, Id) of
         {'ok', Doc} ->
             PrivJObj = wh_json:private_fields(Doc),
             NewDoc = wh_json:merge_jobjs(PrivJObj, cb_context:doc(Context)),
