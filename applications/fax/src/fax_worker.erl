@@ -204,12 +204,16 @@ handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
 handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
                                                     ,job=Job
                                                     ,pool=Pid
+                                                    ,fax_status='undefined'
                                             }=State) ->
     lager:debug("received channel destroy for ~s",[JobId]),
     send_error_status(State, wh_json:get_value(<<"Hangup-Cause">>, JObj)),
     _ = release_failed_job('channel_destroy', JObj, Job),
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', reset(State)};
+handle_cast({'channel_destroy', JobId, _JObj}, #state{job_id=JobId}=State) ->
+    lager:debug("ignoring received channel destroy for ~s",[JobId]),
+    {'noreply', State};
 handle_cast({'channel_destroy', JobId2, _JObj}, #state{job_id=JobId}=State) ->
     lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
@@ -276,7 +280,7 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
                                     ,account_id = wh_doc:account_id(JObj)
                                     ,status = Status
                                     ,page = 0
-                                    ,fax_status = wh_json:new()
+                                    ,fax_status = 'undefined'
                                    },
             send_status(NewState, <<"job acquired">>, ?FAX_START, 'undefined'),
             gen_server:cast(self(), 'prepare_job'),
@@ -921,8 +925,11 @@ send_fax(JobId, JObj, Q, ToDID) ->
                  | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                 ]),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                              ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]}
+                                              ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>
+                                                                ,<<"CHANNEL_DESTROY">>
+                                                               ]}
                                              ]),
+    lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),
     wapi_offnet_resource:publish_req(Request).
 
 -spec get_hunt_account_id(ne_binary()) -> api_binary().
