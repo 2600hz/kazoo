@@ -118,11 +118,10 @@ maybe_add_resource_id(JObj, ResourceProps) ->
     ResourceId = props:get_value('resource_id', ResourceProps),
     case props:get_is_true('global', ResourceProps) of
         'false' ->
-
             wh_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
-                                ,{?CCV(<<"Global-Resource">>), 'true'}
                                 ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
                                 ,{?CCV(<<"Authorizing-ID">>), ResourceId}
+                                ,{?CCV(<<"Global-Resource">>), 'false'}
                                ]
                               ,JObj
                              );
@@ -130,6 +129,7 @@ maybe_add_resource_id(JObj, ResourceProps) ->
             wh_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
                                 ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
                                 ,{?CCV(<<"Authorizing-ID">>), ResourceId}
+                                ,{?CCV(<<"Global-Resource">>), 'true'}
                                ]
                               ,JObj
                              )
