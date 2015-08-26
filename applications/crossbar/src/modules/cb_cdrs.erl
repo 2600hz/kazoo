@@ -17,9 +17,9 @@
 
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1
-         ,validate/1, validate/2
+         ,validate/1, validate/2, validate/3
          ,to_json/1
          ,to_csv/1
         ]).
@@ -35,6 +35,11 @@
 -define(MAX_BULK, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
+-define(CB_GROUP_LIST, <<"cdrs/group_listing">>).
+-define(CB_GROUP_LIST_BY_USER, <<"cdrs/group_listing_by_owner">>).
+
+-define(PATH_GROUP, <<"group">>).
+-define(PATH_LEGS, <<"legs">>).
 
 -define(COLUMNS
         ,[{<<"id">>, fun col_id/2}
@@ -90,23 +95,28 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate').
 
 -spec to_json(payload()) -> payload().
-to_json({Req1, Context}) ->
+to_json({Req, Context}) ->
     Nouns = cb_context:req_nouns(Context),
     case props:get_value(<<"cdrs">>, Nouns, []) of
-        [_|_] -> {Req1, Context};
-        [] ->
-            Headers = cowboy_req:get('resp_headers', Req1),
-            {'ok', Req2} = cowboy_req:chunked_reply(200, Headers, Req1),
-            'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
-            {Req3, Context1} = send_chunked_cdrs({Req2, Context}),
-            'ok' = cowboy_req:chunk("]", Req3),
-            _ = pagination({Req3, Context1}),
-            'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
-                                     ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
-                                     ,"}"
-                                    ], Req3),
-            {Req3, cb_context:store(Context1, 'is_chunked', 'true')}
+        [] -> to_json(Req, Context);
+        [<<"group">>] -> to_json(Req, Context);
+        [_|_] -> {Req, Context}
     end.
+
+-spec to_json(cowboy_req:req(), cb_context:context()) -> payload().
+to_json(Req, Context) ->
+    Headers = cowboy_req:get('resp_headers', Req),
+    {'ok', Req2} = cowboy_req:chunked_reply(200, Headers, Req),
+    'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
+    {Req3, Context1} = send_chunked_cdrs({Req2, Context}),
+    'ok' = cowboy_req:chunk("]", Req3),
+    _ = pagination({Req3, Context1}),
+    'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
+                             ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
+                             ,"}"
+                            ], Req3),
+    {Req3, cb_context:store(Context1, 'is_chunked', 'true')}.
+    
 
 -spec pagination(payload()) -> payload().
 pagination({Req, Context}=Payload) ->
@@ -119,6 +129,7 @@ pagination({Req, Context}=Payload) ->
     end,
     StartKey = case cb_context:fetch(Context, 'start_key') of
                    [_, Key] -> Key;
+                   [Key] -> Key;
                    Key -> Key
                end,
     'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (wh_util:to_binary(StartKey))/binary, "\"">>, Req),
@@ -128,18 +139,22 @@ pagination({Req, Context}=Payload) ->
 to_csv({Req, Context}) ->
     Nouns = cb_context:req_nouns(Context),
     case props:get_value(<<"cdrs">>, Nouns, []) of
-        [_|_] -> {Req, Context};
-        [] ->
-            Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
-                                        ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
-                                       ]
-                                       ,cowboy_req:get('resp_headers', Req)
-                                      ),
-            {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
-            Context1 = cb_context:store(Context, 'is_csv', 'true'),
-            {Req2, _} = send_chunked_cdrs({Req1, Context1}),
-            {Req2, cb_context:store(Context1,'is_chunked', 'true')}
+        [] -> to_csv(Req, Context);
+        [<<"group">>] -> to_csv(Req, Context);
+        [_|_] -> {Req, Context}
     end.
+
+-spec to_csv(cowboy_req:req(), cb_context:context()) -> payload().
+to_csv(Req, Context) ->
+    Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
+                                ,{<<"content-disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
+                               ]
+                               ,cowboy_req:get('resp_headers', Req)
+                              ),
+    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
+    Context1 = cb_context:store(Context, 'is_csv', 'true'),
+    {Req2, _} = send_chunked_cdrs({Req1, Context1}),
+    {Req2, cb_context:store(Context1,'is_chunked', 'true')}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -165,10 +180,13 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists() -> boolean().
+-spec resource_exists(path_token()) -> boolean().
+-spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(?PATH_LEGS, _) -> 'true';
+resource_exists(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -195,10 +213,17 @@ content_types_provided(Context) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     load_cdr_summary(Context, cb_context:req_nouns(Context)).
+validate(Context, ?PATH_GROUP) ->
+    load_group_cdr_summary(Context, cb_context:req_nouns(Context));
 validate(Context, CDRId) ->
     load_cdr(CDRId, Context).
+validate(Context, ?PATH_LEGS, GroupId) ->
+    load_legs(GroupId, Context);
+validate(Context, _, _) ->
+    cb_context:add_system_error('invalid request', Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -232,6 +257,33 @@ load_cdr_summary(Context, _Nouns) ->
     lager:debug("invalid URL chain for cdr summary request"),
     cb_context:add_system_error('faulty_request', Context).
 
+-spec load_group_cdr_summary(cb_context:context(), req_nouns()) -> cb_context:context().
+load_group_cdr_summary(Context, [_, {?WH_ACCOUNTS_DB, [_]} | _]) ->
+    lager:debug("loading group cdrs for account ~s", [cb_context:account_id(Context)]),
+    case create_view_options('undefined', fun create_group_view_options/4, Context) of
+        {'ok', ViewOptions} ->
+            load_view(?CB_GROUP_LIST
+                      ,props:filter_undefined(ViewOptions)
+                      ,fun group_view_option/2
+                      ,remove_qs_keys(Context)
+                     );
+        Else -> Else
+    end;
+load_group_cdr_summary(Context, [_, {<<"users">>, [UserId] } | _]) ->
+    lager:debug("loading group cdrs for user ~s", [UserId]),
+    case create_view_options(UserId, fun create_group_view_options/4, Context) of
+        {'ok', ViewOptions} ->
+            load_view(?CB_GROUP_LIST_BY_USER
+                      ,props:filter_undefined(ViewOptions)
+                      ,fun group_view_option/2
+                      ,remove_qs_keys(Context)
+                     );
+        Else -> Else
+    end;
+load_group_cdr_summary(Context, _Nouns) ->
+    lager:debug("invalid URL chain for group cdr summary request"),
+    cb_context:add_system_error('faulty_request', Context).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -240,12 +292,18 @@ load_cdr_summary(Context, _Nouns) ->
 -spec create_view_options(api_binary(), cb_context:context()) ->
                                  {'ok', wh_proplist()} |
                                  cb_context:context().
+-spec create_view_options(api_binary(), fun(), cb_context:context()) ->
+                                 {'ok', wh_proplist()} |
+                                 cb_context:context().
 create_view_options(OwnerId, Context) ->
+    create_view_options(OwnerId, fun create_view_options/4, Context).
+
+create_view_options(OwnerId, Fun, Context) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)),
 
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
-            create_view_options(OwnerId, Context, CreatedFrom, CreatedTo);
+            Fun(OwnerId, Context, CreatedFrom, CreatedTo);
         Context1 -> Context1
     end.
 
@@ -261,6 +319,27 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [OwnerId, CreatedTo]}
             ,{'endkey', [OwnerId, CreatedFrom]}
             ,{'limit', pagination_page_size(Context)}
+            ,'descending'
+           ]}.
+
+-spec create_group_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
+                                 {'ok', wh_proplist()}.
+create_group_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', [CreatedTo]}
+            ,{'endkey', [CreatedFrom, wh_json:new()]}
+            ,{'limit', pagination_page_size(Context)}
+            ,{'group', 'true'}
+            ,{'group_level', 2}
+            ,{'reduce', 'true'}
+           ,'descending'
+           ]};
+create_group_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', [OwnerId, CreatedTo]}
+            ,{'endkey', [OwnerId, CreatedFrom, wh_json:new()]}
+            ,{'limit', pagination_page_size(Context)}
+            ,{'group', 'true'}
+            ,{'group_level', 3}
+            ,{'reduce', 'true'}
             ,'descending'
            ]}.
 
@@ -283,27 +362,41 @@ pagination_page_size(Context) ->
 %%--------------------------------------------------------------------
 -spec load_view(ne_binary(), wh_proplist(), cb_context:context()) ->
                        cb_context:context().
+-spec load_view(ne_binary(), wh_proplist(), fun(), cb_context:context()) ->
+                       cb_context:context().
 load_view(View, ViewOptions, Context) ->
+    load_view(View, ViewOptions, fun view_option/2, Context).
+
+load_view(View, ViewOptions, Fun, Context) ->
     AccountId = cb_context:account_id(Context),
 
     ContextChanges =
-        [fun(C) -> cb_context:store(C, 'chunked_dbs', chunked_dbs(AccountId, ViewOptions)) end
+        [fun(C) -> cb_context:store(C, 'chunked_dbs', chunked_dbs(AccountId, ViewOptions, Fun)) end
          ,fun(C) -> cb_context:store(C, 'chunked_view_options', ViewOptions) end
          ,fun(C) -> cb_context:store(C, 'chunked_view', View) end
          ,fun(C) -> cb_context:set_resp_status(C, 'success') end
         ],
     cb_context:setters(Context, ContextChanges).
 
--spec chunked_dbs(ne_binary(), wh_proplist()) -> ne_binaries().
-chunked_dbs(AccountId, ViewOptions) ->
-    To = view_option('startkey',ViewOptions),
-    From = view_option('endkey',  ViewOptions),
+-spec chunked_dbs(ne_binary(), wh_proplist(), fun()) -> ne_binaries().
+chunked_dbs(AccountId, ViewOptions, Fun) ->
+    To = Fun('startkey',ViewOptions),
+    From = Fun('endkey',  ViewOptions),
     kazoo_modb:get_range(AccountId, From, To).
 
 -spec view_option('endkey' | 'startkey', wh_proplist()) -> pos_integer().
 view_option(Key, ViewOptions) ->
     case props:get_value(Key, ViewOptions) of
         [_, Option] -> Option;
+        Option -> Option
+    end.
+
+-spec group_view_option('endkey' | 'startkey', wh_proplist()) -> pos_integer().
+group_view_option(Key, ViewOptions) ->
+    case props:get_value(Key, ViewOptions) of
+        [_, Option, _] -> Option;
+        [Option, _] -> Option;
+        [Option] -> Option;
         Option -> Option
     end.
 
@@ -390,8 +483,8 @@ maybe_add_design_doc(Db) ->
         {'error', 'not_found'} ->
             lager:warning("adding cdr views to modb: ~s", [Db]),
             couch_mgr:revise_doc_from_file(Db
-                                           ,'crossbar'
-                                           ,<<"account/cdrs.json">>
+                                           ,'kazoo_modb'
+                                           ,<<"cdrs.json">>
                                           );
         {'ok', _ } -> 'ok'
     end.
@@ -507,7 +600,13 @@ col_to(JObj, _Timestamp) -> wh_json:get_value(<<"to">>, JObj, <<>>).
 col_from(JObj, _Timestamp) -> wh_json:get_value(<<"from">>, JObj, <<>>).
 col_call_direction(JObj, _Timestamp) -> wh_json:get_value(<<"call_direction">>, JObj, <<>>).
 col_request(JObj, _Timestamp) -> wh_json:get_value(<<"request">>, JObj, <<>>).
-col_authorizing_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>).
+col_authorizing_id(JObj, _Timestamp) ->
+    case {wh_json:get_value([<<"custom_channel_vars">>, <<"account_id">>], JObj, <<>>),
+          wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)}
+    of
+        {A, A} -> <<>>;
+        {_A, B} -> B
+    end.
 col_customer_cost(JObj, _Timestamp) -> wh_util:to_binary(customer_cost(JObj)).
 
 col_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
@@ -598,6 +697,25 @@ load_cdr(?MATCH_MODB_PREFIX(Year,Month,_) = CDRId, Context) ->
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load a Legs for a cdr group from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec load_legs(ne_binary(), cb_context:context()) -> cb_context:context().
+load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
+    AccountId = cb_context:account_id(Context),
+    AcctDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    Context1 = cb_context:set_account_db(Context, AcctDb),
+    case couch_mgr:open_cache_doc(AcctDb, DocId) of
+        {'ok', JObj} -> load_legs(wh_json:get_value(<<"group_id">>, JObj), Context1);
+        _ -> lager:debug("error loading legs for cdr id ~p", [DocId]),
+             crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context1)
+    end;
+load_legs(_GroupId, Context) ->
+    crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
