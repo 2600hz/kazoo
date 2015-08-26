@@ -16,7 +16,7 @@
 -module(cb_cdrs).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1
          ,validate/1, validate/2, validate/3
@@ -37,6 +37,7 @@
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 -define(CB_GROUP_LIST, <<"cdrs/group_listing">>).
 -define(CB_GROUP_LIST_BY_USER, <<"cdrs/group_listing_by_owner">>).
+-define(CB_GROUP_LIST_BY_ID, <<"cdrs/group_listing_by_id">>).
 
 -define(PATH_GROUP, <<"group">>).
 -define(PATH_LEGS, <<"legs">>).
@@ -167,10 +168,14 @@ to_csv(Req, Context) ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
     [?HTTP_GET].
+allowed_methods(?PATH_LEGS, _) ->
+    [?HTTP_GET];
+allowed_methods(_ , _) -> [].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -701,7 +706,7 @@ load_cdr(CDRId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a Legs for a cdr group from the database
+%% Load Legs for a cdr group from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_legs(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -714,8 +719,16 @@ load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
         _ -> lager:debug("error loading legs for cdr id ~p", [DocId]),
              crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context1)
     end;
-load_legs(_GroupId, Context) ->
-    crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context).
+load_legs(GroupId, Context) ->
+    Options = ['include_docs'
+               ,{'startkey', [GroupId]}
+               ,{'endkey', [GroupId, wh_json:new()]}
+              ],
+    crossbar_doc:load_view(?CB_GROUP_LIST_BY_ID, Options, Context, fun normalize_leg_view_results/2).
+
+-spec normalize_leg_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_leg_view_results(JObj, Acc) ->
+    Acc ++ [wh_json:get_value(<<"doc">>, JObj)].
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

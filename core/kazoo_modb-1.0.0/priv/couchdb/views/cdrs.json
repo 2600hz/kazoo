@@ -17,7 +17,7 @@
             "reduce": "function(keys, values, rereduce) {    if (rereduce) { return values.reduce(function(a, b) { return a == null ? b : b == null ? a : a.channel_time < b.channel_time ? a : b }) } else { v = values.reduce(function(a, b) { return a == null ? b : b == null ? a : a.channel_time < b.channel_time ? a : b }); return v; }}"
         },
         "group_listing_by_id": {
-            "map": "function(doc) { if(doc.pvt_type != 'cdr' || doc.pvt_deleted) return; emit(doc.group_id, null)}"
+            "map": "function(doc) { if(doc.pvt_type != 'cdr' || doc.pvt_deleted) return; emit([doc.group_id, doc.channel_created_time], null)}"
         }
     }
 }
