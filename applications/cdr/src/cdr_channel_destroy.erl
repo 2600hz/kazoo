@@ -170,11 +170,15 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
 set_group(_AccountId, _Timestamp, JObj) ->
     GroupKey = [<<"custom_channel_vars">>, <<"call_group_id">>],
     <<Time:11/binary, "-", Key/binary>> = Group = wh_json:get_value(GroupKey, JObj),
+    Timestamp = wh_util:to_integer(Time),
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    CallId = wh_json:get_value(<<"call_id">>, JObj),
+    DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     wh_json:set_values(
-      [{<<"group_time">>, wh_util:to_integer(Time)}
+      [{<<"group_time">>, Timestamp}
        ,{<<"group_key">>, Key}
        ,{<<"group_id">>, Group}
-      ], wh_json:delete_key(GroupKey, JObj)
+      ], wh_json:delete_key(GroupKey, wh_doc:set_id(JObj, DocId))
       ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
