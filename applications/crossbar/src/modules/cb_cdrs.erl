@@ -116,7 +116,7 @@ to_json(Req, Context) ->
                              ,"}"
                             ], Req3),
     {Req3, cb_context:store(Context1, 'is_chunked', 'true')}.
-    
+
 
 -spec pagination(payload()) -> payload().
 pagination({Req, Context}=Payload) ->
