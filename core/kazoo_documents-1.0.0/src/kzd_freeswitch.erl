@@ -10,6 +10,9 @@
 
 -export([caller_id_name/1, caller_id_name/2
          ,caller_id_number/1, caller_id_number/2
+         ,callee_id_name/1, callee_id_name/2
+         ,callee_id_number/1, callee_id_number/2
+         ,dialed_number/1
          ,call_id/1
          ,other_leg_call_id/1
          ,call_direction/1
@@ -24,6 +27,7 @@
          ,disposition/1
 
          ,transfer_history/1
+         ,transfer_source/1
 
          ,authorizing_id/1
          ,authorizing_type/1
@@ -69,6 +73,38 @@ caller_id_number(Props, Default) ->
                             ]
                             ,Props
                             ,Default
+                           ).
+
+-spec callee_id_name(wh_proplist()) -> api_binary().
+-spec callee_id_name(wh_proplist(), Default) -> ne_binary() | Default.
+callee_id_name(Props) ->
+    callee_id_name(Props, 'undefined').
+callee_id_name(Props, Default) ->
+    props:get_first_defined([<<"variable_effective_callee_id_name">>
+                             ,<<"Caller-Callee-ID-Name">>
+                            ]
+                            ,Props
+                            ,Default
+                           ).
+
+-spec callee_id_number(wh_proplist()) -> api_binary().
+-spec callee_id_number(wh_proplist(), Default) -> ne_binary() | Default.
+callee_id_number(Props) ->
+    callee_id_number(Props, 'undefined').
+callee_id_number(Props, Default) ->
+    props:get_first_defined([<<"variable_effective_callee_id_number">>
+                             ,<<"Caller-Callee-ID-Number">>
+                            ]
+                            ,Props
+                            ,Default
+                           ).
+
+-spec dialed_number(wh_proplist()) -> api_binary().
+dialed_number(Props) ->
+    props:get_first_defined([<<"variable_destination_number">>
+                             ,<<"Caller-Destination-Number">>
+                            ]
+                            ,Props
                            ).
 
 -spec call_id(wh_proplist()) -> api_binary().
@@ -197,6 +233,10 @@ hangup_cause(Props) ->
 -spec transfer_history(wh_proplist()) -> api_binary().
 transfer_history(Props) ->
     props:get_value(<<"variable_transfer_history">>, Props).
+
+-spec transfer_source(wh_proplist()) -> api_binary().
+transfer_source(Props) ->
+    props:get_value(<<"variable_transfer_source">>, Props).
 
 -spec raw_application_name(wh_proplist()) -> api_binary().
 raw_application_name(Props) ->
