@@ -1,3 +1,4 @@
+**[Join us in San Francisco this October 5th and 6th for the next evolution of the telcom revolution!](http://kazoocon.com/)**
 
 ````
     ... ........                                                
