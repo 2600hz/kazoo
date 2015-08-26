@@ -273,9 +273,7 @@ validate_req(Context, ?HTTP_GET) ->
 validate_blacklist(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
-    case wh_services:is_reseller(AuthAccountId)
-        andalso wh_util:is_in_account_hierarchy(AuthAccountId, AccountId)
-    of
+    case wh_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
         'false' -> cb_context:add_system_error('forbidden', Context);
         'true' -> load_apps_store(Context)
     end.
