@@ -230,11 +230,11 @@ hangup_cause(Props) ->
                                     ], Props)
     end.
 
--spec transfer_history(wh_proplist()) -> api_binary().
+-spec transfer_history(wh_proplist()) -> api_binary() | wh_proplist().
 transfer_history(Props) ->
     props:get_value(<<"variable_transfer_history">>, Props).
 
--spec transfer_source(wh_proplist()) -> api_binary().
+-spec transfer_source(wh_proplist()) -> api_binary() | wh_proplist().
 transfer_source(Props) ->
     props:get_value(<<"variable_transfer_source">>, Props).
 
