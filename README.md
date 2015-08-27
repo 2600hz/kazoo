@@ -148,8 +148,9 @@ If you have a non-US deployment, please consider sharing your system configurati
 
 ## Build Dependencies
 
-* R15B ≤ erlang ≤ R16B
-    * Note that due to an issue with `parse_transform`s, R16B03 won't build ([merl](deps/merl-28e5b3829168199e8475fa91b997e0c03b90d280) needs update)
+* R15B ≤ erlang ≤ 17.5
+    * Note: due to an issue with `parse_transform`s, R16B03 won't build ([merl](deps/merl-28e5b3829168199e8475fa91b997e0c03b90d280) needs update)
+    * Note: to build on 17.* Erlang releases you may need to set `ERLC_OPTS` to `'+nowarn_deprecated_type +nowarn_deprecated_function'` (see .travis.yml for more info)
 * python2
 * libxslt
 * gcc-c++

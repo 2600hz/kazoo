@@ -11,7 +11,7 @@ EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/core/kazoo_documents-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = -Werror +debug_info +warn_export_all -pa ebin $(PA)
+ERLC_OPTS += -Werror +debug_info +warn_export_all -pa ebin $(PA)
 
 .PHONY: all compile clean
 
