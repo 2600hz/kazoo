@@ -119,10 +119,10 @@ acquire(Number) ->
     DryRun = knm_phone_number:dry_run(PhoneNumber),
     acquire(Number, Module, DryRun).
 
-acquire(Number, 'undefined', _DryRun) ->
-    knm_errors:carrier_not_specified(Number);
 acquire(Number, _Mod, 'true') ->
     Number;
+acquire(Number, 'undefined', _DryRun) ->
+    knm_errors:carrier_not_specified(Number);
 acquire(Number, ?NE_BINARY = Mod, 'false') ->
     Module = carrier_module(Mod),
     Module:acquire_number(Number).
