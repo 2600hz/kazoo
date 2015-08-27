@@ -17,5 +17,8 @@
 
 -define(KNM_USER_AGENT, "Kazoo Number Manager 1.0.0").
 
+-define(TEST_CREATE_NUM, <<"5559871234">>).
+-define(TEST_EXISTING_NUM, <<"+15551239876">>).
+
 -define(KNM_HRL, 'true').
 -endif.
