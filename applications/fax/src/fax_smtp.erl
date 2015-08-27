@@ -802,11 +802,11 @@ maybe_process_image(CT, Body, Size, State) ->
     end.
 
 -spec write_tmp_file(ne_binary(), binary() | mimemail:mimetuple()) ->
-    {'ok', api_binary()}
-    | {'error', any()}.
--spec write_tmp_file(ne_binary() | 'undefined' , ne_binary(), binary() | mimemail:mimetuple()) ->
-    {'ok', api_binary()}
-    | {'error', any()}.
+                            {'ok', api_binary()} |
+                            {'error', any()}.
+-spec write_tmp_file(api_binary() , ne_binary(), binary() | mimemail:mimetuple()) ->
+                            {'ok', api_binary()} |
+                            {'error', any()}.
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).
 
@@ -815,7 +815,7 @@ write_tmp_file('undefined', Extension, Body) ->
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file(Filename, Extension, Body) ->
     File = <<Filename/binary, ".", Extension/binary>>,
-    case wh_util:write_file(File, Body) of
+    case file:write_file(File, Body, []) of
         'ok' -> {'ok', File};
         {'error', _}=Error ->
             lager:debug("error writing file ~s : ~p", [Filename, Error]),
