@@ -300,9 +300,10 @@ clear_numbers_from_port(PortReq) ->
 %%--------------------------------------------------------------------
 -spec enable_number(ne_binary()) -> boolean().
 enable_number(Num) ->
-    case knm_number:change_state(Num, ?NUMBER_STATE_IN_SERVICE) of
-        {'ok', _} -> 'true';
-        {'error', _R} ->
+    try knm_number_states:to_state(Num, ?NUMBER_STATE_IN_SERVICE) of
+        _Number -> 'true'
+    catch
+        'throw':_R ->
             lager:error("failed to enable number ~s : ~p", [Num, _R]),
             'false'
     end.

@@ -123,9 +123,12 @@ delete([Num|Nums], Options, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_state(wh_proplist()) -> numbers_return().
--spec change_state(wh_proplist(), wh_proplist()) -> numbers_return().
--spec change_state(wh_proplist(), wh_proplist(), numbers_return()) -> numbers_return().
+-spec change_state(wh_proplist()) ->
+                          numbers_return().
+-spec change_state(wh_proplist(), wh_proplist()) ->
+                          numbers_return().
+-spec change_state(wh_proplist(), wh_proplist(), numbers_return()) ->
+                          numbers_return().
 change_state(Props) ->
     change_state(Props, knm_phone_number:default_options()).
 
@@ -134,9 +137,12 @@ change_state(Props, Options) ->
 
 change_state([], _Options, Acc) -> Acc;
 change_state([{Num, State}|Props], Options, Acc) ->
-    Return  = knm_number:change_state(Num, State, Options),
-    change_state(Props, Options, [{Num, Return}|Acc]).
-
+    try knm_number_states:to_state(Num, State, Options) of
+        Number -> change_state(Props, Options, [{Num, {'ok', Number}}|Acc])
+    catch
+        'throw':R ->
+            change_state(Props, Options, [{Num, R} | Acc])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -207,18 +213,19 @@ check_to_free_number(AccountId, Number) ->
 
 -spec check_to_free_number(ne_binary(), knm_number:knm_number(), api_binary()) -> 'ok'.
 check_to_free_number(AccountId, Number, AccountId) ->
-    case knm_number:change_state(Number, ?NUMBER_STATE_RELEASED) of
-        {'ok', _} ->
+    try knm_number_states:to_state(Number, ?NUMBER_STATE_RELEASED) of
+        _Number ->
             lager:debug("released ~s for account ~s"
                         ,[knm_phone_number:number(knm_number:phone_number(Number))
                           ,AccountId
                          ]
-                       );
-        {'error', _E} ->
+                       )
+    catch
+        'throw':_R ->
             lager:debug("failed to release ~s for account ~s: ~p"
                         ,[knm_phone_number:number(knm_number:phone_number(Number))
                           ,AccountId
-                          ,_E
+                          ,_R
                          ]
                        )
     end;
