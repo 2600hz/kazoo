@@ -45,8 +45,7 @@ find_numbers(Prefix, Quantity, Opts) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            {'ok', knm_number:knm_number()}.
-
+                            knm_number:knm_number().
 acquire_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     DID = knm_phone_number:number(PhoneNumber),
@@ -80,7 +79,8 @@ acquire_number(Number) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number_return().
+-spec disconnect_number(knm_number:knm_number()) ->
+                               knm_number:knm_number().
 disconnect_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     DID = knm_phone_number:number(PhoneNumber),
@@ -391,7 +391,7 @@ get_routesip() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec query_vitelity(knm_number:knm_number(), ne_binary()) ->
-                            {'ok', knm_number:knm_number()}.
+                            knm_number:knm_number().
 query_vitelity(Number, URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
@@ -410,7 +410,7 @@ query_vitelity(Number, URI) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_resp(knm_number:knm_number(), text()) ->
-                              {'ok', knm_number:knm_number()}.
+                              knm_number:knm_number().
 process_xml_resp(Number, XML) ->
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
@@ -427,7 +427,7 @@ process_xml_resp(Number, XML) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_xml_content_tag(knm_number:knm_number(), xml_el()) ->
-                                     {'ok', knm_number:knm_number()}.
+                                     knm_number:knm_number().
 process_xml_content_tag(Number, #xmlElement{name='content'
                                             ,content=Children
                                            }) ->
@@ -439,7 +439,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
             knm_errors:unspecified(Msg, Number);
         <<"ok">> ->
             lager:debug("successful provisioning"),
-            {'ok', Number}
+            Number
     end.
 
 %%--------------------------------------------------------------------

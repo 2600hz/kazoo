@@ -86,14 +86,13 @@ process_numbers_search_resp(Xml) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            {'ok', knm_number:knm_number()}.
-
+                            knm_number:knm_number().
 acquire_number(Number) ->
     Debug = whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true'),
     case whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true') of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
-            {'ok', Number};
+            Number;
         'false' ->
             knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
@@ -101,7 +100,7 @@ acquire_number(Number) ->
     end.
 
 -spec acquire_and_provision_number(knm_number:knm_number()) ->
-                                          {'ok', knm_number:knm_number()}.
+                                          knm_number:knm_number().
 acquire_and_provision_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
@@ -138,7 +137,8 @@ acquire_and_provision_number(Number) ->
             Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
             Data = number_order_response_to_json(Response),
             knm_number:set_phone_number(
-              knm_phone_number:set_carrier_data(PhoneNumber, Data)
+              Number
+              ,knm_phone_number:set_carrier_data(PhoneNumber, Data)
              )
     end.
 
@@ -149,9 +149,8 @@ acquire_and_provision_number(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->
-                               {'ok', knm_number:knm_number()}.
-disconnect_number(Number) ->
-    {'ok', Number}.
+                               knm_number:knm_number().
+disconnect_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @public

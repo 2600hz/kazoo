@@ -110,8 +110,8 @@ list_modules() ->
 %% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec acquire(knm_phone_number:knm_number()) -> knm_number:knm_number().
--spec acquire(knm_phone_number:knm_number(), ne_binary(), boolean()) ->
+-spec acquire(knm_number:knm_number()) -> knm_number:knm_number().
+-spec acquire(knm_number:knm_number(), ne_binary(), boolean()) ->
                      knm_number:knm_number().
 acquire(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -123,10 +123,9 @@ acquire(Number, 'undefined', _DryRun) ->
     knm_errors:carrier_not_specified(Number);
 acquire(Number, _Mod, 'true') ->
     Number;
-acquire(Number, <<_/binary>> = Mod, 'false') ->
-    Module = wh_util:to_atom(Mod, 'true'),
-    {'ok', Number1} = Module:acquire_number(Number),
-    Number1.
+acquire(Number, ?NE_BINARY = Mod, 'false') ->
+    Module = carrier_module(Mod),
+    Module:acquire_number(Number).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,11 +133,18 @@ acquire(Number, <<_/binary>> = Mod, 'false') ->
 %% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect(knm_phone_number:knm_number()) -> number_return().
+-spec disconnect(knm_number:knm_number()) ->
+                        knm_number:knm_number().
 disconnect(Number) ->
-    Mod = knm_phone_number:module_name(Number),
-    Module = wh_util:to_atom(Mod, 'true'),
+    Module = carrier_module(Number),
     Module:disconnect_number(Number).
+
+-spec carrier_module(knm_number:knm_number() | ne_binary()) -> atom().
+carrier_module(?NE_BINARY = Module) ->
+    wh_util:to_atom(Module, 'true');
+carrier_module(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    carrier_module(knm_phone_number:module_name(PhoneNumber)).
 
 %%%===================================================================
 %%% Internal functions
