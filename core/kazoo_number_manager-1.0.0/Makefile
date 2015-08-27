@@ -6,7 +6,7 @@ EBINS = $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/core/kazoo_number_manager-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = -Werror +debug_info +warn_export_all $(PA)
+ERLC_OPTS = -Werror +debug_info $(PA)
 
 .PHONY: all compile clean
 
@@ -26,7 +26,7 @@ compile: ebin/$(PROJECT).app json
 
 ebin/$(PROJECT).app: src/*.erl src/carriers/*.erl src/providers/*.erl src/converters/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+	erlc -v $(ERLC_OPTS) +warn_export_all -o ebin/ -pa ebin/ $?
 
 json: JSON = $(shell find priv/ -name *.json -print)
 json:
