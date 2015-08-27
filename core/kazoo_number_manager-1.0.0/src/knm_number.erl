@@ -190,11 +190,24 @@ ensure_account_can_create(Props) ->
     case props:get_value(<<"auth_by">>, Props) of
         'undefined' -> knm_errors:unauthorized();
         AccountId ->
-            {'ok', JObj} = kz_account:fetch(AccountId),
-            case kz_account:allow_number_additions(JObj) of
-                'true' -> 'true';
-                'false' -> knm_errors:unauthorized()
-            end
+            ensure_account_is_allowed_to_create(Props, AccountId)
+    end.
+
+-ifdef(TEST).
+-define(LOAD_ACCOUNT(Props, _AccountId)
+        ,{'ok', props:get_value(<<"auth_by_account">>, Props)}
+       ).
+-else.
+-define(LOAD_ACCOUNT(_Props, AccountId)
+        ,kz_account:fetch(AccountId)
+       ).
+-endif.
+
+ensure_account_is_allowed_to_create(_Props, _AccountId) ->
+    {'ok', JObj} = ?LOAD_ACCOUNT(_Props, _AccountId),
+    case kz_account:allow_number_additions(JObj) of
+        'true' -> 'true';
+        'false' -> knm_errors:unauthorized()
     end.
 
 -spec ensure_number_is_not_porting(ne_binary()) -> 'true'.
