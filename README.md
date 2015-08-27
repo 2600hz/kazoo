@@ -148,8 +148,9 @@ If you have a non-US deployment, please consider sharing your system configurati
 
 ## Build Dependencies
 
-* erlang R15+
-* python-simplejson
+* R15B ≤ erlang < 18
+    * Note that due to an issue with `parse_transform`s, R16B03 won't build ([merl](deps/merl-28e5b3829168199e8475fa91b997e0c03b90d280) needs update)
+* python2
 * libxslt
 * gcc-c++
 * zip
