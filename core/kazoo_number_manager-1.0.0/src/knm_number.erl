@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(knm_number).
 
@@ -29,6 +30,10 @@
          ,errors/1
          ,charges/2, set_charges/3
         ]).
+
+-ifdef(TEST).
+-compile(export_all).
+-endif.
 
 -include("knm.hrl").
 
@@ -156,7 +161,8 @@ create_available(PhoneNumber, _AuthBy) ->
 
 -spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
-    Number.
+    Routines = [fun knm_providers:save/1],
+    apply_number_routines(Number, Routines).
 
 -spec dry_run_or_number(knm_number()) ->
                                dry_run_return() |
@@ -239,7 +245,7 @@ move(Num, MoveTo, Options) ->
                         ,{fun knm_phone_number:set_prev_assigned_to/2, AssignedTo}
                         ,fun knm_phone_number:save/1
                        ],
-            apply_routines(Number, Routines)
+            apply_phone_number_routines(Number, Routines)
     end.
 
 %%--------------------------------------------------------------------
@@ -455,9 +461,9 @@ buy(Num, Account, Options) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec apply_routines(knm_number(), knm_phone_number:set_functions()) ->
-                            knm_number_return().
-apply_routines(Number, Routines) ->
+-spec apply_phone_number_routines(knm_number(), knm_phone_number:set_functions()) ->
+                                         knm_number_return().
+apply_phone_number_routines(Number, Routines) ->
     wrap_phone_number_return(
       knm_phone_number:setters(phone_number(Number), Routines)
       ,Number
