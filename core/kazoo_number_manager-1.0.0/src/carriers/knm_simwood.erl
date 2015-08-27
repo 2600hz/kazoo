@@ -53,8 +53,7 @@ find_numbers(Prefix, Quantity, _Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            {'ok', knm_number:knm_number()}.
-
+                            knm_number:knm_number().
 acquire_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num =
@@ -64,7 +63,7 @@ acquire_number(Number) ->
         end,
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Num)]),
     case query_simwood(URL, 'put') of
-        {'ok', _Body} -> {'ok', Number};
+        {'ok', _Body} -> Number;
         {'error', Error} -> knm_errors:unspecified(Error, Number)
     end.
 
@@ -74,7 +73,8 @@ acquire_number(Number) ->
 %% Return number back to Simwood.com
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number_return().
+-spec disconnect_number(knm_number:knm_number()) ->
+                               knm_number:knm_number().
 disconnect_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num =
@@ -84,8 +84,8 @@ disconnect_number(Number) ->
         end,
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, wh_util:to_binary(Num)]),
     case query_simwood(URL, 'delete') of
-        {'ok', _Body} -> {'ok', Number};
-        {'error', _R}=Error -> Error
+        {'ok', _Body} -> Number;
+        {'error', Error} -> knm_errors:unspecified(Error, Number)
     end.
 
 %%--------------------------------------------------------------------

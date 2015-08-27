@@ -93,8 +93,7 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            {'ok', knm_number:knm_number()}.
-
+                            knm_number:knm_number().
 acquire_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     DefaultCountry = whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
@@ -329,7 +328,7 @@ format_blocks_resp_fold([{Num, JObj}|T], Numbers) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec format_acquire_resp(knm_number:knm_number(), wh_json:object()) ->
-                                 {'ok', knm_number:knm_number()}.
+                                 knm_number:knm_number().
 format_acquire_resp(Number, Body) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     JObj = wh_json:get_value([<<"data">>, Num], Body, wh_json:new()),
@@ -338,11 +337,10 @@ format_acquire_resp(Number, Body) ->
             Routines = [fun maybe_merge_opaque/2
                         ,fun maybe_merge_locality/2
                        ],
-            Number1 = lists:foldl(fun(F, N) -> F(JObj, N) end
-                                  ,Number
-                                  ,Routines
-                                 ),
-            {'ok', Number1};
+            lists:foldl(fun(F, N) -> F(JObj, N) end
+                        ,Number
+                        ,Routines
+                       );
         Error ->
             lager:error("number lookup resp error: ~p", [Error]),
             knm_errors:unspecified('lookup_resp_error', Number)

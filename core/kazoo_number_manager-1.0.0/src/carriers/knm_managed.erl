@@ -100,7 +100,7 @@ is_number_billable(_Number) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            {'ok', knm_number:knm_number()}.
+                            knm_number:knm_number().
 acquire_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num = knm_phone_number:number(PhoneNumber),
@@ -117,7 +117,8 @@ acquire_number(Number) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number_return().
+-spec disconnect_number(knm_number:knm_number()) ->
+                               knm_number:knm_number().
 disconnect_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("disconnect number ~s in managed provider", [Num]),
@@ -175,19 +176,17 @@ save_doc(JObj) ->
     end.
 
 -spec update_doc(knm_number:knm_number(), wh_proplist()) ->
-                        {'ok', knm_number:knm_number()}.
+                        knm_number:knm_number().
 update_doc(Number, UpdateProps) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case couch_mgr:update_doc(?WH_MANAGED, wh_doc:id(Doc), UpdateProps) of
         {'error', Error} ->
             knm_errors:unspecified(Error, Number);
         {'ok', UpdatedDoc} ->
-            {'ok'
-             ,knm_number:set_phone_number(
-                Number
-                ,knm_phone_number:from_json(UpdatedDoc)
-               )
-            }
+            knm_number:set_phone_number(
+              Number
+              ,knm_phone_number:from_json(UpdatedDoc)
+             )
     end.
 
 -spec create_managed_db() -> 'ok'.
