@@ -130,7 +130,6 @@ If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and
 
 `SS(###) ### - *` : this sample will convert numbers in the format of +14158867900 to (415) 886 - 7900
 
-
 # Per-Account dial plans
 
 Users can dial local numbers, just as they do with the PSTN, by providing Kazoo with `dial_plan` regular expressions. These regexes will be used on the dialed numbers to correct them to properly routable numbers.
@@ -182,6 +181,24 @@ Using the PATCH HTTP verb, you can add the `dial_plan` object to an existing doc
 
 You can, of course, POST the full document with the added `dial_plan` object.
 
+### System dial plans
+
+It is possible to add dial plans to system config. Account/user/device `dial_plan` can refer to it adding array of system dial plan names at key `system`.
+
+#### Adding system `dialplan` example
+
+    curl -X POST -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/system_configs/dialplans -d '{"data":{"^(2\\d{6}$":{"prefix":"+7383","name":"Novosibirsk"}}}'
+
+#### Using system `dialplan` example
+
+    curl -X PATCH -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID} -d '{"data":{"dial_plan":{"system":["Novosibirsl"]}}}'
+
+### Available system dial plans
+
+All users can view available system dial plans.
+
+    curl -X GET -H "Content-Type: application/json" -H "X-Auth-Token": {AUTH_TOKEN}" http://server.com:8000/v2/dialplans
+
 ### Caches to flush
 
 Changes made via Crossbar *should* flush the appropriate caches automatically. If you make changes to the database directly, or aren't seeing your changes via Crossbar reflected, the following `sup` commands should flush the appropriate caches.
@@ -194,3 +211,4 @@ Execute on VMs running:
     * `sup callflow_maintenance flush`
 
 If you make a change to `system_config`, execute `sup whapps_config flush [{CONFIG_DOC}]`
+
