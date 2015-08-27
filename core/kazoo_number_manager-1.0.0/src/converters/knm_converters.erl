@@ -21,7 +21,12 @@
 
 -define(DEFAULT_CONVERTERS, [<<"regex">>]).
 -define(DEFAULT_CONVERTER, whapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, <<"regex">>)).
+
+-ifdef(TEST).
+-define(CONVERTER_MOD, 'knm_converter_regex').
+-else.
 -define(CONVERTER_MOD, wh_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
+-endif.
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).

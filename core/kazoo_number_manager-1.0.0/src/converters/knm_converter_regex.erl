@@ -139,7 +139,12 @@ apply_dialplan(Number, DialPlan, [Regex|Rs]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
 -spec get_e164_converters() -> wh_json:object().
+-ifdef(TEST).
+get_e164_converters() ->
+    wh_json:from_list(?DEFAULT_E164_CONVERTERS).
+-else.
 get_e164_converters() ->
     Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
     try whapps_config:get(?KNM_CONFIG_CAT
@@ -151,6 +156,7 @@ get_e164_converters() ->
     catch
         _:_ -> Default
     end.
+-endif.
 
 -spec get_e164_converters(ne_binary()) -> wh_json:object().
 get_e164_converters(AccountId) ->
