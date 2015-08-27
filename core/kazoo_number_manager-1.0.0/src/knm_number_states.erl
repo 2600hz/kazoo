@@ -63,7 +63,8 @@ to_reserved(Number, ?NUMBER_STATE_AVAILABLE) ->
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    Number;
+    Routines = [fun authorize/1],
+    apply_transitions(Number, Routines);
 to_reserved(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_RESERVED).
 
