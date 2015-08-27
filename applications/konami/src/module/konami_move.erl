@@ -99,7 +99,7 @@ get_originate_req(Data, Call) ->
             'b' -> {find_device_id_for_leg(SourceOfDTMF), whapps_call:call_id(Call)}
         end,
 
-    DeviceOwnerId = cf_attributes:owner_ids(SourceDeviceId, Call),
+    DeviceOwnerId = cf_attributes:owner_id(SourceDeviceId, Call),
     OwnerId = wh_json:get_value(<<"owner_id">>, Data, DeviceOwnerId),
     Endpoints = build_endpoints(SourceDeviceId, OwnerId, Params, Call),
     build_originate(Endpoints, TargetCallId, Call).
