@@ -21,7 +21,7 @@ VERSION ?= 0.0.0
 ERL ?= erl
 ERL_OPTS ?=
 ERLC ?= erlc
-ERLC_OPTS ?= -Wall +debug_info
+ERLC_OPTS += -Wall +debug_info
 TMPDIR ?= /tmp
 
 NODENAME ?= rabbit-test

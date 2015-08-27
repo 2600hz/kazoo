@@ -36,7 +36,7 @@
                             ,email :: ne_binary()
                             ,public_key_fingerprints :: ne_binary()
                             ,public_key :: term()
-                            ,private_key :: rsa_private_key() | dsa_private_key()
+                            ,private_key :: public_key:rsa_private_key() | public_key:dsa_private_key()
                             ,provider :: oauth_provider()
                            }).
 -type oauth_service_app() :: #oauth_service_app{}.
