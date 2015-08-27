@@ -7,7 +7,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(wnm_util_test).
+-module(knm_util_test).
 
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").
@@ -24,7 +24,7 @@ prop_to_npan() ->
             ,range(2002000000,19999999999)
             ,begin
                  BinNum = wh_util:to_binary(Number),
-                 NPAN = wnm_util:to_npan(BinNum),
+                 NPAN = knm_converter_regex:to_npan(BinNum),
                  case byte_size(BinNum) of
                      11 -> BinNum =:= <<"1", NPAN/binary>>;
                      _ -> NPAN =:= BinNum
@@ -38,7 +38,7 @@ prop_to_1npan() ->
             ,range(2002000000,19999999999)
             ,begin
                  BinNum = wh_util:to_binary(Number),
-                 OneNPAN = wnm_util:to_1npan(BinNum),
+                 OneNPAN = knm_converter_regex:to_1npan(BinNum),
                  case byte_size(BinNum) of
                      11 -> OneNPAN =:= BinNum;
                      _ -> OneNPAN =:= <<"1", BinNum/binary>>
@@ -76,14 +76,26 @@ proper_test_() ->
 to_e164_test() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
     Ans = <<"+12234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(knm_converters:normalize(N), Ans) end, Ns).
+    lists:foreach(fun(N) ->
+                          ?assertEqual(Ans, knm_converters:normalize(N))
+                  end
+                  ,Ns
+                 ).
 
 to_npan_test() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
     Ans = <<"2234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(wnm_util:to_npan(N), Ans) end, Ns).
+    lists:foreach(fun(N) ->
+                          ?assertEqual(Ans, knm_converter_regex:to_npan(N))
+                  end
+                  ,Ns
+                 ).
 
 to_1npan_test() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
     Ans = <<"12234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(wnm_util:to_1npan(N), Ans) end, Ns).
+    lists:foreach(fun(N) ->
+                          ?assertEqual(Ans, knm_converter_regex:to_1npan(N))
+                  end
+                  ,Ns
+                 ).
