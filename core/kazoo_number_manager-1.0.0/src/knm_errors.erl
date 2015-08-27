@@ -57,7 +57,7 @@ service_restriction(Message) ->
 carrier_not_specified(Number) ->
     throw({'error', 'carrier_not_specified', Number}).
 
--spec unspecified(atom() | ne_binary(), knm_number:knm_number()) ->
+-spec unspecified(atom() | ne_binary(), knm_number:knm_number() | ne_binary()) ->
                          no_return().
 unspecified(Error, Number) ->
     throw({'error', Error, Number}).
