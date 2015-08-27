@@ -268,7 +268,7 @@ create_group_member(Key, Endpoint, GroupWeight, Member) ->
 
 -spec weighted_random_sort(wh_proplist()) -> wh_json:objects().
 weighted_random_sort(Endpoints) ->
-    random:seed(os:timestamp()),
+    _ = random:seed(os:timestamp()),
     WeightSortedEndpoints = lists:sort(Endpoints),
     weighted_random_sort(WeightSortedEndpoints, []).
 
