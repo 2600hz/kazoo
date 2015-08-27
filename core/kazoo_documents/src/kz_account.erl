@@ -327,20 +327,10 @@ set_superduper_admin(JObj, IsAdmin) ->
 allow_number_additions(JObj) ->
     wh_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec set_allow_number_additions(doc(), boolean()) -> doc().
 set_allow_number_additions(JObj, IsAllowed) ->
-    wh_json:set_value(?ALLOW_NUMBER_ADDITIONS, IsAllowed, JObj).
+    wh_json:set_value(?ALLOW_NUMBER_ADDITIONS, wh_util:is_true(IsAllowed), JObj).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec trial_expiration(doc()) -> api_integer().
 -spec trial_expiration(doc(), Default) -> integer() | Default.
 trial_expiration(JObj) ->
