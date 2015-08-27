@@ -56,7 +56,12 @@ to_reserved(Number, ?NUMBER_STATE_DISCOVERY) ->
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_AVAILABLE) ->
-    Number;
+    Routines = [fun authorize/1
+                ,fun update_reserve_history/1
+                ,fun move_to_reserved_state/1
+                ,fun knm_services:activate_phone_number/1
+               ],
+    apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_IN_SERVICE) ->
     Number;
 to_reserved(Number, State) ->
