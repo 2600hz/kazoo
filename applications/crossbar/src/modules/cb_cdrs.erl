@@ -124,7 +124,7 @@ pagination({Req, Context}=Payload) ->
     'ok' = cowboy_req:chunk(<<", \"page_size\": ", (wh_util:to_binary(PageSize))/binary>>, Req),
     IsGroup = cb_context:fetch(Context, 'group', 'false'),
     case pagination_key(IsGroup, 'next_start_key', Context) of
-        'undefined' -> 'ok';
+        'ok' -> 'ok';
         Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (wh_util:to_binary(Next))/binary, "\"">>, Req)
     end,
     StartKey = pagination_key(IsGroup, 'start_key', Context),
