@@ -100,7 +100,7 @@ to_json({Req, Context}) ->
     Nouns = cb_context:req_nouns(Context),
     case props:get_value(<<"cdrs">>, Nouns, []) of
         [] -> to_json(Req, Context);
-        [<<"group">>] -> to_json(Req, Context);
+        [<<"group">>] -> to_json(Req, cb_context:store(Context, 'group', 'true'));
         [_|_] -> {Req, Context}
     end.
 
@@ -118,23 +118,35 @@ to_json(Req, Context) ->
                             ], Req3),
     {Req3, cb_context:store(Context1, 'is_chunked', 'true')}.
 
-
 -spec pagination(payload()) -> payload().
 pagination({Req, Context}=Payload) ->
     PageSize = cb_context:fetch(Context, 'page_size', 0),
     'ok' = cowboy_req:chunk(<<", \"page_size\": ", (wh_util:to_binary(PageSize))/binary>>, Req),
-    case cb_context:fetch(Context, 'next_start_key') of
+    IsGroup = cb_context:fetch(Context, 'group', 'false'),
+    case pagination_key(IsGroup, 'next_start_key', Context) of
         'undefined' -> 'ok';
-        [_, Next] -> cowboy_req:chunk(<<", \"next_start_key\": \"", (wh_util:to_binary(Next))/binary, "\"">>, Req);
         Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (wh_util:to_binary(Next))/binary, "\"">>, Req)
     end,
-    StartKey = case cb_context:fetch(Context, 'start_key') of
-                   [_, Key] -> Key;
-                   [Key] -> Key;
-                   Key -> Key
-               end,
+    StartKey = pagination_key(IsGroup, 'start_key', Context),
     'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (wh_util:to_binary(StartKey))/binary, "\"">>, Req),
     Payload.
+
+-spec pagination_key(boolean(), atom(), cb_context:context()) -> 'ok' | ne_binary() | integer().
+pagination_key('false', PaginationKey, Context) ->
+    case cb_context:fetch(Context, PaginationKey) of
+        'undefined' -> 'ok';
+        [_, Key] -> Key;
+        [Key] -> Key;
+        Key -> Key
+    end;
+pagination_key('true', PaginationKey, Context) ->
+    case cb_context:fetch(Context, PaginationKey) of
+        'undefined' -> 'ok';
+        [_, Key, _] -> Key;
+        [Key, _] -> Key;
+        [Key] -> Key;
+        Key -> Key
+    end.
 
 -spec to_csv(payload()) -> payload().
 to_csv({Req, Context}) ->
