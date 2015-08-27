@@ -8,14 +8,33 @@
 %%%-------------------------------------------------------------------
 -module(knm_number_states).
 
--export([to_reserved/1]).
+-export([to_reserved/1
+         ,to_state/2, to_state/3
+        ]).
 
 -include("knm.hrl").
 
 -type kn() :: knm_number:knm_number().
 
--spec to_reserved(kn()) ->
-                         kn().
+-spec to_state(ne_binary() | kn(), ne_binary()) -> kn().
+-spec to_state(ne_binary() | kn(), ne_binary(), wh_proplist()) -> kn().
+to_state(DID, ToState) ->
+    to_state(DID, ToState, knm_phone_number:default_options()).
+to_state(<<_/binary>> = DID, ToState, Options) ->
+    case knm_number:get(DID, Options) of
+        {'error', E} -> knm_errors:unspecified(E, DID);
+        {'ok', Number} -> change_state(Number, ToState)
+    end;
+to_state(Number, ToState, _Options) ->
+    change_state(Number, ToState).
+
+-spec change_state(kn(), ne_binary()) -> kn().
+change_state(Number, ?NUMBER_STATE_RESERVED) ->
+    to_reserved(Number);
+change_state(Number, _State) ->
+    knm_errors:unspecified('invalid_state', Number).
+
+-spec to_reserved(kn()) -> kn().
 to_reserved(Number) ->
     to_reserved(Number, number_state(Number)).
 
@@ -25,7 +44,7 @@ to_reserved(Number, ?NUMBER_STATE_RESERVED) ->
                 ,fun update_reserve_history/1
                 ,fun move_to_reserved_state/1
                 ,fun knm_services:activate_phone_number/1
-                ,fun knm_carriers:acquire_number/1
+                ,fun knm_carriers:acquire/1
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_DISCOVERY) ->

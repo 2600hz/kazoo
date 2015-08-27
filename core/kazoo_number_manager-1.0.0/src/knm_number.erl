@@ -14,7 +14,6 @@
          ,move/2, move/3
          ,update/2, update/3
          ,delete/1, delete/2
-         ,change_state/2, change_state/3
          ,assign_to_app/2, assign_to_app/3
          ,lookup_account/1
          ,buy/2, buy/3
@@ -385,27 +384,6 @@ delete(Num, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_state(ne_binary() | knm_number(), ne_binary()) ->
-                          knm_number_return().
--spec change_state(ne_binary() | knm_number(), ne_binary(), wh_proplist()) ->
-                          knm_number_return().
-change_state(Num, State) ->
-    change_state(Num, State, knm_phone_number:default_options()).
-
-change_state(<<_/binary>> = Num, State, Options) ->
-    case ?MODULE:get(Num, Options) of
-        {'error', _R}=E -> E;
-        {'ok', Number} ->
-            maybe_change_state(Number, State)
-    end;
-change_state(Number, State, _Options) ->
-    maybe_change_state(Number, State).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec assign_to_app(ne_binary(), api_binary()) ->
                            knm_number_return().
 -spec assign_to_app(ne_binary(), api_binary(), wh_proplist()) ->
@@ -477,106 +455,6 @@ buy(Num, Account, Options) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_change_state(knm_number(), ne_binary()) ->
-                                knm_number_return().
--spec maybe_change_state(knm_number(), ne_binary(), ne_binary()) ->
-                                knm_number_return().
-maybe_change_state(Number, ToState) ->
-    FromState = knm_phone_number:state(phone_number(Number)),
-    maybe_change_state(Number, FromState, ToState).
-
-%% TO IN_SERVICE
-maybe_change_state(Number, ?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_IN_SERVICE) ->
-    Routines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-                ,fun knm_services:activate_phone_number/1
-                ,fun knm_carriers:maybe_acquire/1
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE) ->
-    Routines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-
-maybe_change_state(Number, ?NUMBER_STATE_AVAILABLE, ?NUMBER_STATE_IN_SERVICE) ->
-    Routines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-                ,fun knm_services:activate_phone_number/1
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(Number, ?NUMBER_STATE_RESERVED, ?NUMBER_STATE_IN_SERVICE) ->
-    Routines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(_Number, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_IN_SERVICE) ->
-    {'error', 'no_change_required'};
-
-%% TO AVAILABLE
-maybe_change_state(Number, ?NUMBER_STATE_RELEASED, ?NUMBER_STATE_AVAILABLE) ->
-    Routines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_AVAILABLE}
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(_Number, ?NUMBER_STATE_AVAILABLE, ?NUMBER_STATE_AVAILABLE) ->
-    {'error', 'no_change_required'};
-
-%% TO RESERVED
-maybe_change_state(Number, ?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_RESERVED) ->
-    Routines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}
-                ,fun update_reserved_history/1
-                ,fun knm_services:activate_phone_number/1
-                ,fun knm_carriers:maybe_acquire/1
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(Number, ?NUMBER_STATE_AVAILABLE, ?NUMBER_STATE_RESERVED) ->
-    Routines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}
-                ,fun update_reserved_history/1
-                ,fun knm_services:activate_phone_number/1
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(_Number, ?NUMBER_STATE_RESERVED, ?NUMBER_STATE_RESERVED) ->
-    {'error', 'no_change_required'};
-
-%% TO RELEASED
-maybe_change_state(Number, ?NUMBER_STATE_RESERVED, ?NUMBER_STATE_RELEASED) ->
-    NewState = whapps_config:get_binary(?KNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
-    Routines = [{fun knm_phone_number:set_state/2, NewState}
-                ,fun maybe_disconnect/1
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(Number, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RELEASED) ->
-    NewState = whapps_config:get_binary(?KNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
-    Routines = [{fun knm_phone_number:set_state/2, NewState}
-                ,fun maybe_disconnect/1
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_RELEASED) ->
-    NewState = whapps_config:get_binary(?KNM_CONFIG_CAT, <<"released_state">>, ?NUMBER_STATE_AVAILABLE),
-    Routines = [{fun knm_phone_number:set_state/2, NewState}
-                ,fun maybe_disconnect/1
-                ,fun knm_phone_number:save/1
-               ],
-    apply_routines(Number, Routines);
-maybe_change_state(_Number, ?NUMBER_STATE_RELEASED, ?NUMBER_STATE_RELEASED) ->
-    {'error', 'no_change_required'};
-
-%% UNKNOWN CHANGE
-maybe_change_state(_Number, _FromState, _ToState) ->
-    lager:error("invalid state transition from ~s to ~s", [_FromState, _ToState]),
-    {'error', 'invalid_state_transition'}.
-
 -spec apply_routines(knm_number(), knm_phone_number:set_functions()) ->
                             knm_number_return().
 apply_routines(Number, Routines) ->
@@ -584,75 +462,6 @@ apply_routines(Number, Routines) ->
       knm_phone_number:setters(phone_number(Number), Routines)
       ,Number
      ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_disconnect(knm_phone_number:knm_number()) ->
-                              number_return().
-maybe_disconnect(PhoneNumber) ->
-    case knm_phone_number:reserve_history(PhoneNumber) of
-        [] -> disconnect_or_delete(PhoneNumber);
-        [PrevReservation|History] ->
-            lager:debug(
-              "unwinding reservation history, reserving on account ~s"
-              ,[PrevReservation]
-             ),
-            Routines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}
-                        ,{fun knm_phone_number:set_reserve_history/2, History}
-                       ],
-            knm_phone_number:setters(PhoneNumber, Routines)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec disconnect_or_delete(knm_phone_number:knm_number()) ->
-                                  knm_phone_number:knm_number().
--spec disconnect_or_delete(knm_phone_number:knm_number(), boolean()) ->
-                                  knm_phone_number:knm_number().
-disconnect_or_delete(PhoneNumber) ->
-    ShouldDelete = whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, 'false'),
-    disconnect_or_delete(PhoneNumber, ShouldDelete).
-
-disconnect_or_delete(PhoneNumber, 'false') ->
-    attempt_disconnect(PhoneNumber);
-disconnect_or_delete(PhoneNumber, 'true') ->
-    case attempt_disconnect(PhoneNumber) of
-        {'ok', PhoneNumber1} ->
-            knm_phone_number:set_state(PhoneNumber1, ?NUMBER_STATE_DELETED);
-        {'error', _R} ->
-            knm_phone_number:set_state(PhoneNumber, ?NUMBER_STATE_DELETED)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec attempt_disconnect(knm_phone_number:knm_number()) -> number_return().
-attempt_disconnect(PhoneNumber) ->
-    case knm_carriers:disconnect(PhoneNumber) of
-        {'error', _R}=Error -> Error;
-        {'ok', PhoneNumber1} ->
-            {'ok', knm_phone_number:set_reserve_history(PhoneNumber1, [])}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec update_reserved_history(knm_phone_number:knm_number()) ->
-                                     knm_phone_number:knm_number().
-update_reserved_history(PhoneNumber) ->
-    History = knm_phone_number:reserve_history(PhoneNumber),
-    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    knm_phone_number:set_reserve_history(PhoneNumber, [AssignedTo|History]).
 
 %%--------------------------------------------------------------------
 %% @private
