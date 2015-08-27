@@ -19,15 +19,13 @@
 
 -define(RESELLER_ACCOUNT_DOC
         ,wh_json:from_list(
-           [{<<"_id">>, ?RESELLER_ACCOUNT_ID}
-            ,{<<"pvt_wnm_allow_additions">>, 'true'}
-           ]
+           [{<<"_id">>, ?RESELLER_ACCOUNT_ID}]
           )
        ).
 
 -define(EXISTING_NUMBER
         ,wh_json:from_list(
-           [{<<"_id">>, <<"+15551239876">>}
+           [{<<"_id">>, ?TEST_EXISTING_NUM}
             ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
             ,{<<"pvt_modified">>, 63565934349}
             ,{<<"pvt_features">>, []}
@@ -47,31 +45,59 @@ create_test_() ->
     create_available().
 
 create_available() ->
-    Num = <<"5559871234">>,
-    [create_with_no_auth_by(Num)
-     ,create_with_disallowed_account(Num)
+    [create_with_no_auth_by()
+     ,create_with_disallowed_account()
+     ,create_with_number_porting()
+     ,create_new_number()
     ].
 
-create_with_no_auth_by(Num) ->
+create_with_no_auth_by() ->
     {"Ensure unauthorized error thrown when no auth_by supplied"
      ,?_assertException('throw'
                         ,{'error', 'unauthorized'}
-                        ,knm_number:create_or_load(Num, [], {'error', 'not_found'})
+                        ,knm_number:ensure_can_create(?TEST_CREATE_NUM, [])
                        )
     }.
 
-create_with_disallowed_account(Num) ->
+create_with_disallowed_account() ->
     {"Ensure unauthorized error when auth_by account isn't allowed to create numbers"
      ,?_assertException('throw'
                         ,{'error', 'unauthorized'}
-                        ,knm_number:create_or_load(
-                           Num
+                        ,knm_number:ensure_can_create(
+                           ?TEST_CREATE_NUM
                            ,[{<<"auth_by">>, ?RESELLER_ACCOUNT_ID}
                              ,{<<"auth_by_account">>
                                ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
                               }
                             ]
-                           ,{'error', 'not_found'}
                           )
                        )
+    }.
+
+create_with_number_porting() ->
+    {"Ensure number_is_porting error when auth_by account isn't allowed to create numbers"
+     ,?_assertException('throw'
+                        ,{'error', 'number_is_porting', ?TEST_EXISTING_NUM}
+                        ,knm_number:ensure_can_create(
+                           ?TEST_EXISTING_NUM %% pretend it is porting
+                           ,[{<<"auth_by">>, ?RESELLER_ACCOUNT_ID}
+                             ,{<<"auth_by_account">>
+                               ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+                              }
+                            ]
+                          )
+                       )
+    }.
+
+create_new_number() ->
+    {"Ensure number_is_porting error when auth_by account isn't allowed to create numbers"
+     ,?_assert(knm_number:ensure_can_create(
+                 ?TEST_CREATE_NUM
+                 ,[{<<"auth_by">>, ?RESELLER_ACCOUNT_ID}
+                   ,{<<"auth_by_account">>
+                         ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+                    }
+                  ]
+                )
+              )
     }.
