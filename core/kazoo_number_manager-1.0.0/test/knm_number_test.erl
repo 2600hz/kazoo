@@ -42,9 +42,49 @@
        ).
 
 create_test_() ->
-    create_available().
+    create_available_checks()
+        ++ load_existing_checks().
 
-create_available() ->
+load_existing_checks() ->
+    PN = knm_phone_number:from_json(?EXISTING_NUMBER),
+    [existing_in_available_state(PN)
+     | existing_in_other_states(PN)
+    ].
+
+existing_in_available_state(PN) ->
+    {"Ensure number in AVAILABLE state can be 'created'"
+     ,?_assert(knm_number:ensure_can_load_to_create(
+                 knm_phone_number:set_state(PN, ?NUMBER_STATE_AVAILABLE)
+                )
+              )
+    }.
+
+existing_in_other_states(PN) ->
+    [existing_in_other_state(
+       knm_phone_number:set_state(PN, State)
+      )
+     || State <- [?NUMBER_STATE_PORT_IN
+                  ,?NUMBER_STATE_PORT_OUT
+                  ,?NUMBER_STATE_DISCOVERY
+                  ,?NUMBER_STATE_IN_SERVICE
+                  ,?NUMBER_STATE_RELEASED
+                  ,?NUMBER_STATE_RESERVED
+                  ,?NUMBER_STATE_DISCONNECTED
+                  ,?NUMBER_STATE_DELETED
+                 ]
+    ].
+
+existing_in_other_state(PN) ->
+    State = wh_util:to_list(knm_phone_number:state(PN)),
+
+    {lists:flatten(["Ensure number in ", State, " cannot be 'created'"])
+     ,?_assertException('throw'
+                        ,{'error', 'number_exists', ?TEST_EXISTING_NUM}
+                        ,knm_number:ensure_can_load_to_create(PN)
+                       )
+    }.
+
+create_available_checks() ->
     [create_with_no_auth_by()
      ,create_with_disallowed_account()
      ,create_with_number_porting()

@@ -127,16 +127,23 @@ create_or_load(Num, Props, {'error', 'not_found'}) ->
               ),
     create_phone_number(Number);
 create_or_load(Num, Props, {'ok', PhoneNumber}) ->
+    ensure_can_load_to_create(PhoneNumber),
+    Updates = create_updaters(Num, Props),
+    create_phone_number(
+      set_phone_number(new()
+                       ,knm_phone_number:setters(PhoneNumber, Updates)
+                      )
+     ).
+
+-spec ensure_can_load_to_create(knm_phone_number:knm_number()) -> 'true'.
+ensure_can_load_to_create(PhoneNumber) ->
+    ensure_can_load(PhoneNumber, ?NUMBER_STATE_AVAILABLE).
+
+-spec ensure_can_load(knm_phone_number:knm_number(), ne_binary()) -> 'true'.
+ensure_can_load(PhoneNumber, ExpectedState) ->
     case knm_phone_number:state(PhoneNumber) of
-        ?NUMBER_STATE_AVAILABLE ->
-            Updates = create_updaters(Num, Props),
-            create_phone_number(
-              set_phone_number(new()
-                               ,knm_phone_number:setters(PhoneNumber, Updates)
-                              )
-             );
-        _State ->
-            knm_errors:number_exists(Num)
+        ExpectedState -> 'true';
+        _State -> knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
     end.
 
 -spec create_phone_number(knm_number()) -> knm_number().
