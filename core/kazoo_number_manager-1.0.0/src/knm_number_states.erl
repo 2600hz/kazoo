@@ -48,13 +48,32 @@ to_reserved(Number, ?NUMBER_STATE_RESERVED) ->
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_DISCOVERY) ->
-    Number;
+    Routines = [fun authorize/1
+                ,fun update_reserve_history/1
+                ,fun move_to_reserved_state/1
+                ,fun knm_services:activate_phone_number/1
+                ,fun knm_carriers:acquire/1
+               ],
+    apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_AVAILABLE) ->
     Number;
 to_reserved(Number, ?NUMBER_STATE_IN_SERVICE) ->
     Number;
 to_reserved(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_RESERVED).
+
+-spec authorize(kn()) -> kn().
+-spec authorize(kn(), api_binary()) -> kn().
+authorize(Number) ->
+    authorize(Number, knm_phone_number:auth_by(knm_number:phone_number(Number))).
+
+authorize(Number, ?DEFAULT_AUTH_BY) -> Number;
+authorize(Number, AuthBy) ->
+    AssignTo = knm_phone_number:assign_to(knm_number:phone_number(Number)),
+    case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
+        'false' -> knm_errors:unauthorized();
+        'true' -> Number
+    end.
 
 -spec not_assigning_to_self(kn()) ->
                                    kn().
