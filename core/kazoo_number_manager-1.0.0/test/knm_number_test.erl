@@ -41,40 +41,29 @@
           )
        ).
 
-create_test_() ->
+create_checks_test_() ->
     create_available_checks()
         ++ load_existing_checks().
 
 load_existing_checks() ->
     PN = knm_phone_number:from_json(?EXISTING_NUMBER),
-    [existing_in_available_state(PN)
-     | existing_in_other_states(PN)
-    ].
-
-existing_in_available_state(PN) ->
-    {"Ensure number in AVAILABLE state can be 'created'"
-     ,?_assert(knm_number:ensure_can_load_to_create(
-                 knm_phone_number:set_state(PN, ?NUMBER_STATE_AVAILABLE)
-                )
-              )
-    }.
-
-existing_in_other_states(PN) ->
-    [existing_in_other_state(
+    [existing_in_state(
        knm_phone_number:set_state(PN, State)
+       ,IsAllowed
       )
-     || State <- [?NUMBER_STATE_PORT_IN
-                  ,?NUMBER_STATE_PORT_OUT
-                  ,?NUMBER_STATE_DISCOVERY
-                  ,?NUMBER_STATE_IN_SERVICE
-                  ,?NUMBER_STATE_RELEASED
-                  ,?NUMBER_STATE_RESERVED
-                  ,?NUMBER_STATE_DISCONNECTED
-                  ,?NUMBER_STATE_DELETED
-                 ]
+     || {State, IsAllowed} <- [{?NUMBER_STATE_AVAILABLE, 'true'}
+                               ,{?NUMBER_STATE_DELETED, 'false'}
+                               ,{?NUMBER_STATE_DISCONNECTED, 'false'}
+                               ,{?NUMBER_STATE_DISCOVERY, 'false'}
+                               ,{?NUMBER_STATE_IN_SERVICE, 'false'}
+                               ,{?NUMBER_STATE_PORT_IN, 'false'}
+                               ,{?NUMBER_STATE_PORT_OUT, 'false'}
+                               ,{?NUMBER_STATE_RELEASED, 'false'}
+                               ,{?NUMBER_STATE_RESERVED, 'false'}
+                              ]
     ].
 
-existing_in_other_state(PN) ->
+existing_in_state(PN, 'false') ->
     State = wh_util:to_list(knm_phone_number:state(PN)),
 
     {lists:flatten(["Ensure number in ", State, " cannot be 'created'"])
@@ -82,6 +71,12 @@ existing_in_other_state(PN) ->
                         ,{'error', 'number_exists', ?TEST_EXISTING_NUM}
                         ,knm_number:ensure_can_load_to_create(PN)
                        )
+    };
+existing_in_state(PN, 'true') ->
+    State = wh_util:to_list(knm_phone_number:state(PN)),
+
+    {lists:flatten(["Ensure number in ", State, " can be 'created'"])
+     ,?_assert(knm_number:ensure_can_load_to_create(PN))
     }.
 
 create_available_checks() ->
