@@ -1703,26 +1703,6 @@ JObj-&gt;#number{}</val>
 <val>0</val>
 </show_stereotypes_attrs>
 </item>
-<item type="ObjectNodeItem" id="7af40934-4a83-11e5-aaf9-f0def12b153d">
-<show-ordering>
-<val>0</val>
-</show-ordering>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 60.0, 252.0)</val>
-</matrix>
-<width>
-<val>100.0</val>
-</width>
-<height>
-<val>50.0</val>
-</height>
-<subject>
-<ref refid="7af40933-4a83-11e5-aaf9-f0def12b153d"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-</item>
 <item type="FlowFinalNodeItem" id="856573d0-4a83-11e5-aaf9-f0def12b153d">
 <matrix>
 <val>(1.0, 0.0, 0.0, 1.0, 50.0, 338.0)</val>
@@ -1768,7 +1748,7 @@ JObj-&gt;#number{}</val>
 </item>
 <item type="FlowItem" id="91dceac4-4a83-11e5-aaf9-f0def12b153d">
 <subject>
-<ref refid="92f8411a-4a83-11e5-aaf9-f0def12b153d"/>
+<ref refid="a7675ac6-4b5c-11e5-aaf9-f0def12b153d"/>
 </subject>
 <show_stereotypes_attrs>
 <val>0</val>
@@ -1783,64 +1763,18 @@ JObj-&gt;#number{}</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-55.0, 20.0)]</val>
+<val>[(0.0, 0.0), (-97.0, 106.0)]</val>
 </points>
 <head-connection>
 <ref refid="6ca0b65c-4a83-11e5-aaf9-f0def12b153d"/>
 </head-connection>
 <tail-connection>
-<ref refid="7af40934-4a83-11e5-aaf9-f0def12b153d"/>
-</tail-connection>
-</item>
-<item type="FlowItem" id="9bac4374-4a83-11e5-aaf9-f0def12b153d">
-<subject>
-<ref refid="9cc384d4-4a83-11e5-aaf9-f0def12b153d"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 109.5, 302.0)</val>
-</matrix>
-<orthogonal>
-<val>0</val>
-</orthogonal>
-<horizontal>
-<val>0</val>
-</horizontal>
-<points>
-<val>[(0.0, 0.0), (-39.5, 36.0)]</val>
-</points>
-<head-connection>
-<ref refid="7af40934-4a83-11e5-aaf9-f0def12b153d"/>
-</head-connection>
-<tail-connection>
 <ref refid="856573d0-4a83-11e5-aaf9-f0def12b153d"/>
 </tail-connection>
 </item>
-<item type="ObjectNodeItem" id="a6b3fed0-4a83-11e5-aaf9-f0def12b153d">
-<show-ordering>
-<val>0</val>
-</show-ordering>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 194.0, 252.0)</val>
-</matrix>
-<width>
-<val>100.0</val>
-</width>
-<height>
-<val>50.0</val>
-</height>
-<subject>
-<ref refid="a6b3fecf-4a83-11e5-aaf9-f0def12b153d"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-</item>
 <item type="FlowItem" id="aed74a34-4a83-11e5-aaf9-f0def12b153d">
 <subject>
-<ref refid="afdb40de-4a83-11e5-aaf9-f0def12b153d"/>
+<ref refid="ae992d6a-4b5c-11e5-aaf9-f0def12b153d"/>
 </subject>
 <show_stereotypes_attrs>
 <val>0</val>
@@ -1855,13 +1789,13 @@ JObj-&gt;#number{}</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (55.0, 27.0)]</val>
+<val>[(0.0, 0.0), (69.0, 98.0)]</val>
 </points>
 <head-connection>
 <ref refid="6ca0b65c-4a83-11e5-aaf9-f0def12b153d"/>
 </head-connection>
 <tail-connection>
-<ref refid="a6b3fed0-4a83-11e5-aaf9-f0def12b153d"/>
+<ref refid="3fcf0b80-4a86-11e5-aaf9-f0def12b153d"/>
 </tail-connection>
 </item>
 <item type="ActionItem" id="0b2e5630-4a84-11e5-aaf9-f0def12b153d">
@@ -2268,32 +2202,6 @@ JObj-&gt;#number{}</val>
 <show_stereotypes_attrs>
 <val>0</val>
 </show_stereotypes_attrs>
-</item>
-<item type="FlowItem" id="67406180-4a86-11e5-aaf9-f0def12b153d">
-<subject>
-<ref refid="685cfd12-4a86-11e5-aaf9-f0def12b153d"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 241.0, 302.0)</val>
-</matrix>
-<orthogonal>
-<val>0</val>
-</orthogonal>
-<horizontal>
-<val>0</val>
-</horizontal>
-<points>
-<val>[(0.0, 0.0), (4.0, 21.0)]</val>
-</points>
-<head-connection>
-<ref refid="a6b3fed0-4a83-11e5-aaf9-f0def12b153d"/>
-</head-connection>
-<tail-connection>
-<ref refid="3fcf0b80-4a86-11e5-aaf9-f0def12b153d"/>
-</tail-connection>
 </item>
 <item type="FlowItem" id="726c631a-4a86-11e5-aaf9-f0def12b153d">
 <subject>
@@ -3960,6 +3868,26 @@ JObj-&gt;#number{}</val>
 <ref refid="7c0c0fc8-4aa2-11e5-aaf9-f0def12b153d"/>
 </tail-connection>
 </item>
+<item type="CommentLineItem" id="4bb6cd78-4b7b-11e5-aaf9-f0def12b153d">
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 606.0, 533.75)</val>
+</matrix>
+<orthogonal>
+<val>0</val>
+</orthogonal>
+<horizontal>
+<val>0</val>
+</horizontal>
+<points>
+<val>[(0.0, 0.0), (504.00000000000006, -5.684341886080802e-14)]</val>
+</points>
+<head-connection>
+<ref refid="3721b0fc-4a84-11e5-aaf9-f0def12b153d"/>
+</head-connection>
+</item>
 </canvas>
 </Diagram>
 <Action id="d6b97db7-4a82-11e5-aaf9-f0def12b153d">
@@ -4214,12 +4142,12 @@ JObj-&gt;#number{}</val>
 </reflist>
 </incoming>
 <name>
-<val>AssignedTo == AuthBy?</val>
+<val>AssignedTo == AssignTo?</val>
 </name>
 <outgoing>
 <reflist>
-<ref refid="92f8411a-4a83-11e5-aaf9-f0def12b153d"/>
-<ref refid="afdb40de-4a83-11e5-aaf9-f0def12b153d"/>
+<ref refid="a7675ac6-4b5c-11e5-aaf9-f0def12b153d"/>
+<ref refid="ae992d6a-4b5c-11e5-aaf9-f0def12b153d"/>
 </reflist>
 </outgoing>
 <presentation>
@@ -4228,30 +4156,10 @@ JObj-&gt;#number{}</val>
 </reflist>
 </presentation>
 </DecisionNode>
-<ObjectNode id="7af40933-4a83-11e5-aaf9-f0def12b153d">
-<incoming>
-<reflist>
-<ref refid="92f8411a-4a83-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</incoming>
-<name>
-<val>Yes</val>
-</name>
-<outgoing>
-<reflist>
-<ref refid="9cc384d4-4a83-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</outgoing>
-<presentation>
-<reflist>
-<ref refid="7af40934-4a83-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</presentation>
-</ObjectNode>
 <FlowFinalNode id="856573cf-4a83-11e5-aaf9-f0def12b153d">
 <incoming>
 <reflist>
-<ref refid="9cc384d4-4a83-11e5-aaf9-f0def12b153d"/>
+<ref refid="a7675ac6-4b5c-11e5-aaf9-f0def12b153d"/>
 </reflist>
 </incoming>
 <name>
@@ -4274,65 +4182,6 @@ JObj-&gt;#number{}</val>
 </source>
 <target>
 <ref refid="6ca0b65b-4a83-11e5-aaf9-f0def12b153d"/>
-</target>
-</ObjectFlow>
-<ObjectFlow id="92f8411a-4a83-11e5-aaf9-f0def12b153d">
-<presentation>
-<reflist>
-<ref refid="91dceac4-4a83-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="6ca0b65b-4a83-11e5-aaf9-f0def12b153d"/>
-</source>
-<target>
-<ref refid="7af40933-4a83-11e5-aaf9-f0def12b153d"/>
-</target>
-</ObjectFlow>
-<ObjectFlow id="9cc384d4-4a83-11e5-aaf9-f0def12b153d">
-<presentation>
-<reflist>
-<ref refid="9bac4374-4a83-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="7af40933-4a83-11e5-aaf9-f0def12b153d"/>
-</source>
-<target>
-<ref refid="856573cf-4a83-11e5-aaf9-f0def12b153d"/>
-</target>
-</ObjectFlow>
-<ObjectNode id="a6b3fecf-4a83-11e5-aaf9-f0def12b153d">
-<incoming>
-<reflist>
-<ref refid="afdb40de-4a83-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</incoming>
-<name>
-<val>No</val>
-</name>
-<outgoing>
-<reflist>
-<ref refid="685cfd12-4a86-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</outgoing>
-<presentation>
-<reflist>
-<ref refid="a6b3fed0-4a83-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</presentation>
-</ObjectNode>
-<ObjectFlow id="afdb40de-4a83-11e5-aaf9-f0def12b153d">
-<presentation>
-<reflist>
-<ref refid="aed74a34-4a83-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="6ca0b65b-4a83-11e5-aaf9-f0def12b153d"/>
-</source>
-<target>
-<ref refid="a6b3fecf-4a83-11e5-aaf9-f0def12b153d"/>
 </target>
 </ObjectFlow>
 <Action id="0b2e562f-4a84-11e5-aaf9-f0def12b153d">
@@ -4615,7 +4464,7 @@ JObj-&gt;#number{}</val>
 <Action id="3fcf0b7f-4a86-11e5-aaf9-f0def12b153d">
 <incoming>
 <reflist>
-<ref refid="685cfd12-4a86-11e5-aaf9-f0def12b153d"/>
+<ref refid="ae992d6a-4b5c-11e5-aaf9-f0def12b153d"/>
 </reflist>
 </incoming>
 <name>
@@ -4632,19 +4481,6 @@ JObj-&gt;#number{}</val>
 </reflist>
 </presentation>
 </Action>
-<ObjectFlow id="685cfd12-4a86-11e5-aaf9-f0def12b153d">
-<presentation>
-<reflist>
-<ref refid="67406180-4a86-11e5-aaf9-f0def12b153d"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="a6b3fecf-4a83-11e5-aaf9-f0def12b153d"/>
-</source>
-<target>
-<ref refid="3fcf0b7f-4a86-11e5-aaf9-f0def12b153d"/>
-</target>
-</ObjectFlow>
 <ControlFlow id="726c631c-4a86-11e5-aaf9-f0def12b153d">
 <presentation>
 <reflist>
@@ -4784,7 +4620,7 @@ JObj-&gt;#number{}</val>
 </incoming>
 <name>
 <val>AuthBy in Heirarchy
-of AssignedBy?</val>
+of AssignTo?</val>
 </name>
 <outgoing>
 <reflist>
@@ -8816,6 +8652,38 @@ Commit Transactions generated</val>
 </source>
 <target>
 <ref refid="86323de9-4a7e-11e5-aaf9-f0def12b153d"/>
+</target>
+</ControlFlow>
+<ControlFlow id="a7675ac6-4b5c-11e5-aaf9-f0def12b153d">
+<name>
+<val>true</val>
+</name>
+<presentation>
+<reflist>
+<ref refid="91dceac4-4a83-11e5-aaf9-f0def12b153d"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="6ca0b65b-4a83-11e5-aaf9-f0def12b153d"/>
+</source>
+<target>
+<ref refid="856573cf-4a83-11e5-aaf9-f0def12b153d"/>
+</target>
+</ControlFlow>
+<ControlFlow id="ae992d6a-4b5c-11e5-aaf9-f0def12b153d">
+<name>
+<val>false</val>
+</name>
+<presentation>
+<reflist>
+<ref refid="aed74a34-4a83-11e5-aaf9-f0def12b153d"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="6ca0b65b-4a83-11e5-aaf9-f0def12b153d"/>
+</source>
+<target>
+<ref refid="3fcf0b7f-4a86-11e5-aaf9-f0def12b153d"/>
 </target>
 </ControlFlow>
 </gaphor>
