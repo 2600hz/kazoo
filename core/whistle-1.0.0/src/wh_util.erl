@@ -1228,6 +1228,7 @@ elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) 
 -spec now_s(wh_now()) -> gregorian_seconds().
 -spec now_ms(wh_now()) -> pos_integer().
 -spec now_us(wh_now()) -> pos_integer().
+%% Replace now_ms/1 with erlang:system_time('milli_seconds')
 now_us({MegaSecs,Secs,MicroSecs}) ->
     (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
 now_ms({_,_,_}=Now) -> now_us(Now) div ?MILLISECONDS_IN_SECOND.

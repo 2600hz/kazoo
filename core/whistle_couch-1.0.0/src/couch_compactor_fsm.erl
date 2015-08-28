@@ -272,7 +272,7 @@ current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _ = random:seed(erlang:now()),
+    _ = random:seed(erlang:timestamp()),
     wh_util:put_callid(?MODULE),
     self() ! '$maybe_start_auto_compaction_job',
     {'ok', 'ready', #state{conn='undefined'
