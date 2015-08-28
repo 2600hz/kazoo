@@ -14,7 +14,7 @@ EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
 ERLC_OPTS += -Werror +debug_info +warn_export_all $(PA)
-ERL_LIBS = $(ELIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
+ELIBS = $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
 .PHONY: all compile clean
 
