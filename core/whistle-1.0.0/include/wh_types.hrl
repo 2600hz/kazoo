@@ -1,6 +1,14 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 -include_lib("xmerl/include/xmerl.hrl").
 
+-ifdef(OTP_AT_LEAST_18).
+- type dict() :: dict:dict().
+- type queue() :: queue:queue().
+- type set() :: sets:set().
+- type gb_tree() :: gb_trees:gb_tree().
+-else.
+-endif.
+
 -define(MICROSECONDS_IN_SECOND, 1000000).
 
 -define(MILLISECONDS_IN_SECOND, 1000).
@@ -27,15 +35,15 @@
 
 -type text() :: string() | atom() | binary() | iolist().
 
--type atoms() :: [atom(),...] | [].
--type pids() :: [pid(),...] | [].
+-type atoms() :: [atom()].
+-type pids() :: [pid()].
 
 -type pid_ref() :: {pid(), reference()}.
--type pid_refs() :: [pid_ref(),...] | [].
+-type pid_refs() :: [pid_ref()].
 
 -type api_terms() :: wh_json:object() | wh_json:json_proplist().
 -type api_binary() :: binary() | 'undefined'.
--type api_binaries() :: [api_binary(),...] | [] | 'undefined'.
+-type api_binaries() :: [api_binary()] | 'undefined'.
 -type api_object() :: wh_json:object() | 'undefined'.
 -type api_objects() :: wh_json:objects() | 'undefined'.
 -type api_boolean() :: boolean() | 'undefined'.
@@ -62,8 +70,8 @@
 %% non-empty binary
 -define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.
--type ne_binaries() :: [ne_binary(),...] | [].
--type binaries() :: [binary(),...] | [].
+-type ne_binaries() :: [ne_binary()].
+-type binaries() :: [binary()].
 
 -type strings() :: [string(),...] | [].
 -type integers() :: [integer(),...] | [].
@@ -117,12 +125,12 @@
 
 %% Recreate the non-exported types defined in the erlang supervisor source
 -type sup_child_spec() :: supervisor:child_spec().
--type sup_child_specs() :: [sup_child_spec()] | [].
--type sup_start_flags() :: {supervisor:strategy(), non_neg_integer(), non_neg_integer()}.
--type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}}.
+-type sup_child_specs() :: [sup_child_spec()].
+-type sup_start_flags() :: supervisor:sup_flags().
+-type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} | 'ignore'.
 -type sup_child_id() :: pid() | 'undefined'.
--type sup_startchild_err() :: 'already_present' | {'already_started', sup_child_id()} | term().
--type sup_startchild_ret() :: {'ok', sup_child_id()} | {'ok', sup_child_id(), term()} |
+-type sup_startchild_err() :: 'already_present' | {'already_started', sup_child_id()} | _.
+-type sup_startchild_ret() :: {'ok', sup_child_id()} | {'ok', sup_child_id(), _} |
                               {'error', sup_startchild_err()}.
 
 %% Helper macro for declaring children of supervisor
