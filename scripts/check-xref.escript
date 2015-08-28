@@ -64,6 +64,20 @@ filter('undefined_function_calls', Results) ->
 
                  %% OTP Xref errors
                  ({{eunit_test,_,_}, {_,_,_}}) -> 'false';
+                 ({{cerl_to_icode,_,_}, {_,_,_}}) -> 'false';
+                 ({{compile,_,_}, {_,_,_}}) -> 'false';
+                 ({{dialyzer_cl,_,_}, {_,_,_}}) -> 'false';
+                 ({{diameter_lib,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_beam_to_icode,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_consttab,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_bincomp,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_mulret,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_pp,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_split_arith,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_type,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_main,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_unified_loader,_,_}, {_,_,_}}) -> 'false';
+                 ({{init,_,_}, {_,_,_}}) -> 'false';
 
                  %% DTL modules that only exist at runtime
                  ({{_,_,_}, {sub_package_dialog,_,_}}) -> 'false';
