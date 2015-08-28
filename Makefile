@@ -26,7 +26,6 @@ clean-test : ACTION = clean-test
 clean-test : $(KAZOODIRS)
 
 eunit: ACTION = test
-eunit: ERLC_OPTS += -DTEST
 eunit: $(KAZOODIRS)
 
 proper: ACTION = test
@@ -34,7 +33,7 @@ proper: ERLC_OPTS += -DPROPER
 proper: $(KAZOODIRS)
 
 test: ACTION = test
-test: ERLC_OPTS += -DTEST -DPROPER
+test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
 core:
