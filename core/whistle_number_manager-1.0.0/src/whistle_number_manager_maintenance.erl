@@ -177,7 +177,6 @@ cleanup_phone_numbers() ->
 cleanup_phone_numbers(Account) ->
     wh_number_fix:fix_account_numbers(Account).
 
-%% spec create_phone_number(ne_binary() | ne_binaries()) -> 'ok', AccountId). 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -196,7 +195,7 @@ create_phone_number(Number, AccountId) ->
 				       ,AccountId
 				       ,SystemAccountId
 				       ).
-     
+
 -spec activate_phone_number(ne_binary()) -> 'ok'.
 activate_phone_number(Number) ->
     { 'ok', AccountId } = whapps_util:get_master_account_id(),
@@ -209,15 +208,12 @@ activate_phone_number(Number, AccountId) ->
 					      ,AccountId
 					      ,SystemAccountId
 					      ).
-    
+
 -spec create_and_activate_phone_number(ne_binary(), ne_binary()) -> 'ok'.
 create_and_activate_phone_number(Number, AccountId) ->
     _ = create_phone_number(Number, AccountId),
     _ = activate_phone_number(Number, AccountId).
-    
 
-%%create_phone_number(ne_binary(), Account) ->
-%%    wh_number_fix:fix_account_numbers(Account).
 
 %%--------------------------------------------------------------------
 %% @private
