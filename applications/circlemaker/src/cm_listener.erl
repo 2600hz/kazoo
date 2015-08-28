@@ -113,7 +113,28 @@ handle_accounting_req(JObj, _Props) ->
     % TODO: Add validation
     % 'true' = wapi_aaa:accounting_req_v(JObj),
     lager:debug("cm_listener handled accounting request ~p", [JObj]),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    AccountId = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
+                    'undefined' ->
+                        % Additional check for FMC numbers
+                        Request = wh_json:get_value(<<"Request">>, JObj),
+                        [Num|_] = binary:split(Request, <<"@">>),
+                        {'ok', FMCJObjs} = couch_mgr:get_all_results(?WH_FMC_DB, <<"fmc_devices/crossbar_listing">>),
+                        FMCValues = [wh_json:get_value(<<"value">>, FMCJObj) || FMCJObj <- FMCJObjs],
+                        ResultedFMCValues = [FMCValue || FMCValue <- FMCValues
+                            ,wnm_util:normalize_number(wh_json:get_value(<<"a_number">>, FMCValue))
+                                =:= wnm_util:normalize_number(Num)],
+                        FMCHeader = whapps_config:get(<<"fmc">>, <<"x_fmc_header">>),
+                        IsFMCCall = wh_json:get_value([<<"Custom-SIP-Headers">>, FMCHeader], JObj) =/= 'undefined',
+                        case length(ResultedFMCValues) > 0 andalso IsFMCCall of
+                            'true' ->
+                                [ResultedFMCValue|_] = ResultedFMCValues,
+                                wh_json:get_value(<<"account_id">>, ResultedFMCValue);
+                            'false' ->
+                                'undefined'
+                        end;
+                    AccId ->
+                        AccId
+                end,
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
     NasAddress = wh_json:get_value(<<"nas_address">>, AaaDoc),
     case {whapps_util:get_event_type(JObj), maybe_block_processing(JObj, AaaDoc, <<"block_accounting">>)} of
