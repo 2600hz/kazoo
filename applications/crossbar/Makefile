@@ -14,7 +14,7 @@ EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
 ERLC_OPTS += -Werror +debug_info +warn_export_all $(PA)
-ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
+ERL_LIBS = $(ELIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
 .PHONY: all compile clean
 
@@ -34,7 +34,7 @@ compile: ebin/$(PROJECT).app json
 
 ebin/$(PROJECT).app: src/*.erl src/*/*.erl
 	@mkdir -p ebin/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 json: JSON = $(shell find priv/couchdb -name *.json -print)
 json:
@@ -48,7 +48,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/*/*.erl test/*.erl
 	@mkdir -p test/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
