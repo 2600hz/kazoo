@@ -67,7 +67,7 @@ handle(Data, Call) ->
 	    handle_list(Data, Call);
         _ ->
 	    lager:info("user must manually enter on keypad the caller id for this call"),
-	    handle_manual(Data, Call)  
+	    handle_manual(Data, Call)
     end.
 
 
@@ -86,7 +86,7 @@ handle_list(Data, Call) ->
 
     << C1:8, C2:8, Dest/binary >> = CaptureGroup,
     CID_id = <<C1,C2>>,
-    lager:debug("cid_id ~p ", [CID_id]),    
+    lager:debug("cid_id ~p ", [CID_id]),
 
     New_CID_info = get_list_entry(Data, Call),
 
@@ -94,7 +94,7 @@ handle_list(Data, Call) ->
     New_caller_id_name = wh_json:get_value(<<"name">>, New_CID_info),
 
     lager:info("setting the caller id number to ~s", [New_caller_id_number]),
-    
+
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', New_caller_id_number}
 	      ,{fun whapps_call:set_caller_id_number/2, New_caller_id_number}
 	      ,{fun whapps_call:set_caller_id_name/2, New_caller_id_name}
@@ -137,7 +137,7 @@ maybe_route_to_callflow(Data, Call, Number) ->
                        }
                        ,{fun whapps_call:set_to/2, list_to_binary([Number, "@", whapps_call:to_realm(Call)])}
                        ,fun(C) when NoMatch ->
-				C    
+				C
                         end
                       ],
             {'ok', C} = cf_exe:get_call(Call),
@@ -175,7 +175,7 @@ handle_manual(Data, Call) ->
     Max = DynamicCID#dynamic_cid.max_digits,
     Regex = DynamicCID#dynamic_cid.whitelist,
     DefaultCID = DynamicCID#dynamic_cid.default_cid,
-    
+
     Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>
 					  ,Data
 					  ,whapps_call_command:default_interdigit_timeout()
@@ -207,7 +207,7 @@ handle_manual(Data, Call) ->
                   DefaultCID
           end,
     lager:info("setting the caller id number to ~s", [CID]),
-    
+
     {'ok', C1} = cf_exe:get_call(Call),
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', CID}
 	      ,{fun whapps_call:set_caller_id_number/2, CID}
@@ -261,7 +261,7 @@ get_list_entry(Data, Call) ->
     << C1:8, C2:8, _/binary >> = whapps_call:kvs_fetch('cf_capture_group', Call),
     CID_id = <<C1,C2>>,
     lager:debug("cid_id ~p ", [CID_id]),
-    
+
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->
             lager:info("match list loaded: ~s", [ListId]),
@@ -270,7 +270,7 @@ get_list_entry(Data, Call) ->
 	    New_caller_id = wh_json:get_value(CID_id, JObj),
 	    lager:info("New caller id data : ~p",  [New_caller_id]),
 	    New_caller_id;
-	
+
 	{'error', Reason} ->
             lager:info("failed to load match list box ~s, ~p", [ListId, Reason]),
             []
