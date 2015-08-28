@@ -11,11 +11,11 @@ The `dynamic_cid` callflow enables you to change the caller id (CID).
 
 **action** - Must be set to `manual` or `list`.
 
-If undefined, will revert to historical behavior, *manual*. 
+If undefined, will revert to historical behavior, *manual*.
 
 
 ## Manual action mode
-### Optional fields 
+### Optional fields
 
 **interdigit_timeout** - default 2000 ms
 
@@ -24,7 +24,7 @@ Can only set the caller id number with this method.
 You dial the new caller id on the keypad when prompted.
 
 ## List action mode
-### Mandatory fields 
+### Mandatory fields
 
 **id** - cidlist, couchdb doc id of the document that contains the new caller
   id name and number information.
@@ -55,7 +55,8 @@ cached by Kazoo.  Make sure you flush changes..
 {
    "_id": "cidlist",
    "_rev": "5-FyFaandfumIsmellthebloudofanEnglishman",
-   "entries": {
+   "length" : 2,
+	"entries": {
        "00": {
            "number": "16139999999",
            "name": "sssy co"
