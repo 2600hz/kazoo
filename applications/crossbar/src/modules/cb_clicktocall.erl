@@ -326,11 +326,11 @@ originate_call(C2CId, Context, Contact) ->
     ReqId = cb_context:req_id(Context),
     AccountId = cb_context:account_id(Context),
     AccountModb = cb_context:account_modb(Context),
-
+	Request = build_originate_req(Contact, Context),
     _Pid = wh_util:spawn(
              fun() ->
                      wh_util:put_callid(ReqId),
-                     Request = build_originate_req(Contact, Context),
+                     
                      Status = exec_originate(Request),
                      lager:debug("got status ~p", [Status]),
 
@@ -348,7 +348,8 @@ originate_call(C2CId, Context, Contact) ->
                      kazoo_modb:save_doc(AccountId, HistoryItem)
              end),
     lager:debug("attempting call in ~p", [_Pid]),
-    crossbar_util:response_202(<<"processing request">>, Context).
+	JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
+    crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
 
 -spec exec_originate(api_terms()) ->
                             {'success', ne_binary()} |
@@ -433,6 +434,7 @@ build_originate_req(Contact, Context) ->
                ],
 
     MsgId = wh_json:get_value(<<"msg_id">>, JObj, wh_util:rand_hex_binary(16)),
+	CallId = <<(wh_util:rand_hex_binary(18))/binary, "-clicktocall">>,
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
        ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
@@ -447,6 +449,7 @@ build_originate_req(Contact, Context) ->
        ,{<<"Outbound-Callee-ID-Number">>, CalleeNumber}
        ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
        ,{<<"Outbound-Caller-ID-Number">>, OutboundNumber}
+	   ,{<<"Outbound-Call-ID">>, CallId}
        ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Continue-On-Fail">>, 'true'}
