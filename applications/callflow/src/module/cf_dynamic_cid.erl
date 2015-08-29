@@ -127,7 +127,7 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call)
     end.
 
-
+-spec maybe_route_to_callflow(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 maybe_route_to_callflow(Data, Call, Number) ->
     case cf_util:lookup_callflow(Number, whapps_call:account_id(Call)) of
         {'ok', Flow, NoMatch} ->
