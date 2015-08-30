@@ -264,11 +264,12 @@ maybe_bridge_emergency(#state{resource_req=JObj
     %%   are assuming it was for a local resource (at the
     %%   time of this commit offnet DB is still in use)
     Name = bridge_emergency_cid_name(JObj),
-    Number = find_emergency_number(JObj),
     case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
         'undefined' ->
+            Number = find_emergency_number(JObj),
             maybe_deny_emergency_bridge(State, Number, Name);
         _Else ->
+            Number = bridge_emergency_cid_number(JObj),
             lager:debug("not enforcing emergency caller id validation when using resource from account ~s", [_Else]),
             wapi_dialplan:publish_command(
               ControlQ
