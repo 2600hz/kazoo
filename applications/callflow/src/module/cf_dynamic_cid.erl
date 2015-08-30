@@ -88,16 +88,16 @@ handle_list(Data, Call) ->
     CID_id = <<C1,C2>>,
     lager:debug("cid_id ~p ", [CID_id]),
 
-    New_CID_info = get_list_entry(Data, Call),
+    NewCidInfo = get_list_entry(Data, Call),
 
-    New_caller_id_number = wh_json:get_value(<<"number">>, New_CID_info),
-    New_caller_id_name = wh_json:get_value(<<"name">>, New_CID_info),
+    NewCallerIdNumber = wh_json:get_value(<<"number">>, NewCidInfo),
+    NewCallerIdName = wh_json:get_value(<<"name">>, NewCidInfo),
 
-    lager:info("setting the caller id number to ~s", [New_caller_id_number]),
+    lager:info("setting the caller id number to ~s", [NewCallerIdNumber]),
 
-    Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', New_caller_id_number}
-	      ,{fun whapps_call:set_caller_id_number/2, New_caller_id_number}
-	      ,{fun whapps_call:set_caller_id_name/2, New_caller_id_name}
+    Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
+	      ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
+	      ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
               ],
 
     cf_exe:set_call(whapps_call:exec(Updates, Call)),
