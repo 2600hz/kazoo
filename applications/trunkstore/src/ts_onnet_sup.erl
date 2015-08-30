@@ -32,11 +32,12 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-start_handler(CallID, RouteReqJObj) ->
-    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS('ts_from_onnet'
-                                                      ,<<"onnet-", CallID/binary>>
-                                                      ,[RouteReqJObj]
-                                                     )).
+start_handler(CallID, RouteReqJObj) ->OB
+    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(<<"onnet-", CallID/binary>>
+                                                           ,'ts_from_onnet'
+                                                           ,[RouteReqJObj]
+                                                           ,'temporary'
+                                                          )).
 
 stop_handler(CallID) ->
     'ok' = supervisor:terminate_child(?SERVER, <<"onnet-", CallID/binary>>),
