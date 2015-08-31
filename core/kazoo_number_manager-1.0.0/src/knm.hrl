@@ -17,8 +17,41 @@
 
 -define(KNM_USER_AGENT, "Kazoo Number Manager 1.0.0").
 
+-ifdef(TEST).
 -define(TEST_CREATE_NUM, <<"5559871234">>).
 -define(TEST_EXISTING_NUM, <<"+15551239876">>).
+
+-define(MASTER_ACCOUNT_ID, <<"master_account_6992af0e9504d0b27">>).
+-define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
+
+-define(PVT_TREE, [?MASTER_ACCOUNT_ID
+                   ,?RESELLER_ACCOUNT_ID
+                  ]).
+
+-define(RESELLER_ACCOUNT_DOC
+        ,wh_json:from_list(
+           [{<<"_id">>, ?RESELLER_ACCOUNT_ID}]
+          )
+       ).
+
+-define(EXISTING_NUMBER
+        ,wh_json:from_list(
+           [{<<"_id">>, ?TEST_EXISTING_NUM}
+            ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
+            ,{<<"pvt_modified">>, 63565934349}
+            ,{<<"pvt_features">>, []}
+            ,{<<"pvt_assigned_to">>, ?RESELLER_ACCOUNT_ID}
+            ,{<<"pvt_reserve_history">>, [?RESELLER_ACCOUNT_ID]}
+            ,{<<"pvt_module_name">>, ?CARRIER_LOCAL}
+            ,{<<"pvt_number_state">>, ?NUMBER_STATE_IN_SERVICE}
+            ,{<<"pvt_db_name">>, <<"numbers%2F%2B1555">>}
+            ,{<<"pvt_created">>, 63565934344}
+            ,{<<"pvt_authorizing_account">>, ?MASTER_ACCOUNT_ID}
+            ,{<<"used_by">>, <<"callflow">>}
+           ]
+          )
+       ).
+-endif.
 
 -define(KNM_HRL, 'true').
 -endif.

@@ -14,6 +14,10 @@
 
 -include("knm.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -type kn() :: knm_number:knm_number().
 
 -spec to_state(ne_binary() | kn(), ne_binary()) -> kn().
@@ -73,10 +77,21 @@ to_reserved(Number, State) ->
 authorize(Number) ->
     authorize(Number, knm_phone_number:auth_by(knm_number:phone_number(Number))).
 
+-ifdef(TEST).
+-define(ACCT_HIERARCHY(AuthBy, AssignTo, _)
+        ,AuthBy =:= ?MASTER_ACCOUNT_ID
+        andalso AssignTo =:= ?RESELLER_ACCOUNT_ID
+       ).
+-else.
+-define(ACCT_HIERARCHY(AuthBy, AssignTo, Bool),
+        ,wh_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
+       ).
+-endif.
+
 authorize(Number, ?DEFAULT_AUTH_BY) -> Number;
 authorize(Number, AuthBy) ->
     AssignTo = knm_phone_number:assign_to(knm_number:phone_number(Number)),
-    case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, 'true') of
+    case ?ACCT_HIERARCHY(AuthBy, AssignTo, 'true') of
         'false' -> knm_errors:unauthorized();
         'true' -> Number
     end.
