@@ -30,13 +30,26 @@ handle(Data, Call) ->
 
 -spec maybe_branch_callflow(wh_json:object(), whapps_call:call()) -> 'ok'.
 maybe_branch_callflow(Data, Call) ->
-    Id = wh_json:get_value(<<"id">>, Data),
+    Id = maybe_use_variable(Data, Call),
     case couch_mgr:open_doc(whapps_call:account_db(Call), Id) of
         {'error', R} ->
             lager:info("could not branch to callflow ~s, ~p", [Id, R]),
             cf_exe:continue(Call);
         {'ok', JObj} ->
             continue_if_still_active(Call, JObj)
+    end.
+
+-spec maybe_use_variable(wh_json:object(), whapps_call:call()) -> api_binary().
+maybe_use_variable(Data, Call) ->
+    case wh_json:get_value(<<"var">>, Data) of
+        'undefined' ->
+            wh_json:get_value(<<"id">>, Data);
+        Variable ->
+            Value = wh_json:get_value(<<"value">>, cf_kvs_set:get_kv(Variable, Call)),
+            case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Value) of
+                {'ok', _} -> Value;
+                _ -> wh_json:get_value(<<"id">>, Data)
+            end
     end.
 
 -spec continue_if_still_active(whapps_call:call(), wh_json:object()) -> 'ok'.
