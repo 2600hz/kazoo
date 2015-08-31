@@ -19,6 +19,10 @@
          ,handle_member_call/2
          ,handle_member_call_cancel/2
          ,handle_agent_change/2
+         ,handle_queue_member_add/2
+         ,handle_queue_member_remove/2
+         ,handle_queue_member_position/2
+         ,handle_manager_success_notify/2
          ,handle_config_change/2
          ,should_ignore_member_call/3, should_ignore_member_call/4
          ,config/1
@@ -40,6 +44,8 @@
          ,code_change/3
         ]).
 
+-export([announce_position_loop/7]).
+
 -include("acdc.hrl").
 
 -define(SERVER, ?MODULE).
@@ -58,6 +64,12 @@
                 ,known_agents = dict:new() :: dict() % how many agent processes are available {AgentId, Count}
                 ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
                 ,moh :: api_binary()
+                ,current_member_calls = [] :: list() % ordered list of current members waiting
+                ,pos_announce_enabled = 'false' :: boolean()
+                ,wait_announce_enabled = 'false' :: boolean()
+                ,announcements_timer = 30 :: non_neg_integer()
+                ,pos_announce_pids = [] :: announce_pid_list()
+                ,queue_media = [] :: wh_proplist()
                }).
 -type mgr_state() :: #state{}.
 
@@ -66,7 +78,7 @@
                                    ,{'id', Q}
                                    ,'federate'
                                   ]}
-                         ,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change']}
+                         ,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change', 'member_addremove', 'member_position']}
                                           ,{'account_id', A}
                                           ,{'queue_id', Q}
                                          ]}
@@ -90,6 +102,18 @@
                       }
                      ,{{'acdc_queue_manager', 'handle_agent_change'}
                        ,[{<<"queue">>, <<"agent_change">>}]
+                      }
+                     ,{{'acdc_queue_manager', 'handle_queue_member_add'}
+                       ,[{<<"queue">>, <<"member_add">>}]
+                      }
+                     ,{{'acdc_queue_manager', 'handle_queue_member_remove'}
+                       ,[{<<"queue">>, <<"member_remove">>}]
+                      }
+                     ,{{'acdc_queue_manager', 'handle_queue_member_position'}
+                       ,[{<<"queue">>, <<"call_position_req">>}]
+                      }
+                     ,{{'acdc_queue_manager', 'handle_manager_success_notify'}
+                       ,[{<<"member">>, <<"call_success">>}]
                       }
                     ]).
 
@@ -161,18 +185,9 @@ are_agents_available(Srv, EnterWhenEmpty) ->
 
 start_queue_call(JObj, Props, Call) ->
     _ = whapps_call:put_callid(Call),
-    AccountId = whapps_call:account_id(Call),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
     lager:info("member call for queue ~s recv", [QueueId]),
-
-    acdc_stats:call_waiting(AccountId, QueueId
-                            ,whapps_call:call_id(Call)
-                            ,whapps_call:caller_id_name(Call)
-                            ,whapps_call:caller_id_number(Call)
-                            ,wh_json:get_integer_value(<<"Member-Priority">>, JObj)
-                           ),
-
     lager:debug("answering call"),
     whapps_call_command:answer_now(Call),
 
@@ -185,8 +200,7 @@ start_queue_call(JObj, Props, Call) ->
             whapps_call_command:hold(MOH, Call)
     end,
 
-    wapi_acdc_queue:publish_shared_member_call(AccountId, QueueId, JObj),
-    lager:debug("put call into shared messaging queue"),
+    JObj2 = wh_json:set_value([<<"Call">>, <<"Custom-Channel-Vars">>, <<"Queue-ID">>], QueueId, JObj),
 
     _ = whapps_call_command:set('undefined'
                                 ,wh_json:from_list([{<<"Eavesdrop-Group-ID">>, QueueId}
@@ -195,9 +209,8 @@ start_queue_call(JObj, Props, Call) ->
                                 ,Call
                                ),
 
-    gen_listener:cast(props:get_value('server', Props), {'monitor_call', Call}),
-
-    acdc_util:presence_update(AccountId, QueueId, ?PRESENCE_RED_FLASH).
+    %% Add member to queue for tracking position
+    gen_listener:cast(props:get_value('server', Props), {'add_queue_member', JObj2}).
 
 handle_member_call_cancel(JObj, Props) ->
     wh_util:put_callid(JObj),
@@ -207,7 +220,9 @@ handle_member_call_cancel(JObj, Props) ->
                         ,wh_json:get_value(<<"Queue-ID">>, JObj)
                         ,wh_json:get_value(<<"Call-ID">>, JObj)
                        ),
-    gen_listener:cast(props:get_value('server', Props), {'member_call_cancel', K, JObj}).
+
+    gen_listener:cast(props:get_value('server', Props), {'member_call_cancel', K, JObj}),
+    gen_listener:cast(props:get_value('server', Props), {'remove_queue_member', JObj}).
 
 handle_agent_change(JObj, Prop) ->
     'true' = wapi_acdc_queue:agent_change_v(JObj),
@@ -220,6 +235,22 @@ handle_agent_change(JObj, Prop) ->
         <<"unavailable">> ->
             gen_listener:cast(Server, {'agent_unavailable', JObj})
     end.
+
+-spec handle_queue_member_add(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_queue_member_add(JObj, Prop) ->
+    gen_listener:cast(props:get_value('server', Prop), {'handle_queue_member_add', JObj, props:get_value('queue', Prop)}).
+
+-spec handle_queue_member_remove(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_queue_member_remove(JObj, Prop) ->
+    gen_listener:cast(props:get_value('server', Prop), {'handle_queue_member_remove', JObj}).
+
+-spec handle_queue_member_position(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_queue_member_position(JObj, Prop) ->
+	gen_listener:cast(props:get_value('server', Prop), {'queue_member_position', JObj}).
+
+-spec handle_manager_success_notify(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_manager_success_notify(JObj, Prop) ->
+    gen_listener:cast(props:get_value('server', Prop), {'remove_queue_member', JObj}).
 
 -spec handle_config_change(server_ref(), wh_json:object()) -> 'ok'.
 handle_config_change(Srv, JObj) ->
@@ -369,6 +400,16 @@ handle_call('current_agents', _, #state{strategy='mi'
                                        }=State) ->
     {'reply', L, State};
 
+handle_call({'queue_position', CallId}, _, #state{current_member_calls=CurrentCalls
+                                                 }=State) ->
+    {Map, _} = lists:mapfoldr(fun(X, I) -> {{whapps_call:call_id(X), I}, I + 1} end, 1, CurrentCalls),
+    case lists:keyfind(CallId, 1, Map) of
+        {_, Index} -> {'reply', Index, State};
+        _Result ->
+            lager:debug("position requested for non-existent call id ~p", [CallId]),
+            {'reply', 'not_found', State}
+    end;
+
 handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
 
@@ -512,6 +553,102 @@ handle_cast({'refresh', QueueJObj}, State) ->
 
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
+
+handle_cast({'add_queue_member', JObj}, #state{account_id=AccountId
+                                               ,queue_id=QueueId
+                                               ,pos_announce_enabled=PosAnnounceEnabled
+                                               ,wait_announce_enabled=WaitAnnounceEnabled
+                                               ,announcements_timer=AnnouncementsTimer
+                                               ,current_member_calls=CurrentCalls
+                                               ,pos_announce_pids=Pids
+                                               ,queue_media=QueueMedia
+                                              }=State) ->
+    %% Add call to my own list (won't be doubled up in handle_queue_member_add)
+    Position = length(CurrentCalls)+1,
+
+    Call = whapps_call:set_custom_channel_var(<<"Queue-Position">>, Position, whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj))),
+
+    acdc_stats:call_waiting(AccountId, QueueId, Position
+                            ,whapps_call:call_id(Call)
+                            ,whapps_call:caller_id_name(Call)
+                            ,whapps_call:caller_id_number(Call)
+                            ,wh_json:get_integer_value(<<"Member-Priority">>, JObj)
+                           ),
+
+    %% Add call to shared queue
+    wapi_acdc_queue:publish_shared_member_call(AccountId, QueueId, JObj),
+    lager:debug("put call into shared messaging queue"),
+
+    gen_listener:cast(self(), {'monitor_call', Call}),
+
+    acdc_util:presence_update(AccountId, QueueId, ?PRESENCE_RED_FLASH),
+
+    %% Notify other queue managers of added call
+    lager:debug("publishing add of new queue member ~p", [whapps_call:call_id(Call)]),
+    Prop = [{<<"Account-ID">>, AccountId}
+            ,{<<"Queue-ID">>, QueueId}
+            ,{<<"JObj">>, JObj}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_acdc_queue:publish_queue_member_add(Prop),
+
+    %% Schedule position announcements
+    UpdatedAnnouncePids = maybe_schedule_position_announcements(
+                            Call
+                            ,QueueId
+                            ,{PosAnnounceEnabled, WaitAnnounceEnabled}
+                            ,AnnouncementsTimer
+                            ,QueueMedia
+                            ,Pids),
+
+    {'noreply', State#state{current_member_calls = [Call | CurrentCalls]
+                            ,pos_announce_pids=UpdatedAnnouncePids
+                           }};
+
+handle_cast({'remove_queue_member', JObj}, #state{account_id=AccountId
+                                                  ,queue_id=QueueId
+                                                 }=State) ->
+    %% Should only remove queue member if reason is not "no agents"
+    maybe_publish_queue_member_remove(AccountId, QueueId, wh_json:get_value(<<"Call-ID">>, JObj), wh_json:get_value(<<"Reason">>, JObj)),
+    {'noreply', State};
+
+handle_cast({'handle_queue_member_add', JObj, _Queue}, #state{current_member_calls=CurrentCalls}=State) ->
+    Call = whapps_call:from_json(wh_json:get_value([<<"JObj">>, <<"Call">>], JObj)),
+    CallId = whapps_call:call_id(Call),
+
+    lager:debug("received notification of new queue member ~p", [CallId]),
+
+    {'noreply', State#state{current_member_calls = [Call | lists:keydelete(CallId, 2, CurrentCalls)]}};
+
+handle_cast({'handle_queue_member_remove', JObj}, #state{account_id=AccountId
+                                                         ,queue_id=QueueId
+                                                         ,current_member_calls=CurrentCalls
+                                                         ,pos_announce_pids=Pids
+                                                        }=State) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    lager:debug("received notification of queue member ~p being removed", [CallId]),
+
+    {Map, _} = lists:mapfoldr(fun(X, I) -> {{whapps_call:call_id(X), I}, I + 1} end, 1, CurrentCalls),
+    case lists:keyfind(CallId, 1, Map) of
+        {Call, Index} ->
+            %% Add Exited-Position to the call stat
+            Prop = [{<<"Account-ID">>, AccountId}
+                    ,{<<"Queue-ID">>, QueueId}
+                    ,{<<"Call-ID">>, CallId}
+                    ,{<<"Exited-Position">>, Index}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_acdc_stats:publish_call_exited_position(Prop),
+
+            {'noreply', State#state{current_member_calls = lists:keydelete(CallId, 2, CurrentCalls)
+                                    %% Cancel position announcements
+                                    ,pos_announce_pids = maybe_cancel_position_announcements(Call, Pids)
+                                   }};
+        _Result ->
+            lager:debug("removing non-existent call id ~p", [CallId]),
+            {'noreply', State}
+    end;
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -763,7 +900,171 @@ maybe_start_queue_workers(QueueSup, AgentCount) ->
 
 -spec update_properties(wh_json:object(), mgr_state()) -> mgr_state().
 update_properties(QueueJObj, State) ->
+    QueueMedia = [{<<"position_media">>, wh_json:get_value(<<"position_media">>, QueueJObj, <<"queue-you_are_at_position">>)}
+                  ,{<<"in_the_queue_media">>, wh_json:get_value(<<"in_the_queue_media">>, QueueJObj, <<"queue-in_the_queue">>)}
+                  ,{<<"increase_call_volume_media">>, wh_json:get_value(<<"increase_call_volume_media">>, QueueJObj
+                                                                        ,<<"queue-increase_in_call_volume">>)}
+                  ,{<<"estimated_wait_time_media">>, wh_json:get_value(<<"estimated_wait_time_media">>, QueueJObj
+                                                                       ,<<"queue-the_estimated_wait_time_is">>)}
+                 ],
     State#state{
       enter_when_empty=wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
       ,moh=wh_json:get_ne_value(<<"moh">>, QueueJObj)
+      ,pos_announce_enabled=wh_json:is_true(<<"position_announcements_enabled">>, QueueJObj, 'false')
+      ,wait_announce_enabled=wh_json:is_true(<<"holdtime_announcements_enabled">>, QueueJObj, 'false')
+      ,announcements_timer=wh_json:get_integer_value(<<"announcements_timer">>, QueueJObj, 30)
+      ,queue_media=QueueMedia
      }.
+
+-spec maybe_schedule_position_announcements(whapps_call:call()
+                                            ,ne_binary()
+                                            ,{boolean(), boolean()}
+                                            ,proplist()
+                                            ,non_neg_integer()
+                                            ,announce_pid_list()
+                                           ) -> announce_pid_list().
+maybe_schedule_position_announcements(_Call, _, {'false', 'false'}, _, _, Pids) ->
+    Pids;
+maybe_schedule_position_announcements(Call, QueueId, AnnouncesEnabled, AnnouncementsTimer, Media, Pids) when AnnouncementsTimer < 30 ->
+    maybe_schedule_position_announcements(Call, QueueId, AnnouncesEnabled, 30, Media, Pids);
+maybe_schedule_position_announcements(Call, QueueId, AnnouncesEnabled, AnnouncementsTimer, Media, Pids) ->
+    [{whapps_call:call_id(Call), spawn(
+                                   ?MODULE
+                                   ,'announce_position_loop'
+                                   ,[self(), Call, QueueId, AnnouncesEnabled, AnnouncementsTimer, Media, 'undefined']
+                                   )} | Pids].
+
+-spec maybe_cancel_position_announcements(whapps_call:call(), announce_pid_list()) -> announce_pid_list().
+maybe_cancel_position_announcements(Call, Pids) ->
+    CallId = whapps_call:call_id(Call),
+    case lists:keyfind(CallId, 1, Pids) of
+        {_, Pid} ->
+            erlang:exit(Pid, 'call_done'),
+            %% Attempt to skip remaining announcement media, but don't flush hangups
+            NoopId = couch_mgr:get_uuid(),
+            Command = [{<<"Application-Name">>, <<"noop">>}
+                       ,{<<"Msg-ID">>, NoopId}
+                       ,{<<"Insert-At">>, <<"now">>}
+                       ,{<<"Filter-Applications">>, [<<"play">>, <<"say">>, <<"play">>]}
+                      ],
+            whapps_call_command:send_command(Command, Call);
+        _ ->
+            lager:debug("she caught me without the pid... it wasn't me"),
+            'ok'
+    end,
+    lists:keydelete(whapps_call:call_id(Call), 1, Pids).
+
+announce_position_loop(Srv, Call, QueueId, AnnouncesEnabled, AnnouncementsTimer, Media, LastAverage) ->
+    Position = gen_listener:call(Srv, {'queue_position', whapps_call:call_id(Call)}),
+    NewAverage = announce_position(Call, QueueId, Position, AnnouncesEnabled, Media, LastAverage),
+    timer:sleep(AnnouncementsTimer * 1000),
+    announce_position_loop(Srv, Call, QueueId, AnnouncesEnabled, AnnouncementsTimer, Media, NewAverage).
+
+-spec announce_position(whapps_call:call(), ne_binary(), non_neg_integer() | 'not_found', {boolean(), boolean()}
+                        ,proplist(), non_neg_integer() | 'undefined') ->
+        non_neg_integer() | 'undefined'.
+announce_position(Call, QueueId, Position, {PosAnnounceEnabled, WaitAnnounceEnabled}, Media, OldAverageWait) ->
+    Req = props:filter_undefined(
+            [{<<"Account-ID">>, whapps_call:account_id(Call)}
+             ,{<<"Queue-ID">>, QueueId}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_acdc_stats:publish_current_calls_req/1
+                                       ,fun wapi_acdc_stats:current_calls_resp_v/1
+                                      )
+    of
+        {'error', _E} ->
+            lager:debug("failed to recv resp from AMQP: ~p", [_E]),
+            'undefined';
+        {'ok', Resp} ->
+            {AverageWait, Prompts} = maybe_average_wait_announcement(Resp, WaitAnnounceEnabled, Media, whapps_call:language(Call), OldAverageWait),
+            Prompt = maybe_position_announcement(Position, PosAnnounceEnabled, Media, whapps_call:language(Call)) ++
+                       Prompts,
+            whapps_call_command:audio_macro(Prompt, Call),
+            AverageWait
+    end.
+
+-spec maybe_average_wait_announcement(wh_json:object(), boolean(), proplist(), binary(), non_neg_integer() | 'undefined') ->
+        {non_neg_integer() | 'undefined', list()}.
+maybe_average_wait_announcement(_, 'false', _, _, _) ->
+    {'undefined', []};
+maybe_average_wait_announcement(JObj, 'true', Media, Language, OldAverageWait) ->
+    average_wait_announcement(JObj, Media, Language, OldAverageWait).
+
+-spec average_wait_announcement(wh_json:object(), proplist(), binary(), non_neg_integer() | 'undefined') ->
+        {non_neg_integer() | 'undefined', list()}.
+average_wait_announcement(JObj, Media, Language, OldAverageWait) ->
+    Abandoned = length(wh_json:get_value(<<"Abandoned">>, JObj, [])),
+    Total = length(wh_json:get_value(<<"Abandoned">>, JObj, [])) +
+              length(wh_json:get_value(<<"Handled">>, JObj, [])) +
+              length(wh_json:get_value(<<"Processed">>, JObj, [])),
+    Calls = [Call || Key <- [<<"Waiting">>, <<"Handled">>, <<"Processed">>]
+                     ,Call <- wh_json:get_value(Key, JObj, [])
+            ],
+    TotalWait = lists:foldl(fun(Call, Acc) ->
+        Acc + wh_json:get_value(<<"wait_time">>, Call, 0)
+    end, 0, Calls),
+    time_prompts(format_time(calc_average_wait(Abandoned, Total, TotalWait)), OldAverageWait, Media, Language).
+
+-spec maybe_position_announcement(non_neg_integer() | 'not_found', boolean(), proplist(), binary()) -> list().
+maybe_position_announcement('not_found', _, _ ,_) ->
+    [];
+maybe_position_announcement(_, 'false', _, _) ->
+    [];
+maybe_position_announcement(Position, 'true', Media, Language) ->
+    [{'prompt', props:get_value(<<"position_media">>, Media), Language, <<"A">>}
+     ,{'say', wh_util:to_binary(Position), <<"number">>}
+     ,{'prompt', props:get_value(<<"in_the_queue_media">>, Media), Language, <<"A">>}].
+
+calc_average_wait(Same, Same, TotalWait) ->
+    TotalWait;
+calc_average_wait(Abandoned, Total, TotalWait) ->
+    TotalWait div (Total - Abandoned).
+
+format_time(Time) ->
+    {Time div 3600, Time rem 3600 div 60, Time rem 60}.
+
+time_prompts({0, 0, 0}=AverageWait, _, _, _) ->
+    {AverageWait, []};
+time_prompts({Hour, Min, Sec}=Time, {Hour2, Min2, Sec2}, Media, Language) when (Hour * 3600 + Min * 60 + Sec)
+                                                                            > (Hour2 * 3600 + Min2 * 60 + Sec2) ->
+    {Time, [{'prompt', props:get_value(<<"increase_call_volume_media">>, Media), Language, <<"A">>}
+            ,{'prompt', props:get_value(<<"estimated_wait_time_media">>, Media), Language, <<"A">>}
+            | time_prompts2(Time, Language)
+           ]};
+time_prompts(Time, _, Media, Language) ->
+    {Time, [{'prompt', props:get_value(<<"estimated_wait_time_media">>, Media, Language), <<"A">>}
+            | time_prompts2(Time, Language)
+           ]}.
+    
+time_prompts2({0, 0, _}, Language) ->
+    [{'prompt', <<"queue-less_than_1_minute">>, Language, <<"A">>}];
+time_prompts2({0, Min, _}, Language) when Min =< 5 ->
+    [{'prompt', <<"queue-about_5_minutes">>, Language, <<"A">>}];
+time_prompts2({0, Min, _}, Language) when Min =< 10 ->
+    [{'prompt', <<"queue-about_10_minutes">>, Language, <<"A">>}];
+time_prompts2({0, Min, _}, Language) when Min =< 15 ->
+    [{'prompt', <<"queue-about_15_minutes">>, Language, <<"A">>}];
+time_prompts2({0, Min, _}, Language) when Min =< 30 ->
+    [{'prompt', <<"queue-about_30_minutes">>, Language, <<"A">>}];
+time_prompts2({0, Min, _}, Language) when Min =< 45 ->
+    [{'prompt', <<"queue-about_45_minutes">>, Language, <<"A">>}];
+time_prompts2({0, _, _}, Language) ->
+    [{'prompt', <<"queue-about_1_hour">>, Language, <<"A">>}];
+time_prompts2({_, _, _}, Language) ->
+    [{'prompt', <<"queue-at_least_1_hour">>, Language, <<"A">>}].
+
+-spec maybe_publish_queue_member_remove(ne_binary(), ne_binary(), ne_binary(), binary()) -> 'ok'.
+maybe_publish_queue_member_remove(_, _, _, <<"no agents">>) ->
+    'ok';
+maybe_publish_queue_member_remove(AccountId, QueueId, CallId, _) ->
+    lager:debug("publishing remove of queue member ~p", [CallId]),
+
+    Prop = [{<<"Account-ID">>, AccountId}
+            ,{<<"Queue-ID">>, QueueId}
+            ,{<<"Call-ID">>, CallId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+
+    wapi_acdc_queue:publish_queue_member_remove(Prop).

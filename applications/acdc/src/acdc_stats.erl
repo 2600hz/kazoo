@@ -13,6 +13,7 @@
 
 %% Public API
 -export([call_waiting/6
+         ,call_waiting/7
          ,call_abandoned/4
          ,call_handled/4
          ,call_missed/5
@@ -76,6 +77,20 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
               ,{<<"Caller-ID-Name">>, CallerIdName}
               ,{<<"Caller-ID-Number">>, CallerIdNumber}
               ,{<<"Entered-Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Caller-Priority">>, CallerPriority}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_waiting/1).
+
+call_waiting(AccountId, QueueId, Position, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
+    Prop = props:filter_undefined(
+             [{<<"Account-ID">>, AccountId}
+              ,{<<"Queue-ID">>, QueueId}
+              ,{<<"Call-ID">>, CallId}
+              ,{<<"Caller-ID-Name">>, CallerIdName}
+              ,{<<"Caller-ID-Number">>, CallerIdNumber}
+              ,{<<"Entered-Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Entered-Position">>, Position}
               ,{<<"Caller-Priority">>, CallerPriority}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
@@ -242,6 +257,7 @@ call_table_opts() ->
                         ,{<<"acdc_call_stat">>, <<"abandoned">>}
                         ,{<<"acdc_call_stat">>, <<"handled">>}
                         ,{<<"acdc_call_stat">>, <<"processed">>}
+                        ,{<<"acdc_call_stat">>, <<"exited-position">>}
                         ,{<<"acdc_call_stat">>, <<"flush">>}
                        ]
                      }
@@ -282,6 +298,7 @@ handle_call_stat(JObj, Props) ->
         <<"abandoned">> -> handle_abandoned_stat(JObj, Props);
         <<"handled">> -> handle_handled_stat(JObj, Props);
         <<"processed">> -> handle_processed_stat(JObj, Props);
+        <<"exited-position">> -> handle_exited_stat(JObj, Props);
         <<"flush">> -> flush_call_stat(JObj, Props);
         _Name ->
             lager:debug("recv unknown call stat type ~s: ~p", [_Name, JObj])
@@ -521,6 +538,8 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
                                    ,{<<"handled">>, []}
                                    ,{<<"abandoned">>, []}
                                    ,{<<"processed">>, []}
+                                   ,{<<"entered_position">>, []}
+                                   ,{<<"exited_position">>, []}
                                   ]),
 
             QueryResult = lists:foldl(fun query_call_fold/2, Dict, Stats),
@@ -528,6 +547,8 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
                     ,{<<"Handled">>, dict:fetch(<<"handled">>, QueryResult)}
                     ,{<<"Abandoned">>, dict:fetch(<<"abandoned">>, QueryResult)}
                     ,{<<"Processed">>, dict:fetch(<<"processed">>, QueryResult)}
+                    ,{<<"Entered-Position">>, dict:fetch(<<"entered_position">>, QueryResult)}
+                    ,{<<"Exited-Position">>, dict:fetch(<<"exited_position">>, QueryResult)}
                     ,{<<"Query-Time">>, wh_util:current_tstamp()}
                     ,{<<"Msg-ID">>, MsgId}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -653,6 +674,8 @@ call_stat_to_doc(#call_stat{id=Id
                             ,abandoned_timestamp=AbandonedT
                             ,handled_timestamp=HandledT
                             ,processed_timestamp=ProcessedT
+                            ,entered_position=EnteredPos
+                            ,exited_position=ExitedPos
                             ,abandoned_reason=AbandonedR
                             ,misses=Misses
                             ,status=Status
@@ -671,6 +694,8 @@ call_stat_to_doc(#call_stat{id=Id
            ,{<<"abandoned_timestamp">>, AbandonedT}
            ,{<<"handled_timestamp">>, HandledT}
            ,{<<"processed_timestamp">>, ProcessedT}
+           ,{<<"entered_position">>, EnteredPos}
+           ,{<<"exited_position">>, ExitedPos}
            ,{<<"abandoned_reason">>, AbandonedR}
            ,{<<"misses">>, misses_to_docs(Misses)}
            ,{<<"status">>, Status}
@@ -695,6 +720,8 @@ call_stat_to_json(#call_stat{id=Id
                              ,abandoned_timestamp=AbandonedT
                              ,handled_timestamp=HandledT
                              ,processed_timestamp=ProcessedT
+                             ,entered_position=EnteredPos
+                             ,exited_position=ExitedPos
                              ,abandoned_reason=AbandonedR
                              ,misses=Misses
                              ,status=Status
@@ -712,6 +739,8 @@ call_stat_to_json(#call_stat{id=Id
          ,{<<"Abandoned-Timestamp">>, AbandonedT}
          ,{<<"Handled-Timestamp">>, HandledT}
          ,{<<"Processed-Timestamp">>, ProcessedT}
+         ,{<<"Entered-Position">>, EnteredPos}
+         ,{<<"Exited-Position">>, ExitedPos}
          ,{<<"Abandoned-Reason">>, AbandonedR}
          ,{<<"Misses">>, misses_to_docs(Misses)}
          ,{<<"Status">>, Status}
@@ -771,6 +800,7 @@ handle_waiting_stat(JObj, Props) ->
             Updates = props:filter_undefined(
                         [{#call_stat.caller_id_name, wh_json:get_value(<<"Caller-ID-Name">>, JObj)}
                          ,{#call_stat.caller_id_number, wh_json:get_value(<<"Caller-ID-Number">>, JObj)}
+                         ,{#call_stat.entered_position, wh_json:get_value(<<"Entered-Position">>, JObj)}
                         ]),
             update_call_stat(Id, Updates, Props)
     end.
@@ -831,6 +861,14 @@ handle_processed_stat(JObj, Props) ->
                 ]),
     update_call_stat(Id, Updates, Props).
 
+-spec handle_exited_stat(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_exited_stat(JObj, Props) ->
+    'true' = wapi_acdc_stats:call_exited_position_v(JObj),
+
+    Id = call_stat_id(JObj),
+    Updates = props:filter_undefined([{#call_stat.exited_position, wh_json:get_value(<<"Exited-Position">>, JObj)}]),
+    update_call_stat(Id, Updates, Props).
+
 -spec flush_call_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 flush_call_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_flush_v(JObj),
@@ -859,6 +897,7 @@ create_call_stat(Id, JObj, Props) ->
                                           ,account_id = wh_json:get_value(<<"Account-ID">>, JObj)
                                           ,queue_id = wh_json:get_value(<<"Queue-ID">>, JObj)
                                           ,entered_timestamp = wh_json:get_value(<<"Entered-Timestamp">>, JObj)
+                                          ,entered_position = wh_json:get_value(<<"Entered-Position">>, JObj)
                                           ,misses = []
                                           ,status = <<"waiting">>
                                           ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj)

@@ -132,6 +132,28 @@
             "type": "string"
         }
     },
+    "position_announcements_enabled": {
+      "type": "boolean",
+      "required": false,
+      "name": "Position Announcements Enabled",
+      "description": "Enable periodic position announcements to caller.",
+      "default": false
+    },
+    "holdtime_announcements_enabled": {
+      "type": "boolean",
+      "required": false,
+      "name": "Hold Time Announcements Enabled",
+      "description": "Enable periodic average hold time announcements to caller.",
+      "default": false
+    },
+    "announcements_timer": {
+      "type": "integer",
+      "required": false,
+      "name": "Announce Time (s)",
+      "description": "Time between position and hold time announcements.",
+      "default": 30,
+      "minimum": 30
+    },
     "required": true,
     "type": "object"
 }
