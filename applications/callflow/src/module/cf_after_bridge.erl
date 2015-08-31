@@ -27,7 +27,7 @@
 handle(Data, Call) ->
     PostBridgeAction = wh_json:get_value(<<"action">>, Data),
     PostBridgeData = wh_json:get_value(<<"data">>, Data),
-    lager:info("Injecting ~s(~p)", [PostBridgeAction, PostBridgeData]),
+    lager:info("injecting ~s(~p)", [PostBridgeAction, PostBridgeData]),
     Action = build_action(PostBridgeAction, PostBridgeData),
     whapps_call_command:set(Action, wh_json:new(), Call),
     cf_exe:continue(Call).
@@ -40,5 +40,5 @@ build_action(<<"hangup">>, ShouldHangup) ->
 build_action(<<"transfer">>, ToExtension) when is_binary(ToExtension) ->
     wh_json:from_list([{<<"Transfer-After-Pickup">>, ToExtension}]);
 build_action(_Cmd, _Data) ->
-    lager:info("Unkown command: ~s(~p)", [_Cmd, _Data]),
+    lager:info("unknown command: ~s(~p)", [_Cmd, _Data]),
     wh_json:new().

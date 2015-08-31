@@ -35,9 +35,9 @@ handle(Data, Call) ->
     Value = whapps_call:custom_channel_var(Name, Call),
     case lists:member(Value, Keys) of
         'true' ->
-            lager:info("Trying  '~s'", [Value]),
+            lager:info("trying '~s'", [Value]),
             cf_exe:continue(Value, Call);
         'false' ->
-            lager:info("Trying '_'"),
+            lager:info("trying '_'"),
             cf_exe:continue(Call)
     end.

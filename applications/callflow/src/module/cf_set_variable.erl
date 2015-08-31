@@ -40,11 +40,11 @@ handle(Data, Call) ->
 
 -spec set_variable(api_binary(), api_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 set_variable('undefined', _Value, _Channel, _Call) ->
-    lager:warning("Cant set variable w/o name!");
+    lager:warning("can not set variable without name!");
 set_variable(_Name, 'undefined', _Channel, _Call) ->
-    lager:warning("Cant set variable w/o value!");
+    lager:warning("can not set variable without value!");
 set_variable(Name, Value, Channel, Call) ->
-    lager:debug("Set ~s/~s pair on ~s-leg", [Name, Value, Channel]),
+    lager:debug("set ~s/~s pair on ~s-leg", [Name, Value, Channel]),
     Var = wh_json:from_list([{Name, Value}]),
     execute_set_var(Var, Channel, Call).
 
