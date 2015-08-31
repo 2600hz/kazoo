@@ -20,7 +20,7 @@ create_new_number_test() ->
             ],
     N = knm_number:create_or_load(?TEST_CREATE_NUM, Props, {'error', 'not_found'}),
     PN = knm_number:phone_number(N),
-    ?debugFmt("pn: ~p~n", [PN]),
+
     ?assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN)),
     ?assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:auth_by(PN)),
     ?assertEqual(<<"numbers%2F%2B1555">>, knm_phone_number:number_db(PN)),
