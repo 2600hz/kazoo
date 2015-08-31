@@ -59,6 +59,7 @@
          ,check_value_of_fields/4
          ,get_timezone/2, account_timezone/1
         ]).
+-export([maybe_use_variable/2]).
 
 -export([wait_for_noop/2]).
 -export([start_task/3]).
@@ -957,6 +958,18 @@ account_timezone(Call) ->
             kz_account:timezone(AccountJObj, ?DEFAULT_TIMEZONE);
         {'error', _E} ->
             whapps_config:get(<<"accounts">>, <<"timezone">>, ?DEFAULT_TIMEZONE)
+    end.
+
+-spec maybe_use_variable(wh_json:object(), whapps_call:call()) -> api_binary().
+maybe_use_variable(Data, Call) ->
+    case wh_json:get_value(<<"var">>, Data) of
+        'undefined' -> wh_doc:id(Data);
+        Variable ->
+            Value = wh_json:get_value(<<"value">>, cf_kvs_set:get_kv(Variable, Call)),
+            case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Value) of
+                {'ok', _} -> Value;
+                _ -> wh_doc:id(Data)
+            end
     end.
 
 -spec start_task(fun(), list(), whapps_call:call()) -> 'ok'.

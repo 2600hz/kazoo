@@ -24,7 +24,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    UserId = wh_doc:id(Data),
+    UserId = cf_util:maybe_use_variable(Data, Call),
     Endpoints = get_endpoints(UserId, Data, Call),
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),

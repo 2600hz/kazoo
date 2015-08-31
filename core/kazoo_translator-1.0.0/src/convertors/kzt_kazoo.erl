@@ -65,4 +65,5 @@ req_params(Call) ->
        ,{<<"Transcription-Text">>, kzt_util:get_transcription_text(Call)}
        ,{<<"Transcription-Status">>, kzt_util:get_transcription_status(Call)}
        ,{<<"Transcription-Url">>, kzt_util:get_transcription_url(Call)}
+       | cf_kvs_set:kvs_to_props(Call)
       ]).

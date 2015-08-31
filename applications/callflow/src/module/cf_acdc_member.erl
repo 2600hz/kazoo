@@ -36,7 +36,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    QueueId = wh_doc:id(Data),
+    QueueId = cf_util:maybe_use_variable(Data, Call),
     lager:info("sending call to queue ~s", [QueueId]),
 
     Priority = lookup_priority(Data, Call),

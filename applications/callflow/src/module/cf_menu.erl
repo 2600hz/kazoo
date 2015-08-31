@@ -507,7 +507,7 @@ update_doc(Updates, Id, Call) ->
 %%--------------------------------------------------------------------
 -spec get_menu_profile(wh_json:object(), whapps_call:call()) -> menu().
 get_menu_profile(Data, Call) ->
-    Id = wh_doc:id(Data),
+    Id = cf_util:maybe_use_variable(Data, Call),
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, Id) of
         {'ok', JObj} ->
