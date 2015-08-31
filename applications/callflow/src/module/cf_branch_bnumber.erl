@@ -20,5 +20,5 @@ handle(_Data, Call) ->
                          'true' -> whapps_call:request_user(Call);
                          'false' -> Number
                      end,
-    lager:debug("Trying to branch to ~p", [NumberToBranch]),
+    lager:debug("trying to branch to ~p", [NumberToBranch]),
     cf_exe:continue(NumberToBranch, Call).
