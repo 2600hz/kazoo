@@ -33,6 +33,7 @@
 
 -ifdef(TEST).
 -compile(export_all).
+-include_lib("eunit/include/eunit.hrl").
 -endif.
 
 -include("knm.hrl").
@@ -241,7 +242,7 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
        ,{fun knm_phone_number:set_number_db/2, NumberDb}
        ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_IN_SERVICE)}
        ,{fun knm_phone_number:set_ported_in/2, props:is_true(<<"ported_in">>, Props, 'false')}
-       ,{fun knm_phone_number:set_assigned_to/2, props:get_binary_value(<<"assigned_to">>, Props)}
+       ,{fun knm_phone_number:set_assign_to/2, props:get_binary_value(<<"assign_to">>, Props)}
        ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props)}
        ,{fun knm_phone_number:set_dry_run/2, props:is_true(<<"dry_run">>, Props, 'false')}
        ,{fun knm_phone_number:set_module_name/2, props:get_binary_value(<<"module_name">>, Props, ?DEFAULT_CARRIER_MODULE)}
