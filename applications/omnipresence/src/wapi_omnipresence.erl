@@ -181,7 +181,7 @@ notify_v(JObj) -> notify_v(wh_json:to_proplist(JObj)).
 publish_notify(JObj) -> publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_notify(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun ?MODULE:notify/1),
-    amqp_util:basic_publish(?DIALOGINFO_SUBS_EXCHANGE, <<>>, Payload, ContentType).
+    amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<>>, Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -292,7 +292,7 @@ bind_q(Queue, 'undefined', Props) ->
                                 ),
     amqp_util:bind_q_to_exchange(Queue
                                  ,?NOTIFY_RK(Props)
-                                 ,?DIALOGINFO_SUBS_EXCHANGE
+                                 ,?OMNIPRESENCE_EXCHANGE
                                 );
 bind_q(Queue, ['subscribe'|Restrict], Props) ->
     amqp_util:bind_q_to_exchange(Queue
@@ -309,7 +309,7 @@ bind_q(Queue, ['update'|Restrict], Props) ->
 bind_q(Queue, ['notify'|Restrict], Props) ->
     amqp_util:bind_q_to_exchange(Queue
                                  ,?NOTIFY_RK(Props)
-                                 ,?DIALOGINFO_SUBS_EXCHANGE
+                                 ,?OMNIPRESENCE_EXCHANGE
                                 ),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, [_|Restrict], Props) ->
@@ -332,7 +332,7 @@ unbind_q(Queue, 'undefined', Props) ->
                                     ),
     amqp_util:unbind_q_from_exchange(Queue
                                      ,?NOTIFY_RK(Props)
-                                     ,?DIALOGINFO_SUBS_EXCHANGE
+                                     ,?OMNIPRESENCE_EXCHANGE
                                     );
 unbind_q(Queue, ['subscribe'|Restrict], Props) ->
     amqp_util:unbind_q_from_exchange(Queue
@@ -349,7 +349,7 @@ unbind_q(Queue, ['update'|Restrict], Props) ->
 unbind_q(Queue, ['notify'|Restrict], Props) ->
     amqp_util:unbind_q_from_exchange(Queue
                                      ,?NOTIFY_RK(Props)
-                                     ,?DIALOGINFO_SUBS_EXCHANGE
+                                     ,?OMNIPRESENCE_EXCHANGE
                                     ),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, [_|Restrict], Props) ->
