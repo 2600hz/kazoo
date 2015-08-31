@@ -203,6 +203,9 @@ activate_phone_number(Number, BillingId, Units) ->
 %%--------------------------------------------------------------------
 -spec fetch_services(knm_number:knm_number()) ->
                             wh_services:services().
+-ifdef(TEST).
+fetch_services(_Number) -> wh_services:new().
+-else.
 fetch_services(Number) ->
     case knm_number:services(Number) of
         'undefined' ->
@@ -211,6 +214,7 @@ fetch_services(Number) ->
         Services ->
             Services
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
