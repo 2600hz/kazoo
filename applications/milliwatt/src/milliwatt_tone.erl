@@ -13,7 +13,7 @@
 -include("milliwatt.hrl").
 
 -define(FREQUENCIES, [<<"2600">>]).
--define(DURATION, [<<"10000">>]).
+-define(DURATION, [10000]).
 
 exec(Call) ->
     Tone = get_tone(),
