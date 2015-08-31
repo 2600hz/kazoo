@@ -354,13 +354,13 @@ subscribe_notify(#omnip_subscription{event=Package
 %% @end
 %%--------------------------------------------------------------------
 -spec distribute_subscribe(integer(), wh_json:object()) -> 'ok'.
-distribute_subscribe(Count, JObj) 
+distribute_subscribe(Count, JObj)
   when Count > 1 ->
     whapps_util:amqp_pool_send(
       wh_json:delete_key(<<"Node">>, JObj)
       ,fun wapi_presence:publish_subscribe/1
      );
-distribute_subscribe(_Count, _JObj) -> 'ok'. 
+distribute_subscribe(_Count, _JObj) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
