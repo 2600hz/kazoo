@@ -541,6 +541,8 @@ gateway_to_endpoint(Number
          ,{<<"Endpoint-Options">>, EndpointOptions}
          ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(ProgressTimeout)}
          ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+         ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, JObj)}
+         ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, JObj)}
          | maybe_get_t38(Gateway, JObj)
         ])).
 
