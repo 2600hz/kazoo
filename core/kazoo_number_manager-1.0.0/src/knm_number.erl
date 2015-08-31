@@ -138,10 +138,10 @@ create_or_load(Num, Props, {'ok', PhoneNumber}) ->
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
-    ensure_can_load(PhoneNumber, ?NUMBER_STATE_AVAILABLE).
+    ensure_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE).
 
--spec ensure_can_load(knm_phone_number:knm_number(), ne_binary()) -> 'true'.
-ensure_can_load(PhoneNumber, ExpectedState) ->
+-spec ensure_state(knm_phone_number:knm_number(), ne_binary()) -> 'true'.
+ensure_state(PhoneNumber, ExpectedState) ->
     case knm_phone_number:state(PhoneNumber) of
         ExpectedState -> 'true';
         _State -> knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
@@ -149,6 +149,7 @@ ensure_can_load(PhoneNumber, ExpectedState) ->
 
 -spec create_phone_number(knm_number()) -> knm_number().
 create_phone_number(Number) ->
+    ensure_state(phone_number(Number), ?NUMBER_STATE_AVAILABLE),
     Routines = [fun knm_number_states:to_reserved/1
                 ,fun save_number/1
                 ,fun dry_run_or_number/1
@@ -240,7 +241,7 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
     props:filter_undefined(
       [{fun knm_phone_number:set_number/2, NormalizedNum}
        ,{fun knm_phone_number:set_number_db/2, NumberDb}
-       ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_IN_SERVICE)}
+       ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_AVAILABLE)}
        ,{fun knm_phone_number:set_ported_in/2, props:is_true(<<"ported_in">>, Props, 'false')}
        ,{fun knm_phone_number:set_assign_to/2, props:get_binary_value(<<"assign_to">>, Props)}
        ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props)}
