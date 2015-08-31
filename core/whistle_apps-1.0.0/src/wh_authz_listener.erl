@@ -69,6 +69,7 @@ start_link() ->
 -spec process_authz_broadcast_request(wh_json:object(), wh_proplist()) -> 'ok'.
 process_authz_broadcast_request(JObj, _Props) ->
     lager:debug("WH Authz request received"),
+    lager:debug("Request is ~p", [JObj]),
     MsgID = wh_json:get_value(<<"Msg-ID">>, JObj),
     % workaround for passing the cccp calling card dial-in number through authz with positive response
     CallerIdNumber = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
@@ -103,7 +104,7 @@ process_authz_broadcast_request(JObj, _Props) ->
                     case {AaaMode, length(AuthzServersList)} of
                         {<<"inherit">>, 0} ->
                             lager:debug("Authz enabled for this account (inherit mode)"),
-                            AppList = wh_json:get_value(<<"authz_apps">>, AaaDoc),
+                            AppList = find_authz_app_list_in_account_hierarchy(AccountId),
                             TimerRef = erlang:send_after(?AUTHZ_BROADCAST_TIMEOUT, self(), {'authz_broadcast_timeout', MsgID}),
                             lager:debug("Store broadcast request in ETS: ~p", [{MsgID, JObj, AppList, TimerRef}]),
                             ets:insert(?AUTHZ_ETS, {MsgID, JObj, AppList, TimerRef}),
@@ -116,7 +117,7 @@ process_authz_broadcast_request(JObj, _Props) ->
                             wapi_authz:publish_authz_req(JObj1);
                         {<<"on">>, _} ->
                             lager:debug("Authz enabled for this account (on mode)"),
-                            AppList = wh_json:get_value(<<"authz_apps">>, AaaDoc),
+                            AppList = find_authz_app_list_in_account_hierarchy(AccountId),
                             TimerRef = erlang:send_after(?AUTHZ_BROADCAST_TIMEOUT, self(), {'authz_broadcast_timeout', MsgID}),
                             lager:debug("Store broadcast request in ETS: ~p", [{MsgID, JObj, AppList, TimerRef}]),
                             ets:insert(?AUTHZ_ETS, {MsgID, JObj, AppList, TimerRef}),
@@ -232,7 +233,7 @@ handle_info({'authz_broadcast_timeout', MsgID}, State) ->
                                ,{<<"Event-Category">>, <<"authz">>}
                                ,{<<"Event-Name">>, <<"authz_resp">>}], JObj),
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj1),
-    wapi_authz:publish_authz_resp_orig(ServerId, JObj1),
+    wapi_authz:publish_authz_resp(ServerId, JObj1),
     ets:delete(?AUTHZ_ETS, MsgID),
     {'noreply', State};
 handle_info(Info, State) ->
@@ -250,3 +251,48 @@ terminate(Reason, _State) ->
 
 code_change(_, State, _) ->
     {'ok', State}.
+
+-spec find_authz_app_list_in_account_hierarchy(ne_binary()) -> 'undefined' | {binaries(), ne_binary()}.
+find_authz_app_list_in_account_hierarchy(<<"system_config">> = AccountId) ->
+    {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    case wh_json:get_value(<<"authz_apps">>, Account) of
+        'undefined' ->
+            'undefined';
+        List when is_list(List)->
+            {List, AccountId}
+    end;
+find_authz_app_list_in_account_hierarchy(AccountId) ->
+    {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    case wh_json:get_value(<<"authz_apps">>, Account) of
+        'undefined' ->
+            AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
+            {'ok', AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
+            case wh_json:get_value(<<"aaa_mode">>, AaaDoc) of
+                <<"off">> ->
+                    lager:debug("AAA functionality disabled for the ~p account", [AccountId]),
+                    'undefined';
+                <<"on">> ->
+                    % AAA functionality is on for this account
+                    lager:debug("AAA functionality enabled for the ~p account", [AccountId]),
+                    'undefined';
+                <<"inherit">> ->
+                    % AAA functionality is in the 'inherit' mode for this account
+                    lager:debug("AAA functionality enabled (inherit mode) for the ~p account", [AccountId]),
+                    find_authz_app_list_in_account_hierarchy(parent_account_id(Account))
+            end;
+        List when is_list(List)->
+            {List, AccountId}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%  Returns parent account ID. Any Reseller IDs will be skipped.
+%% @end
+%%--------------------------------------------------------------------
+-spec parent_account_id(wh_json:object()) -> api_binary().
+parent_account_id(JObj) ->
+    case kz_account:parent_account_id(JObj) of
+        'undefined' -> <<"system_config">>;
+        AccountId -> AccountId
+    end.
