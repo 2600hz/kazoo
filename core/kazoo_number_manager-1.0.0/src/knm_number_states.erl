@@ -83,7 +83,7 @@ authorize(Number) ->
         andalso AssignTo =:= ?RESELLER_ACCOUNT_ID
        ).
 -else.
--define(ACCT_HIERARCHY(AuthBy, AssignTo, Bool),
+-define(ACCT_HIERARCHY(AuthBy, AssignTo, Bool)
         ,wh_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
        ).
 -endif.
@@ -144,6 +144,9 @@ move_to_reserved_state(Number) ->
 -spec move_phone_number_to_reserved_state(knm_phone_number:knm_number(), api_binary()) ->
                                                  knm_phone_number:knm_number().
 move_phone_number_to_reserved_state(PhoneNumber, 'undefined') ->
+    ?debugFmt("assigned_to is undefined, setting to ~s~n"
+              ,[knm_phone_number:assign_to(PhoneNumber)]
+             ),
     Setters = [{fun knm_phone_number:set_assigned_to/2
                 ,knm_phone_number:assign_to(PhoneNumber)
                }
@@ -151,6 +154,7 @@ move_phone_number_to_reserved_state(PhoneNumber, 'undefined') ->
               ],
     knm_phone_number:setters(PhoneNumber, Setters);
 move_phone_number_to_reserved_state(PhoneNumber, AssignedTo) ->
+    ?debugFmt("assigned to is set to ~s~n", [AssignedTo]),
     move_phone_number_to_reserved_state(
       PhoneNumber
       ,AssignedTo
