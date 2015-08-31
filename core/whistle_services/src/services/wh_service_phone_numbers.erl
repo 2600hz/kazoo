@@ -67,7 +67,7 @@ feature_activation_charge(Feature, Services) ->
 %%--------------------------------------------------------------------
 -spec phone_number_activation_charge(wh_services:services(), ne_binary()) -> integer().
 phone_number_activation_charge(Services, Number) ->
-    case wnm_util:classify_number(Number) of
+    case knm_converters:classify(Number) of
         'undefined' -> 0;
         Classification ->
             Charge = wh_services:activation_charges(?PHONE_NUMBERS, Classification, Services),
