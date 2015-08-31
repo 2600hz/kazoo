@@ -292,22 +292,15 @@ handle_call({'get_branch_keys', 'all'}, _From, #state{flow = Flow}=State) ->
     Reply = {'branch_keys', wh_json:get_keys(Children)},
     {'reply', Reply, State};
 handle_call({'attempt', Key}, _From, #state{flow=Flow}=State) ->
-    case wh_json:get_value([<<"children">>, Key], Flow) of
+    case wh_json:get_ne_value([<<"children">>, Key], Flow) of
         'undefined' ->
             lager:info("attempted 'undefined' child ~s", [Key]),
-            Reply = {'attempt_resp', {'error', 'undefined'}},
+            Reply = {'attempt_resp', {'error', 'empty'}},
             {'reply', Reply, State};
         NewFlow ->
-            case wh_json:is_empty(NewFlow) of
-                'true' ->
-                    lager:info("attempted empty child ~s", [Key]),
-                    Reply = {'attempt_resp', {'error', 'empty'}},
-                    {'reply', Reply, State};
-                'false' ->
-                    lager:info("branching to attempted child ~s", [Key]),
-                    Reply = {'attempt_resp', 'ok'},
-                    {'reply', Reply, launch_cf_module(State#state{flow = NewFlow})}
-            end
+            lager:info("branching to attempted child ~s", [Key]),
+            Reply = {'attempt_resp', 'ok'},
+            {'reply', Reply, launch_cf_module(State#state{flow = NewFlow})}
     end;
 handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
     case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
@@ -346,12 +339,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             ?MODULE:continue(self()),
             {'noreply', State};
         NewFlow ->
-            case wh_json:is_empty(NewFlow) of
-                'false' -> {'noreply', launch_cf_module(State#state{flow=NewFlow})};
-                'true' ->
-                    ?MODULE:stop(self()),
-                    {'noreply', State}
-            end
+            {'noreply', launch_cf_module(State#state{flow=NewFlow})}
     end;
 handle_cast('stop', #state{flows=[]}=State) ->
     {'stop', 'normal', State};
@@ -368,8 +356,12 @@ handle_cast({'continue_with_flow', NewFlow}, State) ->
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
     lager:info("callflow has been branched"),
-    NewFlows = [wh_json:get_value([<<"children">>, <<"_">>], Flow, wh_json:new())|Flows],
-    {'noreply', launch_cf_module(State#state{flow=NewFlow, flows=NewFlows})};
+    case wh_json:get_ne_value([<<"children">>, <<"_">>], Flow) of
+        'undefined' ->
+            {'noreply', launch_cf_module(State#state{flow=NewFlow})};
+        PrevFlow ->
+            {'noreply', launch_cf_module(State#state{flow=NewFlow, flows=[PrevFlow|Flows]})}
+    end;
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     wh_util:put_callid(NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
