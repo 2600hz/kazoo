@@ -81,8 +81,12 @@ owner_timezone(Box, Default, OwnerJObj) ->
 
 -spec account_timezone(doc(), Default) -> ne_binary() | Default.
 account_timezone(Box, Default) ->
-    {'ok', AccountJObj} = kz_account:fetch(wh_doc:account_id(Box)),
-    kz_account:timezone(AccountJObj, Default).
+    case wh_doc:account_id(Box) of
+        'undefined' -> Default;
+        AccountId ->
+            {'ok', AccountJObj} = kz_account:fetch(AccountId),
+            kz_account:timezone(AccountJObj, Default)
+    end.
 
 -spec retries(doc()) -> api_integer().
 -spec retries(doc(), Default) -> integer() | Default.
