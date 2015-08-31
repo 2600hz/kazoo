@@ -63,7 +63,7 @@ handle(Data, Call) ->
             lager:info("user must manually enter on keypad the caller id for this call"),
 	    handle_manual(Data, Call);
         <<"list">> ->
-            lager:info("user is choosing a caller id for this call from a range of options"),
+            lager:info("user is choosing a caller id for this call from couchdb doc"),
 	    handle_list(Data, Call);
         _ ->
 	    lager:info("user must manually enter on keypad the caller id for this call"),
@@ -81,14 +81,8 @@ handle(Data, Call) ->
 handle_list(Data, Call) ->
     CallerIdNumber = whapps_call:caller_id_number(Call),
     lager:debug("callerid number before this module: ~s ", [CallerIdNumber]),
-    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
-    lager:debug("capture_group ~s ", [CaptureGroup]),
 
-    << C1:8, C2:8, Dest/binary >> = CaptureGroup,
-    CID_id = <<C1,C2>>,
-    lager:debug("cid_id ~p ", [CID_id]),
-
-    NewCidInfo = get_list_entry(Data, Call),
+    {NewCidInfo, Dest} = get_list_entry(Data, Call),
 
     NewCallerIdNumber = wh_json:get_value(<<"number">>, NewCidInfo),
     NewCallerIdName = wh_json:get_value(<<"name">>, NewCidInfo),
@@ -258,18 +252,23 @@ get_list_entry(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
     lager:info("get_list_entries start"),
-    << C1:8, C2:8, _/binary >> = whapps_call:kvs_fetch('cf_capture_group', Call),
-    CID_id = <<C1,C2>>,
-    lager:debug("cid_id ~p ", [CID_id]),
 
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->
             lager:info("match list loaded: ~s", [ListId]),
+            LengthDigits = wh_json:get_ne_value(<<"length">>, ListJObj),
+	    lager:debug("digit length to limit lookup key in number: ~p ", [LengthDigits]),
+
+	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
+	    lager:debug("capture_group ~s ", [CaptureGroup]),
+	    <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
+	    lager:debug("cid_id2 ~p ", [CIDKey]),
+
             JObj = wh_json:get_ne_value(<<"entries">>, ListJObj),
             lager:info("list of possible values to use: ~p", [JObj]),
-	    New_caller_id = wh_json:get_value(CID_id, JObj),
-	    lager:info("New caller id data : ~p",  [New_caller_id]),
-	    New_caller_id;
+	    NewCallerId = wh_json:get_value(CIDKey, JObj),
+	    lager:info("New caller id data : ~p",  [NewCallerId]),
+	    { NewCallerId, Dest};
 
 	{'error', Reason} ->
             lager:info("failed to load match list box ~s, ~p", [ListId, Reason]),
