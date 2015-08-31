@@ -20,6 +20,10 @@
 
 -include("knm.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -define(KEY_NUMBER_ACTIVATION_CHARGES, <<"number_activation_charges">>).
 -define(KEY_TRANSACTIONS, <<"transactions">>).
 -define(KEY_ACTIVATION_CHARGES, <<"activation">>).
@@ -215,8 +219,12 @@ fetch_services(Number) ->
 %%--------------------------------------------------------------------
 -spec fetch_billing_id(knm_number:knm_number()) ->
                               ne_binary().
+-ifdef(TEST).
+fetch_billing_id(_Number) -> ?RESELLER_ACCOUNT_ID.
+-else.
 fetch_billing_id(Number) ->
     wh_services:get_billing_id(fetch_services(Number)).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
