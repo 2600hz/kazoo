@@ -54,7 +54,8 @@
           expire_ref :: reference(),
           ready = 'false' :: boolean(),
           sync = 'false'  :: boolean(),
-          sync_nodes = [] :: list()
+          sync_nodes = [] :: list(),
+          other_nodes_count = 0 :: integer()
          }).
 
 %%%===================================================================
@@ -110,14 +111,14 @@ handle_kamailio_subscribe(JObj, _Props) ->
     'true' = wapi_omnipresence:subscribe_v(JObj),
     case gen_server:call(?MODULE, {'subscribe', JObj}) of
         'invalid' -> 'ok';
-        {'unsubscribe', _} ->
-            distribute_subscribe(JObj);
-        {'resubscribe', Subscription} ->
+        {Count, {'unsubscribe', _}} ->
+            distribute_subscribe(Count, JObj);
+        {Count, {'resubscribe', Subscription}} ->
             _ = resubscribe_notify(Subscription),
-            distribute_subscribe(JObj);
-        {'subscribe', Subscription} ->
+            distribute_subscribe(Count, JObj);
+        {Count, {'subscribe', Subscription}} ->
             _ = subscribe_notify(Subscription),
-            distribute_subscribe(JObj)
+            distribute_subscribe(Count, JObj)
     end.
 
 -spec handle_kamailio_notify(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -229,8 +230,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'subscribe', #omnip_subscription{}=Sub}, _From, State) ->
-    SubscribeResult = subscribe(Sub),
+handle_call({'subscribe', #omnip_subscription{}=Sub}, _From,  #state{other_nodes_count=Count} = State) ->
+    SubscribeResult = {Count, subscribe(Sub)},
     {'reply', SubscribeResult, State};
 handle_call({'subscribe', Props}, _From, State) when is_list(Props) ->
     handle_call({'subscribe', wh_json:from_list(Props)}, _From, State);
@@ -253,9 +254,6 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_cast({'distribute_subscribe', JObj}, State) ->
-    distribute_subscribe(JObj),
-    {'noreply', State};
 handle_cast({'sync', {<<"Start">>, Node}}, #state{sync_nodes=Nodes}=State) ->
     {'noreply', State#state{sync_nodes=[Node | Nodes]}};
 handle_cast({'sync', {<<"End">>, Node}}, #state{sync_nodes=Nodes} = State) ->
@@ -278,9 +276,13 @@ handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='
         0 -> 'ok';
         _N -> lager:debug("expired ~p subscriptions", [_N])
     end,
-    {'noreply', State#state{expire_ref=start_expire_ref()}};
+    {'noreply', State#state{expire_ref=start_expire_ref()
+                            ,other_nodes_count=wh_nodes:whapp_count(?APP_NAME)
+                           }};
 handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='false'}=State) ->
-    {'noreply', State#state{expire_ref=start_expire_ref()}};
+    {'noreply', State#state{expire_ref=start_expire_ref()
+                            ,other_nodes_count=wh_nodes:whapp_count(?APP_NAME)
+                           }};
 handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
     {'noreply', State#state{ready='true'}, 'hibernate'};
@@ -351,12 +353,14 @@ subscribe_notify(#omnip_subscription{event=Package
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec distribute_subscribe(wh_json:object()) -> 'ok'.
-distribute_subscribe(JObj) ->
+-spec distribute_subscribe(integer(), wh_json:object()) -> 'ok'.
+distribute_subscribe(Count, JObj) 
+  when Count > 1 ->
     whapps_util:amqp_pool_send(
       wh_json:delete_key(<<"Node">>, JObj)
       ,fun wapi_presence:publish_subscribe/1
-     ).
+     );
+distribute_subscribe(_Count, _JObj) -> 'ok'. 
 
 %%--------------------------------------------------------------------
 %% @private
