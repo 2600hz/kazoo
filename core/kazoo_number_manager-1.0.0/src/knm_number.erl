@@ -123,6 +123,7 @@ create_or_load(Num, Props) ->
 create_or_load(Num, Props, {'error', 'not_found'}) ->
     ensure_can_create(Num, Props),
     Updates = create_updaters(Num, Props),
+
     Number = create_available(
                knm_phone_number:setters(knm_phone_number:new(), Updates)
               ),
@@ -144,7 +145,10 @@ ensure_can_load_to_create(PhoneNumber) ->
 ensure_state(PhoneNumber, ExpectedState) ->
     case knm_phone_number:state(PhoneNumber) of
         ExpectedState -> 'true';
-        _State -> knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
+        _State ->
+            knm_errors:number_exists(
+              knm_phone_number:number(PhoneNumber)
+             )
     end.
 
 -spec create_phone_number(knm_number()) -> knm_number().
@@ -166,7 +170,7 @@ create_available(PhoneNumber) ->
 create_available(_PhoneNumber, 'undefined') ->
     knm_errors:unauthorized();
 create_available(PhoneNumber, _AuthBy) ->
-    create_phone_number(set_phone_number(new(), PhoneNumber)).
+    set_phone_number(new(), PhoneNumber).
 
 -spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
