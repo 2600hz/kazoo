@@ -17,10 +17,10 @@
 
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('omnip_dialog')
-                   ,?WORKER('omnip_message_summary')
-                   ,?WORKER('omnip_presence')
-                  ]).
+-define(DEFAULT_MODULES, [<<"omnip_dialog">>
+                          ,<<"omnip_message_summary">>
+                          ,<<"omnip_presence">>
+                         ]).
 
 %% ===================================================================
 %% API functions
@@ -63,4 +63,8 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    Children = [ ?WORKER(wh_util:to_atom(H, 'true'))
+                 || H <- whapps_config:get(?CONFIG_CAT, <<"modules">>, ?DEFAULT_MODULES)
+               ],
+
+    {'ok', {SupFlags, Children}}.
