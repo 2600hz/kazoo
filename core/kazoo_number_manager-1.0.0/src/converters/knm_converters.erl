@@ -16,7 +16,8 @@
          ,to_db/1
          ,is_reconcilable/1, is_reconcilable/2
          ,classify/1, available_classifiers/0
-         ,available_converters/0, default/0
+         ,available_converters/0
+         ,default_converter/0
         ]).
 
 -define(DEFAULT_CONVERTERS, [<<"regex">>]).
@@ -230,9 +231,8 @@ available_converters() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec default() -> atom().
-default() ->
-    ?CONVERTER_MOD.
+-spec default_converter() -> atom().
+default_converter() -> ?CONVERTER_MOD.
 
 %%%===================================================================
 %%% Internal functions
@@ -271,14 +271,17 @@ get_classifier_regex(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec correct_depreciated_classifiers(wh_proplist()) -> wh_json:object().
+-spec correct_depreciated_classifiers(wh_proplist()) ->
+                                             wh_json:object().
 correct_depreciated_classifiers(Classifiers) ->
     correct_depreciated_classifiers(Classifiers, wh_json:new()).
 
--spec correct_depreciated_classifiers(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec correct_depreciated_classifiers(wh_proplist(), wh_json:object()) ->
+                                             wh_json:object().
 correct_depreciated_classifiers([], JObj) ->
     JObj;
-correct_depreciated_classifiers([{Classifier, Regex}|Classifiers], JObj) when is_binary(Regex) ->
+correct_depreciated_classifiers([{Classifier, Regex}|Classifiers], JObj)
+  when is_binary(Regex) ->
     J = wh_json:from_list([{<<"regex">>, Regex}
                            ,{<<"friendly_name">>, Classifier}
                           ]),
