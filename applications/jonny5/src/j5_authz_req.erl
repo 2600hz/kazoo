@@ -66,14 +66,14 @@ allow_local_resource(AccountId, Request) ->
     lager:debug("number ~s is a local number for account ~s, allowing"
                 ,[Number, AccountId]
                ),
-    Routines = [fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
-                ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
-                ,fun(R) -> j5_request:set_account_id(AccountId, R) end
+    Routines = [fun(R) -> j5_request:set_account_id(AccountId, R) end
                 ,fun(R) ->
                          ResellerId = wh_services:find_reseller_id(AccountId),
                          j5_request:set_reseller_id(ResellerId, R)
                  end
-                       ],
+                ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
+                ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
+               ],
     send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines)).
 
 -spec should_authz_local(j5_request:request()) -> boolean().
@@ -205,20 +205,34 @@ maybe_inbound_soft_limit(Request, Limits) ->
             j5_request:set_soft_limit(Request)
     end.
 
+-define(AUTZH_TYPES_FOR_OUTBOUND, [<<"account">>, <<"user">>, <<"device">>]).
+
+-spec maybe_get_outbound_flags(api_binary(), api_binary(), ne_binary()) -> api_binary().
+maybe_get_outbound_flags('undefined', _AuthId, _AccountDb) -> 'undefined';
+maybe_get_outbound_flags(_AuthType, 'undefined', _AccountDb) -> 'undefined';
+maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
+    case lists:member(AuthType, ?AUTZH_TYPES_FOR_OUTBOUND) andalso
+             cf_endpoint:get(AuthId, AccountDb)
+    of
+        {'ok', Endpoint} -> wh_json:get_value(<<"outbound_flags">>, Endpoint);
+        _ -> 'undefined'
+    end.
+
 -spec send_response(j5_request:request()) -> 'ok'.
 send_response(Request) ->
     ServerId  = j5_request:server_id(Request),
     AccountDb = wh_util:format_account_id(j5_request:account_id(Request), 'encoded'),
+    AuthType    = wh_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
     AuthId    = wh_json:get_value(<<"Authorizing-ID">>, j5_request:ccvs(Request)),
 
-    {'ok', Endpoint} = cf_endpoint:get(AuthId, AccountDb),
-    OutboundFlags    = wh_json:get_value(<<"outbound_flags">>, Endpoint),
+    OutboundFlags = maybe_get_outbound_flags(AuthType, AuthId, AccountDb),
 
     CCVs = wh_json:from_list(
-             [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
+             props:filter_undefined(
+               [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
               ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
               ,{<<"Outbound-Flags">>, OutboundFlags}
-             ]),
+               ])),
 
     Resp = props:filter_undefined(
              [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}

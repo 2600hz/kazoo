@@ -104,7 +104,7 @@ maybe_find_resource(_NumberProps, JObj) ->
     case stepswitch_resources:reverse_lookup(JObj) of
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
-            Routines = [fun maybe_add_resource_id/2
+            Routines = [fun add_resource_id/2
                         ,fun maybe_add_t38_settings/2
                        ],
             lists:foldl(fun(F, J) ->  F(J, ResourceProps) end
@@ -113,16 +113,20 @@ maybe_find_resource(_NumberProps, JObj) ->
                        )
     end.
 
--spec maybe_add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
-maybe_add_resource_id(JObj, ResourceProps) ->
-    case props:get_is_true('global', ResourceProps) of
-        'false' -> JObj;
-        'true' ->
-            wh_json:set_value(?CCV(<<"Resource-ID">>)
-                              ,props:get_value('resource_id', ResourceProps)
-                              ,JObj
-                             )
-    end.
+-spec add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
+add_resource_id(JObj, ResourceProps) ->
+    ResourceId = props:get_value('resource_id', ResourceProps),
+    wh_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
+                        ,{?CCV(<<"Global-Resource">>), props:get_is_true('global', ResourceProps)}
+                        ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                       %% TODO
+                       %% we need to make sure that Authorizing-ID is used
+                       %% with Authorizing-Type in ALL whapps
+                       %% when this is done remove the comment below
+                       %% ,{?CCV(<<"Authorizing-ID">>), ResourceId}
+                       ]
+                       ,JObj
+                      ).
 
 -spec maybe_add_t38_settings(wh_json:object(), wh_proplist()) -> wh_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
