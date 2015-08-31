@@ -52,6 +52,7 @@
 -export([handle_call_command/2]).
 -export([handle_conference_command/2]).
 -export([handle_call_events/2]).
+-export([handle_control_queue_req/2]).
 -export([queue_name/1]).
 -export([callid/1]).
 -export([node/1]).
@@ -112,6 +113,9 @@
                      ,{{?MODULE, 'handle_call_events'}
                        ,[{<<"call_event">>, <<"*">>}]
                       }
+                     ,{{?MODULE, 'handle_control_queue_req'}
+                       ,[{<<"call">>, <<"control_queue_req">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -137,7 +141,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% try to handlecall more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
     Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', [<<"usurp_control">>]}
+                          ,{'restrict_to', [<<"usurp_control">>, <<"control_queue_req">>]}
                          ]}
                 ,{'dialplan', []}
                 ,{'self', []}
@@ -225,6 +229,12 @@ handle_call_events(JObj, Props) ->
         _Else -> 'ok'
     end.
 
+-spec handle_control_queue_req(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_control_queue_req(JObj, Props) ->
+    Srv = props:get_value('server', Props),
+    put('callid', wh_json:get_value(<<"Call-ID">>, JObj)),
+    gen_listener:cast(Srv, {'control_queue_req', JObj}).
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -299,6 +309,16 @@ handle_cast('stop', State) ->
 handle_cast({'usurp_control', _}, State) ->
     lager:debug("the call has been usurped by an external process"),
     {'stop', 'normal', State};
+handle_cast({'control_queue_req', JObj}, #state{call_id=CallId
+                                                ,control_q=CtrlQ
+                                               }=State) ->
+    Props = props:filter_undefined([{<<"Call-ID">>, CallId}
+                                    ,{<<"Control-Queue">>, CtrlQ}
+                                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                   ]),
+    wapi_call:publish_control_queue_resp(wh_json:get_value(<<"Server-ID">>, JObj), Props),
+    {'noreply', State};
 handle_cast({'update_node', Node}, #state{node=OldNode}=State) ->
     lager:debug("channel has moved from ~s to ~s", [OldNode, Node]),
     {'noreply', State#state{node=Node}};
@@ -753,6 +773,9 @@ add_leg(Props, LegId, #state{other_legs=Legs
         'true' -> State;
         'false' ->
             lager:debug("added leg ~s to call", [LegId]),
+            gen_listener:add_binding(self(), {'call', [{'callid', LegId}
+                                                       ,{'restrict_to', <<"control_queue_req">>}
+                                                      ]}),
             ConsumerPid = wh_amqp_channel:consumer_pid(),
             _ = wh_util:spawn(
                   fun() ->
@@ -836,6 +859,9 @@ remove_leg(Props, #state{other_legs=Legs
         'false' -> State;
         'true' ->
             lager:debug("removed leg ~s from call", [LegId]),
+            gen_listener:rm_binding(self(), {'call', [{'callid', LegId}
+                                                      ,{'restrict_to', <<"control_queue_req">>}
+                                                     ]}),
             ConsumerPid = wh_amqp_channel:consumer_pid(),
             _ = wh_util:spawn(
                   fun() ->
