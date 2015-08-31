@@ -534,6 +534,7 @@ should_create_endpoint(Endpoint, Properties, Call) ->
                 ,fun maybe_endpoint_called_self/3
                 ,fun maybe_endpoint_disabled/3
                 ,fun maybe_do_not_disturb/3
+                ,fun maybe_exclude_from_queues/3
                ],
     should_create_endpoint(Routines, Endpoint, Properties, Call).
 
@@ -666,6 +667,16 @@ maybe_do_not_disturb(Endpoint, _, _) ->
             EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
             lager:info("do not distrub endpoint ~s", [EndpointId]),
             {'error', 'do_not_disturb'}
+    end.
+
+-spec maybe_exclude_from_queues(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                        'ok' |
+                                        {'error', 'exclude_from_queues'}.
+maybe_exclude_from_queues(Endpoint, _, Call) ->
+    case {whapps_call:custom_channel_var(<<"Queue-ID">>, Call), wh_json:is_true(<<"exclude_from_queues">>, Endpoint, 'false')} of
+        {'undefined', _} -> 'ok';
+        {_, 'true'} -> {'error', 'exclude_from_queues'};
+        _ -> 'ok'
     end.
 
 %%--------------------------------------------------------------------
