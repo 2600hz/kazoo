@@ -186,12 +186,21 @@ is_reconcilable_by_regex(Num, Regex) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-ifdef(TEST).
+-define(CLASSIFIERS, wh_json:from_list(?DEFAULT_CLASSIFIERS)).
+-else.
+-define(CLASSIFIERS
+        ,whapps_config:get(?KNM_CONFIG_CAT
+                           ,<<"classifiers">>
+                           ,wh_json:from_list(?DEFAULT_CLASSIFIERS)
+                          )
+       ).
+-endif.
+
 -spec classify(ne_binary()) -> api_binary().
 classify(Number) ->
-    Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
-    Classifiers = whapps_config:get(?KNM_CONFIG_CAT, <<"classifiers">>, Default),
     Num = normalize(Number),
-    classify_number(Num, wh_json:to_proplist(Classifiers)).
+    classify_number(Num, wh_json:to_proplist(?CLASSIFIERS)).
 
 %%--------------------------------------------------------------------
 %% @public
