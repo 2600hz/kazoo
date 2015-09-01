@@ -2,10 +2,13 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 -ifdef(OTP_AT_LEAST_18).
+- type array() :: array:array().
 - type dict() :: dict:dict().
+- type digraph() :: digraph:digraph().
+- type gb_set() :: gb_sets:set().
+- type gb_tree() :: gb_trees:tree().
 - type queue() :: queue:queue().
 - type set() :: sets:set().
-- type gb_tree() :: gb_trees:gb_tree().
 -else.
 -endif.
 
