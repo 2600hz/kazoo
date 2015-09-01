@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action": "manual" | "list"
@@ -90,8 +90,8 @@ handle_list(Data, Call) ->
     lager:info("setting the caller id number to ~s", [NewCallerIdNumber]),
 
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
-	      ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
-	      ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
+	       ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
+	       ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
               ],
 
     cf_exe:set_call(whapps_call:exec(Updates, Call)),
@@ -124,22 +124,20 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
 -spec maybe_route_to_callflow(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 maybe_route_to_callflow(Data, Call, Number) ->
     case cf_util:lookup_callflow(Number, whapps_call:account_id(Call)) of
-        {'ok', Flow, NoMatch} ->
+        {'ok', Flow, 'true'} ->
             lager:info("callflow ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)]),
             Updates = [{fun whapps_call:set_request/2
                         ,list_to_binary([Number, "@", whapps_call:request_realm(Call)])
                        }
                        ,{fun whapps_call:set_to/2, list_to_binary([Number, "@", whapps_call:to_realm(Call)])}
-                       ,fun(C) when NoMatch ->
-				C
-                        end
                       ],
             {'ok', C} = cf_exe:get_call(Call),
             cf_exe:set_call(whapps_call:exec(Updates, C)),
             maybe_restrict_call(Data, Call, Number, Flow);
         _ ->
             lager:info("failed to find a callflow to satisfy ~s", [Number]),
-            _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call)
+            _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
+	    cf_exe:stop(Call)
     end.
 
 
@@ -262,12 +260,12 @@ get_list_entry(Data, Call) ->
 	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
 	    lager:debug("capture_group ~s ", [CaptureGroup]),
 	    <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
-	    lager:debug("cid_id2 ~p ", [CIDKey]),
+	    lager:debug("CIDKey ~p to lookup in couchdb doc", [CIDKey]),
 
             JObj = wh_json:get_ne_value(<<"entries">>, ListJObj),
             lager:info("list of possible values to use: ~p", [JObj]),
 	    NewCallerId = wh_json:get_value(CIDKey, JObj),
-	    lager:info("New caller id data : ~p",  [NewCallerId]),
+	    lager:info("new caller id data : ~p",  [NewCallerId]),
 	    { NewCallerId, Dest};
 
 	{'error', Reason} ->
