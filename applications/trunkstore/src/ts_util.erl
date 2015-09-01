@@ -196,11 +196,18 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
                     ValJObj = wh_json:get_value(<<"value">>, User),
                     JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
+
+                    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+                    FlagsJObj = wh_json:from_list(
+                                    [{<<"server">>, wh_json:get_value(<<"server">>, JObj, wh_json:new())}
+                                     ,{<<"account">>, wh_json:get_value(<<"account">>, JObj, wh_json:new())}
+                                     ,{<<"call_restriction">>, wh_json:get_value(<<"call_restriction">>, AccountJObj, wh_json:new())}
+                                    ]),
                     wh_cache:store_local(?TRUNKSTORE_CACHE
                                          ,{'lookup_user_flags', Realm, Name, AccountId}
-                                         ,JObj
+                                         ,FlagsJObj
                                         ),
-                    {'ok', JObj}
+                    {'ok', FlagsJObj}
             end
     end.
 
