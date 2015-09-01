@@ -197,7 +197,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     ValJObj = wh_json:get_value(<<"value">>, User),
                     JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
 
-                    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+                    {'ok', AccountJObj} = kz_account:fetch(AccountId),
                     FlagsJObj = wh_json:from_list(
                                     [{<<"server">>, wh_json:get_value(<<"server">>, JObj, wh_json:new())}
                                      ,{<<"account">>, wh_json:get_value(<<"account">>, JObj, wh_json:new())}
