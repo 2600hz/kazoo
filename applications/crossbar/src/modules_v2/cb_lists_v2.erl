@@ -43,11 +43,9 @@ migrate(AccountDb, [List | Lists]) ->
     DocId = wh_json:get_value(<<"id">>, List),
     Entries = wh_json:to_proplist(wh_json:get_value([<<"doc">>, <<"entries">>], List, wh_json:new())),
 
-    %% NOTE: this function will rewrite existing entry with the same id.
-    %% If in lists will be entry with same id only last will be saved.
     MigrateEntryFun = fun({Id, Entry}) ->
                               wh_json:set_values([{<<"pvt_type">>, <<"list_entry">>}
-                                                  ,{<<"_id">>, Id}
+                                                  ,{<<"list_entry_old_id">>, Id}
                                                   ,{<<"list_id">>, DocId}]
                                                  ,Entry)
                       end,
