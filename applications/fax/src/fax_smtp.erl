@@ -146,7 +146,7 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
     %% JMA: Can this be done with wh_util:rand_hex_binary() ?
     Reference = lists:flatten(
                   [io_lib:format("~2.16.0b", [X])
-                   || <<X>> <= erlang:md5(term_to_binary(erlang:timestamp()))
+                   || <<X>> <= erlang:md5(term_to_binary(wh_util:now()))
                   ]),
 
     try mimemail:decode(Data) of
