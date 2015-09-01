@@ -277,10 +277,10 @@ find_account_by_realm(Realm) ->
 -spec find_account_by_id(input_term()) ->
                                    {'ok', ne_binary()} |
                                    {'error', term()}.
-find_account_by_id(Id) when not is_binary(Id) ->
-    find_account_by_id(wh_util:to_binary(Id));
+find_account_by_id(Id) when is_binary(Id) ->
+    print_account_info(wh_util:format_account_id(Id, 'encoded'));
 find_account_by_id(Id) ->
-    print_account_info(wh_util:format_account_id(Id, 'encoded')).
+    find_account_by_id(wh_util:to_binary(Id)).
 
 %%--------------------------------------------------------------------
 %% @public
