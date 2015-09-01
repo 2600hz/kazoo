@@ -673,7 +673,9 @@ maybe_do_not_disturb(Endpoint, _, _) ->
                                         'ok' |
                                         {'error', 'exclude_from_queues'}.
 maybe_exclude_from_queues(Endpoint, _, Call) ->
-    case {whapps_call:custom_channel_var(<<"Queue-ID">>, Call), wh_json:is_true(<<"exclude_from_queues">>, Endpoint, 'false')} of
+    QueueId = whapps_call:custom_channel_var(<<"Queue-ID">>, Call),
+    Exclude = wh_json:is_true(<<"exclude_from_queues">>, Endpoint, 'false'),
+    case {QueueId, Exclude} of
         {'undefined', _} -> 'ok';
         {_, 'true'} -> {'error', 'exclude_from_queues'};
         _ -> 'ok'
