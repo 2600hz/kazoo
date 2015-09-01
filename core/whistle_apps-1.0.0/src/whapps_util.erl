@@ -24,7 +24,8 @@
 -export([is_account_db/1
         ,is_account_mod/1
         ]).
--export([get_account_by_realm/1
+-export([get_account_by_id/1
+         ,get_account_by_realm/1
          ,get_accounts_by_name/1
         ]).
 -export([get_master_account_id/0
@@ -281,6 +282,24 @@ is_account_db(Db) -> couch_util:db_classification(Db) =:= 'account'.
 -type getby_return() :: {'ok', ne_binary()} |
                         {'multiples', ne_binaries()} |
                         {'error', 'not_found'}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Ids are one->one with accounts.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_by_id(ne_binary()) ->
+                                  {'ok', ne_binary()} |
+                                  {'error', 'not_found'}.
+get_account_by_id(Id) ->
+    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, Id) of
+        {'ok', JObj} ->
+            AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+            {'ok', AccountDb};
+        _E ->
+            lager:debug("error while fetching account by id: ~p", [_E]),
+            {'error', 'not_found'}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
