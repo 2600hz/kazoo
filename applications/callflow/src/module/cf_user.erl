@@ -24,7 +24,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    UserId = maybe_use_variable(Data, Call),
+    UserId = cf_util:maybe_use_variable(Data, Call),
     Endpoints = get_endpoints(UserId, Data, Call),
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
@@ -44,19 +44,6 @@ handle(Data, Call) ->
         {'error', _R} ->
             lager:info("error bridging to user: ~p", [_R]),
             cf_exe:continue(Call)
-    end.
-
--spec maybe_use_variable(wh_json:object(), whapps_call:call()) -> api_binary().
-maybe_use_variable(Data, Call) ->
-    case wh_json:get_value(<<"var">>, Data) of
-        'undefined' ->
-            wh_json:get_value(<<"id">>, Data);
-        Variable ->
-            Value = wh_json:get_value(<<"value">>, cf_kvs_set:get_kv(Variable, Call)),
-            case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Value) of
-                {'ok', _} -> Value;
-                _ -> wh_json:get_value(<<"id">>, Data)
-            end
     end.
 
 -spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.

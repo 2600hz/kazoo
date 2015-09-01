@@ -24,7 +24,7 @@
 handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
 
-    Path = maybe_use_variable(Data, Call),
+    Path = cf_util:maybe_use_variable(Data, Call),
     case wh_media_util:media_path(Path, AccountId) of
         'undefined' ->
             lager:info("invalid data in the play callflow"),
@@ -32,19 +32,6 @@ handle(Data, Call) ->
         Media ->
             NoopId = play(Data, Call, Media),
             handle_noop_recv(Call, cf_util:wait_for_noop(Call, NoopId))
-    end.
-
--spec maybe_use_variable(wh_json:object(), whapps_call:call()) -> api_binary().
-maybe_use_variable(Data, Call) ->
-    case wh_json:get_value(<<"var">>, Data) of
-        'undefined' ->
-            wh_json:get_value(<<"id">>, Data);
-        Variable ->
-            Value = wh_json:get_value(<<"value">>, cf_kvs_set:get_kv(Variable, Call)),
-            case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Value) of
-                {'ok', _} -> Value;
-                _ -> wh_json:get_value(<<"id">>, Data)
-            end
     end.
 
 -spec handle_noop_recv(whapps_call:call(), {'ok', whapps_call:call()} | {'error', _}) -> 'ok'.

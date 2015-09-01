@@ -50,7 +50,7 @@ maybe_handle_bridge_failure(Reason, Call) ->
 -spec bridge_to_endpoints(wh_json:object(), whapps_call:call()) ->
                                  cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
-    EndpointId = maybe_use_variable(Data, Call),
+    EndpointId = cf_util:maybe_use_variable(Data, Call),
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
@@ -58,17 +58,4 @@ bridge_to_endpoints(Data, Call) ->
             Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
             whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
-    end.
-
--spec maybe_use_variable(wh_json:object(), whapps_call:call()) -> api_binary().
-maybe_use_variable(Data, Call) ->
-    case wh_json:get_value(<<"var">>, Data) of
-        'undefined' ->
-            wh_json:get_value(<<"id">>, Data);
-        Variable ->
-            Value = wh_json:get_value(<<"value">>, cf_kvs_set:get_kv(Variable, Call)),
-            case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Value) of
-                {'ok', _} -> Value;
-                _ -> wh_json:get_value(<<"id">>, Data)
-            end
     end.

@@ -6,7 +6,6 @@
 -export([handle/2]).
 -export([get_kv/2, get_kv/3]).
 -export([kvs_to_props/1]).
--export([format_json/1]).
 
 -include("../callflow.hrl").
 
@@ -32,14 +31,16 @@ get_kv(Collection, Key, Call) ->
     wh_json:get_value(Key, get_collection(Collection, Call)).
     
 set_kvs(Data, Call) ->
-    Call2 = set_kvs_mode(wh_json:get_value(<<"kvs_mode">>, Data, undefined), Call),
+    Call2 = set_kvs_mode(wh_json:get_value(<<"kvs_mode">>, Data, 'undefined'), Call),
     Data2 = wh_json:delete_key(<<"kvs_mode">>, Data),
     Keys = wh_json:get_keys(Data2),
-    lists:foldl(fun(Key, Call3) ->
-        set_kvs_collection(Key, evaluate(wh_json:get_value(Key, Data2), Call3), Call3) end,
-        Call2,
-        Keys
-    ).
+    fold_set_kvs(Call2, Data2, Keys).
+
+fold_set_kvs(Call, _, []) ->
+    Call;
+fold_set_kvs(Call, Data, [Key|Keys]) ->
+    Call2 = set_kvs_collection(Key, evaluate(wh_json:get_value(Key, Data), Call), Call),
+    fold_set_kvs(Call2, Data, Keys).
     
 set_kvs_mode('undefined', Call) -> set_collection(?COLLECTION_MODE, <<"kvs_mode">>, 'undefined', Call);
 set_kvs_mode(Mode, Call) -> set_collection(?COLLECTION_MODE, <<"kvs_mode">>, Mode, Call).
@@ -80,64 +81,11 @@ set_collection(Collection, Key, Value, Call) ->
     ).
     
 kvs_to_props(Call) ->
-    case wh_json:get_value(<<"kvs_mode">>, get_collection(?COLLECTION_MODE, Call), undefined) of
+    case wh_json:get_value(<<"kvs_mode">>, get_collection(?COLLECTION_MODE, Call), 'undefined') of
         <<"json">> ->
             Collection = get_kvs_collection(Call),
             Keys = wh_json:get_keys(Collection),
-            
-            lists:foldl(fun(Key, Props) ->
-                [{Key, list_to_binary(format_json(wh_json:get_value(Key, Collection)))}] ++ Props
-                end, [], Keys);
+            [{Key, wh_json:encode(wh_json:get_value(Key, Collection))} || Key <- Keys];
         _ ->
             [{<<"Custom-KVS">>, get_kvs_collection(Call)}]
     end.
-    
-format_json(Data) ->
-    Proplist = case wh_json:is_json_object(Data) of
-        true ->
-            wh_json:to_proplist(Data);
-        _ ->
-            Data
-    end,
-    
-    format_json_rec(Proplist).
-    
-format_json_rec(Proplist) ->
-    format_json_rec(Proplist, []).
-    
-format_json_rec([{K,V}], []) ->
-    "{" ++ format_json_rec({K, V}) ++ "}";
-    
-format_json_rec([{K,V}], _) ->
-    format_json_rec({K, V}) ++ "}";
-    
-format_json_rec([{K,V}=KV|Others], []) ->
-    "{" ++ format_json_rec({K, V}) ++ "," ++ format_json_rec(Others, [KV]);
-    
-format_json_rec([{K,V}=KV|Others], Done) ->
-    format_json_rec({K, V}) ++ "," ++ format_json_rec(Others, [KV] ++ Done);
-    
-format_json_rec({K, V}, _) ->
-    "\"" ++ binary_to_list(K) ++ "\":" ++ format_json_rec(V, []);
-    
-format_json_rec([Prim], []) ->
-    "[" ++ format_type(Prim) ++ "]";
-    
-format_json_rec([Prim], _) ->
-    format_type(Prim) ++ "]";
-    
-format_json_rec([Prim|Others], []) ->
-    "[" ++ format_type(Prim) ++ "," ++ format_json_rec(Others, [Prim]);
-    
-format_json_rec([Prim|Others], _) ->
-    format_type(Prim) ++ "," ++ format_json_rec(Others, [Prim]);
-
-format_json_rec(V, _) ->
-    "\"" ++ wh_util:to_list(V) ++ "\"".
-    
-format_type(Data) when not is_binary(Data) ->
-    wh_util:to_list(Data);
-    
-format_type(<<Data/binary>>) ->
-    "\"" ++ binary_to_list(Data) ++ "\"".
- 
