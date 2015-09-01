@@ -76,10 +76,10 @@
 -type ne_binaries() :: [ne_binary()].
 -type binaries() :: [binary()].
 
--type strings() :: [string(),...] | [].
--type integers() :: [integer(),...] | [].
+-type strings() :: [string()].
+-type integers() :: [integer()].
 
--type functions() :: [function(),...] | [].
+-type functions() :: [function()].
 
 %% when using gen_smtp to send emails, it takes a 5-tuple for a message-body part
 -type mail_message_body() :: {ne_binary(), ne_binary(), proplist(), proplist(), ne_binary() | iolist()}.
@@ -88,13 +88,13 @@
 -type dict(K,V) :: [{K, V}].
 
 -type wh_proplist_value() :: any().
--type wh_proplist_values() :: [wh_proplist_value(),...] | [].
+-type wh_proplist_values() :: [wh_proplist_value()].
 -type wh_proplist_key() :: ne_binary() | atom() | number() | string() | function() | ne_binaries().
--type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
--type wh_proplist_kv(K, V) :: [{K, V} | atom(),...] | [].
+-type wh_proplist_keys() :: [wh_proplist_key()].
+-type wh_proplist_kv(K, V) :: [{K, V} | atom()].
 -type wh_proplist_k(K) :: wh_proplist_kv(K, wh_proplist_value()).
 -type wh_proplist() :: wh_proplist_kv(wh_proplist_key(), wh_proplist_value()).
--type wh_proplists() :: [wh_proplist(),...] | [].
+-type wh_proplists() :: [wh_proplist()].
 
 -type proplist_key() :: wh_proplist_key().
 -type proplist() :: wh_proplist().
@@ -189,7 +189,7 @@
 -type gen_server_option() :: {'debug', list()} |
                              {'timeout', non_neg_integer()} |
                              {'spawn_opt', list()}.
--type gen_server_options() :: [gen_server_option(),...] | [].
+-type gen_server_options() :: [gen_server_option()].
 
 %% Ibrowse-related types
 -type ibrowse_error() :: {'error', 'req_timedout'
@@ -207,13 +207,13 @@
 -type xml_attrib_name() :: atom().
 -type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom() | number().
 -type xml_attrib() :: #xmlAttribute{}.
--type xml_attribs() :: [xml_attrib(),...] | [].
+-type xml_attribs() :: [xml_attrib()].
 
 -type xml_el() :: #xmlElement{}.
--type xml_els() :: [xml_el(),...] | [].
+-type xml_els() :: [xml_el()].
 
 -type xml_text() :: #xmlText{value :: iolist()}.
--type xml_texts() :: [xml_text(),...] | [].
+-type xml_texts() :: [xml_text()].
 
 %% Used by ecallmgr and wapi_dialplan at least
 -define(CALL_EVENTS,
