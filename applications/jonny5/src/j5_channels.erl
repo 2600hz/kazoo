@@ -340,7 +340,7 @@ accounts() ->
                 ],
     accounts(ets:select(?TAB, MatchSpec), sets:new()).
 
--spec accounts(_, set()) -> ne_binaries().
+-spec accounts(_, sets:set()) -> ne_binaries().
 accounts([], Accounts) ->
     lists:reverse(sets:to_list(Accounts));
 accounts([['undefined', 'undefined']|Ids], Accounts) ->
@@ -653,24 +653,24 @@ is_allotment(_) -> 'false'.
 count_unique_calls(Channels) ->
     sets:size(count_unique_calls(Channels, sets:new())).
 
--spec count_unique_calls(unique_channels(), set()) -> set().
+-spec count_unique_calls(unique_channels(), sets:set()) -> sets:set().
 count_unique_calls([], Set) -> Set;
 count_unique_calls([{CallId, 'undefined'}|Channels], Set) ->
     count_unique_calls(Channels, sets:add_element(CallId, Set));
 count_unique_calls([{_, CallId}|Channels], Set) ->
     count_unique_calls(Channels, sets:add_element(CallId, Set)).
 
--spec j5_channel_ids() -> set().
+-spec j5_channel_ids() -> sets:set().
 j5_channel_ids() ->
     sets:from_list(
       ets:select(?TAB, [{#channel{call_id='$1', _='_'}, [], ['$1']}])
      ).
 
--spec ecallmgr_channel_ids(wh_json:objects()) -> set().
+-spec ecallmgr_channel_ids(wh_json:objects()) -> sets:set().
 ecallmgr_channel_ids(JObjs) ->
     ecallmgr_channel_ids(JObjs, sets:new()).
 
--spec ecallmgr_channel_ids(wh_json:objects(), set()) -> set().
+-spec ecallmgr_channel_ids(wh_json:objects(), sets:set()) -> sets:set().
 ecallmgr_channel_ids([], ChannelIds) -> ChannelIds;
 ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
     Channels = wh_json:get_value(<<"Channels">>, JObj),
@@ -681,7 +681,7 @@ ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
                    end, ChannelIds, wh_json:get_keys(Channels))
      ).
 
--spec fix_channel_disparity(set(), set()) -> 'ok'.
+-spec fix_channel_disparity(sets:set(), sets:set()) -> 'ok'.
 fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds) ->
     Disparity = sets:to_list(sets:subtract(LocalChannelIds, EcallmgrChannelIds)),
     fix_channel_disparity(Disparity).

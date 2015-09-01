@@ -174,7 +174,7 @@
                              ,broker :: api_binary() | '$1' | '_'
                              ,assigned :: wh_timeout() | 'undefined' | '_'
                              ,reconnect = 'false' :: boolean() | '_'
-                             ,watchers = sets:new() :: set() | pids() | '_'
+                             ,watchers = sets:new() :: sets:set() | pids() | '_'
                             }).
 
 -type wh_amqp_assignment() :: #wh_amqp_assignment{}.

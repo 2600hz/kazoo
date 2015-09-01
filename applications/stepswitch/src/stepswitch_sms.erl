@@ -31,7 +31,7 @@
                 ,response_queue :: api_binary()
                 ,queue :: api_binary()
                 ,message = [] :: wh_proplist()
-                ,messages = queue:new() :: queue()
+                ,messages = queue:new() :: queue:queue()
                }).
 -type state() :: #state{}.
 

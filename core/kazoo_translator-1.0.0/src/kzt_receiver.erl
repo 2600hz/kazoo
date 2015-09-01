@@ -393,7 +393,7 @@ wait_for_conference(Call) ->
                                          ,record_call=RecordCall
                                          ,call_timeout=CallTimeout
                                          ,call_time_limit=CallTimeLimit
-                                         ,start=erlang:now()
+                                         ,start=erlang:timestamp()
                                         }).
 
 -spec call_status(ne_binary()) -> ne_binary().

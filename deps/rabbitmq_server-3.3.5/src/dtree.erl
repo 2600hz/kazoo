@@ -41,7 +41,7 @@
 
 -export_type([?MODULE/0]).
 
--opaque(?MODULE()  :: {gb_tree(), gb_tree()}).
+-opaque(?MODULE()  :: {gb_trees:gb_tree(), gb_trees:gb_tree()}).
 
 -type(pk()         :: any()).
 -type(sk()         :: any()).

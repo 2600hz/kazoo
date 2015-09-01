@@ -285,14 +285,14 @@ lookup_reg(Username, Realm) ->
 extract_device_registrations(JObjs) ->
     sets:to_list(extract_device_registrations(JObjs, sets:new())).
 
--spec extract_device_registrations(wh_json:objects(), set()) -> set().
+-spec extract_device_registrations(wh_json:objects(), sets:set()) -> sets:set().
 extract_device_registrations([], Set) -> Set;
 extract_device_registrations([JObj|JObjs], Set) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
     S = lists:foldl(fun extract_device_registrar_fold/2, Set, Fields),
     extract_device_registrations(JObjs, S).
 
--spec extract_device_registrar_fold(wh_json:object(), set()) -> set().
+-spec extract_device_registrar_fold(wh_json:object(), sets:set()) -> sets:set().
 extract_device_registrar_fold(JObj, Set) ->
     case wh_json:get_ne_value(<<"Registrar-Node">>, JObj) of
         'undefined' -> Set;

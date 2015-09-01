@@ -466,7 +466,7 @@ rollup(<<_/binary>> = AccountMODb, Balance) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collapse_call_transactions(wh_json:objects(), dict(), wh_json:objects()) ->
+-spec collapse_call_transactions(wh_json:objects(), dict:dict(), wh_json:objects()) ->
                                         wh_json:objects().
 collapse_call_transactions([], Calls, Transactions) ->
     clean_transactions(Transactions ++ dict:to_list(Calls));
@@ -487,8 +487,8 @@ collapse_call_transactions([JObj|JObjs], Calls, Transactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collapse_call_transaction(wh_json:object(), dict()) -> dict().
--spec collapse_call_transaction(binary(), wh_json:object(), dict()) -> dict().
+-spec collapse_call_transaction(wh_json:object(), dict:dict()) -> dict:dict().
+-spec collapse_call_transaction(binary(), wh_json:object(), dict:dict()) -> dict:dict().
 collapse_call_transaction(JObj, Calls) ->
     case wh_json:get_value(<<"call_id">>, JObj) of
         'undefined' ->

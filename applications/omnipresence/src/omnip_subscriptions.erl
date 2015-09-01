@@ -563,7 +563,7 @@ get_subscriptions(Event, User) ->
     end.
 
 -spec dedup(subscriptions()) -> subscriptions().
--spec dedup(subscriptions(), dict()) -> subscriptions().
+-spec dedup(subscriptions(), dict:dict()) -> subscriptions().
 dedup(Subscriptions) ->
     dedup(Subscriptions, dict:new()).
 

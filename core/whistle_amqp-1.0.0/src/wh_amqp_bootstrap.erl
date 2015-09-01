@@ -174,7 +174,7 @@ get_from_zone(ZoneName) ->
         _Else -> Props
     end.
 
--spec get_from_zone(atom(), wh_proplist(), dict()) -> dict().
+-spec get_from_zone(atom(), wh_proplist(), dict:dict()) -> dict:dict().
 get_from_zone(_, [], Dict) -> Dict;
 get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
     case props:get_value('name', Zone) of
@@ -185,7 +185,7 @@ get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
             get_from_zone(ZoneName, Zones, import_zone(RemoteZoneName, Zone, Dict))
     end.
 
--spec import_zone(atom(), wh_proplist(), dict()) -> dict().
+-spec import_zone(atom(), wh_proplist(), dict:dict()) -> dict:dict().
 import_zone(_, [], Dict) -> Dict;
 import_zone(ZoneName, [{'amqp_uri', URI}|Props], Dict) ->
     case dict:find(ZoneName, Dict) of

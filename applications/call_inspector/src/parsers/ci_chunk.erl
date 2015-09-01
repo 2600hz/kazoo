@@ -297,7 +297,7 @@ c_seq(Chunk) ->
 group_by(Fun, List) ->
     dict:to_list(group_as_dict(Fun, List)).
 
--spec group_as_dict(fun((V) -> K), [V]) -> dict() when K :: atom().
+-spec group_as_dict(fun((V) -> K), [V]) -> dict:dict() when K :: atom().
 group_as_dict(Fun, List) ->
     F = fun(Value, Dict) -> dict:append(Fun(Value), Value, Dict) end,
     lists:foldl(F, dict:new(), List).

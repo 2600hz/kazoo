@@ -730,11 +730,11 @@ maybe_destroy_conference(UUID) ->
         _ -> 'false'
     end.
 
--spec get_conference_dictionary(conferences()) -> dict().
+-spec get_conference_dictionary(conferences()) -> dict:dict().
 get_conference_dictionary(Conferences) ->
     get_conference_dictionary(Conferences, dict:new()).
 
--spec get_conference_dictionary(conferences(), dict()) -> dict().
+-spec get_conference_dictionary(conferences(), dict:dict()) -> dict:dict().
 get_conference_dictionary([], Dictionary) -> Dictionary;
 get_conference_dictionary([#conference{uuid=UUID}=Conference
                            | Conferences
@@ -743,11 +743,11 @@ get_conference_dictionary([#conference{uuid=UUID}=Conference
 get_conference_dictionary([_|Conferences], Dictionary) ->
     get_conference_dictionary(Conferences, Dictionary).
 
--spec get_participant_dictionary(participants()) -> dict().
+-spec get_participant_dictionary(participants()) -> dict:dict().
 get_participant_dictionary(Participants) ->
     get_participant_dictionary(Participants, dict:new()).
 
--spec get_participant_dictionary(participants(), dict()) -> dict().
+-spec get_participant_dictionary(participants(), dict:dict()) -> dict:dict().
 get_participant_dictionary([], Dictionary) -> Dictionary;
 get_participant_dictionary([#participant{uuid=UUID}=Participant
                             | Participants
@@ -756,7 +756,7 @@ get_participant_dictionary([#participant{uuid=UUID}=Participant
 get_participant_dictionary([_|Participants], Dictionary) ->
     get_participant_dictionary(Participants, Dictionary).
 
--spec sync_conferences(dict(), atom()) -> 'ok'.
+-spec sync_conferences(dict:dict(), atom()) -> 'ok'.
 sync_conferences(Conferences, Node) ->
     MatchSpec = [{#conference{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$2', {'const', Node}}]
@@ -780,7 +780,7 @@ sync_conferences(Conferences, Node) ->
         ],
     'ok'.
 
--spec sync_participants(dict(), atom()) -> 'ok'.
+-spec sync_participants(dict:dict(), atom()) -> 'ok'.
 sync_participants(Participants, Node) ->
     MatchSpec = [{#participant{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$2', {'const', Node}}]

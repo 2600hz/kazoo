@@ -25,7 +25,7 @@
 
 -export_type([?MODULE/0]).
 
--opaque(?MODULE() :: {non_neg_integer(), ?QUEUE()}).
+-opaque(?MODULE() :: {non_neg_integer(), queues:queue()}).
 -type(value()     :: any()).
 -type(result()    :: 'empty' | {'value', value()}).
 

@@ -39,8 +39,8 @@
 -define(TS_CONFIG_CAT, <<"trunkstore">>).
 
 % just want to deal with binary K/V pairs
-%%-type proplist() :: list(tuple(binary(), binary())) | [].
--type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].
+%%-type proplist() :: list({binary(), binary()}) | [].
+-type active_calls() :: list({binary(), flat_rate | per_min}) | [].
 
 -record(ts_callflow_state, {
           aleg_callid :: api_binary()
