@@ -214,7 +214,7 @@ handle_cast({'request', Uri, Method, Params}, #state{call=Call
                                     ,call=Call2
                                    }};
         _ ->
-            wapi_pivot:publish_failed(Q, [{<<"Call-ID">>,whapps_call:call_id(Call)}
+            wapi_pivot:publish_failed(Q, [{<<"Call-ID">>, whapps_call:call_id(Call)}
                                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                          ]),
             {'stop', 'normal', State}
@@ -527,7 +527,7 @@ process_resp(RequesterQ, Call, CT, RespBody) ->
             {'stop', Call};
         'throw':{'error', 'unrecognized_cmds'} ->
             lager:info("no translators recognize the supplied commands: ~s", [RespBody]),
-            wapi_pivot:publish_failed(RequesterQ, [{<<"Call-ID">>,whapps_call:call_id(Call)}
+            wapi_pivot:publish_failed(RequesterQ, [{<<"Call-ID">>, whapps_call:call_id(Call)}
                                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                                   ]),
             {'stop', Call}
