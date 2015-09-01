@@ -13,7 +13,6 @@
 -spec handle_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_event(JObj, _Props) ->
     HookEvent = hook_event_name(wh_json:get_value(<<"Event-Name">>, JObj)),
-    io:format("MARKER:webhooks_channel_util.erl:16 ~p~n", [HookEvent]),
     case wh_hooks_util:lookup_account_id(JObj) of
         {'error', _R} ->
             lager:debug("failed to determine account id for ~s", [HookEvent]);
