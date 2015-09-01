@@ -114,9 +114,11 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'request', JObj}, State) ->
+    wh_util:put_callid(JObj),
     dist_workers(JObj),
     {'noreply', State};
 handle_cast({'response', Response, JObj, Worker}, State) ->
+    wh_util:put_callid(Response),
     lager:debug("response message is ~p", [Response]),
     poolboy:checkin(?WORKER_POOL, Worker),
     {AaaResult, AttributeList, AccountId} = case Response of
@@ -169,6 +171,7 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
     end,
     {'noreply', State};
 handle_cast({'accounting_response', Response, _JObj, Worker}, State) ->
+    wh_util:put_callid(Response),
     lager:debug("accounting response message is ~p", [Response]),
     poolboy:checkin(?WORKER_POOL, Worker),
     {'noreply', State};
@@ -226,6 +229,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec dist_workers(wh_json:object()) -> 'ok'.
 dist_workers(JObj) ->
+    wh_util:put_callid(JObj),
     lager:debug("Trying to start new worker..."),
     case catch poolboy:checkout(?WORKER_POOL) of
         Worker when is_pid(Worker) ->

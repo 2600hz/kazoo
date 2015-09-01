@@ -68,6 +68,7 @@ start_link() ->
 
 -spec process_authz_broadcast_request(wh_json:object(), wh_proplist()) -> 'ok'.
 process_authz_broadcast_request(JObj, _Props) ->
+    wh_util:put_callid(JObj),
     lager:debug("WH Authz request received"),
     lager:debug("Request is ~p", [JObj]),
     MsgID = wh_json:get_value(<<"Msg-ID">>, JObj),
@@ -138,6 +139,7 @@ process_authz_broadcast_request(JObj, _Props) ->
 
 -spec process_authz_broadcast_response(wh_json:object(), wh_proplist()) -> 'ok'.
 process_authz_broadcast_response(JObjResp, _Props) ->
+    wh_util:put_callid(JObjResp),
     lager:debug("WH Authz response received: ~p", [JObjResp]),
     JObjMsgID = wh_json:get_value(<<"Msg-ID">>, JObjResp),
     case ets:lookup(?AUTHZ_ETS, JObjMsgID) of
@@ -228,6 +230,7 @@ handle_cast(_, State) ->
 handle_info({'authz_broadcast_timeout', MsgID}, State) ->
     lager:debug("authz_broadcast_timeout event handled for message ~p", [MsgID]),
     {MsgID, JObj, _AppList, TimerRef} = ets:lookup(?AUTHZ_ETS, MsgID),
+    wh_util:put_callid(JObj),
     erlang:cancel_timer(TimerRef),
     JObj1 = wh_json:set_values([{<<"Is-Authorized">>, <<"false">>}
                                ,{<<"Event-Category">>, <<"authz">>}
@@ -252,36 +255,41 @@ terminate(Reason, _State) ->
 code_change(_, State, _) ->
     {'ok', State}.
 
--spec find_authz_app_list_in_account_hierarchy(ne_binary()) -> 'undefined' | {binaries(), ne_binary()}.
+-spec find_authz_app_list_in_account_hierarchy(ne_binary()) -> 'undefined' | binaries().
 find_authz_app_list_in_account_hierarchy(<<"system_config">> = AccountId) ->
     {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
     case wh_json:get_value(<<"authz_apps">>, Account) of
         'undefined' ->
+            lager:debug("The authz_apps list wasn't found"),
             'undefined';
-        List when is_list(List)->
-            {List, AccountId}
+        List when is_list(List) ->
+            lager:debug("Found authz_apps list ~p for account ~p", [List, AccountId]),
+            List
     end;
 find_authz_app_list_in_account_hierarchy(AccountId) ->
     {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
-    case wh_json:get_value(<<"authz_apps">>, Account) of
-        'undefined' ->
-            AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
-            {'ok', AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
+    case wh_json:get_value(<<"authz_apps">>, AaaDoc) of
+        List when is_list(List) andalso length(List) > 0 ->
+            lager:debug("Found authz_apps list ~p for account ~p", [List, AccountId]),
+            List;
+        _ ->
             case wh_json:get_value(<<"aaa_mode">>, AaaDoc) of
                 <<"off">> ->
                     lager:debug("AAA functionality disabled for the ~p account", [AccountId]),
+                    lager:debug("The authz_apps list wasn't found"),
                     'undefined';
                 <<"on">> ->
                     % AAA functionality is on for this account
                     lager:debug("AAA functionality enabled for the ~p account", [AccountId]),
+                    lager:debug("The authz_apps list wasn't found"),
                     'undefined';
                 <<"inherit">> ->
                     % AAA functionality is in the 'inherit' mode for this account
                     lager:debug("AAA functionality enabled (inherit mode) for the ~p account", [AccountId]),
                     find_authz_app_list_in_account_hierarchy(parent_account_id(Account))
-            end;
-        List when is_list(List)->
-            {List, AccountId}
+            end
     end.
 
 %%--------------------------------------------------------------------

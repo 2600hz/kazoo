@@ -112,6 +112,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'auth_req', SenderPid, JObj}, State) ->
+    wh_util:put_callid(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj, <<"system_config">>),
     lager:debug("auth_req message for user ~p received for account ~p",
         [wh_json:get_value(<<"Auth-User">>, JObj), AccountId]),
@@ -119,6 +120,7 @@ handle_cast({'auth_req', SenderPid, JObj}, State) ->
     cm_pool_mgr:send_authn_response(SenderPid, Response, JObj, self()),
     {'noreply', State};
 handle_cast({'accounting_req', SenderPid, JObj}, State) ->
+    wh_util:put_callid(JObj),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"system_config">>),
     lager:debug("accounting_req message received for account ~p", [AccountId]),
     Response = maybe_aaa_mode(JObj, AccountId),

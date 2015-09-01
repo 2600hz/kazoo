@@ -45,7 +45,7 @@
 
 -define(ETS_SESSION_TIMEOUT, 'cm_session_timeout').
 -define(ETS_INTERIM_UPDATE, 'cm_interim_update').
--define(ETS_DELAY_ACCOUNTING, 'cm_interim_update').
+-define(ETS_DELAY_ACCOUNTING, 'cm_delay_accounting').
 
 %%%===================================================================
 %%% API
@@ -75,6 +75,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec handle_authn_req(wh_json:object(), wh_proplist()) -> any().
 handle_authn_req(JObj, _Props) ->
+    wh_util:put_callid(JObj),
     lager:debug("cm_listener handled authn request ~p", [JObj]),
     'true' = wapi_aaa:req_v(JObj),
     cm_pool_mgr:do_request(JObj).
@@ -87,6 +88,7 @@ handle_authn_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec handle_authz_req(wh_json:object(), wh_proplist()) -> any().
 handle_authz_req(JObj, _Props) ->
+    wh_util:put_callid(JObj),
     'true' = wapi_authz:authz_req_v(JObj),
     lager:debug("cm_listener handled authz request ~p", [JObj]),
     case wh_json:get_value([<<"Custom-Auth-Vars">>, <<"AAA-Authz-Disabled">>], JObj) of
@@ -115,18 +117,33 @@ handle_authz_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec handle_accounting_req(wh_json:object(), wh_proplist()) -> any().
 handle_accounting_req(JObj, _Props) ->
+    wh_util:put_callid(JObj),
     % TODO: Add validation
     % 'true' = wapi_aaa:accounting_req_v(JObj),
     lager:debug("cm_listener handled accounting request ~p", [JObj]),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     % check that is inbound outer leg which has no Account-ID
-    IsInboundOuterLeg = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_CREATE">>}
+    IsInboundOuterLegOnChannelCreate = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_CREATE">>}
         andalso (wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Resource-ID">>], JObj) =:= 'undefined')
-        andalso (wh_json:get_value(<<"Call-Direction">>, JObj) =:= "inbound"),
+        andalso (wh_json:get_value(<<"Call-Direction">>, JObj) =:= <<"inbound">>),
+    IsInboundOuterLegOnChannelDestroy = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_DESTROY">>},
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
-        'undefined' when IsInboundOuterLeg ->
+        'undefined' when IsInboundOuterLegOnChannelCreate ->
+            lager:debug("Trying to make 'start' accounting operation for outer inbound leg. The operation should be delayed."),
             % store delayed accounting call
             ets:insert(?ETS_DELAY_ACCOUNTING, {CallId, JObj});
+        'undefined' when IsInboundOuterLegOnChannelDestroy ->
+            % this situation can be if outer inbound leg wasn't authorized so ETS doesn't any account
+            % as result we shouldn't do 'stop' accounting operation
+            case ets:lookup(?ETS_DELAY_ACCOUNTING, CallId) of
+                [] ->
+                    lager:debug("Nothing to clean");
+                [{CallId, LostJObj}] ->
+                    % outbound channel wasn't created, so there is no channel creation was for CallId
+                    % so we should bypass this accounting "stop" request
+                    lager:debug("Cleanup of the delayed operation for outer inbound leg: ~p", [LostJObj]),
+                    ets:delete(?ETS_DELAY_ACCOUNTING, CallId)
+            end;
         AccountId ->
             {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
             NasAddress = wh_json:get_value(<<"nas_address">>, AaaDoc),
@@ -136,29 +153,32 @@ handle_accounting_req(JObj, _Props) ->
                     % check if we have delayed accounting leg for this call
                     case ets:lookup(?ETS_DELAY_ACCOUNTING, OtherLegCallId) of
                         [] -> 'ok';
-                        [{OtherLegCallId, JObj_}] ->
+                        [{OtherLegCallId, JObjDelayed}] ->
+                            lager:debug("Found corresponding delayed operation for outer inbound leg accounting. The operation should be retrieved and executed."),
                             ets:delete(?ETS_DELAY_ACCOUNTING, OtherLegCallId),
-                            JObj1_ = wh_json:insert_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], AccountId, JObj_),
+                            JObjDelayed1 = wh_json:insert_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], AccountId, JObjDelayed),
                             % delayed leg info was found
-                            CallId_ = wh_json:get_value(<<"Call-ID">>, JObj1_),
-                            BridgeId_ = wh_json:get_value(<<"Bridge-ID">>, JObj1_),
-                            maybe_start_session_timer(AccountId, BridgeId_),
-                            maybe_start_interim_update_timer(AccountId, CallId_),
-                            JObj2_ = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
-                                ,{<<"Acct-Delay-Time">>, 0}
-                                ,{<<"NAS-IP-Address">>, NasAddress}]
-                                ,JObj1_),
+                            CallIdDelayed = wh_json:get_value(<<"Call-ID">>, JObjDelayed1),
+                            BridgeIdDelayed = wh_json:get_value(<<"Bridge-ID">>, JObjDelayed1),
+                            maybe_start_session_timer(AccountId, BridgeIdDelayed),
+                            maybe_start_interim_update_timer(AccountId, CallIdDelayed),
+                            JObjDelayed2 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
+                                                               ,{<<"Acct-Delay-Time">>, 0}
+                                                               ,{<<"NAS-IP-Address">>, NasAddress}
+                                                              ], JObjDelayed1),
                             % send delayed accounting start
-                            cm_pool_mgr:do_request(JObj2_)
+                            lager:debug("Delayed operation for outer inbound leg is ~p", [JObjDelayed2]),
+                            cm_pool_mgr:do_request(JObjDelayed2)
                     end,
                     BridgeId = wh_json:get_value(<<"Bridge-ID">>, JObj),
                     maybe_start_session_timer(AccountId, BridgeId),
                     maybe_start_interim_update_timer(AccountId, CallId),
                     JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
-                        ,{<<"Acct-Delay-Time">>, 0}
-                        ,{<<"NAS-IP-Address">>, NasAddress}]
-                        ,JObj),
+                                                ,{<<"Acct-Delay-Time">>, 0}
+                                                ,{<<"NAS-IP-Address">>, NasAddress}
+                                               ], JObj),
                     % send accounting start
+                    lager:debug("Sending accounting start operation: ~p", [JObj1]),
                     cm_pool_mgr:do_request(JObj1);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     case ets:lookup(?ETS_DELAY_ACCOUNTING, CallId) of
@@ -167,14 +187,16 @@ handle_accounting_req(JObj, _Props) ->
                             maybe_cancel_session_timer(AccountId, BridgeId),
                             maybe_cancel_interim_update_timer(AccountId, CallId),
                             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
-                                ,{<<"Acct-Delay-Time">>, 0}
-                                ,{<<"NAS-IP-Address">>, NasAddress}]
-                                ,JObj),
+                                                        ,{<<"Acct-Delay-Time">>, 0}
+                                                        ,{<<"NAS-IP-Address">>, NasAddress}
+                                                       ], JObj),
                             % send accounting stop
+                            lager:debug("Sending accounting stop operation: ~p", [JObj1]),
                             cm_pool_mgr:do_request(JObj1);
-                        [{CallId, JObj}] ->
+                        [{CallId, LostJObj}] ->
                             % outbound channel wasn't created, so there is no channel creation was for CallId
                             % so we should bypass this accounting "stop" request
+                            lager:debug("Cleanup of the delayed operation for outer inbound leg: ~p", [LostJObj]),
                             ets:delete(?ETS_DELAY_ACCOUNTING, CallId)
                     end
             end
@@ -184,11 +206,14 @@ maybe_start_session_timer(AccountId, CallId) ->
     case cm_util:get_session_timeout(AccountId) of
         'undefined' -> 'ok';
         SessionTimeout ->
+            lager:debug("Apply existing session timeout"),
             {'ok', TRef} = timer:apply_after(SessionTimeout * 1000, ?MODULE, 'handle_hangup_by_session_timeout', [CallId]),
             ets:insert(?ETS_SESSION_TIMEOUT, {CallId, AccountId, TRef})
     end.
 
 handle_hangup_by_session_timeout(CallId) ->
+    wh_util:put_callid(CallId),
+    lager:debug("Apply call hangup because of session timeout"),
     cm_util:hangup_call(CallId),
     ets:delete(?ETS_SESSION_TIMEOUT, CallId).
 
@@ -196,6 +221,7 @@ maybe_cancel_session_timer(AccountId, CallId) ->
     case ets:lookup(?ETS_SESSION_TIMEOUT, CallId) of
         [] -> 'ok';
         [{CallId, AccountId, TRef}] ->
+            lager:debug("Cancel session timeout"),
             timer:cancel(TRef),
             ets:delete(?ETS_SESSION_TIMEOUT, CallId)
     end.
@@ -204,11 +230,13 @@ maybe_start_interim_update_timer(AccountId, CallId) ->
     case cm_util:get_interim_update(AccountId) of
         'undefined' -> 'ok';
         Interval ->
+            lager:debug("Apply interim update timer"),
             {'ok', TRef} = timer:apply_interval(Interval * 1000, ?MODULE, 'handle_interim_update', [CallId]),
             ets:insert(?ETS_INTERIM_UPDATE, {CallId, AccountId, TRef})
     end.
 
 handle_interim_update(CallId) ->
+    wh_util:put_callid(CallId),
     % TODO: rewrite as async request? spawn?
     case wh_amqp_worker:call_collect([{<<"Call-ID">>, CallId}, {<<"Fields">>, <<"all">>}, {<<"Active-Only">>, 'true'}
         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
@@ -224,6 +252,7 @@ handle_interim_update(CallId) ->
                 [StatusJObj] ->
                     lager:debug("Channel found: ~p", StatusJObj),
                     % emulation of Accounting Request operation
+                    lager:debug("Sending accounting request"),
                     handle_accounting_req(StatusJObj, [])
             end;
         {'returned', _JObj, BR} ->
@@ -241,7 +270,7 @@ find_channel(CallId, []) ->
 -spec find_channel(ne_binary(), wh_json:objects(), wh_json:objects()) -> api_object().
 find_channel(_CallId, [], Acc) -> Acc;
 find_channel(CallId, [StatusJObj|JObjs], Acc) ->
-    lager:debug("Next StatusJObj is ~p", [StatusJObj]),
+    lager:debug("Next checked StatusJObj is ~p", [StatusJObj]),
     Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
     case wh_json:get_value(<<"Call-ID">>, Channel) of
         CallId -> find_channel(CallId, JObjs, [Channel | Acc]);
@@ -252,6 +281,7 @@ maybe_cancel_interim_update_timer(AccountId, CallId) ->
     case ets:lookup(?ETS_INTERIM_UPDATE, CallId) of
         [] -> 'ok';
         [{CallId, AccountId, TRef}] ->
+            lager:debug("Cancel interim update timer"),
             timer:cancel(TRef),
             ets:delete(?ETS_INTERIM_UPDATE, CallId)
     end.
@@ -283,7 +313,7 @@ maybe_processing_authz(JObj) ->
                                 ,{<<"Account-ID">>, AccountId}
                             ], JObj)
                     end,
-            {'ok', AccountDoc} = couch_mgr:open_cache_doc(<<"account">>, AccountId),
+            {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
             AccountName = wh_json:get_value(<<"name">>, AccountDoc),
             JObj2 = wh_json:set_value([<<"Custom-Auth-Vars">>, <<"Account-Name">>], AccountName, JObj1),
             cm_pool_mgr:do_request(JObj2);
@@ -310,9 +340,10 @@ maybe_processing_authz(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ets:new(?ETS_SESSION_TIMEOUT, [named_table, {keypos, 1}, protected]),
-    ets:new(?ETS_INTERIM_UPDATE, [named_table, {keypos, 1}, protected]),
-    ets:new(?ETS_DELAY_ACCOUNTING, [named_table, {keypos, 1}, protected]),
+    % TODO: rework using ets_mgr
+    ets:new(?ETS_SESSION_TIMEOUT, ['named_table', {'keypos', 1}, 'public']),
+    ets:new(?ETS_INTERIM_UPDATE, ['named_table', {'keypos', 1}, 'public']),
+    ets:new(?ETS_DELAY_ACCOUNTING, ['named_table', {'keypos', 1}, 'public']),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
