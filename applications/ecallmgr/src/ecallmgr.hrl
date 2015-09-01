@@ -195,7 +195,7 @@
                                ,{<<"Presence-ID">>, <<"presence_id">>}
                                ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
                                ,{<<"From-URI">>, <<"sip_from_uri">>}
-                               ,{<<"Bypass-Media">>, <<"bypass_media">>}
+                               ,{<<"Bypass-Media">>, <<"bypass_media_after_bridge">>}
                                ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
@@ -255,7 +255,7 @@
                                ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
                                ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}
                                ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
-                               ,{<<"default_langauge">>, <<"default_language">>}
+                               ,{<<"default_language">>, <<"default_language">>}
                                ,{<<"Default-Language">>, <<"default_language">>}
                               ]).
 
