@@ -232,7 +232,7 @@ handle_call_events(JObj, Props) ->
 -spec handle_control_queue_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_control_queue_req(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    put('callid', wh_json:get_value(<<"Call-ID">>, JObj)),
+    wh_util:put_callid(JObj),
     gen_listener:cast(Srv, {'control_queue_req', JObj}).
 
 %%%===================================================================
