@@ -123,11 +123,11 @@ load_consumed(Context) ->
     end.
 
 -spec foldl_consumed(api_binary(), wh_json:object(), {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}) ->
-    {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}. 
+    {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}.
 foldl_consumed(_Classification, _Value, {#cb_context{resp_status='error'}=ContextErr, Mode, Acc}) -> {ContextErr, Mode, Acc};
 foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
     case create_viewoptions(Context, Classification, Value, Mode) of
-        {Cycle, ViewOptions} -> 
+        {Cycle, ViewOptions} ->
             [_, From] = props:get_value('startkey', ViewOptions),
             [_, To] = props:get_value('endkey', ViewOptions),
             ContextResult = crossbar_doc:load_view(?LIST_CONSUMED
@@ -159,8 +159,8 @@ normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
            end,
     normalize_result(Cycle, From, To, Acc1, Tail).
 
--spec create_viewoptions(cb_context:context(), api_binary(), wh_json:object(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}) -> 
-    {api_binary(), wh_proplist()} | 
+-spec create_viewoptions(cb_context:context(), api_binary(), wh_json:object(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}) ->
+    {api_binary(), wh_proplist()} |
     cb_context:context().
 create_viewoptions(Context, Classification, JObj, {'cycle', DateTime}) ->
     Cycle = wh_json:get_value(<<"cycle">>, JObj),
@@ -179,7 +179,7 @@ create_viewoptions(Context, Classification, _JObj, {'manual', From, To}) ->
 
 -spec get_consumed_mode(cb_context:context()) -> {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}.
 get_consumed_mode(Context) ->
-    case 
+    case
         {maybe_req_seconds(Context, <<"created_from">>)
          ,maybe_req_seconds(Context, <<"created_to">>)
         }
@@ -291,11 +291,10 @@ cycle_start(<<"minutely">>, {{Year, Month, Day}, {Hour, Min, _}}) ->
 
 -spec cycle_end(ne_binary(), wh_datetime() | gregorian_seconds()) -> gregorian_seconds().
 cycle_end(Cycle, Seconds) when is_integer(Seconds) -> cycle_end(Cycle, calendar:gregorian_seconds_to_datetime(Seconds));
-cycle_end(<<"monthly">>, {{Year, Month, _}, _}) -> 
+cycle_end(<<"monthly">>, {{Year, Month, _}, _}) ->
     LastDay = calendar:last_day_of_the_month(Year, Month),
     calendar:datetime_to_gregorian_seconds({{Year, Month, LastDay}, {23, 59, 59}}) + 1;
 cycle_end(<<"weekly">>, DateTime) -> cycle_start(<<"weekly">>, DateTime) + ?SECONDS_IN_WEEK;
 cycle_end(<<"daily">>, DateTime) ->  cycle_start(<<"daily">>, DateTime) + ?SECONDS_IN_DAY;
 cycle_end(<<"hourly">>, DateTime) -> cycle_start(<<"hourly">>, DateTime) + ?SECONDS_IN_HOUR;
 cycle_end(<<"minutely">>, DateTime) -> cycle_start(<<"minutely">>, DateTime) + ?SECONDS_IN_MINUTE.
-

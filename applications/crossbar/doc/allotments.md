@@ -63,17 +63,17 @@ Properties:
 ##### "increment", "minimum" and "no_consume_time"
 
 ```json
-      "outbound_local": {               
+      "outbound_local": {
            "increment": 10,
            "minimum": 60,
            "no_consume_time": 5
        }
 ```
-Call consumed time rounded before store it to DB.  
-Call with duration 40 seconds will be count as 60 seconds.  
-69 seconds -> 70  
-75 seconds -> 80  
-5 seconds -> 0  
+Call consumed time rounded before store it to DB.
+Call with duration 40 seconds will be count as 60 seconds.
+69 seconds -> 70
+75 seconds -> 80
+5 seconds -> 0
 6 seconds -> 60
 
 #### "group_consume"
@@ -198,7 +198,7 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 - Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}&created_to={{TIMESTAMP}}`
 - Payload: None
 
-`{{TIMESTAMP}}` - Gregorian epoch seconds.  
+`{{TIMESTAMP}}` - Gregorian epoch seconds.
 
 ### Response
 
@@ -226,12 +226,12 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 
 ### Request
 - Verb: `GET`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}`  
-OR   
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_from={{TIMESTAMP}}`
+OR
 `/v2/accounts/{{ACCOUNT_ID}}/allotments/consumed?created_to={{TIMESTAMP}}`
 - Payload: None
 
-`{{TIMESTAMP}}` - Gregorian epoch seconds.  
+`{{TIMESTAMP}}` - Gregorian epoch seconds.
 
 ```ASCII
 
@@ -266,5 +266,3 @@ OR
     "status": "success",
 }
 ```
-
-
