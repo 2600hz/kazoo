@@ -236,5 +236,5 @@ build_fax_template_data(DataJObj) ->
     props:filter_undefined(
       [{<<"id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
        ,{<<"media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
-       | wh_json:to_proplist(wh_json:get_value(<<"rx_results">>, FaxJObj, wh_json:new()))
+       | wh_json:to_proplist(wh_json:get_value(<<"rx_result">>, FaxJObj, wh_json:new()))
       ]).
