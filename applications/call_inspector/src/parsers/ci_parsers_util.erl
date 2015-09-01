@@ -27,7 +27,7 @@
 timestamp() ->
     timestamp(os:timestamp()).
 
--spec timestamp(ne_binary() | erlang:timestamp()) -> api_number().
+-spec timestamp(ne_binary() | wh_now()) -> api_number().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
