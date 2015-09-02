@@ -159,8 +159,6 @@ handle_accounting_req(JObj, _Props) ->
                             JObjDelayed1 = wh_json:insert_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], AccountId, JObjDelayed),
                             % delayed leg info was found
                             CallIdDelayed = wh_json:get_value(<<"Call-ID">>, JObjDelayed1),
-                            BridgeIdDelayed = wh_json:get_value(<<"Bridge-ID">>, JObjDelayed1),
-                            maybe_start_session_timer(AccountId, BridgeIdDelayed),
                             maybe_start_interim_update_timer(AccountId, CallIdDelayed),
                             JObjDelayed2 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
                                                                ,{<<"Acct-Delay-Time">>, 0}
@@ -170,7 +168,7 @@ handle_accounting_req(JObj, _Props) ->
                             lager:debug("Delayed operation for outer inbound leg is ~p", [JObjDelayed2]),
                             cm_pool_mgr:do_request(JObjDelayed2)
                     end,
-                    BridgeId = wh_json:get_value(<<"Bridge-ID">>, JObj),
+                    BridgeId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj),
                     maybe_start_session_timer(AccountId, BridgeId),
                     maybe_start_interim_update_timer(AccountId, CallId),
                     JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
@@ -183,7 +181,7 @@ handle_accounting_req(JObj, _Props) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     case ets:lookup(?ETS_DELAY_ACCOUNTING, CallId) of
                         [] ->
-                            BridgeId = wh_json:get_value(<<"Bridge-ID">>, JObj),
+                            BridgeId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj),
                             maybe_cancel_session_timer(AccountId, BridgeId),
                             maybe_cancel_interim_update_timer(AccountId, CallId),
                             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
@@ -206,14 +204,14 @@ maybe_start_session_timer(AccountId, CallId) ->
     case cm_util:get_session_timeout(AccountId) of
         'undefined' -> 'ok';
         SessionTimeout ->
-            lager:debug("Apply existing session timeout"),
+            lager:debug("Applying session timeout timer for Call ID ~p of the account ~p", [CallId, AccountId]),
             {'ok', TRef} = timer:apply_after(SessionTimeout * 1000, ?MODULE, 'handle_hangup_by_session_timeout', [CallId]),
             ets:insert(?ETS_SESSION_TIMEOUT, {CallId, AccountId, TRef})
     end.
 
 handle_hangup_by_session_timeout(CallId) ->
     wh_util:put_callid(CallId),
-    lager:debug("Apply call hangup because of session timeout"),
+    lager:debug("Applying call hangup because of session timeout for Call ID ~p", [CallId]),
     cm_util:hangup_call(CallId),
     ets:delete(?ETS_SESSION_TIMEOUT, CallId).
 
@@ -221,7 +219,7 @@ maybe_cancel_session_timer(AccountId, CallId) ->
     case ets:lookup(?ETS_SESSION_TIMEOUT, CallId) of
         [] -> 'ok';
         [{CallId, AccountId, TRef}] ->
-            lager:debug("Cancel session timeout"),
+            lager:debug("Cancelling session timeout for CallID ~p of the account ~p", [CallId, AccountId]),
             timer:cancel(TRef),
             ets:delete(?ETS_SESSION_TIMEOUT, CallId)
     end.
@@ -230,7 +228,7 @@ maybe_start_interim_update_timer(AccountId, CallId) ->
     case cm_util:get_interim_update(AccountId) of
         'undefined' -> 'ok';
         Interval ->
-            lager:debug("Apply interim update timer"),
+            lager:debug("Applying interim update timer for CallID ~p of the account ~p", [CallId, AccountId]),
             {'ok', TRef} = timer:apply_interval(Interval * 1000, ?MODULE, 'handle_interim_update', [CallId]),
             ets:insert(?ETS_INTERIM_UPDATE, {CallId, AccountId, TRef})
     end.
@@ -239,9 +237,9 @@ handle_interim_update(CallId) ->
     wh_util:put_callid(CallId),
     % TODO: rewrite as async request? spawn?
     case wh_amqp_worker:call_collect([{<<"Call-ID">>, CallId}, {<<"Fields">>, <<"all">>}, {<<"Active-Only">>, 'true'}
-        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
-        ,fun wapi_call:publish_query_channels_req/1
-        ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1})
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                                      ,fun wapi_call:publish_query_channels_req/1
+                                      ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1})
     of
         {'ok', []} ->
             lager:debug("No channels in response");
@@ -281,7 +279,7 @@ maybe_cancel_interim_update_timer(AccountId, CallId) ->
     case ets:lookup(?ETS_INTERIM_UPDATE, CallId) of
         [] -> 'ok';
         [{CallId, AccountId, TRef}] ->
-            lager:debug("Cancel interim update timer"),
+            lager:debug("Cancelling interim update timeout for CallID ~p of the account ~p", [CallId, AccountId]),
             timer:cancel(TRef),
             ets:delete(?ETS_INTERIM_UPDATE, CallId)
     end.

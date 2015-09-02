@@ -23,6 +23,9 @@
          ,send_authn_response/4
          ,send_accounting_response/4
          ,do_request/1
+
+         ,maybe_session_timeout/2
+         ,maybe_interim_update/2
         ]).
 
 %%%===================================================================
@@ -143,8 +146,6 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                              cm_util:maybe_translate_avps_into_kv(AttributeList, AaaDoc, RequestType);
                          'authn' ->
                              lager:debug("Operation is authn"),
-                             maybe_session_timeout(AttributeList, AccountId),
-                             maybe_interim_update(AttributeList, AccountId),
                              AttributeList
                      end,
     lager:debug("Resulted AttributeList1 is: ~p", [AttributeList1]),
@@ -227,7 +228,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Starts new worker for processing a request
 %% @end
 %%--------------------------------------------------------------------
--spec dist_workers(wh_json:object()) -> 'ok'.
+-spec dist_workers(wh_json:object()) -> any().
 dist_workers(JObj) ->
     wh_util:put_callid(JObj),
     lager:debug("Trying to start new worker..."),
@@ -237,22 +238,27 @@ dist_workers(JObj) ->
             cm_worker:send_req(Worker, JObj);
         Else ->
             % TODO: need to send message to self for 'denied' response
-            lager:error("Failed to start a worker. Reason is ~p", [Else]),
-            'ok'
+            lager:error("Failed to start a worker. Reason is ~p", [Else])
     end.
 
+-spec maybe_session_timeout(proplist(), ne_binary()) -> any().
 maybe_session_timeout(AttributeList, AccountId) ->
+    % because this auth operation is account-related, so we shouldn't use
+    % account hierarchy to find suitable Session-Timeout value.
     case props:get_integer_value(<<"Session-Timeout">>, AttributeList) of
-        'undefined' -> 'ok';
+        'undefined' ->
+            cm_util:clean_session_timeout(AccountId);
         SessionTimeout ->
-            cm_util:put_session_timeout(SessionTimeout, AccountId),
-            'ok'
+            cm_util:put_session_timeout(SessionTimeout, AccountId)
     end.
 
+-spec maybe_interim_update(proplist(), ne_binary()) -> any().
 maybe_interim_update(AttributeList, AccountId) ->
+    % because this auth operation is account-related, so we shouldn't use
+    % account hierarchy to find suitable Acct-Interim-Interval value.
     case props:get_integer_value(<<"Acct-Interim-Interval">>, AttributeList) of
-        'undefined' -> 'ok';
+        'undefined' ->
+            cm_util:clean_interim_update(AccountId);
         SessionTimeout ->
-            cm_util:put_interim_update(SessionTimeout, AccountId),
-            'ok'
+            cm_util:put_interim_update(SessionTimeout, AccountId)
     end.

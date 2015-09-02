@@ -18,6 +18,8 @@
          ,get_session_timeout/1
          ,put_interim_update/2
          ,get_interim_update/1
+         ,clean_session_timeout/1
+         ,clean_interim_update/1
          ,hangup_call/1]).
 
 -include("circlemaker.hrl").
@@ -183,44 +185,74 @@ determine_channel_type(JObj) ->
 
 -spec put_session_timeout(pos_integer(), ne_binary()) -> any().
 put_session_timeout(SessionTimeout, AccountId) ->
+    lager:debug("Storing session timeout value ~p into account ~p", [SessionTimeout, AccountId]),
     DbName = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
     case wh_json:get_value(<<"session_timeout">>, AaaDoc) of
         SessionTimeout ->
-            'ok';
+            lager:debug("This value already exists in the account");
         _ ->
+            lager:debug("This value isn't exist in the accountm so it's updated"),
             NewAaaDoc = wh_json:set_value(<<"session_timeout">>, SessionTimeout, AaaDoc),
             couch_mgr:save_doc(DbName, NewAaaDoc)
     end.
 
 -spec get_session_timeout(ne_binary()) -> pos_integer() | 'undefined'.
 get_session_timeout(AccountId) ->
+    lager:debug("Retrieve session timeout value from account ~p", [AccountId]),
     DbName = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
-    wh_json:get_value(<<"session_timeout">>, AaaDoc).
+    SessionTimeout = wh_json:get_value(<<"session_timeout">>, AaaDoc),
+    lager:debug("Session timeout value is ~p", [SessionTimeout]),
+    SessionTimeout.
+
+-spec clean_session_timeout(ne_binary()) -> any().
+clean_session_timeout(AccountId) ->
+    lager:debug("Clean session timeout value of the account ~p", [AccountId]),
+    DbName = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
+    NewAaaDoc = wh_json:delete_key(<<"session_timeout">>, AaaDoc),
+    couch_mgr:save_doc(DbName, NewAaaDoc).
 
 -spec put_interim_update(pos_integer(), ne_binary()) -> any().
 put_interim_update(InterimUpdate, AccountId) ->
+    lager:debug("Storing interim update interval value ~p into account ~p", [InterimUpdate, AccountId]),
     DbName = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
     case wh_json:get_value(<<"interim_update_interval">>, AaaDoc) of
         InterimUpdate ->
-            'ok';
+            lager:debug("This value already exists in the account");
         'undefined' ->
+            lager:debug("This value isn't exist in the accountm so it's updated"),
             NewAaaDoc = wh_json:set_value(<<"interim_update_interval">>, InterimUpdate, AaaDoc),
             couch_mgr:save_doc(DbName, NewAaaDoc)
     end.
 
 -spec get_interim_update(ne_binary()) -> pos_integer() | 'undefined'.
 get_interim_update(AccountId) ->
+    lager:debug("Retrieve interim update interval value from account ~p", [AccountId]),
     DbName = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
     case {wh_json:get_value(<<"local_interim_update_interval">>, AaaDoc)
           ,wh_json:get_value(<<"interim_update_interval">>, AaaDoc)} of
-        {'undefined', 'undefined'} -> 'undefined';
-        {'undefined', Interval} -> Interval;
-        {Interval, _} ->Interval
+        {'undefined', 'undefined'} ->
+            lager:debug("Interim update interval value isn't set"),
+            'undefined';
+        {'undefined', Interval} ->
+            lager:debug("Interim update interval value got from the interim_update_interval value", [Interval]),
+            Interval;
+        {Interval, _} ->
+            lager:debug("Interim update interval value got from the local_interim_update_interval value", [Interval]),
+            Interval
     end.
+
+-spec clean_interim_update(ne_binary()) -> any().
+clean_interim_update(AccountId) ->
+    lager:debug("Clean interim update interval value of the account ~p", [AccountId]),
+    DbName = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
+    NewAaaDoc = wh_json:delete_key(<<"interim_update_interval">>, AaaDoc),
+    couch_mgr:save_doc(DbName, NewAaaDoc).
 
 -spec hangup_call(ne_binary()) -> 'ok'.
 hangup_call(CallId) ->
