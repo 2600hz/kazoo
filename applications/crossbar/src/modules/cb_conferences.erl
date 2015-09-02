@@ -107,7 +107,7 @@ validate_conference(Context, Id, ?HTTP_PATCH) ->
     patch_conference(Id, Context);
 validate_conference(Context, Id, ?HTTP_DELETE) ->
     load_conference(Id, Context).
-    
+
 validate(Context, Id, <<"details">>) ->
     load_conference_details(Context, Id).
 
