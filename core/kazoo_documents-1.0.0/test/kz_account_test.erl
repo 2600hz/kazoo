@@ -44,10 +44,10 @@ trial_time_test_() ->
     Active = kz_account:set_trial_expiration(kz_account:new(), Now + 10000),
 
     [{"testing expired trial accounts are computed as such"
-      ,?_assertEqual('true', kz_account:trial_has_expired(Passed))
+      ,?_assertEqual('true', kz_account:trial_has_expired(Passed, Now))
      }
      ,{"testing current trial accounts are computed as such"
-       ,?_assertEqual('false', kz_account:trial_has_expired(Active))
+       ,?_assertEqual('false', kz_account:trial_has_expired(Active, Now))
       }
      ,{"testing that current trial accounts have proper time left computed"
        ,?_assertEqual(10000, kz_account:trial_time_left(Active, Now))

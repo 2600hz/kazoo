@@ -70,6 +70,7 @@
          ,is_json_object/1, is_json_object/2
          ,is_valid_json_object/1
          ,is_json_term/1
+         ,are_identical/2
         ]).
 -export([public_fields/1
          ,private_fields/1
@@ -177,6 +178,21 @@ is_json_term(Vs) when is_list(Vs) ->
 is_json_term({'json', IOList}) when is_list(IOList) -> 'true';
 is_json_term(MaybeJObj) ->
     is_json_object(MaybeJObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec are_identical(api_object(), api_object()) -> boolean().
+are_identical('undefined', 'undefined') -> 'true';
+are_identical('undefined', _) -> 'false';
+are_identical(_, 'undefined') -> 'false';
+are_identical(JObj1, JObj2) ->
+    [KV || {_, V}=KV <- wh_json:to_proplist(JObj1), (not wh_util:is_empty(V))]
+        =:=
+    [KV || {_, V}=KV <- wh_json:to_proplist(JObj2), (not wh_util:is_empty(V))].
 
 %% converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
@@ -861,7 +877,7 @@ normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so
 normalize_key_char(C) -> C.
 
 -type search_replace_format() :: {ne_binary(), ne_binary()} |
-                                  {ne_binary(), ne_binary(), fun((term()) -> term())}.
+                                 {ne_binary(), ne_binary(), fun((term()) -> term())}.
 -type search_replace_formatters() :: [search_replace_format(),...] | [].
 -spec normalize_jobj(object(), ne_binaries(), search_replace_formatters()) -> object().
 normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->

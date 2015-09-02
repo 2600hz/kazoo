@@ -23,7 +23,7 @@
 
          ,trial_expiration/1, trial_expiration/2, set_trial_expiration/2
          ,trial_time_left/1, trial_time_left/2
-         ,trial_has_expired/1
+         ,trial_has_expired/1, trial_has_expired/2
 
          ,fetch/1
          ,new/0
@@ -189,4 +189,6 @@ trial_time_left(JObj, Now) ->
 
 -spec trial_has_expired(doc()) -> boolean().
 trial_has_expired(JObj) ->
-    trial_time_left(JObj) =< 0.
+    trial_has_expired(JObj, wh_util:current_tstamp()).
+trial_has_expired(JObj, Now) ->
+    trial_time_left(JObj, Now) =< 0.
