@@ -20,14 +20,14 @@
 
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    CallerIdNumber = whapps_call:caller_id_number(Call),
+    CallerNumber = whapps_call:caller_id_number(Call),
     ListEntries = wh_json:get_value(<<"lists">>, Data),
     AccountDb = whapps_call:account_db(Call),
-    lager:debug("matching ~p in ~p", [CallerIdNumber, AccountDb]),
-    CallerName = case match_prefix_in_lists(AccountDb, CallerIdNumber, ListEntries) of
+    lager:debug("matching ~p in ~p", [CallerNumber, AccountDb]),
+    CallerName = case match_number_in_lists(AccountDb, CallerNumber, ListEntries) of
                      'continue' ->
                          lager:debug("matching regexps"),
-                         match_regexp_in_lists(AccountDb, CallerIdNumber, ListEntries);
+                         match_regexp_in_lists(AccountDb, CallerNumber, ListEntries);
                      {'stop', CallerName_} -> CallerName_
                  end,
     case CallerName of
@@ -37,11 +37,25 @@ handle(Data, Call) ->
             cf_exe:continue(whapps_call:set_caller_id_name(CallerName, Call))
     end.
 
--spec match_prefix_in_lists(ne_binary(), ne_binary(), ne_binary() | [ne_binary()]) ->
-    {'stop', api_binary()} | 'continue'.
-match_prefix_in_lists(AccountDb, Number, Lists) ->
+-type match_number_result() :: {'stop', api_binary()} | 'continue'.
+-spec match_number_in_lists(ne_binary(), ne_binary(), ne_binaries()) -> match_number_result().
+match_number_in_lists(AccountDb, Number, Lists) ->
     Prefixes = build_keys(Number),
-    Keys = [[ListId, Prefix] || ListId <- Lists, Prefix <- Prefixes],
+    match_prefixes_in_lists(AccountDb, Prefixes, Lists).
+
+-spec match_prefixes_in_lists(ne_binary(), ne_binary(), ne_binary() | [ne_binary()]) -> match_number_result().
+match_prefixes_in_lists(AccountDb, Prefixes, [ListId | Rest]) ->
+    case match_prefixes_in_list(AccountDb, Prefixes, ListId) of
+        {'stop', _Name} = Result -> Result;
+        'continue' -> match_prefixes_in_lists(AccountDb, Prefixes, Rest)
+    end;
+match_prefixes_in_lists(_AccountDb, _Number, []) ->
+    lager:debug("no matching prefix"),
+    'continue'.
+
+-spec match_prefixes_in_list(ne_binary(), ne_binaries(), ne_binary()) -> match_number_result().
+match_prefixes_in_list(AccountDb, Prefixes, ListId) ->
+    Keys = [[ListId, Prefix] || Prefix <- Prefixes],
     case couch_mgr:get_results(AccountDb
                                ,<<"lists/match_prefix_in_list">>
                                ,[{'keys', Keys}, {'include_docs', 'true'}])
@@ -53,10 +67,9 @@ match_prefix_in_lists(AccountDb, Number, Lists) ->
             lager:debug("matched prefix ~p", [get_prefix(ListEntry)]),
             {'stop', Name};
         {'ok', []} ->
-            lager:debug("no matching prefix"),
             'continue';
         {'error', Error} ->
-            lager:warning("error while matching prefixes: ~p", [Error]),
+            lager:warning("error while matching prefixes in list ~p: ~p", [ListId, Error]),
             'continue'
     end.
 
@@ -67,10 +80,7 @@ compare_prefixes(JObj1, JObj2) ->
 -spec get_prefix(wh_json:object()) -> binary().
 get_prefix(JObj) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
-    case wh_json:get_value(<<"number">>, Doc) of
-        'undefined' -> wh_json:get_value(<<"prefix">>, Doc, <<>>);
-        Prefix      -> Prefix
-    end.
+    wh_json:get_ne_binary_value(<<"number">>, Doc, wh_json:get_ne_binary_value(<<"prefix">>, Doc)).
 
 %% TODO: this function from hon_util, may be place it somewhere in library?
 -spec build_keys(binary()) -> binaries().
