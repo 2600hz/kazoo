@@ -646,7 +646,10 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
                          end,
             Call1 = whapps_call:set_caller_id_name(TmpCID, Call),
             whapps_call_command:bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call1),
-            wait_for_ringback(CleanUpFun, Call1);
+            case wait_for_ringback(CleanUpFun, Call1) of
+                'failed' -> whapps_call:set_caller_id_name(OriginalCID, Call), 'failed';
+                Result   -> Result
+            end;
         _ -> 'failed'
     end.
 
