@@ -35,9 +35,14 @@ handle(Data, Call) ->
                ,wh_json:get_value(<<"engine">>, Data)
                ,Call
               ),
+    handle_noop_recv(Call, cf_util:wait_for_noop(Call, NoopId)).
 
-    {'ok', Call1} = cf_util:wait_for_noop(Call, NoopId),
-
-    %% Give control back to cf_exe process
-    cf_exe:set_call(Call1),
-    cf_exe:continue(Call1).
+-spec handle_noop_recv(whapps_call:call(), {'ok', whapps_call:call()} | {'error', _}) -> 'ok'.
+handle_noop_recv(_OldCall, {'ok', Call}) ->
+    cf_exe:set_call(Call),
+    cf_exe:continue(Call);
+handle_noop_recv(Call, {'error', 'channel_hungup'}) ->
+    cf_exe:hard_stop(Call);
+handle_noop_recv(Call, {'error', _E}) ->
+    lager:debug("failure executing tts: ~p", [_E]),
+    cf_exe:continue(Call).
