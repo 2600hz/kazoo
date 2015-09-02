@@ -71,7 +71,7 @@ handle(JObj, _Props) ->
 maybe_send_event('undefined', _JObj) -> 'ok';
 maybe_send_event(AccountId, JObj) ->
     case webhooks_util:find_webhooks(?NAME, AccountId) of
-        [] -> lager:debug("no hooks to handle ~s for ~s", [AccountId]);
+        [] -> lager:debug("no hooks to handle for ~s", [AccountId]);
         Hooks -> webhooks_util:fire_hooks(JObj, Hooks)
     end.
 
