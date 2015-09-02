@@ -219,8 +219,11 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,record_min_sec = RecordMinSec
                                            }=State) ->
     start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec),
-    lager:debug("started recording shutting down"),
-    {'noreply', State};
+    {'noreply', State#state{
+                  channel_status_ref=start_check_call_timer()
+                  ,time_limit_ref=start_time_limit_timer(TimeLimit)
+                 }
+    };
 handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,record_on_answer='false'
                                             ,call=Call
@@ -235,17 +238,6 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                   ,time_limit_ref=start_time_limit_timer(TimeLimit)
                  }
     };
-handle_cast('maybe_start_recording', #state{is_recording='false'
-                                            ,record_on_answer='true'
-                                            ,call=Call
-                                            ,media_name=MediaName
-                                            ,time_limit=TimeLimit
-                                            ,should_store={'true', 'other', _}
-                                            ,sample_rate = SampleRate
-                                            ,record_min_sec = RecordMinSec
-                                           }=State) ->
-    start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec),
-    {'noreply', State};
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='true'}=State) ->
     lager:debug("we've already starting a recording for this call"),
     {'noreply', State};
@@ -259,8 +251,11 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                                                       ,record_min_sec = RecordMinSec
                                                      }=State) ->
     start_recording(Call, MediaName, TimeLimit, SampleRate, RecordMinSec),
-    lager:debug("statred recording on answer shutting down"),
-    {'noreply', State};
+    {'noreply', State#state{
+                  channel_status_ref=start_check_call_timer()
+                  ,time_limit_ref=start_time_limit_timer(TimeLimit)
+                 }
+    };
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                                                       ,record_on_answer='true'
                                                       ,call=Call
