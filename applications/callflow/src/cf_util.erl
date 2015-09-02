@@ -746,19 +746,20 @@ load_system_dialplans(Names) ->
     LowerNames = [wh_util:to_lower_binary(Name) || Name <- Names],
     case whapps_config:get_all_kvs(<<"dialplans">>) of
         Plans when is_list(Plans) ->
-            lists:foldl(
-              fun({Key, Val}, Acc) ->
-                      Name = wh_util:to_lower_binary(wh_json:get_value(<<"name">>, Val)),
-                      case lists:member(Name, LowerNames) of
-                          'true' -> wh_json:set_value(Key, Val, Acc);
-                          'false' -> Acc
-                      end
-              end
-              ,wh_json:new()
-              ,Plans
-             );
+            lists:foldl(fold_system_dialplans(LowerNames), wh_json:new(), Plans);
         Error ->
             lager:notice("cannot get system dial plans ~p", [Error])
+    end.
+
+-spec fold_system_dialplans(ne_binaries()) ->
+    fun(({ne_binary(), wh_json:object()}, wh_json:object()) -> wh_json:object()).
+fold_system_dialplans(Names) ->
+    fun({Key, Val}, Acc) ->
+            Name = wh_util:to_lower_binary(wh_json:get_value(<<"name">>, Val)),
+            case lists:member(Name, Names) of
+                'true' -> wh_json:set_value(Key, Val, Acc);
+                'false' -> Acc
+            end
     end.
 
 -spec encryption_method_map(api_object(), api_binaries() | wh_json:object()) -> api_object().
