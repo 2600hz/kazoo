@@ -191,7 +191,7 @@ It is possible to add dial plans to system config. Account/user/device `dial_pla
 
 #### Using system `dialplan` example
 
-    curl -X PATCH -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID} -d '{"data":{"dial_plan":{"system":["Novosibirsl"]}}}'
+    curl -X PATCH -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID} -d '{"data":{"dial_plan":{"system":["Novosibirsk"]}}}'
 
 ### Available system dial plans
 
