@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/2
-         ,handle_resp/3
+         ,handle_resp/4
          ,maybe_relay_event/2
          ,stop_call/2
          ,new_request/3, new_request/4
@@ -214,7 +214,7 @@ handle_cast({'request', Uri, Method, Params}, #state{call=Call
                                     ,call=Call2
                                    }};
         _ ->
-            wapi_pivot:publish_failed(Q, [{<<"Call-ID">>,whapps_call:call_id(Call)}
+            wapi_pivot:publish_failed(Q, [{<<"Call-ID">>, whapps_call:call_id(Call)}
                                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                          ]),
             {'stop', 'normal', State}
@@ -355,10 +355,12 @@ handle_info({'ibrowse_async_response_end', ReqId}, #state{request_id=ReqId
                                                           ,response_content_type=CT
                                                           ,call=Call
                                                           ,debug=Debug
+                                                          ,requester_queue=RequesterQ
                                                          }=State) ->
     Self = self(),
     maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
-    {Pid, Ref} = spawn_monitor(?MODULE, 'handle_resp', [kzt_util:set_amqp_listener(Self, Call)
+    {Pid, Ref} = spawn_monitor(?MODULE, 'handle_resp', [RequesterQ
+                                                        ,kzt_util:set_amqp_listener(Self, Call)
                                                         ,CT
                                                         ,RespBody
                                                        ]),
@@ -473,12 +475,12 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 normalize_resp_headers(Headers) ->
     [{wh_util:to_lower_binary(K), wh_util:to_binary(V)} || {K, V} <- Headers].
 
--spec handle_resp(whapps_call:call(), ne_binary(), binary()) -> 'ok'.
-handle_resp(Call, CT, RespBody) ->
+-spec handle_resp(api_binary(), whapps_call:call(), ne_binary(), binary()) -> 'ok'.
+handle_resp(RequesterQ, Call, CT, RespBody) ->
     wh_util:put_callid(whapps_call:call_id(Call)),
     Srv = kzt_util:get_amqp_listener(Call),
 
-    case process_resp(Call, CT, RespBody) of
+    case process_resp(RequesterQ, Call, CT, RespBody) of
         {'stop', Call1} -> ?MODULE:stop_call(Srv, Call1);
         {'ok', Call1} -> ?MODULE:stop_call(Srv, Call1);
         {'usurp', _Call1} -> ?MODULE:usurp_executor(Srv);
@@ -490,17 +492,17 @@ handle_resp(Call, CT, RespBody) ->
                                )
     end.
 
--spec process_resp(whapps_call:call(), list() | binary(), binary()) ->
+-spec process_resp(api_binary(), whapps_call:call(), list() | binary(), binary()) ->
                           {'stop', whapps_call:call()} |
                           {'ok', whapps_call:call()} |
                           {'request', whapps_call:call()} |
                           {'usurp', whapps_call:call()}.
-process_resp(Call, _, <<>>) ->
+process_resp(_, Call, _, <<>>) ->
     lager:debug("no response body, finishing up"),
     {'stop', Call};
-process_resp(Call, Hdrs, RespBody) when is_list(Hdrs) ->
-    handle_resp(Call, props:get_value(<<"content-type">>, Hdrs), RespBody);
-process_resp(Call, CT, RespBody) ->
+process_resp(RequesterQ, Call, Hdrs, RespBody) when is_list(Hdrs) ->
+    handle_resp(RequesterQ, Call, props:get_value(<<"content-type">>, Hdrs), RespBody);
+process_resp(RequesterQ, Call, CT, RespBody) ->
     lager:info("finding translator for content type ~s", [CT]),
     try kzt_translator:exec(Call, wh_util:to_list(RespBody), CT) of
         {'stop', _Call1}=Stop ->
@@ -524,6 +526,9 @@ process_resp(Call, CT, RespBody) ->
             {'stop', Call};
         'throw':{'error', 'unrecognized_cmds'} ->
             lager:info("no translators recognize the supplied commands: ~s", [RespBody]),
+            wapi_pivot:publish_failed(RequesterQ, [{<<"Call-ID">>, whapps_call:call_id(Call)}
+                                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                                  ]),
             {'stop', Call}
     end.
 
