@@ -127,7 +127,7 @@ wait_for_pid_refs(PidRefs, Timeout) ->
 -spec resolve_hostname(pid(), ne_binary(), wh_json:object(), fun()) -> 'ok'.
 resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
     lager:debug("attempting to resolve '~s'", [ResolveMe]),
-    StrippedHost = binary:split(ResolveMe, <<";">>),
+    StrippedHost = hd(binary:split(ResolveMe, <<";">>)),
     case (not wh_network_utils:is_ipv4(StrippedHost))
         andalso wh_network_utils:resolve(StrippedHost)
     of
