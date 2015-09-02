@@ -120,10 +120,10 @@ handle_call_event(JObj, Props) ->
             lager:debug("channel bridge maybe start recording on answer"),
             gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording_on_answer');
         {<<"call_event">>, <<"RECORD_START">>} ->
-            lager:debug("record_start event recv'd"),
+            lager:debug("record_start event received"),
             gen_listener:cast(props:get_value('server', Props), {'record_start', get_response_media(JObj)});
         {<<"call_event">>, <<"RECORD_STOP">>} ->
-            lager:debug("record_stop event recv'd"),
+            lager:debug("record_stop event received"),
             gen_listener:cast(props:get_value('server', Props), {'store_recording', get_response_media(JObj)});
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(props:get_value('server', Props), 'stop_call');
@@ -132,19 +132,22 @@ handle_call_event(JObj, Props) ->
                               ,{'channel_status', wh_json:get_value(<<"Status">>, JObj)}
                              );
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
-            case {wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Response">>, JObj)} of
+            App = wh_json:get_value(<<"Application-Name">>, JObj),
+            Res = wh_json:get_value(<<"Application-Response">>, JObj),
+            case {App, Res} of
                 {<<"store">>, <<"failure">>} ->
                     gen_listener:cast(props:get_value('server', Props), 'store_failed');
                 {<<"store">>, <<"success">>} ->
                     gen_listener:cast(props:get_value('server', Props), 'store_succeeded');
-                {_App, _Res} -> lager:debug("ignore exec complete: ~s: ~s", [_App, _Res])
+                {_, _} -> lager:debug("ignore exec complete: ~s: ~s", [App, Res])
             end;
         {<<"error">>, <<"dialplan">>} ->
-            case wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj) of
+            App = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
+            case App of
                 <<"store">> ->
                     gen_listener:cast(props:get_value('server', Props), 'store_failed');
-                _App ->
-                    lager:debug("ignore dialplan error: ~s", [_App])
+                _ ->
+                    lager:debug("ignore dialplan error: ~s", [App])
             end;
         {_, _Evt} -> lager:debug("ignore event ~p", [_Evt])
     end.
