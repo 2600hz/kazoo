@@ -21,13 +21,13 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CallerNumber = whapps_call:caller_id_number(Call),
-    ListEntries = wh_json:get_value(<<"lists">>, Data),
+    ListIds = wh_json:get_value(<<"lists">>, Data, []),
     AccountDb = whapps_call:account_db(Call),
     lager:debug("matching ~p in ~p", [CallerNumber, AccountDb]),
-    CallerName = case match_number_in_lists(AccountDb, CallerNumber, ListEntries) of
+    CallerName = case match_number_in_lists(AccountDb, CallerNumber, ListIds) of
                      'continue' ->
                          lager:debug("matching regexps"),
-                         match_regexp_in_lists(AccountDb, CallerNumber, ListEntries);
+                         match_regexp_in_lists(AccountDb, CallerNumber, ListIds);
                      {'stop', CallerName_} -> CallerName_
                  end,
     case CallerName of
@@ -43,7 +43,7 @@ match_number_in_lists(AccountDb, Number, Lists) ->
     Prefixes = build_keys(Number),
     match_prefixes_in_lists(AccountDb, Prefixes, Lists).
 
--spec match_prefixes_in_lists(ne_binary(), ne_binary(), ne_binary() | [ne_binary()]) -> match_number_result().
+-spec match_prefixes_in_lists(ne_binary(), ne_binaries(), ne_binaries()) -> match_number_result().
 match_prefixes_in_lists(AccountDb, Prefixes, [ListId | Rest]) ->
     case match_prefixes_in_list(AccountDb, Prefixes, ListId) of
         {'stop', _Name} = Result -> Result;
