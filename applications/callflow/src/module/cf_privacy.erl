@@ -44,5 +44,4 @@ update_call(CaptureGroup, {'ok', Call}) ->
                          whapps_call:set_caller_id_number(Number, C)
                  end
                ],
-    cf_exe:set_call(lists:foldl(fun(F, C) -> F(C) end, Call, Routines)).
-
+    cf_exe:set_call(whapps_call:exec(Routines, Call)).
