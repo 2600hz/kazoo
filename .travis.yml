@@ -37,4 +37,3 @@ after_success:
   - ./scripts/check-dialyzer.escript $files
   - ERL_LIBS="$HOME/proper" ERLC_OPTS='+nowarn_deprecated_type +nowarn_deprecated_function' make test
   - ./scripts/check-whitespace.sh core/ applications/
-
