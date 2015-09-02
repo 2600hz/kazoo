@@ -41,7 +41,7 @@
 handle(Data, Call) ->
     Prop = props:filter_empty(
              [{<<"Call">>, whapps_call:to_json(Call)}
-              ,{<<"Voice-URI">>, wh_json:get_value(<<"voice_url">>, Data)}
+              ,{<<"Voice-URI">>, maybe_use_variable(Data, Call)}
               ,{<<"CDR-URI">>, wh_json:get_value(<<"cdr_url">>, Data)}
               ,{<<"Request-Format">>, wh_json:get_value(<<"req_format">>, Data)}
               ,{<<"HTTP-Method">>, kzt_util:http_method(wh_json:get_value(<<"method">>, Data, 'get'))}
@@ -51,6 +51,15 @@ handle(Data, Call) ->
     wapi_pivot:publish_req(Prop),
     lager:info("published pivot request"),
     wait_for_pivot(Data, Call).
+
+-spec maybe_use_variable(wh_json:object(), whapps_call:call()) -> api_binary().
+maybe_use_variable(Data, Call) ->
+    case wh_json:get_value(<<"var">>, Data) of
+        'undefined' ->
+            wh_json:get_value(<<"voice_url">>, Data);
+        Variable ->
+            wh_json:get_value(<<"value">>, cf_kvs_set:get_kv(Variable, Call))
+    end.
 
 -spec wait_for_pivot(wh_json:object(), whapps_call:call()) -> any().
 wait_for_pivot(Data, Call) ->
