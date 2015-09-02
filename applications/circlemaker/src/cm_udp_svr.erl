@@ -89,16 +89,19 @@ handle_info(Info = {'udp', Socket, IP, InPortNo, Packet}, State = #state{socket 
             NewAttrs = [{list_to_binary(AttrName), AttrValue} || {{'attribute',_,_,AttrName,_},AttrValue} <- Attrs],
             case {props:get_value(<<"Acct-Session-Id">>, NewAttrs), props:get_value(<<"User-Name">>, NewAttrs)} of
                 {AcctSessionId, 'undefined'} when is_binary(AcctSessionId) ->
+                    lager:debug("Disconnection by AcctSessionId: ~p", [AcctSessionId]),
                     maybe_get_active_channels('session_id'
                                               ,AcctSessionId
                                               ,{Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}
                                              );
                 {'undefined', UserName} when is_binary(UserName) ->
+                    lager:debug("Disconnection by UserName: ~p", [UserName]),
                     maybe_get_active_channels('user_name'
                                               ,UserName
                                               ,{Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}
                                              );
                 {AcctSessionId, UserName} when is_binary(AcctSessionId) andalso is_binary(UserName) ->
+                    lager:debug("Disconnection by AcctSessionId and UserName: ~p ~p", [AcctSessionId, UserName]),
                     maybe_get_active_channels('session_id'
                                               ,AcctSessionId
                                               ,{Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}

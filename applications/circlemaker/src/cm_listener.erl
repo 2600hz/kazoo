@@ -21,7 +21,7 @@
          ,handle_authn_req/2
          ,handle_authz_req/2
          ,handle_accounting_req/2]).
--export([handle_hangup_by_session_timeout/1, handle_interim_update/1]).
+-export([handle_hangup_by_session_timeout/1, handle_interim_update/1, find_channel/2, find_channel/3]).
 
 -include("circlemaker.hrl").
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
@@ -205,7 +205,7 @@ maybe_start_session_timer(AccountId, CallId) ->
         'undefined' -> 'ok';
         SessionTimeout ->
             lager:debug("Applying session timeout timer for Call ID ~p of the account ~p", [CallId, AccountId]),
-            {'ok', TRef} = timer:apply_after(SessionTimeout * 1000, ?MODULE, 'handle_hangup_by_session_timeout', [CallId]),
+            {'ok', TRef} = timer:apply_after(SessionTimeout * ?MILLISECONDS_IN_SECOND, ?MODULE, 'handle_hangup_by_session_timeout', [CallId]),
             ets:insert(?ETS_SESSION_TIMEOUT, {CallId, AccountId, TRef})
     end.
 
@@ -229,8 +229,7 @@ maybe_start_interim_update_timer(AccountId, CallId) ->
         'undefined' -> 'ok';
         Interval ->
             lager:debug("Applying interim update timer for CallID ~p of the account ~p", [CallId, AccountId]),
-            {'ok', TRef} = timer:apply_interval(Interval * 1000, ?MODULE, 'handle_interim_update', [CallId]),
-            ets:insert(?ETS_INTERIM_UPDATE, {CallId, AccountId, TRef})
+            gen_listener:cast(?SERVER, {'interim_update', CallId, Interval, AccountId})
     end.
 
 handle_interim_update(CallId) ->
@@ -244,11 +243,12 @@ handle_interim_update(CallId) ->
         {'ok', []} ->
             lager:debug("No channels in response");
         {'ok', StatusJObjs} ->
+        lager:debug("Some channels were found: ~p", [StatusJObjs]),
             case find_channel(CallId, StatusJObjs) of
                 [] ->
                     lager:debug("No information");
                 [StatusJObj] ->
-                    lager:debug("Channel found: ~p", StatusJObj),
+                    lager:debug("Channel found: ~p", [StatusJObj]),
                     % emulation of Accounting Request operation
                     lager:debug("Sending accounting request"),
                     handle_accounting_req(StatusJObj, [])
@@ -262,8 +262,10 @@ handle_interim_update(CallId) ->
     end.
 
 -spec find_channel(ne_binary(), wh_json:objects()) -> api_object().
-find_channel(CallId, []) ->
-    find_channel(CallId, [], []).
+find_channel(_CallId, []) ->
+    [];
+find_channel(CallId, StatusJObjs) ->
+    find_channel(CallId, StatusJObjs, []).
 
 -spec find_channel(ne_binary(), wh_json:objects(), wh_json:objects()) -> api_object().
 find_channel(_CallId, [], Acc) -> Acc;
@@ -371,6 +373,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'interim_update', CallId, Interval, AccountId}, State) ->
+    {'ok', TRef} = timer:apply_interval(Interval * ?MILLISECONDS_IN_SECOND, ?MODULE, 'handle_interim_update', [CallId]),
+    ets:insert(?ETS_INTERIM_UPDATE, {CallId, AccountId, TRef}),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
