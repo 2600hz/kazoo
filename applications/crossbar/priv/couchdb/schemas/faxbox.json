@@ -51,6 +51,21 @@
             "required": false,
             "type": "string"
         },
+        "media": {
+            "default": {},
+            "description": "The device media parameters",
+            "name": "Media Parameters",
+            "properties": {
+                "fax_option": {
+                    "description": "Support T.38",
+                    "name": "Is T.38 Supported?",
+                    "required": false,
+                    "type": "boolean"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
         "name": {
             "description": "A friendly name for the faxbox",
             "maxLength": 128,

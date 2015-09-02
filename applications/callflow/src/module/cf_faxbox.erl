@@ -16,6 +16,8 @@
 
 -export([handle/2]).
 
+-define(FAX_OPTION, [<<"media">>, <<"fax_option">>]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -30,10 +32,20 @@ handle(Data, Call) ->
               props:filter_empty([{<<"Call">>, whapps_call:to_json(Call)}
                                ,{<<"Action">>, <<"receive">>}
                                ,{<<"FaxBox-ID">>, FaxboxId}
+                               ,{<<"Fax-T38-Option">>, lookup_fax_option(Call, Data)}
                                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                ])),
     wapi_fax:publish_req(Props),
     cf_exe:control_usurped(Call).
+
+-spec lookup_fax_option(whapps_call:call(), wh_json:object()) -> ne_binary().
+lookup_fax_option(Call, Data) ->
+    FaxBoxId = get_faxbox_id(Data),
+    DefaultFaxBoxOption = case couch_mgr:open_cache_doc(whapps_call:account_db(Call), FaxBoxId) of
+                              {'ok', JObj} -> wh_json:get_value(?FAX_OPTION, JObj);
+                              _ -> 'undefined'
+                          end,
+    wh_json:get_value(?FAX_OPTION, Data, DefaultFaxBoxOption).
 
 -spec get_faxbox_id(wh_json:object()) -> api_binary().
 get_faxbox_id(JObj) ->
