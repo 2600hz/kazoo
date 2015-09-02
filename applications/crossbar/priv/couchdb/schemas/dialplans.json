@@ -23,11 +23,18 @@
             }
         },
         "required": false,
-        "type": [
-            "object",
-            "array"
-        ]
+        "type": "object"
     },
     "description": "",
-    "name": "Dialplans"
+    "name": "Dialplans",
+    "properties": {
+        "system": {
+            "description": "List of system dial plans",
+            "name": "System",
+            "required": false,
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
 }
