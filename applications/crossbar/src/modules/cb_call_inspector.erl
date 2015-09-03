@@ -144,12 +144,14 @@ inspect_call_id(CallId, Context) ->
                             )
     of
         {'ok', JObj} ->
-            Response =
-                wh_json:from_list(
-                  [{<<"messages">>, wh_json:get_value(<<"Chunks">>, JObj, [])}
-                   ,{<<"analysis">>, wh_json:get_value(<<"Analysis">>, JObj, [])}
-                  ]
-                 ),
+            Chunks   = sanitize(wh_json:get_value(<<"Chunks">>, JObj, [])),
+            Analysis = sanitize(wh_json:get_value(<<"Analysis">>, JObj, [])),
+            Response = wh_json:from_list(
+                         [{<<"call-id">>, CallId}
+                          ,{<<"messages">>, Chunks}
+                          ,{<<"analysis">>, Analysis}
+                         ]
+                        ),
             crossbar_util:response(Response, Context);
         {'timeout', _Resp} ->
             lager:debug("timeout: ~s ~p", [CallId, _Resp]),
@@ -158,6 +160,11 @@ inspect_call_id(CallId, Context) ->
             lager:debug("error: ~s ~p", [CallId, _E]),
             crossbar_util:response_bad_identifier(CallId, Context)
     end.
+
+%% @private
+-spec sanitize(wh_json:objects()) -> wh_json:objects().
+sanitize(JObjs) ->
+    [wh_json:delete_key(<<"call-id">>, JObj) || JObj <- JObjs].
 
 %%--------------------------------------------------------------------
 %% @private
