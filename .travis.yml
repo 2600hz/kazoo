@@ -8,9 +8,7 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
-  - R16B
   - R15B03
-  - R15B02
 
 addons:
   apt:
@@ -32,13 +30,9 @@ script: make compile
 
 after_success:
   - make xref
-  - kerl_deactivate
-  - source $HOME/otp/R16B/activate
   - make build-plt
   - git fetch origin master:master
   - files="$(git diff --name-only master.. | grep -v deps/)" || true
-  - $TRAVIS_BUILD_DIR/scripts/check-dialyzer.escript $files
-  - kerl_deactivate
-  - source $HOME/otp/$TRAVIS_OTP_RELEASE/activate
+  - ./scripts/check-dialyzer.escript $files
   - ERL_LIBS="$HOME/proper" make test
   - ./scripts/check-whitespace.sh core/ applications/
