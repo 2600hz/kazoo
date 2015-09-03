@@ -579,7 +579,7 @@ assign(PhoneNumber, AssignedTo) ->
             lager:error("failed to assign number ~s to ~s"
                         ,[?MODULE:number(PhoneNumber), AccountDb]
                        ),
-            knm_errors:unspecified(E, PhoneNumber);
+            knm_errors:assign_failure(PhoneNumber, E);
         {'ok', JObj} ->
             lager:debug("assigned number ~s to ~s"
                         ,[?MODULE:number(PhoneNumber), AccountDb]
@@ -626,7 +626,7 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
             lager:error("failed to unassign number ~s from ~s"
                         ,[?MODULE:number(PhoneNumber), PrevAssignedTo]
                        ),
-            knm_errors:unspecified(E, PhoneNumber);
+            knm_errors:assign_failure(PhoneNumber, E);
         {'ok', _} ->
             lager:debug("unassigned number ~s from ~s"
                         ,[?MODULE:number(PhoneNumber), PrevAssignedTo]
