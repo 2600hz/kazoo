@@ -157,8 +157,10 @@ check_list_entry_schema(ListId, EntryId, Context) ->
 -spec entry_schema_success(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 entry_schema_success(Context, ListId, EntryId) ->
     Pattern = wh_json:get_value(<<"pattern">>, cb_context:doc(Context)),
-    case re:compile(Pattern) of
+    case is_binary(Pattern) andalso re:compile(Pattern) of
         {'ok', _CompiledRe} ->
+            on_entry_successful_validation(ListId, EntryId, Context);
+        'false' ->
             on_entry_successful_validation(ListId, EntryId, Context);
         {'error', {Reason0, Pos}} ->
             Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
@@ -224,13 +226,13 @@ normalize_view_results(JObj, Acc) ->
 -spec load_lists(boolean(), cb_context:context()) -> cb_context:context().
 load_lists(false, Context) ->
     crossbar_doc:load_view(?CB_LIST
-                           ,[{'group_level', 1}]
+                           ,['group']
                            ,Context
                            ,fun normalize_view_results/2);
 load_lists(true, Context) ->
     Entries = cb_context:doc(crossbar_doc:load_view(<<"lists/entries">>
                                                     ,[]
-                                                    ,Context
+                                                    ,cb_context:set_query_string(Context, wh_json:new())
                                                     ,fun normalize_view_results/2)),
     crossbar_doc:load_view(<<"lists/crossbar_listing_v2">>
                            ,[]
@@ -242,10 +244,8 @@ load_entries_and_normalize(AllEntries) ->
     fun(JObj, Acc) ->
             Val = wh_json:get_value(<<"value">>, JObj),
             ListId = wh_json:get_value(<<"id">>, Val),
-            ListEntries = wh_json:from_list(
-                            [{wh_json:get_value(<<"_id">>, X), wh_json:public_fields(X)}
-                             || X <- lists:filter(filter_entries_by_list_id(ListId), AllEntries)]),
-            [wh_json:set_value(<<"entries">>, ListEntries, Val)|Acc]
+            ListEntries = lists:filter(filter_entries_by_list_id(ListId), AllEntries),
+            [wh_json:set_value(<<"entries">>, entries_from_list(ListEntries), Val)|Acc]
     end.
 
 -spec filter_entries_by_list_id(ne_binary()) -> fun((wh_json:object()) -> boolean()).
@@ -254,23 +254,33 @@ filter_entries_by_list_id(Id) ->
             wh_json:get_value(<<"list_id">>, Entry) =:= Id
     end.
 
+-spec entries_from_list(wh_json:objects()) -> wh_json:object().
+entries_from_list(Entries) ->
+    wh_json:from_list([{wh_json:get_value(<<"_id">>, X), wh_json:public_fields(X)}
+                       || X <- Entries
+                      ]).
+
 -spec load_list(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
 load_list(false, Context, ListId) ->
     crossbar_doc:load_view(?CB_LIST
-                           ,[{'group_level', 1}, {'key', ListId}]
+                           ,['group', {'key', ListId}]
                            ,Context
                            ,fun normalize_view_results/2);
 load_list(true, Context, ListId) ->
     Entries = cb_context:doc(crossbar_doc:load_view(<<"lists/entries">>
-                                                    ,[]
+                                                    ,[{'key', ListId}]
                                                     ,Context
                                                     ,fun normalize_view_results/2)),
-    crossbar_doc:load_view(<<"lists/crossbar_listing_v2">>
-                           ,[{'key', ListId}]
-                           ,Context
-                           ,load_entries_and_normalize(Entries)).
+    Context1 = crossbar_doc:load(ListId, Context),
+    Doc = cb_context:doc(Context1),
+    Doc1 = wh_json:public_fields(wh_json:set_value(<<"entries">>, entries_from_list(Entries), Doc)),
+    cb_context:set_resp_data(Context1, Doc1).
 
 -spec fetch_reduce_limit() -> boolean().
 fetch_reduce_limit() ->
     {'ok', Config} = couch_mgr:open_doc(<<"_config">>, <<"query_server_config">>),
-    wh_util:to_boolean(wh_json:get_binary_boolean(<<"reduce_limit">>, Config)).
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_reduce_limit">>, 'false') of
+        'false' -> 'true';
+        'true' ->
+            wh_util:to_boolean(wh_json:get_binary_boolean(<<"reduce_limit">>, Config))
+    end.
