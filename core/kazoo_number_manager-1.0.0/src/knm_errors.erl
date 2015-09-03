@@ -18,6 +18,7 @@
          ,not_enough_credit/2
          ,invalid/2
          ,multiple_choice/2
+         ,assign_failure/2
         ]).
 
 -export([to_json/1, to_json/2, to_json/3]).
@@ -76,6 +77,10 @@ invalid(Number, Reason) ->
 -spec multiple_choice(knm_number:knm_number(), wh_json:object()) -> no_return().
 multiple_choice(Number, Update) ->
     throw({'error', 'multiple_choice', Number, Update}).
+
+-spec assign_failure(knm_phone_number:knm_number(), any()) -> no_return().
+assign_failure(PhoneNumber, E) ->
+    throw({'error', 'assign_failure', PhoneNumber, E}).
 
 %%--------------------------------------------------------------------
 %% @public
