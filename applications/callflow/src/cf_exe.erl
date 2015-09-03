@@ -386,9 +386,9 @@ handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
 handle_cast('channel_destroyed', State) ->
     {'noreply', State#state{destroyed='true'}};
-handle_cast('stop_on_destory', State) ->
+handle_cast('stop_on_destroy', State) ->
     {'noreply', State#state{stop_on_destroy='true'}};
-handle_cast('continue_on_destory', State) ->
+handle_cast('continue_on_destroy', State) ->
     {'noreply', State#state{stop_on_destroy='false'}};
 handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
