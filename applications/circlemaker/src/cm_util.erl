@@ -149,14 +149,15 @@ maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
             {RequestKey, MaybeCasted}
     end.
 
--spec determine_aaa_request_type(wh_json:object()) -> atom().
+-spec determine_aaa_request_type(wh_json:object()) -> 'authn' | 'authz' | 'accounting'.
 determine_aaa_request_type(JObj) ->
     case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj)} of
         {<<"aaa">>, <<"aaa_authn_req">>} -> 'authn';
         {<<"authn">>, _} -> 'authn';
         {<<"authz">>, _} -> 'authz';
         {<<"call_event">>, <<"CHANNEL_CREATE">>} -> 'accounting';
-        {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> 'accounting'
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> 'accounting';
+        {'undefined', 'undefined'} -> 'accounting'
     end.
 
 -spec determine_channel_type(wh_json:object()) -> {ne_binaries(), 'normal'|'loopback'}.
@@ -171,14 +172,21 @@ determine_channel_type(JObj) ->
                   Val when is_binary(Val) ->
                       [<<"external">>, CallDirection]
               end,
-    FromPart = binary:part(From, {byte_size(From), -2}),
-    ToPart = binary:part(To, {byte_size(To), -2}),
-    Type = case {FromPart, ToPart} of
-               {<<"-a">>, _} -> 'loopback';
-               {<<"-b">>, _} -> 'loopback';
-               {_, <<"-a">>} -> 'loopback';
-               {_, <<"-b">>} -> 'loopback';
-               _ -> 'normal'
+    Type = case {From, To} of
+               {'undefined', 'undefined'} ->
+                   % special case for Interim-Update, because there are no "From" and "To" fields
+                   % and because this channel is already authorized, it should be 'normal' type
+                   'normal';
+               _ ->
+                   FromPart = binary:part(From, {byte_size(From), -2}),
+                   ToPart = binary:part(To, {byte_size(To), -2}),
+                   case {FromPart, ToPart} of
+                       {<<"-a">>, _} -> 'loopback';
+                       {<<"-b">>, _} -> 'loopback';
+                       {_, <<"-a">>} -> 'loopback';
+                       {_, <<"-b">>} -> 'loopback';
+                       _ -> 'normal'
+                   end
            end,
     lager:debug("Channel type is ~p", [{Result, Type}]),
     {Result, Type}.
@@ -202,17 +210,28 @@ get_session_timeout(AccountId) ->
     lager:debug("Retrieve session timeout value from account ~p", [AccountId]),
     DbName = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
-    SessionTimeout = wh_json:get_value(<<"session_timeout">>, AaaDoc),
-    lager:debug("Session timeout value is ~p", [SessionTimeout]),
-    SessionTimeout.
+    case wh_json:get_value(<<"session_timeout">>, AaaDoc) of
+        'undefined' ->
+            lager:debug("Session timeout value isn't set"),
+            'undefined';
+        Timeout ->
+            lager:debug("Session timeout value is ~p", [Timeout]),
+            Timeout
+    end.
 
 -spec clean_session_timeout(ne_binary()) -> any().
 clean_session_timeout(AccountId) ->
     lager:debug("Clean session timeout value of the account ~p", [AccountId]),
     DbName = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
-    NewAaaDoc = wh_json:delete_key(<<"session_timeout">>, AaaDoc),
-    couch_mgr:save_doc(DbName, NewAaaDoc).
+    case wh_json:get_value(<<"session_timeout">>, AaaDoc) of
+        'undefined' ->
+            lager:debug("Session timeout value isn't set");
+        Timeout ->
+            lager:debug("Session timeout value is ~p", [Timeout]),
+            NewAaaDoc = wh_json:delete_key(<<"session_timeout">>, AaaDoc),
+            couch_mgr:save_doc(DbName, NewAaaDoc)
+    end.
 
 -spec put_interim_update(pos_integer(), ne_binary()) -> any().
 put_interim_update(InterimUpdate, AccountId) ->
@@ -223,7 +242,7 @@ put_interim_update(InterimUpdate, AccountId) ->
         InterimUpdate ->
             lager:debug("This value already exists in the account");
         'undefined' ->
-            lager:debug("This value isn't exist in the accountm so it's updated"),
+            lager:debug("This value isn't exist in the account so it's updated"),
             NewAaaDoc = wh_json:set_value(<<"interim_update_interval">>, InterimUpdate, AaaDoc),
             couch_mgr:save_doc(DbName, NewAaaDoc)
     end.
@@ -239,10 +258,10 @@ get_interim_update(AccountId) ->
             lager:debug("Interim update interval value isn't set"),
             'undefined';
         {'undefined', Interval} ->
-            lager:debug("Interim update interval value got from the interim_update_interval value", [Interval]),
+            lager:debug("Interim update interval value ~p got from the interim_update_interval value", [Interval]),
             Interval;
         {Interval, _} ->
-            lager:debug("Interim update interval value got from the local_interim_update_interval value", [Interval]),
+            lager:debug("Interim update interval value ~p got from the local_interim_update_interval value", [Interval]),
             Interval
     end.
 
@@ -251,8 +270,14 @@ clean_interim_update(AccountId) ->
     lager:debug("Clean interim update interval value of the account ~p", [AccountId]),
     DbName = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(DbName, <<"aaa">>),
-    NewAaaDoc = wh_json:delete_key(<<"interim_update_interval">>, AaaDoc),
-    couch_mgr:save_doc(DbName, NewAaaDoc).
+    case wh_json:get_value(<<"interim_update_interval">>, AaaDoc) of
+        'undefined' ->
+            lager:debug("Interim update interval value isn't set");
+        Interval ->
+            lager:debug("Interim update interval value is ~p", [Interval]),
+            NewAaaDoc = wh_json:delete_key(<<"interim_update_interval">>, AaaDoc),
+            couch_mgr:save_doc(DbName, NewAaaDoc)
+    end.
 
 -spec hangup_call(ne_binary()) -> 'ok'.
 hangup_call(CallId) ->

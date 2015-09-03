@@ -196,7 +196,16 @@ handle_accounting_req(JObj, _Props) ->
                             % so we should bypass this accounting "stop" request
                             lager:debug("Cleanup of the delayed operation for outer inbound leg: ~p", [LostJObj]),
                             ets:delete(?ETS_DELAY_ACCOUNTING, CallId)
-                    end
+                    end;
+                {'undefined', 'undefined'} ->
+                    % Interim-Update
+                    JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Interim-Update">>}
+                                                ,{<<"Acct-Delay-Time">>, 0}
+                                                ,{<<"NAS-IP-Address">>, NasAddress}
+                                               ], JObj),
+                    % send accounting stop
+                    lager:debug("Sending Interim-Update as accounting operation: ~p", [JObj1]),
+                    cm_pool_mgr:do_request(JObj1)
             end
     end.
 
@@ -249,9 +258,12 @@ handle_interim_update(CallId) ->
                     lager:debug("No information");
                 [StatusJObj] ->
                     lager:debug("Channel found: ~p", [StatusJObj]),
+                    % some preparations before sending the JObj
+                    AccountId = wh_json:get_value(<<"Account-ID">>, StatusJObj),
+                    JObj = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], AccountId, StatusJObj),
                     % emulation of Accounting Request operation
-                    lager:debug("Sending accounting request"),
-                    handle_accounting_req(StatusJObj, [])
+                    lager:debug("Sending accounting request ~p", [JObj]),
+                    handle_accounting_req(JObj, [])
             end;
         {'returned', _JObj, BR} ->
             lager:debug("Return something: ~p", [BR]);

@@ -141,8 +141,10 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
     AttributeList1 = case cm_util:determine_aaa_request_type(JObj) of
                          'authz' = RequestType ->
                              lager:debug("Operation is authz"),
-                             maybe_session_timeout(AttributeList, AccountId),
-                             maybe_interim_update(AttributeList, AccountId),
+                             lager:debug("Orig JObj on Response is ~p", [JObj]),
+                             OrigAccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+                             maybe_session_timeout(AttributeList, OrigAccountId),
+                             maybe_interim_update(AttributeList, OrigAccountId),
                              cm_util:maybe_translate_avps_into_kv(AttributeList, AaaDoc, RequestType);
                          'authn' ->
                              lager:debug("Operation is authn"),
