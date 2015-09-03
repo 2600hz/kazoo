@@ -64,11 +64,12 @@
 -define(CONSUME_OPTIONS, []).
 
 -type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
+-type callback_funs() :: [callback_fun()].
 -type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
                         {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
                         {'db', ne_binary()} | %% {db, Database}
                         {'type', ne_binary()}. %% {type, PvtType}
--type origin_tuples() :: [origin_tuple(),...] | [].
+-type origin_tuples() :: [origin_tuple()].
 -record(cache_obj, {key :: term() | '_' | '$1'
                     ,value :: term() | '_' | '$1' | '$2'
                     ,expires :: wh_timeout() | '_' | '$3'
@@ -78,7 +79,7 @@
                     ,type = 'normal' :: 'normal' | 'monitor' | 'pointer' | '_'
                    }).
 -type cache_obj() :: #cache_obj{}.
--type cache_objs() :: [cache_obj(),...] | [].
+-type cache_objs() :: [cache_obj()].
 
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
                           {'expires', wh_timeout()} |
@@ -95,7 +96,9 @@
                 ,expire_period = ?EXPIRE_PERIOD :: wh_timeout()
                 ,expire_period_ref :: reference()
                 ,props = [] :: list()
+                ,has_monitors = 'false' :: boolean()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -335,7 +338,6 @@ handle_document_change(JObj, Props) ->
     Db = wh_json:get_value(<<"Database">>, JObj),
     Type = wh_json:get_value(<<"Type">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
-
     gen_listener:cast(Srv, {'change', Db, Type, Id}).
 
 %%%===================================================================
@@ -393,20 +395,22 @@ init([Name, ExpirePeriod, Props]) ->
 %%--------------------------------------------------------------------
 handle_call({'wait_for_key', Key, Timeout}, {Pid, _}, #state{tab=Tab}=State) ->
     Ref = make_ref(),
-    _ = try ets:lookup_element(Tab, Key, #cache_obj.value) of
-            Value ->  Pid ! {'exists', Ref, Value}
-        catch
-            'error':'badarg' ->
-                Fun = fun(_, V, Reason) ->  Pid ! {Reason, Ref, V} end,
-                CacheObj = #cache_obj{key=Ref
-                                      ,value=Key
-                                      ,expires=Timeout
-                                      ,callback=Fun
-                                      ,type='monitor'
-                                     },
-                ets:insert(Tab, CacheObj)
-        end,
-    {'reply', {'ok', Ref}, State};
+    try ets:lookup_element(Tab, Key, #cache_obj.value) of
+        Value ->
+            Pid ! {'exists', Ref, Value},
+            {'reply', {'ok', Ref}, State}
+    catch
+        'error':'badarg' ->
+            Fun = fun(_, V, Reason) ->  Pid ! {Reason, Ref, V} end,
+            CacheObj = #cache_obj{key=Ref
+                                  ,value=Key
+                                  ,expires=Timeout
+                                  ,callback=Fun
+                                  ,type='monitor'
+                                 },
+            ets:insert(Tab, CacheObj),
+            {'reply', {'ok', Ref}, State#state{has_monitors='true'}}
+        end;
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -426,43 +430,28 @@ handle_cast({'store', #cache_obj{key=Key
                                 }=CacheObj}
             ,#state{tab=Tab}=State) ->
     ets:insert(Tab, CacheObj#cache_obj{origin=Origin}),
-    _ = [begin
-             Ref = make_ref(),
-             ets:insert(Tab, CacheObj#cache_obj{key=Ref
-                                                ,value=Key
-                                                ,origin=O
-                                                ,type='pointer'
-                                                ,callback='undefined'
-                                                ,expires='infinity'
-                                               })
-         end
-         || O <- Origins
-        ],
-    _ = maybe_exec_store_callbacks(Key, Value, Tab),
-    {'noreply', State, 'hibernate'};
+    insert_origin_pointers(Origins, CacheObj, Tab),
+    {'noreply', maybe_exec_store_callbacks(State, Key, Value, Tab)};
 handle_cast({'store', #cache_obj{key=Key
                                  ,value=Value
                                 }=CacheObj}
             ,#state{tab=Tab}=State) ->
     ets:insert(Tab, CacheObj),
-    _ = maybe_exec_store_callbacks(Key, Value, Tab),
-    {'noreply', State, 'hibernate'};
+    {'noreply', maybe_exec_store_callbacks(State, Key, Value, Tab)};
 handle_cast({'update_timestamp', Key, Timestamp}, #state{tab=Tab}=State) ->
     ets:update_element(Tab, Key, {#cache_obj.timestamp, Timestamp}),
-    {'noreply', State, 'hibernate'};
+    {'noreply', State};
 handle_cast({'erase', Key}, #state{tab=Tab}=State) ->
-    _ = maybe_exec_erase_callbacks(Key, Tab),
+    maybe_exec_erase_callbacks(Key, Tab),
     _Removed = maybe_remove_object(Key, Tab),
-
     lager:debug("removed ~b objects for ~p", [_Removed, Key]),
-
-    {'noreply', State, 'hibernate'};
+    {'noreply', State};
 handle_cast({'flush'}, #state{tab=Tab}=State) ->
-    _ = maybe_exec_flush_callbacks(Tab),
+    maybe_exec_flush_callbacks(Tab),
     ets:delete_all_objects(Tab),
-    {'noreply', State, 'hibernate'};
+    {'noreply', State};
 handle_cast({'change', Db, Type, Id}, #state{tab=Tab}=State) ->
-    _ = maybe_erase_changed(Db, Type, Id, Tab),
+    maybe_erase_changed(Db, Type, Id, Tab),
     {'noreply', State};
 handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}, #state{name=Name
                                                                   ,tab=Tab
@@ -493,7 +482,7 @@ handle_cast({'wh_nodes', {'new', Node}}, #state{name=Name
     lager:debug("new node ~s, flush everything from ~s", [Node, Name]),
     {'noreply', State};
 handle_cast(_, State) ->
-    {'noreply', State, 'hibernate'}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -511,10 +500,14 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
                     ,tab=Tab
                    }=State
            ) ->
-    _ = expire_objects(Tab),
-    {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}, 'hibernate'};
+    case expire_objects(Tab) > 0 of
+        'true' ->
+            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}, 'hibernate'};
+        'false' ->
+            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}}
+    end;
 handle_info(_Info, State) ->
-    {'noreply', State, 'hibernate'}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -624,7 +617,7 @@ erase_changed([#cache_obj{type='normal', key=Key}|Objects], Removed, Tab) ->
     lager:debug("removed ~b objects for ~p", [_Removed, Key]),
     erase_changed(Objects, [Key|Removed], Tab).
 
--spec expire_objects(atom()) -> 'ok'.
+-spec expire_objects(atom()) -> non_neg_integer().
 expire_objects(Tab) ->
     Now = wh_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1'
@@ -641,7 +634,8 @@ expire_objects(Tab) ->
                 }],
     Objects = ets:select(Tab, FindSpec),
     _ = maybe_exec_expired_callbacks(Objects, Tab),
-    maybe_remove_objects([K || {_, K, _} <- Objects], Tab).
+    maybe_remove_objects([K || {_, K, _} <- Objects], Tab),
+    length(Objects).
 
 -spec maybe_exec_expired_callbacks(list(), atom()) -> 'ok'.
 maybe_exec_expired_callbacks([], _) -> 'ok';
@@ -707,8 +701,9 @@ maybe_exec_flush_callbacks(Tab) ->
         ],
     'ok'.
 
--spec maybe_exec_store_callbacks(term(), term(), atom()) -> 'ok'.
-maybe_exec_store_callbacks(Key, Value, Tab) ->
+-spec maybe_exec_store_callbacks(state(), term(), term(), atom()) -> state().
+maybe_exec_store_callbacks(#state{has_monitors='false'}=State, _, _, _) -> State;
+maybe_exec_store_callbacks(State, Key, Value, Tab) ->
     MatchSpec = [{#cache_obj{value = '$1'
                              ,callback = '$2'
                              ,type = 'monitor'
@@ -717,12 +712,30 @@ maybe_exec_store_callbacks(Key, Value, Tab) ->
                   ,[{'=:=', '$1', {'const', Key}}]
                   ,['$2']
                  }],
-    Monitors = ets:select(Tab, MatchSpec),
-    _ = [wh_util:spawn(fun() -> Callback(Key, Value, 'store') end)
-         || Callback <- Monitors
-        ],
+    _ = case ets:select(Tab, MatchSpec) of
+            [] -> 'ok';
+            Callbacks ->
+                exec_store_callback(Callbacks, Key, Value, Tab)
+        end,
+    State#state{has_monitors=has_monitors(Tab)}.
+
+-spec has_monitors(atom()) -> boolean().
+has_monitors(Tab) ->
+    MatchSpec = [{#cache_obj{type = 'monitor'
+                             ,_ = '_'
+                            }
+                  ,[]
+                  ,['true']
+                 }],
+    ets:select_count(Tab, MatchSpec) =/= 0.
+
+-spec exec_store_callback(callback_funs(), term(), term(), atom()) -> 'ok'.
+exec_store_callback([], Key, _, Tab) ->
     _ = delete_monitor_callbacks(Key, Tab),
-    'ok'.
+    'ok';
+exec_store_callback([Callback|Callbacks], Key, Value, Tab) ->
+    wh_util:spawn(fun() -> Callback(Key, Value, 'store') end),
+    exec_store_callback(Callbacks, Key, Value, Tab).
 
 -spec delete_monitor_callbacks(term(), atom()) -> non_neg_integer().
 delete_monitor_callbacks(Key, Tab) ->
@@ -739,3 +752,16 @@ delete_monitor_callbacks(Key, Tab) ->
 -spec start_expire_period_timer(pos_integer()) -> reference().
 start_expire_period_timer(ExpirePeriod) ->
     erlang:start_timer(ExpirePeriod, self(), ?EXPIRE_PERIOD_MSG).
+
+-spec insert_origin_pointers(origin_tuples(), cache_obj(), atom()) -> 'ok'.
+insert_origin_pointers([], _, _) -> 'ok';
+insert_origin_pointers([Origin|Origins], #cache_obj{key=Key}=CacheObj, Tab) ->
+    Ref = make_ref(),
+    ets:insert(Tab, CacheObj#cache_obj{key=Ref
+                                       ,value=Key
+                                       ,origin=Origin
+                                       ,type='pointer'
+                                       ,callback='undefined'
+                                       ,expires='infinity'
+                                      }),
+    insert_origin_pointers(Origins, CacheObj, Tab).
