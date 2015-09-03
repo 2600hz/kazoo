@@ -4,7 +4,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(webhooks_fax).
+-module(webhooks_outbound_fax).
 
 -export([init/0
          ,bindings_and_responders/0
