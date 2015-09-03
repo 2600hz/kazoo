@@ -7,7 +7,7 @@ MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS) core deps apps
+.PHONY: $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo
 
 all : compile
 
@@ -26,7 +26,6 @@ clean-test : ACTION = clean-test
 clean-test : $(KAZOODIRS)
 
 eunit: ACTION = test
-eunit: ERLC_OPTS += -DTEST
 eunit: $(KAZOODIRS)
 
 proper: ACTION = test
@@ -34,7 +33,7 @@ proper: ERLC_OPTS += -DPROPER
 proper: $(KAZOODIRS)
 
 test: ACTION = test
-test: ERLC_OPTS += -DTEST -DPROPER
+test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
 core:

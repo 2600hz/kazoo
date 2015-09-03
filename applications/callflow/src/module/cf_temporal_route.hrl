@@ -4,7 +4,7 @@
 
 -type improper_month() :: non_neg_integer().
 -type improper_day() :: non_neg_integer().
--type improper_date() :: tuple(wh_year(), improper_month(), improper_day()).
+-type improper_date() :: {wh_year(), improper_month(), improper_day()}.
 -type strict_ordinal() :: binary(). %%<<"first">> | <<"second">> | <<"third">> | <<"fourth">> | <<"fifth">>.
 -type broad_ordinal() :: binary(). %%<<"every">> | <<"last">>.
 -type ordinal() :: strict_ordinal() | broad_ordinal().

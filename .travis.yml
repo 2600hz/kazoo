@@ -8,6 +8,7 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
+  - 17.5
   - R15B03
 
 addons:
@@ -26,7 +27,7 @@ before_install:
   - if [[ ! -d $HOME/proper/.git/ ]]; then git clone --depth=50 --branch=master https://github.com/manopapad/proper.git $HOME/proper && cd $HOME/proper && make fast; fi
   - cd $TRAVIS_BUILD_DIR
 
-script: make compile
+script: ERLC_OPTS='+nowarn_deprecated_type +nowarn_deprecated_function' make compile
 
 after_success:
   - make xref
@@ -34,5 +35,5 @@ after_success:
   - git fetch origin master:master
   - files="$(git diff --name-only master.. | grep -v deps/)" || true
   - ./scripts/check-dialyzer.escript $files
-  - ERL_LIBS="$HOME/proper" make test
+  - ERL_LIBS="$HOME/proper" ERLC_OPTS='+nowarn_deprecated_type +nowarn_deprecated_function' make test
   - ./scripts/check-whitespace.sh core/ applications/

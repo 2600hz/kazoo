@@ -6,9 +6,8 @@ EBINS = $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/rabbitmq_client-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = -Werror +debug_info +warn_export_all $(PA)
-
-ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
+ERLC_OPTS += -Werror +debug_info +warn_export_all $(PA)
+ELIBS = $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
 TEST_EBINS = $(shell find $(ROOT)/deps/mochiweb-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/ejson-* -maxdepth 2 -name ebin -print)
@@ -30,7 +29,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl
 	@mkdir -p ebin/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -40,7 +39,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/kazoo_transform.erl src/*.erl src/api/*.erl test/*.erl
 	@mkdir -p test/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -DTEST -o test/ -pa test/ $?
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*

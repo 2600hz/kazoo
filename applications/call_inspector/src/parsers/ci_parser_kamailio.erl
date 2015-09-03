@@ -277,7 +277,7 @@ cleanse_data_and_get_timestamp(Data0) ->
                 ,Data0
                ).
 
--spec cleanse_data_fold({ne_binary() | erlang:timestamp()} | ne_binary()
+-spec cleanse_data_fold({ne_binary() | wh_now()} | ne_binary()
                         ,cleanse_acc()
                        ) -> cleanse_acc().
 cleanse_data_fold({RawTimestamp}, {Acc, TS}) ->

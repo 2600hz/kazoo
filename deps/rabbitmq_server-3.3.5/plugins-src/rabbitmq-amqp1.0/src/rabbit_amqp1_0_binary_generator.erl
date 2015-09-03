@@ -23,7 +23,7 @@
 
 -ifdef(use_specs).
 -spec(generate/1 :: (tuple()) -> iolist()).
--spec(build_frame/2 :: (int(), iolist()) -> iolist()).
+-spec(build_frame/2 :: (integer(), iolist()) -> iolist()).
 -endif.
 
 -define(AMQP_FRAME_TYPE, 0).
