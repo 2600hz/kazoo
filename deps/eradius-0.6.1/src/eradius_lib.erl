@@ -35,7 +35,7 @@ md5_authenticator(Req = #radius_request{reqid = ReqID, cmd = Command, attrs = At
 -spec md5_authenticator(tuple(), authenticator()) -> authenticator().
 md5_authenticator(Req = #radius_request{reqid = ReqID, cmd = Command, attrs = Attributes, secret = Secret}, ReqAuthenticator) ->
     {Body, BodySize} = encode_attributes(Req, Attributes),
-    Binary = <<(encode_command(Command)):8, ReqID:8, (BodySize + 20):16, ReqAuthenticator, Body/binary, Secret/binary>>,
+    Binary = <<(encode_command(Command)):8, ReqID:8, (BodySize + 20):16, ReqAuthenticator/binary, Body/binary, Secret/binary>>,
     crypto:md5(Binary).
 
 -spec zero_authenticator() -> authenticator().

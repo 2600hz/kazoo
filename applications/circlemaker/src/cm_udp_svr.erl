@@ -166,8 +166,9 @@ maybe_get_active_channels(Key, Value, {Socket, IP, InPortNo, ReqId, ReqAuthentic
                 [] ->
                     lager:debug("No information");
                 Channels ->
-                    lager:debug("Channels found: ~p", [Channels]),
-                    hangup_channels(Channels, {Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret})
+                    ChannelsFlatten = lists:flatten(Channels),
+                    lager:debug("Channels found: ~p", [ChannelsFlatten]),
+                    hangup_channels(ChannelsFlatten, {Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret})
             end;
         {'returned', _JObj, BR} ->
             lager:debug("Return something: ~p", [BR]);
@@ -193,14 +194,17 @@ find_channel('session_id' = Key, CallId, [StatusJObj|JObjs], Acc) ->
 find_channel('user_name' = Key, UserName, [StatusJObj|JObjs], Acc) ->
     lager:debug("Next StatusJObj is ~p", [StatusJObj]),
     Channels = wh_json:get_value(<<"Channels">>, StatusJObj),
+    lager:debug("Next Channels are ~p", [Channels]),
     FoundUsernameChannels = wh_json:foldl(
-                                fun({_Key, JObjChannel}, Acc1) ->
+                                fun(_Key, JObjChannel, Acc1) ->
+                                    lager:debug("Next foldl object is ~p", [{_Key, JObjChannel, Acc1}]),
                                     case wh_json:get_value(<<"Username">>, JObjChannel) of
                                         UserName -> [JObjChannel | Acc1];
                                         _ -> Acc1
                                     end
                                 end,
                                 [], Channels),
+    lager:debug("Next FoundUsernameChannels are ~p", [FoundUsernameChannels]),
     find_channel(Key, UserName, JObjs, [FoundUsernameChannels | Acc]).
 
 hangup_channels(Channels, {Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}) ->
@@ -210,6 +214,7 @@ hangup_channels(Channels, {Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret
 
 send_disconnect_resp({Socket, IP, InPortNo, ReqId, ReqAuthenticator, Secret}) ->
     Req = #radius_request{cmd = 'discack', reqid = ReqId, secret = Secret},
+    lager:debug("Prepare md5_authenticator value from ~p and ~p", [Req, ReqAuthenticator]),
     Authenticator = eradius_lib:md5_authenticator(Req, ReqAuthenticator),
     Request = eradius_lib:set_attributes(Req#radius_request{authenticator = Authenticator}, []),
     lager:debug("Prepared disconnect response is ~p", [Request]),
