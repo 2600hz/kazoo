@@ -26,9 +26,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(knm_number:knm_number()) ->
-                  knm_number_return().
+                  knm_number:knm_number().
 -spec save(knm_number:knm_number(), ne_binary(), ne_binary()) ->
-                  knm_number_return().
+                  knm_number:knm_number().
 save(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     CurrentState = knm_phone_number:state(PhoneNumber),
@@ -40,11 +40,11 @@ save(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE) ->
     Features = knm_phone_number:features(knm_number:phone_number(Number)),
     Port = wh_json:get_ne_value(?PORT_KEY, Features, wh_json:new()),
     _ = publish_ported(Number, Port),
-    {'ok', Number};
+    Number;
 save(Number, _CurrentState, ?NUMBER_STATE_PORT_IN) ->
     maybe_port_feature(Number);
 save(Number, _CurrentState, _State) ->
-    {'ok', Number}.
+    Number.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -53,7 +53,7 @@ save(Number, _CurrentState, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) ->
-                    {'ok', knm_number:knm_number()}.
+                    knm_number:knm_number().
 delete(Number) ->
     knm_services:deactivate_feature(Number, ?PORT_KEY).
 
@@ -64,36 +64,36 @@ delete(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_port_feature(knm_number:knm_number()) ->
-                                {'ok', knm_number:knm_number()}.
+                                knm_number:knm_number().
 maybe_port_feature(Number) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case wh_json:get_ne_value([?PVT_FEATURES, ?PORT_KEY], Doc) of
         'undefined' ->
             knm_services:deactivate_feature(Number, ?PORT_KEY);
         Port ->
-            {'ok', Number1} = knm_services:activate_feature(Number, ?PORT_KEY),
+            Number1 = knm_services:activate_feature(Number, ?PORT_KEY),
             maybe_port_changed(Number1, Port)
     end.
 
 -spec maybe_port_changed(knm_number:knm_number(), wh_json:object()) ->
-                                {'ok', knm_number:knm_number()}.
+                                knm_number:knm_number().
 -spec maybe_port_changed(knm_number:knm_number(), wh_json:object(), boolean()) ->
-                                {'ok', knm_number:knm_number()}.
+                                knm_number:knm_number().
 maybe_port_changed(Number, Port) ->
     DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     maybe_port_changed(Number, Port, DryRun).
 
-maybe_port_changed(Number, _Port, 'true') -> {'ok', Number};
+maybe_port_changed(Number, _Port, 'true') -> Number;
 maybe_port_changed(Number, Port, 'false') ->
     CurrentPort = knm_phone_number:feature(knm_number:phone_number(Number), ?PORT_KEY),
     case wh_json:are_identical(CurrentPort, Port) of
-        'true' -> {'ok', Number};
+        'true' -> Number;
         'false' ->
             lager:debug("port information has been changed: ~s"
                         ,[wh_json:encode(Port)]
                        ),
             _ = publish_port_update(Number, Port),
-            {'ok', Number}
+            Number
     end.
 
 %%--------------------------------------------------------------------

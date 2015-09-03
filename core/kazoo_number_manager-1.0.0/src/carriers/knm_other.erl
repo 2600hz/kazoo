@@ -55,7 +55,9 @@ find_numbers(Number, Quantity, Props) ->
                            {'error', _} |
                            {'ok', wh_json:object()}.
 check_numbers(Numbers, _Props) ->
-    FormatedNumbers = [(knm_converters:default()):to_npan(Number) || Number <- Numbers],
+    FormatedNumbers = [(knm_converters:default_converter()):to_npan(Number)
+                       || Number <- Numbers
+                      ],
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' ->
             {'error', 'non_available'};

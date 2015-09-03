@@ -23,15 +23,15 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(knm_number:knm_number()) ->
-                  {'ok', knm_number:knm_number()}.
+                  knm_number:knm_number().
 -spec save(knm_number:knm_number(), ne_binary()) ->
-                  {'ok', knm_number:knm_number()}.
+                  knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    maybe_update_failover(Number);
+    update_failover(Number);
 save(Number, _State) ->
     delete(Number).
 
@@ -43,10 +43,10 @@ save(Number, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) ->
-                    {'ok', knm_number:knm_number()}.
+                    knm_number:knm_number().
 delete(Number) ->
     case knm_phone_number:feature(knm_number:phone_number(Number), ?FAILOVER_KEY) of
-        'undefined' -> {'ok', Number};
+        'undefined' -> Number;
         _Else ->
             knm_services:deactivate_feature(Number, ?FAILOVER_KEY)
     end.
@@ -61,9 +61,9 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_failover(knm_number:knm_number()) ->
-                                   knm_number_return().
-maybe_update_failover(Number) ->
+-spec update_failover(knm_number:knm_number()) ->
+                                   knm_number:knm_number().
+update_failover(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),
     CurrentFailover = wh_json:get_ne_value(?FAILOVER_KEY, Features),

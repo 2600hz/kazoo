@@ -12,7 +12,7 @@
 -export([activate_feature/2
          ,deactivate_feature/2
          ,deactivate_features/2
-         ,maybe_update_services/1
+         ,update_services/1
          ,activate_phone_number/1
          ,activation_charges/1
          ,phone_number_activation_charges/1
@@ -34,11 +34,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_feature(knm_number:knm_number(), ne_binary()) ->
-                              knm_number_return().
+                              knm_number:knm_number().
 -spec activate_feature(knm_number:knm_number(), ne_binary(), ne_binary()) ->
-                              knm_number_return().
+                              knm_number:knm_number().
 -spec activate_feature(knm_number:knm_number(), ne_binary(), ne_binary(), wh_services:services()) ->
-                              knm_number_return().
+                              knm_number:knm_number().
 activate_feature(Number, Feature) ->
     BillingId = fetch_billing_id(Number),
     activate_feature(Number, Feature, BillingId).
@@ -58,7 +58,7 @@ activate_feature(Number, Feature, BillingId, Services) ->
               "not enough credit to activate feature '~s' for $~p"
               ,[Feature, wht_util:units_to_dollars(Units)]
              ),
-            {'error', 'not_enough_credit'};
+            knm_errors:not_enough_credit(Number, Units);
         'true' ->
             PhoneNumber = knm_number:phone_number(Number),
 
@@ -66,15 +66,13 @@ activate_feature(Number, Feature, BillingId, Services) ->
 
             Transaction = create_transaction(Number, Feature, Units),
 
-            {'ok'
-             ,knm_number:set_phone_number(
-                knm_number:add_transaction(
-                  knm_number:set_charges(Number, Feature, TotalCharges)
-                  ,Transaction
-                 ),
-                knm_phone_number:set_feature(PhoneNumber, Feature, wh_json:new())
-               )
-            }
+            knm_number:set_phone_number(
+              knm_number:add_transaction(
+                knm_number:set_charges(Number, Feature, TotalCharges)
+                ,Transaction
+               ),
+              knm_phone_number:set_feature(PhoneNumber, Feature, wh_json:new())
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -83,16 +81,14 @@ activate_feature(Number, Feature, BillingId, Services) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec deactivate_feature(knm_number:knm_number(), ne_binary()) ->
-                                {'ok', knm_number:knm_number()}.
+                                knm_number:knm_number().
 deactivate_feature(Number, Feature) ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),
-    {'ok'
-     ,knm_number:set_phone_number(
-        Number
-        ,knm_phone_number:set_features(PhoneNumber, wh_json:delete_key(Feature, Features))
-       )
-    }.
+    knm_number:set_phone_number(
+      Number
+      ,knm_phone_number:set_features(PhoneNumber, wh_json:delete_key(Feature, Features))
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -100,37 +96,38 @@ deactivate_feature(Number, Feature) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec deactivate_features(knm_number:knm_number(), ne_binaries()) ->
-                                 {'ok', knm_number:knm_number()}.
+                                 knm_number:knm_number().
 deactivate_features(Number, Features) ->
     PhoneNumber = knm_number:phone_number(Number),
     ExistingFeatures = knm_phone_number:features(PhoneNumber),
-    {'ok'
-     ,knm_number:set_phone_number(
-        Number
-        ,knm_phone_number:set_features(PhoneNumber, wh_json:delete_keys(Features, ExistingFeatures))
-       )
-    }.
+    knm_number:set_phone_number(
+      Number
+      ,knm_phone_number:set_features(PhoneNumber, wh_json:delete_keys(Features, ExistingFeatures))
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_services(knm_number:knm_number()) ->
+-ifdef(TEST).
+update_services(Number) -> Number.
+-else.
+-spec update_services(knm_number:knm_number()) ->
                                    knm_number:knm_number().
--spec maybe_update_services(knm_number:knm_number(), boolean()) ->
+-spec update_services(knm_number:knm_number(), boolean()) ->
                                    knm_number:knm_number().
-maybe_update_services(Number) ->
-    maybe_update_services(
+update_services(Number) ->
+    update_services(
       Number
       ,knm_phone_number:dry_run(knm_number:phone_number(Number))
      ).
 
-maybe_update_services(Number, 'true') ->
+update_services(Number, 'true') ->
     JObj = knm_phone_number:to_json(knm_number:phone_number(Number)),
     Services = wh_service_phone_numbers:reconcile(fetch_services(Number), [JObj]),
     knm_number:set_services(Number, Services);
-maybe_update_services(Number, 'false') ->
+update_services(Number, 'false') ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
@@ -143,6 +140,7 @@ maybe_update_services(Number, 'false') ->
 
     _ = wh_services:commit_transactions(Services, Transactions),
     Number.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public

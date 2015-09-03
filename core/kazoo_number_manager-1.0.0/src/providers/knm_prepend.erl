@@ -22,14 +22,16 @@
 %% add the prepend route (for in service numbers only)
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) -> knm_number_return().
--spec save(knm_number:knm_number(), ne_binary()) -> knm_number_return().
+-spec save(knm_number:knm_number()) ->
+                  knm_number:knm_number().
+-spec save(knm_number:knm_number(), ne_binary()) ->
+                  knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    maybe_update_prepend(Number);
+    update_prepend(Number);
 save(Number, _State) ->
   delete(Number).
 
@@ -41,13 +43,11 @@ save(Number, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) ->
-                    {'ok', knm_number:knm_number()}.
+                    knm_number:knm_number().
 delete(Number) ->
     case knm_phone_number:feature(knm_number:phone_number(Number), ?PREPEND_KEY) of
-        'undefined' ->
-            {'ok', Number};
-        _Else ->
-            knm_services:deactivate_feature(Number, ?PREPEND_KEY)
+        'undefined' -> Number;
+        _Else -> knm_services:deactivate_feature(Number, ?PREPEND_KEY)
     end.
 
 %%%===================================================================
@@ -60,9 +60,9 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_prepend(knm_number:knm_number()) ->
-                                  knm_number_return().
-maybe_update_prepend(Number) ->
+-spec update_prepend(knm_number:knm_number()) ->
+                            knm_number:knm_number().
+update_prepend(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),
     CurrentPrepend = wh_json:get_ne_value(?PREPEND_KEY, Features),
