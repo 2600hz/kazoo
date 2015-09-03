@@ -345,7 +345,7 @@ xml_did_to_json(#xmlElement{name='number'
 %%--------------------------------------------------------------------
 -spec purchase_local_options(ne_binary()) -> knm_vitelity_util:query_options().
 purchase_local_options(DID) ->
-    [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
+    [{'qs', [{'did', (knm_converters:default_converter()):to_npan(DID)}
              ,{'cmd', <<"getlocaldid">>}
              ,{'xml', <<"yes">>}
              ,{'routesip', get_routesip()}
@@ -362,7 +362,7 @@ purchase_local_options(DID) ->
 %%--------------------------------------------------------------------
 -spec purchase_tollfree_options(ne_binary()) -> knm_vitelity_util:query_options().
 purchase_tollfree_options(DID) ->
-    [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
+    [{'qs', [{'did', (knm_converters:default_converter()):to_npan(DID)}
              ,{'cmd', <<"gettollfree">>}
              ,{'xml', <<"yes">>}
              ,{'routesip', get_routesip()}
@@ -450,7 +450,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 %%--------------------------------------------------------------------
 -spec release_did_options(ne_binary()) -> knm_vitelity_util:query_options().
 release_did_options(DID) ->
-    [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
+    [{'qs', [{'did', (knm_converters:default_converter()):to_npan(DID)}
              ,{'cmd', <<"removedid">>}
              ,{'xml', <<"yes">>}
              | knm_vitelity_util:default_options()

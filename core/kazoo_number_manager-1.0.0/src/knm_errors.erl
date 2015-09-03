@@ -15,6 +15,9 @@
          ,service_restriction/1
          ,carrier_not_specified/1
          ,unspecified/2
+         ,not_enough_credit/2
+         ,invalid/2
+         ,multiple_choice/2
         ]).
 
 -export([to_json/1, to_json/2, to_json/3]).
@@ -57,10 +60,22 @@ service_restriction(Message) ->
 carrier_not_specified(Number) ->
     throw({'error', 'carrier_not_specified', Number}).
 
--spec unspecified(atom() | ne_binary(), knm_number:knm_number() | ne_binary()) ->
+-spec unspecified(any(), knm_number:knm_number() | ne_binary()) ->
                          no_return().
 unspecified(Error, Number) ->
     throw({'error', Error, Number}).
+
+-spec not_enough_credit(knm_number:knm_number(), integer()) -> no_return().
+not_enough_credit(Number, Units) ->
+    throw({'error', 'not_enough_credit', Number, Units}).
+
+-spec invalid(knm_number:knm_number(), wh_json:object()) -> no_return().
+invalid(Number, Reason) ->
+    throw({'error', 'invalid', Number, Reason}).
+
+-spec multiple_choice(knm_number:knm_number(), wh_json:object()) -> no_return().
+multiple_choice(Number, Update) ->
+    throw({'error', 'multiple_choice', Number, Update}).
 
 %%--------------------------------------------------------------------
 %% @public

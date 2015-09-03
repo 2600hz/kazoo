@@ -103,18 +103,16 @@ fetch(Num, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number()) -> number_return().
-save(#knm_phone_number{dry_run='true'}=Number) ->
-    Routines = [fun knm_providers:save/1
-                ,fun(N) -> {'ok', N} end
-               ],
-    setters(Number, Routines);
-save(#knm_phone_number{dry_run='false'}=Number) ->
+-spec save(knm_number()) -> knm_number().
+save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
+    Routines = [fun knm_providers:save/1],
+    setters(PhoneNumber, Routines);
+save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
     Routines = [fun knm_providers:save/1
                 ,fun save_to_number_db/1
                 ,fun handle_assignment/1
                ],
-    setters(Number, Routines).
+    setters(PhoneNumber, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -534,6 +532,9 @@ is_authorized(#knm_phone_number{assigned_to=AssignedTo
 %% @end
 %%--------------------------------------------------------------------
 -spec save_to_number_db(knm_number()) -> number_return().
+-ifdef(TEST).
+save_to_number_db(Number) -> Number.
+-else.
 save_to_number_db(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
@@ -543,46 +544,47 @@ save_to_number_db(Number) ->
             E;
         {'ok', Doc} -> {'ok', from_json(Doc)}
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle_assignment(knm_number()) -> number_return().
+-spec handle_assignment(knm_number()) -> knm_number().
 handle_assignment(PhoneNumber) ->
-    lager:debug("handling assignment for ~s", [?MODULE:number(PhoneNumber)]),
-    case maybe_assign(PhoneNumber) of
-        {'error', _R}=E ->E;
-        {'ok', _} ->
-            maybe_unassign(PhoneNumber)
-    end.
+    lager:debug("handling assignment for ~s"
+                ,[?MODULE:number(PhoneNumber)]
+               ),
+    unassign(assign(PhoneNumber)).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_assign(knm_number()) -> number_return().
-maybe_assign(Number) ->
-    AssignedTo = assigned_to(Number),
+-spec assign(knm_number()) -> knm_number().
+-spec assign(knm_number(), ne_binary()) -> knm_number().
+assign(PhoneNumber) ->
+    AssignedTo = assigned_to(PhoneNumber),
     case wh_util:is_empty(AssignedTo) of
-        'true' ->
-            lager:debug("assigned_to is is empty for ~s, ignoring", [?MODULE:number(Number)]),
-            {'ok', Number};
-        'false' -> assign(Number, AssignedTo)
+        'true' -> PhoneNumber;
+        'false' -> assign(PhoneNumber, AssignedTo)
     end.
 
--spec assign(knm_number(), ne_binary()) -> number_return().
-assign(Number, AssignedTo) ->
+assign(PhoneNumber, AssignedTo) ->
     AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
-    case couch_mgr:ensure_saved(AccountDb, to_json(Number)) of
-        {'error', _R}=E ->
-            lager:error("failed to assign number ~s to ~s", [?MODULE:number(Number), AccountDb]),
-            E;
+    case couch_mgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
+        {'error', E} ->
+            lager:error("failed to assign number ~s to ~s"
+                        ,[?MODULE:number(PhoneNumber), AccountDb]
+                       ),
+            knm_errors:unspecified(E, PhoneNumber);
         {'ok', JObj} ->
-            lager:debug("assigned number ~s to ~s", [?MODULE:number(Number), AccountDb]),
-            {'ok', from_json(JObj)}
+            lager:debug("assigned number ~s to ~s"
+                        ,[?MODULE:number(PhoneNumber), AccountDb]
+                       ),
+            from_json(JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -590,46 +592,46 @@ assign(Number, AssignedTo) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_unassign(knm_number()) -> number_return().
--spec maybe_unassign(knm_number(), ne_binary()) -> number_return().
-maybe_unassign(Number) ->
-    PrevAssignedTo = prev_assigned_to(Number),
+-spec unassign(knm_number()) -> knm_number().
+-spec unassign(knm_number(), ne_binary()) -> knm_number().
+-spec do_unassign(knm_number(), ne_binary()) -> knm_number().
+unassign(PhoneNumber) ->
+    PrevAssignedTo = prev_assigned_to(PhoneNumber),
     case wh_util:is_empty(PrevAssignedTo) of
         'true' ->
             lager:debug("prev_assigned_to is is empty for ~s, ignoring"
-                        ,[?MODULE:number(Number)]
+                        ,[?MODULE:number(PhoneNumber)]
                        ),
-            {'ok', Number};
+            PhoneNumber;
         'false' ->
-            maybe_unassign(Number, PrevAssignedTo)
+            unassign(PhoneNumber, PrevAssignedTo)
     end.
 
-maybe_unassign(Number, PrevAssignedTo) ->
-    Num = ?MODULE:number(Number),
+unassign(PhoneNumber, PrevAssignedTo) ->
+    Num = ?MODULE:number(PhoneNumber),
     case get_number_in_account(PrevAssignedTo, Num) of
         {'error', 'not_found'} ->
             lager:debug("number ~s was not found in ~s, no need to unassign"
                         ,[Num, PrevAssignedTo]
                        ),
-            {'ok', Number};
-        {'ok', _} -> unassign(Number, PrevAssignedTo);
-        {'error', _R} -> unassign(Number, PrevAssignedTo)
+            PhoneNumber;
+        {'ok', _} -> do_unassign(PhoneNumber, PrevAssignedTo);
+        {'error', _R} -> do_unassign(PhoneNumber, PrevAssignedTo)
     end.
 
--spec unassign(knm_number(), ne_binary()) -> number_return().
-unassign(Number, PrevAssignedTo) ->
+do_unassign(PhoneNumber, PrevAssignedTo) ->
     AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
-    case couch_mgr:del_doc(AccountDb, to_json(Number)) of
-        {'error', _R}=E ->
+    case couch_mgr:del_doc(AccountDb, to_json(PhoneNumber)) of
+        {'error', E} ->
             lager:error("failed to unassign number ~s from ~s"
-                        ,[?MODULE:number(Number), AccountDb]
+                        ,[?MODULE:number(PhoneNumber), PrevAssignedTo]
                        ),
-            E;
+            knm_errors:unspecified(E, PhoneNumber);
         {'ok', _} ->
             lager:debug("unassigned number ~s from ~s"
-                        ,[?MODULE:number(Number), AccountDb]
+                        ,[?MODULE:number(PhoneNumber), PrevAssignedTo]
                        ),
-            {'ok', Number}
+            PhoneNumber
     end.
 
 %%--------------------------------------------------------------------

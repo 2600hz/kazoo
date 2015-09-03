@@ -174,8 +174,17 @@ create_available(PhoneNumber, _AuthBy) ->
 
 -spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
-    Routines = [fun knm_providers:save/1],
+    Routines = [fun save_phone_number/1
+                ,fun knm_services:update_services/1
+               ],
     apply_number_routines(Number, Routines).
+
+-spec save_phone_number(knm_number()) -> knm_number().
+save_phone_number(Number) ->
+    set_phone_number(
+      Number
+      ,knm_phone_number:save(phone_number(Number))
+     ).
 
 -spec dry_run_or_number(knm_number()) ->
                                dry_run_return() |
@@ -324,10 +333,10 @@ update_phone_number(Number, Routines) ->
 %%--------------------------------------------------------------------
 -spec save(knm_number()) -> knm_number_return().
 save(Number) ->
-    _ = knm_services:maybe_update_services(Number),
+    Number1 = knm_services:update_services(Number),
     wrap_phone_number_return(
-      knm_phone_number:save(phone_number(Number))
-      ,Number
+      knm_phone_number:save(phone_number(Number1))
+      ,Number1
      ).
 
 %%--------------------------------------------------------------------

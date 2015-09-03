@@ -25,9 +25,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(knm_number:knm_number()) ->
-                  knm_number_return().
+                  knm_number:knm_number().
 -spec save(knm_number:knm_number(), ne_binary()) ->
-                  knm_number_return().
+                  knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
@@ -49,10 +49,10 @@ save(Number, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) ->
-                    {'ok', knm_number:knm_number()}.
+                    knm_number:knm_number().
 delete(Number) ->
     case knm_phone_number:feature(knm_number:phone_number(Number), ?VITELITY_KEY) of
-        'undefined' -> {'ok', Number};
+        'undefined' -> Number;
         _Else ->
             lager:debug("removing e911 information"),
             _ = remove_number(Number),
@@ -110,9 +110,9 @@ get_location(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_e911(knm_number:knm_number()) ->
-                               knm_number_return().
+                               knm_number:knm_number().
 -spec maybe_update_e911(knm_number:knm_number(), boolean()) ->
-                               knm_number_return().
+                               knm_number:knm_number().
 maybe_update_e911(Number) ->
     maybe_update_e911(Number
                       ,knm_phone_number:dry_run(knm_number:phone_number(Number))
@@ -157,18 +157,16 @@ maybe_update_e911(Number, 'false') ->
             knm_services:deactivate_feature(Number, ?VITELITY_KEY);
         'false' ->
             lager:debug("vitelity e911 information has been changed: ~s", [wh_json:encode(E911)]),
-            {'ok', Number1} = knm_services:activate_feature(Number, ?VITELITY_KEY),
+            Number1 = knm_services:activate_feature(Number, ?VITELITY_KEY),
             case update_e911(Number1, E911) of
                 {'ok', Data} ->
-                    {'ok'
-                     ,knm_phone_number:set_feature(knm_number:phone_number(Number1)
-                                                   ,?VITELITY_KEY
-                                                   ,Data
-                                                  )
-                    };
-                {'error', _R}=Error ->
-                    lager:error("vitelity e911 information update failed: ~p", [_R]),
-                    Error
+                    knm_phone_number:set_feature(knm_number:phone_number(Number1)
+                                                 ,?VITELITY_KEY
+                                                 ,Data
+                                                );
+                {'error', E} ->
+                    lager:error("vitelity e911 information update failed: ~p", [E]),
+                    knm_errors:unspecified(E, Number)
             end
     end.
 
@@ -200,7 +198,7 @@ remove_number(Number) ->
 -spec remove_e911_options(ne_binary()) ->
                                  knm_vitelity_util:query_options().
 remove_e911_options(DID) ->
-    [{'qs', [{'did', (knm_converters:default()):to_npan(DID)}
+    [{'qs', [{'did', (knm_converters:default_converter()):to_npan(DID)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911delete">>}
              | knm_vitelity_util:default_options()
@@ -217,7 +215,7 @@ remove_e911_options(DID) ->
 -spec get_location_options(ne_binary()) ->
                                   knm_vitelity_util:query_options().
 get_location_options(DID) ->
-    [{'qs', [{'did',  (knm_converters:default()):to_npan(DID)}
+    [{'qs', [{'did',  (knm_converters:default_converter()):to_npan(DID)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911getinfo">>}
              | knm_vitelity_util:default_options()
@@ -258,7 +256,7 @@ e911_options(Number, AddressJObj) ->
     State = knm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     {UnitType, UnitNumber} = get_unit(wh_json:get_value(<<"extended_address">>, AddressJObj)),
     [{'qs', props:filter_undefined(
-              [{'did',  (knm_converters:default()):to_npan(DID)}
+              [{'did',  (knm_converters:default_converter()):to_npan(DID)}
                ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
                ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
                ,{'unittype', UnitType}
