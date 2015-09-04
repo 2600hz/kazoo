@@ -198,7 +198,9 @@ find_channel('user_name' = Key, UserName, [StatusJObj|JObjs], Acc) ->
     FoundUsernameChannels = wh_json:foldl(
                                 fun(_Key, JObjChannel, Acc1) ->
                                     lager:debug("Next foldl object is ~p", [{_Key, JObjChannel, Acc1}]),
-                                    case wh_json:get_value(<<"Username">>, JObjChannel) of
+                                    AccountId = wh_json:get_value(<<"Account-ID">>, JObjChannel),
+                                    {'ok', AccountDoc} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+                                    case wh_json:get_value(<<"name">>, AccountDoc) of
                                         UserName -> [JObjChannel | Acc1];
                                         _ -> Acc1
                                     end
