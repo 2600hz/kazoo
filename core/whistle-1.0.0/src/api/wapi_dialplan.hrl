@@ -46,6 +46,9 @@
           ,<<"Callee-ID-Number">>
           ,<<"Caller-ID-Name">>
           ,<<"Caller-ID-Number">>
+          ,<<"Confirm-Key">>
+          ,<<"Confirm-Cancel-Timeout">>
+          ,<<"Confirm-File">>
           ,<<"Continue-On-Fail">>
           ,<<"Custom-Channel-Vars">>
           ,<<"Custom-SIP-Headers">>
