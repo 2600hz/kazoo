@@ -176,6 +176,7 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
+    _ = wh_util:spawn(fun() -> crossbar_util:flush_registration(Context) end),
     case changed_mac_address(Context) of
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
@@ -185,8 +186,7 @@ post(Context, DeviceId) ->
             _ = wh_util:spawn(
                   fun() ->
                           _ = provisioner_util:maybe_provision(Context2),
-                          _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
-                          _ = crossbar_util:flush_registration(Context)
+                          _ = provisioner_util:maybe_sync_sip_data(Context1, 'device')
                   end),
             Context2;
         'false' ->
