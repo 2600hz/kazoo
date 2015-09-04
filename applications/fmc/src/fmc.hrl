@@ -18,5 +18,12 @@
 -define(FMC_ROUTE_WIN_SECTION, <<"fmc_route_win_section">>).
 -define(APP_VERSION, <<"1.0.0">>).
 
+-define(FMC_CONFIG_CAT, <<"fmc">>).
+-define(PLATFORM_ORIGINATOR, whapps_config:get_integer(?FMC_CONFIG_CAT, <<"platform_origiantor_type">>, <<"FMC">>)).
+-define(CCV, <<"Custom-Channel-Vars">>).
+
+-define(XFMC_HEADER, whapps_config:get(<<"fmc">>, <<"x_fmc_header">>)).
+-define(XFMC_REGEXP, whapps_config:get(<<"fmc">>, <<"x_fmc_regexp">>)).
+
 -define(FMC_HRL, 'true').
 -endif.

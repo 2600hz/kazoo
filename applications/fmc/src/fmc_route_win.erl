@@ -52,8 +52,8 @@ maybe_rewrite_headers(FmcRec, RouteReqJObj, Props) ->
                         _OwnerId ->
                             {'ok', OwnerDoc} = couch_mgr:open_cache_doc(AaaDb, OwnerId),
                             UserName = wh_json:get_value(<<"username">>, OwnerDoc),
-                            wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Owner-ID">>], OwnerId}
-                                                ,{[<<"Custom-Channel-Vars">>, <<"Username">>], UserName}]
+                            wh_json:set_values([{[?CCV, <<"Owner-ID">>], OwnerId}
+                                                ,{[?CCV, <<"Username">>], UserName}]
                                                 ,RouteReqJObj)
                     end,
     % set headers: Account-ID, Device-ID and User-ID, Authorizing-ID, Authorizing-Type
@@ -61,15 +61,16 @@ maybe_rewrite_headers(FmcRec, RouteReqJObj, Props) ->
     AccountName = wh_json:get_value(<<"name">>, AccountDoc),
     AccountRealm = wh_json:get_value(<<"realm">>, AccountDoc),
 
-    RouteReqJObj2 = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Account-ID">>], FmcAccountId}
-                                        ,{[<<"Custom-Channel-Vars">>, <<"Account-Name">>], AccountName}
-                                        ,{[<<"Custom-Channel-Vars">>, <<"Account-Realm">>], AccountRealm}
-                                        ,{[<<"Custom-Channel-Vars">>, <<"Realm">>], AccountRealm}
-                                        ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], FmcDeviceId}
-                                        ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], FMCDeviceType}]
+    RouteReqJObj2 = wh_json:set_values([{[?CCV, <<"Account-ID">>], FmcAccountId}
+                                        ,{[?CCV, <<"Account-Name">>], AccountName}
+                                        ,{[?CCV, <<"Account-Realm">>], AccountRealm}
+                                        ,{[?CCV, <<"Realm">>], AccountRealm}
+                                        ,{[?CCV, <<"Authorizing-ID">>], FmcDeviceId}
+                                        ,{[?CCV, <<"Authorizing-Type">>], FMCDeviceType}
+                                        ,{[?CCV, <<"Originator-Type">>], ?PLATFORM_ORIGINATOR}]
                                        ,RouteReqJObj1),
     % remove FMC specific headers
-    RouteReq = wh_json:delete_key([[<<"Custom-SIP-Headers">>, whapps_config:get(<<"fmc">>, <<"x_fmc_header">>)]]
+    RouteReq = wh_json:delete_key([[<<"Custom-SIP-Headers">>, ?XFMC_HEADER]]
                                   ,RouteReqJObj2),
     % send to all route_req handlers
     lager:debug("Rewritten request is ~p", [RouteReq]),

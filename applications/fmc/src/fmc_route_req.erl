@@ -22,8 +22,8 @@ handle_req(JObj, Props) ->
     Call = whapps_call:from_route_req(JObj),
     
     ANumber = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
-    FMCHeaderValue = wh_json:get_value([<<"Custom-SIP-Headers">>, whapps_config:get(<<"fmc">>, <<"x_fmc_header">>)], JObj),
-    FMCHeaderValueRegexp = whapps_config:get(<<"fmc">>, <<"x_fmc_regexp">>),
+    FMCHeaderValue = wh_json:get_value([<<"Custom-SIP-Headers">>, ?XFMC_HEADER], JObj),
+    FMCHeaderValueRegexp = ?XFMC_REGEXP,
     FMCHeaderValue1 = binary_to_list(FMCHeaderValue),
     FMCHeaderValueRegexp1 = binary_to_list(FMCHeaderValueRegexp),
     ExtractedFMCValue = case re:run(FMCHeaderValue1, FMCHeaderValueRegexp1) of

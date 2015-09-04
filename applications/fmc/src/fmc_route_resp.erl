@@ -32,13 +32,13 @@ handle_req(JObj, Props) ->
                     RouteWinCall = whapps_call:from_route_win(WinJObj, C),
                     lager:debug("RouteWinCall is ~p", [RouteWinCall]),
                     Q = wh_json:get_value(<<"Control-Queue">>, WinJObj),
-                    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, WinJObj),
+                    CCVs = wh_json:get_value(?CCV, WinJObj),
                     % create req_win header to send it to callflow
                     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
                     RouteWin = [{<<"Msg-ID">>, CallId}
                                 ,{<<"Call-ID">>, CallId}
                                 ,{<<"Control-Queue">>, Q}
-                                ,{<<"Custom-Channel-Vars">>, CCVs}
+                                ,{?CCV, CCVs}
                                 | wh_api:default_headers(ServerId, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
                                ],
                     lager:debug("The route_win for callflow is ~p", [RouteWin]),
