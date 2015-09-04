@@ -330,7 +330,7 @@ code_change(_OldVsn, State, _Extra) ->
 notify_packages(Msg) ->
     _ = [gen_server:cast(Pid, Msg)
          || {_, Pid, _, _} <- supervisor:which_children('omnip_sup'),
-            is_pid(Pid)  
+            is_pid(Pid)
         ],
     'ok'.
 
