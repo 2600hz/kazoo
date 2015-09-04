@@ -10,6 +10,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0
+         ,start_module/1, stop_module/1
         ]).
 -export([init/1]).
 
@@ -25,6 +26,15 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+-spec start_module(ne_binary()) -> startchild_ret().
+start_module(Module) ->
+    supervisor:start_child(?MODULE, ?WORKER(wh_util:to_atom(Module, 'true'))).
+
+-spec stop_module(ne_binary()) ->  'ok' | {'error', 'running' | 'restarting' | 'not_found' | 'simple_one_for_one'}.
+stop_module(Module) ->
+    _ = supervisor:terminate_child(?MODULE, wh_util:to_atom(Module, 'true')),
+    supervisor:delete_child(?MODULE, wh_util:to_atom(Module, 'true')).
 
 %% TODO
 %% load / unload package
