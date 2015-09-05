@@ -24,6 +24,7 @@
          ,mac_address/1, mac_address/2, set_mac_address/2
          ,language/1, language/2, set_language/2
          ,device_type/1, device_type/2, set_device_type/2
+         ,owner_id/1, owner_id/2, set_owner_id/2
 
          ,new/0
          ,type/0
@@ -52,6 +53,7 @@
 -define(MAC_ADDRESS, <<"mac_address">>).
 -define(LANGUAGE, <<"language">>).
 -define(DEVICE_TYPE, <<"device_type">>).
+-define(KEY_OWNER_ID, <<"owner_id">>).
 
 -define(PVT_TYPE, <<"device">>).
 
@@ -231,3 +233,14 @@ set_device_type(DeviceJObj, MacAddress) ->
 
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
+
+-spec owner_id(doc()) -> api_binary().
+-spec owner_id(doc(), Default) -> ne_binary() | Default.
+owner_id(DeviceJObj) ->
+    owner_id(DeviceJObj, 'undefined').
+owner_id(DeviceJObj, Default) ->
+    wh_json:get_value(?KEY_OWNER_ID, DeviceJObj, Default).
+
+-spec set_owner_id(doc(), ne_binary()) -> doc().
+set_owner_id(DeviceJObj, OwnerId) ->
+    wh_json:set_value(?KEY_OWNER_ID, OwnerId, DeviceJObj).
