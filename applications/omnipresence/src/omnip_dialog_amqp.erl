@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(omnip_dialog).
+-module(omnip_dialog_amqp).
 
 -behaviour(gen_server).
 
@@ -57,8 +57,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     wh_util:put_callid(?MODULE),
-    _ = ensure_template(),
-    lager:debug("omnipresence event dialog package started"),
+    lager:debug("omnipresence event dialog amqp package started"),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -338,24 +337,16 @@ to_uri_cookie(_State, _, From, _, _) ->
 
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
-    case omnip_subscriptions:get_subscriptions(?DIALOG_EVENT, User) of
-        {'ok', Subs} ->
-            send_update(User, Props, Subs);
+    case omnip_subscriptions:get_stalkers(?DIALOG_EVENT, User) of
+        {'ok', Stalkers} ->
+            send_update(Stalkers, Props);
         {'error', 'not_found'} ->
             lager:debug("no ~s subscriptions for ~s",[?DIALOG_EVENT, User])
     end.
 
--spec send_update(ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
-send_update(User, Props, Subscriptions) ->
-    {Amqp, Sip} = lists:partition(fun(#omnip_subscription{version=V})-> V =:= 1 end, Subscriptions),
-    send_update(<<"amqp">>, User, Props, Amqp),
-    send_update(<<"sip">>, User, Props, Sip).
-
--spec send_update(ne_binary(), ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
-send_update(_, _User, _Props, []) -> 'ok';
-send_update(<<"amqp">>, _User, Props, Subscriptions) ->
+-spec send_update(binaries(), wh_proplist()) -> 'ok'.
+send_update(Stalkers, Props) ->
     lager:debug("sending AMQP dialog update: ~p", [Props]),
-    Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),
     _ = [wh_amqp_worker:cast(Props
                              ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
@@ -363,107 +354,7 @@ send_update(<<"amqp">>, _User, Props, Subscriptions) ->
                             )
          || S <- Stalkers
         ],
-    wh_amqp_worker:checkin_worker(Worker);
-send_update(<<"sip">>, User, Props, Subscriptions) ->
-    lager:debug("building SIP dialog update: ~p", [Props]),
-    Body = build_body(User, Props),
-    Options = [{'body', Body}
-               ,{'content_type', <<"application/dialog-info+xml">>}
-               ,{'subscription_state', 'active'}
-              ],
-    [nksip_uac:notify(SubscriptionId
-                      ,[{'contact', Contact}
-                        ,{'route', [Proxy]}
-                        | Options
-                       ]
-                     )
-     || #omnip_subscription{subscription_id=SubscriptionId
-                            ,contact=Contact
-                            ,proxy_route=Proxy
-                           } <- Subscriptions,
-        SubscriptionId =/= 'undefined'
-    ].
-
--spec get_user_channels(ne_binary()) -> list().
-get_user_channels(User) ->
-    [Username, Realm] = binary:split(User, <<"@">>),
-    Payload = [{<<"Username">>, Username}
-               ,{<<"Realm">>, Realm}
-               ,{<<"Active-Only">>, 'false'}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    case whapps_util:amqp_pool_request(Payload
-                                       ,fun wapi_call:publish_query_user_channels_req/1
-                                       ,fun wapi_call:query_user_channels_resp_v/1
-                                      )
-    of
-        {'ok', Resp} ->
-            case wh_json:get_value(<<"Channels">>, Resp) of
-                'undefined' -> [];
-                Channels ->  wh_json:to_proplist(Channels)
-            end;
-        {'error', _E} ->
-            lager:debug("query user channels for ~s failed : ~p", [User, _E]),
-            []
-    end.
-
--spec map_state(ne_binary() | boolean()) -> ne_binary().
-map_state('false') -> <<"early">>;
-map_state('true') -> <<"confirmed">>;
-map_state(Other) -> Other.
-
--spec map_direction(ne_binary()) -> ne_binary().
-map_direction(<<"inbound">>) -> <<"initiator">>;
-map_direction(<<"outbound">>) -> <<"recipient">>;
-map_direction(Other) -> Other.
-
--spec props_to_call(wh_proplist()) -> channel() | 'undefined'.
-props_to_call(Props) ->
-    case props:get_value(<<"uuid">>, Props) of
-        'undefined' -> 'undefined';
-        UUID ->
-            #channel{call_id = UUID
-                     ,direction = map_direction(props:get_value(<<"direction">>, Props))
-                     ,state = map_state(props:get_first_defined([<<"state">>, <<"answered">>], Props))
-                     ,to = props:get_value(<<"destination">>, Props)
-                    }
-    end.
-
--spec build_channels(ne_binary(), wh_proplist()) -> wh_proplist().
-build_channels(User, Props) ->
-    Channels = [props_to_call(Channel) || Channel  <- get_user_channels(User)],
-    case props_to_call(Props) of
-        'undefined' -> Channels;
-        UUID ->
-            [UUID
-             |[Channel
-               || Channel <- Channels,
-                  Channel#channel.call_id =/= UUID#channel.call_id
-              ]
-            ]
-    end.
-
--spec build_variables(ne_binary(), wh_proplist()) -> wh_proplist().
-build_variables(User, Props) ->
-    case build_channels(User, Props) of
-        [] -> omnip_util:normalize_variables(Props);
-        Channels -> omnip_util:normalize_variables(props:set_value(<<"calls">>, Channels, Props))
-    end.
-
--spec build_body(ne_binary(), wh_proplist()) -> ne_binary().
-build_body(User, Props) ->
-    Variables = build_variables(User, Props),
-    Mod = wh_util:to_atom(<<"sub_package_dialog">>, 'true'),
-    {'ok', Text} = Mod:render(Variables),
-    Body = wh_util:to_binary(Text),
-    binary:replace(Body, <<"\n\n">>, <<"\n">>, ['global']).
-
--spec ensure_template() -> {'ok', _}.
-ensure_template() ->
-    BasePath = code:lib_dir('omnipresence', 'priv'),
-    File = lists:concat([BasePath, "/packages/dialog.xml"]),
-    Mod = wh_util:to_atom(<<"sub_package_dialog">>, 'true'),
-    {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{'record_info', [{'channel', record_info('fields', 'channel')}]}]).
+    wh_amqp_worker:checkin_worker(Worker).
 
 -spec presence_reset(wh_json:object()) -> any().
 presence_reset(JObj) ->

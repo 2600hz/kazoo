@@ -189,9 +189,6 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
-handle_info(?HOOK_EVT(_, EventName, JObj), State) ->
-    _ = wh_util:spawn('omnip_subscriptions', 'handle_channel_event', [EventName, JObj]),
-    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
