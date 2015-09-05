@@ -10,6 +10,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0
+         ,start_module/1, stop_module/1
         ]).
 -export([init/1]).
 
@@ -25,6 +26,19 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+-spec start_module(ne_binary()) -> sup_startchild_ret().
+start_module(Module) ->
+    supervisor:start_child(?MODULE, ?WORKER(wh_util:to_atom(Module, 'true'))).
+
+-spec stop_module(ne_binary()) ->  'ok' | {'error', 'not_found' | 'simple_one_for_one'}.
+stop_module(Module) ->
+    case supervisor:terminate_child(?MODULE, wh_util:to_atom(Module, 'true')) of
+        'ok' ->
+            _ = supervisor:delete_child(?MODULE, wh_util:to_atom(Module, 'true')),
+            'ok';
+        {'error', _}=E -> E
+    end.
 
 %% TODO
 %% load / unload package
@@ -55,7 +69,13 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init([]) -> 
+    {ok, {{RestartStrategy :: supervisor:strategy(),
+           MaxR            :: non_neg_integer(),
+           MaxT            :: non_neg_integer()},
+           [ChildSpec :: supervisor:child_spec()]}}
+    | ignore.
+%          sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
