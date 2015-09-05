@@ -307,7 +307,6 @@ maybe_send_update(User, Props) ->
     end.
 
 -spec send_update(binaries(), wh_proplist()) -> 'ok'.
-send_update([], _Props) -> 'ok';
 send_update(Stalkers, Props) ->
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),
     _ = [wh_amqp_worker:cast(Props

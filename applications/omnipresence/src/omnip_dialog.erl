@@ -344,8 +344,7 @@ maybe_send_update(User, Props) ->
             lager:debug("no ~s subscriptions for ~s",[?DIALOG_EVENT, User])
     end.
 
--spec send_update(ne_binaries(), wh_proplist()) -> 'ok'.
-send_update([], _Props) -> 'ok';
+-spec send_update(binaries(), wh_proplist()) -> 'ok'.
 send_update(Stalkers, Props) ->
     lager:debug("sending AMQP dialog update: ~p", [Props]),
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),

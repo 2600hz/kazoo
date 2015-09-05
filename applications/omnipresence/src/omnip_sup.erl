@@ -27,14 +27,18 @@
 %% API functions
 %% ===================================================================
 
--spec start_module(ne_binary()) -> startchild_ret().
+-spec start_module(ne_binary()) -> sup_startchild_ret().
 start_module(Module) ->
     supervisor:start_child(?MODULE, ?WORKER(wh_util:to_atom(Module, 'true'))).
 
--spec stop_module(ne_binary()) ->  'ok' | {'error', 'running' | 'restarting' | 'not_found' | 'simple_one_for_one'}.
+-spec stop_module(ne_binary()) ->  'ok' | {'error', 'not_found' | 'simple_one_for_one'}.
 stop_module(Module) ->
-    _ = supervisor:terminate_child(?MODULE, wh_util:to_atom(Module, 'true')),
-    supervisor:delete_child(?MODULE, wh_util:to_atom(Module, 'true')).
+    case supervisor:terminate_child(?MODULE, wh_util:to_atom(Module, 'true')) of
+        'ok' ->
+            _ = supervisor:delete_child(?MODULE, wh_util:to_atom(Module, 'true')),
+            'ok';
+        {'error', _}=E -> E
+    end.
 
 %% TODO
 %% load / unload package
