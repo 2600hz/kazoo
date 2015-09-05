@@ -249,7 +249,6 @@ owner_id(DeviceJObj, Default) ->
 set_owner_id(DeviceJObj, OwnerId) ->
     wh_json:set_value(?KEY_OWNER_ID, OwnerId, DeviceJObj).
 
-
 -spec enabled(doc()) -> boolean().
 -spec enabled(doc(), boolean()) -> boolean().
 enabled(DeviceJObj) ->
