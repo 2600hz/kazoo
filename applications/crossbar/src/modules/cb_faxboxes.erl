@@ -365,7 +365,7 @@ faxbox_listing(Context) ->
 
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [leak_private_fields(wh_doc:id(JObj)) | Acc].
+    [leak_private_fields(wh_json:get_value(<<"doc">>, JObj)) | Acc].
 
 -spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->

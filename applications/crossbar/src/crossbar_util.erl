@@ -917,7 +917,7 @@ create_auth_token(Context, Method) ->
 create_auth_token(Context, Method, JObj) ->
     Data = cb_context:req_data(Context),
 
-    AccountId = wh_doc:account_id(JObj),
+    AccountId = wh_json:get_value(<<"account_id">>, JObj),
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
 
     Token = props:filter_undefined(

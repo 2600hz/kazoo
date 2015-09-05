@@ -1313,7 +1313,7 @@ maybe_set_endpoint_id({Endpoint, Call, CallFwd, JObj}) ->
 -spec maybe_set_owner_id(ccv_acc()) -> ccv_acc().
 maybe_set_owner_id({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
-     ,case wh_doc:id(Endpoint) of
+     ,case kz_device:owner_id(Endpoint) of
           'undefined' -> JObj;
           OwnerId ->
               wh_json:set_value(<<"Owner-ID">>, OwnerId, JObj)
