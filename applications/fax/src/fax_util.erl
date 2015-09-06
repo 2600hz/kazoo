@@ -44,7 +44,7 @@ collect_channel_props(JObj, List, Acc) ->
 -spec collect_channel_prop(ne_binary(), wh_json:object()) ->
                                   {wh_json:key(), wh_json:json_term()}.
 collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
-    <<"sip:", Code/binary>> = wh_json:get_value(Key, JObj),
+    <<"sip:", Code/binary>> = wh_json:get_value(Key, JObj, <<"sip:500">>),
     {Key, Code};
 collect_channel_prop(Key, JObj) ->
     {Key, wh_json:get_value(Key, JObj)}.
