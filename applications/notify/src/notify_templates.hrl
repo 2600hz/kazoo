@@ -59,12 +59,13 @@
 ).
 
 -define(NOTIFY_PASSWORD_RECOVERY,
-    [{'default_text_template', [<<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your {{service.provider}} {{service.name}} account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please vist {{service.url}} and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>]}
-     ,{'default_html_template', [<<"<html></head><body><h3>Hello {{user.first_name}} {{user.last_name}}</h3><p>This email is to inform you that the password for your {{service.provider}} {{service.name}} account \"{{account.name}}\" has been set to \"{{user.password}}\".</p><p>To login please vist <a href=\"{{service.url}}\">{{service.url}}</a> and use your normal username with the password \"{{user.password}}\".</p><p>Once you login you will be prompted to customize your password.</p></body></html>">>]}
-     ,{'default_subject_template', [<<"Password reset for your {{service.provider}} {{service.name}} account.">>]}
+    [{'default_text_template', [<<"Hi, {{user.first_name}} {{user.last_name}}!\n\nWe received a request to change the password for your 2600hz VoIP Services account \"{{account.name}}\".\nIf you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:\n\n{{link}}">>]}
+     ,{'default_html_template', [<<"<html></head><body><h3>Hi, {{user.first_name}} {{user.last_name}}!</h3><p>We received a request to change the password of your 2600hz VoIP Services account \"{{account.name}}\".</p><p>If you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:</p><p><a href=\"{{link}}\">{{link}}</a></p></body></html>">>]}
+     ,{'default_subject_template', [<<"Reset your {{service.provider}} account password.">>]}
      ,{'default_service_url', [<<"http://apps.2600hz.com">>]}
      ,{'default_name', [<<"VOIP Services">>]}
      ,{'default_provider', [<<"2600hz">>]}
+     ,{'default_link', [<<"le_missing_url">>]}
     ]
 ).
 

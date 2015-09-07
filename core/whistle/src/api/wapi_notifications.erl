@@ -247,7 +247,7 @@
 -define(REGISTER_TYPES, []).
 
 %% Notify Password Recovery
--define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Password">>, <<"Account-ID">>]).
+-define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Account-ID">>, <<"Password-Reset-Link">>]).
 -define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>
                                         ,<<"Account-DB">>, <<"Request">>
                                         | ?DEFAULT_OPTIONAL_HEADERS

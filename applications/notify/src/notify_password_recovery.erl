@@ -45,13 +45,13 @@ handle_req(JObj, _Props) ->
     'true' = wapi_notifications:pwd_recovery_v(JObj),
     wh_util:put_callid(JObj),
 
-    lager:debug("password has been reset, sending email notification"),
+    lager:debug("request for password reset taken into account, sending email notification"),
 
     {'ok', Account} = notify_util:get_account_doc(JObj),
 
     To = wh_json:get_value(<<"Email">>, JObj, whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
 
-    lager:debug("creating password reset notice"),
+    lager:debug("creating notice for request of password reset"),
 
     Props = create_template_props(JObj, Account),
 
