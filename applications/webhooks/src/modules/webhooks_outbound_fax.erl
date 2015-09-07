@@ -4,7 +4,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(webhooks_fax).
+-module(webhooks_outbound_fax).
 
 -export([init/0
          ,bindings_and_responders/0
@@ -33,7 +33,7 @@
                   ]
        ).
 -define(RESPONDERS
-        ,[{{'webhooks_fax', 'handle_req'}
+        ,[{{'webhooks_outbound_fax', 'handle_event'}
            ,[{<<"notification">>, ?NAME}
              ,{<<"notification">>, <<"outbound_fax_error">>}
             ]
