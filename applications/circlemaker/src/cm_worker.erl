@@ -339,16 +339,18 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                   'authz' = RequestType ->
                       lager:debug("Operation is authz"),
                       WholeRequest = wh_json:get_value(<<"Custom-Auth-Vars">>, JObj),
-                      lager:debug("Request is: ~p", [WholeRequest]),
-                      {cm_util:maybe_translate_kv_into_avps(WholeRequest, AaaProps, RequestType), 'request'};
+                      WholeRequest1 = cm_util:append_resource_name_to_request(WholeRequest),
+                      lager:debug("Request is: ~p", [WholeRequest1]),
+                      {cm_util:maybe_translate_kv_into_avps(WholeRequest1, AaaProps, RequestType), 'request'};
                   'authn' = RequestType ->
                       lager:debug("Operation is authn"),
                       lager:debug("Request is: ~p", [JObj]),
                       {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'request'};
                   'accounting' = RequestType ->
                       lager:debug("Operation is accounting"),
-                      lager:debug("Request is: ~p", [JObj]),
-                      {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'accreq'}
+                      JObj1 = cm_util:append_resource_name_to_request(JObj),
+                      lager:debug("Request is: ~p", [JObj1]),
+                      {cm_util:maybe_translate_kv_into_avps(JObj1, AaaProps, RequestType), 'accreq'}
               end,
     lager:debug("trying to resolve the next AVPs: ~p", [AllAVPs]),
     % prepare attribute param list

@@ -20,7 +20,9 @@
          ,get_interim_update/1
          ,clean_session_timeout/1
          ,clean_interim_update/1
-         ,hangup_call/1]).
+         ,hangup_call/1
+         ,get_resource_name/2
+         ,append_resource_name_to_request/1]).
 
 -include("circlemaker.hrl").
 
@@ -288,3 +290,51 @@ hangup_call(CallId) ->
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
     wapi_call:publish_hangup_call(CallId, HangupCallEvt).
+
+-spec get_resource_name(ne_binary(), ne_binary() | 'undefined') -> ne_binary() | 'not_found'.
+get_resource_name(ResourceId, 'undefined') ->
+    case couch_mgr:open_cache_doc(?WH_OFFNET_DB, ResourceId) of
+        {'ok', Doc} ->
+            lager:debug("Found system resource ~s in ~s", [ResourceId, ?WH_OFFNET_DB]),
+            wh_json:get_value(<<"name">>, Doc);
+        {'error', _E} ->
+            lager:debug("Resource ~s is not a system resource (~p)", [ResourceId, _E]),
+            'not_found'
+    end;
+get_resource_name(ResourceId, AccountId) ->
+    DbName = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(DbName, ResourceId) of
+        {'ok', Doc} ->
+            lager:debug("Found local resource ~s in ~s", [ResourceId, AccountId]),
+            wh_json:get_value(<<"name">>, Doc);
+        {'error', _E} ->
+            lager:debug("Resource ~s is not a local resource (~p)", [ResourceId, _E]),
+            'not_found'
+    end.
+
+-spec append_resource_name_to_request(wh_json:object()) -> wh_json:object().
+append_resource_name_to_request(Request) ->
+    lager:debug("Appending Resource-Name header to the request"),
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Resource-ID">>], Request) of
+        'undefined' ->
+            lager:debug("Resource-ID value not found"),
+            Request;
+        ResourceId ->
+            append_resource_name_to_request(Request, ResourceId)
+    end.
+
+-spec append_resource_name_to_request(wh_json:object(), ne_binary()) -> wh_json:object().
+append_resource_name_to_request(Request, ResourceId) ->
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], Request),
+    Result = case wh_json:is_true([<<"Custom-Channel-Vars">>, <<"Global-Resource">>], Request, 'false') of
+                 'true' ->
+                     get_resource_name(ResourceId, 'undefined');
+                 'false' ->
+                     get_resource_name(ResourceId, AccountId)
+             end,
+    case Result of
+        'not_found' ->
+            Request;
+        ResourceName ->
+            wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Resource-Name">>], ResourceName, Request)
+    end.
