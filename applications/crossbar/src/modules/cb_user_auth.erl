@@ -391,9 +391,9 @@ reset_users_password__step_1(Context) ->
 -spec reset_users_password__step_2(cb_context:context(), ne_binary()) -> cb_context:context().
 reset_users_password__step_2(Context, UUID) ->
     case wh_cache:peek_local(?CROSSBAR_CACHE, UUID) of
-        {'error', _R}=Error ->
-            lager:debug("failed to reset password for user : UUID ~s not found", [UUID]),
-            cb_context:setters(Context, [{cb_context:set_resp_status/2, 'fatal'}
+        {'error', _R} ->
+            lager:debug("failed to reset password for user : UUID ~s not found (~p)", [UUID,_R]),
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'fatal'}
                                         ]);
         {'ok', Data} ->
             %% Data holds the Context used to make the pwd-rst request
