@@ -38,7 +38,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.user_auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.user_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.user_auth">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.user_auth">>, ?MODULE, 'put').
+    _ = crossbar_bindings:bind(<<"*.execute.put.user_auth">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.user_auth">>, ?MODULE, 'get').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -52,7 +53,7 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
-allowed_methods(?RECOVERY) -> [?HTTP_PUT];
+allowed_methods(?RECOVERY) -> [?HTTP_PUT, ?HTTP_GET];
 allowed_methods(_) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -92,6 +93,7 @@ authenticate(Context) ->
 
 authenticate_nouns([{<<"user_auth">>, []}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
+authenticate_nouns([{<<"user_auth">>, [?RECOVERY, _UUID]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -106,11 +108,16 @@ authenticate_nouns(_Nouns) -> 'false'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-    Context1 = consume_tokens(Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1);
-        _Status -> Context1
+    case {cb_context:req_verb(Context), cb_context:req_value(Context, <<"uuid">>)} of
+        {?HTTP_GET, UUID} when UUID =/= 'undefined' ->
+            reset_users_password__step_2(Context, UUID);
+        _Else ->
+            Context1 = consume_tokens(Context),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1);
+                _Status -> Context1
+            end
     end.
 
 validate(Context, ?RECOVERY) ->
@@ -127,7 +134,7 @@ put(Context) ->
 
 put(Context, ?RECOVERY) ->
     _ = cb_context:put_reqid(Context),
-    reset_users_password(Context).
+    reset_users_password__step_1(Context).
 
 %%%===================================================================
 %%% Internal functions
@@ -154,7 +161,8 @@ maybe_get_auth_token(Context, Token) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_auth_resp(cb_context:context(), ne_binary(), ne_binary(),  ne_binary()) -> cb_context:context().
+-spec create_auth_resp(cb_context:context(), ne_binary(), ne_binary(),  ne_binary()) ->
+                              cb_context:context().
 create_auth_resp(Context, Token, AccountId, AccountId) ->
     lager:debug("account ~s is same as auth account", [AccountId]),
     RespData = cb_context:resp_data(Context),
@@ -353,43 +361,73 @@ maybe_load_username(Account, Context) ->
              )
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Helper function to generate random strings
-%% @end
-%%--------------------------------------------------------------------
--spec reset_users_password(cb_context:context()) -> cb_context:context().
-reset_users_password(Context) ->
-    JObj = cb_context:doc(Context),
-    Password = wh_util:rand_hex_binary(16),
-    {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
-    Email = wh_json:get_value(<<"email">>, JObj),
-
-    JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
-                                ,{<<"pvt_sha1_auth">>, SHA1}
-                                ,{<<"require_password_update">>, 'true'}
-                               ], JObj),
-
-    Context1 = crossbar_doc:save(
-                 cb_context:setters(Context, [{fun cb_context:set_doc/2, JObj1}
-                                              ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
-                                             ])
-                ),
+-spec reset_users_password__step_1(cb_context:context()) -> cb_context:context().
+reset_users_password__step_1(Context) ->
+    UUID = wh_util:rand_hex_binary(64),
+    Doc = cb_context:doc(Context),
+    Props = [{'origin', [{'db', wh_doc:account_db(Doc), wh_doc:account_id(Doc)}]}],
+    'ok' = wh_cache:store_local(?CROSSBAR_CACHE, UUID, Context, Props),
+    Email = wh_json:get_value(<<"email">>, Doc),
+    Context1 = crossbar_doc:save(cb_context:set_req_verb(Context, ?HTTP_POST)),
     case cb_context:resp_status(Context1) of
         'success' ->
             Notify = [{<<"Email">>, Email}
-                      ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, JObj)}
-                      ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, JObj)}
-                      ,{<<"Password">>, Password}
-                      ,{<<"Account-ID">>, wh_doc:account_id(JObj)}
-                      ,{<<"Account-DB">>, wh_doc:account_db(JObj)}
+                      ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, Doc)}
+                      ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, Doc)}
+                      ,{<<"UUID">>, UUID}
+                      ,{<<"Account-ID">>, wh_doc:account_id(Doc)}
+                      ,{<<"Account-DB">>, wh_doc:account_db(Doc)}
                       ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Context))}
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
-            'ok' = wapi_notifications:publish_pwd_recovery(Notify),
-            crossbar_util:response(<<"Password reset, email sent to: ", Email/binary>>, Context);
+            'ok' = wapi_notifications:publish_pwd_recovery_req(Notify),
+            Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
+            crossbar_util:response(Msg, Context);
         _Status -> Context1
+    end.
+
+%% @private
+-spec reset_users_password__step_2(cb_context:context(), ne_binary()) -> cb_context:context().
+reset_users_password__step_2(Context, UUID) ->
+    case wh_cache:peek_local(?CROSSBAR_CACHE, UUID) of
+        {'error', _R}=Error ->
+            lager:debug("failed to reset password for user : UUID ~s not found", [UUID]),
+            cb_context:setters(Context, [{cb_context:set_resp_status/2, 'fatal'}
+                                        ]);
+        {'ok', Data} ->
+            %% Data holds the Context used to make the pwd-rst request
+            'ok' = wh_cache:erase_local(?CROSSBAR_CACHE, UUID),
+            JObj = cb_context:doc(Data),
+            Password = wh_util:rand_hex_binary(16),
+            {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
+            Email = wh_json:get_value(<<"email">>, JObj),
+
+            JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
+                                        ,{<<"pvt_sha1_auth">>, SHA1}
+                                        ,{<<"require_password_update">>, 'true'}
+                                       ], JObj),
+
+            Data1 = crossbar_doc:save(
+                      cb_context:setters(Data, [{fun cb_context:set_doc/2, JObj1}
+                                                ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
+                                               ])
+                     ),
+            case cb_context:resp_status(Data1) of
+                'success' ->
+                    Notify = [{<<"Email">>, Email}
+                              ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, JObj)}
+                              ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, JObj)}
+                              ,{<<"Password">>, Password}
+                              ,{<<"Account-ID">>, wh_doc:account_id(JObj)}
+                              ,{<<"Account-DB">>, wh_doc:account_db(JObj)}
+                              ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Data))}
+                              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+                             ],
+                    'ok' = wapi_notifications:publish_pwd_recovery(Notify),
+                    crossbar_util:response(<<"Password reset, email sent to: ", Email/binary>>, Context);
+                _Status -> Data1 %% Or Context?
+            end
     end.
 
 %%--------------------------------------------------------------------

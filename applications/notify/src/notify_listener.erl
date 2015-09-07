@@ -53,6 +53,7 @@
                       ,'outbound_fax_error'
                       ,'deregister'
                       ,'pwd_recovery'
+                      ,'pwd_recovery_req'
                       ,'new_account'
                       ,'cnam_requests'
                       ,'port_request'

@@ -117,6 +117,7 @@
                       ,'port_comment'
                       ,'port_pending'
                       ,'pwd_recovery'
+                      ,'pwd_recovery_req'
                       ,'port_rejected'
                       ,'port_request'
                       ,'port_scheduled'
