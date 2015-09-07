@@ -19,7 +19,7 @@
 -define(APP_VERSION, <<"1.0.0">>).
 
 -define(FMC_CONFIG_CAT, <<"fmc">>).
--define(PLATFORM_ORIGINATOR, whapps_config:get_integer(?FMC_CONFIG_CAT, <<"platform_origiantor_type">>, <<"FMC">>)).
+-define(PLATFORM_ORIGINATOR, whapps_config:get_binary(?FMC_CONFIG_CAT, <<"platform_origiantor_type">>, <<"FMC">>)).
 -define(CCV, <<"Custom-Channel-Vars">>).
 
 -define(XFMC_HEADER, whapps_config:get(<<"fmc">>, <<"x_fmc_header">>)).
