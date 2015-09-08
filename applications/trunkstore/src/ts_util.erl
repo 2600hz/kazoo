@@ -198,11 +198,8 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     JObj = wh_json:set_value(<<"id">>, wh_doc:id(User), ValJObj),
 
                     {'ok', AccountJObj} = kz_account:fetch(AccountId),
-                    FlagsJObj = wh_json:from_list(
-                                    [{<<"server">>, wh_json:get_value(<<"server">>, JObj, wh_json:new())}
-                                     ,{<<"account">>, wh_json:get_value(<<"account">>, JObj, wh_json:new())}
-                                     ,{<<"call_restriction">>, wh_json:get_value(<<"call_restriction">>, AccountJObj, wh_json:new())}
-                                    ]),
+                    Restriction = wh_json:get_value(<<"call_restriction">>, AccountJObj, wh_json:new()),
+                    FlagsJObj = wh_json:set_value(<<"call_restriction">>, Restriction, JObj),
                     wh_cache:store_local(?TRUNKSTORE_CACHE
                                          ,{'lookup_user_flags', Realm, Name, AccountId}
                                          ,FlagsJObj
