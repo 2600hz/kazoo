@@ -116,7 +116,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
             case maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) of
                 'ok' ->
-                    _ = publish_retrieved(Call, SlotNumber),
+                    _ = publish_retrieved(ParkedCall, SlotNumber),
                     _ = cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)),
                     whapps_call_command:wait_for_hangup();
                 {'error', _E}=E ->
@@ -198,7 +198,6 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
         %% attended transfer and allowed to update the provided slot number, we are still connected to the 'parker'
         %% not the 'parkee'
         {'undefined', _} ->
-            _ = publish_parked(Call, SlotNumber),
             lager:info("playback slot number ~s to caller", [SlotNumber]),
             %% Update screen with new slot number
             _ = whapps_call_command:b_answer(Call),
@@ -220,7 +219,6 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
             'ok';
         %% blind transfer and allowed to update the provided slot number
         {_, {'ok', _}} ->
-            _ = publish_parked(Call, SlotNumber),
             ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
             lager:info("call ~s parked in slot ~s", [ParkedCallId, SlotNumber]),
             update_presence(?PARKED_PRESENCE_TYPE, Slot),
@@ -390,6 +388,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
     case find_slot_by_callid(Slots, Replaces) of
         {'ok', SlotNumber, Slot} ->
             lager:info("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
+            _ = publish_parked(Call, SlotNumber),
             CallerNode = whapps_call:switch_nodename(Call),
             Updaters = [fun(J) -> wh_json:set_value(<<"Call-ID">>, CallId, J) end
                         ,fun(J) -> wh_json:set_value(<<"Node">>, CallerNode, J) end
