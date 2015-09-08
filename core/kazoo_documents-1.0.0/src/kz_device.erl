@@ -25,6 +25,7 @@
          ,language/1, language/2, set_language/2
          ,device_type/1, device_type/2, set_device_type/2
          ,owner_id/1, owner_id/2, set_owner_id/2
+         ,enabled/1, enabled/2, set_enabled/2
 
          ,new/0
          ,type/0
@@ -54,6 +55,7 @@
 -define(LANGUAGE, <<"language">>).
 -define(DEVICE_TYPE, <<"device_type">>).
 -define(KEY_OWNER_ID, <<"owner_id">>).
+-define(ENABLED, <<"enabled">>).
 
 -define(PVT_TYPE, <<"device">>).
 
@@ -220,6 +222,7 @@ language(DeviceJObj, Default) ->
 -spec set_language(doc(), ne_binary()) -> doc().
 set_language(DeviceJObj, Language) ->
     wh_json:set_value(?LANGUAGE, Language, DeviceJObj).
+
 -spec device_type(doc()) -> api_binary().
 -spec device_type(doc(), Default) -> ne_binary() | Default.
 device_type(DeviceJObj) ->
@@ -244,3 +247,14 @@ owner_id(DeviceJObj, Default) ->
 -spec set_owner_id(doc(), ne_binary()) -> doc().
 set_owner_id(DeviceJObj, OwnerId) ->
     wh_json:set_value(?KEY_OWNER_ID, OwnerId, DeviceJObj).
+
+-spec enabled(doc()) -> boolean().
+-spec enabled(doc(), boolean()) -> boolean().
+enabled(DeviceJObj) ->
+    enabled(DeviceJObj, 'true').
+enabled(DeviceJObj, Default) ->
+    wh_json:get_value(?ENABLED, DeviceJObj, Default).
+
+-spec set_enabled(doc(), boolean()) -> doc().
+set_enabled(DeviceJObj, Enabled) ->
+    wh_json:set_value(?ENABLED, Enabled, DeviceJObj).

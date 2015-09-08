@@ -412,11 +412,33 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
     OldUsername = kz_device:sip_username(OldDevice),
 
     case kz_device:sip_username(NewDevice) of
-        OldUsername -> 'ok';
+        OldUsername -> maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice);
         NewUsername ->
             lager:debug("the SIP username has changed, sending a registration flush for both"),
             flush_registration(OldUsername, Realm),
             flush_registration(NewUsername, Realm)
+    end.
+
+-spec maybe_flush_registration_on_ownerid(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice) ->
+    OldOwnerId = kz_device:owner_id(OldDevice),
+
+    case kz_device:owner_id(NewDevice) of
+        OldOwnerId -> maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice);
+        _NewOwnerId ->
+            lager:debug("the device owner_id has changed, sending a registration flush"),
+            flush_registration(kz_device:sip_username(OldDevice), Realm)
+    end.
+
+-spec maybe_flush_registration_on_enabled(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
+    OldEnabled = kz_device:enabled(OldDevice),
+
+    case kz_device:enabled(NewDevice) of
+        OldEnabled -> 'ok';
+        _NewEnabled ->
+            lager:debug("the device enabled has changed, sending a registration flush"),
+            flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
 %%--------------------------------------------------------------------
