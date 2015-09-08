@@ -70,77 +70,6 @@ handle(Data, Call) ->
 	    handle_manual(Data, Call)
     end.
 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Entry point for this module
-%% @end
-%%--------------------------------------------------------------------
--spec handle_list(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle_list(Data, Call) ->
-    CallerIdNumber = whapps_call:caller_id_number(Call),
-    lager:debug("callerid number before this module: ~s ", [CallerIdNumber]),
-
-    {NewCidInfo, Dest} = get_list_entry(Data, Call),
-
-    NewCallerIdNumber = wh_json:get_value(<<"number">>, NewCidInfo),
-    NewCallerIdName = wh_json:get_value(<<"name">>, NewCidInfo),
-
-    lager:info("setting the caller id number to ~s", [NewCallerIdNumber]),
-
-    Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
-	       ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
-	       ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
-              ],
-
-    cf_exe:set_call(whapps_call:exec(Updates, Call)),
-
-    lager:debug("destination number from cf_capture_group regex: ~s ", [Dest]),
-    Number = wnm_util:to_e164(Dest),
-    lager:info("send the call onto real destination of: ~s", [Number]),
-
-    maybe_route_to_callflow(Data, Call, Number).
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_restrict_call(wh_json:object(), whapps_call:call(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_restrict_call(Data, Call, Number, Flow) ->
-    case should_restrict_call(Data, Call, Number) of
-        'true' ->
-            lager:info("Not allowed to call this destination, terminate", []),
-            _ = whapps_call_command:answer(Call),
-            _ = whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
-            _ = whapps_call_command:queued_hangup(Call),
-            'ok';
-        'false' ->
-            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call)
-    end.
-
--spec maybe_route_to_callflow(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
-maybe_route_to_callflow(Data, Call, Number) ->
-    case cf_util:lookup_callflow(Number, whapps_call:account_id(Call)) of
-        {'ok', Flow, 'true'} ->
-            lager:info("callflow ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)]),
-            Updates = [{fun whapps_call:set_request/2
-                        ,list_to_binary([Number, "@", whapps_call:request_realm(Call)])
-                       }
-                       ,{fun whapps_call:set_to/2, list_to_binary([Number, "@", whapps_call:to_realm(Call)])}
-                      ],
-            {'ok', C} = cf_exe:get_call(Call),
-            cf_exe:set_call(whapps_call:exec(Updates, C)),
-            maybe_restrict_call(Data, Call, Number, Flow);
-        _ ->
-            lager:info("failed to find a callflow to satisfy ~s", [Number]),
-            _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
-	    cf_exe:stop(Call)
-    end.
-
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -202,10 +131,80 @@ handle_manual(Data, Call) ->
 
     {'ok', C1} = cf_exe:get_call(Call),
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', CID}
-	      ,{fun whapps_call:set_caller_id_number/2, CID}
+	       ,{fun whapps_call:set_caller_id_number/2, CID}
               ],
     cf_exe:set_call(whapps_call:exec(Updates, C1)),
     cf_exe:continue(Call).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Entry point for this module
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_list(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_list(Data, Call) ->
+    CallerIdNumber = whapps_call:caller_id_number(Call),
+    lager:debug("callerid number before this module: ~s ", [CallerIdNumber]),
+
+    {NewCidInfo, Dest} = get_list_entry(Data, Call),
+
+    NewCallerIdNumber = wh_json:get_value(<<"number">>, NewCidInfo),
+    NewCallerIdName = wh_json:get_value(<<"name">>, NewCidInfo),
+
+    lager:info("setting the caller id number to ~s", [NewCallerIdNumber]),
+
+    Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
+	       ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
+	       ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
+              ],
+
+    cf_exe:set_call(whapps_call:exec(Updates, Call)),
+
+    lager:debug("destination number from cf_capture_group regex: ~s ", [Dest]),
+    Number = wnm_util:to_e164(Dest),
+    lager:info("send the call onto real destination of: ~s", [Number]),
+
+    maybe_route_to_callflow(Data, Call, Number).
+
+-spec maybe_route_to_callflow(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
+maybe_route_to_callflow(Data, Call, Number) ->
+    case cf_util:lookup_callflow(Number, whapps_call:account_id(Call)) of
+        {'ok', Flow, 'true'} ->
+            lager:info("callflow ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)]),
+            Updates = [{fun whapps_call:set_request/2
+                        ,list_to_binary([Number, "@", whapps_call:request_realm(Call)])
+                       }
+                       ,{fun whapps_call:set_to/2, list_to_binary([Number, "@", whapps_call:to_realm(Call)])}
+                      ],
+            {'ok', C} = cf_exe:get_call(Call),
+            cf_exe:set_call(whapps_call:exec(Updates, C)),
+            maybe_restrict_call(Data, Call, Number, Flow);
+        _ ->
+            lager:info("failed to find a callflow to satisfy ~s", [Number]),
+            _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
+	    cf_exe:stop(Call)
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_restrict_call(wh_json:object(), whapps_call:call(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_restrict_call(Data, Call, Number, Flow) ->
+    case should_restrict_call(Data, Call, Number) of
+        'true' ->
+            lager:info("Not allowed to call this destination, terminate", []),
+            _ = whapps_call_command:answer(Call),
+            _ = whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
+            _ = whapps_call_command:queued_hangup(Call),
+            'ok';
+        'false' ->
+            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call)
+    end.
 
 
 %%--------------------------------------------------------------------
@@ -215,9 +214,10 @@ handle_manual(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec should_restrict_call(wh_json:object(), whapps_call:call(), ne_binary()) -> boolean().
 should_restrict_call(Data, Call, Number) ->
-    case wh_json:is_true(<<"enforce_call_restriction">>, Data, 'false') of
-        'false' -> 'false';
-        'true' -> should_restrict_call_by_account(Call, Number)
+    case wh_json:is_true(<<"enforce_call_restriction">>, Data, 'true') of
+        'false' -> 'false',
+		   lager:info("not enforcing call restrictions");
+        'true' -> should_restrict_call(Call, Number)
     end.
 
 
@@ -226,10 +226,12 @@ should_restrict_call(Data, Call, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_restrict_call_by_account(whapps_call:call(), ne_binary()) -> boolean().
-should_restrict_call_by_account(Call, Number) ->
+-spec should_restrict_call(whapps_call:call(), ne_binary()) -> boolean().
+should_restrict_call(Call, Number) ->
     AccountId = whapps_call:account_id(Call),
     AccountDb = whapps_call:account_db(Call),
+    JObj1 = cf_endpoint:get(Call),
+    %% lager:info("cf_endpoint JObj ~p", [JObj1]),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
@@ -237,7 +239,6 @@ should_restrict_call_by_account(Call, Number) ->
             lager:info("classified number as ~p", [Classification]),
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -256,18 +257,15 @@ get_list_entry(Data, Call) ->
             lager:info("match list loaded: ~s", [ListId]),
             LengthDigits = wh_json:get_ne_value(<<"length">>, ListJObj),
 	    lager:debug("digit length to limit lookup key in number: ~p ", [LengthDigits]),
-
 	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
 	    lager:debug("capture_group ~s ", [CaptureGroup]),
 	    <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
 	    lager:debug("CIDKey ~p to lookup in couchdb doc", [CIDKey]),
-
             JObj = wh_json:get_ne_value(<<"entries">>, ListJObj),
             lager:info("list of possible values to use: ~p", [JObj]),
 	    NewCallerId = wh_json:get_value(CIDKey, JObj),
 	    lager:info("new caller id data : ~p",  [NewCallerId]),
 	    { NewCallerId, Dest};
-
 	{'error', Reason} ->
             lager:info("failed to load match list box ~s, ~p", [ListId, Reason]),
             []
