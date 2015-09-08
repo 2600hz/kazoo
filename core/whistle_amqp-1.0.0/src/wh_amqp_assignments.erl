@@ -180,12 +180,9 @@ handle_cast({'maybe_reassign', Consumer}, State) ->
     {'noreply', State};
 handle_cast({'maybe_defer_reassign', #wh_amqp_assignment{timestamp=Timestamp
                                                          ,consumer=Consumer
+                                                         ,type=Type
                                                         }}, State) ->
-    Props = [{#wh_amqp_assignment.channel, 'undefined'}
-             ,{#wh_amqp_assignment.channel_ref, 'undefined'}
-             ,{#wh_amqp_assignment.connection, 'undefined'}
-             ,{#wh_amqp_assignment.reconnect, 'true'}
-            ],
+    Props = reassign_props(Type),
     ets:update_element(?TAB, Timestamp, Props),
     maybe_reassign(Consumer),
     {'noreply', State};
@@ -763,14 +760,26 @@ maybe_defer_reassign(#wh_amqp_assignment{}=Assignment
            end);
 maybe_defer_reassign(#wh_amqp_assignment{timestamp=Timestamp
                                          ,consumer=Consumer
+                                         ,type=Type
                                         }, _) ->
-    Props = [{#wh_amqp_assignment.channel, 'undefined'}
-             ,{#wh_amqp_assignment.channel_ref, 'undefined'}
-             ,{#wh_amqp_assignment.connection, 'undefined'}
-             ,{#wh_amqp_assignment.reconnect, 'true'}
-            ],
+    Props = reassign_props(Type),
     ets:update_element(?TAB, Timestamp, Props),
     gen_server:cast(?MODULE, {'maybe_reassign', Consumer}).
+
+-spec reassign_props(atom()) -> wh_proplist().
+reassign_props('float') ->
+    [{#wh_amqp_assignment.channel, 'undefined'}
+     ,{#wh_amqp_assignment.channel_ref, 'undefined'}
+     ,{#wh_amqp_assignment.connection, 'undefined'}
+     ,{#wh_amqp_assignment.reconnect, 'true'}
+     ,{#wh_amqp_assignment.broker, 'undefined'}
+    ];
+reassign_props('sticky') ->
+    [{#wh_amqp_assignment.channel, 'undefined'}
+     ,{#wh_amqp_assignment.channel_ref, 'undefined'}
+     ,{#wh_amqp_assignment.connection, 'undefined'}
+     ,{#wh_amqp_assignment.reconnect, 'true'}
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
