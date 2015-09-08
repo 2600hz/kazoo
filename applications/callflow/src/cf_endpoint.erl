@@ -171,6 +171,7 @@ merge_attributes(Endpoint, Type) ->
             ,<<"mobile">>
             ,<<"presence_id">>
             ,<<"call_waiting">>
+            ,<<"caller_id_format">>
             ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Endpoint, Type, Keys).
@@ -516,9 +517,25 @@ build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
         {'error', _}=E -> E
     end;
 build(Endpoint, Properties, Call) ->
-    case should_create_endpoint(Endpoint, Properties, Call) of
-        'ok' -> create_endpoints(Endpoint, Properties, Call);
+    Call1 = maybe_rewrite_caller_id(Endpoint, Call),
+    case should_create_endpoint(Endpoint, Properties, Call1) of
+        'ok' -> create_endpoints(Endpoint, Properties, Call1);
         {'error', _}=E -> E
+    end.
+
+-spec maybe_rewrite_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+maybe_rewrite_caller_id(Endpoint, Call) ->
+    Class   = wnm_util:classify_number(whapps_call:caller_id_number(Call)),
+    AllFmts = wh_json:get_value(<<"caller_id_format">>, Endpoint, []),
+    UseFmts = wh_json:get_value(Class, AllFmts, []),
+
+    lager:debug("possibly re-formatting caller id for ~p with regex ~p~n", [Class, UseFmts]),
+
+    case re:run(whapps_call:caller_id_number(Call), UseFmts, [{capture, all_but_first, binary}]) of
+        {match, UseCid} ->
+            lager:debug("match ~p found! re-formatting to ~p~n", [UseCid, hd(UseCid)]),
+            whapps_call:set_caller_id_number(hd(UseCid), Call);
+        _NotMatching -> Call
     end.
 
 -spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
