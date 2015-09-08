@@ -108,6 +108,7 @@ authenticate_nouns(_Nouns) -> 'false'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
+    lager:debug(">>> validate/1"),
     case {cb_context:req_verb(Context), cb_context:req_value(Context, <<"uuid">>)} of
         {?HTTP_GET, UUID} when UUID =/= 'undefined' ->
             reset_users_password__step_2(Context, UUID);
@@ -121,18 +122,22 @@ validate(Context) ->
     end.
 
 validate(Context, ?RECOVERY) ->
+    lager:debug(">>> validate/2 RECOVERY"),
     cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1);
 validate(Context, Token) ->
+    lager:debug(">>> validate/2 "),
     Context1 = cb_context:set_account_db(Context, ?KZ_TOKEN_DB),
     maybe_get_auth_token(Context1, Token).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
+    lager:debug(">>> put/1"),
     _ = cb_context:put_reqid(Context),
     crossbar_util:create_auth_token(Context, ?MODULE).
 
 put(Context, ?RECOVERY) ->
+    lager:debug(">>> put/2"),
     _ = cb_context:put_reqid(Context),
     reset_users_password__step_1(Context).
 
@@ -365,10 +370,12 @@ maybe_load_username(Account, Context) ->
 -spec reset_users_password__step_1(cb_context:context()) -> cb_context:context().
 reset_users_password__step_1(Context) ->
     UUID = wh_util:rand_hex_binary(64),
+    lager:debug(">>> UUID ~s", [UUID]),
     Doc = cb_context:doc(Context),
     Props = [{'origin', [{'db', wh_doc:account_db(Doc), wh_doc:account_id(Doc)}]}],
     'ok' = wh_cache:store_local(?CROSSBAR_CACHE, UUID, Context, Props),
     Email = wh_json:get_value(<<"email">>, Doc),
+    lager:debug(">>> Email: ~p", [Email]),
     Context1 = crossbar_doc:save(cb_context:set_req_verb(Context, ?HTTP_POST)),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -381,21 +388,26 @@ reset_users_password__step_1(Context) ->
                       ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Context))}
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
+            lager:debug(">>> 1 success"),
             'ok' = wapi_notifications:publish_pwd_recovery_req(Notify),
             Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
             crossbar_util:response(Msg, Context);
-        _Status -> Context1
+        _Status ->
+            lager:debug(">>> 1 failure"),
+            Context1
     end.
 
 %% @private
 -spec reset_users_password__step_2(cb_context:context(), ne_binary()) -> cb_context:context().
 reset_users_password__step_2(Context, UUID) ->
+    lager:debug(">>> 2 ~p", [UUID]),
     case wh_cache:peek_local(?CROSSBAR_CACHE, UUID) of
         {'error', _R} ->
             lager:debug("failed to reset password for user : UUID ~s not found (~p)", [UUID,_R]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'fatal'}
                                         ]);
         {'ok', Data} ->
+            lager:debug(">>> 2 right track"),
             %% Data holds the Context used to make the pwd-rst request
             'ok' = wh_cache:erase_local(?CROSSBAR_CACHE, UUID),
             JObj = cb_context:doc(Data),
@@ -408,6 +420,7 @@ reset_users_password__step_2(Context, UUID) ->
                                         ,{<<"require_password_update">>, 'true'}
                                        ], JObj),
 
+            lager:debug(">>> 2 Email ~p Password ~p", [Email, Password]),
             Data1 = crossbar_doc:save(
                       cb_context:setters(Data, [{fun cb_context:set_doc/2, JObj1}
                                                 ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
@@ -424,9 +437,12 @@ reset_users_password__step_2(Context, UUID) ->
                               ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Data))}
                               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                              ],
+                    lager:debug(">>> 2 email sent"),
                     'ok' = wapi_notifications:publish_pwd_recovery(Notify),
                     crossbar_util:response(<<"Password reset, email sent to: ", Email/binary>>, Context);
-                _Status -> Data1 %% Or Context?
+                _Status ->
+                    lager:debug(">>> 2 failure"),
+                    Data1 %% Or Context?
             end
     end.
 

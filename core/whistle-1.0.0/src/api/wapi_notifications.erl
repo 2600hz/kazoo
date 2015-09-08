@@ -1116,7 +1116,7 @@ bind_to_q(Q, ['pwd_recovery'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY),
     bind_to_q(Q, T);
 bind_to_q(Q, ['pwd_recovery_req'|T]) ->
-    'ok' = amqp_uti:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY_REQ),
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY_REQ),
     bind_to_q(Q, T);
 bind_to_q(Q, ['new_account'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
@@ -1363,6 +1363,7 @@ publish_pwd_recovery(API, ContentType) ->
 -spec publish_pwd_recovery_req(api_terms(), ne_binary()) -> 'ok'.
 publish_pwd_recovery_req(JObj) -> publish_pwd_recovery_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_pwd_recovery_req(API, ContentType) ->
+    lager:debug(">>> publishing ~p", [API]),
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PWD_RECOVERY_REQ_VALUES, fun ?MODULE:pwd_recovery_req/1),
     amqp_util:notifications_publish(?NOTIFY_PWD_RECOVERY_REQ, Payload, ContentType).
 

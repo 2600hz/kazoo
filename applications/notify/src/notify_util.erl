@@ -389,6 +389,8 @@ category_to_file(<<"notify.deregister">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_deregister.config"];
 category_to_file(<<"notify.password_recovery">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_password_recovery.config"];
+category_to_file(<<"notify.password_recovery_req">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_password_recovery_req.config"];
 category_to_file(<<"notify.new_account">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_new_account.config"];
 category_to_file(<<"notify.first_occurrence">>) ->

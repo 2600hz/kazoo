@@ -20,8 +20,7 @@
         ,wh_json:from_list([?ACCOUNT_MACROS ++ ?USER_MACROS])
        ).
 
--define(TEMPLATE_TEXT, <<"Hi, {{user.first_name}} {{user.last_name}}!\n\nWe received a request to change the password for your 2600hz VoIP Services account \"{{account.name}}\".\nIf you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:\n\n
-{{link}}">>).
+-define(TEMPLATE_TEXT, <<"Hi, {{user.first_name}} {{user.last_name}}!\n\nWe received a request to change the password for your 2600hz VoIP Services account \"{{account.name}}\".\nIf you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:\n\n{{link}}">>).
 -define(TEMPLATE_HTML, <<"<html></head><body><h3>Hi, {{user.first_name}} {{user.last_name}}!</h3><p>We received a request to change the password of your 2600hz VoIP Services account \"{{account.name}}\".</p><p>If you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:</p><p><a href=\"{{link}}\">{{link}}</a></p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Reset your 2600hz VoIP Services account password.">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
