@@ -156,8 +156,8 @@ handle_list(Data, Call) ->
     lager:info("setting the caller id number to ~s", [NewCallerIdNumber]),
 
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
-	       ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
-	       ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
+               ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
+               ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
               ],
 
     cf_exe:set_call(whapps_call:exec(Updates, Call)),
