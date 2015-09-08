@@ -244,7 +244,7 @@ load_conference_details(Context, ConfId) ->
                                             ,{'ecallmgr', 'true'}
                                            ),
     case ReqResp of
-        {'error', _} -> cb_context:add_system_error('conference_search_error', Context);
+        {'error', _} -> cb_context:add_system_error('not_found', Context);
         {_, JObjs} -> participant_details(conference_participants(JObjs), Context)
     end.
 
@@ -298,14 +298,18 @@ do_conference_action(Context, Id, Action, ParticipantId) ->
     ConfOwnerId = wh_json:get_value(<<"owner_id">>, ConfDoc),
     AuthOwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
     % Abort if the user is not room owner
-    Resp = case ConfOwnerId of
+    case ConfOwnerId of
         AuthOwnerId ->
             Conference = whapps_conference:set_id(Id, whapps_conference:new()),
-            perform_conference_action(Conference, Action, ParticipantId);
-        _ -> <<"user_not_owner">>
-    end,
-    crossbar_doc:handle_json_success(wh_json:set_value(<<"resp">>, Resp, wh_json:new()), Context).
+            Resp = wh_json:set_value(<<"resp">>
+                                     ,perform_conference_action(Conference, Action, ParticipantId)
+                                     ,wh_json:new()
+                                    ),
+            crossbar_doc:handle_json_success(Resp, Context);
+        _ -> cb_context:add_system_error('forbidden', Context)
+    end.
 
+-spec perform_conference_action(whapps_conference:conference(), binary(), ne_binary()) -> 'ok'.
 perform_conference_action(Conference, <<"mute">>, ParticipantId) ->
     whapps_conference_command:mute_participant(ParticipantId, Conference);
 perform_conference_action(Conference, <<"unmute">>, ParticipantId) ->
