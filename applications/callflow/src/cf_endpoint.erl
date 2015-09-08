@@ -266,6 +266,12 @@ merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
     OwnerAttr = get_record_call_properties(Owner),
     Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
+merge_attributes([<<"caller_id_format">> = Key|Keys], Account, Endpoint, Owner) ->
+    EndpointAttr = wh_json:get_value(Key, Endpoint),
+    AccountAttr = wh_json:get_value(Key, Account),
+    OwnerAttr = wh_json:get_value(Key, Owner),
+    Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
+    merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
