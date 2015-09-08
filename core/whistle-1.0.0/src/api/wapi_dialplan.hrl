@@ -518,8 +518,11 @@
 
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
-                                      ,<<"Silence-Hits">>, <<"Insert-At">>
+-define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Insert-At">>
+                                      ,<<"Silence-Hits">>
+                                      ,<<"Silence-Threshold">>
+                                      ,<<"Terminators">>
+                                      ,<<"Time-Limit">>
                                      ]).
 -define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -531,13 +534,20 @@
 %% Record Call Leg into MediaName
 %% Stream-To = local results in the recording being stored on the media server
 %% Stream-To = remote will stream the recording to the handling ecallmgr server
--define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>
+-define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>
+                                  ,<<"Call-ID">>
+                                  ,<<"Media-Name">>
                                   ,<<"Record-Action">>
                                  ]).
--define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>, <<"Follow-Transfer">>
-                                           ,<<"Media-Transfer-Method">> ,<<"Media-Transfer-Destination">>
-                                           ,<<"Additional-Headers">>, <<"Record-Sample-Rate">>
+-define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Additional-Headers">>
+                                           ,<<"Channels-As-Stereo">>
+                                           ,<<"Follow-Transfer">>
+                                           ,<<"Insert-At">>
+                                           ,<<"Media-Transfer-Destination">>
+                                           ,<<"Media-Transfer-Method">>
                                            ,<<"Record-Min-Sec">>
+                                           ,<<"Record-Sample-Rate">>
+                                           ,<<"Time-Limit">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}

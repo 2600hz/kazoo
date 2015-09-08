@@ -1339,7 +1339,7 @@ get_terminators([_|_]=Ts) ->
         'false' ->
             put('$prior_terminators', Ts),
             case wh_util:is_empty(Ts) of
-                'true' -> {<<"playback_terminators">>, <<"none">>};
+                'true' ->  {<<"playback_terminators">>, <<"none">>};
                 'false' -> {<<"playback_terminators">>, wh_util:to_binary(Ts)}
             end
     end;
@@ -1401,6 +1401,8 @@ set_record_call_vars(Node, UUID, JObj) ->
     Vars = lists:foldl(fun(F, V) -> F(V) end
                        ,[{<<"RECORD_APPEND">>, <<"true">>}
                          ,{<<"enable_file_write_buffering">>, <<"false">>}
+                         ,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
+                         ,{<<"RECORD_SOFTWARE">>, <<"2600Hz, Inc.'s Kazoo">>}
                         ]
                        ,Routines
                       ),
@@ -1410,7 +1412,7 @@ set_record_call_vars(Node, UUID, JObj) ->
 maybe_waste_resources(Acc) ->
     case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
         'false' -> Acc;
-        'true' -> [{<<"record_waste_resources">>, <<"true">>}|Acc]
+        'true' -> [{<<"record_waste_resources">>, <<"true">>} | Acc]
     end.
 
 -spec maybe_get_terminators(wh_proplist(), wh_json:object()) -> wh_proplist().
@@ -1418,6 +1420,13 @@ maybe_get_terminators(Acc, JObj) ->
     case get_terminators(JObj) of
         'undefined' -> Acc;
         Terminators -> [Terminators|Acc]
+    end.
+
+-spec should_record_stereo(wh_json:object()) -> ne_binary().
+should_record_stereo(JObj) ->
+    case wh_json:is_true(<<"Channels-As-Stereo">>, JObj, 'true') of
+        'true'  -> <<"true">>;
+        'false' -> <<"false">>
     end.
 
 -spec start_record_call_args(atom(), ne_binary(), wh_json:object(), ne_binary()) -> ne_binary().
