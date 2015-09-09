@@ -35,12 +35,7 @@
           prompts = #prompts{} :: prompts(),
           max_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_digits">>, 10),
           min_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_digits">>, 10),
-          whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>),
-          default_cid = whapps_config:get_binary(
-                          ?MOD_CONFIG_CAT
-                          ,<<"default_cid">>
-                          ,wh_util:anonymous_caller_id_number()
-                         )
+          whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>)
          }).
 
 %%--------------------------------------------------------------------
@@ -68,7 +63,7 @@ handle(Data, Call) ->
     Min = DynamicCID#dynamic_cid.min_digits,
     Max = DynamicCID#dynamic_cid.max_digits,
     Regex = DynamicCID#dynamic_cid.whitelist,
-    DefaultCID = DynamicCID#dynamic_cid.default_cid,
+    DefaultCID = whapps_call:caller_id_number(Call),
 
     Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>
                                            ,Data
