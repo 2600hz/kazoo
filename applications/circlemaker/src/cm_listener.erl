@@ -193,7 +193,7 @@ handle_accounting_req(JObj, _Props) ->
                             lager:debug("Cleanup of the delayed operation for outer inbound leg: ~p", [LostJObj]),
                             ets:delete(?ETS_DELAY_ACCOUNTING, CallId)
                     end;
-                {'undefined', 'undefined'} ->
+                {<<"call_event">>, <<"channel_fs_status_resp">>} ->
                     % Interim-Update
                     JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Interim-Update">>}
                                                 ,{<<"Acct-Delay-Time">>, 0}
@@ -239,34 +239,13 @@ maybe_start_interim_update_timer(AccountId, CallId) ->
 
 handle_interim_update(CallId) ->
     wh_util:put_callid(CallId),
-    % TODO: rewrite as async request? spawn?
-    case wh_amqp_worker:call_collect([{<<"Call-ID">>, CallId}, {<<"Fields">>, <<"all">>}, {<<"Active-Only">>, 'true'}
-                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
-                                      ,fun wapi_call:publish_query_channels_req/1
-                                      ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1})
-    of
-        {'ok', []} ->
-            lager:debug("No channels in response");
-        {'ok', StatusJObjs} ->
-        lager:debug("Some channels were found: ~p", [StatusJObjs]),
-            case find_channel(CallId, StatusJObjs) of
-                [] ->
-                    lager:debug("No information");
-                [StatusJObj] ->
-                    lager:debug("Channel found: ~p", [StatusJObj]),
-                    % some preparations before sending the JObj
-                    AccountId = wh_json:get_value(<<"Account-ID">>, StatusJObj),
-                    JObj = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], AccountId, StatusJObj),
-                    % emulation of Accounting Request operation
-                    lager:debug("Sending accounting request ~p", [JObj]),
-                    handle_accounting_req(JObj, [])
-            end;
-        {'returned', _JObj, BR} ->
-            lager:debug("Return something: ~p", [BR]);
-        {'timeout', Resp} ->
-            lager:debug("Timeout: ~p", [Resp]);
+    case whapps_call_command:fs_channel_status(CallId) of
+        {'ok', ChannelStatus} ->
+            % emulation of Accounting Request operation
+            lager:debug("Sending Interim Update"),
+            handle_accounting_req(ChannelStatus, []);
         {'error', Error} ->
-            lager:debug("Error: ~p", [Error])
+            lager:debug("Error on sending Interim Update: ~p", [Error])
     end.
 
 -spec find_channel(ne_binary(), wh_json:objects()) -> api_object().

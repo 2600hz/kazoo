@@ -159,7 +159,7 @@ determine_aaa_request_type(JObj) ->
         {<<"authz">>, _} -> 'authz';
         {<<"call_event">>, <<"CHANNEL_CREATE">>} -> 'accounting';
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> 'accounting';
-        {'undefined', 'undefined'} -> 'accounting'
+        {<<"call_event">>, <<"channel_fs_status_resp">>} -> 'accounting'
     end.
 
 -spec determine_channel_type(wh_json:object()) -> {ne_binaries(), 'normal'|'loopback'}.
