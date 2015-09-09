@@ -27,9 +27,13 @@ json: JSON = $(shell find priv/couchdb -name *.json -print)
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 
-priv/comp128.so: includes = -I/usr/lib/erlang/usr/include -I $(wildcard $(shell dirname `which erl`)/../erts-*/include)
+ERL_INCLUDES := $(wildcard $(shell dirname `which erl`)/../erts-*/include)
+ifeq ($(ERL_INCLUDES),)
+	ERL_INCLUDES = /usr/lib/erlang/usr/include
+endif
+
 priv/comp128.so: c_src/comp128.c
-	gcc $(includes) -fpic -shared c_src/comp128.c -o priv/comp128.so
+	gcc -I$(ERL_INCLUDES) -fpic -shared c_src/comp128.c -o priv/comp128.so
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
