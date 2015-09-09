@@ -60,9 +60,6 @@
                      ,{{'teletype_password_recovery', 'handle_password_recovery'}
                        ,[{<<"notification">>, <<"password_recovery">>}]
                       }
-                     ,{{'teletype_password_recovery_req', 'handle_password_recovery_req'}
-                       ,[{<<"notification">>, <<"password_recovery_req">>}]
-                      }
                      ,{{'teletype_system_alert', 'handle_system_alert'}
                        ,[{<<"notification">>, <<"system_alert">>}]
                       }
@@ -120,7 +117,6 @@
                       ,'port_comment'
                       ,'port_pending'
                       ,'pwd_recovery'
-                      ,'pwd_recovery_req'
                       ,'port_rejected'
                       ,'port_request'
                       ,'port_scheduled'
@@ -236,7 +232,6 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, _State) ->
-    lager:debug(">>> TADAAA ~p", [JObj]),
     case teletype_util:should_handle_notification(JObj) of
         'false' -> 'ignore';
         'true' -> {'reply', []}

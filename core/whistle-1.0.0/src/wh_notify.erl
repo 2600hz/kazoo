@@ -13,7 +13,6 @@
 -export([low_balance/2]).
 -export([new_account/2]).
 -export([pwd_recovery/2]).
--export([pwd_recovery_req/2]).
 -export([abnormal_hangup/2]).
 -export([first_call/1]).
 -export([first_registration/1]).
@@ -110,9 +109,6 @@ new_account(_User, _Account) ->
     'ok'.
 
 pwd_recovery(_User, _Account) ->
-    'ok'.
-
-pwd_recovery_req(_User, _Account) ->
     'ok'.
 
 abnormal_hangup(_CDR, _Account) ->

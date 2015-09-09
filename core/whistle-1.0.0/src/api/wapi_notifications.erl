@@ -22,7 +22,6 @@
          ,register/1, register_v/1
          ,deregister/1, deregister_v/1
          ,pwd_recovery/1, pwd_recovery_v/1
-         ,pwd_recovery_req/1, pwd_recovery_req_v/1
          ,new_account/1, new_account_v/1
          ,new_user/1, new_user_v/1
          ,port_request/1, port_request_v/1
@@ -56,7 +55,6 @@
          ,publish_register/1, publish_register/2
          ,publish_deregister/1, publish_deregister/2
          ,publish_pwd_recovery/1, publish_pwd_recovery/2
-         ,publish_pwd_recovery_req/1, publish_pwd_recovery_req/2
          ,publish_new_account/1, publish_new_account/2
          ,publish_new_user/1, publish_new_user/2
          ,publish_port_request/1, publish_port_request/2
@@ -100,7 +98,6 @@
 %%-define(NOTIFY_REGISTER_OVERWRITE, <<"notifications.sip.register_overwrite">>).
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PWD_RECOVERY, <<"notifications.password.recovery">>).
--define(NOTIFY_PWD_RECOVERY_REQ, <<"notifications.password.recovery_req">>).
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
 -define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
@@ -247,7 +244,7 @@
 -define(REGISTER_TYPES, []).
 
 %% Notify Password Recovery
--define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Account-ID">>, <<"Password">>]).
+-define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Account-ID">>, <<"UUID">>]).
 -define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>
                                         ,<<"Account-DB">>, <<"Request">>
                                         | ?DEFAULT_OPTIONAL_HEADERS
@@ -256,17 +253,6 @@
                               ,{<<"Event-Name">>, <<"password_recovery">>}
                              ]).
 -define(PWD_RECOVERY_TYPES, []).
-
-%% Notify Password Recovery Req
--define(PWD_RECOVERY_REQ_HEADERS, [<<"Email">>, <<"Account-ID">>, <<"UUID">>]).
--define(OPTIONAL_PWD_RECOVERY_REQ_HEADERS, [<<"First-Name">>, <<"Last-Name">>
-                                            ,<<"Account-DB">>, <<"Request">>
-                                            | ?DEFAULT_OPTIONAL_HEADERS
-                                           ]).
--define(PWD_RECOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                  ,{<<"Event-Name">>, <<"password_recovery_req">>}
-                                 ]).
--define(PWD_RECOVERY_REQ_TYPES, []).
 
 %% Notify New Account
 -define(NEW_ACCOUNT_HEADERS, [<<"Account-ID">>]).
@@ -492,8 +478,6 @@ headers(<<"transaction">>) ->
     ?TRANSACTION_HEADERS ++ ?OPTIONAL_TRANSACTION_HEADERS;
 headers(<<"password_recovery">>) ->
     ?PWD_RECOVERY_HEADERS ++ ?OPTIONAL_PWD_RECOVERY_HEADERS;
-headers(<<"password_recovery_req">>) ->
-    ?PWD_RECOVERY_REQ_HEADERS ++ ?OPTIONAL_PWD_RECOVERY_REQ_HEADERS;
 headers(<<"system_alert">>) ->
     ?SYSTEM_ALERT_HEADERS ++ ?OPTIONAL_SYSTEM_ALERT_HEADERS;
 headers(<<"cnam_request">>) ->
@@ -693,23 +677,6 @@ pwd_recovery(JObj) -> pwd_recovery(wh_json:to_proplist(JObj)).
 pwd_recovery_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PWD_RECOVERY_HEADERS, ?PWD_RECOVERY_VALUES, ?PWD_RECOVERY_TYPES);
 pwd_recovery_v(JObj) -> pwd_recovery_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Pwd_Recovery_Req
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-pwd_recovery_req(Prop) when is_list(Prop) ->
-    case pwd_recovery_req_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?PWD_RECOVERY_REQ_HEADERS, ?OPTIONAL_PWD_RECOVERY_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for pwd_recovery_req"}
-    end;
-pwd_recovery_req(JObj) -> pwd_recovery_req(wh_json:to_proplist(JObj)).
-
--spec pwd_recovery_req_v(api_terms()) -> boolean().
-pwd_recovery_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?PWD_RECOVERY_REQ_HEADERS, ?PWD_RECOVERY_REQ_VALUES, ?PWD_RECOVERY_REQ_TYPES);
-pwd_recovery_req_v(JObj) -> pwd_recovery_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc New account notification - see wiki
@@ -1047,7 +1014,6 @@ skel_v(JObj) -> skel_v(wh_json:to_proplist(JObj)).
                        'register' |
                        'deregister' |
                        'pwd_recovery' |
-                       'pwd_recovery_req' |
                        'new_account' |
                        'new_user' |
                        'port_request' |
@@ -1114,9 +1080,6 @@ bind_to_q(Q, ['deregister'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['pwd_recovery'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['pwd_recovery_req'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY_REQ),
     bind_to_q(Q, T);
 bind_to_q(Q, ['new_account'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
@@ -1216,9 +1179,6 @@ unbind_q_from(Q, ['deregister'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['pwd_recovery'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY),
-    unbind_q_from(Q, T);
-unbind_q_from(Q, ['pwd_recovery_req'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY_REQ),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['new_account'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
@@ -1358,14 +1318,6 @@ publish_pwd_recovery(JObj) -> publish_pwd_recovery(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_pwd_recovery(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PWD_RECOVERY_VALUES, fun ?MODULE:pwd_recovery/1),
     amqp_util:notifications_publish(?NOTIFY_PWD_RECOVERY, Payload, ContentType).
-
--spec publish_pwd_recovery_req(api_terms()) -> 'ok'.
--spec publish_pwd_recovery_req(api_terms(), ne_binary()) -> 'ok'.
-publish_pwd_recovery_req(JObj) -> publish_pwd_recovery_req(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_pwd_recovery_req(API, ContentType) ->
-    lager:debug(">>> publishing ~p", [API]),
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?PWD_RECOVERY_REQ_VALUES, fun ?MODULE:pwd_recovery_req/1),
-    amqp_util:notifications_publish(?NOTIFY_PWD_RECOVERY_REQ, Payload, ContentType).
 
 -spec publish_new_account(api_terms()) -> 'ok'.
 -spec publish_new_account(api_terms(), ne_binary()) -> 'ok'.

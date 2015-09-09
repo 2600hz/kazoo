@@ -386,8 +386,6 @@ publish_fun(<<"transaction">>) ->
     fun wapi_notifications:publish_transaction/1;
 publish_fun(<<"password_recovery">>) ->
     fun wapi_notifications:publish_pwd_recovery/1;
-publish_fun(<<"password_recovery_req">>) ->
-    fun wapi_notifications:publish_pwd_recovery_req/1;
 publish_fun(<<"system_alert">>) ->
     fun wapi_notifications:publish_system_alert/1;
 publish_fun(<<"cnam_request">>) ->

@@ -19,14 +19,13 @@
 -define(TEMPLATE_ID, <<"password_recovery">>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list([?MACRO_VALUE(<<"user.password">>, <<"user_password">>, <<"Password">>, <<"User's Password">>)
-                            | ?ACCOUNT_MACROS ++ ?USER_MACROS
-                           ])
+        ,wh_json:from_list(?ACCOUNT_MACROS ++ ?USER_MACROS
+                          )
        ).
 
--define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your 2600hz VoIP Services account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please visit https://apps.2600hz.com/ and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>).
--define(TEMPLATE_HTML, <<"<html></head><body><h3>Hello {{user.first_name}} {{user.last_name}}</h3><p>This email is to inform you that the password for your 2600hz VoIP Services account \"{{account.name}}\" has been set to \"{{user.password}}\".</p><p>To login please visit <a href=\"https://apps.2600hz.com/\">2600hz.com</a> and use your normal username with the password \"{{user.password}}\".</p><p>Once you login you will be prompted to customize your password.</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"Password reset for your 2600hz VoIP Services account.">>).
+-define(TEMPLATE_TEXT, <<"Hi, {{user.first_name}} {{user.last_name}}!\n\nWe received a request to change the password for your 2600hz VoIP Services account \"{{account.name}}\".\nIf you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:\n\n{{link}}">>).
+-define(TEMPLATE_HTML, <<"<html></head><body><h3>Hi, {{user.first_name}} {{user.last_name}}!</h3><p>We received a request to change the password of your 2600hz VoIP Services account \"{{account.name}}\".</p><p>If you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:</p><p><a href=\"{{link}}\">{{link}}</a></p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"Reset your 2600hz VoIP Services account password.">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Password Recovery">>).
 
@@ -75,6 +74,7 @@ handle_password_recovery(JObj, _Props) ->
                 wh_json:set_values(
                     [{<<"user">>, User}
                      ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
+                     ,{<<"link">>, wh_json:get_ne_binary_value([<<"uuid">>], DataJObj, <<"missing_link">>)}
                     ]
                   ,DataJObj
                  ),
@@ -105,6 +105,7 @@ process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
+              ,{<<"link">>, wh_json:get_value(<<"link">>, DataJObj)}
              ],
 
     %% Populate templates

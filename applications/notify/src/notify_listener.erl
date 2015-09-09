@@ -34,7 +34,6 @@
                      ,{'notify_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
                      ,{'notify_deregister', [{<<"notification">>, <<"deregister">>}]}
                      ,{'notify_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
-                     ,{'notify_password_recovery_req', [{<<"notification">>, <<"password_recovery_req">>}]}
                      ,{'notify_new_account', [{<<"notification">>, <<"new_account">>}]}
                      ,{'notify_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
                      ,{'notify_port_request', [{<<"notification">>, <<"port_request">>}]}
@@ -54,7 +53,6 @@
                       ,'outbound_fax_error'
                       ,'deregister'
                       ,'pwd_recovery'
-                      ,'pwd_recovery_req'
                       ,'new_account'
                       ,'cnam_requests'
                       ,'port_request'
