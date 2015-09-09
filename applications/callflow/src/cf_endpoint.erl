@@ -267,9 +267,9 @@ merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
     Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
 merge_attributes([<<"caller_id_format">> = Key|Keys], Account, Endpoint, Owner) ->
-    EndpointAttr = wh_json:get_value(Key, Endpoint),
-    AccountAttr = wh_json:get_value(Key, Account),
-    OwnerAttr = wh_json:get_value(Key, Owner),
+    EndpointAttr = wh_json:get_value(Key, Endpoint, wh_json:new()),
+    AccountAttr = wh_json:get_value(Key, Account, wh_json:new()),
+    OwnerAttr = wh_json:get_value(Key, Owner, wh_json:new()),
     Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
@@ -531,18 +531,56 @@ build(Endpoint, Properties, Call) ->
 
 -spec maybe_rewrite_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 maybe_rewrite_caller_id(Endpoint, Call) ->
-    Class   = wnm_util:classify_number(whapps_call:caller_id_number(Call)),
-    AllFmts = wh_json:get_value(<<"caller_id_format">>, Endpoint, []),
-    UseFmts = wh_json:get_value(Class, AllFmts, []),
+    case wh_json:get_value(<<"caller_id_options">>, Endpoint, []) of
+        'undefined' -> lager:debug("no cid options defined, not modifying.~n");
+        CidOptions  -> maybe_class_format(Call, wh_json:get_value(<<"format">>, CidOptions))
+    end.
 
-    lager:debug("possibly re-formatting caller id for ~p with regex ~p~n", [Class, UseFmts]),
+-spec maybe_class_format(whapps_call:call(), wh_json:object() | 'undefined') -> whapps_call:call().
+maybe_class_format(Call, 'undefined') -> Call;
+maybe_class_format(Call, Format) ->
+    Class = wnm_util:classify_number(whapps_call:caller_id_number(Call)),
+    case wh_json:get_value(Class, Format) of
+        'undefined' -> maybe_format_caller_id(Call, wh_json:get_value(<<"all">>, Format));
+        UseFormat   -> maybe_format_caller_id(Call, UseFormat)
+    end.
 
-    case re:run(whapps_call:caller_id_number(Call), UseFmts, [{capture, all_but_first, binary}]) of
+-spec maybe_format_caller_id(whapps_call:call(), wh_json:object() | 'undefined') -> whapps_call:call().
+maybe_format_caller_id(Call, 'undefined') -> Call;
+maybe_format_caller_id(Call, Format) ->
+    Regex   = wh_json:get_value(<<"regex">>, Format),
+    Prepend = wh_json:get_value(<<"prefix">>, Format),
+    Append  = wh_json:get_value(<<"suffix">>, Format),
+
+    Call1 = maybe_regex_caller_id(Call, Regex),
+    Call2 = maybe_prepend_caller_id(Call1, Prepend),
+    maybe_append_caller_id(Call2, Append).
+
+-spec maybe_regex_caller_id(whapps_call:call(), api_binary()) -> whapps_call:call().
+maybe_regex_caller_id(Call, 'undefined') -> Call;
+maybe_regex_caller_id(Call, Regex) ->
+    case re:run(whapps_call:caller_id_number(Call), Regex, [{'capture', 'all_but_first', 'binary'}]) of
         {match, UseCid} ->
-            lager:debug("match ~p found! re-formatting to ~p~n", [UseCid, hd(UseCid)]),
+            lager:info("cid rewrite match ~p found! re-formatting caller id to ~p~n", [UseCid, hd(UseCid)]),
             whapps_call:set_caller_id_number(hd(UseCid), Call);
         _NotMatching -> Call
     end.
+
+-spec maybe_prepend_caller_id(whapps_call:call(), api_binary()) -> whapps_call:call().
+maybe_prepend_caller_id(Call, 'undefined') -> Call;
+maybe_prepend_caller_id(Call, Prefix) ->
+    OriginalCid = whapps_call:caller_id_number(Call),
+    BinPrefix   = wh_util:to_binary(Prefix),
+    lager:info("prepending cid with ~p~n", [BinPrefix]),
+    whapps_call:set_caller_id_number(<<BinPrefix/binary, OriginalCid/binary>>, Call).
+
+-spec maybe_append_caller_id(whapps_call:call(), api_binary()) -> whapps_call:call().
+maybe_append_caller_id(Call, 'undefined') -> Call;
+maybe_append_caller_id(Call, Suffix) ->
+    OriginalCid = whapps_call:caller_id_number(Call),
+    BinSuffix   = wh_util:to_binary(Suffix),
+    lager:info("appending cid with ~p~n", [BinSuffix]),
+    whapps_call:set_caller_id_number(<<OriginalCid/binary, BinSuffix/binary>>, Call).
 
 -spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                           'ok' | {'error', _}.
