@@ -74,7 +74,10 @@ set_language(JObj, Language) ->
 timezone(JObj) ->
     timezone(JObj, 'undefined').
 timezone(JObj, Default) ->
-    wh_json:get_value(?TIMEZONE, JObj, Default).
+    case wh_json:get_value(?TIMEZONE, JObj, Default) of
+        <<"inherit">> -> Default;
+        TZ -> TZ
+    end.
 
 -spec set_timezone(doc(), ne_binary()) -> doc().
 set_timezone(JObj, Timezone) ->
