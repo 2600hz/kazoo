@@ -93,7 +93,7 @@ validate_fmc_devices(Context, ?HTTP_PUT) ->
 
 -spec validate_fmc_device(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_fmc_device(Context, Id, ?HTTP_GET) ->
-    case couch_mgr:open_doc(?WH_FMC_DB, Id) of
+    case couch_mgr:open_cache_doc(?WH_FMC_DB, Id) of
         {'ok', Doc} ->
             AccountId = cb_context:account_id(Context),
             case wh_json:get_value(<<"account_id">>, Doc) of
@@ -110,7 +110,7 @@ validate_fmc_device(Context, Id, ?HTTP_POST) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"fmc_device">>, Context, OnSuccess);
 validate_fmc_device(Context, Id, ?HTTP_DELETE) ->
-    case couch_mgr:open_doc(?WH_FMC_DB, Id) of
+    case couch_mgr:open_cache_doc(?WH_FMC_DB, Id) of
         {'ok', SavedDoc} ->
             AccountId = cb_context:account_id(Context),
             case wh_json:get_value(<<"account_id">>, SavedDoc) of
@@ -132,7 +132,7 @@ validate_fmc_device(Context, Id, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context()) -> cb_context:context().
 read(Context) ->
-    {'ok', JObjs} = couch_mgr:get_all_results(?WH_FMC_DB, <<"fmc_devices/crossbar_listing">>),
+    {'ok', JObjs} = couch_mgr:get_all_results(?WH_FMC_DB, ?CB_LIST),
     Doc = [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
     Doc1 = [JObj || JObj <- Doc, wh_json:get_value(<<"account_id">>, JObj) =:= cb_context:account_id(Context)],
     Doc2 = [wh_json:delete_keys([<<"a_number">>, <<"account_id">>], JObj) || JObj <- Doc1],
@@ -148,7 +148,7 @@ read(Context) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context(), path_token()) -> cb_context:context().
 read(Context, Id) ->
-    {'ok', Doc} = couch_mgr:open_doc(?WH_FMC_DB, Id),
+    {'ok', Doc} = couch_mgr:open_cache_doc(?WH_FMC_DB, Id),
     Doc1 = wh_doc:public_fields(Doc),
     Doc2 = wh_json:delete_keys([<<"a_number">>, <<"account_id">>], Doc1),
     Context1 = cb_context:set_doc(Context, Doc2),
@@ -167,7 +167,7 @@ put(Context) ->
                               ,{<<"account_id">>, cb_context:account_id(Context)}]
                               ,cb_context:doc(Context)),
     DeviceId = wh_json:get_value(<<"device_id">>, Doc),
-    {'ok', DeviceDoc} = couch_mgr:open_doc(cb_context:account_db(Context), DeviceId),
+    {'ok', DeviceDoc} = couch_mgr:open_cache_doc(cb_context:account_db(Context), DeviceId),
     ANumber = wh_json:get_value([<<"call_forward">>, <<"number">>], DeviceDoc),
     Doc1 = wh_json:set_value(<<"a_number">>, ANumber, Doc),
     {'ok', ResultDoc} = couch_mgr:save_doc(?WH_FMC_DB, Doc1),
@@ -190,7 +190,7 @@ post(Context, Id) ->
         ,{<<"account_id">>, AccountId}]
         ,cb_context:doc(Context)),
     DeviceId = wh_json:get_value(<<"device_id">>, Doc1),
-    {'ok', DeviceDoc} = couch_mgr:open_doc(cb_context:account_db(Context), DeviceId),
+    {'ok', DeviceDoc} = couch_mgr:open_cache_doc(cb_context:account_db(Context), DeviceId),
     ANumber = wh_json:get_value([<<"call_forward">>, <<"number">>], DeviceDoc),
     Doc2 = wh_json:set_value(<<"a_number">>, ANumber, Doc1),
     {'ok', ResultDoc} = couch_mgr:save_doc(?WH_FMC_DB, Doc2),
@@ -217,13 +217,21 @@ delete(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation('undefined' | api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
+    FMCValue = wh_json:get_value(<<"x_fmc_value">>, cb_context:doc(Context)),
     DeviceId = wh_json:get_value(<<"device_id">>, cb_context:doc(Context)),
-    case couch_mgr:open_doc(cb_context:account_db(Context), DeviceId) of
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
         {'ok', DeviceDoc} ->
             Doc = wh_json:set_value(<<"pvt_type">>, <<"fmc_device">>, cb_context:doc(Context)),
-            case wh_json:get_value(<<"device_type">>, DeviceDoc) of
+            DeviceType = wh_json:get_value(<<"device_type">>, DeviceDoc),
+            Number = wh_json:get_value([<<"call_forward">>, <<"number">>], DeviceDoc),
+            case DeviceType of
                 <<"cellphone">> ->
-                    cb_context:set_doc(Context, Doc);
+                    case is_existing_fmc(Number, FMCValue, 'undefined') of
+                        'true' ->
+                            cb_context:add_validation_error(<<"fmc">>, <<"unique">>, wh_json:from_list([{<<"message">>, <<"FMC Device with this A-Number and FMC Value already exists">>}]), Context);
+                        'false' ->
+                            cb_context:set_doc(Context, Doc)
+                    end;
                 _ ->
                     cb_context:add_validation_error(<<"fmc">>, <<"invalid">>, wh_json:from_list([{<<"message">>, <<"Invalid device type">>}]), Context)
             end;
@@ -231,24 +239,47 @@ on_successful_validation('undefined', Context) ->
             cb_context:add_validation_error(<<"fmc">>, <<"not_found">>, wh_json:from_list([{<<"message">>, <<"Device with this ID wasn't found">>}]), Context)
     end;
 on_successful_validation(Id, Context) ->
-    case couch_mgr:open_doc(?WH_FMC_DB, Id) of
+    FMCValue = wh_json:get_value(<<"x_fmc_value">>, cb_context:doc(Context)),
+    case couch_mgr:open_cache_doc(?WH_FMC_DB, Id) of
         {'ok', Doc} ->
-            AccountId = cb_context:account_id(Context),
-            case wh_json:get_value(<<"account_id">>, Doc) of
-                AccountId ->
-                    DeviceId = wh_json:get_value(<<"device_id">>, Doc),
-                    {'ok', DeviceDoc} = couch_mgr:open_doc(cb_context:account_db(Context), DeviceId),
-                    case wh_json:get_value(<<"device_type">>, DeviceDoc) of
-                        <<"cellphone">> ->
-                            PrivJObj = wh_json:private_fields(Doc),
-                            NewDoc = wh_json:merge_jobjs(PrivJObj, cb_context:doc(Context)),
-                            cb_context:set_doc(Context, NewDoc);
+            case wh_doc:is_soft_deleted(Doc) of
+                'true' ->
+                    cb_context:add_validation_error(<<"fmc">>, <<"not_found">>, wh_json:from_list([{<<"message">>, <<"Device with this ID wasn't found">>}]), Context);
+                'false' ->
+                    AccountId = cb_context:account_id(Context),
+                    case wh_json:get_value(<<"account_id">>, Doc) of
+                        AccountId ->
+                            DeviceId = wh_json:get_value(<<"device_id">>, Doc),
+                            {'ok', DeviceDoc} = couch_mgr:open_doc(cb_context:account_db(Context), DeviceId),
+                            case wh_json:get_value(<<"device_type">>, DeviceDoc) of
+                                <<"cellphone">> ->
+                                    Number = wh_json:get_value([<<"call_forward">>, <<"number">>], DeviceDoc),
+                                    case is_existing_fmc(Number, FMCValue, Id) of
+                                        'true' ->
+                                            cb_context:add_validation_error(<<"fmc">>, <<"unique">>, wh_json:from_list([{<<"message">>, <<"FMC Device with this A-Number and FMC Value already exists">>}]), Context);
+                                        'false' ->
+                                            PrivJObj = wh_json:private_fields(Doc),
+                                            NewDoc = wh_json:merge_jobjs(PrivJObj, cb_context:doc(Context)),
+                                            cb_context:set_doc(Context, NewDoc)
+                                    end;
+                                _ ->
+                                    cb_context:add_validation_error(<<"fmc">>, <<"invalid">>, wh_json:from_list([{<<"message">>, <<"Invalid device type">>}]), Context)
+                            end;
                         _ ->
-                            cb_context:add_validation_error(<<"fmc">>, <<"invalid">>, wh_json:from_list([{<<"message">>, <<"Invalid device type">>}]), Context)
-                    end;
-                _ ->
-                    cb_context:add_validation_error(<<"fmc">>, <<"not_found">>, wh_json:from_list([{<<"message">>, <<"FMC Device with this ID wasn't found">>}]), Context)
+                            cb_context:add_validation_error(<<"fmc">>, <<"not_found">>, wh_json:from_list([{<<"message">>, <<"FMC Device with this ID wasn't found">>}]), Context)
+                    end
             end;
         _ ->
             cb_context:add_validation_error(<<"fmc">>, <<"not_found">>, wh_json:from_list([{<<"message">>, <<"FMC Device with this ID wasn't found">>}]), Context)
     end.
+
+is_existing_fmc(Number, FMCValue, 'undefined') ->
+    {'ok', JObjs} = couch_mgr:get_all_results(?WH_FMC_DB, ?CB_LIST),
+    Doc = [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
+    Doc1 = [{wh_json:get_value(<<"a_number">>, JObj), wh_json:get_value(<<"x_fmc_value">>, JObj)} || JObj <- Doc],
+    lists:member({Number, FMCValue}, Doc1);
+is_existing_fmc(Number, FMCValue, FMCDocId) ->
+    {'ok', JObjs} = couch_mgr:get_all_results(?WH_FMC_DB, ?CB_LIST),
+    Doc = [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
+    Doc1 = [{wh_json:get_value(<<"a_number">>, JObj), wh_json:get_value(<<"x_fmc_value">>, JObj)} || JObj <- Doc, wh_json:get_value(<<"id">>, JObj) =/= FMCDocId],
+    lists:member({Number, FMCValue}, Doc1).
