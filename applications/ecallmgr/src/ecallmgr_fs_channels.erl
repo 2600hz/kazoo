@@ -37,6 +37,7 @@
 -export([handle_query_account_channels/2]).
 -export([handle_query_channels/2]).
 -export([handle_channel_status/2]).
+-export([handle_channel_fs_status/2]).
 
 -export([has_channels_for_owner/1]).
 
@@ -65,7 +66,10 @@
                       }
                      ,{{?MODULE, 'handle_channel_status'}
                        ,[{<<"call_event">>, <<"channel_status_req">>}]
-                      }
+                     }
+                     ,{{?MODULE, 'handle_channel_fs_status'}
+                       ,[{<<"call_event">>, <<"channel_fs_status_req">>}]
+                     }
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}
                              ,'federate'
@@ -315,12 +319,70 @@ maybe_send_empty_channel_resp(CallId, JObj) ->
 -spec send_empty_channel_resp(ne_binary(), wh_json:object()) -> 'ok'.
 send_empty_channel_resp(CallId, JObj) ->
     Resp = [{<<"Call-ID">>, CallId}
+        ,{<<"Status">>, <<"terminated">>}
+        ,{<<"Error-Msg">>, <<"no node found with channel">>}
+        ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ],
+    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+
+-spec handle_channel_fs_status(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_channel_fs_status(JObj, _Props) ->
+    'true' = wapi_call:channel_fs_status_req_v(JObj),
+    _ = wh_util:put_callid(JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    lager:debug("channel FS status request received"),
+    case ecallmgr_fs_channel:fetch(CallId) of
+        {'error', 'not_found'} ->
+            lager:debug("no channels FS was found"),
+             maybe_send_empty_channel_fs_resp(CallId, JObj);
+        {'ok', Channel} ->
+            Node = wh_json:get_binary_value(<<"node">>, Channel),
+            [_, Hostname] = binary:split(Node, <<"@">>),
+            lager:debug("channel is on ~s", [Hostname]),
+            Prop = case freeswitch:api(binary_to_atom(Node, 'utf8'), 'uuid_dump', wh_util:to_list(CallId)) of
+                       {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
+                       {'error', _Err} -> []
+                   end,
+            EventProps = ecallmgr_call_events:create_event(<<"CHANNEL_DESTROY">>, ?APP_NAME, Prop),
+            EventDateTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Prop),
+            ChannelCreatedTime = round(props:get_integer_value(<<"Caller-Channel-Created-Time">>, Prop) / ?MICROSECONDS_IN_SECOND),
+            ChannelAnsweredTime = round(props:get_integer_value(<<"Caller-Channel-Answered-Time">>, Prop) / ?MICROSECONDS_IN_SECOND),
+            ChannelProgressTime = round(props:get_integer_value(<<"Caller-Channel-Progress-Time">>, Prop) / ?MICROSECONDS_IN_SECOND),
+            DurationSec = EventDateTimestamp - ChannelCreatedTime,
+            BillingSec = EventDateTimestamp - ChannelAnsweredTime,
+            RingingSec = ChannelProgressTime - ChannelCreatedTime,
+            Resp = props:filter_undefined(
+                    [{<<"Call-ID">>, CallId}
+                     ,{<<"Status">>, <<"active">>}
+                     ,{<<"Event-Category">>, <<"call_event">>}
+                     ,{<<"Event-Name">>, <<"channel_fs_status_resp">>}
+                     ,{<<"Duration-Seconds">>, list_to_binary(integer_to_list(DurationSec))}
+                     ,{<<"Billing-Seconds">>, list_to_binary(integer_to_list(BillingSec))}
+                     ,{<<"Ringing-Seconds">>, list_to_binary(integer_to_list(RingingSec))}
+                     ,{<<"Other-Leg-Call-ID">>, wh_json:get_value(<<"other_leg">>, Channel)}
+                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]),
+            EventProps1 = props:set_values(Resp, EventProps),
+            wapi_call:publish_channel_fs_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), EventProps1)
+    end.
+
+-spec maybe_send_empty_channel_fs_resp(ne_binary(), wh_json:object()) -> 'ok'.
+maybe_send_empty_channel_fs_resp(CallId, JObj) ->
+    case wh_json:is_true(<<"Active-Only">>, JObj) of
+        'true' -> 'ok';
+        'false' -> send_empty_channel_fs_resp(CallId, JObj)
+    end.
+
+-spec send_empty_channel_fs_resp(ne_binary(), wh_json:object()) -> 'ok'.
+send_empty_channel_fs_resp(CallId, JObj) ->
+    Resp = [{<<"Call-ID">>, CallId}
             ,{<<"Status">>, <<"terminated">>}
             ,{<<"Error-Msg">>, <<"no node found with channel">>}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+    wapi_call:publish_channel_fs_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%%===================================================================
 %%% gen_server callbacks

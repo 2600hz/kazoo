@@ -16,7 +16,7 @@
 -export([presence/2, presence/3, presence/4, presence/5]).
 -export([channel_status/1, channel_status/2
          ,channel_status_command/1, channel_status_command/2
-         ,b_channel_status/1
+         ,b_channel_status/1, fs_channel_status/1
         ]).
 
 -export([response/2, response/3, response/4]).
@@ -342,6 +342,35 @@ channel_status_filter([JObj|JObjs]) ->
     of
         'true' -> {'ok', JObj};
         'false' -> channel_status_filter(JObjs)
+    end.
+
+-spec fs_channel_status(api_binary() | whapps_call:call()) ->
+    whapps_api_std_return().
+fs_channel_status('undefined') -> {'error', 'no_channel_id'};
+fs_channel_status(ChannelId) when is_binary(ChannelId) ->
+    Command = [{<<"Call-ID">>, ChannelId}
+        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ],
+    Resp = wh_amqp_worker:call_collect(Command
+        ,fun(C) -> wapi_call:publish_channel_fs_status_req(ChannelId, C) end
+        ,{'ecallmgr', 'true'}
+    ),
+    case Resp of
+        {'error', _}=E -> E;
+        {_, JObjs} -> fs_channel_status_filter(JObjs)
+    end;
+fs_channel_status(Call) -> fs_channel_status(whapps_call:call_id(Call)).
+
+-spec fs_channel_status_filter(wh_json:objects()) ->
+    {'ok', wh_json:object()} |
+    {'error', 'not_found'}.
+fs_channel_status_filter([]) -> {'error', 'not_found'};
+fs_channel_status_filter([JObj|JObjs]) ->
+    case wapi_call:channel_fs_status_resp_v(JObj) andalso
+        wh_json:get_value(<<"Status">>, JObj) =:= <<"active">>
+    of
+        'true' -> {'ok', JObj};
+        'false' -> fs_channel_status_filter(JObjs)
     end.
 
 %%--------------------------------------------------------------------

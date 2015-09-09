@@ -16,6 +16,9 @@
 -export([channel_status_req/1, channel_status_req_v/1]).
 -export([channel_status_resp/1, channel_status_resp_v/1]).
 
+-export([channel_fs_status_req/1, channel_fs_status_req_v/1]).
+-export([channel_fs_status_resp/1, channel_fs_status_resp_v/1]).
+
 -export([query_auth_id_req/1, query_auth_id_req_v/1]).
 -export([query_auth_id_resp/1, query_auth_id_resp_v/1]).
 
@@ -40,6 +43,9 @@
 
 -export([publish_channel_status_req/1 ,publish_channel_status_req/2, publish_channel_status_req/3]).
 -export([publish_channel_status_resp/2, publish_channel_status_resp/3]).
+
+-export([publish_channel_fs_status_req/1 ,publish_channel_fs_status_req/2, publish_channel_fs_status_req/3]).
+-export([publish_channel_fs_status_resp/2, publish_channel_fs_status_resp/3]).
 
 -export([publish_query_auth_id_req/1 ,publish_query_auth_id_req/2, publish_query_auth_id_req/3]).
 -export([publish_query_auth_id_resp/2, publish_query_auth_id_resp/3]).
@@ -129,6 +135,23 @@
                                      ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
                                     ]).
 -define(CHANNEL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
+
+%% Channel Status Request
+-define(CHANNEL_FS_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_CHANNEL_FS_STATUS_REQ_HEADERS, [<<"Active-Only">>]).
+-define(CHANNEL_FS_STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                       ,{<<"Event-Name">>, <<"channel_fs_status_req">>}
+                                      ]).
+-define(CHANNEL_FS_STATUS_REQ_TYPES, []).
+
+%% Channel Status Response
+-define(CHANNEL_FS_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
+-define(OPTIONAL_CHANNEL_FS_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS).
+-define(CHANNEL_FS_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                        ,{<<"Event-Name">>, <<"channel_fs_status_resp">>}
+                                        ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
+]).
+-define(CHANNEL_FS_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Query Auth ID Req
 -define(QUERY_AUTH_ID_REQ_HEADERS, [<<"Auth-ID">>]).
@@ -287,6 +310,42 @@ channel_status_resp(JObj) -> channel_status_resp(wh_json:to_proplist(JObj)).
 channel_status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?CHANNEL_STATUS_RESP_VALUES, ?CHANNEL_STATUS_RESP_TYPES);
 channel_status_resp_v(JObj) -> channel_status_resp_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Inquire into the status of a channel
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_fs_status_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+channel_fs_status_req(Prop) when is_list(Prop) ->
+    case channel_fs_status_req_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?CHANNEL_FS_STATUS_REQ_HEADERS, ?OPTIONAL_CHANNEL_FS_STATUS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for channel status req"}
+    end;
+channel_fs_status_req(JObj) -> channel_fs_status_req(wh_json:to_proplist(JObj)).
+
+-spec channel_fs_status_req_v(api_terms()) -> boolean().
+channel_fs_status_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CHANNEL_FS_STATUS_REQ_HEADERS, ?CHANNEL_FS_STATUS_REQ_VALUES, ?CHANNEL_FS_STATUS_REQ_TYPES);
+channel_fs_status_req_v(JObj) -> channel_fs_status_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Respond with status of a channel, either active or non-existant
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_fs_status_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+channel_fs_status_resp(Prop) when is_list(Prop) ->
+    case channel_fs_status_resp_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?CHANNEL_FS_STATUS_RESP_HEADERS, ?OPTIONAL_CHANNEL_FS_STATUS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for channel status resp"}
+    end;
+channel_fs_status_resp(JObj) -> channel_fs_status_resp(wh_json:to_proplist(JObj)).
+
+-spec channel_fs_status_resp_v(api_terms()) -> boolean().
+channel_fs_status_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CHANNEL_FS_STATUS_RESP_HEADERS, ?CHANNEL_FS_STATUS_RESP_VALUES, ?CHANNEL_FS_STATUS_RESP_TYPES);
+channel_fs_status_resp_v(JObj) -> channel_fs_status_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
@@ -549,6 +608,28 @@ publish_channel_status_resp(RespQ, JObj) ->
     publish_channel_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_channel_status_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_STATUS_RESP_VALUES, fun ?MODULE:channel_status_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_channel_fs_status_req(api_terms()) -> 'ok'.
+-spec publish_channel_fs_status_req(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_channel_fs_status_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_channel_fs_status_req(API) ->
+    case is_list(API) of
+        'true' -> publish_channel_fs_status_req(props:get_value(<<"Call-ID">>, API), API);
+        'false' -> publish_channel_fs_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
+    end.
+publish_channel_fs_status_req(CallId, JObj) ->
+    publish_channel_fs_status_req(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_channel_fs_status_req(CallId, Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_FS_STATUS_REQ_VALUES, fun ?MODULE:channel_fs_status_req/1),
+    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', CallId), Payload, ContentType).
+
+-spec publish_channel_fs_status_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_channel_fs_status_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_channel_fs_status_resp(RespQ, JObj) ->
+    publish_channel_fs_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_channel_fs_status_resp(RespQ, Resp, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_FS_STATUS_RESP_VALUES, fun ?MODULE:channel_fs_status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_query_auth_id_req(api_terms()) -> 'ok'.
