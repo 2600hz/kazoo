@@ -249,7 +249,7 @@ maybe_remove_deleted(N, Created) ->
                           wnm_number:wnm_number().
 maybe_remove(N, Created, Expiry) ->
     Now = wh_util:current_tstamp(),
-    case (Now - Expiry) > Created of
+    case (Created + Expiry) > Now of
         'true' -> N;
         'false' -> wnm_number:delete(N)
     end.
