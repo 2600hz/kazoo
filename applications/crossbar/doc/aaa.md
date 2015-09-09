@@ -226,11 +226,14 @@ An example AAA configuration document with 'inherit' configuration for an accoun
     2.1. `internal` - internal channel
     2.2. `external` - external channel
 * `block_authz`: Section responsible for avoiding authz operations via Circlemaker. All authz operations of the blocked types will be bypassed and authorized without request to RADIUS server.
-* `block_authz-> channel`: Entry described type of channel which will be blocked
+* `block_authz -> channel`: Entry described type of channel which will be blocked
     1.1. `inbound` - inbound channel
     1.2. `outbound` - outbound channel
     2.1. `internal` - internal channel
     2.2. `external` - external channel
+* `local_interim_update_interval`: A key set the Interim Update value (in seconds). This value has higher priority than `interim_update_interval`.
+* `interim_update_interval`: Current value of the Interim-Update interval received from the RADIUS-server via "Acct-Interim-Interval" attribute. Don't be need to set manually.
+* `session_timeout`: Current value of the Session Timeout interval received from the RADIUS-server via "Session-Timeout" attribute. Don't be need to set manually.
 
 ## Dictionary document structure
 
@@ -423,3 +426,16 @@ After any changes in the aaa_dicts database (PUT/POST/DELETE methods) the circle
     sup whapps_controller restart_app circlemaker
 
 This action is needed for reloading all dictionaries to the memory. All dictionaries are stored in memory to provide fast fetch of an AVPs.
+
+## Managing Disconnection Packet UDP server
+
+To be able to process Disconnection Packet the Circlemaker application starts its own UDP server. Default port is 3799.
+
+Configuration of the Disconnection Packet feature is per node, so it can be changed by using system configuration URL and "circlemaker" section (see __"System configuration's AAA settings URI"__ section).
+
+* `disconnection_packet -> port`: Set UDP port to receive Disconnection Packet.
+* `disconnection_packet -> secret`: Custom secret for Disconnection Packet processing
+
+### Disconnection Packet UDP server settings example
+
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/system_configs/circlemaker -d '{"data":{"disconnection_packet": {"port": 3799,"secret": "secret123"}}}'
