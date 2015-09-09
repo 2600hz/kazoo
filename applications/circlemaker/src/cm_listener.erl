@@ -152,7 +152,10 @@ handle_accounting_req(JObj, _Props) ->
                         [{OtherLegCallId, JObjDelayed}] ->
                             lager:debug("Found corresponding delayed operation for outer inbound leg accounting. The operation should be retrieved and executed."),
                             ets:delete(?ETS_DELAY_ACCOUNTING, OtherLegCallId),
-                            JObjDelayed1 = wh_json:insert_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], AccountId, JObjDelayed),
+                            OriginatorType = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Originator-Type">>], JObj),
+                            JObjDelayed1 = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Account-ID">>], AccountId}
+                                                               ,{[<<"Custom-Channel-Vars">>, <<"Originator-Type">>], OriginatorType}]
+                                                               ,JObjDelayed),
                             % delayed leg info was found
                             CallIdDelayed = wh_json:get_value(<<"Call-ID">>, JObjDelayed1),
                             maybe_start_interim_update_timer(AccountId, CallIdDelayed),
