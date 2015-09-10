@@ -262,6 +262,8 @@ raw_account_id(<<"account/"
                  ,"-", _Date:6/binary
                >>) ->
     <<A/binary, B/binary, Rest/binary>>;
+raw_account_id(<<"number/", _/binary>>=Other) ->
+    Other;
 raw_account_id(Other) ->
     case lists:member(Other, ?KZ_SYSTEM_DBS) of
         'true' -> Other;
