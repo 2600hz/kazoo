@@ -228,11 +228,7 @@ should_restrict_call(Data, Call, Number) ->
 %%--------------------------------------------------------------------
 -spec should_restrict_call(whapps_call:call(), ne_binary()) -> boolean().
 should_restrict_call(Call, Number) ->
-    AccountId = whapps_call:account_id(Call),
-    AccountDb = whapps_call:account_db(Call),
-    JObj1 = cf_endpoint:get(Call),
-    %% lager:info("cf_endpoint JObj ~p", [JObj1]),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case  cf_endpoint:get(Call) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
             Classification = wnm_util:classify_number(Number),
