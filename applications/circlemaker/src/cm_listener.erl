@@ -141,6 +141,8 @@ handle_accounting_req(JObj, _Props) ->
                     ets:delete(?ETS_DELAY_ACCOUNTING, CallId)
             end;
         AccountId ->
+            {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+            AccountName = wh_json:get_value(<<"name">>, AccountDoc),
             {'ok', AaaDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"aaa">>),
             NasAddress = wh_json:get_value(<<"nas_address">>, AaaDoc),
             case whapps_util:get_event_type(JObj) of
@@ -154,6 +156,7 @@ handle_accounting_req(JObj, _Props) ->
                             ets:delete(?ETS_DELAY_ACCOUNTING, OtherLegCallId),
                             OriginatorType = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Originator-Type">>], JObj),
                             JObjDelayed1 = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Account-ID">>], AccountId}
+                                                               ,{[<<"Custom-Channel-Vars">>, <<"Account-Name">>], AccountName}
                                                                ,{[<<"Custom-Channel-Vars">>, <<"Originator-Type">>], OriginatorType}]
                                                                ,JObjDelayed),
                             % delayed leg info was found
@@ -173,6 +176,7 @@ handle_accounting_req(JObj, _Props) ->
                     JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
                                                 ,{<<"Acct-Delay-Time">>, 0}
                                                 ,{<<"NAS-IP-Address">>, NasAddress}
+                                                ,{[<<"Custom-Channel-Vars">>, <<"Account-Name">>], AccountName}
                                                ], JObj),
                     % send accounting start
                     lager:debug("Sending accounting start operation: ~p", [JObj1]),
@@ -186,6 +190,7 @@ handle_accounting_req(JObj, _Props) ->
                             JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
                                                         ,{<<"Acct-Delay-Time">>, 0}
                                                         ,{<<"NAS-IP-Address">>, NasAddress}
+                                                        ,{[<<"Custom-Channel-Vars">>, <<"Account-Name">>], AccountName}
                                                        ], JObj),
                             % send accounting stop
                             lager:debug("Sending accounting stop operation: ~p", [JObj1]),
