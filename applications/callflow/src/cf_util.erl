@@ -918,7 +918,8 @@ process_event(Call, NoopId, JObj) ->
 -spec get_timezone(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_timezone(JObj, Call) ->
     case wh_json:get_value(<<"timezone">>, JObj) of
-        'undefined' -> account_timezone(Call);
+        'undefined'   -> account_timezone(Call);
+        <<"inherit">> -> account_timezone(Call);  %% UI-1808
         TZ -> TZ
     end.
 
