@@ -26,6 +26,7 @@
          ,device_type/1, device_type/2, set_device_type/2
          ,owner_id/1, owner_id/2, set_owner_id/2
          ,enabled/1, enabled/2, set_enabled/2
+         ,timezone/1, timezone/2
 
          ,new/0
          ,type/0
@@ -56,8 +57,8 @@
 -define(DEVICE_TYPE, <<"device_type">>).
 -define(KEY_OWNER_ID, <<"owner_id">>).
 -define(ENABLED, <<"enabled">>).
-
 -define(PVT_TYPE, <<"device">>).
+-define(KEY_TIMEZONE, <<"timezone">>).
 
 -spec new() -> doc().
 new() ->
@@ -248,6 +249,7 @@ owner_id(DeviceJObj, Default) ->
 set_owner_id(DeviceJObj, OwnerId) ->
     wh_json:set_value(?KEY_OWNER_ID, OwnerId, DeviceJObj).
 
+
 -spec enabled(doc()) -> boolean().
 -spec enabled(doc(), boolean()) -> boolean().
 enabled(DeviceJObj) ->
@@ -258,3 +260,36 @@ enabled(DeviceJObj, Default) ->
 -spec set_enabled(doc(), boolean()) -> doc().
 set_enabled(DeviceJObj, Enabled) ->
     wh_json:set_value(?ENABLED, Enabled, DeviceJObj).
+
+
+-spec timezone(doc()) -> api_binary().
+-spec timezone(doc(), Default) -> ne_binary() | Default.
+timezone(Box) ->
+    timezone(Box, 'undefined').
+timezone(Box, Default) ->
+    case wh_json:get_value(?KEY_TIMEZONE, Box) of
+        'undefined'   -> owner_timezone(Box, Default);
+        <<"inherit">> -> owner_timezone(Box, Default);
+        TZ -> TZ
+    end.
+
+-spec owner_timezone(doc(), Default) -> ne_binary() | Default.
+-spec owner_timezone(doc(), Default, kzd_user:doc()) -> ne_binary() | Default.
+owner_timezone(Box, Default) ->
+    case kzd_voicemail_box:owner(Box) of
+        'undefined'   -> account_timezone(Box, Default);
+        <<"inherit">> -> account_timezone(Box, Default);
+        OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
+    end.
+
+owner_timezone(Box, Default, OwnerJObj) ->
+    case kzd_user:timezone(OwnerJObj, 'undefined') of
+        'undefined'   -> account_timezone(Box, Default);
+        <<"inherit">> -> account_timezone(Box, Default);
+        TZ -> TZ
+    end.
+
+-spec account_timezone(doc(), Default) -> ne_binary() | Default.
+account_timezone(Box, Default) ->
+    {'ok', AccountJObj} = kz_account:fetch(wh_doc:account_id(Box)),
+    kz_account:timezone(AccountJObj, Default).
