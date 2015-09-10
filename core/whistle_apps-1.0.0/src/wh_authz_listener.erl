@@ -79,11 +79,15 @@ process_authz_broadcast_request(JObj, _Props) ->
     CC_Number = wnm_util:normalize_number(whapps_config:get(<<"cccp">>, <<"cccp_cc_number">>)),
     % check FMC numbers
     {'ok', FMCJObjs} = couch_mgr:get_all_results(?WH_FMC_DB, <<"fmc_devices/crossbar_listing">>),
+    lager:debug("FMCJObjs is ~p", [FMCJObjs]),
     FMCValues = [wh_json:get_value(<<"value">>, FMCJObj) || FMCJObj <- FMCJObjs],
-    ResultedFMCValue = [FMCValue || FMCValue <- FMCValues
-                          ,wnm_util:normalize_number(wh_json:get_value(<<"a_number">>, FMCValue))
+    lager:debug("FMCValues is ~p", [FMCValues]),
+    ResultedFMCValue = [FMCValue || FMCValue <- FMCValues,
+                          wnm_util:normalize_number(wh_json:get_value(<<"a_number">>, FMCValue))
                               =:= wnm_util:normalize_number(CallerIdNumber)],
+    lager:debug("ResultedFMCValue is ~p", [ResultedFMCValue]),
     IsFMCMember = (length(ResultedFMCValue) > 0),
+    lager:debug("IsFMCMember is ~p", [IsFMCMember]),
     case {wnm_util:normalize_number(Num), IsFMCMember} of
         {CC_Number, 'false'} ->
             % if it's cccp cc number then authorize it
