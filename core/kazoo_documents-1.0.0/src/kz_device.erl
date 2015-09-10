@@ -269,7 +269,7 @@ timezone(Box) ->
 timezone(Box, Default) ->
     case wh_json:get_value(?KEY_TIMEZONE, Box) of
         'undefined'   -> owner_timezone(Box, Default);
-        <<"inherit">> -> owner_timezone(Box, Default);
+        <<"inherit">> -> owner_timezone(Box, Default);  %% UI-1808
         TZ -> TZ
     end.
 
@@ -278,14 +278,14 @@ timezone(Box, Default) ->
 owner_timezone(Box, Default) ->
     case kzd_voicemail_box:owner(Box) of
         'undefined'   -> account_timezone(Box, Default);
-        <<"inherit">> -> account_timezone(Box, Default);
+        <<"inherit">> -> account_timezone(Box, Default);  %% UI-1808
         OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
     end.
 
 owner_timezone(Box, Default, OwnerJObj) ->
     case kzd_user:timezone(OwnerJObj, 'undefined') of
         'undefined'   -> account_timezone(Box, Default);
-        <<"inherit">> -> account_timezone(Box, Default);
+        <<"inherit">> -> account_timezone(Box, Default);  %% UI-1808
         TZ -> TZ
     end.
 

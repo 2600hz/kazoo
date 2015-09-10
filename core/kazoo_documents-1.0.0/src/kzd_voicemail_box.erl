@@ -95,7 +95,7 @@ timezone(Box) ->
 timezone(Box, Default) ->
     case wh_json:get_value(?KEY_TIMEZONE, Box) of
         'undefined'   -> owner_timezone(Box, Default);
-        <<"inherit">> -> owner_timezone(Box, Default);
+        <<"inherit">> -> owner_timezone(Box, Default);  %% UI-1808
         TZ -> TZ
     end.
 
@@ -103,14 +103,14 @@ timezone(Box, Default) ->
 -spec owner_timezone(doc(), Default, kzd_user:doc()) -> ne_binary() | Default.
 owner_timezone(Box, Default) ->
     case owner(Box) of
-        'undefined'   -> account_timezone(Box, Default);
+        'undefined' -> account_timezone(Box, Default);
         OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
     end.
 
 owner_timezone(Box, Default, OwnerJObj) ->
     case kzd_user:timezone(OwnerJObj, 'undefined') of
         'undefined'   -> account_timezone(Box, Default);
-        <<"inherit">> -> account_timezone(Box, Default);
+        <<"inherit">> -> account_timezone(Box, Default);  %% UI-1808
         TZ -> TZ
     end.
 
