@@ -217,6 +217,7 @@ update(#bt_customer{}=Customer) ->
                    braintree_subscription:update_payment_token(Sub, NewPaymentToken))
                  || Sub <- get_subscriptions(UpdatedRecord)
                         , not braintree_subscription:is_cancelled(Sub)
+                        andalso not braintree_subscription:is_expired(Sub)
                 ],
 
             %% Make card as default /after/ updating subscriptions: this way subscriptions

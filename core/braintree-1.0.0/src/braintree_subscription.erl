@@ -33,12 +33,13 @@
 -export([update_discount_quantity/3]).
 -export([increment_discount_quantity/2]).
 -export([is_cancelled/1]).
+-export([is_expired/1]).
 
 -import('wh_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
--type changes() :: [{atom(), proplist(), [proplist()]}] | [].
+-type changes() :: [{atom(), proplist(), [proplist()]}].
 -type subscription() :: #bt_subscription{}.
 -type subscriptions() :: [subscription()].
 
@@ -421,19 +422,52 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
 %%--------------------------------------------------------------------
 -spec update_payment_token(subscription(), ne_binary()) -> subscription().
 update_payment_token(#bt_subscription{}=Subscription, PaymentToken) ->
-    Subscription#bt_subscription{payment_token = PaymentToken
-                                 ,start_immediately = 'false'
-                                }.
+    NewSubscription =
+        Subscription#bt_subscription{payment_token = PaymentToken
+                                     ,start_immediately = 'false'
+                                    },
+    case is_past_due(Subscription) of
+        'false' -> NewSubscription;
+        'true' ->
+            %% Fixes: 91920: Cannot edit price changing fields on past due subscription
+            %% Look at https://developers.braintreepayments.com/ios+ruby/guides/recurring-billing/manage
+            %%   and https://articles.braintreepayments.com/guides/recurring-billing/subscriptions
+            NewSubscription#bt_subscription{price = 'undefined'
+                                            ,billing_first_date = 'undefined'
+                                            ,number_of_cycles = 'undefined'
+                                            ,plan_id = 'undefined'
+                                           }
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Update payment token and reset fields to be able to push update back
+%% Returns whether subscription is cancelled (impossible to update)
 %% @end
 %%--------------------------------------------------------------------
 -spec is_cancelled(subscription()) -> boolean().
-is_cancelled(#bt_subscription{status = <<"Canceled">>}) -> 'true';
+is_cancelled(#bt_subscription{status = ?BT_CANCELED}) -> 'true';
 is_cancelled(#bt_subscription{}) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns whether subscription is cancelled (impossible to update)
+%% @end
+%%--------------------------------------------------------------------
+-spec is_expired(subscription()) -> boolean().
+is_expired(#bt_subscription{status = ?BT_EXPIRED}) -> 'true';
+is_expired(#bt_subscription{}) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns whether a subscription is past due (account is then delinquent)
+%% @end
+%%--------------------------------------------------------------------
+-spec is_past_due(subscription()) -> boolean().
+is_past_due(#bt_subscription{status = ?BT_PAST_DUE}) -> 'true';
+is_past_due(#bt_subscription{}) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
