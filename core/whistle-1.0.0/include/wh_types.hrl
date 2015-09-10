@@ -2,7 +2,6 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 -define(MICROSECONDS_IN_SECOND, 1000000).
-
 -define(MILLISECONDS_IN_SECOND, 1000).
 -define(MILLISECONDS_IN_MINUTE, 60000).
 -define(MILLISECONDS_IN_HOUR, 3600000).
