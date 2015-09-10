@@ -220,7 +220,7 @@ pdf_props(Context) ->
     Users =
         pdf_users(
             AccountId
-            ,props:get_value(<<"sort_by">>, Directory, <<"last_name">>)
+            ,props:get_binary_value(<<"sort_by">>, Directory, <<"last_name">>)
             ,wh_json:get_value(<<"users">>, RespData, [])
         ),
 
