@@ -26,7 +26,6 @@
         ]).
 
 -include("wnm.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(DISCOVERY_EXPIRY
         ,whapps_config:get_integer(?WNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)
@@ -34,6 +33,10 @@
 
 -define(DELETED_EXPIRY
         ,whapps_config:get_integer(?WNM_CONFIG_CAT, <<"deleted_expiry_d">>, 90)
+       ).
+
+-define(NUMBERS_TO_CRAWL
+        ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
        ).
 
 -record(state, {cleanup_ref :: reference()}).
@@ -59,8 +62,14 @@ stop() ->
 crawl_numbers() ->
     wh_util:put_callid(?MODULE),
     lager:debug("beginning a number crawl"),
-    _ = [crawl_number_db(Db) || Db <- wnm_util:get_all_number_dbs()],
+    _ = [crawl_number_db(Db) || Db <- wnm_util:get_all_number_dbs(), is_number_db(Db)],
     lager:debug("finished the number crawl").
+
+-spec is_number_db(ne_binary()) -> boolean().
+is_number_db(<<"numbers%2F%2B", _/binary>>) -> 'true';
+is_number_db(<<"numbers%2F", C:1, _/binary>>)
+  when is_number(C) -> 'true';
+is_number_db(_) -> 'false'.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -168,28 +177,49 @@ cleanup_timer() ->
 
 -spec crawl_number_db(ne_binary()) -> 'ok'.
 crawl_number_db(Db) ->
-    crawl_number_docs(Db, couch_mgr:all_docs(Db, ['include_docs'])).
+    lager:debug("start crawling '~s'",[Db]),
+    crawl_number_db(Db, [{'limit', ?NUMBERS_TO_CRAWL}]).
 
--spec crawl_number_docs(ne_binary(), couch_mgr:get_results_return()) -> 'ok'.
-crawl_number_docs(_Db, {'error', _E}) ->
-    lager:debug(" failed to crawl number db ~s: ~p", [_Db, _E]);
-crawl_number_docs(Db, {'ok', Docs}) ->
-    lager:debug(" starting to crawl '~s'", [Db]),
-    _ = [crawl_number_doc(wnm_number:json_to_record(wh_json:get_value(<<"doc">>, Doc), 'false'))
-         || Doc <- Docs,
-            is_number_doc(Doc)
-        ],
-    lager:debug(" finished crawling '~s'", [Db]).
-
--spec is_number_doc(wh_json:object()) -> boolean().
-is_number_doc(Doc) ->
-    case wh_doc:id(Doc) of
-        <<"_design/", _/binary>> -> 'false';
-        _Id -> 'true'
+-spec crawl_number_db(ne_binary(), wh_proplist()) -> 'ok'.
+crawl_number_db(Db, Options) ->
+    case couch_mgr:all_docs(Db, Options) of
+        {'error', _E} ->
+            lager:debug("failed to crawl number db ~s: ~p", [Db, _E]);
+        {'ok', []} ->
+            lager:debug("finished crawling '~s'", [Db]);
+        {'ok', Docs} ->
+            case crawl_number_docs(Db, Docs) of
+                [] -> lager:debug("finished crawling '~s'", [Db]);
+                Result -> crawl_number_db(Db, [{'startkey', next_number(lists:last(Result))}
+                                               ,{'limit', ?NUMBERS_TO_CRAWL}
+                                              ])
+            end
     end.
 
--spec crawl_number_doc(wnm_number:wnm_number()) -> 'ok'.
-crawl_number_doc(#number{number=_N}=Number) ->
+-spec next_number(binary()) -> ne_binary().
+next_number(<<>>) ->
+    <<"\ufff0">>;
+next_number(Bin) ->
+    <<Bin/binary, "\ufff0">>.
+
+-spec crawl_number_docs(ne_binary(), wh_json:objects()) -> list().
+crawl_number_docs(Db, Docs) ->
+    [crawl_number_doc(Number)
+       || Doc <- Docs, (Number = number(Db, wh_doc:id(Doc))) =/= 'not_found'
+    ].
+
+-spec number(ne_binary(), ne_binary()) -> wnm_number:wnm_number() | 'not_found'.
+number(_Db, <<"_design/", _/binary>>) -> 'not_found';
+number(Db, Number) ->
+    case couch_mgr:open_doc(Db, Number) of
+        {'ok', JObj} -> wnm_number:json_to_record(JObj, 'false');
+        {'error', E} ->
+            lager:debug("error getting document for number ~s in db ~s : ~p", [Number, Db, E]),
+            'not_found'
+    end.
+
+-spec crawl_number_doc(wnm_number:wnm_number()) -> ne_binary().
+crawl_number_doc(#number{number=Num}=Number) ->
     Fs = [fun maybe_remove_discovery/1
           ,fun maybe_remove_deleted/1
          ],
@@ -197,14 +227,15 @@ crawl_number_doc(#number{number=_N}=Number) ->
         _ -> 'ok'
     catch
         'throw':'number_purged' ->
-            lager:debug(" number '~s' was purged from the sytem", [_N]);
+            lager:debug(" number '~s' was purged from the sytem", [Num]);
         'throw':{'error', _E} ->
-            lager:debug(" number '~s' encountered an error: ~p", [_N, _E]);
+            lager:debug(" number '~s' encountered an error: ~p", [Num, _E]);
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug(" '~s' encountered with ~s: ~p", [_E, _N, _R]),
+            lager:debug(" '~s' encountered with ~s: ~p", [_E, Num, _R]),
             wh_util:log_stacktrace(ST)
-    end.
+    end,
+    Num.
 
 -spec run_crawler_funs(wnm_number:wnm_number(), functions()) -> wnm_number:wnm_number().
 run_crawler_funs(Number, Fs) ->
@@ -249,7 +280,7 @@ maybe_remove_deleted(N, Created) ->
                           wnm_number:wnm_number().
 maybe_remove(N, Created, Expiry) ->
     Now = wh_util:current_tstamp(),
-    case (Now - Expiry) > Created of
+    case (Created + Expiry) > Now of
         'true' -> N;
         'false' -> wnm_number:delete(N)
     end.
