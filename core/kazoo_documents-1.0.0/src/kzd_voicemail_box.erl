@@ -103,7 +103,7 @@ timezone(Box, Default) ->
 -spec owner_timezone(doc(), Default, kzd_user:doc()) -> ne_binary() | Default.
 owner_timezone(Box, Default) ->
     case owner(Box) of
-        'undefined'   -> account_timezone(Box, Default);
+        'undefined' -> account_timezone(Box, Default);
         OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
     end.
 
