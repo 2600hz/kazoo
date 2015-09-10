@@ -276,10 +276,27 @@ timezone(Box, Default) ->
 -spec owner_timezone(doc(), Default) -> ne_binary() | Default.
 -spec owner_timezone(doc(), Default, kzd_user:doc()) -> ne_binary() | Default.
 owner_timezone(Box, Default) ->
-    case kzd_voicemail_box:owner(Box) of
+    case owner(Box) of
         'undefined'   -> account_timezone(Box, Default);
         <<"inherit">> -> account_timezone(Box, Default);  %% UI-1808
         OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
+    end.
+
+-spec owner(doc()) -> kzd_user:doc() | 'undefined'.
+-spec owner(doc(), ne_binary()) -> kzd_user:doc() | 'undefined'.
+owner(Box) ->
+    case owner_id(Box) of
+        'undefined' -> 'undefined';
+        OwnerId -> owner(Box, OwnerId)
+    end.
+
+owner(Box, OwnerId) ->
+    case couch_mgr:open_cache_doc(wh_doc:account_db(Box)
+                                  ,OwnerId
+                                 )
+    of
+        {'ok', OwnerJObj} -> OwnerJObj;
+        {'error', 'not_found'} -> 'undefined'
     end.
 
 owner_timezone(Box, Default, OwnerJObj) ->
