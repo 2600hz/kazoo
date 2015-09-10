@@ -762,7 +762,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone}=B
               ,{'say', wh_util:to_binary(Count - length(Messages) + 1), <<"number">>}
               ,{'play', Message}
               ,{'prompt', <<"vm-received">>}
-              ,{'say',  get_unix_epoch(Call, wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+              ,{'say',  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
               ,{'prompt', <<"vm-message_menu">>}
              ],
     case message_menu(Prompt, Box, Call) of
@@ -2265,13 +2265,8 @@ new_timestamp() -> wh_util:current_tstamp().
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%--------------------------------------------------------------------
--spec get_unix_epoch(whapps_call:call(), ne_binary(), api_binary()) -> ne_binary().
-get_unix_epoch(Call, _Epoch, 'undefined') ->
-    case cf_endpoint:get(Call) of
-        {'ok', JObj} -> kzd_voicemail_box:timezone(JObj, ?DEFAULT_TIMEZONE);
-        _Else -> ?DEFAULT_TIMEZONE
-    end;
-get_unix_epoch(_Call, Epoch, Timezone) ->
+-spec get_unix_epoch(ne_binary(), ne_binary()) -> ne_binary().
+get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(Epoch)),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
     wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
