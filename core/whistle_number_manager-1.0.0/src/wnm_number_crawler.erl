@@ -26,7 +26,6 @@
         ]).
 
 -include("wnm.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(DISCOVERY_EXPIRY
         ,whapps_config:get_integer(?WNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)
@@ -37,7 +36,7 @@
        ).
 
 -define(NUMBERS_TO_CRAWL
-        ,whapps_config:get_integer(?WNM_CONFIG_CAT, <<"number_of_documents_to_crawl">>, 1000)
+        ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)
        ).
 
 -record(state, {cleanup_ref :: reference()}).
