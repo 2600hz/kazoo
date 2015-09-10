@@ -73,7 +73,7 @@
                                        ,<<"failover">> ,<<"prepend">>
                                       ]).
 
--define(WNM_DB_PREFIX_L, "numbers/").
+-define(WNM_DB_PREFIX_L, "numbers/+").
 -define(WNM_DB_PREFIX, <<?WNM_DB_PREFIX_L>>).
 -define(WNM_DOC_VSN, <<"1">>).
 
