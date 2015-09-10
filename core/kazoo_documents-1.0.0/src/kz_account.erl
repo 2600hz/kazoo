@@ -75,7 +75,7 @@ timezone(JObj) ->
     timezone(JObj, 'undefined').
 timezone(JObj, Default) ->
     case wh_json:get_value(?TIMEZONE, JObj, Default) of
-        <<"inherit">> -> Default;
+        <<"inherit">> -> Default;  %% UI-1808
         TZ -> TZ
     end.
 

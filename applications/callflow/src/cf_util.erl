@@ -919,7 +919,7 @@ process_event(Call, NoopId, JObj) ->
 get_timezone(JObj, Call) ->
     case wh_json:get_value(<<"timezone">>, JObj) of
         'undefined'   -> account_timezone(Call);
-        <<"inherit">> -> account_timezone(Call);
+        <<"inherit">> -> account_timezone(Call);  %% UI-1808
         TZ -> TZ
     end.
 
