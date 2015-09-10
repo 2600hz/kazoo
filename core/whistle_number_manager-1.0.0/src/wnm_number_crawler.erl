@@ -62,8 +62,14 @@ stop() ->
 crawl_numbers() ->
     wh_util:put_callid(?MODULE),
     lager:debug("beginning a number crawl"),
-    _ = [crawl_number_db(Db) || Db <- wnm_util:get_all_number_dbs()],
+    _ = [crawl_number_db(Db) || Db <- wnm_util:get_all_number_dbs(), is_number_db(Db)],
     lager:debug("finished the number crawl").
+
+-spec is_number_db(ne_binary()) -> boolean().
+is_number_db(<<"numbers%2F%2B", _/binary>>) -> 'true';
+is_number_db(<<"numbers%2F", C:1, _/binary>>)
+  when is_number(C) -> 'true';
+is_number_db(_) -> 'false'.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -171,19 +177,19 @@ cleanup_timer() ->
 
 -spec crawl_number_db(ne_binary()) -> 'ok'.
 crawl_number_db(Db) ->
+    lager:debug("start crawling '~s'",[Db]),
     crawl_number_db(Db, [{'limit', ?NUMBERS_TO_CRAWL}]).
 
 -spec crawl_number_db(ne_binary(), wh_proplist()) -> 'ok'.
 crawl_number_db(Db, Options) ->
-    lager:debug("crawling db ~s with ~p",[Db, Options]),
     case couch_mgr:all_docs(Db, Options) of
         {'error', _E} ->
             lager:debug("failed to crawl number db ~s: ~p", [Db, _E]);
         {'ok', []} ->
-            lager:debug(" finished crawling '~s'", [Db]);
+            lager:debug("finished crawling '~s'", [Db]);
         {'ok', Docs} ->
             case crawl_number_docs(Db, Docs) of
-                [] -> lager:debug(" finished crawling '~s'", [Db]);
+                [] -> lager:debug("finished crawling '~s'", [Db]);
                 Result -> crawl_number_db(Db, [{'startkey', next_number(lists:last(Result))}
                                                ,{'limit', ?NUMBERS_TO_CRAWL}
                                               ])
