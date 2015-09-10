@@ -262,13 +262,8 @@ build_date_called_data(DataJObj) ->
     DateCalled = date_called(DataJObj),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Timezone = wh_json:get_first_defined([[<<"voicemail">>, <<"timezone">>]
-                                          ,[<<"owner">>, <<"timezone">>]
-                                          ,[<<"account">>, <<"timezone">>]
-                                         ]
-                                         ,DataJObj
-                                         ,<<"UTC">>
-                                        ),
+    VMBox = wh_json:get_value(<<"voicemail">>, DataJObj),
+    Timezone = kzd_voicemail_box:timezone(VMBox, <<"UTC">>),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     lager:debug("using tz ~s (system ~s) for ~p", [Timezone, ClockTimezone, DateTime]),

@@ -104,7 +104,6 @@ timezone(Box, Default) ->
 owner_timezone(Box, Default) ->
     case owner(Box) of
         'undefined'   -> account_timezone(Box, Default);
-        <<"inherit">> -> account_timezone(Box, Default);
         OwnerJObj -> owner_timezone(Box, Default, OwnerJObj)
     end.
 
