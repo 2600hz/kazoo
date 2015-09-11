@@ -121,7 +121,7 @@ handle_cast({'auth_req', SenderPid, JObj}, State) ->
     {'noreply', State};
 handle_cast({'accounting_req', SenderPid, JObj}, State) ->
     wh_util:put_callid(JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj, <<"system_config">>),
+    AccountId = wh_json:get_value([?CCV, <<"Account-ID">>], JObj, <<"system_config">>),
     lager:debug("accounting_req message received for account ~p", [AccountId]),
     Response = maybe_aaa_mode(JObj, AccountId),
     lager:debug("Accounting response is ~p", [Response]),
@@ -340,8 +340,9 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                       lager:debug("Operation is authz"),
                       WholeRequest = wh_json:get_value(<<"Custom-Auth-Vars">>, JObj),
                       WholeRequest1 = cm_util:append_resource_name_to_request(WholeRequest),
-                      lager:debug("Request is: ~p", [WholeRequest1]),
-                      {cm_util:maybe_translate_kv_into_avps(WholeRequest1, AaaProps, RequestType), 'request'};
+                      WholeRequest2 = cm_util:insert_device_info_if_needed(WholeRequest1, RequestType),
+                      lager:debug("Request is: ~p", [WholeRequest2]),
+                      {cm_util:maybe_translate_kv_into_avps(WholeRequest2, AaaProps, RequestType), 'request'};
                   'authn' = RequestType ->
                       lager:debug("Operation is authn"),
                       lager:debug("Request is: ~p", [JObj]),
@@ -349,8 +350,9 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                   'accounting' = RequestType ->
                       lager:debug("Operation is accounting"),
                       JObj1 = cm_util:append_resource_name_to_request(JObj),
-                      lager:debug("Request is: ~p", [JObj1]),
-                      {cm_util:maybe_translate_kv_into_avps(JObj1, AaaProps, RequestType), 'accreq'}
+                      JObj2 = cm_util:insert_device_info_if_needed(JObj1, RequestType),
+                      lager:debug("Request is: ~p", [JObj2]),
+                      {cm_util:maybe_translate_kv_into_avps(JObj2, AaaProps, RequestType), 'accreq'}
               end,
     lager:debug("trying to resolve the next AVPs: ~p", [AllAVPs]),
     % prepare attribute param list

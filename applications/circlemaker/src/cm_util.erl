@@ -22,7 +22,8 @@
          ,clean_interim_update/1
          ,hangup_call/1
          ,get_resource_name/2
-         ,append_resource_name_to_request/1]).
+         ,append_resource_name_to_request/1
+         ,insert_device_info_if_needed/2]).
 
 -include("circlemaker.hrl").
 
@@ -319,7 +320,7 @@ get_resource_name(ResourceId, AccountId) ->
 -spec append_resource_name_to_request(wh_json:object()) -> wh_json:object().
 append_resource_name_to_request(Request) ->
     lager:debug("Appending Resource-Name header to the request"),
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Resource-ID">>], Request) of
+    case wh_json:get_value([?CCV, <<"Resource-ID">>], Request) of
         'undefined' ->
             lager:debug("Resource-ID value not found"),
             Request;
@@ -329,8 +330,8 @@ append_resource_name_to_request(Request) ->
 
 -spec append_resource_name_to_request(wh_json:object(), ne_binary()) -> wh_json:object().
 append_resource_name_to_request(Request, ResourceId) ->
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], Request),
-    Result = case wh_json:is_true([<<"Custom-Channel-Vars">>, <<"Global-Resource">>], Request, 'false') of
+    AccountId = wh_json:get_value([?CCV, <<"Account-ID">>], Request),
+    Result = case wh_json:is_true([?CCV, <<"Global-Resource">>], Request, 'false') of
                  'true' ->
                      get_resource_name(ResourceId, 'undefined');
                  'false' ->
@@ -340,5 +341,77 @@ append_resource_name_to_request(Request, ResourceId) ->
         'not_found' ->
             Request;
         ResourceName ->
-            wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Resource-Name">>], ResourceName, Request)
+            wh_json:set_value([?CCV, <<"Resource-Name">>], ResourceName, Request)
+    end.
+
+get_sip_device_info(JObj) ->
+    AccountId = wh_json:get_value([?CCV, <<"Account-ID">>], JObj),
+    AuthID = wh_json:get_value([?CCV, <<"Authorizing-ID">>], JObj),
+    case AccountId of
+        'undefined' ->
+            lager:debug("get_sip_device_info()1"),
+            {'error', 'not_found'};
+        _ ->
+            lager:debug("get_sip_device_info()2"),
+            AuthType = wh_json:get_value([?CCV, <<"Authorizing-Type">>], JObj),
+            DeviceRes = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), AuthID),
+            AuthType1 = case AuthType of
+                            'undefined' ->
+                                lager:debug("get_sip_device_info()3"),
+                                case DeviceRes of
+                                    {'ok', _} ->
+                                        lager:debug("get_sip_device_info()4"),
+                                        <<"device">>;
+                                    _ ->
+                                        lager:debug("get_sip_device_info()5"),
+                                        'undefined'
+                                end;
+                            _ ->
+                                lager:debug("get_sip_device_info()6"),
+                                AuthType
+                        end,
+            case AuthType1 of
+                <<"device">> ->
+                    lager:debug("get_sip_device_info()7"),
+                    {'ok', DeviceDoc} = DeviceRes,
+                    case wh_json:get_value(<<"device_type">>, DeviceDoc) of
+                        <<"sip_device">> ->
+                            lager:debug("get_sip_device_info()8"),
+                            DeviceName = wh_json:get_value(<<"name">>, DeviceDoc),
+                            SipUserName = wh_json:get_value([<<"sip">>, <<"username">>], DeviceDoc),
+                            {'ok', {DeviceName, SipUserName}};
+                        _ ->
+                            lager:debug("get_sip_device_info()9"),
+                            DeviceName = wh_json:get_value(<<"name">>, DeviceDoc),
+                            {'ok', {DeviceName, <<"">>}}
+                    end;
+                _ ->
+                    lager:debug("get_sip_device_info()10"),
+                    {'ok', {<<"">>, <<"">>}}
+            end
+    end.
+
+insert_device_info_if_needed(JObj, _Type) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    lager:debug("get_sip_device_info()11"),
+    case ets:lookup(?ETS_DEVICE_INFO, CallId) of
+        [] ->
+            lager:debug("get_sip_device_info()12"),
+            case get_sip_device_info(JObj) of
+                {'ok', {DeviceName, SipUserName}} ->
+                    % store SIP Device Info in ETS to use it in an authz
+                    lager:debug("get_sip_device_info()13"),
+                    ets:insert(?ETS_DEVICE_INFO, {CallId, DeviceName, SipUserName}),
+                    wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
+                                        ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
+                                        ,JObj);
+                {'error', _} ->
+                    lager:debug("get_sip_device_info()14"),
+                    JObj
+            end;
+        [{CallId, DeviceName, SipUserName}] ->
+            lager:debug("get_sip_device_info()15"),
+            wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
+                                ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
+                                ,JObj)
     end.

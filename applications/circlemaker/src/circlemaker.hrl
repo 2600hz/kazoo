@@ -13,6 +13,9 @@
 -define(ETS_SESSION_TIMEOUT, 'cm_session_timeout').
 -define(ETS_INTERIM_UPDATE, 'cm_interim_update').
 -define(ETS_DELAY_ACCOUNTING, 'cm_delay_accounting').
+-define(ETS_DEVICE_INFO, 'cm_device_info').
+
+-define(CCV, <<"Custom-Channel-Vars">>).
 
 -define(CIRCLEMAKER_HRL, 'true').
 -endif.
