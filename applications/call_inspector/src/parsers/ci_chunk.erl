@@ -29,6 +29,7 @@
 -export([sort_by_timestamp/1
          ,reorder_dialog/1
         ]).
+-export([get_dialog_entities/1]).
 
 -record(ci_chunk, {call_id :: ne_binary()
                   ,data = [] :: ne_binaries()
@@ -168,6 +169,32 @@ dst(Bin = <<_/binary>>) ->
 -spec is_chunk(_) -> boolean().
 is_chunk(#ci_chunk{}) -> 'true';
 is_chunk(_) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Gives back an ordered list of entities participating in the SIP dialog.
+%%
+%% `Chunks` needs to be ordered (e.g. using reorder_dialog/1).
+%% @end
+%%--------------------------------------------------------------------
+-spec get_dialog_entities([chunk()]) -> ne_binaries().
+get_dialog_entities(Chunks) ->
+    get_dialog_entities(Chunks, []).
+get_dialog_entities([], Acc) ->
+    lists:reverse(Acc);
+get_dialog_entities([Chunk|Chunks], Acc) ->
+    Src = src(Chunk),
+    Dst = dst(Chunk),
+    Acc1 = case lists:member(Src, Acc) of
+               'true'  -> Acc;
+               'false' -> [Src|Acc]
+           end,
+    Acc2 = case lists:member(Dst, Acc1) of
+               'true'  -> Acc1;
+               'false' -> [Dst|Acc1]
+           end,
+    get_dialog_entities(Chunks, Acc2).
 
 -spec sort_by_timestamp([chunk()]) -> [chunk()].
 sort_by_timestamp(Chunks) ->
