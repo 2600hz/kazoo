@@ -24,7 +24,8 @@
          ,code_change/3
         ]).
 
--record(state, {socket :: gen_udp:socket()
+-record(state, {parser_id :: atom()
+                ,socket :: gen_udp:socket()
                 ,listen_ip :: ne_binary()
                 ,listen_port :: pos_integer()
                }
@@ -61,11 +62,14 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init({'parser_args', IP, Port}) ->
+init({'parser_args', IP, Port} = Args) ->
+    ParserId = ci_parsers_util:make_name(Args),
+    _ = wh_util:put_callid(ParserId),
     {'ok', Socket} = gen_udp:open(Port, ['binary'
                                          ,{'active', 'true'}
                                         ]),
-    State = #state{socket = Socket
+    State = #state{parser_id = ParserId
+                   ,socket = Socket
                    ,listen_ip = IP
                    ,listen_port = Port
                   },
@@ -117,7 +121,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'udp', _Socket, _IPTuple, _InPortNo, Packet}, State) ->
     {'ok', Hep} = hep:decode(Packet),
-    make_and_store_chunk(Hep),
+    make_and_store_chunk(State#state.parser_id, Hep),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -153,10 +157,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec make_and_store_chunk(hep:t()) -> 'ok'.
-make_and_store_chunk(Hep) ->
+-spec make_and_store_chunk(atom(), hep:t()) -> 'ok'.
+make_and_store_chunk(ParserId, Hep) ->
     Data = binary:split(hep:payload(Hep), <<"\r\n">>, ['global', 'trim']),
-    ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
                          ,[{fun ci_chunk:data/2, Data}
@@ -170,7 +173,7 @@ make_and_store_chunk(Hep) ->
                            ,{fun ci_chunk:dst_port/2, hep:dst_port(Hep)}
                           ]
                         ),
-    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),
+    lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk).
 
 -spec ip(inet:ip4_address() | inet:ip6_address()) -> ne_binary().
