@@ -25,6 +25,7 @@ handle_req(JObj, _Props) ->
 send_response(Props, Q, MessageId) ->
     JObj = wh_json:from_list(
              [{<<"Chunks">>, chunks_as_json(Props)}
+              ,{<<"Dialog-Entities">>, ci_chunk:get_dialog_entities(get_chunks(Props))}
               ,{<<"Analysis">>, analysis_as_json(Props)}
               ,{<<"Msg-ID">>, MessageId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -32,11 +33,12 @@ send_response(Props, Q, MessageId) ->
             ),
     wapi_inspector:publish_lookup_resp(Q, JObj).
 
+get_chunks(Props) ->
+    props:get_value('chunks', Props, []).
+
 -spec chunks_as_json(ci_datastore:data()) -> wh_json:objects().
 chunks_as_json(Props) ->
-    [ci_chunk:to_json(Chunk)
-     || Chunk <- props:get_value('chunks', Props, [])
-    ].
+    [ci_chunk:to_json(Chunk) || Chunk <- get_chunks(Props)].
 
 -spec analysis_as_json(ci_datastore:data()) -> wh_json:objects().
 analysis_as_json(Props) ->

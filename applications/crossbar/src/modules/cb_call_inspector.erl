@@ -149,6 +149,7 @@ inspect_call_id(CallId, Context) ->
             Response = wh_json:from_list(
                          [{<<"call-id">>, CallId}
                           ,{<<"messages">>, Chunks}
+                          ,{<<"dialog_entities">>, wh_json:get_value(<<"Dialog-Entities">>, JObj, [])}
                           ,{<<"analysis">>, Analysis}
                          ]
                         ),
