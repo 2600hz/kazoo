@@ -23,8 +23,12 @@ migrate(Account) when is_binary(Account) ->
         {'error', _R}=Error -> Error;
         {'ok', JObj} ->
             CurrentApps = kz_apps_store:apps(JObj),
-            Doc = kz_apps_store:new(Account),
-            save(Account, kz_apps_store:set_apps(Doc, CurrentApps), JObj)
+            case wh_util:is_empty(CurrentApps) of
+                'true' -> {'error', 'migrated'};
+                'false' ->
+                    Doc = kz_apps_store:new(Account),
+                    save(Account, kz_apps_store:set_apps(Doc, CurrentApps), JObj)
+            end
     end.
 
 %%%===================================================================
@@ -43,9 +47,9 @@ save(Account, Doc, AccountDoc) ->
         {'error', _R}=Error -> Error;
         {'ok', _}=Ok ->
             case couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"apps">>, AccountDoc)) of
+                {'ok', _} -> Ok;
                 {'error', _R} ->
                     lager:error("failed to save ~s : ~p", [AccountDb, _R]),
-                    Ok;
-                {'ok', _} -> Ok
+                    Ok
             end
     end.
