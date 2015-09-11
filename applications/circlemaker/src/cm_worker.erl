@@ -350,9 +350,17 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                   'accounting' = RequestType ->
                       lager:debug("Operation is accounting"),
                       JObj1 = cm_util:append_resource_name_to_request(JObj),
-                      JObj2 = cm_util:insert_device_info_if_needed(JObj1, RequestType),
-                      lager:debug("Request is: ~p", [JObj2]),
-                      {cm_util:maybe_translate_kv_into_avps(JObj2, AaaProps, RequestType), 'accreq'}
+                      % delete device from ETS if It's accounting Stop
+                      case wh_json:get_value(<<"Acct-Status-Type">>, JObj1) of
+                          <<"Stop">> ->
+                              CallId = wh_json:get_value(<<"Call-ID">>, JObj1),
+                              lager:debug("Delete SIP Device Info from ETS for CallId ~p", [CallId]),
+                              ets:delete(?ETS_DEVICE_INFO, CallId);
+                          _ ->
+                              'ok'
+                      end,
+                      lager:debug("Request is: ~p", [JObj1]),
+                      {cm_util:maybe_translate_kv_into_avps(JObj1, AaaProps, RequestType), 'accreq'}
               end,
     lager:debug("trying to resolve the next AVPs: ~p", [AllAVPs]),
     % prepare attribute param list

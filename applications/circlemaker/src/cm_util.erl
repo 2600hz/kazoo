@@ -349,68 +349,70 @@ get_sip_device_info(JObj) ->
     AuthID = wh_json:get_value([?CCV, <<"Authorizing-ID">>], JObj),
     case AccountId of
         'undefined' ->
-            lager:debug("get_sip_device_info()1"),
+            lager:debug("Account-ID not defined for this device"),
             {'error', 'not_found'};
         _ ->
-            lager:debug("get_sip_device_info()2"),
             AuthType = wh_json:get_value([?CCV, <<"Authorizing-Type">>], JObj),
             DeviceRes = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), AuthID),
             AuthType1 = case AuthType of
                             'undefined' ->
-                                lager:debug("get_sip_device_info()3"),
+                                lager:debug("Authorizing-Type not defined for this device"),
                                 case DeviceRes of
                                     {'ok', _} ->
-                                        lager:debug("get_sip_device_info()4"),
+                                        lager:debug("Device document found so it's a device"),
                                         <<"device">>;
                                     _ ->
-                                        lager:debug("get_sip_device_info()5"),
+                                        lager:debug("Device document wasn't found so it's not a device"),
                                         'undefined'
                                 end;
                             _ ->
-                                lager:debug("get_sip_device_info()6"),
+                                lager:debug("Authorizing-Type found"),
                                 AuthType
                         end,
             case AuthType1 of
                 <<"device">> ->
-                    lager:debug("get_sip_device_info()7"),
                     {'ok', DeviceDoc} = DeviceRes,
-                    case wh_json:get_value(<<"device_type">>, DeviceDoc) of
+                    case DeviceType = wh_json:get_value(<<"device_type">>, DeviceDoc) of
                         <<"sip_device">> ->
-                            lager:debug("get_sip_device_info()8"),
+                            lager:debug("Device type is sip_device"),
+                            DeviceName = wh_json:get_value(<<"name">>, DeviceDoc),
+                            SipUserName = wh_json:get_value([<<"sip">>, <<"username">>], DeviceDoc),
+                            {'ok', {DeviceName, SipUserName}};
+                        <<"voip">> ->
+                            lager:debug("Device type is voip"),
                             DeviceName = wh_json:get_value(<<"name">>, DeviceDoc),
                             SipUserName = wh_json:get_value([<<"sip">>, <<"username">>], DeviceDoc),
                             {'ok', {DeviceName, SipUserName}};
                         _ ->
-                            lager:debug("get_sip_device_info()9"),
+                            lager:debug("Device type is ~p", [DeviceType]),
                             DeviceName = wh_json:get_value(<<"name">>, DeviceDoc),
                             {'ok', {DeviceName, <<"">>}}
                     end;
                 _ ->
-                    lager:debug("get_sip_device_info()10"),
+                    lager:debug("It's still not a device"),
                     {'ok', {<<"">>, <<"">>}}
             end
     end.
 
 insert_device_info_if_needed(JObj, _Type) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    lager:debug("get_sip_device_info()11"),
+    lager:debug("Trying to get device info for CallID ~p", [CallId]),
     case ets:lookup(?ETS_DEVICE_INFO, CallId) of
         [] ->
-            lager:debug("get_sip_device_info()12"),
+            lager:debug("Device info wasn't found in ETS. Trying to detect it."),
             case get_sip_device_info(JObj) of
                 {'ok', {DeviceName, SipUserName}} ->
-                    % store SIP Device Info in ETS to use it in an authz
-                    lager:debug("get_sip_device_info()13"),
+                    lager:debug("Store SIP Device Info in ETS: ~p", [{CallId, DeviceName, SipUserName}]),
                     ets:insert(?ETS_DEVICE_INFO, {CallId, DeviceName, SipUserName}),
                     wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
                                         ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
                                         ,JObj);
                 {'error', _} ->
-                    lager:debug("get_sip_device_info()14"),
+                    lager:debug("No device info was found, so no changes were applied."),
                     JObj
             end;
         [{CallId, DeviceName, SipUserName}] ->
-            lager:debug("get_sip_device_info()15"),
+            lager:debug("Device info was found in ETS. Using it: ~p", [{CallId, DeviceName, SipUserName}]),
             wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
                                 ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
                                 ,JObj)
