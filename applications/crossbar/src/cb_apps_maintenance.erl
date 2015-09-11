@@ -46,8 +46,6 @@ save(Account, Doc, AccountDoc) ->
                 {'error', _R} ->
                     lager:error("failed to save ~s : ~p", [AccountDb, _R]),
                     Ok;
-                {'ok', JObj} ->
-                    _ = crossbar_util:replicate_account_definition(JObj),
-                    Ok
+                {'ok', _} -> Ok
             end
     end.
