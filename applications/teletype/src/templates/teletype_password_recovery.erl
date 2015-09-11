@@ -19,8 +19,9 @@
 -define(TEMPLATE_ID, <<"password_recovery">>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list(?ACCOUNT_MACROS ++ ?USER_MACROS
-                          )
+        ,wh_json:from_list([?MACRO_VALUE(<<"link">>, <<"link">>, <<"Password Reset Link">>, <<"Link going to click to reset password">>)
+                           | ?ACCOUNT_MACROS ++ ?USER_MACROS
+                           ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Hi, {{user.first_name}} {{user.last_name}}!\n\nWe received a request to change the password for your 2600hz VoIP Services account \"{{account.name}}\".\nIf you did not make this request, just ignore this email. Otherwise, please click the link below to change your password:\n\n{{link}}">>).
@@ -74,7 +75,7 @@ handle_password_recovery(JObj, _Props) ->
                 wh_json:set_values(
                     [{<<"user">>, User}
                      ,{<<"to">>, [wh_json:get_ne_value(<<"email">>, User)]}
-                     ,{<<"link">>, wh_json:get_ne_binary_value([<<"uuid">>], DataJObj, <<"missing_link">>)}
+                     ,{<<"link">>, wh_json:get_ne_value([<<"Password-Reset-Link">>], DataJObj, <<"missing_link">>)}
                     ]
                   ,DataJObj
                  ),
@@ -105,7 +106,7 @@ process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
-              ,{<<"link">>, wh_json:get_value(<<"link">>, DataJObj)}
+              ,{<<"link">>, wh_json:get_value([<<"link">>], DataJObj)}
              ],
 
     %% Populate templates

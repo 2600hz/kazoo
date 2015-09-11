@@ -374,28 +374,35 @@ reset_users_password__step_1(Context) ->
     Doc = cb_context:doc(Context),
     Props = [{'origin', [{'db', wh_doc:account_db(Doc), wh_doc:account_id(Doc)}]}],
     'ok' = wh_cache:store_local(?CROSSBAR_CACHE, UUID, Context, Props),
-    Email = wh_json:get_value(<<"email">>, Doc),
-    lager:debug(">>> Email: ~p", [Email]),
+
     Context1 = crossbar_doc:save(cb_context:set_req_verb(Context, ?HTTP_POST)),
     case cb_context:resp_status(Context1) of
         'success' ->
+            UIURL = wh_json:get_ne_binary_value(<<"url">>, Doc),
+            Email = wh_json:get_ne_binary_value(<<"email">>, Doc),
+            lager:debug(">>> Email: ~p ~p", [Email, UIURL]),
             Notify = [{<<"Email">>, Email}
                       ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, Doc)}
                       ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, Doc)}
-                      ,{<<"UUID">>, UUID}
+                      ,{<<"Password-Reset-Link">>, make_password_reset_link(UIURL, UUID)}
                       ,{<<"Account-ID">>, wh_doc:account_id(Doc)}
                       ,{<<"Account-DB">>, wh_doc:account_db(Doc)}
                       ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Context))}
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
             lager:debug(">>> 1 success"),
-            'ok' = wapi_notifications:publish_pwd_recovery_req(Notify),
+            'ok' = wapi_notifications:publish_pwd_recovery(Notify),
             Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
             crossbar_util:response(Msg, Context);
         _Status ->
             lager:debug(">>> 1 failure"),
             Context1
     end.
+
+make_password_reset_link(UIURL, UUID) ->
+    [Url|_] = binary:split(UIURL, <<"#">>),
+    lager:debug(">>> url ~s ~s", [UIURL, Url]),
+    <<Url/binary, "/", UUID/binary>>.
 
 %% @private
 -spec reset_users_password__step_2(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -406,43 +413,31 @@ reset_users_password__step_2(Context, UUID) ->
             lager:debug("failed to reset password for user : UUID ~s not found (~p)", [UUID,_R]),
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'fatal'}
                                         ]);
-        {'ok', Data} ->
+        {'ok', CachedContext} ->
             lager:debug(">>> 2 right track"),
-            %% Data holds the Context used to make the pwd-rst request
             'ok' = wh_cache:erase_local(?CROSSBAR_CACHE, UUID),
-            JObj = cb_context:doc(Data),
+            Doc = cb_context:doc(CachedContext),
             Password = wh_util:rand_hex_binary(16),
-            {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
-            Email = wh_json:get_value(<<"email">>, JObj),
+            {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, Doc), Password),
 
-            JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
-                                        ,{<<"pvt_sha1_auth">>, SHA1}
-                                        ,{<<"require_password_update">>, 'true'}
-                                       ], JObj),
+            NewDoc = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
+                                         ,{<<"pvt_sha1_auth">>, SHA1}
+                                         ,{<<"require_password_update">>, 'true'}
+                                        ], Doc),
 
-            lager:debug(">>> 2 Email ~p Password ~p", [Email, Password]),
-            Data1 = crossbar_doc:save(
-                      cb_context:setters(Data, [{fun cb_context:set_doc/2, JObj1}
-                                                ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
-                                               ])
-                     ),
-            case cb_context:resp_status(Data1) of
+            lager:debug(">>> 2 Password ~p ~p ~p", [Password, MD5, SHA1]),
+            NewContext = crossbar_doc:save(
+                           cb_context:setters(CachedContext, [{fun cb_context:set_doc/2, NewDoc}
+                                                              ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
+                                                             ])
+                          ),
+            case cb_context:resp_status(NewContext) of
                 'success' ->
-                    Notify = [{<<"Email">>, Email}
-                              ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, JObj)}
-                              ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, JObj)}
-                              ,{<<"Password">>, Password}
-                              ,{<<"Account-ID">>, wh_doc:account_id(JObj)}
-                              ,{<<"Account-DB">>, wh_doc:account_db(JObj)}
-                              ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Data))}
-                              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
-                             ],
-                    lager:debug(">>> 2 email sent"),
-                    'ok' = wapi_notifications:publish_pwd_recovery(Notify),
-                    crossbar_util:response(<<"Password reset, email sent to: ", Email/binary>>, Context);
+                    lager:debug(">>> 2 success"),
+                    NewContext;
                 _Status ->
-                    lager:debug(">>> 2 failure"),
-                    Data1 %% Or Context?
+                    lager:debug(">>> 2 failure: ~p", [_Status]),
+                    NewContext %% Or Context?
             end
     end.
 
