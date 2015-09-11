@@ -202,15 +202,20 @@ crawl_number_doc(PhoneNumber) ->
         _ -> 'ok'
     catch
         'throw':'number_purged' ->
-            lager:debug(" number '~s' was purged from the sytem", [Num]);
+            lager:debug(" number '~s' was purged from the sytem"
+                        ,[knm_phone_number:number(PhoneNumber)]
+                       );
         'throw':{'error', _E} ->
-            lager:debug(" number '~s' encountered an error: ~p", [Num, _E]);
+            lager:debug(" number '~s' encountered an error: ~p"
+                        ,[knm_phone_number:number(PhoneNumber), _E]
+                       );
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug(" '~s' encountered with ~s: ~p", [_E, Num, _R]),
+            lager:debug(" '~s' encountered with ~s: ~p"
+                        ,[_E, knm_phone_number:number(PhoneNumber), _R]
+                       ),
             wh_util:log_stacktrace(ST)
-    end,
-    Num.
+    end.
 
 -spec run_crawler_funs(knm_phone_number:knm_number(), functions()) ->
                               knm_phone_number:knm_number().
