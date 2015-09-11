@@ -24,7 +24,8 @@
          ,code_change/3
         ]).
 
--record(state, {logfile :: file:name()
+-record(state, {parser_id :: atom()
+                ,logfile :: file:name()
                 ,iodevice :: file:io_device()
                 ,logip :: ne_binary()
                 ,logport :: pos_integer()
@@ -64,9 +65,12 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init({'parser_args', LogFile, LogIP, LogPort}) ->
+init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
+    ParserId = ci_parsers_util:make_name(Args),
+    _ = wh_util:put_callid(ParserId),
     NewDev = ci_parsers_util:open_file(LogFile),
-    State = #state{logfile = LogFile
+    State = #state{parser_id = ParserId
+                   ,logfile = LogFile
                    ,iodevice = NewDev
                    ,logip = LogIP
                    ,logport = LogPort
@@ -119,7 +123,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('start_parsing', State=#state{iodevice = IoDevice
+handle_info('start_parsing', State=#state{parser_id = ParserId
+                                          ,iodevice = IoDevice
                                           ,logip = LogIP
                                           ,logport = LogPort
                                           ,timer = OldTimer
@@ -129,7 +134,7 @@ handle_info('start_parsing', State=#state{iodevice = IoDevice
             'undefined' -> 'ok';
             _ -> erlang:cancel_timer(OldTimer)
         end,
-    NewCounter = extract_chunks(IoDevice, LogIP, LogPort, Counter),
+    NewCounter = extract_chunks(ParserId, IoDevice, LogIP, LogPort, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                  ,self()
                                  ,'start_parsing'
@@ -171,17 +176,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec extract_chunks(file:io_device(), ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
-extract_chunks(Dev, LogIP, LogPort, Counter) ->
+-spec extract_chunks(atom(), file:io_device(), ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
+extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev) of
         [] -> Counter;
         {{'callid',Callid}, Data0} ->
-            NewCounter = make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0),
-            extract_chunks(Dev, LogIP, LogPort, NewCounter);
+            NewCounter = make_and_store_chunk(ParserId, LogIP, LogPort, Callid, Counter, Data0),
+            extract_chunks(ParserId, Dev, LogIP, LogPort, NewCounter);
         {'buffers', Buffers} ->
             StoreEach =
                 fun ({{'callid',Callid}, Data0}, ACounter) ->
-                        make_and_store_chunk(LogIP, LogPort, Callid, ACounter, Data0)
+                        make_and_store_chunk(ParserId, LogIP, LogPort, Callid, ACounter, Data0)
                 end,
             lists:foldl(StoreEach, Counter, Buffers)
     end.
@@ -189,9 +194,9 @@ extract_chunks(Dev, LogIP, LogPort, Counter) ->
 -type key() :: {'callid', ne_binary()}.
 -type data() :: [ne_binary() | {ne_binary()}].
 
--spec make_and_store_chunk(ne_binary(), pos_integer(), ne_binary(), pos_integer(), data()) ->
+-spec make_and_store_chunk(atom(), ne_binary(), pos_integer(), ne_binary(), pos_integer(), data()) ->
                                   pos_integer().
-make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
+make_and_store_chunk(ParserId, LogIP, LogPort, Callid, Counter, Data0) ->
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
     %% Counter is a fallback time ID (for old logfile format)
     {NewCounter, Timestamp} = case Ts of
@@ -199,7 +204,6 @@ make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
                                   _Ts -> {Counter, Ts}
                               end,
     ReversedData0 = lists:reverse(Data0),
-    ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
                          ,[{fun ci_chunk:data/2, Data}
@@ -213,7 +217,7 @@ make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
                            ,{fun ci_chunk:dst_port/2, to_port(ReversedData0,LogPort)}
                           ]
                         ),
-    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),
+    lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
