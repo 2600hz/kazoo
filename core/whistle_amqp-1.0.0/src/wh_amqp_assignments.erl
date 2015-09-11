@@ -104,7 +104,7 @@ add_channel(Broker, Connection, Channel) when is_pid(Channel), is_binary(Broker)
 
 -spec release(pid()) -> 'ok'.
 release(Consumer) ->
-    gen_server:call(?MODULE, {'release_handlers', Consumer}).
+    gen_server:call(?MODULE, {'release_handlers', Consumer}, 'infinity').
 
 %%%===================================================================
 %%% gen_server callbacks
