@@ -79,6 +79,7 @@ from_json(Hook) ->
              ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
              ,account_id = wh_doc:account_id(Hook)
              ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
+             ,modifiers = wh_json:get_ne_value(<<"modifiers">>, Hook)
             }.
 
 -spec to_json(webhook()) -> wh_json:object().
@@ -90,6 +91,7 @@ to_json(Hook) ->
        ,{<<"retries">>, Hook#webhook.retries}
        ,{<<"account_id">>, Hook#webhook.account_id}
        ,{<<"custom_data">>, Hook#webhook.custom_data}
+       ,{<<"modifiers">>, Hook#webhook.modifiers}
       ]).
 
 -spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
@@ -113,8 +115,40 @@ find_webhooks(HookEvent, AccountId) ->
 -spec fire_hooks(wh_json:object(), webhooks()) -> 'ok'.
 fire_hooks(_, []) -> 'ok';
 fire_hooks(JObj, [Hook | Hooks]) ->
-    fire_hook(wh_json:normalize_jobj(JObj), Hook),
+    maybe_fire_hook(JObj, Hook),
     fire_hooks(JObj, Hooks).
+
+-spec maybe_fire_hook(wh_json:object(), webhook()) -> 'ok'.
+maybe_fire_hook(JObj, #webhook{modifiers='undefined'}=Hook) ->
+    fire_hook(JObj, Hook);
+maybe_fire_hook(JObj, #webhook{modifiers=Modifiers}=Hook) ->
+    {ShouldFireHook, _} =
+        wh_json:foldl(
+            fun maybe_fire_foldl/3
+            ,{'true', JObj}
+            ,Modifiers
+        ),
+    case ShouldFireHook of
+        'false' -> 'ok';
+        'true' ->  fire_hook(JObj, Hook)
+    end.
+
+-spec maybe_fire_foldl(ne_binary(), any(), {boolean(), wh_json:object()}) -> {boolean(), wh_json:object()}.
+maybe_fire_foldl(_Key, _Value, {'false', _}=Acc) ->
+    Acc;
+maybe_fire_foldl(_Key, [], Acc) -> Acc;
+maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) when is_list(Value) ->
+    case wh_json:get_value(Key, JObj) of
+        'undefined' -> {'true', JObj};
+        Data ->
+            {lists:member(Data, Value), JObj}
+    end;
+maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) ->
+    case wh_json:get_value(Key, JObj) of
+        'undefined' -> {'true', JObj};
+        Value -> {'true', JObj};
+        _Else -> {'false', JObj}
+    end.
 
 -spec fire_hook(wh_json:object(), webhook()) -> 'ok'.
 -spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), 0 | hook_retries()) -> 'ok'.
@@ -368,6 +402,7 @@ jobj_to_rec(Hook) ->
              ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
              ,account_id = wh_doc:account_id(Hook)
              ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
+             ,modifiers = wh_json:get_ne_value(<<"modifiers">>, Hook)
             }.
 
 -spec init_webhooks() -> 'ok'.
@@ -501,16 +536,16 @@ init_metadata(Id, JObj) ->
 
 init(Id, JObj, MasterAccountDb) ->
     case metadata_exists(MasterAccountDb, Id) of
-        'true' -> lager:debug("~s already exists, not loading", [Id]);
-        'false' -> load_metadata(MasterAccountDb, JObj)
+        {'error', _} -> load_metadata(MasterAccountDb, JObj);
+        {'ok', Doc} ->
+            lager:debug("~s already exists, updating", [Id]),
+            Merged = wh_json:merge_recursive(Doc, JObj),
+            load_metadata(MasterAccountDb, Merged)
     end.
 
 -spec metadata_exists(ne_binary(), ne_binary()) -> boolean().
 metadata_exists(MasterAccountDb, Id) ->
-    case couch_mgr:open_cache_doc(MasterAccountDb, Id) of
-        {'ok', _} -> 'true';
-        {'error', _} -> 'false'
-    end.
+    couch_mgr:open_doc(MasterAccountDb, Id).
 
 -spec load_metadata(ne_binary(), wh_json:object()) -> 'ok'.
 load_metadata(MasterAccountDb, JObj) ->

@@ -25,7 +25,7 @@ See the [webhooks_skel](applications/webhooks/src/modules/webhooks_skel.erl) for
 
 #### Modifiers
 
-Some webhooks, like `objects`, have a `modifiers` object to fine-tune the behaviour of the webhook. `objects`, for instance, allows the creator to specify a subset of object types to listen for and publish (versus getting everything).
+Some webhooks, like `doc`, have a `modifiers` object to fine-tune the behaviour of the webhook. `objects`, for instance, allows the creator to specify a subset of object types to listen for and publish (versus getting everything).
 
 ### Webhook Modules
 

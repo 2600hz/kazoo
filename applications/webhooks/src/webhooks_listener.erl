@@ -261,11 +261,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec maybe_add_shared_bindings(webhook()) -> 'ok'.
-maybe_add_shared_bindings(#webhook{hook_event = <<"object">>
+maybe_add_shared_bindings(#webhook{hook_event = <<"doc">>
                                    ,account_id=AccountId
                                   }) ->
-    lager:debug("adding object bindings for ~s", [AccountId]),
-    webhooks_shared_listener:add_object_bindings(AccountId);
+    lager:debug("adding doc bindings for ~s", [AccountId]),
+    webhooks_shared_listener:add_doc_bindings(AccountId);
 maybe_add_shared_bindings(_Hook) -> 'ok'.
 
 -spec maybe_remove_shared_bindings(ne_binary()) -> 'true'.
@@ -278,20 +278,20 @@ maybe_remove_shared_bindings(Id) ->
     ets:delete(webhooks_util:table_id(), Id).
 
 -spec remove_shared_bindings(webhook()) -> 'ok'.
-remove_shared_bindings(#webhook{hook_event = <<"object">>
+remove_shared_bindings(#webhook{hook_event = <<"doc">>
                                 ,account_id = AccountId
                                 ,id = Id
                                }
                       ) ->
-    lager:debug("account ~s removed an object hook, seeing if others exist"
+    lager:debug("account ~s removed an doc hook, seeing if others exist"
                 ,[AccountId]
                ),
     case ets:select(webhooks_util:table_id(), object_account_ms(AccountId, Id)) of
         [] ->
-            lager:debug("no other object bindings, removing ~s", [AccountId]),
-            webhooks_shared_listener:remove_object_bindings(AccountId);
+            lager:debug("no other doc bindings, removing ~s", [AccountId]),
+            webhooks_shared_listener:remove_doc_bindings(AccountId);
         _ ->
-            lager:debug("account ~s has other object bindings", [AccountId])
+            lager:debug("account ~s has other doc bindings", [AccountId])
     end.
 
 -spec object_account_ms(ne_binary(), ne_binary()) -> ets:match_spec().
