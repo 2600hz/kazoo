@@ -225,9 +225,10 @@ record_to_xml(#bt_card{}=Card, ToString) ->
              ,{'number', Card#bt_card.number}
              ,{'cvv', Card#bt_card.cvv}
              ,{'billing-address-id', Card#bt_card.billing_address_id}],
-    Conditionals = [fun(#bt_card{billing_address='undefined'}, P) -> P;
-                       (#bt_card{billing_address=BA}, P) ->
-                            [{'billing-address', braintree_address:record_to_xml(BA)}|P]
+    Conditionals = [fun(#bt_card{billing_address=BA, billing_address_id='undefined'}, P)
+                          when BA =/= 'undefined' ->
+                            [{'billing-address', braintree_address:record_to_xml(BA)} | P];
+                       (#bt_card{}, P) -> P
                     end
                     ,fun(#bt_card{update_existing='false'}, P) -> P;
                         (#bt_card{update_existing=Token}, P) when is_binary(Token) ->
