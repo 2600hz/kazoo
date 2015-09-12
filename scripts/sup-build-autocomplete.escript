@@ -117,9 +117,7 @@ case_args({M,F} = MF) ->
     ].
 
 uspaces(Lists) ->
-    %% Note the Unicode non-breaking space (not part of $IFS)
-    USpace = " ",
-    [ [$[, USpace, [[to_list(E), USpace] || E <- List], $]]
+    [ [$[, [to_list(E) || E <- List], $]]
       || List <- Lists ].
 
 spaces(List) ->
