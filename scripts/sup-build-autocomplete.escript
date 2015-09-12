@@ -10,12 +10,10 @@
 %% This list has to never be empty! (nor contain empty strings)
 %% MUST be here only modules that don't end with '_maintenance',
 %% as these are automatically added anyway.
--define(REQUIRED_MODULES, ["amqp_mgr"
-                           ,"couch_mgr"
+-define(REQUIRED_MODULES, ["couch_compactor_fsm"
                            ,"crossbar_bindings"
                            ,"ecallmgr_config"
                            ,"notify_account_crawler"
-                           ,"wh_services"
                            ,"whapps_account_config"
                            ,"whapps_config"
                            ,"whapps_controller"
@@ -117,9 +115,7 @@ case_args({M,F} = MF) ->
     ].
 
 uspaces(Lists) ->
-    %% Note the Unicode non-breaking space (not part of $IFS)
-    USpace = " ",
-    [ [$[, USpace, [[to_list(E), USpace] || E <- List], $]]
+    [ [$[, [to_list(E) || E <- List], $]]
       || List <- Lists ].
 
 spaces(List) ->
