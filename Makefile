@@ -71,3 +71,9 @@ dialyze: $(PLT)
 xref: EBINS = $(shell find $(ROOT) -name ebin -print)
 xref:
 	@$(ROOT)/scripts/check-xref.escript $(EBINS)
+
+sup_completion: sup_completion_file = $(ROOT)/sup.bash
+sup_completion: kazoo
+	@$(if $(wildcard $(sup_completion_file)), rm $(sup_completion_file))
+	@$(ROOT)/scripts/sup-build-autocomplete.escript $(sup_completion_file) applications/ core/
+	@echo SUP Bash completion file written at $(sup_completion_file)

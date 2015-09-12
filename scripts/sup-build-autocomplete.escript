@@ -7,6 +7,21 @@
 
 -export([main/1]).
 
+%% This list has to never be empty! (nor contain empty strings)
+%% MUST be here only modules that don't end with '_maintenance',
+%% as these are automatically added anyway.
+-define(REQUIRED_MODULES, ["amqp_mgr"
+                           ,"couch_mgr"
+                           ,"crossbar_bindings"
+                           ,"ecallmgr_config"
+                           ,"notify_account_crawler"
+                           ,"wh_services"
+                           ,"whapps_account_config"
+                           ,"whapps_config"
+                           ,"whapps_controller"
+                           ,"wnm_util"
+                          ]).
+
 %% API
 
 main([]) ->
@@ -170,7 +185,8 @@ find_modules(Path) ->
         'false' -> [];
         'true' ->
             AccFiles = fun (File, Acc) -> [File|Acc] end,
-            filelib:fold_files(Path, ".+_maintenance\\.beam", true, AccFiles, [])
+            Required = string:join(?REQUIRED_MODULES, "|"),
+            filelib:fold_files(Path, "(.+_maintenance|" ++ Required ++ ")\\.beam", true, AccFiles, [])
             %% filelib:fold_files(Path, ".+\\.beam", true, AccFiles, [])
     end.
 
