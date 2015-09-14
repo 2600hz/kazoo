@@ -80,6 +80,12 @@
          ,change_notice/0
         ]).
 
+%% Types
+-export_type([get_results_return/0
+              ,couchbeam_error/0
+              ,couchbeam_errors/0
+             ]).
+
 -include("kz_data.hrl").
 
 -define(UUID_SIZE, 16).
