@@ -412,7 +412,7 @@ fetch_and_send(Url, JObj) ->
                       lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
                       throw('error');
                   {'ok', Attachment} ->
-                      send_attachement(Url, Id, Key, Value, Attachment)
+                      send_attachment(Url, Id, Key, Value, Attachment)
               end
       end
       ,'ok'
@@ -424,9 +424,9 @@ fetch_and_send(Url, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), iolist()) ->
+-spec send_attachment(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), binary()) ->
                               'error' | 'ok'.
-send_attachement(Url, Id, Name, Options, Attachment) ->
+send_attachment(Url, Id, Name, Options, Attachment) ->
     ContentType = wh_json:get_value(<<"content_type">>, Options),
 
     Headers = [{"Content-Type", wh_util:to_list(ContentType)}
