@@ -45,14 +45,16 @@ determine_account_id(Request) ->
 maybe_local_resource(AccountId, Props, Request) ->
     case wh_number_properties:is_local_number(Props) of
         'true' -> maybe_authz_local_resource(AccountId, Request);
-        'false' -> allow_local_resource(AccountId, Request)
+        'false' ->
+            maybe_account_limited(
+              j5_request:set_account_id(AccountId, Request)
+             )
     end.
 
 -spec maybe_authz_local_resource(ne_binary(), j5_request:request()) -> 'ok'.
 maybe_authz_local_resource(AccountId, Request) ->
     case should_authz_local(Request) of
-        'false' ->
-            allow_local_resource(AccountId, Request);
+        'false' -> allow_local_resource(AccountId, Request);
         'true' ->
             lager:debug("authz_local_resources enabled, applying limits for local numbers"),
             maybe_account_limited(
