@@ -846,6 +846,8 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
 maybe_format_user(Contact, #bridge_endpoint{number='undefined'}) -> Contact;
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"e164">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", wnm_util:to_e164(Number), [{'return', 'binary'}]);
+maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"e164_without_plus">>, number=Number}) ->
+    re:replace(Contact, "^[^\@]+", wnm_util:to_e164_without_plus(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"npan">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", wnm_util:to_npan(Number), [{'return', 'binary'}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"1npan">>, number=Number}) ->

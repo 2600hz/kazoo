@@ -26,7 +26,7 @@
          ,get_all_number_dbs/0
         ]).
 -export([normalize_number/1, normalize_number/2]).
--export([to_e164/1, to_e164/2, to_e164/3
+-export([to_e164/1, to_e164/2, to_e164/3, to_e164_without_plus/1
          ,to_npan/1, to_1npan/1
         ]).
 -export([is_e164/1, is_e164/2
@@ -431,6 +431,10 @@ maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
             Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], Converters, <<>>),
             <<Prefix/binary, Root/binary, Suffix/binary>>
     end.
+
+-spec to_e164_without_plus(ne_binary()) -> ne_binary().
+to_e164_without_plus(Number) ->
+    re:replace(to_e164(Number), "[\+]", "", [{'return', 'binary'}]).
 
 %% end up with 8001234567 from 1NPAN and E.164
 -spec to_npan(ne_binary()) -> ne_binary().
