@@ -49,6 +49,7 @@ send_req(Worker, JObj, Caller) ->
     RequestType = cm_util:determine_aaa_request_type(JObj),
     lager:debug("Request type is ~p", [RequestType]),
     FixedRequestType = case RequestType of
+                           'custom' -> 'custom_req';
                            'authn' -> 'auth_req';
                            'authz' -> 'auth_req';
                            'accounting' -> 'accounting_req'
@@ -60,6 +61,7 @@ send_req(Worker, JObj) ->
     RequestType = cm_util:determine_aaa_request_type(JObj),
     lager:debug("Request type is ~p", [RequestType]),
     FixedRequestType = case RequestType of
+                           'custom' -> 'custom_req';
                            'authn' -> 'auth_req';
                            'authz' -> 'auth_req';
                            'accounting' -> 'accounting_req'
@@ -118,6 +120,13 @@ handle_cast({'auth_req', SenderPid, JObj}, State) ->
         [wh_json:get_value(<<"Auth-User">>, JObj), AccountId]),
     Response = maybe_aaa_mode(JObj, AccountId),
     cm_pool_mgr:send_authn_response(SenderPid, Response, JObj, self()),
+    {'noreply', State};
+handle_cast({'custom_req', SenderPid, JObj}, State) ->
+    wh_util:put_callid(JObj),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj, <<"system_config">>),
+    lager:debug("custom_req message received"),
+    Response = maybe_aaa_mode(JObj, AccountId),
+    cm_pool_mgr:send_custom_response(SenderPid, Response, JObj, self()),
     {'noreply', State};
 handle_cast({'accounting_req', SenderPid, JObj}, State) ->
     wh_util:put_callid(JObj),
@@ -249,7 +258,8 @@ maybe_suitable_servers(JObj, AaaProps, AccountId, ParentAccountId) ->
     ServersFilterArg = case AaaRequestType of
                            'authn' -> <<"authentication">>;
                            'authz' -> <<"authorization">>;
-                           'accounting' -> <<"accounting">>
+                           'accounting' -> <<"accounting">>;
+                           'custom' -> <<"custom">>
                         end,
     FilteredServers = [S || S <- Servers,
         lists:member(props:get_value(<<"name">>, S), props:get_value(ServersFilterArg, AaaProps))],
@@ -307,6 +317,8 @@ maybe_channel_blocked(AllServers, Address, JObj, AaaProps, AccountId, ParentAcco
     case AaaRequestType of
         'authn' ->
             maybe_eradius_request(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId);
+        'custom' ->
+            maybe_eradius_request(AllServers, Address, JObj, AaaProps, AccountId, ParentAccountId);
         'authz' ->
             case maybe_block_processing(JObj, AaaProps, <<"block_authz">>) of
                 'ok' ->
@@ -345,6 +357,10 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                       {cm_util:maybe_translate_kv_into_avps(WholeRequest2, AaaProps, RequestType), 'request'};
                   'authn' = RequestType ->
                       lager:debug("Operation is authn"),
+                      lager:debug("Request is: ~p", [JObj]),
+                      {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'request'};
+                  'custom' = RequestType ->
+                      lager:debug("Operation is custom"),
                       lager:debug("Request is: ~p", [JObj]),
                       {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'request'};
                   'accounting' = RequestType ->

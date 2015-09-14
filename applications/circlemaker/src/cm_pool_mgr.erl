@@ -22,8 +22,8 @@
          ,start_link/0
          ,send_authn_response/4
          ,send_accounting_response/4
+         ,send_custom_response/4
          ,do_request/1
-
          ,maybe_session_timeout/2
          ,maybe_interim_update/2
         ]).
@@ -57,6 +57,16 @@ do_request(Request) ->
 %%--------------------------------------------------------------------
 -spec send_authn_response(pid(), authn_response(), wh_json:object(), pid()) -> 'ok'.
 send_authn_response(SenderPid, Response, JObj, Self) ->
+    lager:debug("Response ~p is prepared to send to worker ~p", [Response, Self]),
+    gen_server:cast(SenderPid, {'response', Response, JObj, Self}).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Handler for a custom response message
+%% @end
+%%--------------------------------------------------------------------
+-spec send_custom_response(pid(), authn_response(), wh_json:object(), pid()) -> 'ok'.
+send_custom_response(SenderPid, Response, JObj, Self) ->
     lager:debug("Response ~p is prepared to send to worker ~p", [Response, Self]),
     gen_server:cast(SenderPid, {'response', Response, JObj, Self}).
 
@@ -106,6 +116,11 @@ init([]) ->
 handle_call(_Request, _From, State) ->
     {'noreply', State}.
 
+% pattern for {ok,{{radius_request,0,accept,[{{attribute,{11000,5},string,"Is-Authorized",no},<<"true">>}],<<"zebra">>,<<93,69,40,2,251,41,84,90,169,220,196,35,151,33,26,168>>,false,<<>>},<<"caf3741e12264f786a676b35b853c5c3">>}}
+extract_kv_from_attr_list({{_, _, _, Name, _}, Val}) -> {Name, Val};
+% pattern for {ok,{{radius_request,0,accept,[{{attribute,{11000,5},string,"Is-Authorized",no},<<"true">>}],<<"zebra">>,<<93,69,40,2,251,41,84,90,169,220,196,35,151,33,26,168>>,false,<<>>},<<"caf3741e12264f786a676b35b853c5c3">>}}
+extract_kv_from_attr_list({Name, Val}) -> {Name, Val}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -121,17 +136,17 @@ handle_cast({'request', JObj}, State) ->
     dist_workers(JObj),
     {'noreply', State};
 handle_cast({'response', Response, JObj, Worker}, State) ->
-    wh_util:put_callid(Response),
+    wh_util:put_callid(JObj),
     lager:debug("response message is ~p", [Response]),
     poolboy:checkin(?WORKER_POOL, Worker),
     {AaaResult, AttributeList, AccountId} = case Response of
                 {'ok', {{'radius_request', _, 'accept', ParamList, _, _, _, _}, AuthzAccountId}} ->
-                    AttrList = [{Name, Val} || {{_, _, _, Name, _}, Val} <- ParamList],
+                    AttrList = [extract_kv_from_attr_list(ParamItem) || ParamItem <- ParamList],
                     {<<"accept">>, AttrList, AuthzAccountId};
                 {'ok', {'aaa_mode_on_and_no_servers', AuthzAccountId}} ->
                     {<<"accept">>, [], AuthzAccountId};
                 {'ok', {{'radius_request', _, 'reject', ParamList, _, _, _, _}, AuthzAccountId}} ->
-                    AttrList = [{Name, Val} || {{_, _, _, Name, _}, Val} <- ParamList],
+                    AttrList = [extract_kv_from_attr_list(ParamItem) || ParamItem <- ParamList],
                     {<<"reject">>, AttrList, AuthzAccountId};
                 _ ->
                     {<<"reject">>, [], wh_json:get_value(<<"Account-ID">>, JObj)}
@@ -146,6 +161,10 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                              maybe_session_timeout(AttributeList, OrigAccountId),
                              maybe_interim_update(AttributeList, OrigAccountId),
                              cm_util:maybe_translate_avps_into_kv(AttributeList, AaaDoc, RequestType);
+                         'custom' = RequestType ->
+                             lager:debug("Operation is custom"),
+                             lager:debug("Orig JObj on Response is ~p", [JObj]),
+                             cm_util:maybe_translate_avps_into_kv(AttributeList, AaaDoc, RequestType);
                          'authn' ->
                              lager:debug("Operation is authn"),
                              AttributeList
@@ -153,28 +172,42 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
     lager:debug("Resulted AttributeList1 is: ~p", [AttributeList1]),
     IsAuthorized = props:get_value(<<"Is-Authorized">>, AttributeList1, <<"false">>), % TODO: need to optimize
     JObj3 = wh_json:set_values(AttributeList1, JObj),
-    Password = wh_json:get_value(<<"User-Password">>, JObj3),
-    JObj1 = wh_json:set_values([{<<"AAA-Result">>, AaaResult}
-                                ,{<<"Is-Authorized">>, IsAuthorized}
-                                ,{<<"Auth-Password">>, Password}
-                                ,{<<"App-Name">>, ?APP_NAME}
-                                ,{<<"App-Version">>, ?APP_VERSION}]
-                                ,JObj3),
-    case wh_json:get_value(<<"Event-Category">>, JObj) of
-        <<"authz">> ->
-            Queue = wh_json:get_value(<<"Server-ID">>, JObj),
-            JObj2 = wh_json:set_value(<<"Event-Name">>, <<"authz.broadcast.resp">>, JObj1),
-            lager:debug("Authz response prepared: ~p", [JObj2]),
-            wapi_authz:publish_authz_resp(Queue, JObj2);
-        % send response to the registrar_listener queue
+    case cm_util:determine_aaa_request_type(JObj) of
+        'custom' ->
+            JObj1 = wh_json:set_values([{<<"App-Name">>, ?APP_NAME}
+                                        ,{<<"App-Version">>, ?APP_VERSION}]
+                                        ,JObj3),
+            {EventCategory, EventName} = wapi_aaa:custom_resp_event_type(),
+            JObj2 = wh_json:set_values([{<<"Event-Category">>, EventCategory}
+                                        ,{<<"Event-Name">>, EventName}]
+                                        ,JObj1),
+            lager:debug("Resulted custom response is ~p", [JObj2]),
+            Queue = wh_json:get_value(<<"Server-ID">>, JObj2),
+            wapi_aaa:publish_custom_resp(Queue, JObj2);
         _ ->
-            Queue = wh_json:get_value(<<"Response-Queue">>, JObj),
-            JObj2 = wh_json:set_value(<<"Event-Name">>, <<"aaa_authn_resp">>, JObj1),
-            wapi_aaa:publish_resp(Queue, JObj2)
+            Password = wh_json:get_value(<<"User-Password">>, JObj3),
+            JObj1 = wh_json:set_values([{<<"AAA-Result">>, AaaResult}
+                                        ,{<<"Is-Authorized">>, IsAuthorized}
+                                        ,{<<"Auth-Password">>, Password}
+                                        ,{<<"App-Name">>, ?APP_NAME}
+                                        ,{<<"App-Version">>, ?APP_VERSION}]
+                                        ,JObj3),
+            case wh_json:get_value(<<"Event-Category">>, JObj) of
+                <<"authz">> ->
+                    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+                    JObj2 = wh_json:set_value(<<"Event-Name">>, <<"authz.broadcast.resp">>, JObj1),
+                    lager:debug("Authz response prepared: ~p", [JObj2]),
+                    wapi_authz:publish_authz_resp(Queue, JObj2);
+                    % send response to the registrar_listener queue
+                _ ->
+                    Queue = wh_json:get_value(<<"Response-Queue">>, JObj),
+                    JObj2 = wh_json:set_value(<<"Event-Name">>, <<"aaa_authn_resp">>, JObj1),
+                    wapi_aaa:publish_resp(Queue, JObj2)
+            end
     end,
     {'noreply', State};
-handle_cast({'accounting_response', Response, _JObj, Worker}, State) ->
-    wh_util:put_callid(Response),
+handle_cast({'accounting_response', Response, JObj, Worker}, State) ->
+    wh_util:put_callid(JObj),
     lager:debug("accounting response message is ~p", [Response]),
     poolboy:checkin(?WORKER_POOL, Worker),
     {'noreply', State};

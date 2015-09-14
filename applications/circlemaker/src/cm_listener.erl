@@ -19,6 +19,7 @@
          ,terminate/2
          ,code_change/3
          ,handle_authn_req/2
+         ,handle_custom_req/2
          ,handle_authz_req/2
          ,handle_accounting_req/2]).
 -export([handle_hangup_by_session_timeout/1, handle_interim_update/1, find_channel/2, find_channel/3]).
@@ -30,6 +31,7 @@
 
 -define(RESPONDERS, [{{?MODULE, 'handle_authn_req'}, [wapi_aaa:req_event_type()]}
                      ,{{?MODULE, 'handle_authz_req'}, [{<<"authz">>, <<"authz_req">>}]}
+                     ,{{?MODULE, 'handle_custom_req'}, [wapi_aaa:custom_req_event_type()]}
                      ,{{?MODULE, 'handle_accounting_req'}, [{<<"call_event">>, <<"*">>}]}
                     ]).
 -define(BINDINGS, [{'aaa', []}
@@ -74,6 +76,19 @@ handle_authn_req(JObj, _Props) ->
     wh_util:put_callid(JObj),
     lager:debug("cm_listener handled authn request ~p", [JObj]),
     'true' = wapi_aaa:req_v(JObj),
+    cm_pool_mgr:do_request(JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Handle Custom requests from another process.
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_custom_req(wh_json:object(), wh_proplist()) -> any().
+handle_custom_req(JObj, _Props) ->
+    wh_util:put_callid(JObj),
+    lager:debug("cm_listener handled custom request ~p", [JObj]),
+    'true' = wapi_aaa:custom_req_v(JObj),
     cm_pool_mgr:do_request(JObj).
 
 %%--------------------------------------------------------------------

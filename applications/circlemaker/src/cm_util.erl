@@ -68,7 +68,8 @@ maybe_translate_kv_into_avps(WholeRequest, AAAProps, RequestType) ->
     TranslationConfigEntry = case RequestType of
                                  'authz' -> <<"authz_avp_translation">>;
                                  'authn' -> <<"authn_avp_translation">>;
-                                 'accounting' -> <<"accounting_avp_translation">>
+                                 'accounting' -> <<"accounting_avp_translation">>;
+                                 'custom' -> <<"custom_avp_translation">>
                              end,
     Attrs = case props:get_value(TranslationConfigEntry, AAAProps) of
                         'undefined' -> WholeRequest;
@@ -114,7 +115,8 @@ maybe_translate_avps_into_kv(AVPsResponse, AAAJObj, RequestType) ->
     TranslationConfigEntry = case RequestType of
                                  'authz' -> <<"authz_avp_translation">>;
                                  'authn' -> <<"authn_avp_translation">>;
-                                 'accounting' -> <<"accounting_avp_translation">>
+                                 'accounting' -> <<"accounting_avp_translation">>;
+                                 'custom' -> <<"custom_avp_translation">>
                              end,
     TranslationList = wh_json:get_value(TranslationConfigEntry, AAAJObj),
     Props = lists:map(
@@ -156,6 +158,7 @@ maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
 determine_aaa_request_type(JObj) ->
     case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj)} of
         {<<"aaa">>, <<"aaa_authn_req">>} -> 'authn';
+        {<<"aaa">>, <<"aaa_custom_req">>} -> 'custom';
         {<<"authn">>, _} -> 'authn';
         {<<"authz">>, _} -> 'authz';
         {<<"call_event">>, <<"CHANNEL_CREATE">>} -> 'accounting';
