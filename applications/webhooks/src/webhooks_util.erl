@@ -543,7 +543,7 @@ init(Id, JObj, MasterAccountDb) ->
             load_metadata(MasterAccountDb, Merged)
     end.
 
--spec metadata_exists(ne_binary(), ne_binary()) -> boolean().
+-spec metadata_exists(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 metadata_exists(MasterAccountDb, Id) ->
     couch_mgr:open_doc(MasterAccountDb, Id).
 
