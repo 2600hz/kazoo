@@ -75,18 +75,3 @@ exec(Number, Action, [Provider|Providers]) ->
             lager:debug("successfully attempted ~s:~s/1", [Module, Action]),
             exec(Number1, Action, Providers)
     end.
-
-    %%             {'error', Reason} ->
-    %%                 lager:debug("failed attempting ~s:~s/1: ~p", [Module, Action, Reason]),
-    %%                 Error = wh_json:from_list([{Provider, Reason}]),
-    %%                 knm_errors:unspecified('failed_provider', Error);
-    %%             {'invalid', Data} ->
-    %%                 lager:debug("failed attempting ~s:~s/1: ~p", [Module, Action, Data]),
-    %%                 Error = wh_json:set_value(<<"provider">>, Provider, Data),
-    %%                 knm_errors:unspecified('invalid_data', Error);
-    %%             {'multiple_choice', Update} ->
-    %%                 lager:debug("update sent by ~s", [Module]),
-    %%                 Error = wh_json:from_list([{Provider, Update}]),
-    %%                 knm_errors:unspecified('multiple_choice', Error)
-    %%         end
-    %% end.
