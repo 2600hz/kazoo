@@ -39,7 +39,7 @@
            [{<<"_id">>, ?TEST_EXISTING_NUM}
             ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
             ,{<<"pvt_modified">>, 63565934349}
-            ,{<<"pvt_features">>, []}
+            ,{<<"pvt_features">>, wh_json:new()}
             ,{<<"pvt_assigned_to">>, ?RESELLER_ACCOUNT_ID}
             ,{<<"pvt_reserve_history">>, [?RESELLER_ACCOUNT_ID]}
             ,{<<"pvt_module_name">>, ?CARRIER_LOCAL}
