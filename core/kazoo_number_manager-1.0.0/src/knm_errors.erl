@@ -19,6 +19,7 @@
          ,invalid/2
          ,multiple_choice/2
          ,assign_failure/2
+         ,database_error/2
         ]).
 
 -export([to_json/1, to_json/2, to_json/3]).
@@ -66,21 +67,34 @@ carrier_not_specified(Number) ->
 unspecified(Error, Number) ->
     throw({'error', Error, Number}).
 
--spec not_enough_credit(knm_number:knm_number(), integer()) -> no_return().
+-spec not_enough_credit(knm_number:knm_number(), integer()) ->
+                               no_return().
 not_enough_credit(Number, Units) ->
     throw({'error', 'not_enough_credit', Number, Units}).
 
--spec invalid(knm_number:knm_number(), wh_json:object()) -> no_return().
+-spec invalid(knm_number:knm_number(), wh_json:object()) ->
+                     no_return().
 invalid(Number, Reason) ->
     throw({'error', 'invalid', Number, Reason}).
 
--spec multiple_choice(knm_number:knm_number(), wh_json:object()) -> no_return().
+-spec multiple_choice(knm_number:knm_number(), wh_json:object()) ->
+                             no_return().
 multiple_choice(Number, Update) ->
     throw({'error', 'multiple_choice', Number, Update}).
 
--spec assign_failure(knm_phone_number:knm_number(), any()) -> no_return().
+-spec assign_failure(knm_phone_number:knm_number(), any()) ->
+                            no_return().
 assign_failure(PhoneNumber, E) ->
     throw({'error', 'assign_failure', PhoneNumber, E}).
+
+-spec database_error(couch_mgr:couchbeam_errors(), knm_phone_number:knm_number() | ne_binary()) ->
+                            no_return().
+database_error(E, PhoneNumber) ->
+    throw({'error'
+           ,'database_error'
+           ,E
+           ,PhoneNumber
+          }).
 
 %%--------------------------------------------------------------------
 %% @public
