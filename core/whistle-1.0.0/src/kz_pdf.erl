@@ -9,9 +9,14 @@
 %%%-------------------------------------------------------------------
 -module(kz_pdf).
 
--include("kazoo.hrl").
 
 -export([generate/2]).
+
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
+
+-define(CONFIG_CAT, <<"kazoo">>).
 
 -define(TEMPLATE_ATTACHMENT_ID, <<"template">>).
 -define(TEMPLATE_DOC_ID(Type), <<"template-to-pdf.", Type/binary>>).
