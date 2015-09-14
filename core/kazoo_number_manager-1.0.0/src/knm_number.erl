@@ -174,7 +174,8 @@ create_available(PhoneNumber, _AuthBy) ->
 
 -spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
-    Routines = [fun save_phone_number/1
+    Routines = [fun knm_providers:save/1
+                ,fun save_phone_number/1
                 ,fun knm_services:update_services/1
                ],
     apply_number_routines(Number, Routines).

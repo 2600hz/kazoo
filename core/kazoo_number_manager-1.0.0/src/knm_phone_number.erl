@@ -87,14 +87,15 @@ fetch(Num, Options) ->
     NumberDb = knm_converters:to_db(NormalizedNum),
     case couch_mgr:open_cache_doc(NumberDb, NormalizedNum) of
         {'error', _R}=E ->
-            lager:error("failed to open ~s in ~s", [NormalizedNum, NumberDb]),
+            lager:error("failed to open ~s in ~s: ~p"
+                        ,[NormalizedNum, NumberDb, _R]
+                       ),
             E;
         {'ok', JObj} ->
-            Number = set_options(from_json(JObj), Options),
-            case is_authorized(Number) of
-                'true' -> {'ok', Number};
-                'false' ->
-                    {'error', 'unauthorized'}
+            PhoneNumber = set_options(from_json(JObj), Options),
+            case is_authorized(PhoneNumber) of
+                'true' -> {'ok', PhoneNumber};
+                'false' -> knm_errors:unauthorized()
             end
     end.
 
@@ -105,11 +106,9 @@ fetch(Num, Options) ->
 %%--------------------------------------------------------------------
 -spec save(knm_number()) -> knm_number().
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
-    Routines = [fun knm_providers:save/1],
-    setters(PhoneNumber, Routines);
+    PhoneNumber;
 save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
-    Routines = [fun knm_providers:save/1
-                ,fun save_to_number_db/1
+    Routines = [fun save_to_number_db/1
                 ,fun handle_assignment/1
                ],
     setters(PhoneNumber, Routines).
@@ -531,18 +530,20 @@ is_authorized(#knm_phone_number{assigned_to=AssignedTo
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_to_number_db(knm_number()) -> number_return().
+-spec save_to_number_db(knm_number()) -> knm_number().
 -ifdef(TEST).
-save_to_number_db(Number) -> Number.
+save_to_number_db(PhoneNumber) -> PhoneNumber.
 -else.
-save_to_number_db(Number) ->
-    NumberDb = number_db(Number),
-    JObj = to_json(Number),
+save_to_number_db(PhoneNumber) ->
+    NumberDb = number_db(PhoneNumber),
+    JObj = to_json(PhoneNumber),
     case couch_mgr:ensure_saved(NumberDb, JObj) of
-        {'error', _R}=E ->
-            lager:error("failed to save ~s in ~s", [?MODULE:number(Number), NumberDb]),
-            E;
-        {'ok', Doc} -> {'ok', from_json(Doc)}
+        {'error', E} ->
+            lager:error("failed to save ~s in ~s: ~p"
+                        ,[?MODULE:number(PhoneNumber), NumberDb, E]
+                       ),
+            knm_errors:database_error(E, PhoneNumber);
+        {'ok', Doc} -> from_json(Doc)
     end.
 -endif.
 
@@ -572,6 +573,10 @@ assign(PhoneNumber) ->
         'false' -> assign(PhoneNumber, AssignedTo)
     end.
 
+-ifdef(TEST).
+assign(PhoneNumber, _AssignedTo) ->
+    PhoneNumber.
+-else.
 assign(PhoneNumber, AssignedTo) ->
     AccountDb = wh_util:format_account_id(AssignedTo, 'encoded'),
     case couch_mgr:ensure_saved(AccountDb, to_json(PhoneNumber)) of
@@ -586,6 +591,7 @@ assign(PhoneNumber, AssignedTo) ->
                        ),
             from_json(JObj)
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
