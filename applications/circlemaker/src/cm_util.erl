@@ -179,23 +179,28 @@ determine_channel_type(JObj) ->
                   Val when is_binary(Val) ->
                       [<<"external">>, CallDirection]
               end,
-    Type = case {From, To} of
-               {'undefined', 'undefined'} ->
-                   % special case for Interim-Update, because there are no "From" and "To" fields
-                   % and because this channel is already authorized, it should be 'normal' type
+    Type = case Result of
+               [<<"external">>, <<"outbound">>] ->
                    'normal';
                _ ->
-                   FromPart = binary:part(From, {byte_size(From), -2}),
-                   ToPart = binary:part(To, {byte_size(To), -2}),
-                   case {FromPart, ToPart, CalleeIdName} of
-                       % Special type of FreeSwitch channel (see FreeSwitch sources: src/switch_ivr_originate.c:2651)
-                       {_, _, <<"Outbound Call">>} -> 'loopback';
-                       % Loopback patterns
-                       {<<"-a">>, _, _} -> 'loopback';
-                       {<<"-b">>, _, _} -> 'loopback';
-                       {_, <<"-a">>, _} -> 'loopback';
-                       {_, <<"-b">>, _} -> 'loopback';
-                       _ -> 'normal'
+                   case {From, To} of
+                       {'undefined', 'undefined'} ->
+                           % special case for Interim-Update, because there are no "From" and "To" fields
+                           % and because this channel is already authorized, it should be 'normal' type
+                           'normal';
+                       _ ->
+                           FromPart = binary:part(From, {byte_size(From), -2}),
+                           ToPart = binary:part(To, {byte_size(To), -2}),
+                           case {FromPart, ToPart, CalleeIdName} of
+                           % Special type of FreeSwitch channel (see FreeSwitch sources: src/switch_ivr_originate.c:2651)
+                               {_, _, <<"Outbound Call">>} -> 'loopback';
+                           % Loopback patterns
+                               {<<"-a">>, _, _} -> 'loopback';
+                               {<<"-b">>, _, _} -> 'loopback';
+                               {_, <<"-a">>, _} -> 'loopback';
+                               {_, <<"-b">>, _} -> 'loopback';
+                               _ -> 'normal'
+                           end
                    end
            end,
     lager:debug("Channel type is ~p", [{Result, Type}]),
