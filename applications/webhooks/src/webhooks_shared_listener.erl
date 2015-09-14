@@ -173,7 +173,7 @@ print_summary({[#webhook{uri=URI
 
 -spec add_doc_bindings(ne_binary()) -> 'ok'.
 add_doc_bindings(AccountId) ->
-    Bindings = webhooks_doc:account_bindings(AccountId),
+    Bindings = webhooks_object:account_bindings(AccountId),
     Srv = webhooks_sup:shared_listener(),
 
     _ = [gen_listener:add_binding(Srv, Binding)
@@ -183,7 +183,7 @@ add_doc_bindings(AccountId) ->
 
 -spec remove_doc_bindings(ne_binary()) -> 'ok'.
 remove_doc_bindings(AccountId) ->
-    Bindings = webhooks_doc:account_bindings(AccountId),
+    Bindings = webhooks_object:account_bindings(AccountId),
     Srv = webhooks_sup:shared_listener(),
 
     _ = [gen_listener:rm_binding(Srv, Binding)

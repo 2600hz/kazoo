@@ -4,7 +4,7 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 
--module(webhooks_doc).
+-module(webhooks_object).
 
 -export([init/0
          ,bindings_and_responders/0
@@ -15,14 +15,14 @@
 -include("../webhooks.hrl").
 
 -define(ID, wh_util:to_binary(?MODULE)).
--define(NAME, <<"doc">>).
--define(DESC, <<"Receive notifications when docs in Kazoo are changed">>).
+-define(NAME, <<"object">>).
+-define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 
 -define(
     TYPE_MODIFIER
     ,wh_json:from_list([
         {<<"type">>, <<"array">>}
-        ,{<<"description">>, <<"A list of doc types to handle">>}
+        ,{<<"description">>, <<"A list of object types to handle">>}
         ,{<<"items">>, ?DOC_TYPES}
     ])
 ).
@@ -31,7 +31,7 @@
     ACTIONS_MODIFIER
     ,wh_json:from_list([
         {<<"type">>, <<"array">>}
-        ,{<<"description">>, <<"A list of doc actions to handle">>}
+        ,{<<"description">>, <<"A list of object actions to handle">>}
         ,{<<"items">>, [<<"doc_created">>, <<"doc_updated">>, <<"doc_deleted">>]}
     ])
 ).
@@ -58,7 +58,7 @@
     DOC_TYPES
     ,whapps_config:get(
         ?APP_NAME
-        ,<<"doc_types">>
+        ,<<"object_types">>
         ,[
             kz_account:type()
             ,kzd_callflow:type()
