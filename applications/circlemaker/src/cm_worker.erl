@@ -327,8 +327,10 @@ maybe_channel_blocked(AllServers, Address, JObj, AaaProps, AccountId, ParentAcco
                     lager:debug("Authz for this type of channel is blocked. Request bypassed."),
                     Queue = wh_json:get_value(<<"Server-ID">>, JObj),
                     JObj1 = wh_json:set_values([{<<"Event-Name">>, <<"authz.broadcast.resp">>}
-                        ,{<<"Is-Authorized">>, <<"true">>}]
-                        ,JObj),
+                                                ,{<<"Is-Authorized">>, <<"true">>}
+                                                ,{<<"App-Name">>, ?APP_NAME}
+                                                ,{<<"App-Version">>, ?APP_VERSION}]
+                                                ,JObj),
                     wapi_authz:publish_authz_resp(Queue, JObj1)
             end;
         'accounting' ->

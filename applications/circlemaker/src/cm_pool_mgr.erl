@@ -190,7 +190,9 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                                         ,{<<"Is-Authorized">>, IsAuthorized}
                                         ,{<<"Auth-Password">>, Password}
                                         ,{<<"App-Name">>, ?APP_NAME}
-                                        ,{<<"App-Version">>, ?APP_VERSION}]
+                                        ,{<<"App-Version">>, ?APP_VERSION}
+                                        ,{[<<"Custom-Auth-Vars">>, <<"App-Name">>], ?APP_NAME}
+                                        ,{[<<"Custom-Auth-Vars">>, <<"App-Version">>], ?APP_VERSION}]
                                         ,JObj3),
             case wh_json:get_value(<<"Event-Category">>, JObj) of
                 <<"authz">> ->
@@ -202,6 +204,7 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                 _ ->
                     Queue = wh_json:get_value(<<"Response-Queue">>, JObj),
                     JObj2 = wh_json:set_value(<<"Event-Name">>, <<"aaa_authn_resp">>, JObj1),
+                    lager:debug("Other response prepared: ~p", [JObj2]),
                     wapi_aaa:publish_resp(Queue, JObj2)
             end
     end,
