@@ -753,8 +753,10 @@ set_value1([], Value, _JObj) -> Value.
 
 -spec delete_key(key(), object() | objects()) -> object() | objects().
 -spec delete_key(key(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
-delete_key(Key, JObj) when not is_list(Key) -> delete_key([Key], JObj, 'no_prune');
-delete_key(Keys, JObj) -> delete_key(Keys, JObj, 'no_prune').
+delete_key(Key, JObj) when not is_list(Key) ->
+    delete_key([Key], JObj, 'no_prune');
+delete_key(Keys, JObj) ->
+    delete_key(Keys, JObj, 'no_prune').
 
 %% 'prune' removes the parent key if the result of the delete is an empty list; no 'prune' leaves the parent intact
 %% so, delete_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in

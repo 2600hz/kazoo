@@ -31,6 +31,7 @@
                    ,?WORKER('wh_hooks_listener')
                    ,?WORKER('whistle_apps_init')
                    ,?WORKER('whapps_controller')
+                   ,?SUPER('whistle_services_sup')
                   ]).
 
 %% ===================================================================

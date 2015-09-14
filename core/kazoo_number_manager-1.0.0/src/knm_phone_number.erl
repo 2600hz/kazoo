@@ -351,11 +351,13 @@ set_features(N, Features) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature(knm_number(), ne_binary()) -> wh_json:json_term() | 'undefined'.
+-spec feature(knm_number(), ne_binary()) ->
+                     wh_json:json_term() | 'undefined'.
 feature(Number, Feature) ->
     wh_json:get_value(Feature, features(Number)).
 
--spec set_feature(knm_number(), ne_binary(), wh_json:json_term()) -> knm_number().
+-spec set_feature(knm_number(), ne_binary(), wh_json:json_term()) ->
+                         knm_number().
 set_feature(N, Feature, Data) ->
     Features = wh_json:set_value(Feature, Data, features(N)),
     N#knm_phone_number{features=Features}.
