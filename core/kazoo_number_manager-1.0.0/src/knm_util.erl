@@ -11,6 +11,10 @@
 
 -export([get_all_number_dbs/0]).
 
+-ifndef(TEST).
+-export([pretty_print/1, pretty_print/2]).
+-endif.
+
 -include("knm.hrl").
 
 -spec get_all_number_dbs() -> ne_binaries().
@@ -22,3 +26,95 @@ get_all_number_dbs() ->
     [cow_qs:urlencode(wh_doc:id(View))
      || View <- Dbs
     ].
+
+-ifndef(TEST).
+-spec pretty_print(ne_binary()) -> ne_binary().
+pretty_print(Number) ->
+    case pretty_print_format(Number) of
+        'undefined' -> Number;
+        Format ->
+            pretty_print(Format, Number)
+    end.
+
+-spec pretty_print(ne_binary(), ne_binary()) -> ne_binary().
+pretty_print(Format, Number) ->
+    Num = wnm_util:normalize_number(Number),
+    pretty_print(Format, Num, <<>>).
+
+-spec pretty_print(binary(), binary(), binary()) -> binary().
+pretty_print(<<>>, _, Acc) -> Acc;
+pretty_print(<<"\\S", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, Number, <<Acc/binary, "S">>);
+pretty_print(<<"\\#", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, Number, <<Acc/binary, "#">>);
+pretty_print(<<"\\*", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, Number, <<Acc/binary, "*">>);
+pretty_print(<<"S", Format/binary>>, <<>>, Acc) ->
+    pretty_print(Format, <<>>, Acc);
+pretty_print(<<"#", Format/binary>>, <<>>, Acc) ->
+    pretty_print(Format, <<>>, Acc);
+pretty_print(<<"*", Format/binary>>, <<>>, Acc) ->
+    pretty_print(Format, <<>>, Acc);
+pretty_print(<<"S", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, binary_tail(Number), Acc);
+pretty_print(<<"#", Format/binary>>, Number, Acc) ->
+    pretty_print(Format
+                 ,binary_tail(Number)
+                 ,<<Acc/binary, (binary_head(Number))/binary>>);
+pretty_print(<<"*", Format/binary>>, Number, Acc) ->
+    pretty_print(Format, <<>>, <<Acc/binary, Number/binary>>);
+pretty_print(<<Char, Format/binary>>, Number, Acc) ->
+    pretty_print(Format, Number, <<Acc/binary, Char/integer>>).
+
+-spec binary_tail(ne_binary()) -> ne_binary().
+binary_tail(Binary) ->
+    binary:part(Binary, 1, byte_size(Binary) - 1).
+
+-spec binary_head(ne_binary()) -> ne_binary().
+binary_head(Binary) ->
+    binary:part(Binary, 0, 1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec pretty_print_format(ne_binary()) -> api_binary().
+pretty_print_format(Number) ->
+    Classifiers = knm_converters:available_classifiers(),
+    Num = wnm_util:normalize_number(Number),
+    pretty_print_format(Num, wh_json:to_proplist(Classifiers)).
+
+-spec pretty_print_format(ne_binary(), wh_proplist()) -> api_binary().
+pretty_print_format(Num, []) ->
+    lager:debug("unable to get pretty print format for number ~s", [Num]),
+    maybe_use_us_default(Num);
+pretty_print_format(Num, [{Classification, Classifier}|Classifiers]) ->
+    case re:run(Num, get_classifier_regex(Classifier)) of
+        'nomatch' -> pretty_print_format(Num, Classifiers);
+        _ when is_binary(Classifier) ->
+            lager:debug("number '~s' is classified as ~s but no pretty print format available", [Num, Classification]),
+            maybe_use_us_default(Num);
+        _ ->
+            case wh_json:get_value(<<"pretty_print">>, Classifier) of
+                'undefined' -> maybe_use_us_default(Num);
+                Format -> Format
+            end
+    end.
+
+-spec maybe_use_us_default(ne_binary()) -> api_binary().
+maybe_use_us_default(<<"+1", _/binary>>) ->
+    lager:debug("using US number default pretty print", []),
+    <<"SS(###) ### - ####">>;
+maybe_use_us_default(_) ->
+    'undefined'.
+
+-spec get_classifier_regex(ne_binary() | wh_json:object()) ->
+                                  ne_binary().
+get_classifier_regex(Classifier) when is_binary(Classifier) ->
+    Classifier;
+get_classifier_regex(JObj) ->
+    wh_json:get_value(<<"regex">>, JObj, <<"^$">>).
+
+-endif.
