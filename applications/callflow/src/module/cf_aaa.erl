@@ -50,7 +50,7 @@ handle(Data, Call) ->
     CallProp2 = wh_json:set_value(<<"AAA-Request-Type">>, <<"cf_aaa">>, CallProp1),
     CallProp3 = wh_json:set_values(RequestFields1, CallProp2),
     CallProp4 = wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), CallProp3),
-    CallProp5 = wh_json:set_value(?CMSG, CallProp4, wh_json:new()),
+    CallProp5 = wh_json:set_value(?CMSG, CallProp4, CallProp4),
     maybe_do_radius_request(CallProp5, Data, Call).
 
 -spec maybe_do_radius_request(wh_json:object(), wh_json:object(), whapps_call:call()) -> any().

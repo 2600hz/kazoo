@@ -171,10 +171,11 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
                      end,
     lager:debug("Resulted AttributeList1 is: ~p", [AttributeList1]),
     IsAuthorized = props:get_value(<<"Is-Authorized">>, AttributeList1, <<"false">>), % TODO: need to optimize
-    JObj3 = wh_json:set_values(AttributeList1, JObj),
     case cm_util:determine_aaa_request_type(JObj) of
         'custom' ->
-            WrappedJObj = wh_json:set_value(<<"Custom-Msg">>, JObj3, wh_json:new()),
+            CustomMsg = wh_json:get_value(<<"Custom-Msg">>, JObj),
+            NewCustomMsg = wh_json:set_values(AttributeList1, CustomMsg),
+            WrappedJObj = wh_json:set_value(<<"Custom-Msg">>, NewCustomMsg, JObj),
             JObj1 = wh_json:set_values([{<<"App-Name">>, ?APP_NAME}
                                         ,{<<"App-Version">>, ?APP_VERSION}]
                                         ,WrappedJObj),
@@ -186,6 +187,7 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
             Queue = wh_json:get_value(<<"Server-ID">>, JObj2),
             wapi_aaa:publish_custom_resp(Queue, JObj2);
         _ ->
+            JObj3 = wh_json:set_values(AttributeList1, JObj),
             Password = wh_json:get_value(<<"User-Password">>, JObj3),
             JObj1 = wh_json:set_values([{<<"AAA-Result">>, AaaResult}
                                         ,{<<"Is-Authorized">>, IsAuthorized}

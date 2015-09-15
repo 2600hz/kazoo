@@ -123,7 +123,7 @@ handle_cast({'auth_req', SenderPid, JObj}, State) ->
     {'noreply', State};
 handle_cast({'custom_req', SenderPid, JObj}, State) ->
     wh_util:put_callid(JObj),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj, <<"system_config">>),
+    AccountId = wh_json:get_value([<<"Custom-Msg">>, <<"Account-ID">>], JObj, <<"system_config">>),
     lager:debug("custom_req message received"),
     Response = maybe_aaa_mode(JObj, AccountId),
     cm_pool_mgr:send_custom_response(SenderPid, Response, JObj, self()),
@@ -363,8 +363,9 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                       {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'request'};
                   'custom' = RequestType ->
                       lager:debug("Operation is custom"),
-                      lager:debug("Request is: ~p", [JObj]),
-                      {cm_util:maybe_translate_kv_into_avps(JObj, AaaProps, RequestType), 'request'};
+                      JObjUnwrapped = wh_json:get_value(<<"Custom-Msg">>, JObj),
+                      lager:debug("Request is: ~p", [JObjUnwrapped]),
+                      {cm_util:maybe_translate_kv_into_avps(JObjUnwrapped, AaaProps, RequestType), 'request'};
                   'accounting' = RequestType ->
                       lager:debug("Operation is accounting"),
                       JObj1 = cm_util:append_resource_name_to_request(JObj),
