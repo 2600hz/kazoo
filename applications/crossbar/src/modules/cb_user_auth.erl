@@ -370,7 +370,6 @@ maybe_load_username(Account, Context) ->
 -spec reset_users_password__step_1(cb_context:context()) -> cb_context:context().
 reset_users_password__step_1(Context) ->
     UUID = wh_util:rand_hex_binary(64),
-    lager:debug(">>> UUID ~s", [UUID]),
     Doc = cb_context:doc(Context),
     Props = [{'origin', [{'db', wh_doc:account_db(Doc), wh_doc:account_id(Doc)}]}],
     'ok' = wh_cache:store_local(?CROSSBAR_CACHE, UUID, Context, Props),
@@ -378,31 +377,29 @@ reset_users_password__step_1(Context) ->
     Context1 = crossbar_doc:save(cb_context:set_req_verb(Context, ?HTTP_POST)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            UIURL = wh_json:get_ne_binary_value(<<"url">>, cb_context:req_data(Context)),
             Email = wh_json:get_ne_binary_value(<<"email">>, Doc),
-            lager:debug(">>> Email: ~p ~p", [Email, UIURL]),
+            Link = pwd_reset_link(UUID, wh_json:get_ne_binary_value(<<"url">>, cb_context:req_data(Context))),
+            lager:debug("created password reset link: ~s", [Link]),
             Notify = [{<<"Email">>, Email}
                       ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, Doc)}
                       ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, Doc)}
-                      ,{<<"Password-Reset-Link">>, make_password_reset_link(UIURL, UUID)}
+                      ,{<<"Password-Reset-Link">>, Link}
                       ,{<<"Account-ID">>, wh_doc:account_id(Doc)}
                       ,{<<"Account-DB">>, wh_doc:account_db(Doc)}
                       ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Context))}
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
-            lager:debug(">>> 1 success"),
-            lager:debug(">>> Notify = ~p", [Notify]),
             'ok' = wapi_notifications:publish_pwd_recovery(Notify),
             Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
             crossbar_util:response(Msg, Context);
         _Status ->
-            lager:debug(">>> 1 failure"),
             Context1
     end.
 
-make_password_reset_link(UIURL, UUID) ->
+%% @private
+-spec pwd_reset_link(ne_binary(), ne_binary()) -> ne_binary().
+pwd_reset_link(UUID, UIURL) ->
     [Url|_] = binary:split(UIURL, <<"#">>),
-    lager:debug(">>> url ~s ~s", [UIURL, Url]),
     <<Url/binary, "/", UUID/binary>>.
 
 %% @private
