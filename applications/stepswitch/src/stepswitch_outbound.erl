@@ -140,6 +140,9 @@ maybe_correct_shortdial(Number, JObj) ->
         'undefined' ->
             lager:debug("no endpoints found for '~s', and no shortdial correction available", [Number]),
             publish_no_resources(JObj);
+        Number ->
+            lager:debug("shortdial correction invalid, no resources", []),
+            publish_no_resources(JObj);
         CorrectedNumber ->
             lager:debug("corrected shortdial from '~s' to '~s', trying routing again", [Number, CorrectedNumber]),
             handle_audio_req(CorrectedNumber, JObj)
