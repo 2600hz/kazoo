@@ -133,6 +133,7 @@ cache_origin(JObj, EndpointId, AccountDb) ->
                  end
                 ,fun(P) -> maybe_cached_owner_id(P, JObj, AccountDb) end
                 ,fun(P) -> maybe_cached_hotdesk_ids(P, JObj, AccountDb) end
+                ,fun(P) -> [{'db', AccountDb} | P] end
                ],
     lists:foldl(fun(F, P) -> F(P) end, [], Routines).
 

@@ -227,7 +227,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
         {'ok', [JObj]} ->
             EndpointId = wh_doc:id(JObj),
             AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
-            CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
+            CacheProps = [{'origin', [{'db', ?WH_SIP_DB, EndpointId}, {'db', AccountDb}]}],
             wh_cache:store_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username), {AccountDb, EndpointId}, CacheProps),
             {'ok', EndpointId};
         {'ok', []} ->
@@ -261,7 +261,8 @@ get_endpoint_from_sipdb(Realm, Username) ->
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_doc:id(JObj),
-            CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
+            AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
+            CacheProps = [{'origin', [{'db', ?WH_SIP_DB, EndpointId}, {'db', AccountDb}]}],
             Doc = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username), Doc, CacheProps),
             {'ok', Doc};
@@ -482,7 +483,7 @@ fetch_mdn_result(AccountId, Num) ->
 -spec cache_mdn_result(ne_binary(), ne_binary(), api_binary()) ->
                               {'ok', ne_binary(), api_binary()}.
 cache_mdn_result(AccountDb, Id, OwnerId) ->
-    CacheProps = [{'origin', [{'db', AccountDb, Id}]}],
+    CacheProps = [{'origin', [{'db', AccountDb, Id}, {'db', AccountDb}]}],
     wh_cache:store_local(?DOODLE_CACHE, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
     {'ok', Id, OwnerId}.
 

@@ -1082,7 +1082,7 @@ media_url_cache_props(<<"/", _/binary>> = MediaName) ->
     case binary:split(MediaName, <<"/">>, ['global']) of
         [<<>>, AccountId, MediaId] ->
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            [{'origin', {'db', AccountDb, MediaId}}];
+            [{'origin', [{'db', AccountDb, MediaId}, {'db', AccountDb}]}];
         _Parts -> []
     end;
 media_url_cache_props(<<"tts://", Text/binary>>) ->

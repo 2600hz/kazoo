@@ -38,6 +38,8 @@
                                  ,{<<"Event-Name">>, [<<"doc_edited">>
                                                       ,<<"doc_created">>
                                                       ,<<"doc_deleted">>
+                                                      ,<<"db_created">>
+                                                      ,<<"db_deleted">>
                                                      ]}
                                 ]).
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}

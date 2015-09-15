@@ -881,7 +881,9 @@ cache_available(Context) ->
     wh_cache:store_local(?CROSSBAR_CACHE
                          ,{?MODULE, 'available'}
                          ,cb_context:doc(Context)
-                         ,[{'origin', [{'db', cb_context:account_db(Context), kz_notification:pvt_type()}]}]
+                         ,[{'origin', [{'db', cb_context:account_db(Context), kz_notification:pvt_type()}
+                                       ,{'db', cb_context:account_db(Context)}
+                                      ]}]
                         ).
 
 -spec flush() -> non_neg_integer().

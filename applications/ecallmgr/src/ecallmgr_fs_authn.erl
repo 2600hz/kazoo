@@ -300,6 +300,7 @@ maybe_defered_error(Realm, Username, JObj) ->
                           end,
             CacheProps = [{'origin', [{'db', AccountDb, AuthorizingId}
                                      ,{'db', AccountDb, AccountId}
+                                     ,{'db', AccountDb}
                                       | OwnerIdProp
                                      ]}
                          ],

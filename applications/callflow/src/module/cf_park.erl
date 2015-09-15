@@ -324,7 +324,7 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
             case couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
                 {'ok', JObj}=Ok ->
                     lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
-                    CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+                    CacheProps = [{'origin', [{'db', AccountDb, ?DB_DOC_NAME},{'db', AccountDb}]}],
                     wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
                     Ok;
                 {'error', 'conflict'} ->
@@ -347,12 +347,12 @@ maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
             UpdatedJObj = wh_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1),
             {'ok', JObj2}=Ok = couch_mgr:save_doc(AccountDb, UpdatedJObj),
             lager:info("conflict when attempting to store call parking data for slot ~s due to a different slot update", [SlotNumber]),
-            CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+            CacheProps = [{'origin', [{'db', AccountDb, ?DB_DOC_NAME},{'db', AccountDb}]}],
             wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
             Ok;
         CurrentParkedCall ->
             lager:debug("attempt to store parking data conflicted with a recent update to slot ~s", [SlotNumber]),
-            CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+            CacheProps = [{'origin', [{'db', AccountDb, ?DB_DOC_NAME},{'db', AccountDb}]}],
             wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj1, CacheProps),
             case whapps_call_command:b_channel_status(CurrentParkedCall) of
                 {'ok', _} ->

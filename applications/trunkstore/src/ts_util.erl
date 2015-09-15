@@ -107,7 +107,7 @@ lookup_did(DID, AccountId) ->
             Resp;
         {'error', 'not_found'} ->
             Options = [{'key', DID}],
-            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(DID), DID}, {'type', <<"number">>}]}],
+            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(DID), DID}, {'type', <<"number">>}, {'db', AccountDb}]}],
             case couch_mgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
                 {'ok', []} ->
                     lager:info("cache miss for ~s, no results", [DID]),

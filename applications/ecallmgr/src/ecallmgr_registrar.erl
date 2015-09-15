@@ -1014,6 +1014,7 @@ update_from_authn_response(#registration{username=Username
         [{'origin',
           [{'db', AccountDb, AuthorizingId}
            ,{'db', AccountDb, AccountId}
+           ,{'db', AccountDb}
            | OwnerIdProp
           ]
          }
