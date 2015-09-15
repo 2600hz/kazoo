@@ -22,6 +22,7 @@
                           ,[{'type', <<"connectivity">>}]
                           ,[{'type', <<"sys_info">>}]
                           ,[{'type', <<"number">>}]
+                          ,[{'type', <<"database">>}]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 

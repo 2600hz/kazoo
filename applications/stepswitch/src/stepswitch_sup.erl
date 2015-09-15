@@ -28,6 +28,7 @@
 -define(ORIGIN_BINDINGS, [[{'type', <<"resource">>}]
                            ,[{'type', <<"number">>}]
                            ,[{'type', <<"dedicated_ip">>}]
+                           ,[{'type', <<"database">>}]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 

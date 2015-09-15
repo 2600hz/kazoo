@@ -569,6 +569,15 @@ get_props_callback(Props) ->
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec maybe_erase_changed(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
+maybe_erase_changed(Db, 'database', _Id, Tab) ->
+    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
+                  ,[]
+                  ,['$_']
+                 }
+                ],
+    Objects = ets:select(Tab, MatchSpec),
+    erase_changed(Objects, [], Tab);
+
 maybe_erase_changed(Db, Type, Id, Tab) ->
     MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
                   ,[]

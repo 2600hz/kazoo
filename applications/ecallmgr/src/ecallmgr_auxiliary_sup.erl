@@ -20,6 +20,7 @@
 -define(CACHE_AUTHN_PROPS, [{'origin_bindings', [[{'type', <<"account">>}]
                                                  ,[{'type', <<"device">>}]
                                                  ,[{'type', <<"user">>}]
+                                                 ,[{'type', <<"database">>}]
                                                 ]
                             }
                            ]).

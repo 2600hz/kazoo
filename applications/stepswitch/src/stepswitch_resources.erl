@@ -707,8 +707,10 @@ build_account_dedicated_proxy(Proxy) ->
 
 -spec fetch_cache_origin(wh_json:objects(), ne_binary()) -> wh_cache_props().
 fetch_cache_origin(JObjs, Database) ->
-    [{'db', Database, wh_doc:id(JObj)}
-     || JObj <- JObjs
+    [{'db', Database} |
+     [{'db', Database, wh_doc:id(JObj)}
+      || JObj <- JObjs
+     ]
     ].
 
 %%--------------------------------------------------------------------

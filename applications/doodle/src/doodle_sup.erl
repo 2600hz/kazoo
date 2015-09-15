@@ -16,6 +16,7 @@
 
 -define(ORIGIN_BINDINGS, [ [{'db', ?WH_SIP_DB }
                             ,{'type', <<"device">>}
+                            ,{'type', <<"database">>}
                            ]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).

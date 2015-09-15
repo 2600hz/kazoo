@@ -139,11 +139,11 @@ check_manual_presence(Username, Realm, AccountDb) ->
 fetch_manual_presence_doc(Username, Realm, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
         {'ok', JObj} ->
-            CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
+            CacheProps = [{'origin', [{'db', AccountDb, ?MANUAL_PRESENCE_DOC}, {'db', AccountDb}]}],
             wh_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), JObj, CacheProps),
             manual_presence_resp(Username, Realm, JObj);
         {'error', 'not_found'} ->
-            CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
+            CacheProps = [{'origin', [{'db', AccountDb, ?MANUAL_PRESENCE_DOC}, {'db', AccountDb}]}],
             wh_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), wh_json:new(), CacheProps);
         {'error', _} -> 'not_found'
     end.

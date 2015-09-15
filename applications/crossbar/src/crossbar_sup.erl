@@ -21,6 +21,10 @@
 
 -define(DISPATCH_FILE, [code:lib_dir('crossbar', 'priv'), "/dispatch.conf"]).
 -define(DEFAULT_LOG_DIR, wh_util:to_binary(code:lib_dir('crossbar', 'log'))).
+-define(ORIGIN_BINDINGS, [[{'type', kz_notification:pvt_type()}]
+                          ,[{'type', <<"database">>}]
+                         ]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 %% ===================================================================
 %% API functions
@@ -81,6 +85,6 @@ upgrade() ->
 init([]) ->
     wh_util:set_startup(),
     {'ok', {{'one_for_one', 10, 10}, [?SUPER('crossbar_module_sup')
-                                      ,?CACHE_ARGS(?CROSSBAR_CACHE, [{'origin_bindings', [[{'type', kz_notification:pvt_type()}]]}])
+                                      ,?CACHE_ARGS(?CROSSBAR_CACHE, ?CACHE_PROPS)
                                       ,?WORKER('crossbar_cleanup')
                                      ]}}.
