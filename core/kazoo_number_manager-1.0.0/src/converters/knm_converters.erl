@@ -211,9 +211,10 @@ classify(Number) ->
 %%--------------------------------------------------------------------
 -spec available_classifiers() -> wh_json:object().
 available_classifiers() ->
-    Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
-    Classifiers = whapps_config:get(?KNM_CONFIG_CAT, <<"classifiers">>, Default),
-    correct_depreciated_classifiers(wh_json:to_proplist(Classifiers)).
+    wh_json:foldl(fun correct_depreciated_classifiers/3
+                  ,wh_json:new()
+                  ,?CLASSIFIERS
+                 ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -271,26 +272,18 @@ get_classifier_regex(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec correct_depreciated_classifiers(wh_proplist()) ->
+-spec correct_depreciated_classifiers(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
                                              wh_json:object().
-correct_depreciated_classifiers(Classifiers) ->
-    correct_depreciated_classifiers(Classifiers, wh_json:new()).
-
--spec correct_depreciated_classifiers(wh_proplist(), wh_json:object()) ->
-                                             wh_json:object().
-correct_depreciated_classifiers([], JObj) ->
-    JObj;
-correct_depreciated_classifiers([{Classifier, Regex}|Classifiers], JObj)
-  when is_binary(Regex) ->
+correct_depreciated_classifiers(Classifier, <<_/binary>> = Regex, JObj) ->
     J = wh_json:from_list([{<<"regex">>, Regex}
                            ,{<<"friendly_name">>, Classifier}
                           ]),
-    correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, J, JObj));
-correct_depreciated_classifiers([{Classifier, J}|Classifiers], JObj) ->
+    wh_json:set_value(Classifier, J, JObj);
+correct_depreciated_classifiers(Classifier, J, JObj) ->
     case wh_json:get_value(<<"friendly_name">>, J) of
         'undefined' ->
             Updated = wh_json:set_value(<<"friendly_name">>, Classifier, JObj),
-            correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, Updated, JObj));
+            wh_json:set_value(Classifier, Updated, JObj);
         _Else ->
-            correct_depreciated_classifiers(Classifiers, wh_json:set_value(Classifier, J, JObj))
+            wh_json:set_value(Classifier, J, JObj)
     end.
