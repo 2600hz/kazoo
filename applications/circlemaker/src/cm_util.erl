@@ -154,7 +154,7 @@ maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
             {RequestKey, MaybeCasted}
     end.
 
--spec determine_aaa_request_type(wh_json:object()) -> 'authn' | 'authz' | 'accounting'.
+-spec determine_aaa_request_type(wh_json:object()) -> 'authn' | 'authz' | 'accounting' | 'custom'.
 determine_aaa_request_type(JObj) ->
     case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj)} of
         {<<"aaa">>, <<"aaa_authn_req">>} -> 'authn';
@@ -173,6 +173,7 @@ determine_channel_type(JObj) ->
     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
     CalleeIdName = wh_json:get_value(<<"Callee-ID-Name">>, JObj),
     ResourceId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Resource-ID">>], JObj),
+    RequestType = determine_aaa_request_type(JObj),
     Result = case ResourceId of
                   'undefined' ->
                       [<<"internal">>, CallDirection];
@@ -180,7 +181,7 @@ determine_channel_type(JObj) ->
                       [<<"external">>, CallDirection]
               end,
     Type = case Result of
-               [<<"external">>, <<"outbound">>] ->
+               [<<"external">>, <<"outbound">>] when RequestType == 'authz' ->
                    'normal';
                _ ->
                    case {From, To} of
