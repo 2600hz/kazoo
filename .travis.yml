@@ -35,5 +35,5 @@ after_success:
   - git fetch origin master:master
   - files="$(git diff --name-only master.. | grep -v deps/)" || true
   - ./scripts/check-dialyzer.escript $files
-  - ERL_LIBS="$HOME/proper" ERLC_OPTS='+nowarn_deprecated_type +nowarn_deprecated_function' make test
+  - ERL_LIBS="$HOME/proper" ERLC_OPTS='+nowarn_deprecated_type +nowarn_deprecated_function' make eunit
   - ./scripts/check-whitespace.sh core/ applications/
