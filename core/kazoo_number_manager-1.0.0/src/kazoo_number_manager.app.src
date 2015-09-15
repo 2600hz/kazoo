@@ -2,7 +2,7 @@
  [
   {description, "Kazoo Number Management"},
   {vsn, "4.0.0"},
-  {modules, []}
+  {modules, []},
   {registered, []},
   {applications, [kernel,
                   stdlib
