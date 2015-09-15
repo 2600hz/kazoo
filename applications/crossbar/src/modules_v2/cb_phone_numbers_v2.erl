@@ -301,29 +301,250 @@ delete(Context, Num) ->
 -spec clean_summary(cb_context:context()) -> wh_json:object().
 clean_summary(Context) ->
     AccountId = cb_context:account_id(Context),
-    Routines = [fun(JObj) -> wh_json:delete_key(<<"id">>, JObj) end
-                ,fun(JObj) -> wh_json:set_value(<<"numbers">>, JObj, wh_json:new()) end
-                ,fun(JObj) ->
-                    Service = wh_services:fetch(AccountId),
-                    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
-                    wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
-                 end
-                ,fun(JObj) ->
-                    QS = wh_json:to_proplist(cb_context:query_string(Context)),
-                    Numbers = wh_json:get_value(<<"numbers">>, JObj),
-                    wh_json:set_value(<<"numbers">>, apply_filters(QS, Numbers), JObj)
-                 end
+    Routines = [fun remove_id/1
+                ,fun initialize_numbers/1
+                ,fun(JObj) -> set_cascade_quantity(JObj, AccountId) end
+                ,fun(JObj) -> filter_numbers(JObj, Context) end
                ],
     lists:foldl(fun(F, JObj) -> F(JObj) end
                 ,cb_context:resp_data(Context)
                 ,Routines
                ).
 
--spec maybe_update_locality(cb_context:context()) -> cb_context:context().
+-spec remove_id(wh_json:object()) -> wh_json:object().
+remove_id(JObj) ->
+    wh_json:delete_key(<<"id">>, JObj).
+
+-spec initialize_numbers(wh_json:object()) -> wh_json:object().
+initialize_numbers(JObj) ->
+    wh_json:set_value(<<"numbers">>, JObj, wh_json:new()).
+
+-spec set_cascade_quantity(wh_json:object(), ne_binary()) ->
+                                  wh_json:object().
+set_cascade_quantity(JObj, AccountId) ->
+    Service = wh_services:fetch(AccountId),
+    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
+    wh_json:set_value(<<"cascade_quantity">>, Quantity, JObj).
+
+filter_numbers(JObj, Context) ->
+    QS = cb_context:query_string(Context),
+    Numbers = wh_json:get_value(<<"numbers">>, JObj),
+    wh_json:set_value(<<"numbers">>, apply_filters(QS, Numbers), JObj).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_filters(wh_proplist(), wh_json:object()) -> wh_json:object().
+apply_filters(QueryString, Numbers) ->
+    wh_json:foldl(fun apply_filters_fold/3, Numbers, QueryString).
+
+apply_filters_fold(<<"filter_", Key/binary>>, Value, Numbers) ->
+    apply_filter(Key, Value, Numbers);
+apply_filters_fold(_Key, _Value, Numbers) ->
+    lager:debug("unknown key ~s, ignoring", [_Key]),
+    Numbers.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_filter(ne_binary(), ne_binary(), wh_json:object()) ->
+                          wh_json:object().
+apply_filter(Key, Value, Numbers) ->
+    wh_json:foldl(
+      fun(Number, JObj, Acc) ->
+              case wh_json:get_value(Key, JObj) of
+                  Value -> Acc;
+                  _Else -> wh_json:delete_key(Number, Acc)
+              end
+      end
+      ,Numbers
+      ,Numbers
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_numbers(cb_context:context()) -> cb_context:context().
+find_numbers(Context) ->
+    JObj = get_find_numbers_req(Context),
+    Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
+    OnSuccess = fun(C) ->
+                        cb_context:setters(C
+                                           ,[{fun cb_context:set_resp_data/2, wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))}
+                                             ,{fun cb_context:set_resp_status/2, 'success'}
+                                            ])
+                end,
+
+    cb_context:validate_request_data(?FIND_NUMBER_SCHEMA
+                                     ,cb_context:set_req_data(Context, JObj)
+                                     ,OnSuccess
+                                    ).
+
+-spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
+get_find_numbers_req(Context) ->
+    JObj = cb_context:query_string(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    Quantity = wh_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
+    wh_json:set_values([{<<"quantity">>, Quantity}
+                        ,{<<"Account-ID">>, AccountId}
+                       ]
+                       ,JObj
+                      ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_phone_number(cb_context:context(), path_token(), http_method()) ->
+                                   cb_context:context().
+validate_phone_number(Context, Number, ?HTTP_GET) ->
+    read(Context, Number);
+validate_phone_number(Context, _Number, ?HTTP_PUT) ->
+    cb_context:validate_request_data(?KNM_NUMBER, Context);
+validate_phone_number(Context, _Number, ?HTTP_POST) ->
+    cb_context:validate_request_data(?KNM_NUMBER, Context);
+validate_phone_number(Context, _Number, ?HTTP_DELETE) ->
+    cb_context:set_doc(
+        cb_context:set_resp_status(Context, 'success')
+        ,'undefined'
+    ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_locality(cb_context:context(), any()) ->
+                               cb_context:context().
+validate_locality(Context, 'undefined') ->
+    cb_context:add_validation_error(
+      <<"numbers">>
+      ,<<"required">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"list of numbers missing">>}]
+        )
+      ,Context
+     );
+validate_locality(Context, []) ->
+    cb_context:add_validation_error(
+      <<"numbers">>
+      ,<<"minimum">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"minimum 1 number required">>}]
+        )
+      ,Context
+     );
+validate_locality(Context, Numbers) when is_list(Numbers) ->
+    cb_context:set_resp_status(Context, 'success');
+validate_locality(Context, Numbers) ->
+    cb_context:add_validation_error(
+      <<"numbers">>
+      ,<<"type">>
+      ,wh_json:from_list(
+         [{<<"cause">>, Numbers}
+          ,{<<"message">>, <<"numbers must be a list">>}
+         ])
+      ,Context
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_classify(cb_context:context(), path_token()) -> cb_context:context().
+maybe_classify(Context, Number) ->
+    case knm_converters:classify(Number) of
+        'undefined' -> unclassified(Context, Number);
+        Classifier ->    classified(Context, Number, Classifier)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec unclassified(cb_context:context(), path_token()) ->
+                          cb_context:context().
+unclassified(Context, Number) ->
+    RespData = base_classified(Context, Number),
+    cb_context:setters(
+      Context
+      ,[{fun cb_context:set_resp_data/2, wh_json:from_list(RespData)}
+        ,{fun cb_context:set_resp_status/2, 'success'}
+       ]
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec classified(cb_context:context(), path_token(), api_binary()) ->
+                        cb_context:context().
+classified(Context, Number, Classifier) ->
+    ClassifierJObj = wh_json:get_value(Classifier, knm_converters:available_classifiers()),
+    RespData =
+        wh_json:set_values(
+          [{<<"name">>, Classifier}
+           | base_classified(Context, Number)]
+          ,ClassifierJObj
+         ),
+    cb_context:setters(
+      Context
+      ,[{fun cb_context:set_resp_data/2, RespData}
+        ,{fun cb_context:set_resp_status/2, 'success'}
+       ]
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec base_classified(cb_context:context(), ne_binary()) ->
+                             wh_proplist().
+base_classified(_Context, Number) ->
+    Normalized = knm_converters:normalize(Number),
+    [{<<"number">>, Number}
+     ,{<<"e164">>, Normalized}
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Attempt to load a summarized listing of all instances of this resource.
+%%--------------------------------------------------------------------
+-spec summary(cb_context:context()) -> cb_context:context().
+summary(Context) ->
+    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
+    case cb_context:resp_error_code(Context1) of
+        404 -> crossbar_util:response(wh_json:new(), Context1);
+        _Code ->
+            Context2 = cb_context:set_resp_data(Context1, clean_summary(Context1)),
+            case cb_context:resp_status(Context2) of
+                'success' ->  maybe_update_locality(Context2);
+                _Status -> Context2
+            end
+    end.
+
+-spec maybe_update_locality(cb_context:context()) ->
+                                   cb_context:context().
 maybe_update_locality(Context) ->
-    Numbers = wh_json:get_value(<<"numbers">>, cb_context:resp_data(Context)),
-    Updated = wh_json:foldl(fun update_locality_fold/3, [], Numbers),
-    update_locality(Context, Updated).
+    Numbers = wh_json:foldl(
+                fun update_locality_fold/3
+                ,[]
+                ,wh_json:get_value(<<"numbers">>, cb_context:resp_data(Context))
+               ),
+    update_locality(Context, Numbers).
 
 -spec update_locality_fold(ne_binaries(), wh_json:object(), ne_binaries()) ->
                                   ne_binaries().
@@ -335,14 +556,17 @@ update_locality_fold(Key, Value, Acc) ->
         'false' -> Acc
     end.
 
--spec update_locality(cb_context:context(), ne_binaries()) -> cb_context:context().
+-spec update_locality(cb_context:context(), ne_binaries()) ->
+                             cb_context:context().
 update_locality(Context, []) -> Context;
 update_locality(Context, Numbers) ->
     case get_locality(Numbers, ?FREE_URL) of
         {'error', <<"missing phonebook url">>} -> Context;
         {'error', _} -> Context;
         {'ok', Localities} ->
-            _ = wh_util:spawn(fun update_phone_numbers_locality/2, [Context, Localities]),
+            _ = wh_util:spawn(fun() ->
+                                      update_phone_numbers_locality(Context, Localities)
+                              end),
             update_context_locality(Context, Localities)
     end.
 
@@ -364,8 +588,13 @@ update_context_locality_fold(Key, Value, JObj) ->
 
 update_context_locality_fold(Key, Value, JObj, <<"success">>) ->
     Locality = wh_json:delete_key(<<"status">>, Value),
-    NewKey = [<<"numbers">>, Key, <<"locality">>],
-    wh_json:set_value(NewKey, Locality, JObj);
+    wh_json:set_value([<<"numbers">>
+                       ,Key
+                       ,<<"locality">>
+                      ]
+                      ,Locality
+                      ,JObj
+                     );
 update_context_locality_fold(_Key, _Value, JObj, _Status) ->
     JObj.
 
@@ -416,285 +645,9 @@ handle_locality_resp(Resp) ->
             {'error', <<"number locality lookup failed">>}
     end.
 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec apply_filters(wh_proplist(), wh_json:object()) -> wh_json:object().
-apply_filters([], Numbers) -> Numbers;
-apply_filters([{<<"filter_", Key/binary>>, Value}|QS], Numbers) ->
-    Numbers1 = apply_filter(Key, Value, Numbers),
-    apply_filters(QS, Numbers1);
-apply_filters([{Key, _}|QS], Numbers) ->
-    lager:debug("unknown key ~s, ignoring", [Key]),
-    apply_filters(QS, Numbers).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec apply_filter(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
-apply_filter(Key, Value, Numbers) ->
-    wh_json:foldl(
-        fun(Number, JObj, Acc) ->
-            case wh_json:get_value(Key, JObj) of
-                Value -> Acc;
-                _Else -> wh_json:delete_key(Number, Acc)
-            end
-        end
-        ,Numbers
-        ,Numbers
-    ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_numbers(cb_context:context()) -> cb_context:context().
-find_numbers(Context) ->
-    JObj = get_find_numbers_req(Context),
-    Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
-    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
-    OnSuccess = fun(C) ->
-                        cb_context:setters(C
-                                           ,[{fun cb_context:set_resp_data/2, wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))}
-                                             ,{fun cb_context:set_resp_status/2, 'success'}
-                                            ])
-                end,
-
-    cb_context:validate_request_data(?FIND_NUMBER_SCHEMA
-                                     ,cb_context:set_req_data(Context, JObj)
-                                     ,OnSuccess
-                                    ).
-
--spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
-get_find_numbers_req(Context) ->
-    JObj = cb_context:query_string(Context),
-    AccountId = cb_context:auth_account_id(Context),
-    Quantity = wh_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
-    wh_json:set_values([{<<"quantity">>, Quantity}
-                       ,{<<"Account-ID">>, AccountId}
-                       ], JObj).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec validate_phone_number(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_phone_number(Context, Number, ?HTTP_GET) ->
-    read(Context, Number);
-validate_phone_number(Context, _Number, ?HTTP_PUT) ->
-    cb_context:validate_request_data(?KNM_NUMBER, Context);
-validate_phone_number(Context, _Number, ?HTTP_POST) ->
-    cb_context:validate_request_data(?KNM_NUMBER, Context);
-validate_phone_number(Context, _Number, ?HTTP_DELETE) ->
-    cb_context:set_doc(
-        cb_context:set_resp_status(Context, 'success')
-        ,'undefined'
-    ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec validate_locality(cb_context:context(), any()) -> cb_context:context().
-validate_locality(Context, 'undefined') ->
-    cb_context:add_validation_error(
-        <<"numbers">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"list of numbers missing">>}
-         ])
-        ,Context
-    );
-validate_locality(Context, []) ->
-    cb_context:add_validation_error(
-        <<"numbers">>
-        ,<<"minimum">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"minimum 1 number required">>}
-         ])
-        ,Context
-    );
-validate_locality(Context, Numbers) when is_list(Numbers) ->
-    cb_context:set_resp_status(Context, 'success');
-validate_locality(Context, Numbers) ->
-    cb_context:add_validation_error(
-        <<"numbers">>
-        ,<<"type">>
-        ,wh_json:from_list([
-            {<<"cause">>, Numbers}
-            ,{<<"message">>, <<"numbers must be a list">>}
-         ])
-        ,Context
-    ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_classify(cb_context:context(), path_token()) -> cb_context:context().
-maybe_classify(Context, Number) ->
-    case knm_converters:classify(Number) of
-        'undefined' -> unclassified(Context, Number);
-        Classifier ->    classified(Context, Number, Classifier)
-    end.
-
--spec unclassified(cb_context:context(), path_token()) -> cb_context:context().
-unclassified(Context, Number) ->
-    RespData = base_classified(Context, Number),
-    cb_context:setters(
-        Context
-        ,[{fun cb_context:set_resp_data/2, wh_json:from_list(RespData)}
-          ,{fun cb_context:set_resp_status/2, 'success'}]
-    ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec classified(cb_context:context(), path_token(), api_binary()) -> cb_context:context().
-classified(Context, Number, Classifier) ->
-    ClassifierJObj = wh_json:get_value(Classifier, knm_converters:available_classifiers()),
-    RespData =
-        wh_json:set_values(
-            [{<<"name">>, Classifier}
-             | base_classified(Context, Number)]
-            ,ClassifierJObj
-        ),
-    cb_context:setters(
-        Context
-        ,[{fun cb_context:set_resp_data/2, RespData}
-          ,{fun cb_context:set_resp_status/2, 'success'}]
-    ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec base_classified(cb_context:context(), ne_binary()) -> wh_proplist().
-base_classified(_Context, Number) ->
-    Normalized = knm_converters:normalize(Number),
-    [{<<"number">>, Number}, {<<"e164">>, Normalized}].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
-    case cb_context:resp_error_code(Context1) of
-        404 -> crossbar_util:response(wh_json:new(), Context1);
-        _Code ->
-            Context2 = cb_context:set_resp_data(Context1, clean_summary(Context1)),
-            case cb_context:resp_status(Context2) of
-                'success' ->  maybe_update_locality(Context2);
-                _Status -> Context2
-            end
-    end.
-
--spec maybe_update_locality(cb_context:context()) ->
-                                   cb_context:context().
-maybe_update_locality(Context) ->
-    Numbers = wh_json:foldl(
-                fun(Key, Value, Acc) ->
-                        case wh_json:get_value(<<"locality">>, Value) =:= 'undefined'
-                            andalso  wnm_util:is_reconcilable(Key)
-                        of
-                            'true' -> [Key|Acc];
-                            'false' -> Acc
-                        end
-                end
-                ,[]
-                ,wh_json:get_value(<<"numbers">>, cb_context:resp_data(Context))
-               ),
-    update_locality(Context, Numbers).
-
--spec update_locality(cb_context:context(), ne_binaries()) ->
-                             cb_context:context().
-update_locality(Context, []) -> Context;
-update_locality(Context, Numbers) ->
-    case get_locality(Numbers, ?FREE_URL) of
-        {'error', <<"missing phonebook url">>} -> Context;
-        {'error', _} -> Context;
-        {'ok', Localities} ->
-            _ = wh_util:spawn(fun() ->
-                                      update_phone_numbers_locality(Context, Localities)
-                              end),
-            update_context_locality(Context, Localities)
-    end.
-
--spec update_context_locality(cb_context:context(), wh_json:object()) ->
-                                     cb_context:context().
-update_context_locality(Context, Localities) ->
-    JObj = wh_json:foldl(fun update_context_locality_fold/3, cb_context:resp_data(Context), Localities),
-    cb_context:set_resp_data(Context, JObj).
-
--spec update_context_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
-update_context_locality_fold(Key, Value, JObj) ->
-    case wh_json:get_value(<<"status">>, Value) of
-        <<"success">> ->
-            Locality = wh_json:delete_key(<<"status">>, Value),
-            wh_json:set_value([<<"numbers">>
-                               ,Key
-                               ,<<"locality">>
-                              ], Locality, JObj);
-        _Else -> JObj
-    end.
-
--spec get_locality(ne_binaries(), ne_binary()) ->
-                          {'error', ne_binary()} |
-                          {'ok', wh_json:object()}.
-get_locality([], _) -> {'error', <<"number missing">>};
-get_locality(Numbers, UrlType) ->
-    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, UrlType) of
-        'undefined' ->
-            lager:error("could not get number locality url"),
-            {'error', <<"missing phonebook url">>};
-        Url ->
-            ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
-            Uri = <<Url/binary, "/locality/metadata">>,
-            case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
-                {'error', Reason} ->
-                    lager:error("number locality lookup failed: ~p", [Reason]),
-                    {'error', <<"number locality lookup failed">>};
-                {'ok', "200", _Headers, Body} ->
-                    handle_locality_resp(wh_json:decode(Body));
-                {'ok', _Status, _, _Body} ->
-                    lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
-                    {'error', <<"number locality lookup failed">>}
-            end
-    end.
-
--spec handle_locality_resp(wh_json:object()) ->
-                                  {'error', ne_binary()} |
-                                  {'ok', wh_json:object()}.
-handle_locality_resp(Resp) ->
-    case wh_json:get_value(<<"status">>, Resp, <<"error">>) of
-        <<"success">> ->
-            {'ok', wh_json:get_value(<<"data">>, Resp, wh_json:new())};
-        _E ->
-            lager:error("number locality lookup failed, status: ~p", [_E]),
-            {'error', <<"number locality lookup failed">>}
-    end.
-
 -spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
                                            {'ok', wh_json:object()} |
-                                           {'error', _}.
+                                           couch_mgr:couchbeam_error().
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
     DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
@@ -707,7 +660,11 @@ update_phone_numbers_locality(Context, Localities) ->
             E
     end.
 
--spec update_phone_numbers_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec update_phone_numbers_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) ->
+                                                wh_json:object().
+-spec update_phone_numbers_locality_fold(ne_binary(), wh_json:object(), wh_json:object(), ne_binary()) ->
+                                                wh_json:object().
+
 update_phone_numbers_locality_fold(Key, Value, JObj) ->
     update_phone_numbers_locality_fold(Key, Value, JObj, wh_json:get_value(<<"status">>, Value)).
 
