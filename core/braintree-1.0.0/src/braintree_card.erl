@@ -39,12 +39,16 @@
 %%--------------------------------------------------------------------
 -spec url() -> string().
 -spec url(ne_binary()) -> string().
+-spec url(ne_binary(), _) -> string().
 
 url() ->
     "/payment_methods/".
 
 url(Token) ->
     "/payment_methods/" ++ wh_util:to_list(Token).
+
+url(Token, _) ->
+    "/payment_methods/credit_card/" ++ wh_util:to_list(Token).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,10 +79,13 @@ payment_token(#bt_card{token = Value}) -> Value.
 %% Find a credit card by id
 %% @end
 %%--------------------------------------------------------------------
--spec find(text()) -> bt_card().
+-spec find(ne_binary() | bt_card()) -> bt_card().
+find(#bt_card{token = CardId}) -> find(CardId);
 find(Token) ->
-    _Url = url(Token),
-    xml_to_record([]).
+% github.com/braintree/braintree_php/blob/master/lib/Braintree/CreditCardGateway.php#L149
+    Url = url(Token, ''),
+    Xml = braintree_request:get(Url),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -224,52 +231,54 @@ record_to_xml(#bt_card{}=Card, ToString) ->
              ,{'customer-id', Card#bt_card.customer_id}
              ,{'number', Card#bt_card.number}
              ,{'cvv', Card#bt_card.cvv}
-             ,{'billing-address-id', Card#bt_card.billing_address_id}],
-    Conditionals = [fun(#bt_card{billing_address=BA, billing_address_id='undefined'}, P)
-                          when BA =/= 'undefined' ->
-                            [{'billing-address', braintree_address:record_to_xml(BA)} | P];
-                       (#bt_card{}, P) -> P
-                    end
-                    ,fun(#bt_card{update_existing='false'}, P) -> P;
-                        (#bt_card{update_existing=Token}, P) when is_binary(Token) ->
-                             case props:get_value('options', P) of
-                                 'undefined' ->
-                                     [{'options', [{'update-existing-token', Token}]}
-                                      |props:delete('token', P)
-                                     ];
-                                 Options ->
-                                     [{'options', [{'update-existing-token', Token}|Options]}
-                                      |props:delete('token', props:delete('options', P))
-                                     ]
-                            end;
-                        (#bt_card{update_existing='true'}, P) ->
-                             case props:get_value('options', P) of
-                                 'undefined' ->
-                                     [{'options', [{'update-existing-token', Card#bt_card.token}]}
-                                      |props:delete('token', P)
-                                     ];
-                                 Options ->
-                                     [{'options', [{'update-existing-token', Card#bt_card.token}|Options]}
-                                      |props:delete('token', props:delete('options', P))
-                                     ]
-                             end;
-                        (_, P) -> P
-                     end
-                    ,fun(#bt_card{verify='true', number=Number}, P) when Number =/= 'undefined' ->
-                             case props:get_value('options', P) of
-                                 'undefined' ->
-                                     [{'options', [{'verify-card', 'true'}]}|P];
-                                 Options ->
-                                     Options1 = [{'verify-card', 'true'}|Options],
-                                     [{'options', Options1}|props:delete('options', P)]
-                             end;
-                        (_, P) -> P
-                     end
-                    ,fun(#bt_card{make_default='true'}, P) ->
-                             [{'options', [{'make-default', 'true'}]}|P];
-                        (_, P) -> P
-                     end
-                   ],
+            ],
+    Conditionals =
+        [fun(#bt_card{billing_address=BA, billing_address_id=BAID}, P) ->
+                 case BA =:= (find(Card))#bt_card.billing_address of
+                     'true'  -> [{'billing-address-id', BAID} | P];
+                     'false' -> [{'billing-address', braintree_address:record_to_xml(BA)} | P]
+                 end
+         end
+        ,fun(#bt_card{update_existing='false'}, P) -> P;
+            (#bt_card{update_existing=Token}, P) when is_binary(Token) ->
+                 case props:get_value('options', P) of
+                     'undefined' ->
+                         [{'options', [{'update-existing-token', Token}]}
+                         | props:delete('token', P)
+                         ];
+                     Options ->
+                         [{'options', [{'update-existing-token', Token}|Options]}
+                         | props:delete('token', props:delete('options', P))
+                         ]
+                 end;
+            (#bt_card{update_existing='true'}, P) ->
+                 case props:get_value('options', P) of
+                     'undefined' ->
+                         [{'options', [{'update-existing-token', Card#bt_card.token}]}
+                         | props:delete('token', P)
+                         ];
+                     Options ->
+                         [{'options', [{'update-existing-token', Card#bt_card.token}|Options]}
+                         | props:delete('token', props:delete('options', P))
+                         ]
+                 end;
+            (_, P) -> P
+         end
+        ,fun(#bt_card{verify='true', number=Number}, P) when Number =/= 'undefined' ->
+                 case props:get_value('options', P) of
+                     'undefined' ->
+                         [{'options', [{'verify-card', 'true'}]} | P];
+                     Options ->
+                         Options1 = [{'verify-card', 'true'} | Options],
+                         [{'options', Options1} | props:delete('options', P)]
+                 end;
+            (_, P) -> P
+         end
+        ,fun(#bt_card{make_default='true'}, P) ->
+                 [{'options', [{'make-default', 'true'}]} | P];
+            (_, P) -> P
+         end
+        ],
     Props1 = lists:foldr(fun(F, P) -> F(Card, P) end, Props, Conditionals),
     case ToString of
         'true' -> make_doc_xml(Props1, 'credit-card');
