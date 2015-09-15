@@ -55,9 +55,12 @@ clean:
 	rm -f erl_crash.dump
 
 clean-test:
-	rm -f test/*.beam test/$(PROJECT).app
+	rm -f test/*.beam test/$(PROJECT).app test/*.html
 
 test: clean-test compile-test eunit
 
 eunit: compile-test
 	erl -noshell $(PA) -pa test -eval "case eunit:test([$(TEST_MODULES),$(MODULES),$(CARRIERS),$(PROVIDERS),$(CONVERTERS)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
+
+cover: clean-test compile-test
+	erl -noshell $(PA) -pa test -s cover -eval "Fs = [$(TEST_MODULES),$(MODULES),$(CARRIERS),$(PROVIDERS),$(CONVERTERS)], Each = fun(F, L) -> lists:foreach(fun(I) -> F(I) end, L) end, cover:compile_directory(\"./src\", [{'d', 'TEST', 'true'}]), case eunit:test(Fs, [verbose]) of 'ok' -> Each(fun(F) -> cover:analyse_to_file(F, [\"test/\", atom_to_list(F), \".html\"], [html]) end, Fs), init:stop(); _ -> init:stop(1) end."
