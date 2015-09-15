@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
@@ -16,6 +17,7 @@
          ,authenticate/1
          ,validate/1, validate/2
          ,put/1, put/2
+         ,post/2
         ]).
 
 -include("../crossbar.hrl").
@@ -27,6 +29,7 @@
 -define(USER_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"user_auth_tokens">>, 35)).
 
 -define(RECOVERY, <<"recovery">>).
+-define(PWD_RESET_UUID_SIZE, 40).
 
 %%%===================================================================
 %%% API
@@ -39,7 +42,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.user_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.user_auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.user_auth">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.user_auth">>, ?MODULE, 'get').
+    _ = crossbar_bindings:bind(<<"*.execute.post.user_auth">>, ?MODULE, 'post').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -53,7 +56,7 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
-allowed_methods(?RECOVERY) -> [?HTTP_PUT, ?HTTP_GET];
+allowed_methods(?RECOVERY) -> [?HTTP_PUT, ?HTTP_POST];
 allowed_methods(_) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -109,25 +112,28 @@ authenticate_nouns(_Nouns) -> 'false'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     lager:debug(">>> validate/1"),
-    case {cb_context:req_verb(Context), cb_context:req_value(Context, <<"uuid">>)} of
-        {?HTTP_GET, UUID} when UUID =/= 'undefined' ->
-            reset_users_password__step_2(Context, UUID);
-        _Else ->
-            Context1 = consume_tokens(Context),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1);
-                _Status -> Context1
-            end
+    Context1 = consume_tokens(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1);
+        _Status -> Context1
     end.
 
 validate(Context, ?RECOVERY) ->
-    lager:debug(">>> validate/2 RECOVERY"),
-    cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1);
+    Verb = cb_context:req_verb(Context),
+    validate_recovery(Context, Verb);
 validate(Context, Token) ->
     lager:debug(">>> validate/2 "),
     Context1 = cb_context:set_account_db(Context, ?KZ_TOKEN_DB),
     maybe_get_auth_token(Context1, Token).
+
+-spec validate_recovery(cb_context:context(), http_method()) -> cb_context:context().
+validate_recovery(Context, ?HTTP_PUT) ->
+    cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1);
+validate_recovery(Context, ?HTTP_POST) ->
+    lager:debug(">>> validate/2 RECOVERY"),
+    lager:debug(">>> validate/2  ~p", [cb_context:req_data(Context)]),
+    cb_context:validate_request_data(<<"user_auth_recovery_reset">>, Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -140,6 +146,12 @@ put(Context, ?RECOVERY) ->
     lager:debug(">>> put/2"),
     _ = cb_context:put_reqid(Context),
     reset_users_password__step_1(Context).
+
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, ?RECOVERY) ->
+    lager:debug(">>> post/2"),
+    _ = cb_context:put_reqid(Context),
+    reset_users_password__step_2(Context).
 
 %%%===================================================================
 %%% Internal functions
@@ -300,12 +312,7 @@ load_md5_results(Context, JObj) ->
     lager:debug("found MD5 credentials belong to user ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj)).
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec maybe_recover_user_password(cb_context:context()) -> cb_context:context().
 maybe_recover_user_password(Context) ->
     JObj = cb_context:doc(Context),
@@ -318,12 +325,7 @@ maybe_recover_user_password(Context) ->
         {'ok', Account} -> maybe_load_username(Account, Context)
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec maybe_load_username(ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_username(Account, Context) ->
     JObj = cb_context:doc(Context),
@@ -369,7 +371,7 @@ maybe_load_username(Account, Context) ->
 %% @private
 -spec reset_users_password__step_1(cb_context:context()) -> cb_context:context().
 reset_users_password__step_1(Context) ->
-    UUID = wh_util:rand_hex_binary(64),
+    UUID = wh_util:rand_hex_binary(?PWD_RESET_UUID_SIZE / 2),
     Doc = cb_context:doc(Context),
     Props = [{'origin', [{'db', wh_doc:account_db(Doc), wh_doc:account_id(Doc)}]}],
     'ok' = wh_cache:store_local(?CROSSBAR_CACHE, UUID, Context, Props),
@@ -400,11 +402,12 @@ reset_users_password__step_1(Context) ->
 -spec pwd_reset_link(ne_binary(), ne_binary()) -> ne_binary().
 pwd_reset_link(UUID, UIURL) ->
     [Url|_] = binary:split(UIURL, <<"#">>),
-    <<Url/binary, "/", UUID/binary>>.
+    <<Url/binary, "/?", UUID/binary>>.
 
-%% @private
--spec reset_users_password__step_2(cb_context:context(), ne_binary()) -> cb_context:context().
-reset_users_password__step_2(Context, UUID) ->
+%% %% @private
+-spec reset_users_password__step_2(cb_context:context()) -> cb_context:context().
+reset_users_password__step_2(Context) ->
+    UUID = wh_json:get_ne_value(<<"uuid">>, cb_context:req_data(Context)),
     lager:debug(">>> 2 ~p", [UUID]),
     case wh_cache:peek_local(?CROSSBAR_CACHE, UUID) of
         {'error', _R} ->
