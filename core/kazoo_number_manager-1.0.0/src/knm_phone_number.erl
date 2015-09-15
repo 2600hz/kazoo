@@ -79,8 +79,16 @@
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) -> number_return().
 -spec fetch(ne_binary(), wh_proplist()) -> number_return().
+
+-ifdef(TEST).
+fetch(?TEST_CREATE_NUM) ->
+    {'error', 'not_found'};
+fetch(?TEST_EXISTING_NUM) ->
+    {'ok', from_json(?EXISTING_NUMBER)}.
+-else.
 fetch(Num) ->
     fetch(Num, ?MODULE:default_options()).
+-endif.
 
 fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
@@ -188,6 +196,7 @@ from_json(JObj) ->
        ,module_name=wh_json:get_value(?PVT_MODULE_NAME, JObj)
        ,carrier_data=wh_json:get_value(?PVT_CARRIER_DATA, JObj)
        ,region=wh_json:get_value(?PVT_REGION, JObj)
+       ,auth_by=wh_json:get_value(?PVT_AUTH_BY, JObj)
        ,doc=JObj
       }.
 
