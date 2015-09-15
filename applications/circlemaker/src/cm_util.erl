@@ -93,9 +93,13 @@ maybe_translate_kv_into_avps_item(TranslationItem, WholeRequest) ->
         Value when is_binary(Value) ->
             BinValue = binary_to_list(Value),
             BinRequestRegexp = binary_to_list(RequestRegexp),
+            lager:debug("kv to avp: ~p by ~p", [BinValue, BinRequestRegexp]),
             case re:run(BinValue, BinRequestRegexp) of
-                'nomatch' -> {Attr, <<"">>};
+                'nomatch' ->
+                    lager:debug("nomatch"),
+                    {Attr, <<"">>};
                 {'match', Groups} ->
+                    lager:debug("match: ~p", [Groups]),
                     {Pos, Len} = lists:nth(2, Groups),
                     NewValue = lists:sublist(BinValue, Pos + 1, Len),
                     MaybeCasted = case Cast of
