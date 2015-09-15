@@ -1065,6 +1065,15 @@ publish(Action, Db, Doc) ->
     Type = wh_doc:type(Doc),
     Id = wh_doc:id(Doc),
 
+    IsSoftDeleted = wh_doc:is_soft_deleted(Doc),
+    EventName =
+        case IsSoftDeleted of
+            'true' ->
+                <<"doc_deleted">>;
+            'false' ->
+                <<"doc_", (wh_util:to_binary(Action))/binary>>
+        end,
+
     Props =
         [{<<"ID">>, Id}
          ,{<<"Type">>, Type}
@@ -1073,9 +1082,9 @@ publish(Action, Db, Doc) ->
          ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
          ,{<<"Date-Modified">>, wh_doc:created(Doc)}
          ,{<<"Date-Created">>, wh_doc:modified(Doc)}
-         ,{<<"Is-Soft-Deleted">>, wh_doc:is_soft_deleted(Doc)}
+         ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
          | wh_api:default_headers(<<"configuration">>
-                                  ,<<"doc_", (wh_util:to_binary(Action))/binary>>
+                                  ,EventName
                                   ,?CONFIG_CAT
                                   ,<<"1.0.0">>
                                  )
