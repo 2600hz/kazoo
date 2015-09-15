@@ -94,12 +94,12 @@ create_with_number_porting() ->
     }.
 
 create_new_number() ->
-    {"Ensure number_is_porting error when auth_by account isn't allowed to create numbers"
+    {"Ensure success when auth_by account is allowed to create numbers"
      ,?_assert(knm_number:ensure_can_create(
                  ?TEST_CREATE_NUM
                  ,[{<<"auth_by">>, ?RESELLER_ACCOUNT_ID}
                    ,{<<"auth_by_account">>
-                         ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+                     ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
                     }
                   ]
                 )

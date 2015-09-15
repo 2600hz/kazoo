@@ -41,7 +41,7 @@ create_new_number_test_() ->
       }
     ].
 
-create_existing_number_test() ->
+create_existing_number_test_() ->
     PhoneNumber = knm_phone_number:from_json(?EXISTING_NUMBER),
     AvailPhoneNumber = knm_phone_number:set_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE),
 
@@ -80,4 +80,24 @@ create_existing_number_test() ->
                           ,knm_number:create_or_load(?TEST_EXISTING_NUM, Props, {'ok', PhoneNumber})
                          )
       }
+    ].
+
+create_dry_run_test_() ->
+    Props = [{<<"auth_by">>, ?MASTER_ACCOUNT_ID}
+             ,{<<"assign_to">>, ?RESELLER_ACCOUNT_ID}
+             ,{<<"dry_run">>, 'true'}
+             ,{<<"auth_by_account">>
+               ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+              }
+            ],
+    {'dry_run', Services, Charges} =
+        knm_number:create_or_load(?TEST_CREATE_NUM, Props, {'error', 'not_found'}),
+
+    %% Eventually make a stub service plan to test this
+    [{"Verify charges for dry_run"
+      ,?_assertEqual(0, Charges)
+     }
+     ,{"Verify services for dry_run"
+       ,?_assertEqual('undefined', Services)
+       }
     ].
