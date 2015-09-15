@@ -25,6 +25,7 @@
 
 -define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
 -define(KNM_NUMBER, <<"numbers">>).
+-define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 
 -define(FIND_NUMBER_PREFIX
         ,wh_json:from_list([{<<"required">>, 'true'}
@@ -53,10 +54,15 @@
                            ])
        ).
 
+-define(FREE_URL, <<"phonebook_url">>).
+-define(PAID_URL, <<"phonebook_url_premium">>).
+
 -define(CLASSIFIERS, <<"classifiers">>).
 -define(LOCALITY, <<"locality">>).
 -define(FIX, <<"fix">>).
 -define(ACTIVATE, <<"activate">>).
+
+-define(PHONE_NUMBERS_CONFIG_CAT, <<?CONFIG_CAT/binary, ".phone_numbers">>).
 
 %%%===================================================================
 %%% API
@@ -286,23 +292,6 @@ delete(Context, Num) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Attempt to load a summarized listing of all instances of this resource.
-%%--------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
-    case cb_context:resp_error_code(Context1) of
-        404 -> crossbar_util:response(wh_json:new(), Context1);
-        _Code ->
-            Context2 = cb_context:set_resp_data(Context1, clean_summary(Context1)),
-            case cb_context:resp_status(Context2) of
-                'success' -> maybe_update_locality(Context2);
-                _Status -> Context2
-            end
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -559,39 +548,6 @@ maybe_classify(Context, Number) ->
         Classifier ->    classified(Context, Number, Classifier)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
-                                           {'ok', wh_json:object()} |
-                                           {'error', any()}.
-update_phone_numbers_locality(Context, Localities) ->
-    AccountDb = cb_context:account_db(Context),
-    DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
-    case kz_datamgr:open_doc(AccountDb, DocId) of
-        {'ok', JObj} ->
-            J = wh_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
-            kz_datamgr:save_doc(AccountDb, J);
-        {'error', _E}=E ->
-            lager:error("failed to update locality for ~s in ~s: ~p", [DocId, AccountDb, _E]),
-            E
-    end.
-
--spec update_phone_numbers_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
-update_phone_numbers_locality_fold(Key, Value, JObj) ->
-    case wh_json:get_value(<<"status">>, Value) of
-        <<"success">> ->
-            case wh_json:get_value(Key, JObj) of
-                'undefined' -> JObj;
-                _Else ->
-                    Locality = wh_json:delete_key(<<"status">>, Value),
-                    wh_json:set_value([Key, <<"locality">>], Locality, JObj)
-            end;
-        _Else -> JObj
-    end.
-
 -spec unclassified(cb_context:context(), path_token()) -> cb_context:context().
 unclassified(Context, Number) ->
     RespData = base_classified(Context, Number),
@@ -634,6 +590,140 @@ base_classified(_Context, Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec summary(cb_context:context()) -> cb_context:context().
+summary(Context) ->
+    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
+    case cb_context:resp_error_code(Context1) of
+        404 -> crossbar_util:response(wh_json:new(), Context1);
+        _Code ->
+            Context2 = cb_context:set_resp_data(Context1, clean_summary(Context1)),
+            case cb_context:resp_status(Context2) of
+                'success' ->  maybe_update_locality(Context2);
+                _Status -> Context2
+            end
+    end.
+
+-spec maybe_update_locality(cb_context:context()) ->
+                                   cb_context:context().
+maybe_update_locality(Context) ->
+    Numbers = wh_json:foldl(
+                fun(Key, Value, Acc) ->
+                        case wh_json:get_value(<<"locality">>, Value) =:= 'undefined'
+                            andalso  wnm_util:is_reconcilable(Key)
+                        of
+                            'true' -> [Key|Acc];
+                            'false' -> Acc
+                        end
+                end
+                ,[]
+                ,wh_json:get_value(<<"numbers">>, cb_context:resp_data(Context))
+               ),
+    update_locality(Context, Numbers).
+
+-spec update_locality(cb_context:context(), ne_binaries()) ->
+                             cb_context:context().
+update_locality(Context, []) -> Context;
+update_locality(Context, Numbers) ->
+    case get_locality(Numbers, ?FREE_URL) of
+        {'error', <<"missing phonebook url">>} -> Context;
+        {'error', _} -> Context;
+        {'ok', Localities} ->
+            _ = wh_util:spawn(fun() ->
+                                      update_phone_numbers_locality(Context, Localities)
+                              end),
+            update_context_locality(Context, Localities)
+    end.
+
+-spec update_context_locality(cb_context:context(), wh_json:object()) ->
+                                     cb_context:context().
+update_context_locality(Context, Localities) ->
+    JObj = wh_json:foldl(fun update_context_locality_fold/3, cb_context:resp_data(Context), Localities),
+    cb_context:set_resp_data(Context, JObj).
+
+-spec update_context_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+update_context_locality_fold(Key, Value, JObj) ->
+    case wh_json:get_value(<<"status">>, Value) of
+        <<"success">> ->
+            Locality = wh_json:delete_key(<<"status">>, Value),
+            wh_json:set_value([<<"numbers">>
+                               ,Key
+                               ,<<"locality">>
+                              ], Locality, JObj);
+        _Else -> JObj
+    end.
+
+-spec get_locality(ne_binaries(), ne_binary()) ->
+                          {'error', ne_binary()} |
+                          {'ok', wh_json:object()}.
+get_locality([], _) -> {'error', <<"number missing">>};
+get_locality(Numbers, UrlType) ->
+    case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, UrlType) of
+        'undefined' ->
+            lager:error("could not get number locality url"),
+            {'error', <<"missing phonebook url">>};
+        Url ->
+            ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
+            Uri = <<Url/binary, "/locality/metadata">>,
+            case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
+                {'error', Reason} ->
+                    lager:error("number locality lookup failed: ~p", [Reason]),
+                    {'error', <<"number locality lookup failed">>};
+                {'ok', "200", _Headers, Body} ->
+                    handle_locality_resp(wh_json:decode(Body));
+                {'ok', _Status, _, _Body} ->
+                    lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
+                    {'error', <<"number locality lookup failed">>}
+            end
+    end.
+
+-spec handle_locality_resp(wh_json:object()) ->
+                                  {'error', ne_binary()} |
+                                  {'ok', wh_json:object()}.
+handle_locality_resp(Resp) ->
+    case wh_json:get_value(<<"status">>, Resp, <<"error">>) of
+        <<"success">> ->
+            {'ok', wh_json:get_value(<<"data">>, Resp, wh_json:new())};
+        _E ->
+            lager:error("number locality lookup failed, status: ~p", [_E]),
+            {'error', <<"number locality lookup failed">>}
+    end.
+
+-spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
+                                           {'ok', wh_json:object()} |
+                                           {'error', _}.
+update_phone_numbers_locality(Context, Localities) ->
+    AccountDb = cb_context:account_db(Context),
+    DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
+    case couch_mgr:open_doc(AccountDb, DocId) of
+        {'ok', JObj} ->
+            J = wh_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
+            couch_mgr:save_doc(AccountDb, J);
+        {'error', _E}=E ->
+            lager:error("failed to update locality for ~s in ~s: ~p", [DocId, AccountDb, _E]),
+            E
+    end.
+
+-spec update_phone_numbers_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+update_phone_numbers_locality_fold(Key, Value, JObj) ->
+    update_phone_numbers_locality_fold(Key, Value, JObj, wh_json:get_value(<<"status">>, Value)).
+
+update_phone_numbers_locality_fold(Key, Value, JObj, <<"success">>) ->
+    case wh_json:get_value(Key, JObj) of
+        'undefined' -> JObj;
+        _Else ->
+            Locality = wh_json:delete_key(<<"status">>, Value),
+            wh_json:set_value([Key, <<"locality">>], Locality, JObj)
+    end;
+update_phone_numbers_locality_fold(_Key, _Value, JObj, _Status) ->
+    JObj.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
@@ -660,16 +750,6 @@ locality(Context, Numbers) ->
             JObj = wh_json:from_list([{<<"message">>, wh_util:to_binary(Reason)}]),
             cb_context:add_system_error('unspecified_fault', JObj, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
