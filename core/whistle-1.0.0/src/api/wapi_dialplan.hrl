@@ -14,7 +14,7 @@
 
 %% For dialplan messages, what does the Invite-Format param accept as values?
 -define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>
-                              ,[<<"username">>, <<"e164">>
+                              ,[<<"username">>, <<"e164">>, <<"e164_without_plus">>
                                 ,<<"npan">>, <<"1npan">>
                                 ,<<"route">>, <<"loopback">>
                                ]

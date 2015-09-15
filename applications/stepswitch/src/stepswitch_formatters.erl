@@ -207,6 +207,7 @@ maybe_match_invite_format(JObj, Formatter) ->
         <<"route">> -> 'false';
         <<"username">> -> 'false';
         <<"e164">> -> 'true';
+        <<"e164_without_plus">> -> 'true';
         <<"npan">> -> 'true';
         <<"1npan">> -> 'true'
     end.
@@ -228,6 +229,7 @@ match_invite_format(JObj, Key, User, Realm) ->
 invite_format_fun(JObj) ->
     case wh_json:get_value(<<"Invite-Format">>, JObj) of
         <<"e164">> -> fun wnm_util:to_e164/1;
+        <<"e164_without_plus">> -> fun wnm_util:to_e164_without_plus/1;
         <<"1npan">> -> fun wnm_util:to_1npan/1;
         <<"npan">> -> fun wnm_util:to_npan/1
     end.
