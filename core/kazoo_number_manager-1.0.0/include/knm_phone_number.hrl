@@ -20,6 +20,7 @@
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_ASSIGNED_TO, <<"pvt_assigned_to">>).
 -define(PVT_PREVIOUSLY_ASSIGNED_TO, <<"pvt_previously_assigned_to">>).
+-define(PVT_AUTH_BY, <<"pvt_authorizing_account">>).
 -define(PVT_USED_BY, <<"pvt_used_by">>).
 -define(PVT_FEATURES, <<"pvt_features">>).
 -define(PVT_STATE, <<"pvt_state">>).
