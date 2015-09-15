@@ -30,6 +30,7 @@
 -include("../callflow.hrl").
 
 -define(CCV, <<"Custom-Channel-Vars">>).
+-define(CMSG, <<"Custom-Msg">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -49,7 +50,8 @@ handle(Data, Call) ->
     CallProp2 = wh_json:set_value(<<"AAA-Request-Type">>, <<"cf_aaa">>, CallProp1),
     CallProp3 = wh_json:set_values(RequestFields1, CallProp2),
     CallProp4 = wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), CallProp3),
-    maybe_do_radius_request(CallProp4, Data, Call).
+    CallProp5 = wh_json:set_value(?CMSG, CallProp4, wh_json:new()),
+    maybe_do_radius_request(CallProp5, Data, Call).
 
 -spec maybe_do_radius_request(wh_json:object(), wh_json:object(), whapps_call:call()) -> any().
 maybe_do_radius_request(Request, Data, Call) ->
@@ -74,8 +76,9 @@ maybe_do_radius_request(Request, Data, Call) ->
 get_last_part_of_key(Key) when is_list(Key) -> lists:last(Key);
 get_last_part_of_key(Key) when is_binary(Key) -> Key.
 
-process_response(Response, Data, Call) ->
-    lager:debug("Response received: ~p", [Response]),
+process_response(ResponseWrapped, Data, Call) ->
+    lager:debug("Response received: ~p", [ResponseWrapped]),
+    Response = wh_json:get_value(?CMSG, ResponseWrapped),
     ResponseFields = wh_json:get_value(<<"response_fields">>, Data),
     lager:debug("Response fields: ~p", [ResponseFields]),
     Channel = wh_json:get_value(<<"channel">>, Data, <<"a">>),

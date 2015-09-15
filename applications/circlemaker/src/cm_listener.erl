@@ -89,7 +89,9 @@ handle_custom_req(JObj, _Props) ->
     wh_util:put_callid(JObj),
     lager:debug("cm_listener handled custom request ~p", [JObj]),
     'true' = wapi_aaa:custom_req_v(JObj),
-    cm_pool_mgr:do_request(JObj).
+    % unwrap custom request
+    JObj1 = wh_json:get_value(<<"Custom-Msg">>, JObj),
+    cm_pool_mgr:do_request(JObj1).
 
 %%--------------------------------------------------------------------
 %% @public

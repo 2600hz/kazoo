@@ -94,46 +94,24 @@
 
 % Custom Request headers
 
--define(CUSTOM_REQ_HEADERS, [<<"To">>, <<"From">>
-                             ,<<"User-Name">>, <<"User-Password">>
-                            ]).
--define(OPTIONAL_CUSTOM_REQ_HEADERS, [<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
-                                      ,<<"Switch-Hostname">>
-                                      ,<<"NAS-IP-Address">>, <<"NAS-Port">>
-                                      ,<<"User-Agent">>
-                                      ,<<"Custom-SIP-Headers">>, <<"Account-ID">>
-                                      ,<<"Response-Queue">>
-                                     ]).
+-define(CUSTOM_REQ_HEADERS, [<<"Custom-Msg">>]).
+-define(OPTIONAL_CUSTOM_REQ_HEADERS, [<<"Response-Queue">>, <<"Server-ID">>]).
 -define(CUSTOM_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                              ,{<<"Event-Name">>, ?CUSTOM_REQ_EVENT_NAME}
                            ]).
--define(CUSTOM_REQ_TYPES, [{<<"To">>, fun is_binary/1}
-                           ,{<<"From">>, fun is_binary/1}
-                           ,{<<"Orig-IP">>, fun is_binary/1}
-                           ,{<<"Orig-Port">>, fun is_binary/1}
-                           ,{<<"Auth-User">>, fun is_binary/1}
-                           ,{<<"Auth-Realm">>, fun is_binary/1}
-                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+-define(CUSTOM_REQ_TYPES, [{<<"Response-Queue">>, fun is_binary/1}
+                           ,{<<"Server-ID">>, fun is_binary/1}
+                           ,{<<"Custom-Msg">>, fun wh_json:is_json_object/1}
                           ]).
 
 % Custom Response headers
 
--define(CUSTOM_RESP_HEADERS, []).
--define(OPTIONAL_CUSTOM_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-    ,<<"To">>, <<"From">>
-    ,<<"User-Name">>, <<"User-Password">>
-    ,<<"Server-ID">>]).
--define(CUSTOM_RESP_VALUES, [{<<"Event-Category">>, <<"aaa">>}
-                             ,{<<"Event-Name">>, <<"aaa_custom_resp">>}
+-define(CUSTOM_RESP_HEADERS, ?CUSTOM_REQ_HEADERS).
+-define(OPTIONAL_CUSTOM_RESP_HEADERS, ?OPTIONAL_CUSTOM_REQ_HEADERS).
+-define(CUSTOM_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                             ,{<<"Event-Name">>, ?CUSTOM_RESP_EVENT_NAME}
                             ]).
--define(CUSTOM_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                            ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
-                            ,{<<"To">>, fun is_binary/1}
-                            ,{<<"From">>, fun is_binary/1}
-                            ,{<<"User-Name">>, fun is_binary/1}
-                            ,{<<"User-Password">>, fun is_binary/1}
-                            ,{<<"Server-ID">>, fun is_binary/1}
-                           ]).
+-define(CUSTOM_RESP_TYPES, ?CUSTOM_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Request - see wiki

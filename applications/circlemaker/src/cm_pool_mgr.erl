@@ -174,9 +174,10 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
     JObj3 = wh_json:set_values(AttributeList1, JObj),
     case cm_util:determine_aaa_request_type(JObj) of
         'custom' ->
+            WrappedJObj = wh_json:set_value(<<"Custom-Msg">>, JObj3, wh_json:new()),
             JObj1 = wh_json:set_values([{<<"App-Name">>, ?APP_NAME}
                                         ,{<<"App-Version">>, ?APP_VERSION}]
-                                        ,JObj3),
+                                        ,WrappedJObj),
             {EventCategory, EventName} = wapi_aaa:custom_resp_event_type(),
             JObj2 = wh_json:set_values([{<<"Event-Category">>, EventCategory}
                                         ,{<<"Event-Name">>, EventName}]
