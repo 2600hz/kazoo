@@ -378,7 +378,7 @@ reset_users_password__step_1(Context) ->
     Context1 = crossbar_doc:save(cb_context:set_req_verb(Context, ?HTTP_POST)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            UIURL = wh_json:get_ne_binary_value(<<"url">>, Doc),
+            UIURL = wh_json:get_ne_binary_value(<<"url">>, cb_context:req_data(Context)),
             Email = wh_json:get_ne_binary_value(<<"email">>, Doc),
             lager:debug(">>> Email: ~p ~p", [Email, UIURL]),
             Notify = [{<<"Email">>, Email}
@@ -391,6 +391,7 @@ reset_users_password__step_1(Context) ->
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
             lager:debug(">>> 1 success"),
+            lager:debug(">>> Notify = ~p", [Notify]),
             'ok' = wapi_notifications:publish_pwd_recovery(Notify),
             Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
             crossbar_util:response(Msg, Context);
