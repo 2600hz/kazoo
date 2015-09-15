@@ -387,8 +387,12 @@ set_reserve_history(N, History) ->
     N#knm_phone_number{reserve_history=History}.
 
 -spec add_reserve_history(knm_number(), ne_binary()) -> knm_number().
-add_reserve_history(N, AccountId) ->
-    N#knm_phone_number{reserve_history=[AccountId | reserve_history(N)]}.
+add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=PN
+                    ,AccountId
+                   ) ->
+    PN;
+add_reserve_history(PN, AccountId) ->
+    PN#knm_phone_number{reserve_history=[AccountId | reserve_history(PN)]}.
 
 %%--------------------------------------------------------------------
 %% @public
