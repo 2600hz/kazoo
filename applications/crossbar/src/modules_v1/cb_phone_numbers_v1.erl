@@ -347,13 +347,16 @@ post(Context, Number, ?PORT_DOCS, _) ->
 put(Context, ?COLLECTION) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
-put(Context, Number) ->
-    Result = wh_number_manager:create_number(Number
-                                             ,cb_context:account_id(Context)
-                                             ,cb_context:auth_account_id(Context)
-                                             ,cb_context:doc(Context)
-                                            ),
-    set_response(Result, Number, Context).
+put(Context, DID) ->
+    ReqJObj = cb_context:req_json(Context),
+    DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
+    Options = [{<<"assigned_to">>, cb_context:account_id(Context)}
+               ,{<<"auth_by">>, cb_context:auth_account_id(Context)}
+               ,{<<"dry_run">>, DryRun}
+               ,{<<"public_fields">>, cb_context:doc(Context)}
+              ],
+    Result = knm_number:create(DID, Options),
+    set_response(Result, DID, Context).
 
 put(Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
@@ -619,17 +622,31 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response({'ok', operation_return()} |
-                   operation_return() |
-                   {binary(), binary()}, binary()
+-spec set_response({'ok', knm_number:knm_number()} |
+                   {'error', knm_errors:error()} |
+                   {'dry_run', wh_services:services(), integer()}
+                   ,any()
                    ,cb_context:context()) ->
                           cb_context:context().
 set_response({'ok', {'ok', Doc}}, _, Context) ->
     crossbar_util:response(Doc, Context);
-set_response({'ok', Doc}, _, Context) ->
-    crossbar_util:response(Doc, Context);
-set_response({Error, Reason}, _, Context) ->
-    crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context);
+set_response({'ok', Number}, _, Context) ->
+    crossbar_util:response(knm_phone_number:to_public_json(
+                             knm_number:phone_number(Number)
+                            )
+                           ,Context
+                          );
+set_response({'error', Error}, _, Context) ->
+    cb_context:add_system_error(knm_errors:code(Error)
+                                ,knm_errors:error(Error)
+                                ,Error
+                                ,Context
+                               );
+set_response({'dry_run', Services, _}, _, Context) ->
+    crossbar_util:response(
+      wh_services:dry_run(Services)
+      ,Context
+     );
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
