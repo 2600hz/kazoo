@@ -253,6 +253,7 @@ put(Context, Num) ->
     Options = [{<<"assigned_to">>, cb_context:account_id(Context)}
                ,{<<"auth_by">>, cb_context:auth_account_id(Context)}
                ,{<<"dry_run">>, DryRun}
+               ,{<<"public_fields">>, cb_context:doc(Context)}
               ],
     case knm_number:create(Num, Options) of
         {'error', Reason} ->
@@ -727,6 +728,7 @@ error_return(Context, Error) ->
                                 ,Error
                                 ,Context
                                ).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
