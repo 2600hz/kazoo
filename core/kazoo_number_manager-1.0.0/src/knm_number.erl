@@ -225,11 +225,11 @@ ensure_account_is_allowed_to_create(_Props, _AccountId) ->
 -ifdef(TEST).
 ensure_number_is_not_porting(?TEST_CREATE_NUM) -> 'true';
 ensure_number_is_not_porting(?TEST_EXISTING_NUM = Num) ->
-    throw({'error', 'number_is_porting', Num}).
+    knm_errors:number_is_porting(Num).
 -else.
 ensure_number_is_not_porting(Num) ->
     case knm_port_request:get(Num) of
-        {'ok', _Doc} -> throw({'error', 'number_is_porting', Num});
+        {'ok', _Doc} -> knm_errors:number_is_porting(Num);
         {'error', 'not_found'} -> 'true'
     end.
 -endif.
