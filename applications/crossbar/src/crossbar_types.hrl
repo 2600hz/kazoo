@@ -78,6 +78,8 @@
                                ,{<<"application">>, <<"x-base64">>}
                               ]).
 
+-define(PDF_CONTENT_TYPES, [{<<"application">>, <<"pdf">>}]).
+
 -define(JSONP_CONTENT_TYPE, <<"application/javascript">>).
 
 -define(CROSSBAR_TYPES_INCLUDED, 'true').

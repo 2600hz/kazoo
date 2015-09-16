@@ -11,10 +11,11 @@
 -module(cb_directories).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,content_types_provided/3
-         ,validate/1, validate/2, validate/3
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
+         ,content_types_provided/2
+         ,to_pdf/1
+         ,validate/1, validate/2
          ,put/1
          ,post/2
          ,patch/2
@@ -26,8 +27,9 @@
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"directories/crossbar_listing">>).
 -define(CB_USERS_LIST, <<"directories/users_listing">>).
--define(PDF, <<"pdf">>).
--define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"pdf">>}]).
+
+-type payload() :: {cowboy_req:req(), cb_context:context()}.
+-export_type([payload/0]).
 
 %%%===================================================================
 %%% API
@@ -36,6 +38,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.directories">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.directories">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.directories">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.to_pdf.get.directories">>, ?MODULE, 'to_pdf'),
     _ = crossbar_bindings:bind(<<"*.validate.directories">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.directories">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.directories">>, ?MODULE, 'post'),
@@ -53,13 +56,10 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
-allowed_methods(_, ?PDF) ->
-    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -71,10 +71,8 @@ allowed_methods(_, ?PDF) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, ?PDF) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,14 +82,38 @@ resource_exists(_, ?PDF) -> 'true'.
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-content_types_provided(Context, _Id, ?PDF) ->
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(Context, _Id) ->
     case cb_context:req_verb(Context) of
         ?HTTP_GET ->
-            cb_context:add_content_types_provided(Context, [{'to_binary', ?ATTACHMENT_MIME_TYPES}]);
+            cb_context:add_content_types_provided(
+                Context
+                ,[{'to_pdf', ?PDF_CONTENT_TYPES}]
+            );
         _Verb ->
             Context
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec to_pdf(payload()) -> payload().
+to_pdf({Req, Context}) ->
+    Nouns = cb_context:req_nouns(Context),
+    case props:get_value(<<"directories">>, Nouns, []) of
+        [] -> {Req, Context};
+        [Id|_] ->
+            Context1 = read(Id, Context),
+            case cb_context:resp_status(Context1) of
+                'success' -> {Req, get_pdf(Context1)};
+                _Status -> {Req, Context1}
+            end
+    end.
+
+
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -104,15 +126,11 @@ content_types_provided(Context, _Id, ?PDF) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_directories(Context, cb_context:req_verb(Context)).
 
 validate(Context, Id) ->
     validate_directory(Context, Id, cb_context:req_verb(Context)).
-
-validate(Context, Id, PathToken) ->
-    validate_directory(Context, Id, PathToken, cb_context:req_verb(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -173,7 +191,6 @@ validate_directories(Context, ?HTTP_PUT) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_directory(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
--spec validate_directory(cb_context:context(), ne_binary(), path_token(), path_token()) -> cb_context:context().
 validate_directory(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_directory(Context, Id, ?HTTP_POST) ->
@@ -182,13 +199,6 @@ validate_directory(Context, Id, ?HTTP_PATCH) ->
     validate_patch(Id, Context);
 validate_directory(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
-
-validate_directory(Context, Id, ?PDF, ?HTTP_GET) ->
-    Context1 = read(Id, Context),
-    case cb_context:resp_status(Context1) of
-        'success' -> get_pdf(Context1);
-        _Status -> Context1
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -202,7 +212,8 @@ get_pdf(Context) ->
     case kz_pdf:generate(AccountId, Data) of
         {'error', Reason} ->
             cb_context:add_system_error(Reason, Context);
-        {'ok', PDF} -> cb_context:set_resp_data(Context, PDF)
+        {'ok', PDF} ->
+            cb_context:set_resp_data(Context, PDF)
 
     end.
 

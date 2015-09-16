@@ -37,7 +37,7 @@
          ,delete_resource/2
          ,delete_completed/2
          ,is_conflict/2
-         ,to_json/2, to_binary/2, to_csv/2
+         ,to_json/2, to_binary/2, to_csv/2, to_pdf/2
          ,from_json/2, from_binary/2, from_form/2
          ,multiple_choices/2
          ,generate_etag/2
@@ -681,6 +681,9 @@ to_json(Req0, Context0, 'undefined') ->
 to_json(Req, Context, <<"csv">>) ->
     lager:debug("overridding json with csv builder"),
     to_csv(Req, Context);
+to_json(Req, Context, <<"pdf">>) ->
+    lager:debug("overridding json with pdf builder"),
+    to_pdf(Req, Context);
 to_json(Req, Context, Accept) ->
     case to_fun(Context, Accept, 'to_json') of
         'to_json' -> to_json(Req, Context, 'undefined');
@@ -761,6 +764,28 @@ to_csv(Req, Context) ->
              ,Context1
             }
     end.
+
+-spec to_pdf(cowboy_req:req(), cb_context:context()) ->
+                    {binary(), cowboy_req:req(), cb_context:context()}.
+to_pdf(Req, Context) ->
+    lager:debug("run: to_pdf"),
+    [{Mod, _Params}|_] = cb_context:req_nouns(Context),
+    Verb = cb_context:req_verb(Context),
+    Event = api_util:create_event_name(Context, [<<"to_pdf">>
+                                                 ,wh_util:to_lower_binary(Verb)
+                                                 ,Mod
+                                                ]),
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
+    RespData = cb_context:resp_data(Context1),
+    RespHeaders = [{<<"Content-Type">>, <<"application/pdf">>}
+                    ,{<<"Content-Length">>, erlang:size(RespData)}
+                    ,{<<"Content-Disposition">>, <<"attachment; filename=\"file.pdf\"">>}
+                    | cb_context:resp_headers(Context1)
+                   ],
+    {RespData
+     ,api_util:set_resp_headers(Req1, cb_context:set_resp_headers(Context1, RespHeaders))
+     ,Context1
+    }.
 
 -spec accept_override(cb_context:context()) -> api_binary().
 accept_override(Context) ->
