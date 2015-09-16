@@ -66,6 +66,18 @@ attempt_find(Mod, NormalizedNumber, Quantity, Opts) ->
             {'error', R}
     end.
 
+-type find_resp() :: {'ok', knm_phone_number:knm_numbers()} |
+                     {'error', _}.
+
+-spec format_find_resp(atom(), find_resp(), wh_json:objects()) ->
+                              wh_json:objects().
+format_find_resp(_Module, {'ok', Numbers}, Acc) ->
+    lager:debug("found numbers in ~p", [_Module]),
+    lists:reverse([knm_phone_number:to_public_json(Number) || Number <- Numbers]) ++ Acc;
+format_find_resp(_Module, {'error', _Reason}, Acc) ->
+    lager:error("failed to find number in ~p : ~p", [_Module, _Reason]),
+    Acc.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -155,14 +167,3 @@ carrier_module(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type find_resp() :: {'ok', knm_phone_number:knm_numbers()} |
-                     {'error', _}.
-
--spec format_find_resp(atom(), find_resp(), wh_json:objects()) ->
-                              wh_json:objects().
-format_find_resp(_Module, {'ok', Numbers}, Acc) ->
-    lager:debug("found numbers in ~p", [_Module]),
-    lists:reverse([knm_phone_number:to_public_json(Number) || Number <- Numbers]) ++ Acc;
-format_find_resp(_Module, {'error', _Reason}, Acc) ->
-    lager:error("failed to find number in ~p : ~p", [_Module, _Reason]),
-    Acc.
