@@ -113,7 +113,7 @@ find_webhooks(HookEvent, AccountId) ->
 -spec fire_hooks(wh_json:object(), webhooks()) -> 'ok'.
 fire_hooks(_, []) -> 'ok';
 fire_hooks(JObj, [Hook | Hooks]) ->
-    fire_hook(JObj, Hook),
+    fire_hook(wh_json:normalize_jobj(JObj), Hook),
     fire_hooks(JObj, Hooks).
 
 -spec fire_hook(wh_json:object(), webhook()) -> 'ok'.

@@ -40,14 +40,15 @@ init() ->
 %%--------------------------------------------------------------------
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
-    {[{'call', [{'restrict_to', ['PARKED', 'RETRIEVED']}
+    {[{'call', [{'restrict_to', ['PARK_PARKED', 'PARK_RETRIEVED', 'PARK_ABANDONED']}
                 ,'federate'
                ]
       }
      ]
      ,[{{?MODULE, 'handle'}
-        ,[{<<"call_event">>, <<"PARKED">>}
-          ,{<<"call_event">>, <<"RETRIEVED">>}]
+        ,[{<<"call_event">>, <<"PARK_PARKED">>}
+          ,{<<"call_event">>, <<"PARK_RETRIEVED">>}
+          ,{<<"call_event">>, <<"PARK_ABANDONED">>}]
        }
       ]
     }.
@@ -59,7 +60,7 @@ bindings_and_responders() ->
 %%--------------------------------------------------------------------
 handle(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     maybe_send_event(AccountId, format(JObj)).
 
 %%--------------------------------------------------------------------
@@ -82,10 +83,12 @@ maybe_send_event(AccountId, JObj) ->
 %%--------------------------------------------------------------------
 -spec format(wh_json:object()) -> wh_json:object().
 format(JObj) ->
-    RemoveKeys = [<<"Node">>
-                  ,<<"Msg-ID">>
-                  ,<<"App-Version">>
-                  ,<<"App-Name">>
-                  ,<<"Event-Category">>
-                 ],
+    RemoveKeys = [
+        <<"Node">>
+        ,<<"Msg-ID">>
+        ,<<"App-Version">>
+        ,<<"App-Name">>
+        ,<<"Event-Category">>
+        ,<<"Custom-Channel-Vars">>
+    ],
     wh_json:normalize_jobj(JObj, RemoveKeys, []).
