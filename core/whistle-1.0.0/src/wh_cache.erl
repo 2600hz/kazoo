@@ -131,7 +131,7 @@ start_link(Name, ExpirePeriod, Props) ->
             gen_server:start_link({'local', Name}, ?MODULE, [Name, ExpirePeriod, Props], []);
         BindingProps ->
             lager:debug("started new cache process (gen_listener): ~s", [Name]),
-            Bindings = [{'conf', ['federate'|P]} || P <- BindingProps],
+            Bindings = build_bindings(BindingProps),
             gen_listener:start_link({'local', Name}, ?MODULE
                                     ,[{'bindings', Bindings}
                                       ,{'responders', ?RESPONDERS}
@@ -142,6 +142,15 @@ start_link(Name, ExpirePeriod, Props) ->
                                     ,[Name, ExpirePeriod, Props]
                                    )
     end.
+
+-spec build_bindings(wh_proplist()) -> wh_proplist().
+build_bindings([[]]) -> [{'conf', ['federate']}];
+build_bindings(BindingProps) ->
+     add_database_binding([{'conf', ['federate'|P]} || P <- BindingProps]).
+
+-spec add_database_binding(wh_proplist()) -> wh_proplist().
+add_database_binding(Bindings) ->
+    [{'conf', ['federate', {'type', <<"database">>}]} | Bindings].
 
 -spec store(term(), term()) -> 'ok'.
 -spec store(term(), term(), wh_proplist()) -> 'ok'.
@@ -566,9 +575,31 @@ get_props_callback(Props) ->
     end.
 
 -spec get_props_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
-get_props_origin(Props) -> props:get_value('origin', Props).
+get_props_origin(Props) -> maybe_add_db_origin(props:get_value('origin', Props)).
+
+-spec maybe_add_db_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
+maybe_add_db_origin(Props) when is_list(Props) -> maybe_add_db_origin(Props, []);
+maybe_add_db_origin({'db', Db, Id}) ->
+    [{'db',Db,Id}, {'db', Db}];
+maybe_add_db_origin(Props) -> Props.
+
+-spec maybe_add_db_origin(wh_proplist(), wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
+maybe_add_db_origin([], Acc) -> lists:reverse(props:unique(Acc));
+maybe_add_db_origin([{'db', Db, Id} | Props], Acc) ->
+    maybe_add_db_origin(Props, [{'db',Db}, {'db',Db,Id} |Acc]);
+maybe_add_db_origin([P | Props], Acc) ->
+    maybe_add_db_origin(Props, [P |Acc]).
 
 -spec maybe_erase_changed(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
+maybe_erase_changed(Db, 'database', _Id, Tab) ->
+    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
+                  ,[]
+                  ,['$_']
+                 }
+                ],
+    Objects = ets:select(Tab, MatchSpec),
+    erase_changed(Objects, [], Tab);
+
 maybe_erase_changed(Db, Type, Id, Tab) ->
     MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
                   ,[]

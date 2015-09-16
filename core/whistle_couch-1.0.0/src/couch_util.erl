@@ -307,14 +307,18 @@ db_create(#server{}=Conn, DbName) ->
 db_create(#server{}=Conn, DbName, Options) ->
     case couchbeam:create_db(Conn, wh_util:to_list(DbName), [], Options) of
         {'error', _} -> 'false';
-        {'ok', _} -> 'true'
+        {'ok', _} -> 
+            _ = maybe_publish_db(DbName, 'created'),
+            'true'
     end.
 
 -spec db_delete(server(), ne_binary()) -> boolean().
 db_delete(#server{}=Conn, DbName) ->
     case couchbeam:delete_db(Conn, wh_util:to_list(DbName)) of
         {'error', _} -> 'false';
-        {'ok', _} -> 'true'
+        {'ok', _} -> 
+            _ = maybe_publish_db(DbName, 'deleted'),
+            'true'
     end.
 
 -spec db_replicate(server(), wh_json:object() | wh_proplist()) ->
@@ -998,6 +1002,15 @@ maybe_publish_doc(#db{}=Db, Doc, JObj) ->
         'false' -> 'ok'
     end.
 
+-spec maybe_publish_db(couchbeam_db(), atom()) -> 'ok'.
+maybe_publish_db(Db, Action) ->
+    case couch_mgr:change_notice() of
+        'true' ->
+            _ = wh_util:spawn(fun() -> publish_db(Db, Action) end),
+            'ok';
+        'false' -> 'ok'
+    end.
+
 -spec should_publish_doc(wh_json:object()) -> boolean().
 should_publish_doc(Doc) ->
     case wh_doc:id(Doc) of
@@ -1020,6 +1033,23 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
                     publish('edited', wh_util:to_binary(DbName), publish_fields(Doc, JObj))
             end
     end.
+
+-spec publish_db(couchbeam_db(), atom()) -> 'ok'.
+publish_db(Db, Action) ->
+    Type = 'database',
+    Props =
+        [{<<"Type">>, 'database'}
+         ,{<<"ID">>, Db}
+         ,{<<"Rev">>, <<"0">>}
+         ,{<<"Database">>, Db}
+         | wh_api:default_headers(<<"configuration">>
+                                  ,<<"db_", (wh_util:to_binary(Action))/binary>>
+                                  ,?CONFIG_CAT
+                                  ,<<"1.0.0">>
+                                 )
+        ],
+    Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Db, P) end,
+    whapps_util:amqp_pool_send(Props, Fun).
 
 -spec publish_fields(wh_json:object()) -> wh_proplist().
 -spec publish_fields(wh_json:object(), wh_json:object()) -> wh_json:object().
