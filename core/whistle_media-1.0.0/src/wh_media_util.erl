@@ -411,6 +411,7 @@ default_prompt_language(Default) ->
      ).
 
 -spec prompt_language(api_binary()) -> ne_binary().
+prompt_language(?WH_MEDIA_DB) -> default_prompt_language();
 prompt_language(AccountId) ->
     prompt_language(AccountId, default_prompt_language()).
 
