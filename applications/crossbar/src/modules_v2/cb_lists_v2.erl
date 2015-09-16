@@ -23,6 +23,7 @@
 
 -include("../crossbar.hrl").
 
+-define(CB_LIST, <<"lists/crossbar_listing">>).
 -define(ENTRIES, <<"entries">>).
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
@@ -32,7 +33,7 @@
 -spec maybe_migrate(ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:get_results(AccountDb, <<"lists/crossbar_listing_v2">>, ['include_docs']) of
+    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', Lists} -> migrate(AccountDb, Lists);
         {'error', _} -> 'ok'
@@ -137,7 +138,7 @@ validate(Context, ListId, ?ENTRIES, EntryId, ?VCARD) ->
 
 -spec validate_req(http_method(), cb_context:context(), path_tokens()) -> cb_context:context().
 validate_req(?HTTP_GET, Context, []) ->
-    crossbar_doc:load_view(<<"lists/crossbar_listing_v2">>, [], Context, fun normalize_list/2);
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_list/2);
 validate_req(?HTTP_PUT, Context, []) ->
     validate_doc('undefined', <<"list">>, Context);
 

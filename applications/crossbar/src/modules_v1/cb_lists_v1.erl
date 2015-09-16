@@ -95,13 +95,13 @@ validate(Context, ListId, EntryId) ->
 
 -spec validate_lists(cb_context:context(), http_method()) -> cb_context:context().
 validate_lists(Context, ?HTTP_GET) ->
-    load_lists(fetch_reduce_limit(), Context);
+    load_lists(Context);
 validate_lists(Context, ?HTTP_PUT) ->
     check_list_schema('undefined', Context).
 
 -spec validate_list(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_list(Context, ListId, ?HTTP_GET) ->
-    load_list(fetch_reduce_limit(), Context, ListId);
+    load_list(Context, ListId);
 validate_list(Context, ListId, ?HTTP_POST) ->
     check_list_schema(ListId, Context);
 validate_list(Context, ListId, ?HTTP_PUT) ->
@@ -223,18 +223,13 @@ delete(Context, _ListId, _EntryId) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
--spec load_lists(boolean(), cb_context:context()) -> cb_context:context().
-load_lists(false, Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                           ,['group']
-                           ,Context
-                           ,fun normalize_view_results/2);
-load_lists(true, Context) ->
+-spec load_lists(cb_context:context()) -> cb_context:context().
+load_lists(Context) ->
     Entries = cb_context:doc(crossbar_doc:load_view(<<"lists/entries">>
                                                     ,[]
                                                     ,cb_context:set_query_string(Context, wh_json:new())
                                                     ,fun normalize_view_results/2)),
-    crossbar_doc:load_view(<<"lists/crossbar_listing_v2">>
+    crossbar_doc:load_view(?CB_LIST
                            ,[]
                            ,Context
                            ,load_entries_and_normalize(Entries)).
@@ -260,13 +255,8 @@ entries_from_list(Entries) ->
                        || X <- Entries
                       ]).
 
--spec load_list(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
-load_list(false, Context, ListId) ->
-    crossbar_doc:load_view(?CB_LIST
-                           ,['group', {'key', ListId}]
-                           ,Context
-                           ,fun normalize_view_results/2);
-load_list(true, Context, ListId) ->
+-spec load_list(cb_context:context(), ne_binary()) -> cb_context:context().
+load_list(Context, ListId) ->
     Entries = cb_context:doc(crossbar_doc:load_view(<<"lists/entries">>
                                                     ,[{'key', ListId}]
                                                     ,Context
@@ -275,12 +265,3 @@ load_list(true, Context, ListId) ->
     Doc = cb_context:doc(Context1),
     Doc1 = wh_json:public_fields(wh_json:set_value(<<"entries">>, entries_from_list(Entries), Doc)),
     cb_context:set_resp_data(Context1, Doc1).
-
--spec fetch_reduce_limit() -> boolean().
-fetch_reduce_limit() ->
-    {'ok', Config} = couch_mgr:open_doc(<<"_config">>, <<"query_server_config">>),
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_reduce_limit">>, 'false') of
-        'false' -> 'true';
-        'true' ->
-            wh_util:to_boolean(wh_json:get_binary_boolean(<<"reduce_limit">>, Config))
-    end.
