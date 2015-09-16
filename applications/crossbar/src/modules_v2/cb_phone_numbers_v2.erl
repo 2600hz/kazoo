@@ -115,10 +115,11 @@ maybe_authenticate(_Verb, _Nouns) ->
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     maybe_authorize(
-        cb_context:req_verb(Context)
-        ,cb_context:req_nouns(Context)
-    ).
+      cb_context:req_verb(Context)
+      ,cb_context:req_nouns(Context)
+     ).
 
+-spec maybe_authorize(req_verb(), req_nouns()) -> boolean().
 maybe_authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) ->
     'true';
 maybe_authorize(_Verb, _Nouns) ->
@@ -255,7 +256,7 @@ put(Context, Num) ->
               ],
     case knm_number:create(Num, Options) of
         {'error', Reason} ->
-            error_return(Context, Num, Reason);
+            error_return(Context, Reason);
         {'ok', Number} ->
             success_return(Context, Number, DryRun)
     end.
@@ -268,7 +269,7 @@ put(Context, Num, ?ACTIVATE) ->
               ],
     case knm_number:buy(Num, cb_context:account_id(Context), Options) of
         {'error', Reason} ->
-            error_return(Context, Num, Reason);
+            error_return(Context, Reason);
         {'ok', Number} ->
             success_return(Context, Number, DryRun) %TODO
     end.
@@ -283,7 +284,7 @@ delete(Context, Num) ->
     Options = [{<<"auth_by">>, cb_context:auth_account_id(Context)}],
 
     case knm_number:change_state(Num, ?NUMBER_STATE_RELEASED, Options) of
-        {'error', Reason} -> error_return(Context, Num, Reason);
+        {'error', Reason} -> error_return(Context, Reason);
         {'ok', _} ->
             cb_context:set_resp_status(Context, 'success')
     end.
@@ -336,10 +337,13 @@ filter_numbers(JObj, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec apply_filters(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec apply_filters(wh_json:object(), wh_json:object()) ->
+                           wh_json:object().
 apply_filters(QueryString, Numbers) ->
     wh_json:foldl(fun apply_filters_fold/3, Numbers, QueryString).
 
+-spec apply_filters_fold(ne_binary(), ne_binary(), wh_json:object()) ->
+                                wh_json:object().
 apply_filters_fold(<<"filter_", Key/binary>>, Value, Numbers) ->
     apply_filter(Key, Value, Numbers);
 apply_filters_fold(_Key, _Value, Numbers) ->
@@ -688,7 +692,7 @@ update_phone_numbers_locality_fold(_Key, _Value, JObj, _Status) ->
 read(Context, Num) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     case knm_number:get(Num, [{<<"auth_by">>, AuthAccountId}]) of
-        {'error', Reason} -> error_return(Context, Num, Reason);
+        {'error', Reason} -> error_return(Context, Reason);
         {'ok', Number} -> success_return(Context, Number)
     end.
 
@@ -713,15 +717,14 @@ locality(Context, Numbers) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec error_return(cb_context:context(), ne_binary(), any()) -> cb_context:context().
-error_return(Context, Num, Reason) ->
-    ErrorJObj = knm_errors:to_json(Reason, Num),
-    cb_context:add_system_error(
-        wh_json:get_integer_value(<<"code">>, ErrorJObj)
-        ,wh_json:get_value(<<"error">>, ErrorJObj)
-        ,wh_json:delete_keys([<<"code">>, <<"error">>], ErrorJObj)
-        ,Context
-    ).
+-spec error_return(cb_context:context(), knm_errors:error()) ->
+                          cb_context:context().
+error_return(Context, Error) ->
+    cb_context:add_system_error(knm_errors:code(Error)
+                                ,knm_errors:error(Error)
+                                ,Error
+                                ,Context
+                               ).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
