@@ -10,6 +10,9 @@
         },
         "listing_by_username": {
             "map": "function(doc) { if(doc.pvt_deleted) return; emit( doc.username, {'id': doc._id, 'account_db': doc.pvt_account_db} ); }"
+        },
+        "listing_by_resetid": {
+            "map": "function(doc) { if(doc.pvt_deleted) return; emit( doc.resetid, {'id': doc._id, 'account_db': doc.pvt_account_db} ); }"
         }
     }
 }

@@ -32,7 +32,6 @@
 
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
--define(LIST_BY_USERNAME, <<"users/list_by_username">>).
 -define(CHANNELS, <<"channels">>).
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).

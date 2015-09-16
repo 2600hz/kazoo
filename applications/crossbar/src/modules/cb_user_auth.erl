@@ -24,7 +24,6 @@
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
--define(USERNAME_LIST, <<"users/list_by_username">>).
 -define(DEFAULT_LANGUAGE, <<"en-us">>).
 -define(USER_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"user_auth_tokens">>, 35)).
 
@@ -133,7 +132,7 @@ validate_recovery(Context, ?HTTP_PUT) ->
 validate_recovery(Context, ?HTTP_POST) ->
     lager:debug(">>> validate/2 RECOVERY"),
     lager:debug(">>> validate/2  ~p", [cb_context:req_data(Context)]),
-    cb_context:validate_request_data(<<"user_auth_recovery_reset">>, Context).
+    cb_context:validate_request_data(<<"user_auth_recovery_reset">>, Context, fun maybe_reset_password/1).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -313,6 +312,32 @@ load_md5_results(Context, JObj) ->
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj)).
 
 %% @private
+-spec maybe_reset_password(cb_context:context()) -> cb_context:context().
+maybe_reset_password(Context) ->
+    ResetId = wh_json:get_ne_value(<<"uuid">>, cb_context:req_data(Context)),
+    {AccountDb,Rest} = get_pwd_reset_uuid(ResetId),
+    lager:debug(">>> 2 ~p", [{AccountId,Rest}]),
+    ViewOptions = [{'key', ResetId}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_RESETID, ViewOptions) of
+        {'ok', [UserDoc]} ->
+            lager:debug("matched user document using resetid '~s'", [ResetId]),
+            cb_context:set_resp_status(Context, 'success');
+        _ ->
+            lager:debug("invalid password resetid"),
+            cb_context:add_validation_error(
+              <<"resetid">>
+              ,<<"not_found">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"The provided resetid was not found">>}
+                  ,{<<"cause">>, ResetId}
+                 ])
+              ,Context
+             )
+    end.
+
+%% @private
 -spec maybe_recover_user_password(cb_context:context()) -> cb_context:context().
 maybe_recover_user_password(Context) ->
     JObj = cb_context:doc(Context),
@@ -322,7 +347,7 @@ maybe_recover_user_password(Context) ->
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', C} -> C;
         {'ok', [Account|_]} -> maybe_load_username(Account, Context);
-        {'ok', Account} -> maybe_load_username(Account, Context)
+        {'ok', Account} ->     maybe_load_username(Account, Context)
     end.
 
 %% @private
@@ -335,7 +360,7 @@ maybe_load_username(Account, Context) ->
     ViewOptions = [{'key', Username}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, ViewOptions) of
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', [User]} ->
             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->
@@ -371,24 +396,28 @@ maybe_load_username(Account, Context) ->
 %% @private
 -spec reset_users_password__step_1(cb_context:context()) -> cb_context:context().
 reset_users_password__step_1(Context) ->
-    UUID = wh_util:rand_hex_binary(?PWD_RESET_UUID_SIZE / 2),
-    Doc = cb_context:doc(Context),
-    Props = [{'origin', [{'db', wh_doc:account_db(Doc), wh_doc:account_id(Doc)}]}],
-    'ok' = wh_cache:store_local(?CROSSBAR_CACHE, UUID, Context, Props),
+    ResetId = make_pwd_reset_uuid(cb_context:account_id(Context)),
+    UserDoc = cb_context:doc(Context),
+    NewUserDoc = wh_json:set_value(<<"resetid">>, ResetId, NewUserDoc),
 
-    Context1 = crossbar_doc:save(cb_context:set_req_verb(Context, ?HTTP_POST)),
+    Context1 = crossbar_doc:save(
+                 cb_context:setters(Context, [{fun cb_context:set_req_verb/2, ?HTTP_POST}%%%%?
+                                              ,{fun cb_context:set_doc/2, NewUserDoc}
+                                             ])
+                ),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Email = wh_json:get_ne_binary_value(<<"email">>, Doc),
-            Link = pwd_reset_link(UUID, wh_json:get_ne_binary_value(<<"url">>, cb_context:req_data(Context))),
+            ReqData = cb_context:req_data(Context),
+            Email = wh_json:get_ne_binary_value(<<"email">>, UserDoc),
+            Link = make_pwd_reset_link(ReqData, ResetId),
             lager:debug("created password reset link: ~s", [Link]),
             Notify = [{<<"Email">>, Email}
-                      ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, Doc)}
-                      ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, Doc)}
+                      ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, UserDoc)}
+                      ,{<<"Last-Name">>,  wh_json:get_value(<<"last_name">>, UserDoc)}
                       ,{<<"Password-Reset-Link">>, Link}
-                      ,{<<"Account-ID">>, wh_doc:account_id(Doc)}
-                      ,{<<"Account-DB">>, wh_doc:account_db(Doc)}
-                      ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Context))}
+                      ,{<<"Account-ID">>, wh_doc:account_id(UserDoc)}
+                      ,{<<"Account-DB">>, wh_doc:account_db(UserDoc)}
+                      ,{<<"Request">>, wh_json:delete_key(<<"username">>, ReqData)}
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
             'ok' = wapi_notifications:publish_pwd_recovery(Notify),
@@ -399,16 +428,29 @@ reset_users_password__step_1(Context) ->
     end.
 
 %% @private
--spec pwd_reset_link(ne_binary(), ne_binary()) -> ne_binary().
-pwd_reset_link(UUID, UIURL) ->
+-spec make_pwd_reset_uuid(ne_binary()) -> ne_binary().
+make_pwd_reset_uuid(AccountId) ->
+    Rest = wh_util:rand_hex_binary((?PWD_RESET_UUID_SIZE - 32) / 2),
+    <<AccountId/binary, Rest/binary>>.
+
+%% @private
+-spec get_pwd_reset_uuid(ne_binary()) -> {ne_binary(), ne_binary()}.
+get_pwd_reset_uuid(ResetId) ->
+    <<Account:32/binary, Rest/binary>> = ResetId,
+    {wh_util:format_account_id(Account, 'encoded'), Rest}.
+
+%% @private
+-spec make_pwd_reset_link(wh_json:object(), ne_binary()) -> ne_binary().
+make_pwd_reset_link(ReqData, UUID) ->
+    UIURL = wh_json:get_ne_binary_value(<<"url">>, ReqData),
     [Url|_] = binary:split(UIURL, <<"#">>),
     <<Url/binary, "/?", UUID/binary>>.
 
 %% %% @private
 -spec reset_users_password__step_2(cb_context:context()) -> cb_context:context().
 reset_users_password__step_2(Context) ->
-    UUID = wh_json:get_ne_value(<<"uuid">>, cb_context:req_data(Context)),
-    lager:debug(">>> 2 ~p", [UUID]),
+    %make&return auth_token
+
     case wh_cache:peek_local(?CROSSBAR_CACHE, UUID) of
         {'error', _R} ->
             lager:debug("failed to reset password for user : UUID ~s not found (~p)", [UUID,_R]),
@@ -438,7 +480,7 @@ reset_users_password__step_2(Context) ->
                     NewContext;
                 _Status ->
                     lager:debug(">>> 2 failure: ~p", [_Status]),
-                    NewContext %% Or Context?
+                    Context
             end
     end.
 

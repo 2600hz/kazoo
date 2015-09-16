@@ -15,6 +15,8 @@
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 
+-define(LIST_BY_USERNAME, <<"users/list_by_username">>).
+
 -define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
 
 -define(APP_NAME, <<"crossbar">>).
