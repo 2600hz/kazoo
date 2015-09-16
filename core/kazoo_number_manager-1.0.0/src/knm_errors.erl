@@ -20,11 +20,22 @@
          ,multiple_choice/2
          ,assign_failure/2
          ,database_error/2
+         ,number_is_porting/1
         ]).
 
--export([to_json/1, to_json/2, to_json/3]).
+-export([to_json/1, to_json/2, to_json/3
+         ,code/1
+         ,error/1
+         ,cause/1
+         ,message/1
+        ]).
 
 -include("knm.hrl").
+
+-define(CODE, <<"code">>).
+-define(ERROR, <<"error">>).
+-define(CAUSE, <<"cause">>).
+-define(MESSAGE, <<"message">>).
 
 -type reason() :: atom() | ne_binary().
 -type error() :: wh_json:object().
@@ -96,6 +107,10 @@ database_error(E, PhoneNumber) ->
            ,PhoneNumber
           }).
 
+-spec number_is_porting(ne_binary()) -> no_return().
+number_is_porting(Num) ->
+    throw({'error', 'number_is_porting', Num}).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -113,14 +128,20 @@ to_json(Reason)->
 to_json(Reason, Num)->
     to_json(Reason, Num, 'undefined').
 
+to_json('number_is_porting', Num, _Cause) ->
+    Message = <<"number ", Num/binary, " is porting">>,
+    build_error(400, 'number_is_porting', Message, Num);
+to_json('number_exists', Num, _Cause) ->
+    Message = <<"number ", Num/binary, " already exists">>,
+     build_error(409, 'number_exists', Message, Num);
 to_json('not_found', Num, _Cause) ->
     Message = <<"number ", Num/binary, " not found">>,
     build_error(404, 'not_found', Message, Num);
 to_json('not_reconcilable', Num, _Cause) ->
     Message = <<"number ", Num/binary, " is not reconcilable">>,
     build_error(404, 'not_found', Message, Num);
-to_json('unauthorized', Num, Cause) ->
-    Message = <<"operation on ", Num/binary, " unauthorized">>,
+to_json('unauthorized', _Num, Cause) ->
+    Message = <<"requestor is unauthorized to perform operation">>,
     build_error(403, 'forbidden', Message, Cause);
 to_json('no_change_required', _Num, Cause) ->
     Message = <<"no change required">>,
@@ -144,10 +165,29 @@ to_json(Reason, _Num, Cause) ->
                          error().
 build_error(Code, Error, Message, Cause) ->
     wh_json:from_list(
-      props:filter_undefined(
-        [{<<"code">>, Code}
-         ,{<<"error">>, Error}
-         ,{<<"cause">>, Cause}
-         ,{<<"message">>, Message}
-        ])
+      [{?CODE, wh_util:to_integer(Code)}
+       | [{K, wh_util:to_binary(V)}
+          || {K, V} <- [{?ERROR, Error}
+                        ,{?CAUSE, Cause}
+                        ,{?MESSAGE, Message}
+                       ],
+             V =/= 'undefined'
+         ]
+      ]
      ).
+
+-spec code(error()) -> api_integer().
+code(JObj) ->
+    wh_json:get_value(?CODE, JObj).
+
+-spec error(error()) -> api_binary().
+error(JObj) ->
+    wh_json:get_value(?ERROR, JObj).
+
+-spec cause(error()) -> api_binary().
+cause(JObj) ->
+    wh_json:get_value(?CAUSE, JObj).
+
+-spec message(error()) -> api_binary().
+message(JObj) ->
+    wh_json:get_value(?MESSAGE, JObj).
