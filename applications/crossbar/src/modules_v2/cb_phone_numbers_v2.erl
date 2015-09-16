@@ -257,8 +257,10 @@ put(Context, Num) ->
     case knm_number:create(Num, Options) of
         {'error', Reason} ->
             error_return(Context, Reason);
+        {'dry_run', Services, _ActivationCharges} ->
+            dry_run_return(Context, Services);
         {'ok', Number} ->
-            success_return(Context, Number, DryRun)
+            success_return(Context, Number)
     end.
 
 put(Context, Num, ?ACTIVATE) ->
@@ -271,7 +273,7 @@ put(Context, Num, ?ACTIVATE) ->
         {'error', Reason} ->
             error_return(Context, Reason);
         {'ok', Number} ->
-            success_return(Context, Number, DryRun) %TODO
+            success_return(Context, Number)
     end.
 
 %%--------------------------------------------------------------------
@@ -732,8 +734,6 @@ error_return(Context, Error) ->
 %%--------------------------------------------------------------------
 -spec success_return(cb_context:context(), knm_number:knm_number()) ->
                             cb_context:context().
--spec success_return(cb_context:context(), knm_number:knm_number(), boolean()) ->
-                            cb_context:context().
 success_return(Context, Number) ->
     Routines = [{fun cb_context:set_resp_data/2
                  ,knm_phone_number:to_public_json(knm_number:phone_number(Number))
@@ -742,11 +742,10 @@ success_return(Context, Number) ->
                ],
     cb_context:setters(Context, Routines).
 
-success_return(Context, Number, 'false') ->
-    success_return(Context, Number);
-success_return(_Context, Number, 'true') ->
-    case knm_number:services(Number) of
-        'undefined' -> wh_json:new();
-        Services ->
-            wh_services:dry_run(Services)
-    end.
+-spec dry_run_return(cb_context:context(), wh_services:services()) ->
+                            cb_context:context().
+dry_run_return(Context, Services) ->
+    crossbar_util:response(
+      wh_services:dry_run(Services)
+      ,Context
+     ).
