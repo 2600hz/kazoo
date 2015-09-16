@@ -114,9 +114,9 @@ create(Num, Props) ->
     attempt(fun create_or_load/2, [Num, Props]).
 
 -spec create_or_load(ne_binary(), wh_proplist()) ->
-                            knm_number().
+                            knm_number() | dry_run_return().
 -spec create_or_load(ne_binary(), wh_proplist(), number_return()) ->
-                            knm_number().
+                            knm_number() | dry_run_return().
 create_or_load(Num, Props) ->
     create_or_load(Num, Props, knm_phone_number:fetch(Num)).
 
@@ -151,7 +151,9 @@ ensure_state(PhoneNumber, ExpectedState) ->
              )
     end.
 
--spec create_phone_number(knm_number()) -> knm_number().
+-spec create_phone_number(knm_number()) ->
+                                 knm_number() |
+                                 dry_run_return().
 create_phone_number(Number) ->
     ensure_state(phone_number(Number), ?NUMBER_STATE_AVAILABLE),
     Routines = [fun knm_number_states:to_reserved/1
@@ -476,8 +478,10 @@ lookup_account(Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec buy(ne_binary(), ne_binary()) -> number_return().
--spec buy(ne_binary(), ne_binary(), wh_proplist()) -> number_return().
+-spec buy(ne_binary(), ne_binary()) ->
+                 knm_number_return().
+-spec buy(ne_binary(), ne_binary(), wh_proplist()) ->
+                 knm_number_return().
 buy(Num, Account) ->
     buy(Num, Account, []).
 
