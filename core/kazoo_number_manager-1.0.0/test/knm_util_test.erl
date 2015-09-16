@@ -73,29 +73,32 @@ proper_test_() ->
 %% EUNIT TESTING
 %%
 
-to_e164_test() ->
+to_e164_test_() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
     Ans = <<"+12234567890">>,
-    lists:foreach(fun(N) ->
-                          ?assertEqual(Ans, knm_converters:normalize(N))
-                  end
-                  ,Ns
-                 ).
+    [?_assertEqual(Ans, knm_converters:normalize(N))
+     || N <- Ns
+    ].
 
-to_npan_test() ->
+to_npan_test_() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
     Ans = <<"2234567890">>,
-    lists:foreach(fun(N) ->
-                          ?assertEqual(Ans, knm_converter_regex:to_npan(N))
-                  end
-                  ,Ns
-                 ).
+    [?_assertEqual(Ans, knm_converter_regex:to_npan(N))
+     || N <- Ns
+    ].
 
-to_1npan_test() ->
+to_1npan_test_() ->
     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
     Ans = <<"12234567890">>,
-    lists:foreach(fun(N) ->
-                          ?assertEqual(Ans, knm_converter_regex:to_1npan(N))
-                  end
-                  ,Ns
-                 ).
+    [?_assertEqual(Ans, knm_converter_regex:to_1npan(N))
+     || N <- Ns
+    ].
+
+pretty_print_test_() ->
+    [?_assertEqual(Result, knm_util:pretty_print(Format, Number))
+     || {Number, Format, Result}
+            <- [{<<"+14158867900">>, <<"SS(###) ### - *">>, <<"(415) 886 - 7900">>}
+                ,{<<"+14158867900">>, <<"S\\SS(###\\#) ### - *\\*">>, <<"S(415#) 886 - 7900*">>}
+                ,{<<"+14158867900">>, <<"*">>, <<"+14158867900">>}
+               ]
+    ].

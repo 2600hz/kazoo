@@ -11,9 +11,7 @@
 
 -export([get_all_number_dbs/0]).
 
--ifndef(TEST).
 -export([pretty_print/1, pretty_print/2]).
--endif.
 
 -include("knm.hrl").
 
@@ -27,7 +25,6 @@ get_all_number_dbs() ->
      || View <- Dbs
     ].
 
--ifndef(TEST).
 -spec pretty_print(ne_binary()) -> ne_binary().
 pretty_print(Number) ->
     case pretty_print_format(Number) of
@@ -38,7 +35,7 @@ pretty_print(Number) ->
 
 -spec pretty_print(ne_binary(), ne_binary()) -> ne_binary().
 pretty_print(Format, Number) ->
-    Num = wnm_util:normalize_number(Number),
+    Num = knm_converters:normalize(Number),
     pretty_print(Format, Num, <<>>).
 
 -spec pretty_print(binary(), binary(), binary()) -> binary().
@@ -60,7 +57,8 @@ pretty_print(<<"S", Format/binary>>, Number, Acc) ->
 pretty_print(<<"#", Format/binary>>, Number, Acc) ->
     pretty_print(Format
                  ,binary_tail(Number)
-                 ,<<Acc/binary, (binary_head(Number))/binary>>);
+                 ,<<Acc/binary, (binary_head(Number))/binary>>
+                );
 pretty_print(<<"*", Format/binary>>, Number, Acc) ->
     pretty_print(Format, <<>>, <<Acc/binary, Number/binary>>);
 pretty_print(<<Char, Format/binary>>, Number, Acc) ->
@@ -83,7 +81,7 @@ binary_head(Binary) ->
 -spec pretty_print_format(ne_binary()) -> api_binary().
 pretty_print_format(Number) ->
     Classifiers = knm_converters:available_classifiers(),
-    Num = wnm_util:normalize_number(Number),
+    Num = knm_converters:normalize(Number),
     pretty_print_format(Num, wh_json:to_proplist(Classifiers)).
 
 -spec pretty_print_format(ne_binary(), wh_proplist()) -> api_binary().
@@ -116,5 +114,3 @@ get_classifier_regex(Classifier) when is_binary(Classifier) ->
     Classifier;
 get_classifier_regex(JObj) ->
     wh_json:get_value(<<"regex">>, JObj, <<"^$">>).
-
--endif.
