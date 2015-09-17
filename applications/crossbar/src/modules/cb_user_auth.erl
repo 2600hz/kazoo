@@ -24,10 +24,12 @@
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
+-define(LIST_BY_RESETID, <<"users/list_by_resetid">>).
 -define(DEFAULT_LANGUAGE, <<"en-us">>).
 -define(USER_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"user_auth_tokens">>, 35)).
 
 -define(RECOVERY, <<"recovery">>).
+-define(RESET_ID, <<"resetid">>).
 -define(PWD_RESET_UUID_SIZE, 40).
 
 %%%===================================================================
@@ -314,20 +316,22 @@ load_md5_results(Context, JObj) ->
 %% @private
 -spec maybe_reset_password(cb_context:context()) -> cb_context:context().
 maybe_reset_password(Context) ->
-    ResetId = wh_json:get_ne_value(<<"uuid">>, cb_context:req_data(Context)),
+    ResetId = wh_json:get_ne_value(?RESET_ID, cb_context:req_data(Context)),
     {AccountDb,Rest} = get_pwd_reset_uuid(ResetId),
-    lager:debug(">>> 2 ~p", [{AccountId,Rest}]),
+    lager:debug(">>> 2 ~p", [{AccountDb,Rest}]),
     ViewOptions = [{'key', ResetId}
                    ,'include_docs'
                   ],
     case couch_mgr:get_results(AccountDb, ?LIST_BY_RESETID, ViewOptions) of
         {'ok', [UserDoc]} ->
             lager:debug("matched user document using resetid '~s'", [ResetId]),
-            cb_context:set_resp_status(Context, 'success');
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                         ,{fun cb_context:set_doc/2, UserDoc}
+                                        ]);
         _ ->
             lager:debug("invalid password resetid"),
             cb_context:add_validation_error(
-              <<"resetid">>
+              ?RESET_ID
               ,<<"not_found">>
               ,wh_json:from_list(
                  [{<<"message">>, <<"The provided resetid was not found">>}
@@ -398,7 +402,7 @@ maybe_load_username(Account, Context) ->
 reset_users_password__step_1(Context) ->
     ResetId = make_pwd_reset_uuid(cb_context:account_id(Context)),
     UserDoc = cb_context:doc(Context),
-    NewUserDoc = wh_json:set_value(<<"resetid">>, ResetId, NewUserDoc),
+    NewUserDoc = wh_json:set_value(?RESET_ID, ResetId, UserDoc),
 
     Context1 = crossbar_doc:save(
                  cb_context:setters(Context, [{fun cb_context:set_req_verb/2, ?HTTP_POST}%%%%?
@@ -449,40 +453,8 @@ make_pwd_reset_link(ReqData, UUID) ->
 %% %% @private
 -spec reset_users_password__step_2(cb_context:context()) -> cb_context:context().
 reset_users_password__step_2(Context) ->
-    %make&return auth_token
-
-    case wh_cache:peek_local(?CROSSBAR_CACHE, UUID) of
-        {'error', _R} ->
-            lager:debug("failed to reset password for user : UUID ~s not found (~p)", [UUID,_R]),
-            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'fatal'}
-                                        ]);
-        {'ok', CachedContext} ->
-            lager:debug(">>> 2 right track"),
-            'ok' = wh_cache:erase_local(?CROSSBAR_CACHE, UUID),
-            Doc = cb_context:doc(CachedContext),
-            Password = wh_util:rand_hex_binary(16),
-            {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, Doc), Password),
-
-            NewDoc = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
-                                         ,{<<"pvt_sha1_auth">>, SHA1}
-                                         ,{<<"require_password_update">>, 'true'}
-                                        ], Doc),
-
-            lager:debug(">>> 2 Password ~p ~p ~p", [Password, MD5, SHA1]),
-            NewContext = crossbar_doc:save(
-                           cb_context:setters(CachedContext, [{fun cb_context:set_doc/2, NewDoc}
-                                                              ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
-                                                             ])
-                          ),
-            case cb_context:resp_status(NewContext) of
-                'success' ->
-                    lager:debug(">>> 2 success"),
-                    NewContext;
-                _Status ->
-                    lager:debug(">>> 2 failure: ~p", [_Status]),
-                    Context
-            end
-    end.
+    lager:debug(">>> reset_users_password__step_2"),
+    crossbar_util:create_auth_token(Context, ?MODULE).
 
 %%--------------------------------------------------------------------
 %% @private
