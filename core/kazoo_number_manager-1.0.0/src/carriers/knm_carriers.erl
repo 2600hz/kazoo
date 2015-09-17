@@ -13,10 +13,18 @@
 
 -export([find/1, find/2, find/3
          ,check/1, check/2
-         ,list_modules/0
+         ,available_carriers/0, default_carriers/0
          ,acquire/1
          ,disconnect/1
         ]).
+
+-ifdef(TEST).
+-define(CARRIER_MODULES, ?DEFAULT_CARRIER_MODULES).
+-else.
+-define(CARRIER_MODULES
+        ,whapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)
+       ).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,13 +42,7 @@ find(Num, Quantity) ->
     find(Num, Quantity, []).
 
 find(Num, Quantity, Opts) ->
-    AccountId = props:get_value(<<"Account-ID">>, Opts),
     NormalizedNumber = knm_converters:normalize(Num),
-
-    lager:info(
-      "attempting to find ~p numbers with prefix '~s' for account ~p"
-      ,[Quantity, NormalizedNumber, AccountId]
-     ),
 
     lists:foldl(
       fun(Mod, Acc) ->
@@ -51,7 +53,7 @@ find(Num, Quantity, Opts) ->
                )
       end
       ,[]
-      ,?MODULE:list_modules()
+      ,?MODULE:available_carriers()
      ).
 
 -spec attempt_find(atom(), ne_binary(), integer(), wh_proplist()) ->
@@ -98,7 +100,7 @@ check(Numbers, Opts) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
     lager:info("attempting to check ~p ", [FormattedNumbers]),
     [{Module, catch(Module:check_numbers(FormattedNumbers, Opts))}
-     || Module <- ?MODULE:list_modules()
+     || Module <- ?MODULE:available_carriers()
     ].
 
 %%--------------------------------------------------------------------
@@ -107,12 +109,17 @@ check(Numbers, Opts) ->
 %% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec list_modules() -> atoms().
-list_modules() ->
-    CarrierModules =
-        whapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES),
+-spec available_carriers() -> atoms().
+available_carriers() ->
     [Module
-     || M <- CarrierModules,
+     || M <- ?CARRIER_MODULES,
+        (Module = wh_util:try_load_module(M)) =/= 'false'
+    ].
+
+-spec default_carriers() -> atoms().
+default_carriers() ->
+    [Module
+     || M <- ?DEFAULT_CARRIER_MODULES,
         (Module = wh_util:try_load_module(M)) =/= 'false'
     ].
 
