@@ -30,7 +30,7 @@
 
 -define(RECOVERY, <<"recovery">>).
 -define(RESET_ID, <<"resetid">>).
--define(PWD_RESET_UUID_SIZE, 40).
+-define(PWD_RESETID_SIZE, 40).
 
 %%%===================================================================
 %%% API
@@ -97,7 +97,7 @@ authenticate(Context) ->
 
 authenticate_nouns([{<<"user_auth">>, []}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
-authenticate_nouns([{<<"user_auth">>, [?RECOVERY, _UUID]}]) -> 'true';
+authenticate_nouns([{<<"user_auth">>, [?RECOVERY, _ResetId]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -317,7 +317,7 @@ load_md5_results(Context, JObj) ->
 -spec maybe_reset_password(cb_context:context()) -> cb_context:context().
 maybe_reset_password(Context) ->
     ResetId = wh_json:get_ne_value(?RESET_ID, cb_context:req_data(Context)),
-    {AccountDb,Rest} = get_pwd_reset_uuid(ResetId),
+    {AccountDb,Rest} = get_pwd_reset_id(ResetId),
     lager:debug(">>> 2 ~p", [{AccountDb,Rest}]),
     ViewOptions = [{'key', ResetId}
                    ,'include_docs'
@@ -400,7 +400,7 @@ maybe_load_username(Account, Context) ->
 %% @private
 -spec reset_users_password__step_1(cb_context:context()) -> cb_context:context().
 reset_users_password__step_1(Context) ->
-    ResetId = make_pwd_reset_uuid(cb_context:account_id(Context)),
+    ResetId = make_pwd_reset_id(cb_context:account_id(Context)),
     UserDoc = cb_context:doc(Context),
     NewUserDoc = wh_json:set_value(?RESET_ID, ResetId, UserDoc),
 
@@ -432,23 +432,23 @@ reset_users_password__step_1(Context) ->
     end.
 
 %% @private
--spec make_pwd_reset_uuid(ne_binary()) -> ne_binary().
-make_pwd_reset_uuid(AccountId) ->
-    Rest = wh_util:rand_hex_binary((?PWD_RESET_UUID_SIZE - 32) / 2),
+-spec make_pwd_reset_id(ne_binary()) -> ne_binary().
+make_pwd_reset_id(AccountId) ->
+    Rest = wh_util:rand_hex_binary((?PWD_RESETID_SIZE - 32) / 2),
     <<AccountId/binary, Rest/binary>>.
 
 %% @private
--spec get_pwd_reset_uuid(ne_binary()) -> {ne_binary(), ne_binary()}.
-get_pwd_reset_uuid(ResetId) ->
+-spec get_pwd_reset_id(ne_binary()) -> {ne_binary(), ne_binary()}.
+get_pwd_reset_id(ResetId) ->
     <<Account:32/binary, Rest/binary>> = ResetId,
     {wh_util:format_account_id(Account, 'encoded'), Rest}.
 
 %% @private
 -spec make_pwd_reset_link(wh_json:object(), ne_binary()) -> ne_binary().
-make_pwd_reset_link(ReqData, UUID) ->
+make_pwd_reset_link(ReqData, ResetId) ->
     UIURL = wh_json:get_ne_binary_value(<<"url">>, ReqData),
     [Url|_] = binary:split(UIURL, <<"#">>),
-    <<Url/binary, "/?", UUID/binary>>.
+    <<Url/binary, "/?", ResetId/binary>>.
 
 %% %% @private
 -spec reset_users_password__step_2(cb_context:context()) -> cb_context:context().
