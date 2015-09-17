@@ -127,8 +127,9 @@ wait_for_pid_refs(PidRefs, Timeout) ->
 -spec resolve_hostname(pid(), ne_binary(), wh_json:object(), fun()) -> 'ok'.
 resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
     lager:debug("attempting to resolve '~s'", [ResolveMe]),
-    case (not wh_network_utils:is_ipv4(ResolveMe))
-        andalso wh_network_utils:resolve(ResolveMe)
+    StrippedHost = hd(binary:split(ResolveMe, <<";">>)),
+    case (not wh_network_utils:is_ipv4(StrippedHost))
+        andalso wh_network_utils:resolve(StrippedHost)
     of
         'false' ->
             maybe_capture_ip(Collector, ResolveMe, JObj, ACLBuilderFun);
@@ -137,7 +138,7 @@ resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
             maybe_capture_ip(Collector, ResolveMe, JObj, ACLBuilderFun);
         IPs ->
             ACLBuilderFun(Collector, JObj, IPs),
-            lager:debug("resolved '~s' for ~p: '~s'", [ResolveMe, Collector, wh_util:join_binary(IPs, <<"','">>)])
+            lager:debug("resolved '~s' (~s) for ~p: '~s'", [StrippedHost, ResolveMe, Collector, wh_util:join_binary(IPs, <<"','">>)])
     end.
 
 -spec maybe_capture_ip(pid(), ne_binary(), wh_json:object(), fun()) -> 'ok'.

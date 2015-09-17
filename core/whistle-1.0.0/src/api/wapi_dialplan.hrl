@@ -41,20 +41,37 @@
 
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS
-        ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
-          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-          ,<<"Dial-Endpoint-Method">>, <<"Insert-At">>
-          ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
-          ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
-          ,<<"SIP-Transport">>, <<"Custom-SIP-Headers">>
+        ,[<<"B-Leg-Events">>
+          ,<<"Callee-ID-Name">>
+          ,<<"Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>
+          ,<<"Caller-ID-Number">>
+          ,<<"Confirm-Key">>
+          ,<<"Confirm-Cancel-Timeout">>
+          ,<<"Confirm-File">>
+          ,<<"Continue-On-Fail">>
+          ,<<"Custom-Channel-Vars">>
+          ,<<"Custom-SIP-Headers">>
+          ,<<"Dial-Endpoint-Method">>
+          ,<<"Enable-T38-Fax">>
+          ,<<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Gateway">>
+          ,<<"Enable-T38-Passthrough">>
+          ,<<"Force-Fax">>
+          ,<<"Hold-Media">>
           ,<<"Ignore-Completed-Elsewhere">>
-          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
-          ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
-          ,<<"B-Leg-Events">>
+          ,<<"Ignore-Early-Media">>
           ,<<"Ignore-Forward">>
+          ,<<"Insert-At">>
+          ,<<"Media">>
+          ,<<"Outbound-Callee-ID-Name">>
+          ,<<"Outbound-Callee-ID-Number">>
+          ,<<"Outbound-Caller-ID-Name">>
+          ,<<"Outbound-Caller-ID-Number">>
+          ,<<"Ringback">>
+          ,<<"SIP-Transport">>
+          ,<<"Secure-RTP">>
+          ,<<"Timeout">>
          ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -76,26 +93,49 @@
 %% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS
-        ,[<<"Route">>, <<"To-User">>
-          ,<<"To-Realm">>, <<"To-DID">>, <<"To-URI">>
-          ,<<"To-IP">>, <<"To-Username">>
-          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-          ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
-          ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-          ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"Custom-SIP-Headers">>, <<"Presence-ID">>
+        ,[<<"Auth-Password">>
+          ,<<"Auth-Realm">>
+          ,<<"Auth-User">>
+          ,<<"Bypass-Media">>
+          ,<<"Callee-ID-Name">>
+          ,<<"Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>
+          ,<<"Caller-ID-Number">>
+          ,<<"Codecs">>
           ,<<"Custom-Channel-Vars">>
-          ,<<"Auth-User">>, <<"Auth-Password">>, <<"Auth-Realm">>
-          ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
-          ,<<"Proxy-Zone">>, <<"Proxy-IP">>
-          ,<<"Forward-IP">>, <<"SIP-Transport">>
-          ,<<"Ignore-Completed-Elsewhere">>
-          ,<<"SIP-Interface">>
-          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
-          ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
+          ,<<"Custom-SIP-Headers">>
+          ,<<"Enable-T38-Fax">>
+          ,<<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Gateway">>
+          ,<<"Enable-T38-Passthrough">>
+          ,<<"Endpoint-Delay">>
+          ,<<"Endpoint-Options">>
+          ,<<"Endpoint-Progress-Timeout">>
+          ,<<"Endpoint-Timeout">>
+          ,<<"Endpoint-Type">>
           ,<<"Failover">>
+          ,<<"Force-Fax">>
+          ,<<"Forward-IP">>
+          ,<<"Hold-Media">>
+          ,<<"Ignore-Completed-Elsewhere">>
+          ,<<"Ignore-Early-Media">>
+          ,<<"Outbound-Call-ID">>
+          ,<<"Outbound-Callee-ID-Name">>
+          ,<<"Outbound-Callee-ID-Number">>
+          ,<<"Outbound-Caller-ID-Name">>
+          ,<<"Outbound-Caller-ID-Number">>
+          ,<<"Presence-ID">>
+          ,<<"Proxy-IP">>
+          ,<<"Proxy-Zone">>
+          ,<<"Route">>
+          ,<<"SIP-Interface">>
+          ,<<"SIP-Transport">>
+          ,<<"To-DID">>
+          ,<<"To-IP">>
+          ,<<"To-Realm">>
+          ,<<"To-URI">>
+          ,<<"To-User">>
+          ,<<"To-Username">>
          ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
@@ -481,8 +521,11 @@
 
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
-                                      ,<<"Silence-Hits">>, <<"Insert-At">>
+-define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Insert-At">>
+                                      ,<<"Silence-Hits">>
+                                      ,<<"Silence-Threshold">>
+                                      ,<<"Terminators">>
+                                      ,<<"Time-Limit">>
                                      ]).
 -define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -494,13 +537,20 @@
 %% Record Call Leg into MediaName
 %% Stream-To = local results in the recording being stored on the media server
 %% Stream-To = remote will stream the recording to the handling ecallmgr server
--define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>
+-define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>
+                                  ,<<"Call-ID">>
+                                  ,<<"Media-Name">>
                                   ,<<"Record-Action">>
                                  ]).
--define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>, <<"Follow-Transfer">>
-                                           ,<<"Media-Transfer-Method">> ,<<"Media-Transfer-Destination">>
-                                           ,<<"Additional-Headers">>, <<"Record-Sample-Rate">>
+-define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Additional-Headers">>
+                                           ,<<"Channels-As-Stereo">>
+                                           ,<<"Follow-Transfer">>
+                                           ,<<"Insert-At">>
+                                           ,<<"Media-Transfer-Destination">>
+                                           ,<<"Media-Transfer-Method">>
                                            ,<<"Record-Min-Sec">>
+                                           ,<<"Record-Sample-Rate">>
+                                           ,<<"Time-Limit">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}

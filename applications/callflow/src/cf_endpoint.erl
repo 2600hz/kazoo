@@ -61,7 +61,7 @@
         wh_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])
        ).
 
--type sms_route() :: {binary(), wh_proplist() }.
+-type sms_route() :: {binary(), wh_proplist()}.
 -type sms_routes() :: [sms_route(), ...].
 
 %%--------------------------------------------------------------------
@@ -123,7 +123,7 @@ has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
     catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
     {'ok', Endpoint}.
 
--spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) ->  list().
+-spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) -> list().
 cache_origin(JObj, EndpointId, AccountDb) ->
     Routines = [fun(P) -> [{'db', AccountDb, EndpointId} | P] end
                 ,fun(P) ->
@@ -454,8 +454,8 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 %% Flush the callflow cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush_account(ne_binary()) -> any().
--spec flush(ne_binary(), ne_binary()) -> any().
+-spec flush_account(ne_binary()) -> _.
+-spec flush(ne_binary(), ne_binary()) -> _.
 flush_account(AccountDb) ->
     ToRemove =
         wh_cache:filter_local(?CALLFLOW_CACHE, fun({?MODULE, Db, _Id}, _Value) ->
@@ -532,8 +532,8 @@ should_create_endpoint(Endpoint, Properties, Call) ->
                ],
     should_create_endpoint(Routines, Endpoint, Properties, Call).
 
--type ep_routine_v() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok' | any()).
--type ep_routines_v() :: [ep_routine_v(),...] | [].
+-type ep_routine_v() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok' | _).
+-type ep_routines_v() :: [ep_routine_v()].
 -spec should_create_endpoint(ep_routines_v(), wh_json:object(), wh_json:object(),  whapps_call:call()) ->
                                           'ok' | {'error', _}.
 should_create_endpoint([], _, _, _) -> 'ok';
@@ -1018,7 +1018,7 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_sip_transport(wh_json:object()) -> ne_binary() | 'undefined'.
+-spec get_sip_transport(wh_json:object()) -> api_binary().
 get_sip_transport(SIPJObj) ->
     case validate_sip_transport(wh_json:get_value(<<"transport">>, SIPJObj)) of
         'undefined' ->
@@ -1026,7 +1026,7 @@ get_sip_transport(SIPJObj) ->
         Transport -> Transport
     end.
 
--spec validate_sip_transport(any()) -> ne_binary() | 'undefined'.
+-spec validate_sip_transport(_) -> api_binary().
 validate_sip_transport(<<"tcp">>) -> <<"tcp">>;
 validate_sip_transport(<<"udp">>) -> <<"udp">>;
 validate_sip_transport(<<"tls">>) -> <<"tls">>;

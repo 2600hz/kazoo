@@ -17,16 +17,16 @@ A port request can be in one of five states:
 ### List port requests
 
     curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests
 
 #### Listing by port state
 
 You can issue GET requests to find all ports in a particular state too:
 
     curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{STATE_NAME}
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{STATE_NAME}
 
 Where `{STATE_NAME}` is one of:
 
@@ -42,120 +42,120 @@ All requests are not paginated, with the exception of the `completed` state. Use
 ### List port requests of self and sub accounts
 
     curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants/port_requests
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/descendants/port_requests
 
 ### Create a new port request
 
     curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
     -d '{"data":{"numbers":{"+12025559000":{}}}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests
 
 ### List port request details
 
     curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}
 
 ### Edit a port request
 
     curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
     -d '{"data":{"numbers":{"+12025559000":{"state":"NY"}}}}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}
 
 ### DELETE a port request
 
     curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}
 
 ## Attachment manipulation
 
 ### List attachments on a port request
 
     curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments
 
 ### Add an attachment to a port request
 
     curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
-    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments?filename=file.pdf'
+    'http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments?filename=file.pdf'
 
 ### Get an attachment from a port request
 
     curl -v -X GET -H \
-    "X-Auth-Token: {AUTH_TOKEN}" -H \
+    "X-Auth-Token: {{AUTH_TOKEN}}" -H \
     "Accept: application/pdf" \
-    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/file.pdf' > file.pdf
+    'http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments/file.pdf' > file.pdf
 
 ### Replace an attachment on a port request
 
     curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
-    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/file.pdf'
+    'http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments/file.pdf'
 
 ### Delete an attachment on a port request
 
     curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    'http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/otp.pdf'
+    'http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/attachments/otp.pdf'
 
 ## State changes
 
 ### Indicate a port is ready to be processed
 
     curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/submitted
 
 ### Put port in pending
 
     curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/pending
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/pending
 
 ### Put port in progress (sent to losing carrier)
 
     curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/scheduled
 
 ### Complete port, numbers will activate in the system, account will be billed
 
     curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/completed
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/completed
 
 ### Reject a port
 
     curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/rejected
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/rejected
 
 ### Cancel a port
 
     curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/canceled
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/canceled
 
 ## Extra features
 
@@ -163,15 +163,15 @@ All requests are not paginated, with the exception of the `completed` state. Use
 
     curl -v -X GET \
     -H "Accept: application/x-pdf" \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/loa
+    -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+    http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/loa
 
 ## Get port request for account
 
 ### Request
 
 - Verb: `GET`
-- Url: `/accounts/{ACCOUNT_ID}/port_requests?by_number={NUMBER}`
+- Url: `/accounts/{{ACCOUNT_ID}}/port_requests?by_number={{NUMBER}}`
 - Payload: None
 
 ### Response
@@ -195,7 +195,7 @@ All requests are not paginated, with the exception of the `completed` state. Use
         "transfer_date": 63598114800,
         "port_state": "submitted",
         "numbers": {
-            "{NUMBER}": {}
+            "{{NUMBER}}": {}
         },
         "sent": false,
         "uploads": {
@@ -221,7 +221,7 @@ All requests are not paginated, with the exception of the `completed` state. Use
 ### Request
 
 - Verb: `GET`
-- Url: `/accounts/{ACCOUNT_ID}/descendants/port_requests?by_number={NUMBER}`
+- Url: `/accounts/{{ACCOUNT_ID}}/descendants/port_requests?by_number={{NUMBER}}`
 - Payload: None
 
 
@@ -246,7 +246,7 @@ All requests are not paginated, with the exception of the `completed` state. Use
         "transfer_date": 63598114800,
         "port_state": "submitted",
         "numbers": {
-            "{NUMBER}": {}
+            "{{NUMBER}}": {}
         },
         "sent": false,
         "uploads": {

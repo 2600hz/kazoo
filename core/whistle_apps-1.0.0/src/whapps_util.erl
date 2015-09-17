@@ -240,7 +240,7 @@ get_all_account_mods() ->
 
 get_all_account_mods(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
-    [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_mod(Db)].
+    [wh_util:format_account_modb(Db, Encoding) || Db <- Databases, is_account_mod(Db)].
 
 -spec get_account_mods(ne_binary()) -> ne_binaries().
 -spec get_account_mods(ne_binary(), 'unencoded' | 'encoded' | 'raw') -> ne_binaries().

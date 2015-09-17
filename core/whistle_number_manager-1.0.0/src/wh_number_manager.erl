@@ -1007,12 +1007,26 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) -
                       | Found]
              end,
     case catch wnm_number:get(Number) of
-        #number{state=State} ->
+        #number{state=State
+                ,module_data=JObj
+                ,module_name = ModuleName
+               } ->
             case lists:member(State, ?WNM_AVALIABLE_STATES) of
                 'true' ->
                     prepare_find_results(Numbers, ModuleName, ModuleResults, Result, Opts);
                 'false' ->
                     lager:debug("the discovery '~s' is not available: ~s", [Number, State]),
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Found, Opts)
+            end;
+        #number{}=N ->
+            NewNumber = N#number{module_name = ModuleName
+                                 ,module_data=JObj
+                                },
+            case catch wnm_number:save(wnm_number:create_discovery(NewNumber)) of
+                #number{} ->
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Result, Opts);
+                {_R, #number{}} ->
+                    lager:debug("failed to store discovery ~s: ~p", [Number, _R]),
                     prepare_find_results(Numbers, ModuleName, ModuleResults, Found, Opts)
             end;
         {'not_found', #number{}=N} ->

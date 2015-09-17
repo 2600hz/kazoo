@@ -79,6 +79,7 @@
                           ,'cb_user_auth', 'cb_users'
                           ,'cb_vmboxes'
                           ,'cb_webhooks', 'cb_whitelabel'
+                          ,'cb_ledgers', 'cb_comments'
                          ]).
 
 -define(DEPRECATED_MODULES, ['cb_local_resources'

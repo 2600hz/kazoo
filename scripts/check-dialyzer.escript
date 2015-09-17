@@ -52,9 +52,9 @@ root_dir(Path) ->
 
 file_exists(Filename) ->
     case file:read_file_info(Filename) of
-        {ok, _}         -> 'true';
-        {error, enoent} -> 'false';
-        {error, _Reason} -> 'false';
+        {'ok', _}           -> 'true';
+        {'error', 'enoent'} -> 'false';
+        {'error', _Reason}  -> 'false';
         _ -> 'false'
     end.
 
@@ -158,8 +158,8 @@ scan(Thing) ->
     try do_scan(Thing) of
         Ret -> Ret
     catch 'throw':{'dialyzer_error',Error} ->
-            io:format("~s", [Error]),
-            [255]
+            io:format("~s\n", [Error]),
+            []
     end.
 
 do_scan(Path) ->

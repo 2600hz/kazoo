@@ -629,7 +629,6 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% resource.
 %% @end
 %%--------------------------------------------------------------------
 -spec clean_summary(cb_context:context()) -> wh_json:object().
@@ -638,15 +637,52 @@ clean_summary(Context) ->
     Routines = [fun(JObj) -> wh_json:delete_key(<<"id">>, JObj) end
                 ,fun(JObj) -> wh_json:set_value(<<"numbers">>, JObj, wh_json:new()) end
                 ,fun(JObj) ->
-                         Service = wh_services:fetch(AccountId),
-                         Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
-                         wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
+                    Service = wh_services:fetch(AccountId),
+                    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
+                    wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
+                 end
+                ,fun(JObj) ->
+                    QS = wh_json:to_proplist(cb_context:query_string(Context)),
+                    Numbers = wh_json:get_value(<<"numbers">>, JObj),
+                    wh_json:set_value(<<"numbers">>, apply_filters(QS, Numbers), JObj)
                  end
                ],
     lists:foldl(fun(F, JObj) -> F(JObj) end
                 ,cb_context:resp_data(Context)
                 ,Routines
                ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_filters(wh_proplist(), wh_json:object()) -> wh_json:object().
+apply_filters([], Numbers) -> Numbers;
+apply_filters([{<<"filter_", Key/binary>>, Value}|QS], Numbers) ->
+    Numbers1 = apply_filter(Key, Value, Numbers),
+    apply_filters(QS, Numbers1);
+apply_filters([{Key, _}|QS], Numbers) ->
+    lager:debug("unknown key ~s, ignoring", [Key]),
+    apply_filters(QS, Numbers).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_filter(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+apply_filter(Key, Value, Numbers) ->
+    wh_json:foldl(
+        fun(Number, JObj, Acc) ->
+            case wh_json:get_value(Key, JObj) of
+                Value -> Acc;
+                _Else -> wh_json:delete_key(Number, Acc)
+            end
+        end
+        ,Numbers
+        ,Numbers
+    ).
 
 %%--------------------------------------------------------------------
 %% @private

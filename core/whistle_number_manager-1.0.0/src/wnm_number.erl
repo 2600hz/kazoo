@@ -958,7 +958,6 @@ exec_providers([Provider|Providers], Action, Number) ->
         Mod ->
             case apply(Mod, Action, [Number]) of
                 #number{}=N ->
-                    lager:debug("successfully attempted ~s:~s/1", [Mod, Action]),
                     exec_providers(Providers, Action, N);
                 {'error', Reason} ->
                     lager:debug("failed attempting ~s:~s/1: ~p", [Mod, Action, Reason]),
@@ -1262,9 +1261,7 @@ load_phone_number_doc(Account, 'false') ->
 update_service_plans(#number{billing_id='undefined'
                              ,assigned_to='undefined'
                              ,prev_assigned_to='undefined'
-                             ,number=Number
                             }=N) ->
-    lager:error("failed to update services_plan for ~p account is undefined", [Number]),
     N;
 update_service_plans(#number{billing_id='undefined'
                              ,assigned_to='undefined'

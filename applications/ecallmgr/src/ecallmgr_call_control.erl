@@ -565,7 +565,7 @@ handle_channel_destroyed(_,  #state{sanity_check_tref=SCTRef
     %% channel_destory (the last event we will ever receive from freeswitch for this call)
     %% then create an error and force advance. This will happen with dialplan actions that
     %% have not been executed on freeswitch but were already queued (for example in xferext).
-    %% Commonly events like masquerade, noop, ect
+    %% Commonly events like masquerade, noop, etc
     _ = case CurrentApp =:= 'undefined'
             orelse is_post_hangup_command(CurrentApp)
         of

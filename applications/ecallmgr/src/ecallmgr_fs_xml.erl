@@ -488,6 +488,12 @@ get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
 get_channel_vars({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">> | Vars];
 
+get_channel_vars({<<"Confirm-File">>, V}, Vars) ->
+    [list_to_binary(["group_confirm_file='"
+        ,wh_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), wh_json:new()))
+        ,"'"
+    ]) | Vars];
+
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;

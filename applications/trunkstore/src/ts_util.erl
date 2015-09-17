@@ -196,11 +196,15 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_doc:id(User)]),
                     ValJObj = wh_json:get_value(<<"value">>, User),
                     JObj = wh_json:set_value(<<"id">>, wh_doc:id(User), ValJObj),
+
+                    {'ok', AccountJObj} = kz_account:fetch(AccountId),
+                    Restriction = wh_json:get_value(<<"call_restriction">>, AccountJObj, wh_json:new()),
+                    FlagsJObj = wh_json:set_value(<<"call_restriction">>, Restriction, JObj),
                     wh_cache:store_local(?TRUNKSTORE_CACHE
                                          ,{'lookup_user_flags', Realm, Name, AccountId}
-                                         ,JObj
+                                         ,FlagsJObj
                                         ),
-                    {'ok', JObj}
+                    {'ok', FlagsJObj}
             end
     end.
 

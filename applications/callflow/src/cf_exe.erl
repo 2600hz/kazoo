@@ -23,6 +23,10 @@
 -export([hard_stop/1]).
 -export([transfer/1]).
 -export([control_usurped/1]).
+-export([channel_destroyed/1]).
+-export([stop_on_destroy/1
+         ,continue_on_destroy/1
+        ]).
 -export([get_branch_keys/1, get_all_branch_keys/1]).
 -export([attempt/1, attempt/2]).
 -export([wildcard_is_empty/1]).
@@ -59,6 +63,8 @@
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
                 ,self = self()
+                ,stop_on_destroy = 'true' :: boolean()
+                ,destroyed = 'false' :: boolean()
                }).
 -type state() :: #state{}.
 
@@ -155,6 +161,27 @@ control_usurped(Srv) when is_pid(Srv) ->
 control_usurped(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     control_usurped(Srv).
+
+-spec channel_destroyed(whapps_call:call() | pid()) -> 'ok'.
+channel_destroyed(Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, 'channel_destroyed');
+channel_destroyed(Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    channel_destroyed(Srv).
+
+-spec stop_on_destroy(whapps_call:call() | pid()) -> 'ok'.
+stop_on_destroy(Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, 'stop_on_destroy');
+stop_on_destroy(Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    stop_on_destroy(Srv).
+
+-spec continue_on_destroy(whapps_call:call() | pid()) -> 'ok'.
+continue_on_destroy(Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, 'continue_on_destroy');
+continue_on_destroy(Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    continue_on_destroy(Srv).
 
 -spec callid_update(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 callid_update(CallId, Srv) when is_pid(Srv) ->
@@ -292,22 +319,15 @@ handle_call({'get_branch_keys', 'all'}, _From, #state{flow = Flow}=State) ->
     Reply = {'branch_keys', wh_json:get_keys(Children)},
     {'reply', Reply, State};
 handle_call({'attempt', Key}, _From, #state{flow=Flow}=State) ->
-    case wh_json:get_value([<<"children">>, Key], Flow) of
+    case wh_json:get_ne_value([<<"children">>, Key], Flow) of
         'undefined' ->
             lager:info("attempted 'undefined' child ~s", [Key]),
-            Reply = {'attempt_resp', {'error', 'undefined'}},
+            Reply = {'attempt_resp', {'error', 'empty'}},
             {'reply', Reply, State};
         NewFlow ->
-            case wh_json:is_empty(NewFlow) of
-                'true' ->
-                    lager:info("attempted empty child ~s", [Key]),
-                    Reply = {'attempt_resp', {'error', 'empty'}},
-                    {'reply', Reply, State};
-                'false' ->
-                    lager:info("branching to attempted child ~s", [Key]),
-                    Reply = {'attempt_resp', 'ok'},
-                    {'reply', Reply, launch_cf_module(State#state{flow = NewFlow})}
-            end
+            lager:info("branching to attempted child ~s", [Key]),
+            Reply = {'attempt_resp', 'ok'},
+            {'reply', Reply, launch_cf_module(State#state{flow = NewFlow})}
     end;
 handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
     case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
@@ -330,6 +350,12 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
+handle_cast({'continue', _}, #state{stop_on_destroy='true'
+                                    ,destroyed='true'
+                                   }=State) ->
+    lager:info("channel no longer active, not continuing"),
+    hard_stop(self()),
+    {'noreply', State};
 handle_cast({'continue', Key}, #state{flow=Flow
                                       ,cf_module_pid=OldPidRef
                                      }=State) ->
@@ -346,12 +372,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             ?MODULE:continue(self()),
             {'noreply', State};
         NewFlow ->
-            case wh_json:is_empty(NewFlow) of
-                'false' -> {'noreply', launch_cf_module(State#state{flow=NewFlow})};
-                'true' ->
-                    ?MODULE:stop(self()),
-                    {'noreply', State}
-            end
+            {'noreply', launch_cf_module(State#state{flow=NewFlow})}
     end;
 handle_cast('stop', #state{flows=[]}=State) ->
     {'stop', 'normal', State};
@@ -363,13 +384,23 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
+handle_cast('channel_destroyed', State) ->
+    {'noreply', State#state{destroyed='true'}};
+handle_cast('stop_on_destroy', State) ->
+    {'noreply', State#state{stop_on_destroy='true'}};
+handle_cast('continue_on_destroy', State) ->
+    {'noreply', State#state{stop_on_destroy='false'}};
 handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
     lager:info("callflow has been branched"),
-    NewFlows = [wh_json:get_value([<<"children">>, <<"_">>], Flow, wh_json:new())|Flows],
-    {'noreply', launch_cf_module(State#state{flow=NewFlow, flows=NewFlows})};
+    case wh_json:get_ne_value([<<"children">>, <<"_">>], Flow) of
+        'undefined' ->
+            {'noreply', launch_cf_module(State#state{flow=NewFlow})};
+        PrevFlow ->
+            {'noreply', launch_cf_module(State#state{flow=NewFlow, flows=[PrevFlow|Flows]})}
+    end;
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     wh_util:put_callid(NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
@@ -456,7 +487,7 @@ handle_info({'EXIT', Pid, 'normal'}, #state{call=Call
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
     _ = case State#state.cf_module_pid of
             {Pid, Ref} -> erlang:demonitor(Ref, ['flush']);
-            _ -> lager:debug("process ~s terminated normally", [Pid])
+            _ -> lager:debug("process ~p terminated normally", [Pid])
         end,
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
@@ -483,6 +514,16 @@ handle_event(JObj, #state{cf_module_pid=PidRef
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
+        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
+            channel_destroyed(Self),
+            {'reply', [{'cf_module_pid', get_pid(PidRef)}
+                       ,{'cf_event_pids', Others}
+                      ]};
+        {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->
+            channel_destroyed(Self),
+            {'reply', [{'cf_module_pid', get_pid(PidRef)}
+                       ,{'cf_event_pids', Others}
+                      ]};
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
             ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
             TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
@@ -603,7 +644,6 @@ launch_cf_module(#state{flow=?EMPTY_JSON_OBJECT}=State) ->
 launch_cf_module(#state{call=Call
                         ,flow=Flow
                        }=State) ->
-    lager:debug("launching next flow module: ~p", [Flow]),
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {PidRef, Action} = maybe_start_cf_module(Module, Data, Call),

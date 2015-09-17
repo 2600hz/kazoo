@@ -198,6 +198,12 @@
                                                            ,(amqp_util:encode(CallId))/binary
                                                          >>).
 
+-define(SMS_DEFAULT_OUTBOUND_OPTIONS, wh_json:from_list([{<<"delivery_mode">>, 2}
+                                                         ,{<<"mandatory">>, 'true'}
+                                                        ])).
+-define(SMS_OUTBOUND_OPTIONS_KEY, [<<"outbound">>, <<"options">>]).
+-define(SMS_OUTBOUND_OPTIONS, whapps_config:get(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)).
+
 -spec message(api_terms()) -> api_formatter_return().
 message(Prop) when is_list(Prop) ->
     EPs = [begin
@@ -397,7 +403,7 @@ publish_outbound(Req, ContentType) ->
     RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
     Exchange = props:get_value(<<"Exchange-ID">>, Req, ?SMS_EXCHANGE),
     RK = ?OUTBOUND_ROUTING_KEY(RouteId, MessageId),
-    Opts = amqp_options(whapps_config:get(<<"sms">>, [<<"outbound">>, <<"options">>])),
+    Opts = amqp_options(?SMS_OUTBOUND_OPTIONS),
     amqp_util:basic_publish(Exchange, RK, Payload, ContentType, Opts).
 
 -spec publish_delivery(api_terms()) -> 'ok'.

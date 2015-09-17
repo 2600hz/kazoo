@@ -7,6 +7,19 @@
 
 -export([main/1]).
 
+%% This list has to never be empty! (nor contain empty strings)
+%% MUST be here only modules that don't end with '_maintenance',
+%% as these are automatically added anyway.
+-define(REQUIRED_MODULES, ["couch_compactor_fsm"
+                           ,"crossbar_bindings"
+                           ,"ecallmgr_config"
+                           ,"notify_account_crawler"
+                           ,"whapps_account_config"
+                           ,"whapps_config"
+                           ,"whapps_controller"
+                           ,"wnm_util"
+                          ]).
+
 %% API
 
 main([]) ->
@@ -102,9 +115,7 @@ case_args({M,F} = MF) ->
     ].
 
 uspaces(Lists) ->
-    %% Note the Unicode non-breaking space (not part of $IFS)
-    USpace = " ",
-    [ [$[, USpace, [[to_list(E), USpace] || E <- List], $]]
+    [ [$[, [to_list(E) || E <- List], $]]
       || List <- Lists ].
 
 spaces(List) ->
@@ -170,7 +181,8 @@ find_modules(Path) ->
         'false' -> [];
         'true' ->
             AccFiles = fun (File, Acc) -> [File|Acc] end,
-            filelib:fold_files(Path, ".+_maintenance\\.beam", true, AccFiles, [])
+            Required = string:join(?REQUIRED_MODULES, "|"),
+            filelib:fold_files(Path, "(.+_maintenance|" ++ Required ++ ")\\.beam", true, AccFiles, [])
             %% filelib:fold_files(Path, ".+\\.beam", true, AccFiles, [])
     end.
 

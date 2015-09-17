@@ -203,7 +203,10 @@ normalize_address(JObj) ->
 timezone(JObj) ->
     timezone(JObj, 'undefined').
 timezone(JObj, Default) ->
-    wh_json:get_value(?KEY_TIMEZONE, JObj, Default).
+    case wh_json:get_value(?KEY_TIMEZONE, JObj, Default) of
+        <<"inherit">> -> Default;  %% UI-1808
+        TZ -> TZ
+    end.
 
 -spec presence_id(doc()) -> api_binary().
 -spec presence_id(doc(), Default) -> ne_binary() | Default.

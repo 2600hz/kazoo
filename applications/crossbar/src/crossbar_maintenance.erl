@@ -23,6 +23,7 @@
 -export([find_account_by_number/1]).
 -export([find_account_by_name/1]).
 -export([find_account_by_realm/1]).
+-export([find_account_by_id/1]).
 -export([enable_account/1, disable_account/1]).
 -export([promote_account/1, demote_account/1]).
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
@@ -266,6 +267,20 @@ find_account_by_realm(Realm) ->
             io:format("failed to find account: ~p~n", [Reason]),
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_account_by_id(input_term()) ->
+                                   {'ok', ne_binary()} |
+                                   {'error', term()}.
+find_account_by_id(Id) when is_binary(Id) ->
+    print_account_info(wh_util:format_account_id(Id, 'encoded'));
+find_account_by_id(Id) ->
+    find_account_by_id(wh_util:to_binary(Id)).
 
 %%--------------------------------------------------------------------
 %% @public

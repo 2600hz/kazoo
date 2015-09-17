@@ -23,8 +23,8 @@ USAGES_ERL=$(foreach XML, $(USAGES_XML), $(call usage_xml_to_erl, $(XML)))
 QC_MODULES := rabbit_backing_queue_qc
 QC_TRIALS ?= 100
 
-ifeq ($(shell python -c 'import simplejson' 2>/dev/null && echo yes),yes)
-PYTHON=python
+ifeq ($(shell python2 -c 'import simplejson' 2>/dev/null && echo yes),yes)
+PYTHON=python2
 else
 ifeq ($(shell python2.6 -c 'import simplejson' 2>/dev/null && echo yes),yes)
 PYTHON=python2.6
@@ -33,7 +33,7 @@ ifeq ($(shell python2.5 -c 'import simplejson' 2>/dev/null && echo yes),yes)
 PYTHON=python2.5
 else
 # Hmm. Missing simplejson?
-PYTHON=python
+PYTHON=python2
 endif
 endif
 endif
@@ -54,7 +54,7 @@ USE_PROPER_QC:=$(shell erl -noshell -eval 'io:format({module, proper} =:= code:e
 endif
 
 #other args: +native +"{hipe,[o3,verbose]}" -Ddebug=true +debug_info +no_strict_record_tests
-ERLC_OPTS=-I $(INCLUDE_DIR) -o $(EBIN_DIR) -Wall -v +debug_info $(call boolean_macro,$(USE_SPECS),use_specs) $(call boolean_macro,$(USE_PROPER_QC),use_proper_qc)
+ERLC_OPTS += -I $(INCLUDE_DIR) -o $(EBIN_DIR) -Wall -v +debug_info $(call boolean_macro,$(USE_SPECS),use_specs) $(call boolean_macro,$(USE_PROPER_QC),use_proper_qc)
 
 include version.mk
 

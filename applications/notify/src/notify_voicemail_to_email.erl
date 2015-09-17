@@ -40,7 +40,7 @@ stop_processing(Format, Args) ->
     lager:debug(Format, Args),
     throw('stop').
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -70,10 +70,10 @@ handle_req(JObj, _Props) ->
     'ok' = notify_util:send_update(RespQ, MsgId, <<"pending">>),
     lager:debug("VM->Email enabled for user, sending to ~p", [Emails]),
     {'ok', AccountJObj} = kz_account:fetch(AccountDb),
-    Docs = [VMBox, UserJObj, AccountJObj],
+    Timezone = kzd_voicemail_box:timezone(VMBox, <<"UTC">>),
 
     Props = [{<<"email_address">>, Emails}
-             | create_template_props(JObj, Docs, AccountJObj)
+             | create_template_props(JObj, Timezone, AccountJObj)
             ],
 
     CustomTxtTemplate = wh_json:get_value(?EMAIL_TXT_TEMPLATE_KEY, AccountJObj),
@@ -111,8 +111,8 @@ get_owner(AccountDb, _VMBox, OwnerId) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
-create_template_props(Event, Docs, Account) ->
+-spec create_template_props(wh_json:object(), ne_binary(), wh_json:object()) -> wh_proplist().
+create_template_props(Event, Timezone, Account) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
     ToE164 = wh_json:get_value(<<"To-User">>, Event),
@@ -120,7 +120,6 @@ create_template_props(Event, Docs, Account) ->
     DateCalled = wh_json:get_integer_value(<<"Voicemail-Timestamp">>, Event),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}

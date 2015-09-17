@@ -36,7 +36,7 @@
           options = [] :: list()
           ,from :: binary()
           ,to :: binary()
-          ,docs = [] :: wh_json:objects()
+          ,doc :: api_object()
           ,filename :: api_binary()
           ,content_type :: binary()
           ,peer_ip :: peer()
@@ -48,6 +48,7 @@
           ,original_number :: api_binary()
           ,number :: api_binary()
           ,account_id :: api_binary()
+          ,session_id :: api_binary()
          }).
 
 -type state() :: #state{}.
@@ -64,7 +65,9 @@ init(Hostname, SessionCount, Address, Options) ->
             Banner = [Hostname, " Kazoo Email to Fax Server"],
             State = #state{options = Options
                            ,peer_ip = Address
+                           ,session_id = wh_util:rand_hex_binary(16)
                           },
+            wh_util:put_callid(State#state.session_id),
             {'ok', Banner, State};
         'true' ->
             lager:warning("connection limit exceeded ~p", [Address]),
@@ -75,22 +78,13 @@ init(Hostname, SessionCount, Address, Options) ->
                          {'ok', pos_integer(), state()} |
                          {'ok', state()} |
                          error_message().
-handle_HELO(<<"invalid">>, State) ->
-    %% contrived example
-    {'error', "554 invalid hostname", State};
-handle_HELO(<<"trusted_host">>, State) ->
-    {'ok', State}; %% no size limit because we trust them.
 handle_HELO(Hostname, State) ->
     lager:debug("HELO from ~s", [Hostname]),
-    {'ok', 655360, State}. % 640kb of HELO should be enough for anyone.
-%% If {ok, State} was returned here, we'd use the default 10mb limit
+    {'ok', State}.
 
 -spec handle_EHLO(binary(), list(), state()) ->
                          {'ok', list(), state()} |
                          error_message().
-handle_EHLO(<<"invalid">>, _Extensions, State) ->
-    %% contrived example
-    {'error', "554 invalid hostname", State};
 handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
     lager:debug("EHLO from ~s", [Hostname]),
     %% You can advertise additional extensions, or remove some defaults
@@ -143,7 +137,7 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
     %% JMA: Can this be done with wh_util:rand_hex_binary() ?
     Reference = lists:flatten(
                   [io_lib:format("~2.16.0b", [X])
-                   || <<X>> <= erlang:md5(term_to_binary(erlang:now()))
+                   || <<X>> <= erlang:md5(term_to_binary(wh_util:now()))
                   ]),
 
     try mimemail:decode(Data) of
@@ -225,7 +219,7 @@ terminate(Reason, State) ->
 -spec handle_message(state()) -> 'ok'.
 handle_message(#state{errors=[_Error | _Errors]}=State) ->
     maybe_faxbox_log(State);
-handle_message(#state{docs=[]}=State) ->
+handle_message(#state{doc='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no fax documents to save">>]});
 handle_message(#state{filename='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no fax attachment to save">>]});
@@ -233,13 +227,16 @@ handle_message(#state{errors=[], faxbox='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no previous errors but no faxbox doc">>]});
 handle_message(#state{filename=Filename
                          ,content_type=CT
-                         ,docs=Docs
+                         ,doc=Doc
                          ,errors=[]
                         }=State) ->
+    lager:debug("checking file ~s", [Filename]),
     case file:read_file(Filename) of
         {'ok', FileContents} ->
-            case fax_util:save_fax_docs(Docs, FileContents, CT) of
-                'ok' -> wh_util:delete_file(Filename);
+            case fax_util:save_fax_docs([Doc], FileContents, CT) of
+                'ok' ->
+                    lager:debug("smtp fax document saved"),
+                    wh_util:delete_file(Filename);
                 {'error', Error} -> maybe_faxbox_log(State#state{errors=[Error]})
             end;
         _Else ->
@@ -581,11 +578,12 @@ maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
 -spec add_fax_document(state()) ->
                               {'ok', state()} |
                               {'error', string(), state()}.
-add_fax_document(#state{docs=Docs
+add_fax_document(#state{doc='undefined'
                         ,from=From
                         ,owner_email=OwnerEmail
                         ,number=FaxNumber
                         ,faxbox=FaxBoxDoc
+                        ,session_id=Id
                        }=State) ->
     FaxBoxId = wh_doc:id(FaxBoxDoc),
     AccountId = wh_doc:account_id(FaxBoxDoc),
@@ -620,6 +618,7 @@ add_fax_document(#state{docs=Docs
                ,{<<"notifications">>, Notify}
                ,{<<"faxbox_id">>, FaxBoxId}
                ,{<<"folder">>, <<"outbox">>}
+               ,{<<"_id">>, Id}
               ]),
 
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
@@ -632,7 +631,12 @@ add_fax_document(#state{docs=Docs
                              ]
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),
-    {'ok', State#state{docs=[Doc | Docs]}}.
+    lager:debug("added fax document from smtp : ~p", [Doc]),
+    {'ok', State#state{doc=Doc}};
+add_fax_document(#state{doc=Doc}=State) ->
+    lager:debug("add fax document called but already has a doc : ~p", [Doc]),
+    {'ok', State}.
+
 
 %% ====================================================================
 %% Internal functions
@@ -789,11 +793,11 @@ maybe_process_image(CT, Body, Size, State) ->
     end.
 
 -spec write_tmp_file(ne_binary(), binary() | mimemail:mimetuple()) ->
-    {'ok', api_binary()}
-    | {'error', any()}.
--spec write_tmp_file(ne_binary() | 'undefined' , ne_binary(), binary() | mimemail:mimetuple()) ->
-    {'ok', api_binary()}
-    | {'error', any()}.
+                            {'ok', api_binary()} |
+                            {'error', any()}.
+-spec write_tmp_file(api_binary() , ne_binary(), binary() | mimemail:mimetuple()) ->
+                            {'ok', api_binary()} |
+                            {'error', any()}.
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).
 
@@ -802,7 +806,7 @@ write_tmp_file('undefined', Extension, Body) ->
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file(Filename, Extension, Body) ->
     File = <<Filename/binary, ".", Extension/binary>>,
-    case wh_util:write_file(File, Body) of
+    case file:write_file(File, Body, []) of
         'ok' -> {'ok', File};
         {'error', _}=Error ->
             lager:debug("error writing file ~s : ~p", [Filename, Error]),
