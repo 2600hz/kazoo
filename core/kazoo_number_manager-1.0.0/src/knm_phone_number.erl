@@ -301,7 +301,7 @@ set_number_db(N, NumberDb) ->
 assign_to(#knm_phone_number{assign_to=AssignTo}) ->
     AssignTo.
 
--spec set_assign_to(knm_number(), ne_binary()) -> knm_number().
+-spec set_assign_to(knm_number(), api_binary()) -> knm_number().
 set_assign_to(N, AssignTo) ->
     N#knm_phone_number{assign_to=AssignTo}.
 
@@ -314,7 +314,7 @@ set_assign_to(N, AssignTo) ->
 assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
     AssignedTo.
 
--spec set_assigned_to(knm_number(), ne_binary()) -> knm_number().
+-spec set_assigned_to(knm_number(), api_binary()) -> knm_number().
 set_assigned_to(N, AssignedTo) ->
     N#knm_phone_number{assigned_to=AssignedTo}.
 

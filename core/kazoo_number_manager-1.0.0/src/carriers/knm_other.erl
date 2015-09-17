@@ -31,16 +31,17 @@
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'error', _} |
+                          {'bulk', knm_number:knm_numbers()} |
                           {'ok', knm_number:knm_numbers()}.
-find_numbers(Number, Quantity, Props) ->
+find_numbers(Number, Quantity, Options) ->
     case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' -> {'error', 'non_available'};
         Url ->
-            case props:get_value(<<"blocks">>, Props) of
+            case props:get_value(<<"blocks">>, Options) of
                 'undefined' ->
-                    get_numbers(Url, Number, Quantity, Props);
+                    get_numbers(Url, Number, Quantity, Options);
                 _ ->
-                    get_blocks(Url, Number, Quantity, Props)
+                    get_blocks(Url, Number, Quantity, Options)
             end
     end.
 
@@ -191,8 +192,8 @@ format_check_numbers_success(Body) ->
 -spec get_numbers(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                          {'error', 'non_available'} |
                          {'ok', knm_number:knm_numbers()}.
-get_numbers(Url, Number, Quantity, Props) ->
-    Offset = props:get_binary_value(<<"offset">>, Props, <<"0">>),
+get_numbers(Url, Number, Quantity, Options) ->
+    Offset = props:get_binary_value(<<"offset">>, Options, <<"0">>),
     Country = whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     ReqBody = <<"?prefix=", Number/binary, "&limit=", (wh_util:to_binary(Quantity))/binary, "&offset=", Offset/binary>>,
     Uri = <<Url/binary, "/numbers/", Country/binary, "/search", ReqBody/binary>>,
@@ -201,7 +202,7 @@ get_numbers(Url, Number, Quantity, Props) ->
             lager:error("number lookup error to ~s: ~p", [Uri, _Reason]),
             {'error', 'non_available'};
         {'ok', "200", _Headers, Body} ->
-            format_numbers_resp(wh_json:decode(Body));
+            format_numbers_resp(wh_json:decode(Body), Options);
         {'ok', _Status, _Headers, _Body} ->
             lager:error("number lookup failed to ~s with ~s: ~s", [Uri, _Status, _Body]),
             {'error', 'non_available'}
@@ -212,36 +213,41 @@ get_numbers(Url, Number, Quantity, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_numbers_resp(wh_json:object()) ->
+-spec format_numbers_resp(wh_json:object(), wh_proplist()) ->
                                  {'error', 'non_available'} |
                                  {'ok', knm_number:knm_numbers()}.
--spec format_numbers_resp([{ne_binary(), wh_json:object()}], knm_number:knm_numbers()) ->
-                                 knm_number:knm_numbers().
-format_numbers_resp(JObj) ->
+format_numbers_resp(JObj, Options) ->
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
             DataJObj = wh_json:get_value(<<"data">>, JObj),
-            Props = wh_json:to_proplist(DataJObj),
-            {'ok', format_numbers_resp(Props, [])};
+            AccountId = props:get_value(<<"Account-ID">>, Options),
+
+            {'ok'
+             ,wh_json:map(fun(K, V) -> format_numbers_resp_map(K, V, AccountId) end
+                          ,DataJObj
+                         )
+            };
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
             {'error', 'non_available'}
     end.
 
-format_numbers_resp([], Numbers) -> Numbers;
-format_numbers_resp([{Num, JObj}|T], Numbers) ->
-    NormalizedNum = knm_converters:normalize(Num),
+-spec format_numbers_resp_map(ne_binary(), wh_json:object(), knm_number:knm_numbers()) ->
+                                 knm_number:knm_number().
+format_numbers_resp_map(DID, CarrierData, AccountId) ->
+    NormalizedNum = knm_converters:normalize(DID),
     NumberDb = knm_converters:to_db(NormalizedNum),
+
     Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-               ,{fun knm_phone_number:set_carrier_data/2, JObj}
+               ,{fun knm_phone_number:set_carrier_data/2, CarrierData}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+               ,{fun knm_phone_number:set_assign_to/2, AccountId}
               ],
     PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
-    format_numbers_resp(T, [Number|Numbers]).
+    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -279,7 +285,7 @@ get_blocks(Url, Number, Quantity, Props) ->
 %%--------------------------------------------------------------------
 -spec format_blocks_resp(wh_json:object()) ->
                                 {'error', 'non_available'} |
-                                {'ok', knm_number:knm_numbers()}.
+                                {'bulk', knm_number:knm_numbers()}.
 format_blocks_resp(JObj) ->
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
@@ -297,7 +303,7 @@ format_blocks_resp(JObj) ->
                   ,[]
                   ,wh_json:get_value(<<"data">>, JObj, [])
                  ),
-            {'ok', Numbers};
+            {'bulk', Numbers};
         _Error ->
             lager:error("block lookup resp error: ~p", [JObj]),
             {'error', 'non_available'}

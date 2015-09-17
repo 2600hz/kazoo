@@ -495,7 +495,8 @@ update(CategoryId, ItemId, Quantity, #wh_services{updates=JObj}=Services)
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary()) -> number().
+-spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary()) ->
+                                number().
 activation_charges(CategoryId, ItemId, #wh_services{jobj=ServicesJObj}) ->
     Plans = wh_service_plans:from_service_json(ServicesJObj),
     wh_service_plans:activation_charges(CategoryId, ItemId, Plans);

@@ -41,44 +41,79 @@ find(Num) ->
 find(Num, Quantity) ->
     find(Num, Quantity, []).
 
-find(Num, Quantity, Opts) ->
+find(Num, Quantity, Options) ->
     NormalizedNumber = knm_converters:normalize(Num),
 
-    lists:foldl(
-      fun(Mod, Acc) ->
-              format_find_resp(
-                Mod
-                ,attempt_find(Mod, NormalizedNumber, Quantity, Opts)
-                ,Acc
-               )
-      end
-      ,[]
-      ,?MODULE:available_carriers()
-     ).
+    lists:foldl(fun(Carrier, Acc) ->
+                        find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
+                end
+                ,[]
+                ,?MODULE:available_carriers()
+               ).
 
--spec attempt_find(atom(), ne_binary(), integer(), wh_proplist()) ->
-                          {'ok', knm_phone_number:knm_numbers()} |
-                          {'error', _}.
-attempt_find(Mod, NormalizedNumber, Quantity, Opts) ->
-    try Mod:find_numbers(NormalizedNumber, Quantity, Opts) of
-        Resp -> Resp
+-spec find_fold(atom(), wh_json:objects(), ne_binary(), non_neg_integer(), wh_proplist()) ->
+                       wh_json:objects().
+find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options) ->
+    try Carrier:find_numbers(NormalizedNumber, Quantity, Options) of
+        {'ok', Numbers} -> process_carrier_results(Acc, Numbers);
+        {'bulk', Numbers} -> process_bulk_carrier_results(Acc, Numbers);
+        {'error', _E} -> Acc
     catch
-        _E:R ->
-            lager:warning("failed to find ~s: ~s: ~p", [NormalizedNumber, _E, R]),
-            {'error', R}
+        _E:_R ->
+            lager:warning("failed to query carrier ~s for ~p numbers: ~s: ~p"
+                          ,[Carrier, Quantity, _E, _R]
+                         ),
+            Acc
     end.
 
--type find_resp() :: {'ok', knm_phone_number:knm_numbers()} |
-                     {'error', _}.
+-spec process_bulk_carrier_results(wh_json:objects(), knm_number:knm_numbers()) ->
+                                          wh_json:objects().
+process_bulk_carrier_results(Acc, Numbers) ->
+    found_numbers_to_jobjs(Numbers) ++ Acc.
 
--spec format_find_resp(atom(), find_resp(), wh_json:objects()) ->
-                              wh_json:objects().
-format_find_resp(_Module, {'ok', Numbers}, Acc) ->
-    lager:debug("found numbers in ~p", [_Module]),
-    lists:reverse([knm_phone_number:to_public_json(Number) || Number <- Numbers]) ++ Acc;
-format_find_resp(_Module, {'error', _Reason}, Acc) ->
-    lager:error("failed to find number in ~p : ~p", [_Module, _Reason]),
-    Acc.
+-spec process_carrier_results(wh_json:objects(), knm_number:knm_numbers()) ->
+                                     wh_json:objects().
+process_carrier_results(Acc, []) -> Acc;
+process_carrier_results(Acc, Numbers) ->
+    lists:foldl(fun process_number_result/2
+                ,Acc
+                ,Numbers
+               ).
+
+-spec process_number_result(knm_number:knm_number(), wh_json:objects()) ->
+                                   wh_json:objects().
+process_number_result(Number, Acc) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    process_number_result(Number, Acc, knm_phone_number:module_name(PhoneNumber)).
+
+process_number_result(Number, Acc, ?CARRIER_OTHER) ->
+    [found_number_to_jobj(Number) | Acc].
+
+found_numbers_to_jobjs(Numbers) ->
+    [found_number_to_jobj(Number) || Number <- Numbers].
+
+found_number_to_jobj(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    DID = knm_phone_number:number(PhoneNumber),
+    CarrierData = knm_phone_number:carrier_data(PhoneNumber),
+    AssignTo = knm_phone_number:assign_to(PhoneNumber),
+
+    wh_json:set_values(
+      props:filter_undefined(
+        [{<<"number">>, DID}
+         ,{<<"activation_charge">>, activation_charge(DID, AssignTo)}
+        ]
+       )
+      ,CarrierData
+     ).
+
+-spec activation_charge(ne_binary(), api_binary()) -> api_number().
+activation_charge(_DID, 'undefined') -> 'undefined';
+activation_charge(DID, AccountId) ->
+    wh_services:activation_charges(<<"phone_numbers">>
+                                   ,knm_converters:classify(DID)
+                                   ,AccountId
+                                  ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -96,10 +131,10 @@ format_find_resp(_Module, {'error', _Reason}, Acc) ->
 check(Numbers) ->
     check(Numbers, []).
 
-check(Numbers, Opts) ->
+check(Numbers, Options) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
     lager:info("attempting to check ~p ", [FormattedNumbers]),
-    [{Module, catch(Module:check_numbers(FormattedNumbers, Opts))}
+    [{Module, catch(Module:check_numbers(FormattedNumbers, Options))}
      || Module <- ?MODULE:available_carriers()
     ].
 
