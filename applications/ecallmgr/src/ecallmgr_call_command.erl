@@ -1195,7 +1195,7 @@ execute_exten_handle_reset(DP, Node, UUID, JObj) ->
     case wh_json:is_true(<<"Reset">>, JObj) of
         'false' -> ok;
         'true' ->
-            create_dialplan_move_ccvs(<<"Execute-Extension-Original-">>, Node, UUID, DP)
+            create_dialplan_move_ccvs(Node, UUID, DP)
     end.
 
 execute_exten_handle_ccvs(DP, _Node, UUID, JObj) ->
@@ -1227,29 +1227,37 @@ execute_exten_post_exec(DP, _Node, _UUID, _JObj) ->
      |DP
     ].
 
--spec create_dialplan_move_ccvs(ne_binary(), atom(), ne_binary(), wh_proplist()) ->
-                                       wh_proplist().
-create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
+-spec create_dialplan_move_ccvs(atom(), ne_binary(), wh_proplist()) -> wh_proplist().
+create_dialplan_move_ccvs(Node, UUID, DP) ->
     case ecallmgr_fs_channel:channel_data(Node, UUID) of
         {'ok', Props} ->
-            create_dialplan_move_ccvs(Root, DP, Props);
+            create_dialplan_move_ccvs(DP, Props);
         {'error', _E} ->
             lager:debug("failed to create ccvs for move, no channel data for ~s: ~p", [UUID, _E]),
             DP
     end.
 
--spec create_dialplan_move_ccvs(ne_binary(), wh_proplist(), wh_proplist()) ->
-                                       wh_proplist().
-create_dialplan_move_ccvs(Root, DP, Props) ->
+-spec create_dialplan_move_ccvs(wh_proplist(), wh_proplist()) -> wh_proplist().
+create_dialplan_move_ccvs(DP, Props) ->
     lists:foldr(
       fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
               [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
-               ,{"application", <<"set ",?CHANNEL_VAR_PREFIX, Root/binary ,Key/binary, "=", Val/binary>>}
+               ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
                |Acc
               ];
          ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
               [{"application", <<"unset ", Key/binary>>}
-               ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, Root/binary, K/binary, "=", Val/binary>>}
+               ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT, K/binary, "=", Val/binary>>}
+               |Acc
+              ];
+         ({<<"variable_sip_h_X-", Key/binary>>, Val}, Acc) ->
+              [{"application", <<"unset sip_h_X-", Key/binary>>}
+               ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
+               |Acc
+              ];
+         ({<<"sip_h_X-", Key/binary>>, Val}, Acc) ->
+              [{"application", <<"unset sip_h_X-", Key/binary>>}
+               ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
                |Acc
               ];
          (_, Acc) -> Acc
