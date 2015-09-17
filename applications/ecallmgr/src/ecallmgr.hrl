@@ -421,5 +421,7 @@
 -define(SEPARATOR_SIMULTANEOUS, <<",">>).
 -define(SEPARATOR_SINGLE, <<"|">>).
 
+-define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
+
 -define(ECALLMGR_HRL, 'true').
 -endif.
