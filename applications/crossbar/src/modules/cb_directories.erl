@@ -13,6 +13,8 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
+         ,content_types_provided/2
+         ,to_pdf/1
          ,validate/1, validate/2
          ,put/1
          ,post/2
@@ -26,12 +28,17 @@
 -define(CB_LIST, <<"directories/crossbar_listing">>).
 -define(CB_USERS_LIST, <<"directories/users_listing">>).
 
+-type payload() :: {cowboy_req:req(), cb_context:context()}.
+-export_type([payload/0]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.directories">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.directories">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.directories">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.to_pdf.get.directories">>, ?MODULE, 'to_pdf'),
     _ = crossbar_bindings:bind(<<"*.validate.directories">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.directories">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.directories">>, ?MODULE, 'post'),
@@ -70,6 +77,47 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% What content-types will the module be requiring (matched to the client's
+%% Content-Type header
+%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(Context, _Id) ->
+    case cb_context:req_verb(Context) of
+        ?HTTP_GET ->
+            cb_context:add_content_types_provided(
+                Context
+                ,[{'to_pdf', ?PDF_CONTENT_TYPES}]
+            );
+        _Verb ->
+            Context
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec to_pdf(payload()) -> payload().
+to_pdf({Req, Context}) ->
+    Nouns = cb_context:req_nouns(Context),
+    case props:get_value(<<"directories">>, Nouns, []) of
+        [] -> {Req, Context};
+        [Id|_] ->
+            Context1 = read(Id, Context),
+            case cb_context:resp_status(Context1) of
+                'success' -> {Req, get_pdf(Context1)};
+                _Status -> {Req, Context1}
+            end
+    end.
+
+
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -81,14 +129,68 @@ resource_exists(_) -> 'true'.
 validate(Context) ->
     validate_directories(Context, cb_context:req_verb(Context)).
 
+validate(Context, Id) ->
+    validate_directory(Context, Id, cb_context:req_verb(Context)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, _) ->
+    crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec put(cb_context:context()) -> cb_context:context().
+put(Context) ->
+    crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) ->
+    crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, _) ->
+    crossbar_doc:delete(Context).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+
+-spec validate_directories(cb_context:context(), path_token()) -> cb_context:context().
 validate_directories(Context, ?HTTP_GET) ->
     summary(Context);
 validate_directories(Context, ?HTTP_PUT) ->
     create(Context).
 
-validate(Context, Id) ->
-    validate_directory(Context, Id, cb_context:req_verb(Context)).
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a new instance with the data provided, if it is valid
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_directory(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
 validate_directory(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_directory(Context, Id, ?HTTP_POST) ->
@@ -98,25 +200,98 @@ validate_directory(Context, Id, ?HTTP_PATCH) ->
 validate_directory(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
--spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
-    crossbar_doc:save(Context).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_pdf(cb_context:context()) -> cb_context:context().
+get_pdf(Context) ->
+    AccountId = cb_context:account_id(Context),
+    Data = pdf_props(Context),
+    case kz_pdf:generate(AccountId, Data) of
+        {'error', Reason} ->
+            cb_context:add_system_error(Reason, Context);
+        {'ok', PDF} ->
+            cb_context:set_resp_data(Context, PDF)
 
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
-    crossbar_doc:save(Context).
+    end.
 
--spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _) ->
-    crossbar_doc:save(Context).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec pdf_props(cb_context:context()) -> wh_proplist().
+pdf_props(Context) ->
+    RespData = cb_context:resp_data(Context),
+    AccountId = cb_context:account_id(Context),
 
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _) ->
-    crossbar_doc:delete(Context).
+    Directory = wh_json:to_proplist(wh_json:delete_key(<<"users">>, RespData)),
+    Users =
+        pdf_users(
+            AccountId
+            ,props:get_binary_value(<<"sort_by">>, Directory, <<"last_name">>)
+            ,wh_json:get_value(<<"users">>, RespData, [])
+        ),
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+    [{<<"type">>, <<"directory">>}
+     ,{<<"users">>, Users}
+     ,{<<"directory">>, Directory}
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec pdf_users(ne_binary(), ne_binary(), wh_json:objects()) -> any().
+-spec pdf_users(ne_binary(), ne_binary(), wh_json:objects(), any()) -> any().
+pdf_users(AccountId, SortBy, Users) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    pdf_users(AccountDb, SortBy, Users, []).
+
+pdf_users(_AccountDb, SortBy, [], Acc) ->
+    Users = [{props:get_value([<<"user">>, SortBy], U), U} || U <- Acc],
+    [U || {_, U} <- lists:keysort(1, Users)];
+pdf_users(AccountDb, SortBy, [JObj|Users], Acc) ->
+    UserId = wh_json:get_value(<<"user_id">>, JObj),
+    CallflowId = wh_json:get_value(<<"callflow_id">>, JObj),
+    Props = [
+        {<<"user">>, pdf_user(AccountDb, UserId)}
+        ,{<<"callflow">>, pdf_callflow(AccountDb, CallflowId)}
+    ],
+    pdf_users(AccountDb, SortBy, Users, [Props|Acc]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec pdf_user(ne_binary(), ne_binary()) -> wh_proplist().
+pdf_user(AccountDb, UserId) ->
+    case couch_mgr:open_doc(AccountDb, UserId) of
+        {'error', _R} ->
+            lager:error("failed to fetch user ~s in ~s: ~p", [UserId, AccountDb, _R]),
+            [];
+        {'ok', Doc} ->
+            wh_json:recursive_to_proplist(wh_json:public_fields(Doc))
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec pdf_callflow(ne_binary(), ne_binary()) -> wh_proplist().
+pdf_callflow(AccountDb, CallflowId) ->
+    case couch_mgr:open_doc(AccountDb, CallflowId) of
+        {'error', _R} ->
+            lager:error("failed to fetch callflow ~s in ~s: ~p", [CallflowId, AccountDb, _R]),
+            [];
+        {'ok', Doc} ->
+            wh_json:recursive_to_proplist(wh_json:public_fields(Doc))
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,6 +333,8 @@ load_directory_users(Id, Context) ->
             cb_context:set_resp_data(Context, wh_json:set_value(<<"users">>, Users, Directory));
         _Status -> Context
     end.
+
+
 
 %%--------------------------------------------------------------------
 %% @private
