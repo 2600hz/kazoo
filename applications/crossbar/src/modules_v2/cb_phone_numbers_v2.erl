@@ -401,7 +401,7 @@ get_find_numbers_req(Context) ->
     AccountId = cb_context:auth_account_id(Context),
     Quantity = wh_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
     wh_json:set_values([{<<"quantity">>, Quantity}
-                        ,{<<"Account-ID">>, AccountId}
+                        ,{<<"account_id">>, AccountId}
                        ]
                        ,JObj
                       ).
