@@ -49,7 +49,7 @@ applications/*/priv/archive_data/*
 /deps/rabbitmq_server-3.2.0/plugins-src/rabbitmq-amqp1.0/include/rabbit_amqp1_0_framing.hrl
 /deps/rabbitmq_server-3.2.0/plugins-src/rabbitmq-amqp1.0/src/rabbit_amqp1_0_framing0.erl
 /.edts
-/deps/erlang-localtime-1.0.0/include/tz_index.hrl
+/deps/erlang_localtime-*/include/tz_index.hrl
 .project
 .settings
 /deps/rabbit_common-3.3.5/
