@@ -20,3 +20,17 @@ find_local_test_() ->
        ,?_assertEqual([], knm_carriers:find(<<"415">>, 1))
       }
     ].
+
+find_other_test_() ->
+    [find_no_phonebook()
+     ,find_blocks()
+     ,find_numbers()
+    ].
+
+find_no_phonebook() ->
+    [{"Verify no phonebook url yields no results"
+      ,?_assertMatch({'error', 'non_available'}
+                     ,knm_other:find_numbers(<<"415">>, 1, [])
+                    )
+     }
+    ].
