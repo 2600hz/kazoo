@@ -275,7 +275,7 @@ document_routing_key(<<"doc_", _/binary>> = Action, Db, Type, Id) ->
                     ,".", wh_util:to_binary(Type)
                     ,".", encode(wh_util:to_binary(Id))
                    ]);
-document_routing_key(Action, Db, 'database'=Type, Id) ->
+document_routing_key(Action, Db, <<"database">>=Type, Id) ->
     list_to_binary(["db_", wh_util:to_list(Action)
                     ,".", wh_util:to_binary(Db)
                     ,".", wh_util:to_binary(Type)

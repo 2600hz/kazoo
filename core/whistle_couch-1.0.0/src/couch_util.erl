@@ -1036,11 +1036,9 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
 
 -spec publish_db(couchbeam_db(), atom()) -> 'ok'.
 publish_db(Db, Action) ->
-    Type = 'database',
     Props =
         [{<<"Type">>, 'database'}
          ,{<<"ID">>, Db}
-         ,{<<"Rev">>, <<"0">>}
          ,{<<"Database">>, Db}
          | wh_api:default_headers(<<"configuration">>
                                   ,<<"db_", (wh_util:to_binary(Action))/binary>>
@@ -1048,7 +1046,7 @@ publish_db(Db, Action) ->
                                   ,<<"1.0.0">>
                                  )
         ],
-    Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Db, P) end,
+    Fun = fun(P) -> wapi_conf:publish_db_update(Action, Db, P) end,
     whapps_util:amqp_pool_send(Props, Fun).
 
 -spec publish_fields(wh_json:object()) -> wh_proplist().

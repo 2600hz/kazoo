@@ -144,13 +144,17 @@ start_link(Name, ExpirePeriod, Props) ->
     end.
 
 -spec build_bindings(wh_proplist()) -> wh_proplist().
-build_bindings([[]]) -> [{'conf', ['federate']}];
+build_bindings([[]]) -> document_bindings([[]]);
 build_bindings(BindingProps) ->
-     add_database_binding([{'conf', ['federate'|P]} || P <- BindingProps]).
+    [database_binding() | document_bindings(BindingProps)].
 
--spec add_database_binding(wh_proplist()) -> wh_proplist().
-add_database_binding(Bindings) ->
-    [{'conf', ['federate', {'type', <<"database">>}]} | Bindings].
+-spec document_bindings(wh_proplist()) -> wh_proplist().
+document_bindings(BindingProps) ->
+     [{'conf', ['federate'|P]} || P <- BindingProps].
+
+-spec database_binding() -> wh_proplist().
+database_binding() ->
+    {'conf', ['federate', {'type', <<"database">>}]}.
 
 -spec store(term(), term()) -> 'ok'.
 -spec store(term(), term(), wh_proplist()) -> 'ok'.
