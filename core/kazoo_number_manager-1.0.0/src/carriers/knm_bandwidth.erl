@@ -47,40 +47,60 @@
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', _}.
-find_numbers(<<"+", Rest/binary>>, Quanity, Opts) ->
-    find_numbers(Rest, Quanity, Opts);
-find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
-    find_numbers(Rest, Quanity, Opts);
-find_numbers(<<NPA:3/binary>>, Quanity, _) ->
+find_numbers(<<"+", Rest/binary>>, Quanity, Options) ->
+    find_numbers(Rest, Quanity, Options);
+find_numbers(<<"1", Rest/binary>>, Quanity, Options) ->
+    find_numbers(Rest, Quanity, Options);
+find_numbers(<<NPA:3/binary>>, Quanity, Options) ->
     Props = [{'areaCode', [wh_util:to_list(NPA)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}
             ],
     case make_numbers_request('areaCodeNumberSearch', Props) of
         {'error', _}=E -> E;
-        {'ok', Xml} -> process_numbers_search_resp(Xml)
+        {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end;
-find_numbers(Search, Quanity, _) ->
+find_numbers(Search, Quanity, Options) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
     Props = [{'npaNxx', [wh_util:to_list(NpaNxx)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}
             ],
     case make_numbers_request('npaNxxNumberSearch', Props) of
         {'error', _}=E -> E;
-        {'ok', Xml} -> process_numbers_search_resp(Xml)
+        {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end.
 
--spec process_numbers_search_resp(string()) ->
+-spec process_numbers_search_resp(string(), wh_proplist()) ->
                                          {'ok', knm_number:knm_numbers()}.
-process_numbers_search_resp(Xml) ->
+process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
-    Resp = [begin
-                JObj = number_search_response_to_json(Number),
-                Num = wh_json:get_value(<<"e164">>, JObj),
-                {Num, JObj}
-            end
+    AccountId = props:get_value(<<"account_id">>, Options),
+
+    {'ok', [found_number_to_object(Number, AccountId)
             || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)
-           ],
-    {'ok', format_resp(Resp)}.
+           ]
+    }.
+
+-spec found_number_to_object(term(), api_binary()) ->
+                                    knm_number:knm_number().
+found_number_to_object(Found, AccountId) ->
+    JObj = number_search_response_to_json(Found),
+    Num = wh_json:get_value(<<"e164">>, JObj),
+    NormalizedNum = knm_converters:normalize(Num),
+    NumberDb = knm_converters:to_db(NormalizedNum),
+
+    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+               ,{fun knm_phone_number:set_carrier_data/2, JObj}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+               ,{fun knm_phone_number:set_assign_to/2, AccountId}
+              ],
+    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    knm_number:set_phone_number(
+      knm_number:new()
+      ,PhoneNumber
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -197,34 +217,6 @@ should_lookup_cnam() -> 'true'.
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec format_resp(wh_proplist()) ->
-                         knm_number:knm_numbers().
-format_resp(Resp) ->
-    [found_number_to_object(Num, JObj) || {Num, JObj} <- Resp].
-
--spec found_number_to_object(ne_binary(), wh_json:object()) ->
-                                    knm_number:knm_number().
-found_number_to_object(Num, JObj) ->
-    NormalizedNum = knm_converters:normalize(Num),
-    NumberDb = knm_converters:to_db(NormalizedNum),
-    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
-               ,{fun knm_phone_number:set_carrier_data/2, JObj}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
-               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-              ],
-    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    knm_number:set_phone_number(
-      knm_number:new()
-      ,PhoneNumber
-     ).
 
 %%--------------------------------------------------------------------
 %% @private
