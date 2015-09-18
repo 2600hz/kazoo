@@ -250,7 +250,7 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
        ,{fun knm_phone_number:set_assign_to/2, props:get_binary_value(<<"assign_to">>, Props)}
        ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props)}
        ,{fun knm_phone_number:set_dry_run/2, props:is_true(<<"dry_run">>, Props, 'false')}
-       ,{fun knm_phone_number:set_module_name/2, props:get_binary_value(<<"module_name">>, Props, ?DEFAULT_CARRIER_MODULE)}
+       ,{fun knm_phone_number:set_module_name/2, props:get_binary_value(<<"module_name">>, Props, knm_carriers:default_carrier())}
        ,{fun knm_phone_number:set_doc/2, props:get_value(<<"public_fields">>, Props)}
       ]).
 

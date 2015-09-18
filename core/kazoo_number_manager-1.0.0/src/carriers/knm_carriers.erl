@@ -13,16 +13,33 @@
 
 -export([find/1, find/2, find/3
          ,check/1, check/2
-         ,available_carriers/0, default_carriers/0
+         ,available_carriers/0
+         ,default_carriers/0, default_carrier/0
          ,acquire/1
          ,disconnect/1
         ]).
 
+-define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
+
 -ifdef(TEST).
+-define(DEFAULT_CARRIER_MODULE
+        ,?CARRIER_LOCAL
+       ).
 -define(CARRIER_MODULES, ?DEFAULT_CARRIER_MODULES).
+
 -else.
+
+-define(DEFAULT_CARRIER_MODULE
+        ,whapps_config:get_binary(?KNM_CONFIG_CAT
+                                  ,<<"available_module_name">>
+                                  ,?CARRIER_LOCAL
+                                 )
+       ).
 -define(CARRIER_MODULES
-        ,whapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)
+        ,whapps_config:get(?KNM_CONFIG_CAT
+                           ,<<"carrier_modules">>
+                           ,?DEFAULT_CARRIER_MODULES
+                          )
        ).
 -endif.
 
@@ -87,11 +104,75 @@ process_number_result(Number, Acc) ->
     process_number_result(Number, Acc, knm_phone_number:module_name(PhoneNumber)).
 
 process_number_result(Number, Acc, ?CARRIER_OTHER) ->
-    [found_number_to_jobj(Number) | Acc].
+    [found_number_to_jobj(Number) | Acc];
+process_number_result(Number, Acc, Carrier) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    DID = knm_phone_number:number(PhoneNumber),
+    check_for_existing_did(Number, Acc, Carrier, knm_phone_number:fetch(DID)).
 
+-spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), number_return()) -> wh_json:objects().
+check_for_existing_did(Number, Acc, _Carrier, {'error', 'not_found'}) ->
+    create_discovery(Number, Acc);
+check_for_existing_did(_Number, Acc, _Carrier, {'error', _}) ->
+    Acc;
+check_for_existing_did(Number, Acc, Carrier, {'ok', ExistingPhoneNumber}) ->
+    case knm_phone_number:module_name(ExistingPhoneNumber) of
+        Carrier -> check_existing_phone_number(Number, Acc, ExistingPhoneNumber);
+        _OtherCarrier ->
+            create_discovery(
+              transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier)
+              ,Acc
+             )
+    end.
+
+-spec create_discovery(knm_number:knm_number(), wh_json:objects()) ->
+                              wh_json:objects().
+create_discovery(Number, Acc) ->
+    DiscoveryUpdates =
+        [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}],
+    PhoneNumber = knm_number:phone_number(Number),
+    DiscoveryNumber =
+        knm_number:set_phone_number(
+          Number
+          ,knm_phone_number:setters(PhoneNumber, DiscoveryUpdates)
+         ),
+    case knm_number:save(DiscoveryNumber) of
+        {'ok', SavedNumber} ->
+            [found_number_to_jobj(SavedNumber) | Acc];
+        {'error', _E} ->
+            Acc
+    end.
+
+-spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_number(), ne_binary()) ->
+                                              knm_number:knm_number().
+transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    knm_number:set_phone_number(
+      Number
+      ,knm_phone_number:setters(
+         ExistingPhoneNumber
+         ,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber)}
+           ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber)}
+           ,{fun knm_phone_number:set_module_name/2, Carrier}
+          ]
+        )
+     ).
+
+-spec check_existing_phone_number(knm_number:knm_number(), wh_json:objects(), knm_phone_number:knm_number()) -> wh_json:objects().
+check_existing_phone_number(Number, Acc, PhoneNumber) ->
+    case lists:member(knm_phone_number:state(PhoneNumber)
+                      ,?KNM_AVAILABLE_STATES
+                     )
+    of
+        'true' -> [found_number_to_jobj(Number) | Acc];
+        'false' -> Acc
+    end.
+
+-spec found_numbers_to_jobjs(knm_number:knm_numbers()) -> wh_json:objects().
 found_numbers_to_jobjs(Numbers) ->
     [found_number_to_jobj(Number) || Number <- Numbers].
 
+-spec found_number_to_jobj(knm_number:knm_number()) -> wh_json:object().
 found_number_to_jobj(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     DID = knm_phone_number:number(PhoneNumber),
@@ -157,6 +238,10 @@ default_carriers() ->
      || M <- ?DEFAULT_CARRIER_MODULES,
         (Module = wh_util:try_load_module(M)) =/= 'false'
     ].
+
+-spec default_carrier() -> ne_binary().
+default_carrier() ->
+    ?DEFAULT_CARRIER_MODULE.
 
 %%--------------------------------------------------------------------
 %% @public

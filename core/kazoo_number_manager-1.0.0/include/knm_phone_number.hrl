@@ -46,6 +46,8 @@
 -define(NUMBER_STATE_DISCONNECTED, <<"disconnected">>).
 -define(NUMBER_STATE_DELETED, <<"deleted">>).
 
+-define(KNM_AVAILABLE_STATES, [?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_AVAILABLE]).
+
 -define(DEFAULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>
                                    ,<<"failover">> ,<<"prepend">>
                                   ]).
@@ -56,20 +58,6 @@
 
 -define(CARRIER_OTHER, <<"knm_other">>).
 -define(CARRIER_LOCAL, <<"knm_local">>).
--define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
-
--ifdef(TEST).
--define(DEFAULT_CARRIER_MODULE
-        ,?CARRIER_LOCAL
-       ).
--else.
--define(DEFAULT_CARRIER_MODULE
-        ,whapps_config:get_binary(?KNM_CONFIG_CAT
-                                  ,<<"available_module_name">>
-                                  ,?CARRIER_LOCAL
-                                 )
-       ).
--endif.
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
