@@ -10,6 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(knm_bandwidth).
 
+-behaviour(knm_gen_carrier).
+
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
@@ -43,7 +45,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          number_return().
+                          {'ok', knm_number:knm_numbers()} |
+                          {'error', _}.
 find_numbers(<<"+", Rest/binary>>, Quanity, Opts) ->
     find_numbers(Rest, Quanity, Opts);
 find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
@@ -67,7 +70,7 @@ find_numbers(Search, Quanity, _) ->
     end.
 
 -spec process_numbers_search_resp(string()) ->
-                                         {'ok', knm_phone_number:knm_numbers()}.
+                                         {'ok', knm_number:knm_numbers()}.
 process_numbers_search_resp(Xml) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
     Resp = [begin
@@ -180,7 +183,7 @@ get_number_data(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_number()) -> 'true'.
+-spec is_number_billable(knm_number:knm_number()) -> 'true'.
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -201,14 +204,13 @@ should_lookup_cnam() -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec format_resp(wh_proplist()) ->
-                         knm_phone_number:knm_numbers().
--spec format_resp(wh_proplist(), knm_phone_number:knm_numbers()) ->
-                         knm_phone_number:knm_numbers().
+                         knm_number:knm_numbers().
 format_resp(Resp) ->
-    format_resp(Resp, []).
+    [found_number_to_object(Num, JObj) || {Num, JObj} <- Resp].
 
-format_resp([], Numbers) -> Numbers;
-format_resp([{Num, JObj}|T], Numbers) ->
+-spec found_number_to_object(ne_binary(), wh_json:object()) ->
+                                    knm_number:knm_number().
+found_number_to_object(Num, JObj) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
@@ -217,11 +219,12 @@ format_resp([{Num, JObj}|T], Numbers) ->
                ,{fun knm_phone_number:set_carrier_data/2, JObj}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-               ,fun knm_phone_number:save/1
-               ,fun wh_util:identity/1
               ],
-    Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    format_resp(T, [Number|Numbers]).
+    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    knm_number:set_phone_number(
+      knm_number:new()
+      ,PhoneNumber
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
