@@ -30,8 +30,8 @@
 find_numbers(Number, Quanity, Opts) when size(Number) < 5 ->
     find_numbers(<<"+1", Number/binary>>, Quanity, Opts);
 find_numbers(_Number, _Quanity, _Opts) ->
-    %% TODO: given the requestors account number discovery wnm_local numbers that are
-    %%       available but managed by accendants of the account.
+    %% TODO: given the requestor's account, discover wnm_local numbers
+    %%        that are available but managed by accendants of the account.
     {'error', 'non_available'}.
 
 -spec is_number_billable(knm_number:knm_number()) -> 'false'.
