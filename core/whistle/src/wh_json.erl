@@ -355,17 +355,20 @@ filter(Pred, ?JSON_WRAPPER(_)=JObj, Keys) when is_list(Keys),
     set_value(Keys, filter(Pred, get_json_value(Keys, JObj)), JObj);
 filter(Pred, JObj, Key) -> filter(Pred, JObj, [Key]).
 
--spec map(fun((key(), json_term()) -> {key(), json_term()}), object()) -> object().
+-spec map(fun((key(), json_term()) -> {key(), json_term()}), object()) ->
+                 object().
 map(F, ?JSON_WRAPPER(Prop)) -> from_list([ F(K, V) || {K,V} <- Prop]).
 
 -spec foreach(fun(({json_key(), json_term()}) -> any()), object()) -> 'ok'.
 foreach(F, ?JSON_WRAPPER(Prop)) when is_function(F, 1) -> lists:foreach(F, Prop).
 
--spec all(fun(({json_key(), json_term()}) -> boolean()), object()) -> boolean().
+-spec all(fun(({json_key(), json_term()}) -> boolean()), object()) ->
+                 boolean().
 all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:all(Pred, Prop).
 
--spec any(fun(({json_key(), json_term()}) -> boolean()), object()) -> boolean().
+-spec any(fun(({json_key(), json_term()}) -> boolean()), object()) ->
+                 boolean().
 any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:any(Pred, Prop).
 
