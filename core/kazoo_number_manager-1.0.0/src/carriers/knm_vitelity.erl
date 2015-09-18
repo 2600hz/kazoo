@@ -10,6 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(knm_vitelity).
 
+-behaviour(knm_gen_carrier).
+
 -export([find_numbers/3
          ,acquire_number/1
          ,disconnect_number/1
@@ -27,15 +29,20 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'ok', wh_json:objects()} |
+                          {'ok', knm_number:knm_numbers()} |
                           {'error', _}.
-find_numbers(Prefix, Quantity, Opts) when not is_integer(Quantity) ->
-    find_numbers(Prefix, wh_util:to_integer(Quantity), Opts);
-find_numbers(Prefix, Quantity, Opts) ->
-    case props:get_value('tollfree', Opts, 'false') of
-        'true' -> find(Prefix, Quantity, add_tollfree_options(Quantity, Opts));
+find_numbers(Prefix, Quantity, Options) when not is_integer(Quantity) ->
+    find_numbers(Prefix, wh_util:to_integer(Quantity), Options);
+find_numbers(Prefix, Quantity, Options) ->
+    case props:is_true(<<"tollfree">>, Options) of
+        'true' ->
+            find(Prefix
+                 ,Quantity
+                 ,Options
+                 ,tollfree_options(Quantity, Options)
+                );
         'false' ->
-            classify_and_find(Prefix, Quantity, Opts)
+            classify_and_find(Prefix, Quantity, Options)
     end.
 
 %%--------------------------------------------------------------------
@@ -121,13 +128,16 @@ is_number_billable(_) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec classify_and_find(ne_binary(), pos_integer(), knm_vitelity_util:query_options()) ->
-                               {'ok', wh_json:objects()} |
+                               {'ok', knm_number:knm_numbers()} |
                                {'error', _}.
-classify_and_find(Prefix, Quantity, Opts) ->
+classify_and_find(Prefix, Quantity, Options) ->
     case knm_converters:classify(Prefix) of
-        <<"tollfree_us">> -> find(Prefix, Quantity, add_tollfree_options(Quantity, Opts));
-        <<"tollfree">> -> find(Prefix, Quantity, add_tollfree_options(Quantity, Opts));
-        _ -> find(Prefix, Quantity, add_local_options(Prefix, Opts))
+        <<"tollfree_us">> ->
+            find(Prefix, Quantity, Options, tollfree_options(Quantity, Options));
+        <<"tollfree">> ->
+            find(Prefix, Quantity, Options, tollfree_options(Quantity, Options));
+        _Classification ->
+            find(Prefix, Quantity, Options, local_options(Prefix, Options))
     end.
 
 %%--------------------------------------------------------------------
@@ -136,17 +146,61 @@ classify_and_find(Prefix, Quantity, Opts) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_tollfree_options(pos_integer(), knm_vitelity_util:query_options()) ->
-                                  knm_vitelity_util:query_options().
-add_tollfree_options(Quantity, Opts) ->
-    TollFreeOpts = [{'qs', [{'cmd', <<"listtollfree">>}
-                            ,{'limit', Quantity}
+-spec tollfree_options(pos_integer(), knm_vitelity_util:query_options()) ->
+                              knm_vitelity_util:query_options().
+tollfree_options(Quantity, Options) ->
+    TollFreeOptions = [{'qs', [{'cmd', <<"listtollfree">>}
+                               ,{'limit', Quantity}
+                               ,{'xml', <<"yes">>}
+                               | knm_vitelity_util:default_options(Options)
+                              ]}
+                       ,{'uri', knm_vitelity_util:api_uri()}
+                      ],
+    lists:foldl(fun knm_vitelity_util:add_options_fold/2
+                ,[]
+                ,TollFreeOptions
+               ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec local_options(ne_binary(), knm_vitelity_util:query_options()) ->
+                           knm_vitelity_util:query_options().
+local_options(Prefix, Options) when byte_size(Prefix) =< 3 ->
+    LocalOptions = [{'qs', [{'npa', Prefix}
+                            ,{'cmd', <<"listnpa">>}
+                            ,{'withrates', knm_vitelity_util:get_query_value(<<"withrates">>, Options)}
+                            ,{'type', knm_vitelity_util:get_query_value(<<"type">>, Options)}
+                            ,{'provider', knm_vitelity_util:get_query_value(<<"provider">>, Options)}
                             ,{'xml', <<"yes">>}
-                            | knm_vitelity_util:default_options(Opts)
+                            ,{'cnam', knm_vitelity_util:get_query_value(<<"cnam">>, Options)}
+                            | knm_vitelity_util:default_options(Options)
                            ]}
                     ,{'uri', knm_vitelity_util:api_uri()}
                    ],
-    lists:foldl(fun knm_vitelity_util:add_options_fold/2, Opts, TollFreeOpts).
+    lists:foldl(fun knm_vitelity_util:add_options_fold/2
+                ,[]
+                ,LocalOptions
+               );
+local_options(Prefix, Options) ->
+    LocalOptions = [{'qs', [{'npanxx', Prefix}
+                            ,{'cmd', <<"listnpanxx">>}
+                            ,{'withrates', knm_vitelity_util:get_query_value(<<"withrates">>, Options)}
+                            ,{'type', knm_vitelity_util:get_query_value(<<"type">>, Options)}
+                            ,{'provider', knm_vitelity_util:get_query_value(<<"provider">>, Options)}
+                            ,{'xml', <<"yes">>}
+                            ,{'cnam', knm_vitelity_util:get_query_value(<<"cnam">>, Options)}
+                            | knm_vitelity_util:default_options(Options)
+                           ]}
+                    ,{'uri', knm_vitelity_util:api_uri()}
+                   ],
+    lists:foldl(fun knm_vitelity_util:add_options_fold/2
+                ,[]
+                ,LocalOptions
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,46 +208,53 @@ add_tollfree_options(Quantity, Opts) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_local_options(ne_binary(), knm_vitelity_util:query_options()) ->
-                               knm_vitelity_util:query_options().
-add_local_options(Prefix, Opts) when byte_size(Prefix) =< 3 ->
-    LocalOpts = [{'qs', [{'npa', Prefix}
-                         ,{'cmd', <<"listnpa">>}
-                         ,{'withrates', knm_vitelity_util:get_query_value('withrates', Opts)}
-                         ,{'type', knm_vitelity_util:get_query_value('type', Opts)}
-                         ,{'provider', knm_vitelity_util:get_query_value('provider', Opts)}
-                         ,{'xml', <<"yes">>}
-                         ,{'cnam', knm_vitelity_util:get_query_value('cnam', Opts)}
-                         | knm_vitelity_util:default_options(Opts)
-                        ]}
-                 ,{'uri', knm_vitelity_util:api_uri()}
-                ],
-    lists:foldl(fun knm_vitelity_util:add_options_fold/2, Opts, LocalOpts);
-add_local_options(Prefix, Opts) ->
-    LocalOpts = [{'qs', [{'npanxx', Prefix}
-                         ,{'cmd', <<"listnpanxx">>}
-                         ,{'withrates', knm_vitelity_util:get_query_value('withrates', Opts)}
-                         ,{'type', knm_vitelity_util:get_query_value('type', Opts)}
-                         ,{'provider', knm_vitelity_util:get_query_value('provider', Opts)}
-                         ,{'xml', <<"yes">>}
-                         ,{'cnam', knm_vitelity_util:get_query_value('cnam', Opts)}
-                         | knm_vitelity_util:default_options(Opts)
-                        ]}
-                 ,{'uri', knm_vitelity_util:api_uri()}
-                ],
-    lists:foldl(fun knm_vitelity_util:add_options_fold/2, Opts, LocalOpts).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find(ne_binary(), pos_integer(), wh_proplist()) ->
-                  {'ok', wh_json:objects()} |
+-spec find(ne_binary(), pos_integer(), wh_proplist(), knm_vitelity_util:query_options()) ->
+                  {'ok', knm_number:knm_numbers()} |
                   {'error', _}.
-find(Prefix, Quantity, Opts) ->
-    query_vitelity(Prefix, Quantity, knm_vitelity_util:build_uri(Opts)).
+find(Prefix, Quantity, Options, VitelityOptions) ->
+    case query_vitelity(Prefix
+                        ,Quantity
+                        ,knm_vitelity_util:build_uri(VitelityOptions)
+                       )
+    of
+        {'error', _}=Error -> Error;
+        {'ok', JObj} -> response_to_numbers(JObj, Options)
+    end.
+
+-spec response_to_numbers(wh_json:object(), wh_proplist()) ->
+                                 {'ok', knm_number:knm_numbers()}.
+response_to_numbers(JObj, Options) ->
+    AccountId = props:get_value(<<"account_id">>, Options),
+    {'ok'
+     ,wh_json:foldl(fun(K, V, Acc) -> response_pair_to_number(K, V, Acc, AccountId) end
+                    ,[]
+                    ,JObj
+                   )
+    }.
+
+-spec response_pair_to_number(ne_binary(), wh_json:object(), knm_number:knm_numbers(), api_binary()) ->
+                                     knm_number:knm_numbers().
+response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
+    NormalizedNum = knm_converters:normalize(DID),
+    NumberDb = knm_converters:to_db(NormalizedNum),
+
+    Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
+               ,{fun knm_phone_number:set_carrier_data/2, CarrierData}
+               ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+               ,{fun knm_phone_number:set_assign_to/2, AccountId}
+              ],
+    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    [knm_number:set_phone_number(
+      knm_number:new()
+      ,PhoneNumber
+     )
+     | Acc
+    ].
+
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -263,8 +324,12 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) -> {'ok', wh_json:object()} | {'error', _}.
--spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), wh_proplist()) ->  {'ok', wh_json:object()} | {'error', _}.
+-spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', _}.
+-spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), wh_proplist()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', _}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
     {'error', 'no_numbers'};
 process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
@@ -277,7 +342,7 @@ process_xml_numbers(_Prefix, 0, _Els, Acc) ->
     {'ok', wh_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
                                                      ,content=Reason
-                                                     }
+                                                    }
                                          |_], _Acc) ->
     lager:debug("response tag found, error!"),
     {'error', kz_xml:texts_to_binary(Reason)};

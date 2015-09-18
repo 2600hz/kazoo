@@ -77,15 +77,17 @@ api_uri() ->
 config_cat() ->
     ?KNM_VITELITY_CONFIG_CAT.
 
--spec add_options_fold({atom(), api_binary()}, query_options()) -> query_options().
-add_options_fold({_K, 'undefined'}, Opts) -> Opts;
-add_options_fold({K, V}, Opts) ->
-    props:insert_value(K, V, Opts).
+-spec add_options_fold({atom(), api_binary()}, query_options()) ->
+                              query_options().
+add_options_fold({_K, 'undefined'}, Options) -> Options;
+add_options_fold({K, V}, Options) ->
+    props:insert_value(K, V, Options).
 
--spec get_query_value(atom(), query_options()) -> term().
-get_query_value(Key, Opts) ->
-    case props:get_value(Key, Opts) of
-        'undefined' -> whapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
+-spec get_query_value(atom() | ne_binary(), query_options()) -> term().
+get_query_value(Key, Options) ->
+    case props:get_value(Key, Options) of
+        'undefined' ->
+            whapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
         Value -> Value
     end.
 
@@ -93,18 +95,18 @@ get_query_value(Key, Opts) ->
 -spec default_options(wh_proplist()) -> qs_options().
 default_options() ->
      default_options([]).
-default_options(Opts) ->
-    [{'login', knm_vitelity_util:get_query_value('login', Opts)}
-     ,{'pass', knm_vitelity_util:get_query_value('pass', Opts)}
+default_options(Options) ->
+    [{'login', get_query_value(<<"login">>, Options)}
+     ,{'pass', get_query_value(<<"pass">>, Options)}
     ].
 
--spec build_uri(wh_proplist()) -> ne_binary().
-build_uri(Opts) ->
-    URI = props:get_value('uri', Opts),
+-spec build_uri(query_options()) -> ne_binary().
+build_uri(Options) ->
+    URI = props:get_value('uri', Options),
     QS = wh_util:to_binary(
            props:to_querystring(
              props:filter_undefined(
-               props:get_value('qs', Opts)
+               props:get_value('qs', Options)
               ))),
     <<URI/binary, "?", QS/binary>>.
 
