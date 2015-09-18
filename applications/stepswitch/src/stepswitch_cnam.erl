@@ -262,12 +262,13 @@ cache_key(Number) -> ?CACHE_KEY(Number).
 
 -spec fetch_cnam(ne_binary(), wh_json:object()) -> api_binary().
 fetch_cnam(Number, JObj) ->
-    CNAM = make_request(Number, JObj),
-    CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}
-                  ,{'origin', [{'db', wnm_util:number_to_db_name(Number), Number}, {'type', <<"number">>}]}
-                 ],
-    wh_cache:store_local(?STEPSWITCH_CACHE, cache_key(Number), CNAM, CacheProps),
-    CNAM.
+    case make_request(Number, JObj) of
+        'undefined' -> 'undefined';
+        CNAM ->
+            CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}],
+            wh_cache:store_local(?STEPSWITCH_CACHE, cache_key(Number), CNAM, CacheProps),
+            CNAM
+    end.
 
 -spec make_request(ne_binary(), wh_json:object()) -> api_binary().
 make_request(Number, JObj) ->
