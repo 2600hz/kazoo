@@ -175,6 +175,20 @@ found_numbers_to_jobjs(Numbers) ->
 -spec found_number_to_jobj(knm_number:knm_number()) -> wh_json:object().
 found_number_to_jobj(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
+    found_number_to_jobj(PhoneNumber, knm_phone_number:module_name(PhoneNumber)).
+
+-spec found_number_to_jobj(knm_phone_number:knm_number(), ne_binary()) ->
+                                  wh_json:object().
+found_number_to_jobj(PhoneNumber, ?CARRIER_MANAGED) ->
+    CarrierData = knm_phone_number:carrier_data(PhoneNumber),
+    wh_json:from_list(
+      props:filter_undefined(
+              [{<<"number">>, knm_phone_number:number(PhoneNumber)}
+               ,{<<"rate">>, wh_json:get_value(<<"rate">>, CarrierData, <<"1">>)}
+               ,{<<"activation_charge">>, wh_json:get_value(<<"activation_charge">>, CarrierData, <<"0">>)}
+              ])
+     );
+found_number_to_jobj(PhoneNumber, _Carrier) ->
     DID = knm_phone_number:number(PhoneNumber),
     CarrierData = knm_phone_number:carrier_data(PhoneNumber),
     AssignTo = knm_phone_number:assign_to(PhoneNumber),

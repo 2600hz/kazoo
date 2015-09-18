@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(knm_managed).
 
+-behaviour(knm_gen_carrier).
+
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
@@ -29,8 +31,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'ok', wh_json:object()} |
-                          {'error', 'non_available'}.
+                          {'ok', knm_number:knm_numbers()} |
+                          {'error', _}.
 find_numbers(<<"+", _/binary>>=Number, Quantity, Opts) ->
     AccountId = props:get_value(<<"Account-ID">>, Opts),
     find_numbers_in_account(Number, Quantity, AccountId);
@@ -38,21 +40,22 @@ find_numbers(Number, Quantity, Opts) ->
     find_numbers(<<"+",Number/binary>>, Quantity, Opts).
 
 -spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
-                                     {'error', _} |
-                                     {'ok', wh_json:object()}.
+                                     {'ok', knm_number:knm_numbers()} |
+                                     {'error', _}.
 find_numbers_in_account(Number, Quantity, AccountId) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
-        {'error', 'non_available'}=A ->
+        {'error', 'non_available'}=Error ->
             case wh_services:find_reseller_id(AccountId) of
-                AccountId -> A;
-                ResellerId -> find_numbers_in_account(Number, Quantity, ResellerId)
+                AccountId -> Error;
+                ResellerId ->
+                    find_numbers_in_account(Number, Quantity, ResellerId)
             end;
-        R -> R
+        Result -> Result
     end.
 
 -spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
                                         {'error', _} |
-                                        {'ok', wh_json:object()}.
+                                        {'ok', knm_number:knm_numbers()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
                    ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}
@@ -64,7 +67,7 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
             lager:debug("found no available managed numbers for account ~p", [AccountId]),
             {'error', 'non_available'};
         {'ok', JObjs} ->
-            lager:debug("found ~p available managed numbers for account ~p", [length(JObjs),AccountId]),
+            lager:debug("found available managed numbers for account ~s", [AccountId]),
             {'ok', format_numbers_resp(JObjs)};
         {'error', _R}=E ->
             lager:debug("failed to lookup available managed numbers: ~p", [_R]),
@@ -72,23 +75,27 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
     end.
 
 -spec format_numbers_resp(wh_json:objects()) ->
-                                 wh_json:object().
+                                 knm_number:knm_numbers().
 format_numbers_resp(JObjs) ->
-    Numbers = lists:foldl(fun format_numbers_resp_fold/2, [], JObjs),
-    wh_json:from_list(Numbers).
+    [format_number_resp(JObj) || JObj <- JObjs].
 
--type format_acc() :: wh_json:json_proplist().
-
--spec format_numbers_resp_fold(wh_json:object(), format_acc()) -> format_acc().
-format_numbers_resp_fold(JObj, Acc) ->
+-spec format_number_resp(wh_json:object()) ->
+                                knm_number:knm_number().
+format_number_resp(JObj) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     Id = wh_doc:id(Doc),
-    Props = props:filter_undefined(
-              [{<<"number">>, Id}
-               ,{<<"rate">>, wh_json:get_value(<<"rate">>, Doc, <<"1">>)}
-               ,{<<"activation_charge">>, wh_json:get_value(<<"activation_charge">>, Doc, <<"0">>)}
-              ]),
-    [{Id, wh_json:from_list(Props)} | Acc].
+
+    Updates = [{fun knm_phone_number:set_number/2, Id}
+               ,{fun knm_phone_number:set_carrier_data/2, Doc}
+               ,{fun knm_phone_number:set_module_name/2, ?CARRIER_MANAGED}
+              ],
+    knm_number:set_phone_number(
+      knm_number:new()
+      ,knm_phone_number:setters(
+         knm_phone_number:new()
+         ,Updates
+        )
+     ).
 
 -spec is_number_billable(knm_number:knm_number()) -> boolean().
 is_number_billable(_Number) -> 'false'.
