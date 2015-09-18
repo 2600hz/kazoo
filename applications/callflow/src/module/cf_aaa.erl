@@ -1,20 +1,20 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
-%%%  The module is main application module
+%%%  This callflow element provides ability to make a custom request to the Circlemaker (RADIUS-requests) and to receive response contained RADIUS-response. After it a set of variables will be extracted from the received response and added to the variables list of the Call.
 %%%
 %%% "data":{
-%%%   "request_fields": // List of fields for sending as part of RADIUS-request (part of Custom-Channel-Vars)
+%%%   "request_fields": // List of fields for sending as part of RADIUS-request (part of Custom-Channel-Vars) as pairs key/value
 %%%     {
 %%%       "Custom-Field1":"value1",
-%%%       "Custom-Field2":"value2",
+%%%       ["Custom-Channel-Vars","Custom-Field2"]:"value2",
 %%%     },
-%%%   ,"response_field": // List of fields should be extracted from CCV list of RADIUS-response
+%%%   ,"response_field": // List of the field names from response, which will be added to the Call
 %%%     [
 %%%       ["Custom-Channel-Vars","Account-Balance"],
 %%%        "Account-Max-Overdraft"
 %%%     ]
-%%%   ,"channel": "a", "both"
+%%%   ,"channel": "a", "both" // Value should be "a" or "both". The "a" value is used only for current channel, and "both" value is used for both channels of the Call
 %%% }
 %%% @end
 %%% @contributors
