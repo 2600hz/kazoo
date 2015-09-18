@@ -286,7 +286,7 @@ mime_to_extension(_) -> <<"wav">>.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec preaty_print_length('undefined' | integer() | wh_json:object()) -> ne_binary().
+-spec preaty_print_length(integer() | api_object()) -> ne_binary().
 preaty_print_length('undefined') ->
     <<"00:00">>;
 preaty_print_length(Milliseconds) when is_integer(Milliseconds) ->

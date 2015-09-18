@@ -868,7 +868,7 @@ start_amqp(Props) ->
             {'ok', Q}
     end.
 
--spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
+-spec set_qos(api_non_neg_integer()) -> 'ok'.
 set_qos('undefined') -> 'ok';
 set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
 

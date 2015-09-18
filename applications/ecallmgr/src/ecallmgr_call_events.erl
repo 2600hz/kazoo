@@ -883,7 +883,7 @@ silence_terminated(Prop) when is_list(Prop) ->
 is_channel_moving(Props) ->
     props:get_is_true(<<"variable_channel_is_moving">>, Props, 'false').
 
--spec get_channel_moving(wh_proplist()) -> 'undefined' | boolean().
+-spec get_channel_moving(wh_proplist()) -> api_boolean().
 get_channel_moving(Props) ->
     case is_channel_moving(Props) of
         'false' -> 'undefined';

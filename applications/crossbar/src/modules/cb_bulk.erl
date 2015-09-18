@@ -336,7 +336,7 @@ import_results_error(Id, C, Context) ->
                              ]),
     cb_context:set_resp_data(Context, wh_json:set_value(Id, Resp, JObj)).
 
--spec select_doc(ne_binary(), wh_json:objects()) -> wh_json:object() | 'undefined'.
+-spec select_doc(ne_binary(), wh_json:objects()) -> api_object().
 select_doc(_Id, []) -> 'undefined';
 select_doc(Id, [JObj|JObjs]) ->
     case wh_doc:id(JObj) of
@@ -344,7 +344,7 @@ select_doc(Id, [JObj|JObjs]) ->
         _ -> select_doc(Id, JObjs)
     end.
 
--spec get_doc_updates(cb_context:context()) -> 'undefined' | wh_json:object().
+-spec get_doc_updates(cb_context:context()) -> api_object().
 get_doc_updates(Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_value(<<"updates">>, JObj) of

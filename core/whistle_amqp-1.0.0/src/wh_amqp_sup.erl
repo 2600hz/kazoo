@@ -127,7 +127,7 @@ add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) ->
     supervisor:start_child(?MODULE, ?POOL_SPEC(?ATOM(UUID), Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck)).
 
--spec pool_pid(atom() | binary()) -> 'undefined' | pid().
+-spec pool_pid(atom() | binary()) -> api_pid().
 pool_pid(Pool) ->
     case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?MODULE), Id =:= ?ATOM(Pool)] of
         [] -> 'undefined';

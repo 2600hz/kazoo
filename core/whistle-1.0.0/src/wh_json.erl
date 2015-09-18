@@ -363,7 +363,7 @@ get_list_value(Key, JObj, Default) ->
         _Else -> Default
     end.
 
--spec get_binary_value(key(), object() | objects()) -> 'undefined' | binary().
+-spec get_binary_value(key(), object() | objects()) -> api_binary().
 -spec get_binary_value(key(), object() | objects(), Default) -> binary() | Default.
 get_binary_value(Key, JObj) ->
     get_binary_value(Key, JObj, 'undefined').
@@ -384,7 +384,7 @@ get_ne_binary_value(Key, JObj, Default) ->
         Value -> Value
     end.
 
--spec get_lower_binary(key(), object() | objects()) -> 'undefined' | binary().
+-spec get_lower_binary(key(), object() | objects()) -> api_binary().
 -spec get_lower_binary(key(), object() | objects(), Default) -> binary() | Default.
 get_lower_binary(Key, JObj) ->
     get_lower_binary(Key, JObj, 'undefined').
@@ -396,7 +396,7 @@ get_lower_binary(Key, JObj, Default) ->
     end.
 
 %% must be an existing atom
--spec get_atom_value(key(), object() | objects()) -> 'undefined' | atom().
+-spec get_atom_value(key(), object() | objects()) -> api_atom().
 -spec get_atom_value(key(), object() | objects(), Default) -> atom() | Default.
 get_atom_value(Key, JObj) ->
     get_atom_value(Key, JObj, 'undefined').
@@ -426,7 +426,7 @@ safe_cast(Value, Default, CastFun) ->
         _:_ -> Default
     end.
 
--spec get_number_value(key(), object() | objects()) -> 'undefined' | number().
+-spec get_number_value(key(), object() | objects()) -> api_number().
 -spec get_number_value(key(), object() | objects(), Default) -> number() | Default.
 get_number_value(Key, JObj) ->
     get_number_value(Key, JObj, 'undefined').
@@ -437,7 +437,7 @@ get_number_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun wh_util:to_number/1)
     end.
 
--spec get_float_value(key(), object() | objects()) -> 'undefined' | float().
+-spec get_float_value(key(), object() | objects()) -> api_float().
 -spec get_float_value(key(), object() | objects(), Default) -> float() | Default.
 get_float_value(Key, JObj) ->
     get_float_value(Key, JObj, 'undefined').

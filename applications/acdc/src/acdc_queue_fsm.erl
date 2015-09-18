@@ -789,7 +789,7 @@ current_call(Call, QueueTimeLeft, Start) ->
                        ,{<<"wait_time">>, elapsed(Start)}
                       ]).
 
--spec elapsed('undefined' | reference() | wh_timeout() | integer()) -> api_integer().
+-spec elapsed(api_reference() | wh_timeout() | integer()) -> api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Ref) when is_reference(Ref) ->
     case erlang:read_timer(Ref) of

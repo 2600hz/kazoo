@@ -594,11 +594,11 @@ spawn(Fun) ->
                          Fun()
                  end).
 
--spec set_startup() -> 'undefined' | gregorian_seconds().
+-spec set_startup() -> api_seconds().
 set_startup() ->
     put('$startup', current_tstamp()).
 
--spec startup() -> 'undefined' | gregorian_seconds().
+-spec startup() -> api_seconds().
 startup() ->
     get('$startup').
 

@@ -32,10 +32,10 @@ config_doc_id() ->
 -spec send(ne_binary(), ne_binary(), api_binary()) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary() | whapps_call:call(), ne_binary(), api_binary(), 'undefined' | binary()) ->
+-spec send(ne_binary() | whapps_call:call(), ne_binary(), api_binary(), api_binary()) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
--spec send(ne_binary(), ne_binary(), api_binary(), 'undefined' | binary(), 'undefined' | binary()) ->
+-spec send(ne_binary(), ne_binary(), api_binary(), api_binary(), api_binary()) ->
                   {'ok', ne_binary()} |
                   {'error', 'no_response'}.
 

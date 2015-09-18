@@ -23,7 +23,7 @@ authorize(Request, Limits) ->
     Allotment = find_allotment(Request, Limits),
     maybe_consume_allotment(Allotment, Request, Limits).
 
--spec maybe_consume_allotment('undefined'| wh_json:object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
+-spec maybe_consume_allotment(api_object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_consume_allotment('undefined', Request, _) ->
     lager:debug("account has no allotment", []),
     Request;

@@ -455,7 +455,7 @@ maybe_stop_timer(Timer) when is_reference(Timer) ->
     'ok';
 maybe_stop_timer(_) -> 'ok'.
 
--spec get_timelimit('undefined' | integer()) -> pos_integer().
+-spec get_timelimit(api_integer()) -> pos_integer().
 get_timelimit('undefined') ->
     whapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600);
 get_timelimit(TL) ->

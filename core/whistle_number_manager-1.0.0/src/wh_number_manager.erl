@@ -1046,7 +1046,7 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) -
             prepare_find_results(Numbers, ModuleName, ModuleResults, Found, Opts)
     end.
 
--spec maybe_get_activation_charge(wh_proplist()) -> 'undefined' | non_neg_integer().
+-spec maybe_get_activation_charge(wh_proplist()) -> api_non_neg_integer().
 maybe_get_activation_charge(Opts) ->
     case props:get_value(<<"services">>, Opts) of
         'undefined' -> 'undefined';

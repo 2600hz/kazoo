@@ -46,12 +46,11 @@ start_link(#wh_couch_connection{}=Connection) ->
 -spec config() -> couch_connection().
 config() -> config('undefined').
 
--spec config('undefined' | string()) -> couch_connection().
+-spec config(api_string()) -> couch_connection().
 config('undefined') -> #wh_couch_connection{};
 config(URI) -> config(URI, #wh_couch_connection{}).
 
--spec config(string(), integer() | string() | couch_connection()) ->
-                    couch_connection().
+-spec config(string(), integer() | string() | couch_connection()) -> couch_connection().
 config(URI, #wh_couch_connection{}=Connection) ->
     case http_uri:parse(URI) of
         {'error', 'no_scheme'} ->

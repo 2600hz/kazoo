@@ -87,8 +87,8 @@
 -type load_view_params() :: #load_view_params{}.
 
 -spec pagination_page_size() -> pos_integer().
--spec pagination_page_size(cb_context:context()) -> 'undefined' | pos_integer().
--spec pagination_page_size(cb_context:context(), ne_binary()) -> 'undefined' | pos_integer().
+-spec pagination_page_size(cb_context:context()) -> api_pos_integer().
+-spec pagination_page_size(cb_context:context(), ne_binary()) -> api_pos_integer().
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
@@ -383,10 +383,8 @@ load_view(#load_view_params{view=View
                                                )
     end.
 
--spec limit_by_page_size(api_binary() | pos_integer()) ->
-                                'undefined' | pos_integer().
--spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) ->
-                                'undefined' | pos_integer().
+-spec limit_by_page_size(api_binary() | pos_integer()) -> api_pos_integer().
+-spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) -> api_pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).

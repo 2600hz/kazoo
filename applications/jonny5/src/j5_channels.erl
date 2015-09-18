@@ -58,7 +58,7 @@
                   ,reseller_allotment = 'false' :: boolean() | '_'
                   ,soft_limit = 'false' :: boolean() | '_'
                   ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
-                  ,answered_timestamp :: 'undefined' | pos_integer() | '$1' | '_'
+                  ,answered_timestamp :: api_pos_integer() | '$1' | '_'
                   ,rate :: api_binary() | '_'
                   ,rate_increment :: api_binary() | '_'
                   ,rate_minimum :: api_binary() | '_'
