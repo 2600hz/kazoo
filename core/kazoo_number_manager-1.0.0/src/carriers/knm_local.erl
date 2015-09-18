@@ -10,6 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(knm_local).
 
+-behaviour(knm_gen_carrier).
+
 -export([find_numbers/3]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).

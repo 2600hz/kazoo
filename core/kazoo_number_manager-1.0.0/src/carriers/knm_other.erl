@@ -10,6 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(knm_other).
 
+-behaviour(knm_gen_carrier).
+
 -export([find_numbers/3]).
 -export([check_numbers/2]).
 -export([is_number_billable/1]).
@@ -29,12 +31,20 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
+-ifdef(TEST).
+-define(PHONEBOOK_URL, 'undefined').
+-else.
+-define(PHONEBOOK_URL
+        ,whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)
+       ).
+-endif.
+
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'error', _} |
                           {'bulk', knm_number:knm_numbers()} |
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(Number, Quantity, Options) ->
-    case whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
+    case ?PHONEBOOK_URL of
         'undefined' -> {'error', 'non_available'};
         Url ->
             case props:get_value(<<"blocks">>, Options) of
@@ -220,7 +230,7 @@ format_numbers_resp(JObj, Options) ->
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
             DataJObj = wh_json:get_value(<<"data">>, JObj),
-            AccountId = props:get_value(<<"Account-ID">>, Options),
+            AccountId = props:get_value(<<"account_id">>, Options),
 
             {'ok'
              ,wh_json:map(fun(K, V) -> format_numbers_resp_map(K, V, AccountId) end
