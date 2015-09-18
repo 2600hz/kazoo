@@ -11,6 +11,8 @@
 %%%-------------------------------------------------------------------
 -module(knm_simwood).
 
+-behaviour(knm_gen_carrier).
+
 -export([find_numbers/3
          ,acquire_number/1
          ,disconnect_number/1
@@ -40,7 +42,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'ok', knm_phone_number:knm_numbers()}.
+                          {'ok', knm_number:knm_numbers()}.
 find_numbers(Prefix, Quantity, _Options) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
     {'ok', Body} = query_simwood(URL, 'get'),
@@ -149,14 +151,13 @@ sw_quantity(_Quantity) -> <<"100">>.
 %% @end
 %%--------------------------------------------------------------------
 -spec process_response(wh_json:objects()) ->
-                              {'ok', knm_phone_number:knm_numbers()}.
--spec process_response(wh_json:objects(), knm_phone_number:knm_numbers()) ->
-                              {'ok', knm_phone_number:knm_numbers()}.
+                              {'ok', knm_number:knm_numbers()}.
 process_response(JObjs) ->
-    process_response(JObjs, []).
+    {'ok', [response_jobj_to_number(JObj) || JObj <- JObjs]}.
 
-process_response([], Numbers) -> {'ok', Numbers};
-process_response([JObj|JObjs], Numbers) ->
+-spec response_jobj_to_number(wh_json:objects()) ->
+                              knm_number:knm_number().
+response_jobj_to_number(JObj) ->
     Num = wh_json:get_value(<<"number">>, JObj),
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
@@ -166,5 +167,8 @@ process_response([JObj|JObjs], Numbers) ->
                ,{fun knm_phone_number:set_carrier_data/2, JObj}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
               ],
-    Number = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    process_response(JObjs, [Number|Numbers]).
+    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    knm_number:set_phone_number(
+      knm_number:new()
+      ,PhoneNumber
+     ).
