@@ -43,10 +43,10 @@
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', knm_number:knm_numbers()}.
-find_numbers(Prefix, Quantity, _Options) ->
+find_numbers(Prefix, Quantity, Options) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
     {'ok', Body} = query_simwood(URL, 'get'),
-    process_response(wh_json:decode(Body)).
+    process_response(wh_json:decode(Body), Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -150,14 +150,15 @@ sw_quantity(_Quantity) -> <<"100">>.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec process_response(wh_json:objects()) ->
+-spec process_response(wh_json:objects(), wh_proplist()) ->
                               {'ok', knm_number:knm_numbers()}.
-process_response(JObjs) ->
-    {'ok', [response_jobj_to_number(JObj) || JObj <- JObjs]}.
+process_response(JObjs, Options) ->
+    AccountId = props:get_value(<<"account_id">>, Options),
+    {'ok', [response_jobj_to_number(JObj, AccountId) || JObj <- JObjs]}.
 
--spec response_jobj_to_number(wh_json:objects()) ->
+-spec response_jobj_to_number(wh_json:object(), api_binary()) ->
                               knm_number:knm_number().
-response_jobj_to_number(JObj) ->
+response_jobj_to_number(JObj, AccountId) ->
     Num = wh_json:get_value(<<"number">>, JObj),
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
@@ -166,6 +167,7 @@ response_jobj_to_number(JObj) ->
                ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
                ,{fun knm_phone_number:set_carrier_data/2, JObj}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_assign_to/2, AccountId}
               ],
     PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
     knm_number:set_phone_number(
