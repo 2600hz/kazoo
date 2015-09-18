@@ -58,6 +58,7 @@
 
 -define(CARRIER_OTHER, <<"knm_other">>).
 -define(CARRIER_LOCAL, <<"knm_local">>).
+-define(CARRIER_MANAGED, <<"knm_managed">>).
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
