@@ -71,7 +71,7 @@ start_file_server(Id, Doc, Attachment, Name) ->
         {'error', _}=E -> E
     end.
 
--spec find_tts_server(term()) ->
+-spec find_tts_server(_) ->
                              {'ok', pid()} |
                              {'error', 'no_file_server'}.
 find_tts_server(Id) ->

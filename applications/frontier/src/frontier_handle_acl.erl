@@ -14,7 +14,7 @@
 
 -include("frontier.hrl").
 
--spec handle_acl_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_acl_req(wh_json:object(), wh_proplist()) -> _.
 handle_acl_req(Reqest, _Props) ->
     'true' = wapi_frontier:acls_req_v(Reqest),
     Entity = wh_json:get_value(<<"Entity">>, Reqest),
@@ -22,7 +22,7 @@ handle_acl_req(Reqest, _Props) ->
     Payload = lookup_acl_records(Entity, IncludeRealm),
     send_response(Reqest, Payload).
 
--spec send_response(wh_json:object(), wh_json:objects()) -> any().
+-spec send_response(wh_json:object(), wh_json:objects()) -> _.
 send_response(Reqest, Responses) ->
     RespStub = wh_json:from_list([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Reqest)}
                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

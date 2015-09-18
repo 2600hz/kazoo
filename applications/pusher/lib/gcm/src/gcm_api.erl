@@ -7,9 +7,9 @@
 -type headers() :: [header(),...].
 -type regids()  :: [binary(),...].
 -type message() :: [tuple(),...].
--type result()  :: {number(), non_neg_integer(), non_neg_integer(), non_neg_integer(), [any()]}.
+-type result()  :: {number(), non_neg_integer(), non_neg_integer(), non_neg_integer(), [_]}.
 
--spec push(regids(),message(),string()) -> {'error',any()} | {'noreply','unknown'} | {'ok',result()}.
+-spec push(regids(),message(),string()) -> {'error',_} | {'noreply','unknown'} | {'ok',result()}.
 push(RegIds, Message, Key) ->
     JObj = wh_json:set_value(<<"registration_ids">>, RegIds, Message),
     Request = wh_json:encode(JObj),

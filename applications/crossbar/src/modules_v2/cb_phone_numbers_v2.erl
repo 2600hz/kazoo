@@ -835,7 +835,7 @@ check_number(Context) ->
             )
     end.
 
--spec get_url(any()) -> binary().
+-spec get_url(_) -> binary().
 get_url(<<"high">>) -> ?PAYED_URL;
 get_url(_) -> ?FREE_URL.
 
@@ -847,7 +847,7 @@ get_url(_) -> ?FREE_URL.
 %%--------------------------------------------------------------------
 -spec get_prefix(ne_binary()) ->
                         {'ok', wh_json:object()} |
-                        {'error', any()}.
+                        {'error', _}.
 get_prefix(City) ->
     Country = whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, ?FREE_URL) of

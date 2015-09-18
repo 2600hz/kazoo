@@ -14,7 +14,7 @@
 
 -include("../blackhole.hrl").
 
--spec handle_event(bh_context:context(), wh_json:object()) -> any().
+-spec handle_event(bh_context:context(), wh_json:object()) -> _.
 handle_event(Context, EventJObj) ->
     wh_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
@@ -23,7 +23,7 @@ handle_event(Context, EventJObj) ->
     J = wh_json:normalize_jobj(EventJObj),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), J).
 
--spec is_account_event(bh_context:context(), wh_json:object()) -> any().
+-spec is_account_event(bh_context:context(), wh_json:object()) -> _.
 is_account_event(Context, EventJObj) ->
     wh_json:get_first_defined([<<"Account-ID">>
                                ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]

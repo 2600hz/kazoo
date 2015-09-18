@@ -358,7 +358,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_start_new_connection(couch_connection()) -> any().
+-spec maybe_start_new_connection(couch_connection()) -> _.
 maybe_start_new_connection(Connection) ->
     _ = wh_couch_connection_sup:add(Connection),
     _ = ets:insert(?MODULE, Connection).

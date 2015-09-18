@@ -28,7 +28,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec init() -> any().
+-spec init() -> _.
 init() ->
     [crossbar_bindings:bind(Binding, ?MODULE, F)
      || {Binding, F} <- [{<<"v1_resource.allowed_methods.lists">>, 'allowed_methods'}

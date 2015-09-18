@@ -857,7 +857,7 @@ fetch_attachment(DbName, DocId, AName) ->
 
 -spec stream_attachment(text(), ne_binary(), ne_binary()) ->
                                {'ok', reference()} |
-                               {'error', term()}.
+                               {'error', _}.
 stream_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
     couch_util:stream_attachment(wh_couch_connections:get_server(), DbName, DocId, AName, self());
 stream_attachment(DbName, DocId, AName) ->

@@ -14,7 +14,7 @@
 -define(EMPTY_JSON_OBJECT, ?JSON_WRAPPER([])).
 
 -type object() :: ?JSON_WRAPPER(json_proplist()).
--type objects() :: [object(),...] | [].
+-type objects() :: [object()].
 
 -type json_string() :: ne_binary() | atom() | pos_integer().
 -type json_strings() :: [json_string()].
@@ -22,11 +22,11 @@
 -type json_array() :: [json_term()].
 
 -type key() :: json_string() | json_strings().
--type keys() :: [key(),...] | [].
+-type keys() :: [key()].
 -type json_key() :: key().
 
 -type json_proplist_key() :: json_key().
--type json_proplist_kv(K, V) :: [{K, V},...] | [].
+-type json_proplist_kv(K, V) :: [{K, V}].
 -type json_proplist_k(K) :: json_proplist_kv(K, json_term()).
 -type json_proplist() :: json_proplist_kv(json_proplist_key(), json_term()).
 -type json_proplists() :: [json_proplist(),...].

@@ -107,7 +107,7 @@
                       }).
 
 -type registration() :: #registration{}.
--type registrations() :: [registration(),...] | [].
+-type registrations() :: [registration()].
 
 %%%===================================================================
 %%% API
@@ -495,7 +495,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), term()) -> 'ok'.
+-spec terminate(_, _) -> 'ok'.
 terminate(_Reason, _) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("ecallmgr registrar ~p termination", [_Reason]).
@@ -560,7 +560,7 @@ fetch_registration(Username, Realm) ->
 
 -spec query_for_registration(api_terms()) ->
                                     {'ok', wh_json:objects()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 query_for_registration(Reg) ->
     wh_amqp_worker:call_collect(Reg
                                 ,fun wapi_registration:publish_query_req/1
@@ -1174,7 +1174,7 @@ get_fs_contact(Props) ->
     <<User/binary, "@", (wh_util:to_binary(mochiweb_util:unquote(AfterAt)))/binary>>.
 
 -type ets_continuation() :: '$end_of_table' |
-                            {registrations(), term()}.
+                            {registrations(), _}.
 
 -spec print_summary(ets_continuation()) -> 'ok'.
 -spec print_summary(ets_continuation(), non_neg_integer()) -> 'ok'.
@@ -1245,7 +1245,7 @@ print_property(Key, Value, _) ->
                          {'transport', ne_binary()} |
                          {'fs_path', ne_binary()} |
                          {'received', ne_binary()}.
--type contact_params() :: [contact_param(),...] | [].
+-type contact_params() :: [contact_param()].
 
 -spec breakup_contact(text()) -> contact_params().
 breakup_contact(Contact) when is_binary(Contact) ->

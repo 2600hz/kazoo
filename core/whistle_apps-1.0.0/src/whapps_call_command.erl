@@ -199,7 +199,7 @@
                               {'tts', ne_binary()} |
                               {'tts', ne_binary(), ne_binary()} |
                               {'tts', ne_binary(), ne_binary(), ne_binary()}.
--type audio_macro_prompts() :: [audio_macro_prompt(),...] | [].
+-type audio_macro_prompts() :: [audio_macro_prompt()].
 -export_type([audio_macro_prompt/0
               ,audio_macro_prompts/0
              ]).
@@ -353,9 +353,9 @@ channel_status_filter([JObj|JObjs]) ->
 %%      for them in the receive blocks below.
 %% @end
 %%--------------------------------------------------------------------
--type relay_fun() :: fun((pid() | atom(), term()) -> any()).
--spec relay_event(pid(), wh_json:object()) -> any().
--spec relay_event(pid(), wh_json:object(), relay_fun()) -> any().
+-type relay_fun() :: fun((pid() | atom(), _) -> _).
+-spec relay_event(pid(), wh_json:object()) -> _.
+-spec relay_event(pid(), wh_json:object(), relay_fun()) -> _.
 relay_event(Pid, JObj) ->
     relay_event(Pid, JObj, fun erlang:send/2).
 relay_event(Pid, JObj, RelayFun) ->
@@ -366,7 +366,7 @@ relay_event(Pid, JObj, RelayFun) ->
                            {'error', 'timeout'}.
 -spec receive_event(wh_timeout(), boolean()) ->
                            {'ok', wh_json:object()} |
-                           {'other', wh_json:object() | term()} |
+                           {'other', wh_json:object() | _} |
                            {'error', 'timeout'}.
 receive_event(Timeout) -> receive_event(Timeout, 'true').
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
@@ -2379,7 +2379,7 @@ wait_for_dtmf(Timeout) ->
 %%--------------------------------------------------------------------
 -spec wait_for_bridge(wh_timeout(), whapps_call:call()) ->
                              whapps_api_bridge_return().
--spec wait_for_bridge(wh_timeout(), 'undefined' | fun((wh_json:object()) -> any()), whapps_call:call()) ->
+-spec wait_for_bridge(wh_timeout(), 'undefined' | fun((wh_json:object()) -> _), whapps_call:call()) ->
                              whapps_api_bridge_return().
 wait_for_bridge(Timeout, Call) ->
     wait_for_bridge(Timeout, 'undefined', Call).

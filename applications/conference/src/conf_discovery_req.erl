@@ -313,7 +313,7 @@ validate_collected_conference_id(Call, Loop, Digits) ->
 
 -spec validate_conference_pin(api_boolean(), whapps_conference:conference(), whapps_call:call(), pos_integer()) ->
                                      {'ok', whapps_conference:conference()} |
-                                     {'error', term()}.
+                                     {'error', _}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     lager:debug("caller has failed to provide a valid conference pin to many times"),
     _ = whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),

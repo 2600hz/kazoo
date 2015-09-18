@@ -41,7 +41,7 @@
                                 {'stop', whapps_call:call()}.
 -export_types([collect_dtmfs_return/0]).
 
--spec default_on_first_fun(any()) -> 'ok'.
+-spec default_on_first_fun(_) -> 'ok'.
 default_on_first_fun(_) -> 'ok'.
 
 -spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer()) ->

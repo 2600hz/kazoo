@@ -63,7 +63,7 @@
 -type publish_fun() :: fun((api_terms()) -> _).
 -type validate_fun() :: fun((api_terms()) -> boolean()).
 
--type collect_until_acc() :: any().
+-type collect_until_acc() :: _.
 
 -type collect_until_acc_fun() :: fun((wh_json:objects(), collect_until_acc()) -> boolean() | {boolean(), collect_until_acc()}).
 -type collect_until_fun() :: fun((wh_json:objects()) -> boolean()) |
@@ -110,7 +110,7 @@
                 ,queue :: api_binary()
                 ,confirms = 'false' :: boolean()
                 ,flow = 'undefined' :: boolean() | 'undefined'
-                ,acc = 'undefined' :: any()
+                ,acc = 'undefined' :: _
                }).
 
 %%%===================================================================

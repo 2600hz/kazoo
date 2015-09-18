@@ -249,7 +249,7 @@ is_dedicated_ip(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_available(ip() | ne_binary()) -> boolean() | {'error', any()}.
+-spec is_available(ip() | ne_binary()) -> boolean() | {'error', _}.
 is_available(Ip) when is_binary(Ip) ->
     case fetch(Ip) of
         {'ok', IP} -> is_available(IP);

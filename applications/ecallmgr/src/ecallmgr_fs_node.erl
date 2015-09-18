@@ -437,7 +437,7 @@ code_change(_OldVsn, State, _Extra) ->
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
                       {'timeout', {atom(), ne_binary()}}.
--type cmd_results() :: [cmd_result(),...] | [] |
+-type cmd_results() :: [cmd_result()] |
                        {'error', 'retry'}.
 
 -spec run_start_cmds(atom(), wh_proplist()) -> pid_ref().
@@ -447,7 +447,7 @@ run_start_cmds(Node, Options) ->
                           run_start_cmds(Node, Options, Parent)
                   end).
 
--spec run_start_cmds(atom(), wh_proplist(), pid()) -> any().
+-spec run_start_cmds(atom(), wh_proplist(), pid()) -> _.
 run_start_cmds(Node, Options, Parent) ->
     wh_util:put_callid(Node),
     timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
@@ -505,7 +505,7 @@ run_start_cmds(Node, Options, Parent, Cmds) ->
             sync(Parent)
     end.
 
--spec sync(pid()) -> any().
+-spec sync(pid()) -> _.
 sync(Parent) ->
     sync_interface(Parent),
     sync_registrations(Parent),
@@ -676,7 +676,7 @@ probe_capabilities(Node, PossibleCapabilities) ->
                             maybe_add_capability(Node, Capability)
                     end, PossibleCapabilities).
 
--spec maybe_add_capability(atom(), wh_json:object()) -> any().
+-spec maybe_add_capability(atom(), wh_json:object()) -> _.
 maybe_add_capability(Node, Capability) ->
     Module = wh_json:get_value(<<"module">>, Capability),
     lager:debug("probing ~s about ~s", [Node, Module]),

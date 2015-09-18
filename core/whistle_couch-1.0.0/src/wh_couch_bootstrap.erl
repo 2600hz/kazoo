@@ -144,7 +144,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -type couch_config_tuple() :: {string(), inet:port_number(), string(), string(), inet:port_number()}.
--type couch_config_proplist() :: [{'default_couch_host', couch_config_tuple()},...] | [].
+-type couch_config_proplist() :: [{'default_couch_host', couch_config_tuple()}].
 -spec get_config() -> couch_config_proplist().
 get_config() ->
     [IP|_] = wh_config:get('bigcouch', 'ip', ["localhost"]),

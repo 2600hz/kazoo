@@ -38,7 +38,7 @@
 -define(SERVER, ?MODULE).
 -define(BLACKLIST_REFRESH, 60000).
 
--record(state, {wsdl_model = 'undefined' :: 'undefined' | term()
+-record(state, {wsdl_model = 'undefined' :: 'undefined' | _
                 ,dth_cdr_url = <<>> :: binary()
                }).
 
@@ -164,7 +164,7 @@ handle_event(_JObj, #state{dth_cdr_url=Url, wsdl_model=WSDL}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), #state{}) -> 'ok'.
+-spec terminate(_, #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("dth: ~p termination", [_Reason]).
 

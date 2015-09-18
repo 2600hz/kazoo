@@ -64,7 +64,7 @@ check_failed_attempts() ->
     check_failures(Failures).
 
 -type failure() :: {{ne_binary(), ne_binary()}, integer()}.
--type failures() :: [failure(),...] | [].
+-type failures() :: [failure()].
 
 -spec find_failures() -> failures().
 -spec find_failures([tuple()]) -> failures().

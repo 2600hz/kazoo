@@ -75,10 +75,10 @@
 -record(whapp_info, {startup :: gregorian_seconds()}).
 
 -type whapp_info() :: #whapp_info{}.
--type whapps_info() :: [{binary(), whapp_info()},...] | [].
+-type whapps_info() :: [{binary(), whapp_info()}].
 
 -type media_server() :: {ne_binary(), wh_json:object()}.
--type media_servers() :: [media_server(),...] | [].
+-type media_servers() :: [media_server()].
 
 -record(node, {node = node() :: atom() | '$1' | '$2' | '_'
                ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
@@ -96,7 +96,7 @@
               }).
 
 -type wh_node() :: #node{}.
--type wh_nodes() :: [wh_node(),...] | [].
+-type wh_nodes() :: [wh_node()].
 
 %%%===================================================================
 %%% API

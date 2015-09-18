@@ -33,7 +33,7 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     _ = case maybe_allowed_to_intercept(Data, Call) of
             {'ok', 'true'} -> continue(Data, Call);
@@ -117,7 +117,7 @@ is_owner_same_group(Call, DeviceId, OwnerId, GroupId) ->
             'false'
     end.
 
--spec continue(wh_json:object(), whapps_call:call()) -> any().
+-spec continue(wh_json:object(), whapps_call:call()) -> _.
 continue(Data, Call) ->
     case find_sip_endpoints(Data, Call) of
         [] -> no_users(Call);
@@ -301,17 +301,17 @@ find_user_endpoints(Data, Call) ->
 find_sip_users(GroupId, Call) ->
     cf_util:sip_users_from_device_ids(find_group_endpoints(GroupId, Call), Call).
 
--spec no_users(whapps_call:call()) -> any().
+-spec no_users(whapps_call:call()) -> _.
 no_users(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_prompt(<<"intercept-no_users">>, Call).
 
--spec no_channels(whapps_call:call()) -> any().
+-spec no_channels(whapps_call:call()) -> _.
 no_channels(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_prompt(<<"intercept-no_channels">>, Call).
 
--spec no_permission_to_intercept(whapps_call:call()) -> any().
+-spec no_permission_to_intercept(whapps_call:call()) -> _.
 no_permission_to_intercept(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_prompt(<<"intercept-no_channels">>, Call).

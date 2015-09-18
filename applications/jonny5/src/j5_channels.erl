@@ -71,7 +71,7 @@
                  }).
 
 -type channel() :: #channel{}.
--type channels() :: [channel(),...] | [].
+-type channels() :: [channel()].
 -export_type([channel/0
               ,channels/0
              ]).
@@ -647,7 +647,7 @@ is_allotment(<<"allotment_", _/binary>>) -> 'true';
 is_allotment(_) -> 'false'.
 
 -type unique_channel() :: {ne_binary(), api_binary()}.
--type unique_channels() :: [unique_channel(),...] | [].
+-type unique_channels() :: [unique_channel()].
 
 -spec count_unique_calls(unique_channels()) -> non_neg_integer().
 count_unique_calls(Channels) ->
@@ -701,7 +701,7 @@ start_channel_sync_timer(State) ->
     State#state{sync_ref=SyncRef
                 ,sync_timer=TRef}.
 
--type non_neg_integers() :: [non_neg_integer(),...] | [].
+-type non_neg_integers() :: [non_neg_integer()].
 
 -spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
 sum_allotment_consumed(CycleStart, Span, Matches) ->

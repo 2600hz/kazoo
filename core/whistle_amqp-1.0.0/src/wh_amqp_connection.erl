@@ -186,7 +186,7 @@ handle_info(_Info, Connection) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), wh_amqp_connection()) -> any().
+-spec terminate(_, wh_amqp_connection()) -> _.
 terminate(_Reason, #wh_amqp_connection{broker=_Broker}=Connection) ->
     lager:debug("connection to amqp broker '~s' terminated: ~p"
                 ,[_Broker, _Reason]),

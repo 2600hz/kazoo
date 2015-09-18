@@ -13,7 +13,7 @@
           ,miss_timestamp = wh_util:current_tstamp() :: pos_integer()
          }).
 -type agent_miss() :: #agent_miss{}.
--type agent_misses() :: [agent_miss(),...] | [].
+-type agent_misses() :: [agent_miss()].
 
 -record(call_stat, {
           id :: api_binary() | '_' %% call_id::queue_id

@@ -69,10 +69,10 @@
          }).
 
 -type resource() :: #resrc{}.
--type resources() :: [#resrc{},...] | [].
+-type resources() :: [#resrc{}].
 
 -type gateway() :: #gateway{}.
--type gateways() :: [#gateway{},...] | [].
+-type gateways() :: [#gateway{}].
 
 -compile({'no_auto_import', [get/0, get/1]}).
 
@@ -800,7 +800,7 @@ create_classifier_gateways(Resource, ClassifierJObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -type rule() :: re:mp().
--type rules() :: [rule(),...] | [].
+-type rules() :: [rule()].
 
 -spec resource_from_jobj(wh_json:object()) -> resource().
 resource_from_jobj(JObj) ->

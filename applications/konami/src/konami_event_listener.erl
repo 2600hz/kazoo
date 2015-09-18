@@ -114,8 +114,8 @@ start_link() ->
                             ,[]
                            ).
 
--spec bindings() -> [{ne_binary(), atoms() | ne_binaries()},...] | [].
--spec bindings(ne_binary()) -> [{ne_binary(), atoms() | ne_binaries()},...] | [].
+-spec bindings() -> [{ne_binary(), atoms() | ne_binaries()}].
+-spec bindings(ne_binary()) -> [{ne_binary(), atoms() | ne_binaries()}].
 bindings() ->
     [{props:get_value('callid', Props), props:get_value('restrict_to', Props)}
      || {'call', Props} <- gen_listener:bindings(?MODULE)
@@ -222,7 +222,7 @@ handle_originate_event(JObj, _Props) ->
     CallId = wh_json:get_first_defined([<<"Call-ID">>, <<"Outbound-Call-ID">>], JObj),
     relay_to_pids(CallId, JObj).
 
--spec handle_metaflow_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_metaflow_req(wh_json:object(), wh_proplist()) -> _.
 handle_metaflow_req(JObj, _Props) ->
     'true' = wapi_metaflow:req_v(JObj),
 
@@ -273,7 +273,7 @@ fsms() ->
 metaflows() ->
     pids_for_callid('_').
 
--spec relay_to_fsm(ne_binary(), ne_binary(), wh_json:object()) -> any().
+-spec relay_to_fsm(ne_binary(), ne_binary(), wh_json:object()) -> _.
 relay_to_fsm(CallId, Event, JObj) ->
     [FSM | _] = fsms_for_callid(CallId),
     konami_code_fsm:event(FSM, CallId, Event, JObj).

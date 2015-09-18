@@ -37,7 +37,7 @@
 %%   cdr_url: string(), url to POST the CDR
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     Prop = props:filter_empty(
              [{<<"Call">>, whapps_call:to_json(Call)}
@@ -52,7 +52,7 @@ handle(Data, Call) ->
     lager:info("published pivot request"),
     wait_for_pivot(Data, Call).
 
--spec wait_for_pivot(wh_json:object(), whapps_call:call()) -> any().
+-spec wait_for_pivot(wh_json:object(), whapps_call:call()) -> _.
 wait_for_pivot(Data, Call) ->
     case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
         {'ok', JObj} ->

@@ -57,7 +57,7 @@ behaviour_info(_) ->
                       | 'longpoll'.
 -type changesoptions() :: [changeoption()].
 
--spec start_link(atom(), couchbeam_db(), changesoptions(), list()) -> term().
+-spec start_link(atom(), couchbeam_db(), changesoptions(), list()) -> _.
 start_link(Module, Db, Options, InitArgs) ->
     gen_server:start_link({'local', server_name(Db)}, ?MODULE
                           ,[Module, Db, Options, InitArgs], []

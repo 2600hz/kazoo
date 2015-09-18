@@ -114,7 +114,7 @@ limits_summary() ->
             limits_summary(Limits)
     end.
 
--spec limits_summary([j5_limits:limits(),...] | [] | ne_binary()) -> 'no_return'.
+-spec limits_summary([j5_limits:limits()] | ne_binary()) -> 'no_return'.
 limits_summary([]) -> 'no_return';
 limits_summary([Limit|Limits]) ->
     case j5_limits:enabled(Limit) of
@@ -230,7 +230,7 @@ limits_details_allotments([Key|Keys], JObj) ->
     pretty_print_field("  Cycle", wh_json:get_value([Key, <<"cycle">>], JObj, <<"monthly">>)),
     limits_details_allotments(Keys, JObj).
 
--spec pretty_print_field(text(), any()) -> 'ok'.
+-spec pretty_print_field(text(), _) -> 'ok'.
 pretty_print_field(_, 'undefined') -> 'ok';
 pretty_print_field(Name, Value) when is_number(Value) ->
     io:format("~-25s: ~w~n", [Name, Value]);

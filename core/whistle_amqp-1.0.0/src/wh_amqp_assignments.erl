@@ -648,7 +648,7 @@ notify_consumer(#wh_amqp_assignment{consumer=Consumer
 notify_watchers(#wh_amqp_assignment{watchers=Watchers}=Assignment) ->
     notify_watchers(Assignment, sets:to_list(Watchers)).
 
--spec notify_watchers(wh_amqp_assignment(), [pid(),...] | []) -> wh_amqp_assignment().
+-spec notify_watchers(wh_amqp_assignment(), [pid()]) -> wh_amqp_assignment().
 notify_watchers(#wh_amqp_assignment{}=Assignment, []) ->
     Assignment#wh_amqp_assignment{watchers=sets:new(), reconnect='false'};
 notify_watchers(#wh_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
@@ -711,7 +711,7 @@ reserve(Consumer, _, 'float') ->
 %% @end
 %%--------------------------------------------------------------------
 -type down_match() :: {'channel' | 'consumer', wh_amqp_assignment()}.
--type down_matches() :: [down_match(),...] | [].
+-type down_matches() :: [down_match()].
 
 -spec handle_down_msg(down_matches(), _) -> 'ok'.
 handle_down_msg([], _) -> 'ok';
@@ -754,7 +754,7 @@ handle_down_match({'channel', #wh_amqp_assignment{channel=Channel
                 ,[Channel, Broker, Consumer, Reason]),
     maybe_defer_reassign(Assignment, Reason).
 
--spec maybe_defer_reassign(#wh_amqp_assignment{}, term()) -> 'ok'.
+-spec maybe_defer_reassign(#wh_amqp_assignment{}, _) -> 'ok'.
 maybe_defer_reassign(#wh_amqp_assignment{}=Assignment
                     ,{'shutdown',{'server_initiated_close', 404, _Msg}}) ->
     lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),

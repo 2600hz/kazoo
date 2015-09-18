@@ -67,7 +67,7 @@
                    ,api_binary()
                    ,api_binary()
                    ,api_binary()
-                  ) -> 'ok' | {'error', any()}.
+                  ) -> 'ok' | {'error', _}.
 call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPriority) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}

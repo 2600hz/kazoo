@@ -21,7 +21,7 @@
         ,whapps_config:get_integer(?WNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)
        ).
 
--type extracted_numbers() :: [{ne_binary(), wh_json:object(), wh_proplist()},...] | [].
+-type extracted_numbers() :: [{ne_binary(), wh_json:object(), wh_proplist()}].
 
 %%--------------------------------------------------------------------
 %% @public

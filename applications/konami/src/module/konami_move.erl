@@ -148,7 +148,7 @@ build_originate(Endpoints, CallId, Call) ->
 -spec send_originate_req(wh_proplist(), whapps_call:call()) ->
                                 {'ok', wh_json:objects()} |
                                 {'timeout', wh_json:objects()} |
-                                {'error', any()}.
+                                {'error', _}.
 send_originate_req([], _Call) ->
     lager:debug("no origination proprs, skipping"),
     {'error', 'no_endpoints'};

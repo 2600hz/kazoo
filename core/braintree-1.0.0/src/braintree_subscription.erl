@@ -38,9 +38,9 @@
 
 -include_lib("braintree/include/braintree.hrl").
 
--type changes() :: [{atom(), proplist(), [proplist(),...] | []}] | [].
+-type changes() :: [{atom(), proplist(), [proplist()]}] | [].
 -type subscription() :: #bt_subscription{}.
--type subscriptions() :: [subscription(),...] | [].
+-type subscriptions() :: [subscription()].
 
 -export_type([subscription/0
               ,subscriptions/0
@@ -647,7 +647,7 @@ create_addon_changes(AddOns) ->
 %% Determine the necessary steps to change the discounts
 %% @end
 %%--------------------------------------------------------------------
--spec create_discount_changes([#bt_discount{},...] | []) -> changes().
+-spec create_discount_changes([#bt_discount{}]) -> changes().
 create_discount_changes(Discounts) ->
     lists:foldr(fun(#bt_discount{id=Id, quantity=0}, C) ->
                         append_items('remove', Id, C);

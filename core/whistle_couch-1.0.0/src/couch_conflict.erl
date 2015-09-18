@@ -46,7 +46,7 @@ in_conflict(#server{}=Conn, DBName, View) ->
 -spec resolve(#server{}, ne_binary()) -> [wh_json:objects(),...].
 -spec resolve(#server{}, ne_binary(), ne_binary()) -> [wh_json:objects(),...].
 -spec resolve(#server{}, ne_binary(), ne_binary(), resolution_strategy()) -> [wh_json:objects(),...] | wh_json:objects().
--spec resolve(#server{}, ne_binary(), ne_binary(), resolution_strategy(), merge_fun()) -> [wh_json:objects(),...] | [].
+-spec resolve(#server{}, ne_binary(), ne_binary(), resolution_strategy(), merge_fun()) -> [wh_json:objects()].
 resolve(#server{}=Conn, DBName) ->
     resolve(Conn, DBName, ?CONFLICT_VIEW_NAME).
 resolve(#server{}=Conn, DBName, View) ->

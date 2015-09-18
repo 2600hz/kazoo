@@ -39,7 +39,7 @@ bindings_and_responders() ->
       ]
     }.
 
--spec handle_event(wh_json:object(), wh_proplist()) -> any().
+-spec handle_event(wh_json:object(), wh_proplist()) -> _.
 handle_event(JObj, _Props) ->
     wh_util:put_callid(JObj),
     lager:debug("event handled").

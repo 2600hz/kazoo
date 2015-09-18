@@ -435,9 +435,9 @@ format_stats_fold(Stat, Acc) ->
     end.
 
 -spec maybe_add_answered(wh_json:object(), wh_json:object()) ->
-                                [{wh_json:key(), non_neg_integer()},...] | [].
+                                [{wh_json:key(), non_neg_integer()}].
 -spec maybe_add_answered(wh_json:object(), wh_json:object(), api_binary()) ->
-                                [{wh_json:key(), non_neg_integer()},...] | [].
+                                [{wh_json:key(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc) ->
     maybe_add_answered(Stat, Acc, wh_json:get_value(<<"status">>, Stat)).
 maybe_add_answered(Stat, Acc, <<"handled">>) ->

@@ -69,7 +69,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec presence_probe(wh_json:object(), wh_proplist()) -> any().
+-spec presence_probe(wh_json:object(), wh_proplist()) -> _.
 presence_probe(JObj, _Props) ->
     'true' = wapi_presence:probe_v(JObj),
     Username = wh_json:get_value(<<"Username">>, JObj),
@@ -633,7 +633,7 @@ is_digit(_) -> 'false'.
 %%-----------------------------------------------------------------------------
 -spec lookup_callflow_patterns(ne_binary(), ne_binary()) ->
                                       {'ok', {wh_json:object(), api_binary()}} |
-                                      {'error', term()}.
+                                      {'error', _}.
 lookup_callflow_patterns(Number, Db) ->
     lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
     case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of

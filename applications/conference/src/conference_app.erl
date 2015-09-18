@@ -23,7 +23,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
+-spec start(_, _) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_StartType, _StartArgs) -> conference:start_link().
@@ -34,5 +34,5 @@ start(_StartType, _StartArgs) -> conference:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(_) -> 'ok'.
 stop(_State) -> conference:stop().

@@ -1269,12 +1269,12 @@ set_notification_preference(Context, Preference) ->
             lager:info("notification_preference set to '~s'", [Preference])
     end.
 
--spec create_account_mod(ne_binary()) -> any().
+-spec create_account_mod(ne_binary()) -> _.
 create_account_mod(AccountId) ->
     Db = wh_util:format_account_mod_id(AccountId),
     kazoo_modb:create(Db).
 
--spec create_first_transaction(ne_binary()) -> any().
+-spec create_first_transaction(ne_binary()) -> _.
 create_first_transaction(AccountId) ->
     AccountMODb = kazoo_modb:get_modb(AccountId),
     wht_util:rollup(AccountMODb, 0).

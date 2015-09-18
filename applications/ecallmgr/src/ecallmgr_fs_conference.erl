@@ -67,7 +67,7 @@ start_link(Node, Options) ->
                              ,{'consume_options', ?CONSUME_OPTIONS}
                             ], [Node, Options]).
 
--spec handle_command(wh_json:object(), wh_proplist()) -> any().
+-spec handle_command(wh_json:object(), wh_proplist()) -> _.
 handle_command(JObj, _Props) ->
     do_handle_command(JObj, 0).
 
@@ -732,11 +732,11 @@ relationship(<<"mute">>) -> <<"nospeak">>;
 relationship(<<"deaf">>) -> <<"nohear">>;
 relationship(_) -> <<"clear">>.
 
--spec safe_integer_get(any(), wh_proplist()) -> non_neg_integer().
+-spec safe_integer_get(_, wh_proplist()) -> non_neg_integer().
 safe_integer_get(Key, Props) ->
     safe_integer_get(Key, Props, 0).
 
--spec safe_integer_get(any(), wh_proplist(), any()) -> any().
+-spec safe_integer_get(_, wh_proplist(), _) -> _.
 safe_integer_get(Key, Props, Default) ->
     try props:get_integer_value(Key, Props, Default) of
         Value -> Value

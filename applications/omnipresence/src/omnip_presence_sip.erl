@@ -408,7 +408,7 @@ ensure_template() ->
     Mod = wh_util:to_atom(<<"sub_package_presence">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{'record_info', [{'call', record_info('fields', 'call')}]}]).
 
--spec presence_reset(wh_json:object()) -> any().
+-spec presence_reset(wh_json:object()) -> _.
 presence_reset(JObj) ->
     User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
     set_presence_state(User, ?PRESENCE_HANGUP).

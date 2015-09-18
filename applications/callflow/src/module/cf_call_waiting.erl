@@ -102,7 +102,7 @@ execute_action(ActionFun, #call_waiting{enabled = Enabled}=CW, Call) ->
     _ = play_related_media(NewEnabled, Call),
     maybe_update_doc(NewEnabled, CW).
 
--spec play_related_media(boolean(), whapps_call:call()) -> any().
+-spec play_related_media(boolean(), whapps_call:call()) -> _.
 play_related_media('true', Call) ->
     lager:debug("call waiting enabled"),
     whapps_call_command:b_prompt(<<"cw-activated">>, Call);

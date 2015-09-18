@@ -35,7 +35,7 @@
           ,doc = <<>> :: binary()
          }).
 -type listener() :: #listener{}.
--type listeners() :: [listener(),...] | [].
+-type listeners() :: [listener()].
 
 -record(state, {
           listeners = [] :: listeners()

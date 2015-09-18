@@ -52,7 +52,7 @@
               }).
 
 -type rule() :: #rule{}.
--type rules() :: [rule(),...] | [].
+-type rules() :: [rule()].
 
 -record(temporal, {local_sec = 0 :: non_neg_integer()
                    ,local_date = {2011, 1, 1} :: wh_date()

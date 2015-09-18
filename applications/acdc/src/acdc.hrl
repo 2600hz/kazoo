@@ -32,7 +32,7 @@
 -type abandon_reason() :: ?ABANDON_TIMEOUT | ?ABANDON_EXIT |
                           ?ABANDON_HANGUP.
 
--type deliveries() :: [gen_listener:basic_deliver(),...] | [].
+-type deliveries() :: [gen_listener:basic_deliver()].
 
 %% Check for cleanup every 5 minutes
 -define(CLEANUP_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"cleanup_period_ms">>, 360000)).

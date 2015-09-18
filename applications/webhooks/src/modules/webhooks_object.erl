@@ -104,7 +104,7 @@ load_accounts() ->
             []
     end.
 
--spec handle_event(wh_json:object(), wh_proplist()) -> any().
+-spec handle_event(wh_json:object(), wh_proplist()) -> _.
 handle_event(JObj, _Props) ->
     wh_util:put_callid(JObj),
     'true' = wapi_conf:doc_update_v(JObj),

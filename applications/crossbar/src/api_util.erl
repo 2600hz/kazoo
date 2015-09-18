@@ -547,7 +547,7 @@ get_http_verb(Method, Context) ->
 %%--------------------------------------------------------------------
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
--type cb_mods_with_tokens() :: [cb_mod_with_tokens(),...] | [].
+-type cb_mods_with_tokens() :: [cb_mod_with_tokens()].
 -spec parse_path_tokens(cb_context:context(), path_tokens()) -> cb_mods_with_tokens().
 parse_path_tokens(Context, Tokens) ->
     parse_path_tokens(Context, Tokens, []).
@@ -836,7 +836,7 @@ is_known_content_type(Req, Context, CT, CTAs) ->
 fold_in_content_type({Type, Sub}, Acc) ->
     [{Type, Sub, []} | Acc].
 
--spec is_acceptable_content_type(content_type(), [content_type(),...] | []) -> boolean().
+-spec is_acceptable_content_type(content_type(), [content_type()]) -> boolean().
 is_acceptable_content_type(CTA, CTAs) ->
     [ 'true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
 
@@ -990,7 +990,7 @@ execute_request(Req, Context, Mod, Params, Verb) ->
             execute_request_failure(Req, Context, Context1)
     end.
 
--spec execute_request_failure(cowboy_req:req(), cb_context:context(), any()) ->
+-spec execute_request_failure(cowboy_req:req(), cb_context:context(), _) ->
                                      {'false', cowboy_req:req(), cb_context:context()}.
 execute_request_failure(Req, Context, {'error', _E}) ->
     lager:debug("error executing request: ~p", [_E]),

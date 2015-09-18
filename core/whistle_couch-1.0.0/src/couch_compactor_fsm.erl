@@ -95,7 +95,7 @@
 -type compactor_heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
 -type node_with_options() :: {ne_binary(), wh_proplist()}.
--type nodes_with_options() :: [node_with_options(),...] | [].
+-type nodes_with_options() :: [node_with_options()].
 -record(state, {
           nodes :: ne_binaries() | nodes_with_options()
           ,dbs :: ne_binaries()

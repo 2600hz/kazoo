@@ -1267,7 +1267,7 @@ collect_pin(Interdigit, Call, NoopId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> any().
+-spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> _.
 new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     MediaId = message_media_doc(whapps_call:account_db(Call), Box, AttachmentName),
@@ -1700,7 +1700,7 @@ populate_keys(Call) ->
 %%--------------------------------------------------------------------
 -spec get_mailbox_doc(ne_binary(), api_binary(), wh_json:object(), whapps_call:call()) ->
                              {'ok', wh_json:object()} |
-                             {'error', term()}.
+                             {'error', _}.
 get_mailbox_doc(Db, Id, Data, Call) ->
     CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
@@ -1931,7 +1931,7 @@ try_store_recording(AttachmentName, DocId, Url, Tries, Call) ->
 store_url(UrlFun) when is_function(UrlFun) -> UrlFun();
 store_url(<<_/binary>> = Url) -> Url.
 
--spec retry_store(ne_binary(), ne_binary(), store_url(), pos_integer(), whapps_call:call(), any()) ->
+-spec retry_store(ne_binary(), ne_binary(), store_url(), pos_integer(), whapps_call:call(), _) ->
                          'ok' | {'error', whapps_call:call()}.
 retry_store(AttachmentName, DocId, Url, Tries, Call, Error) ->
     timer:sleep(2000),

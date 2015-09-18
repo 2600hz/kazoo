@@ -100,7 +100,7 @@ oauth_service_app_from_keys(PublicKey, PrivateKey, App) ->
                           ,private_key=pem_to_rsa(PrivateKey)
                          }.
 
--spec pem_to_rsa(binary()) -> term().
+-spec pem_to_rsa(binary()) -> _.
 pem_to_rsa(PemFileContents) ->
     [RSAEntry] = public_key:pem_decode(PemFileContents),
     public_key:pem_entry_decode(RSAEntry).
@@ -135,7 +135,7 @@ jwt(#oauth_service_app{private_key=PrivateKey
 
 -spec token(api_binary() | oauth_app(), api_binary() | oauth_refresh_token()) ->
                    {'ok', oauth_token()} |
-                   {'error', any()}.
+                   {'error', _}.
 token(AppId, UserId) when is_binary(AppId) ->
     lager:debug("getting oauth-app ~p",[AppId]),
     case get_oauth_app(AppId) of

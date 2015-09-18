@@ -151,7 +151,7 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
 -type api_formatter_fun() :: fun((api_terms()) -> api_formatter_return()).
 -type prepare_option_el() :: {'formatter', api_formatter_fun()} |
                              {'remove_recursive', boolean()}.
--type prepare_options() :: [prepare_option_el(),...] | [].
+-type prepare_options() :: [prepare_option_el()].
 
 -spec prepare_api_payload(api_terms(), wh_proplist()) -> api_formatter_return() | wh_proplist().
 -spec prepare_api_payload(api_terms(), wh_proplist(), api_formatter_fun() | prepare_options()) ->
@@ -230,7 +230,7 @@ do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
             end
     end.
 
--spec is_empty(term()) -> boolean().
+-spec is_empty(_) -> boolean().
 is_empty('undefined') -> 'true';
 is_empty([]) -> 'true';
 is_empty(<<>>) -> 'true';
@@ -469,7 +469,7 @@ values_check_all(Prop, {Key, V}) ->
 %% checks Prop against a list of {Key, Fun}, running the value of Key through Fun, which returns a
 %% boolean.
 -type typecheck() :: {ne_binary(), fun((_) -> boolean())}.
--type typechecks() :: [typecheck(),...] | [].
+-type typechecks() :: [typecheck()].
 -spec type_check(wh_proplist(), typechecks()) -> boolean().
 type_check(Prop, Types) ->
     lists:all(fun(Type) -> type_check_all(Prop, Type) end, Types).

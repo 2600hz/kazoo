@@ -57,7 +57,7 @@
 -type fax_content_type() :: ne_binary().
 
 -type fax_file() :: {fax_field_name(), fax_file_name(), fax_file_content(), fax_content_type()}.
--type fax_files() :: [fax_file(),...] | [].
+-type fax_files() :: [fax_file()].
 
 %%%===================================================================
 %%% API

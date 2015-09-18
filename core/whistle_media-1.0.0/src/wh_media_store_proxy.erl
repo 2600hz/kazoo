@@ -232,7 +232,7 @@ success(JObj, Req0) ->
     {'ok', Req2} = cowboy_req:reply(200, Req1),
     Req2.
 
--spec failure(term(), cowboy_req:req()) -> cowboy_req:req().
+-spec failure(_, cowboy_req:req()) -> cowboy_req:req().
 failure(Reason, Req0) ->
     Body = io_lib:format("~p~n", [Reason]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),

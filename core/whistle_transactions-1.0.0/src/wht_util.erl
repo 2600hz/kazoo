@@ -316,7 +316,7 @@ call_cost(JObj) ->
 get_integer_value(Key, JObj) ->
     get_integer_value(Key, JObj, 0).
 
--spec get_integer_value(ne_binary(), wh_json:object(), any()) -> integer().
+-spec get_integer_value(ne_binary(), wh_json:object(), _) -> integer().
 get_integer_value(Key, JObj, Default) ->
     Keys = [Key, wh_json:normalize_key(Key)],
     wh_util:to_integer(wh_json:get_first_defined(Keys, JObj, Default)).

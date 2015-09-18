@@ -53,7 +53,7 @@ get_next_n_month_date_list(Year, Month, NumMonths) ->
                         build_month_date_list(NextYear, NextMonth, SortDirection, Acc)
                 end, [], DateRange).
 
--spec build_month_date_list(wh_year(), wh_month(), atom(), list()) -> any().
+-spec build_month_date_list(wh_year(), wh_month(), atom(), list()) -> _.
 build_month_date_list(Year, Month, 'DESC', Acc) ->
     [{Year, Month, Day}
      || Day <- lists:seq(calendar:last_day_of_the_month(Year, Month), 1, -1)
@@ -84,7 +84,7 @@ generate_test_accounts(NumAccounts, NumMonths, NumCdrs) ->
 -spec generate_test_account({ne_binary(),ne_binary(), ne_binary(), ne_binary()}
                             ,pos_integer(), pos_integer()
                             ,wh_json:object()
-                           ) -> 'ok' | {'error', any()}.
+                           ) -> 'ok' | {'error', _}.
 generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdrs, CdrJObjFixture) ->
     crossbar_maintenance:create_account(AccountName, AccountRealm, User, Pass),
     case get_account_by_realm(AccountRealm) of
@@ -102,7 +102,7 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
     end.
 
 -spec get_account_by_realm(ne_binary()) ->
-                                  {'ok', account_db()} | {'multiples', any()} | {'error', any()}.
+                                  {'ok', account_db()} | {'multiples', _} | {'error', _}.
 get_account_by_realm(AccountRealm) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, [{'key', AccountRealm}]) of
         {'ok', [JObj]} ->
@@ -164,7 +164,7 @@ matches_realm(Realm) ->
     lager:debug("realm does not match migrate pattern: ~p", [Realm]),
     'false'.
 
--spec maybe_delete_test_account(account_db()) -> 'ok' | {'error', any()}.
+-spec maybe_delete_test_account(account_db()) -> 'ok' | {'error', _}.
 maybe_delete_test_account(AccountDb) ->
     case maybe_get_migrate_account(AccountDb) of
         'false' -> 'ok';
@@ -182,7 +182,7 @@ maybe_delete_test_account(AccountDb) ->
     end.
 
 -spec delete_account_database(account_id(), {wh_year(), wh_month()}) ->
-                                     'ok' | {'error', any()}.
+                                     'ok' | {'error', _}.
 delete_account_database(AccountId, {Year, Month}) ->
     AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
     couch_mgr:db_delete(AccountMODb).

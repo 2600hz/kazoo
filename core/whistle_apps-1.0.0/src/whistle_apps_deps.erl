@@ -15,7 +15,7 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--type filenames() :: [file:filename(),...] | [].
+-type filenames() :: [file:filename()].
 %% @spec deps_on_path() -> [ProjNameAndVers]
 %% @doc List of project dependencies on the path.
 -spec deps_on_path() -> filenames().

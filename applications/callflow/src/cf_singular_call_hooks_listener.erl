@@ -67,7 +67,7 @@ start_link(Call) ->
 %% CHANNEL_DESTROY.
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_event(wh_json:object(), wh_proplist()) -> term().
+-spec handle_call_event(wh_json:object(), wh_proplist()) -> _.
 handle_call_event(JObj, Props) ->
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
@@ -108,7 +108,7 @@ init([Call]) ->
 %% Handle call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(term(), term(), state()) ->
+-spec handle_call(_, _, state()) ->
                          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
@@ -119,7 +119,7 @@ handle_call(_Request, _From, State) ->
 %% Handle cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> {'noreply', state()} |
+-spec handle_cast(_, state()) -> {'noreply', state()} |
                                       {'stop', 'normal', state()}.
 handle_cast({'init_hook'}, #state{call=Call}=State) ->
     cf_singular_call_hooks:send_init_hook(Call),
@@ -139,7 +139,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(term(), state()) -> {'noreply', state()}.
+-spec handle_info(_, state()) -> {'noreply', state()}.
 handle_info(Info, State) ->
     lager:debug("unhandled message: ~p", [Info]),
     {'noreply', State}.
@@ -163,7 +163,7 @@ handle_event(_JObj, _State) ->
 %% with Reason. The return value is ignored.
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), state()) -> any().
+-spec terminate(_, state()) -> _.
 terminate(_Reason, _State) ->
     lager:debug("singular call hook listener terminating: ~p", [_Reason]).
 
@@ -173,6 +173,6 @@ terminate(_Reason, _State) ->
 %% Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(term(), state(), term()) -> {'ok', state()}.
+-spec code_change(_, state(), _) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.

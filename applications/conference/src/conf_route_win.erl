@@ -11,7 +11,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Options) ->
     'true' = wapi_route:win_v(JObj),
     wh_util:put_callid(JObj),

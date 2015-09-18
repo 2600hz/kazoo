@@ -14,7 +14,7 @@
 
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 
--spec handle_eavesdrop_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_eavesdrop_req(wh_json:object(), wh_proplist()) -> _.
 handle_eavesdrop_req(JObj, _Props) ->
     'true' = wapi_resource:eavesdrop_req_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),

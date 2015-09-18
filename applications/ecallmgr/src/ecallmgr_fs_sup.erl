@@ -47,9 +47,9 @@
 start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec add_node(atom(), wh_proplist()) ->
-                      {'error', term()} |
+                      {'error', _} |
                       {'ok','undefined' | pid()} |
-                      {'ok','undefined' | pid(), term()}.
+                      {'ok','undefined' | pid(), _}.
 add_node(Node, Options) -> supervisor:start_child(?SERVER, ?NODE(Node, [Node, Options])).
 
 find_node(Node) -> find_node(supervisor:which_children(?MODULE), Node).

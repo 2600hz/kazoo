@@ -16,7 +16,7 @@
 
 -record(builder_action, {module_fun_name :: atom()
                          ,metaflow_key :: ne_binary()
-                         ,builders = [] :: [{pos_integer(), atom()},...] | []
+                         ,builders = [] :: [{pos_integer(), atom()}]
                         }).
 -type builder_action() :: #builder_action{}.
 
@@ -44,7 +44,7 @@ add_default_account_metaflow(AccountId) ->
                                    whapps_account_config:set(AccountId, <<"metaflows">>, <<"default_metaflow">>, JObj)
                            end).
 
--type save_fun() :: fun((wh_json:object()) -> any()).
+-type save_fun() :: fun((wh_json:object()) -> _).
 
 -spec intro_builder(wh_json:object(), save_fun()) -> 'ok'.
 intro_builder(Default, SaveFun) ->
@@ -125,7 +125,7 @@ pattern_builder(Default, SaveFun) ->
                                  }
                 ).
 
--spec print_builders(wh_proplist()) -> ['ok',...] | [].
+-spec print_builders(wh_proplist()) -> ['ok'].
 print_builders(Builders) ->
     [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders].
 

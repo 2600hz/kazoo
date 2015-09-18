@@ -890,7 +890,7 @@ summary_descendants_by_number(Context, Number) ->
       ,fun normalize_view_results/2
      ).
 
--type descendant_keys() :: [ne_binaries(),...] | [].
+-type descendant_keys() :: [ne_binaries()].
 
 -spec build_keys(cb_context:context(), ne_binary()) ->
                         descendant_keys().

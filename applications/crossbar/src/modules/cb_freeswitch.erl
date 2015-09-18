@@ -173,6 +173,6 @@ extension_to_content_type(<<".zip">>) -> ?MIME_TYPE_ZIP2;
 extension_to_content_type(<<".rar">>) -> ?MIME_TYPE_RAR;
 extension_to_content_type(<<".tar">>) -> ?MIME_TYPE_TAR.
 
--spec freeswitch_periodic_build() -> any().
+-spec freeswitch_periodic_build() -> _.
 freeswitch_periodic_build() ->
     gen_server:cast(crossbar_sup:find_proc(?FS_OFFLINE_SERVER), 'periodic_build').

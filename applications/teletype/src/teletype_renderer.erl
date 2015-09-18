@@ -23,7 +23,7 @@
          ,code_change/3
         ]).
 
--spec start_link(term()) -> startlink_ret().
+-spec start_link(_) -> startlink_ret().
 start_link(Args) ->
     gen_server:start_link(?MODULE, [], [Args]).
 

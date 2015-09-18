@@ -68,7 +68,7 @@ start_link() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_camper_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> any().
+-spec handle_camper_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> _.
 handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
     case binary:split(Key, <<".">>, ['global']) of
         [_, ?APP_NAME, <<"offnet">>] ->

@@ -29,7 +29,7 @@
                            ,plans = [] :: kzd_service_plan:docs()
                           }).
 
--type plans() :: [#wh_service_plans{},...] | [].
+-type plans() :: [#wh_service_plans{}].
 -export_type([plans/0]).
 
 %%--------------------------------------------------------------------

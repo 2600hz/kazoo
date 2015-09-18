@@ -150,7 +150,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> handle_cast_return().
+-spec handle_cast(_, state()) -> handle_cast_return().
 handle_cast('start_action', #state{call=_Call
                                    ,action='receive'
                                    ,owner_id=OwnerId
@@ -380,7 +380,7 @@ maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
     end,
     State.
 
--spec update_fax_settings(whapps_call:call(), wh_json:object()) -> any().
+-spec update_fax_settings(whapps_call:call(), wh_json:object()) -> _.
 update_fax_settings(Call, JObj) ->
     ChannelVars = build_fax_settings(Call, JObj),
     whapps_call_command:set(wh_json:from_list(ChannelVars), 'undefined', Call).
@@ -544,7 +544,7 @@ check_attachment_for_data(FaxDoc, AttachmentName, _State) ->
 
 -spec create_fax_doc(wh_json:object(), state()) ->
                             {'ok', wh_json:object()} |
-                            {'error', any()}.
+                            {'error', _}.
 create_fax_doc(JObj, #state{owner_id = OwnerId
                             ,faxbox_id = FaxBoxId
                             ,fax_notify = Notify

@@ -31,7 +31,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
@@ -960,7 +960,7 @@ gregorian_days_of_iso_w01_1(Year) ->
 our_day_of_the_week(Year, Month, Day) ->
     (calendar:date_to_gregorian_days(Year, Month, Day) + 5) rem 7 + 1.
 
--spec find_active_days(ne_binaries(), wh_day()) -> [wh_daynum(),...] | [].
+-spec find_active_days(ne_binaries(), wh_day()) -> [wh_daynum()].
 find_active_days(Weekdays, DOW0) ->
     [DOW1
      || DOW1 <- [to_dow(D) || D <- Weekdays],

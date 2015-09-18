@@ -68,7 +68,7 @@
                          }).
 
 -type item() :: #wh_service_item{}.
--type items() :: [item(),...] | [].
+-type items() :: [item()].
 -export_type([item/0
               ,items/0
              ]).

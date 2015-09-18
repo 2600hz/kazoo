@@ -21,9 +21,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
+-spec start(_, _) ->
                    {'ok', pid()} |
-                   {'error', term()}.
+                   {'error', _}.
 start(_StartType, _StartArgs) -> notify:start_link().
 
 %%--------------------------------------------------------------------
@@ -32,5 +32,5 @@ start(_StartType, _StartArgs) -> notify:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(_) -> 'ok'.
 stop(_State) -> notify:stop().

@@ -371,7 +371,7 @@ exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
 %%--------------------------------------------------------------------
 -spec send_activation_email(cb_context:context(), #state{}) ->
                                    {'ok', pid()} |
-                                   {'error', term()}.
+                                   {'error', _}.
 send_activation_email(#cb_context{doc=JObj
                                   ,req_id=ReqId
                                  }=Context
@@ -413,7 +413,7 @@ send_activation_email(#cb_context{doc=JObj
 %% if they have been provided
 %% @end
 %%--------------------------------------------------------------------
--spec create_body(#state{}, wh_proplist(), [] | [mail_message_body(),...]) -> [] | [mail_message_body(),...].
+-spec create_body(#state{}, wh_proplist(), [mail_message_body()]) -> [mail_message_body()].
 create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= 'undefined' ->
     case Tmpl:render(Props) of
         {'ok', Content} ->
@@ -547,7 +547,7 @@ init_state() ->
 
 -spec get_configs() -> {'ok', proplist()} |
                        {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
-                        | {integer(), module(), term()}
+                        | {integer(), module(), _}
                        }.
 get_configs() ->
     file:consult(lists:flatten(?SIGNUP_CONF)).

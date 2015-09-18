@@ -150,7 +150,7 @@ order_endpoints(<<"weighted_random">>, Endpoints) ->
     weighted_random_sort(Endpoints).
 
 -type endpoint_intermediate() :: {ne_binary(), ne_binary(), group_weight(), api_object()}.
--type endpoint_intermediates() :: [] | [endpoint_intermediate(),...].
+-type endpoint_intermediates() :: [endpoint_intermediate()].
 
 -spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), wh_json:object(), whapps_call:call()) ->
                                   endpoint_intermediates().

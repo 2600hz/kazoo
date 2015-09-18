@@ -180,7 +180,7 @@ send_sync_req(Srv, Type) ->
 config(Srv) ->
     gen_listener:call(Srv, 'config').
 
--spec send_sync_resp(pid(), atom(), term(), wh_json:object()) -> 'ok'.
+-spec send_sync_resp(pid(), atom(), _, wh_json:object()) -> 'ok'.
 send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
     gen_listener:cast(Srv, {'send_sync_resp', Strategy, StrategyState, ReqJObj}).
 

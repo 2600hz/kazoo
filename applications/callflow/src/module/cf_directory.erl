@@ -82,7 +82,7 @@
           ,name_audio_id :: api_binary() % pre-recorded audio of user's name
          }).
 -type directory_user() :: #directory_user{}.
--type directory_users() :: [directory_user(),...] | [].
+-type directory_users() :: [directory_user()].
 
 -record(directory, {
           sort_by = 'last' :: 'first' | 'last'
@@ -359,7 +359,7 @@ get_sort_by(_) -> 'last'.
 
 -spec get_directory_listing(ne_binary(), ne_binary()) ->
                                    {'ok', directory_users()} |
-                                   {'error', term()}.
+                                   {'error', _}.
 get_directory_listing(Db, DirId) ->
     case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{'key', DirId}, 'include_docs']) of
         {'ok', []} ->

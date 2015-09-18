@@ -1744,7 +1744,7 @@ apply_state_updates(#state{agent_state_updates=Q}=State) ->
     {'next_state', Atom, ModState#state{agent_state_updates = []}}.
 
 -type state_acc() :: {atom(), fsm_state()}.
--spec state_step(term(), state_acc()) -> state_acc().
+-spec state_step(_, state_acc()) -> state_acc().
 state_step({'pause', Timeout}, {_, State}) ->
     {'paused', handle_pause(Timeout, State)};
 state_step({'resume'}, {_, State}) ->

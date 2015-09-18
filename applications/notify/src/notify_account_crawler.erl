@@ -288,7 +288,7 @@ handle_initial_call(AccountId, AccountDb) ->
         _ -> 'ok'
     end.
 
--spec notify_initial_call(ne_binary(), wh_json:object()) -> any().
+-spec notify_initial_call(ne_binary(), wh_json:object()) -> _.
 notify_initial_call(AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
                                 ,'true'

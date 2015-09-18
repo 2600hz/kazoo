@@ -148,8 +148,8 @@
 
 -type amqp_payload() :: iolist() | ne_binary().
 
--type amqp_property() :: {ne_binary(), atom(), any()}.
--type amqp_properties() :: [amqp_property(),...] | [].
+-type amqp_property() :: {ne_binary(), atom(), _}.
+-type amqp_properties() :: [amqp_property()].
 
 %%------------------------------------------------------------------------------
 %% @public

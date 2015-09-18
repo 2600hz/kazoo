@@ -794,10 +794,10 @@ maybe_process_image(CT, Body, Size, State) ->
 
 -spec write_tmp_file(ne_binary(), binary() | mimemail:mimetuple()) ->
                             {'ok', api_binary()} |
-                            {'error', any()}.
+                            {'error', _}.
 -spec write_tmp_file(api_binary() , ne_binary(), binary() | mimemail:mimetuple()) ->
                             {'ok', api_binary()} |
-                            {'error', any()}.
+                            {'error', _}.
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).
 

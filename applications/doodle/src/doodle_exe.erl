@@ -201,10 +201,10 @@ get_all_branch_keys(Call) ->
 
 -spec attempt(whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', term()}}.
+                     {'attempt_resp', {'error', _}}.
 -spec attempt(wh_json:key(), whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', term()}}.
+                     {'attempt_resp', {'error', _}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).
 
 attempt(Key, Srv) when is_pid(Srv) ->
@@ -220,7 +220,7 @@ wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
+-spec relay_amqp(wh_json:object(), wh_proplist()) -> _.
 relay_amqp(JObj, Props) ->
     Pids = case props:get_value('cf_module_pid', Props) of
                P when is_pid(P) -> [P | props:get_value('cf_event_pids', Props, [])];

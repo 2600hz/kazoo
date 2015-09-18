@@ -299,8 +299,8 @@ unserialize_fs_array(_) -> [].
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
--spec get_setting(wh_json:key()) -> {'ok', term()}.
--spec get_setting(wh_json:key(), Default) -> {'ok', term() | Default}.
+-spec get_setting(wh_json:key()) -> {'ok', _}.
+-spec get_setting(wh_json:key(), Default) -> {'ok', _ | Default}.
 get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
 get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
 
@@ -340,7 +340,7 @@ get_fs_kv(Key, Val, _) ->
                            ,ne_binary()
                           ) ->
                                   {ne_binary(), binary()} |
-                                  [{ne_binary(), binary()},...] | [] |
+                                  [{ne_binary(), binary()}] |
                                   'skip'.
 get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
     {<<"hold_music">>, media_path(Media, 'extant', UUID, wh_json:new())};
@@ -509,8 +509,8 @@ get_fs_kvs_fold({K, V}, Acc, UUID) ->
 -type bridge_channel() :: ne_binary().
 -type bridge_channels() :: ne_binaries().
 -type build_return() :: bridge_channel() | {'worker', pid()}.
--type build_returns() :: [build_return(),...] | [].
--type bridge_endpoints() :: [bridge_endpoint(),...] | [].
+-type build_returns() :: [build_return()].
+-type bridge_endpoints() :: [bridge_endpoint()].
 
 -spec build_bridge_string(wh_json:objects()) -> ne_binary().
 -spec build_bridge_string(wh_json:objects(), ne_binary()) -> ne_binary().
@@ -1112,12 +1112,12 @@ maybe_aggregate_headers(<<"Diversion">>, Diversion, Acc) ->
 maybe_aggregate_headers(K, V, Acc) ->
     [{K,V} | Acc].
 
--spec normalize_custom_sip_header_name(term()) -> term().
+-spec normalize_custom_sip_header_name(_) -> _.
 normalize_custom_sip_header_name({<<"variable_sip_h_", K/binary>>, V}) -> {K, V};
 normalize_custom_sip_header_name({<<"sip_h_", K/binary>>, V}) -> {K, V};
 normalize_custom_sip_header_name(A) -> A.
 
--spec is_custom_sip_header(term()) -> boolean().
+-spec is_custom_sip_header(_) -> boolean().
 is_custom_sip_header({<<"P-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"X-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"sip_h_", _/binary>>, _}) -> 'true';

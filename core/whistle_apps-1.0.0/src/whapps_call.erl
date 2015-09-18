@@ -813,12 +813,12 @@ set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->
 from_tag(#whapps_call{from_tag=FromTag}) ->
     FromTag.
 
--spec set_custom_channel_var(term(), term(), call()) -> call().
+-spec set_custom_channel_var(_, _, call()) -> call().
 set_custom_channel_var(Key, Value, Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), 'undefined', Call),
     insert_custom_channel_var(Key, Value, Call).
 
--spec insert_custom_channel_var(term(), term(), call()) -> call().
+-spec insert_custom_channel_var(_, _, call()) -> call().
 insert_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
 
@@ -834,11 +834,11 @@ update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->
     whapps_call_command:set(NewCCVs, 'undefined', Call),
     handle_ccvs_update(NewCCVs, Call).
 
--spec custom_channel_var(term(), Default, call()) -> Default | term().
+-spec custom_channel_var(_, Default, call()) -> Default | _.
 custom_channel_var(Key, Default, #whapps_call{ccvs=CCVs}) ->
     wh_json:get_value(Key, CCVs, Default).
 
--spec custom_channel_var(term(), call()) -> term().
+-spec custom_channel_var(_, call()) -> _.
 custom_channel_var(Key, #whapps_call{ccvs=CCVs}) ->
     wh_json:get_value(Key, CCVs).
 
@@ -884,15 +884,15 @@ clear_custom_publish_function(#whapps_call{}=Call) ->
 -spec custom_publish_function(call()) -> 'undefined' | whapps_custom_publish().
 custom_publish_function(#whapps_call{custom_publish_fun=Fun}) -> Fun.
 
--spec kvs_append(term(), term(), call()) -> call().
+-spec kvs_append(_, _, call()) -> call().
 kvs_append(Key, Value, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:append(wh_util:to_binary(Key), Value, Dict)}.
 
--spec kvs_append_list(term(), [term(),...], call()) -> call().
+-spec kvs_append_list(_, [_,...], call()) -> call().
 kvs_append_list(Key, ValList, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:append_list(wh_util:to_binary(Key), ValList, Dict)}.
 
--spec kvs_erase(term() | [term(),...], call()) -> call().
+-spec kvs_erase(_ | [_,...], call()) -> call().
 kvs_erase(Keys, #whapps_call{kvs=Dict}=Call) when is_list(Keys)->
     Call#whapps_call{kvs=lists:foldl(fun(K, D) -> orddict:erase(wh_util:to_binary(K), D) end, Dict, Keys)};
 kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
@@ -901,8 +901,8 @@ kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
 -spec kvs_flush(call()) -> call().
 kvs_flush(#whapps_call{}=Call) -> Call#whapps_call{kvs=orddict:new()}.
 
--spec kvs_fetch(wh_json:key(), call()) -> term().
--spec kvs_fetch(wh_json:key(), Default, call()) -> term() | Default.
+-spec kvs_fetch(wh_json:key(), call()) -> _.
+-spec kvs_fetch(wh_json:key(), Default, call()) -> _ | Default.
 kvs_fetch(Key, Call) -> kvs_fetch(Key, 'undefined', Call).
 kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
@@ -911,19 +911,19 @@ kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
         'error':'function_clause' -> Default
     end.
 
--spec kvs_fetch_keys(call()) -> [term(),...].
+-spec kvs_fetch_keys(call()) -> [_,...].
 kvs_fetch_keys(#whapps_call{kvs=Dict}) -> orddict:fetch_keys(Dict).
 
--spec kvs_filter(fun((term(), term()) -> boolean()), call()) ->
+-spec kvs_filter(fun((_, _) -> boolean()), call()) ->
                               call().
 kvs_filter(Pred, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:filter(Pred, Dict)}.
 
--spec kvs_find(term(), call()) -> {'ok', term()} | 'error'.
+-spec kvs_find(_, call()) -> {'ok', _} | 'error'.
 kvs_find(Key, #whapps_call{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
 
--spec kvs_fold(fun((term(), term(), term()) -> term()), term(), call()) -> call().
+-spec kvs_fold(fun((_, _, _) -> _), _, call()) -> call().
 kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) -> orddict:fold(Fun, Acc0, Dict).
 
 -spec kvs_from_proplist(wh_proplist(), call()) -> call().
@@ -931,15 +931,15 @@ kvs_from_proplist(List, #whapps_call{kvs=Dict}=Call) ->
     L = orddict:from_list([{wh_util:to_binary(K), V} || {K, V} <- List]),
     Call#whapps_call{kvs=orddict:merge(fun(_, V1, _) -> V1 end, L, Dict)}.
 
--spec kvs_is_key(term(), call()) -> boolean().
+-spec kvs_is_key(_, call()) -> boolean().
 kvs_is_key(Key, #whapps_call{kvs=Dict}) ->
     orddict:is_key(wh_util:to_binary(Key), Dict).
 
--spec kvs_map(fun((term(), term()) -> term()), call()) -> call().
+-spec kvs_map(fun((_, _) -> _), call()) -> call().
 kvs_map(Pred, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:map(Pred, Dict)}.
 
--spec kvs_store(term(), term(), call()) -> call().
+-spec kvs_store(_, _, call()) -> call().
 kvs_store(Key, Value, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:store(wh_util:to_binary(Key), Value, Dict)}.
 
@@ -953,15 +953,15 @@ kvs_store_proplist(List, #whapps_call{kvs=Dict}=Call) ->
 kvs_to_proplist(#whapps_call{kvs=Dict}) ->
     orddict:to_list(Dict).
 
--spec kvs_update(term(), fun((term()) -> term()), call()) -> call().
+-spec kvs_update(_, fun((_) -> _), call()) -> call().
 kvs_update(Key, Fun, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update(wh_util:to_binary(Key), Fun, Dict)}.
 
--spec kvs_update(term(), fun((term()) -> term()), term(), call()) -> call().
+-spec kvs_update(_, fun((_) -> _), _, call()) -> call().
 kvs_update(Key, Fun, Initial, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update(wh_util:to_binary(Key), Fun, Initial, Dict)}.
 
--spec kvs_update_counter(term(), number(), call()) -> call().
+-spec kvs_update_counter(_, number(), call()) -> call().
 kvs_update_counter(Key, Number, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
 

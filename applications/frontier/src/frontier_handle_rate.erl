@@ -285,7 +285,7 @@ check_fallback(AccountId, 'empty', MethodList, Realm) ->
 check_fallback(_, Acc, _, _) ->
     Acc.
 
--type couch_ret() :: {'ok', wh_json:object()} | {'error', any()}.
+-type couch_ret() :: {'ok', wh_json:object()} | {'error', _}.
 -spec build_results(couch_ret(), ne_binaries(), ne_binary()) -> wh_json:objects().
 build_results({'error', _Reason}, _, _) ->
     lager:error("Can't fetch data from db: ~p", [_Reason]),

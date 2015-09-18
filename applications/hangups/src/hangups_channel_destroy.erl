@@ -210,8 +210,8 @@ add_to_meters(AccountId, HangupCause) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec notify_meters(ne_binary()) -> any().
--spec notify_meters(ne_binary(), ne_binary()) -> any().
+-spec notify_meters(ne_binary()) -> _.
+-spec notify_meters(ne_binary(), ne_binary()) -> _.
 notify_meters(HangupCause) ->
     folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause)).
 

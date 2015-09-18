@@ -163,7 +163,7 @@ params_from_data(<<"device">>, Data, _Call) ->
 params_from_data(Other, _, _) ->
     {'error',<<"module ",Other/binary," not implemented">>}.
 
--spec no_permission_to_intercept(whapps_call:call()) -> any().
+-spec no_permission_to_intercept(whapps_call:call()) -> _.
 no_permission_to_intercept(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_prompt(<<"intercept-no_channels">>, Call).

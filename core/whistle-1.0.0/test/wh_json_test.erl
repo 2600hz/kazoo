@@ -186,7 +186,7 @@ filter_test() ->
 new_test() ->
     ?EMPTY_JSON_OBJECT =:= wh_json:new().
 
--spec is_json_object_test() -> any().
+-spec is_json_object_test() -> _.
 is_json_object_test() ->
     ?assertEqual('false', wh_json:is_json_object('foo')),
     ?assertEqual('false', wh_json:is_json_object(123)),
@@ -232,14 +232,14 @@ is_json_object_test() ->
 -define(D_ARR, ?JSON_WRAPPER([{<<"k1">>, [1]}])).
 -define(P_ARR, ?JSON_WRAPPER([{<<"k1">>, []}])).
 
--spec get_keys_test() -> any().
+-spec get_keys_test() -> _.
 get_keys_test() ->
     Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
     ?assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, wh_json:get_keys([], ?D1))),
     ?assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, wh_json:get_keys([<<"sub_docs">>, 1], ?D3))),
     ?assertEqual('true', lists:all(fun(K) -> lists:member(K, [1,2,3]) end, wh_json:get_keys([<<"sub_docs">>], ?D3))).
 
--spec to_proplist_test() -> any().
+-spec to_proplist_test() -> _.
 to_proplist_test() ->
     ?assertEqual(?P1, wh_json:to_proplist(?D1)),
     ?assertEqual(?P2, wh_json:to_proplist(?D2)),
@@ -248,7 +248,7 @@ to_proplist_test() ->
     ?assertEqual(?P6, wh_json:to_proplist(?D6)),
     ?assertEqual(?P7, wh_json:to_proplist(?D7)).
 
--spec recursive_to_proplist_test() -> any().
+-spec recursive_to_proplist_test() -> _.
 recursive_to_proplist_test() ->
     ?assertEqual(?P8, wh_json:recursive_to_proplist(?D1)),
     ?assertEqual(?P9, wh_json:recursive_to_proplist(?D2)),
@@ -257,7 +257,7 @@ recursive_to_proplist_test() ->
     ?assertEqual(?P12, wh_json:recursive_to_proplist(?D6)),
     ?assertEqual(?P13, wh_json:recursive_to_proplist(?D7)).
 
--spec delete_key_test() -> any().
+-spec delete_key_test() -> _.
 delete_key_test() ->
     ?assertEqual(?EMPTY_JSON_OBJECT, wh_json:delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT)),
     ?assertEqual(?EMPTY_JSON_OBJECT, wh_json:delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT, 'prune')),
@@ -276,7 +276,7 @@ delete_key_test() ->
     ?assertEqual(?P_ARR, wh_json:delete_key([<<"k1">>, 1], ?D_ARR)),
     ?assertEqual(?EMPTY_JSON_OBJECT, wh_json:delete_key([<<"k1">>, 1], ?D_ARR, 'prune')).
 
--spec get_value_test() -> any().
+-spec get_value_test() -> _.
 get_value_test() ->
     %% Basic first level key
     ?assertEqual('undefined', wh_json:get_value([<<"d1k1">>], ?EMPTY_JSON_OBJECT)),

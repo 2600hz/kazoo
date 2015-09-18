@@ -223,7 +223,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
 %% @end
 %%--------------------------------------------------------------------
 -type attachment() :: {ne_binary(), ne_binary(), wh_proplist(), wh_proplist(), ne_binary()}.
--type attachments() :: [attachment(),...] | [].
+-type attachments() :: [attachment()].
 
 -spec get_attachments(wh_json:object()) -> attachments().
 get_attachments(JObj) ->

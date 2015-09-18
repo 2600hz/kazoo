@@ -122,13 +122,13 @@ handle_fax_event(JObj, Props) ->
     Event = wh_json:get_value(<<"Application-Event">>, JObj),
     gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
 
--spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> any().
+-spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> _.
 handle_channel_destroy(JObj, Props) ->
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
     gen_server:cast(Srv, {'channel_destroy', JobId, JObj}).
 
--spec handle_job_status_query(wh_json:object(), wh_proplist()) -> any().
+-spec handle_job_status_query(wh_json:object(), wh_proplist()) -> _.
 handle_job_status_query(JObj, Props) ->
     'true' = wapi_fax:query_status_v(JObj),
     Srv = props:get_value('server', Props),

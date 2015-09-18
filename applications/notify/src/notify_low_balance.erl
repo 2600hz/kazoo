@@ -42,7 +42,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send(integer(), wh_json:object()) -> any().
+-spec send(integer(), wh_json:object()) -> _.
 send(CurrentBalance, Account) ->
     AccountId = wh_doc:id(Account),
     case collect_recipients(AccountId) of

@@ -17,7 +17,7 @@ start_link() ->
     wh_util:spawn(?MODULE, 'init', []),
     'ignore'.
 
--spec init() -> any().
+-spec init() -> _.
 init() ->
     wh_util:put_callid(?MODULE),
     whapps_maintenance:refresh(?WH_SIP_DB).

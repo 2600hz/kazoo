@@ -141,7 +141,7 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> _.
 build_and_send_email(_TxtBody, _HTMLBody, _Subject, 'undefined', _Props) ->
     lager:debug("no TO email, not sending");
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->

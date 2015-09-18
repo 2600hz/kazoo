@@ -273,7 +273,7 @@ process_realm(Realm, Dir, Module) ->
                        )
     end.
 
--spec build_freeswitch(pid()) -> any().
+-spec build_freeswitch(pid()) -> _.
 build_freeswitch(Pid) ->
     WorkDir = setup_directory(),
     AllDBs = wnm_util:get_all_number_dbs(),
@@ -493,7 +493,7 @@ render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
                         ,[Module, Number, AccountId, _R])
     end.
 
--spec maybe_accumulate_realm(boolean(), ne_binary()) -> any().
+-spec maybe_accumulate_realm(boolean(), ne_binary()) -> _.
 maybe_accumulate_realm('true', _) -> 'ok';
 maybe_accumulate_realm('false', Realm) ->
     put(<<"Realms">>, [Realm | get(<<"Realms">>)]).
@@ -527,7 +527,7 @@ template_file_name(?FS_CHATPLAN) -> "chatplan_template.xml";
 template_file_name(?FS_DIRECTORY) -> "directory_template.xml";
 template_file_name(?FS_DIRECTORY_REALM) -> "directory_realm_template.xml".
 
--spec compile_templates() -> ['ok',...] | [].
+-spec compile_templates() -> ['ok'].
 compile_templates() ->
     [compile_template(wh_util:to_atom(T,'true')) || T <- ?FS_ALL_TEMPLATES].
 

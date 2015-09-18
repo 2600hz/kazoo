@@ -121,7 +121,7 @@ maybe_execute_action(_Action, _, Call) ->
     lager:info("dnd action ~s is invalid", [_Action]),
     whapps_call_command:b_prompt(<<"dnd-not_available">>, Call).
 
--spec activate_dnd(dnd(), whapps_call:call()) -> any().
+-spec activate_dnd(dnd(), whapps_call:call()) -> _.
 activate_dnd(#dnd{jobj=JObj
                   ,account_db=AccountDb
                  }, Call) ->
@@ -130,7 +130,7 @@ activate_dnd(#dnd{jobj=JObj
         {'ok', _} -> whapps_call_command:b_prompt(<<"dnd-activated">>, Call)
     end.
 
--spec deactivate_dnd(dnd(), whapps_call:call()) -> any().
+-spec deactivate_dnd(dnd(), whapps_call:call()) -> _.
 deactivate_dnd(#dnd{jobj=JObj
                     ,account_db=AccountDb
                    }, Call) ->

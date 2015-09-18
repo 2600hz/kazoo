@@ -34,8 +34,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_email(ne_binary(), 'undefined' | binary(), term()) ->
-                        'ok' | {'error', _}.
+-spec send_email(ne_binary(), api_binary(), _) -> 'ok' | {'error', _}.
 send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->

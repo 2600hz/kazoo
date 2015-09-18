@@ -54,7 +54,7 @@ send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
     _ = whapps_call:cache(Call, ?APP_NAME),
     lager:debug("sent route response to park the call for ~s(~s)", [Id, AccountId]).
 
--spec handle_route_win(wh_json:object(), wh_proplist()) -> any().
+-spec handle_route_win(wh_json:object(), wh_proplist()) -> _.
 handle_route_win(JObj, _Props) ->
     'true' = wapi_route:win_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -78,8 +78,8 @@ handle_route_win(JObj, _Props) ->
             lager:debug("failed to retrieve cached call: ~p", [_R])
     end.
 
--spec update_acdc_actor(whapps_call:call()) -> any().
--spec update_acdc_actor(whapps_call:call(), api_binary(), api_binary()) -> any().
+-spec update_acdc_actor(whapps_call:call()) -> _.
+-spec update_acdc_actor(whapps_call:call(), api_binary(), api_binary()) -> _.
 update_acdc_actor(Call) ->
     update_acdc_actor(Call
                       ,whapps_call:custom_channel_var(<<"ACDc-ID">>, Call)

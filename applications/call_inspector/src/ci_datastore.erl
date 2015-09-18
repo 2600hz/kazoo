@@ -43,7 +43,7 @@
 
 -type datum() :: {'chunks', [ci_chunk:chunk()]} |
                  {'analysis', [ci_analysis:analysis()]}.
--type data() :: [datum(),...] | [].
+-type data() :: [datum()].
 
 -export_type([data/0]).
 

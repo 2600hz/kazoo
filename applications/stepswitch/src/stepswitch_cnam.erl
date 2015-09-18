@@ -64,7 +64,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(any()) -> startlink_ret().
+-spec start_link(_) -> startlink_ret().
 start_link(_) ->
     _ = ssl:start(),
     gen_server:start_link(?MODULE, [], []).

@@ -346,7 +346,7 @@ transaction_to_prop_fold(Transaction, Acc) ->
 %% Save list of record
 %% @end
 %%--------------------------------------------------------------------
--type save_acc() :: [{'ok' | 'error', wh_transaction:transaction()},...] | [].
+-type save_acc() :: [{'ok' | 'error', wh_transaction:transaction()}].
 
 -spec save(wh_transactions()) -> save_acc().
 -spec save(wh_transactions(), save_acc()) -> save_acc().
@@ -369,7 +369,7 @@ save([Transaction | Transactions], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--type remove_acc() :: ['ok' | {'error', wh_transaction:transaction()},...] | [].
+-type remove_acc() :: ['ok' | {'error', wh_transaction:transaction()}].
 
 -spec remove(wh_transactions()) -> remove_acc().
 -spec remove(wh_transactions(), remove_acc()) -> remove_acc().

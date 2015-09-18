@@ -188,7 +188,7 @@ amqp_exchange_options(JObj) ->
      || {K, V} <- wh_json:to_proplist(JObj)
     ].
 
--spec send_amqp_sms(wh_proplist(), atom()) -> 'ok' | {'error', term()}.
+-spec send_amqp_sms(wh_proplist(), atom()) -> 'ok' | {'error', _}.
 send_amqp_sms(Payload, Pool) ->
     case wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, Pool) of
         {'returned', _JObj, Deliver} ->

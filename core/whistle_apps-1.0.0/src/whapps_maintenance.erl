@@ -606,7 +606,7 @@ verify_aggregated_device(AccountDb, AccountId, JObj) ->
 %%--------------------------------------------------------------------
 -spec cleanup_voicemail_media(ne_binary()) ->
                                      {'ok', wh_json:objects()} |
-                                     {'error', any()}.
+                                     {'error', _}.
 cleanup_voicemail_media(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Medias = get_medias(Account),
@@ -872,7 +872,7 @@ find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_migrate_attachments(ne_binary(), ne_binary(), wh_json:object()) -> any().
+-spec maybe_migrate_attachments(ne_binary(), ne_binary(), wh_json:object()) -> _.
 maybe_migrate_attachments(AccountDb, Id, JObj) ->
     case wh_doc:attachments(JObj) of
         'undefined' ->

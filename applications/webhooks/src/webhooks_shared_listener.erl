@@ -145,8 +145,8 @@ hooks_configured(AccountId) ->
 
 -define(FORMAT_STRING_SUMMARY, "| ~-45s | ~-5s | ~-20s | ~-10s | ~-32s |~n").
 
--spec print_summary('$end_of_table' | {webhooks(), term()}) -> 'ok'.
--spec print_summary('$end_of_table' | {webhooks(), term()}, non_neg_integer()) -> 'ok'.
+-spec print_summary('$end_of_table' | {webhooks(), _}) -> 'ok'.
+-spec print_summary('$end_of_table' | {webhooks(), _}, non_neg_integer()) -> 'ok'.
 print_summary('$end_of_table') ->
     io:format("no webhooks configured~n", []);
 print_summary(Match) ->

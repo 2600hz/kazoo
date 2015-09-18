@@ -87,7 +87,7 @@
                          ,<<"pvt_modified">>
                         ]).
 
--type db_create_options() :: [{'q',integer()} | {'n',integer()},...] | [].
+-type db_create_options() :: [{'q',integer()} | {'n',integer()}].
 
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
 
@@ -937,7 +937,7 @@ maybe_add_pvt_type(Db, DocId, JObj) ->
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
--type retry504_ret() :: any().
+-type retry504_ret() :: _.
 %% 'ok' | ne_binary() |
 %% {'ok', wh_json:object() | wh_json:objects() |
 %%  binary() | ne_binaries() | boolean() | integer()

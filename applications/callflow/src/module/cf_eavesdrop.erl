@@ -35,7 +35,7 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     _ = case maybe_allowed_to_eavesdrop(Data, Call) of
             'true' ->
@@ -180,17 +180,17 @@ sip_user_of_endpoint(EndpointId, Call) ->
             kz_device:sip_username(Endpoint)
     end.
 
--spec no_users(whapps_call:call()) -> any().
+-spec no_users(whapps_call:call()) -> _.
 no_users(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_prompt(<<"pickup-no_users">>, Call).
 
--spec no_channels(whapps_call:call()) -> any().
+-spec no_channels(whapps_call:call()) -> _.
 no_channels(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_prompt(<<"pickup-no_channels">>, Call).
 
--spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
+-spec no_permission_to_eavesdrop(whapps_call:call()) -> _.
 no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_prompt(<<"eavesdrop-no_channels">>, Call).

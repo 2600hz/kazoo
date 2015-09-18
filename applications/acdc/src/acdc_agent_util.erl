@@ -43,7 +43,7 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
 
 -spec most_recent_status(ne_binary(), ne_binary()) ->
                                 {'ok', ne_binary()} |
-                                {'error', any()}.
+                                {'error', _}.
 most_recent_status(AccountId, AgentId) ->
     case most_recent_ets_status(AccountId, AgentId) of
         {'ok', _}=OK -> OK;
@@ -54,7 +54,7 @@ most_recent_status(AccountId, AgentId) ->
 
 -spec most_recent_ets_status(ne_binary(), ne_binary()) ->
                                     {'ok', ne_binary()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 most_recent_ets_status(AccountId, AgentId) ->
     API = [{<<"Account-ID">>, AccountId}
            ,{<<"Agent-ID">>, AgentId}
@@ -172,7 +172,7 @@ reduce_agent_statuses(_, Data, {T, _}=Acc) ->
         _:_ -> Acc
     end.
 
--type receive_info() :: [{pid(), reference()} | 'undefined',...] | [].
+-type receive_info() :: [{pid(), reference()} | 'undefined'].
 -spec receive_statuses(receive_info()) ->
                               wh_json:object().
 -spec receive_statuses(receive_info(), wh_json:object()) ->

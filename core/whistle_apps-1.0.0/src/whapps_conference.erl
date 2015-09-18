@@ -306,19 +306,19 @@ bridge_password(#whapps_conference{bridge_password=BridgePassword}) ->
 set_bridge_password(BridgePassword, Conference) when is_binary(BridgePassword) ->
     Conference#whapps_conference{bridge_password=BridgePassword}.
 
--spec member_pins(whapps_conference:conference()) -> [ne_binary(),...] | [].
+-spec member_pins(whapps_conference:conference()) -> [ne_binary()].
 member_pins(#whapps_conference{member_pins=MemberPins}) ->
     MemberPins.
 
--spec set_member_pins([ne_binary(),...] | [], whapps_conference:conference()) -> whapps_conference:conference().
+-spec set_member_pins([ne_binary()], whapps_conference:conference()) -> whapps_conference:conference().
 set_member_pins(MemberPins, Conference) when is_list(MemberPins) ->
     Conference#whapps_conference{member_pins=MemberPins}.
 
--spec moderator_pins(whapps_conference:conference()) -> [ne_binary(),...] | [].
+-spec moderator_pins(whapps_conference:conference()) -> [ne_binary()].
 moderator_pins(#whapps_conference{moderator_pins=ModeratorPins}) ->
     ModeratorPins.
 
--spec set_moderator_pins([ne_binary(),...] | [], whapps_conference:conference()) -> whapps_conference:conference().
+-spec set_moderator_pins([ne_binary()], whapps_conference:conference()) -> whapps_conference:conference().
 set_moderator_pins(ModeratorPins, Conference) when is_list(ModeratorPins) ->
     Conference#whapps_conference{moderator_pins=ModeratorPins}.
 
