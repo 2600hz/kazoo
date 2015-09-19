@@ -177,7 +177,6 @@ determine_channel_type(JObj) ->
     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
     CalleeIdName = wh_json:get_value(<<"Callee-ID-Name">>, JObj),
     ResourceId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Resource-ID">>], JObj),
-    RequestType = determine_aaa_request_type(JObj),
     Result = case ResourceId of
                   'undefined' ->
                       [<<"internal">>, CallDirection];
