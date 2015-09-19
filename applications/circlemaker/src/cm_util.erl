@@ -185,7 +185,7 @@ determine_channel_type(JObj) ->
                       [<<"external">>, CallDirection]
               end,
     Type = case Result of
-               [<<"external">>, <<"outbound">>] when RequestType == 'authz' ->
+               [<<"external">>, <<"outbound">>] ->
                    'normal';
                _ ->
                    case {From, To} of
