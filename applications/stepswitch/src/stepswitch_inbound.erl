@@ -180,8 +180,8 @@ maybe_set_pstn_originator_type_as_default(_NumberProps, JObj) ->
     case wh_json:get_value(?CCV(<<"Originator-Type">>), JObj) of
         'undefined' ->
             wh_json:set_value(?CCV(<<"Originator-Type">>), <<"PSTN">>, JObj);
-        OriginatorType ->
-            OriginatorType
+        _OriginatorType ->
+            JObj
     end.
 
 %%--------------------------------------------------------------------
