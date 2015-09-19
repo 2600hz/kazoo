@@ -665,7 +665,25 @@ publish_event(Props) ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
+    dump_event_info(Props),
     wapi_call:publish_event(Props).
+
+dump_event_info(Props) ->
+    EventName = wh_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),
+    ApplicationName = wh_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
+    dump_event_info(EventName, ApplicationName, Props).
+dump_event_info(<<"channel_create">> = EventName, ApplicationName, Props) ->
+    lager:info("EventStream: ~s/~s, ~s (~s)", [EventName, ApplicationName, get_call_id(Props), props:get_value(<<"Call-Direction">>, Props)]);
+dump_event_info(<<"channel_bridge">> = EventName, ApplicationName, Props) ->
+    lager:info("EventStream: ~s/~s ~s with ~s", [EventName, ApplicationName, props:get_value(<<"Call-ID">>, Props), props:get_value(<<"Other-Leg-Call-ID">>, Props)]);
+dump_event_info(<<"channel_unbridge">> = EventName, ApplicationName, Props) ->
+    lager:info("EventStream: ~s/~s ~s with ~s", [EventName, ApplicationName, props:get_value(<<"Call-ID">>, Props), props:get_value(<<"Other-Leg-Call-ID">>, Props)]);
+dump_event_info(<<"leg_created">> = EventName, ApplicationName, Props) ->
+    lager:info("EventStream: ~s/~s, ~s (~s)", [EventName, ApplicationName, get_other_leg(Props), props:get_value(<<"Call-Direction">>, Props)]);
+dump_event_info(<<"dtmf">> = EventName, _ApplicationName, Props) ->
+    lager:info("EventStream: ~s/~s", [EventName, props:get_value(<<"DTMF-Digit">>, Props, <<"">>)]);
+dump_event_info(EventName, ApplicationName, _Props) ->
+    lager:info("EventStream: ~s/~s", [EventName, ApplicationName]).
 
 -spec is_masquerade(wh_proplist()) -> boolean().
 is_masquerade(Props) ->
