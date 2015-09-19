@@ -759,11 +759,7 @@ fetch_document(JObj) ->
 fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     Extension = filename:extension(AttachmentName),
     DefaultContentType = fax_util:extension_to_content_type(Extension),
-
-    ContentType = case wh_doc:attachment_content_type(JObj, AttachmentName) of
-                      'undefined' -> DefaultContentType;
-                      CT -> CT
-                  end,
+    ContentType = wh_doc:attachment_content_type(JObj, AttachmentName, DefaultContentType),
 
     Props = [{"Content-Type", ContentType}],
     {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES_DB, wh_doc:id(JObj), AttachmentName),

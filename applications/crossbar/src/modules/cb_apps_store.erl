@@ -106,6 +106,7 @@ content_types_provided(Context, Id, ?ICON) ->
                 'undefined' -> Context1;
                 CT ->
                     [Type, SubType] = binary:split(CT, <<"/">>),
+                    lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
                     cb_context:set_content_types_provided(Context1, [{'to_binary', [{Type, SubType}]}])
             end;
         _ -> Context1

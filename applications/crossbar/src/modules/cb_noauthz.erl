@@ -22,9 +22,9 @@
 %%% API
 %%%===================================================================
 init() ->
-    crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, authorize).
+    crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
 
--spec authorize(#cb_context{}) -> 'true'.
+-spec authorize(cb_context:context()) -> 'true'.
 authorize(_) ->
     lager:debug("noauthz authorizing request"),
-    true.
+    'true'.
