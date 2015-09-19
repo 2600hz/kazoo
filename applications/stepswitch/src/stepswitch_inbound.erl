@@ -44,6 +44,7 @@ maybe_relay_request(JObj) ->
                         ,fun maybe_find_resource/2
                         ,fun maybe_format_destination/2
                         ,fun maybe_set_ringback/2
+                        ,fun maybe_set_pstn_originator_type_as_default/2
                         ,fun maybe_set_transfer_media/2
                         ,fun maybe_lookup_cnam/2
                         ,fun maybe_add_prepend/2
@@ -165,6 +166,22 @@ maybe_set_ringback(NumberProps, JObj) ->
         'undefined' -> JObj;
         MediaId ->
             wh_json:set_value(?CCV(<<"Ringback-Media">>), MediaId, JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_set_pstn_originator_type_as_default(number_properties(), wh_json:object()) ->
+    wh_json:object().
+maybe_set_pstn_originator_type_as_default(_NumberProps, JObj) ->
+    case wh_json:get_value(?CCV(<<"Originator-Type">>), JObj) of
+        'undefined' ->
+            wh_json:set_value(?CCV(<<"Originator-Type">>), <<"PSTN">>, JObj);
+        OriginatorType ->
+            OriginatorType
     end.
 
 %%--------------------------------------------------------------------
