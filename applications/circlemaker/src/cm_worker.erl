@@ -291,6 +291,24 @@ maybe_server_request([Server | Servers] = AllServers, JObj, AaaProps, AccountId,
 -spec maybe_block_processing(wh_json:object(), wh_json:object(), ne_binary()) -> any().
 maybe_block_processing(JObj, AaaProps, BlockKey) ->
     {ChannelProps, Type} = cm_util:determine_channel_type(JObj),
+    % check special case when a loopback channel transformed to normal,
+    % so on CHANNEL_CREATE and authz operation he has loopback type, but on channel destroy it has loopback type.
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    Type1 = case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), Type} of
+                {<<"call_event">>, <<"CHANNEL_CREATE">>, 'loopback'} ->
+                    cm_util:mark_channel_as_loopback(CallId);
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+                    case cm_util:is_channel_loopback(CallId) of
+                        'true' ->
+                            % cleanup
+                            cm_util:unmark_channel_as_loopback(CallId),
+                            'loopback';
+                        'false' ->
+                            Type
+                    end;
+                _ ->
+                    Type
+            end,
     BlockChannelsList = props:get_value(BlockKey, AaaProps),
     lager:debug("BlockChannelsList is ~p", [BlockChannelsList]),
     case BlockChannelsList of
@@ -304,8 +322,8 @@ maybe_block_processing(JObj, AaaProps, BlockKey) ->
                     lager:debug("Left is ~p and Right is ~p", [ordsets:from_list(Value), ordsets:from_list(ChannelProps)]),
                     ordsets:from_list(Value) == ordsets:from_list(ChannelProps) end,
                 BlockChannelsList),
-            lager:debug("FilteredList is ~p and Type is ~p", [FilteredList, Type]),
-            case {length(FilteredList), Type} of
+            lager:debug("FilteredList is ~p and Type is ~p", [FilteredList, Type1]),
+            case {length(FilteredList), Type1} of
                 {_, 'loopback'} -> 'blocked';
                 {0, 'normal'} -> 'ok';
                 {_, 'normal'} -> 'blocked'

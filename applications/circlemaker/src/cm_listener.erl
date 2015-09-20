@@ -363,6 +363,7 @@ init([]) ->
     ets:new(?ETS_INTERIM_UPDATE, ['named_table', {'keypos', 1}, 'public']),
     ets:new(?ETS_DELAY_ACCOUNTING, ['named_table', {'keypos', 1}, 'public']),
     ets:new(?ETS_DEVICE_INFO, ['named_table', {'keypos', 1}, 'public']),
+    ets:new(?ETS_LOOPBACK_CHANNELS, ['named_table', {'keypos', 1}, 'public']),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -435,6 +436,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    ets:delete(?ETS_LOOPBACK_CHANNELS),
     ets:delete(?ETS_DEVICE_INFO),
     ets:delete(?ETS_DELAY_ACCOUNTING),
     ets:delete(?ETS_SESSION_TIMEOUT),

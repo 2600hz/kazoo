@@ -14,6 +14,7 @@
 -define(ETS_INTERIM_UPDATE, 'cm_interim_update').
 -define(ETS_DELAY_ACCOUNTING, 'cm_delay_accounting').
 -define(ETS_DEVICE_INFO, 'cm_device_info').
+-define(ETS_LOOPBACK_CHANNELS, 'cm_loopback_channels').
 
 -define(CCV, <<"Custom-Channel-Vars">>).
 

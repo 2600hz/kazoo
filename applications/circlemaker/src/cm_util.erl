@@ -23,7 +23,10 @@
          ,hangup_call/1
          ,get_resource_name/2
          ,append_resource_name_to_request/1
-         ,insert_device_info_if_needed/2]).
+         ,insert_device_info_if_needed/2
+         ,mark_channel_as_loopback/1
+         ,unmark_channel_as_loopback/1
+         ,is_channel_loopback/1]).
 
 -include("circlemaker.hrl").
 
@@ -430,4 +433,19 @@ insert_device_info_if_needed(JObj, _Type) ->
             wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
                                 ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
                                 ,JObj)
+    end.
+
+mark_channel_as_loopback(CallId) ->
+    lager:debug("Channel ~p marked as loopback", [CallId]),
+    ets:insert(?ETS_LOOPBACK_CHANNELS, {CallId, 'loopback'}).
+
+unmark_channel_as_loopback(CallId) ->
+    lager:debug("Channel ~p unmarked as loopback", [CallId]),
+    ets:delete(?ETS_LOOPBACK_CHANNELS, CallId).
+
+is_channel_loopback(CallId) ->
+    lager:debug("Channel ~p checked for loopback type", [CallId]),
+    case ets:lookup(?ETS_LOOPBACK_CHANNELS, CallId) of
+        [] -> 'false';
+        [{CallId, 'loopback'}] -> 'true'
     end.
