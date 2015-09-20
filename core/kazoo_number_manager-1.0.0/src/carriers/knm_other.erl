@@ -32,9 +32,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -ifdef(TEST).
--define(PHONEBOOK_URL, 'undefined').
+-define(PHONEBOOK_URL(Options)
+        ,props:get_value(<<"phonebook_url">>, Options)
+       ).
 -else.
--define(PHONEBOOK_URL
+-define(PHONEBOOK_URL(Options)
         ,whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)
        ).
 -endif.
@@ -44,13 +46,13 @@
                           {'bulk', knm_number:knm_numbers()} |
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(Number, Quantity, Options) ->
-    case ?PHONEBOOK_URL of
+    case ?PHONEBOOK_URL(Options) of
         'undefined' -> {'error', 'non_available'};
         Url ->
-            case props:get_value(<<"blocks">>, Options) of
-                'undefined' ->
+            case props:is_defined(<<"blocks">>, Options) of
+                'false' ->
                     get_numbers(Url, Number, Quantity, Options);
-                _ ->
+                'true' ->
                     get_blocks(Url, Number, Quantity, Options)
             end
     end.
@@ -267,49 +269,51 @@ format_numbers_resp_map(DID, CarrierData, AccountId) ->
 -spec get_blocks(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                         {'error', 'non_available'} |
                         {'ok', knm_number:knm_numbers()}.
+-ifdef(TEST).
+get_blocks(?BLOCK_PHONEBOOK_URL, _Number, _Quantity, Props) ->
+    format_blocks_resp(?BLOCKS_RESP, Props).
+-else.
 get_blocks(Url, Number, Quantity, Props) ->
     Offset = props:get_binary_value(<<"offset">>, Props, <<"0">>),
     Limit = props:get_binary_value(<<"blocks">>, Props, <<"0">>),
     Country = whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     ReqBody = <<"?prefix=", (wh_util:uri_encode(Number))/binary
-                            ,"&size=", (wh_util:to_binary(Quantity))/binary
-                            ,"&offset=", Offset/binary
-                            ,"&limit=", Limit/binary>>,
-    Uri = <<Url/binary, "/blocks/", Country/binary, "/search", ReqBody/binary>>,
+                ,"&size=", (wh_util:to_binary(Quantity))/binary
+                ,"&offset=", Offset/binary
+                ,"&limit=", Limit/binary
+              >>,
+    Uri = <<Url/binary
+            ,"/blocks/", Country/binary
+            ,"/search", ReqBody/binary
+          >>,
     lager:debug("making request to ~s", [Uri]),
     case ibrowse:send_req(binary:bin_to_list(Uri), [], 'get') of
         {'error', Reason} ->
             lager:error("block lookup error: ~p", [Reason]),
             {'error', 'non_available'};
         {'ok', "200", _Headers, Body} ->
-            format_blocks_resp(wh_json:decode(Body));
+            format_blocks_resp(wh_json:decode(Body), Props);
         {'ok', _Status, _Headers, Body} ->
             lager:error("block lookup failed: ~p ~p", [_Status, Body]),
             {'error', 'non_available'}
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_blocks_resp(wh_json:object()) ->
+-spec format_blocks_resp(wh_json:object(), wh_proplist()) ->
                                 {'error', 'non_available'} |
                                 {'bulk', knm_number:knm_numbers()}.
-format_blocks_resp(JObj) ->
+format_blocks_resp(JObj, Options) ->
     case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
+            AccountId = props:get_value(<<"account_id">>, Options),
             Numbers =
                 lists:foldl(
-                  fun(Block, Numbers) ->
-                          StartNumber = wh_json:get_value(<<"start_number">>, Block),
-                          EndNumber = wh_json:get_value(<<"end_number">>, Block),
-                          format_blocks_resp_fold([{StartNumber, Block}
-                                                   ,{EndNumber, Block}
-                                                  ]
-                                                  ,Numbers
-                                                 )
-                  end
+                  fun(I, Acc) -> format_block_resp_fold(I, Acc, AccountId) end
                   ,[]
                   ,wh_json:get_value(<<"data">>, JObj, [])
                  ),
@@ -319,15 +323,29 @@ format_blocks_resp(JObj) ->
             {'error', 'non_available'}
     end.
 
+-spec format_block_resp_fold(wh_json:object(), knm_number:knm_numbers(), api_binary()) ->
+                                    knm_number:knm_numbers().
+format_block_resp_fold(Block, Numbers, AccountId) ->
+    StartNumber = wh_json:get_value(<<"start_number">>, Block),
+    EndNumber = wh_json:get_value(<<"end_number">>, Block),
+    format_block_resp(Block, Numbers, AccountId, StartNumber, EndNumber).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_blocks_resp_fold([{ne_binary(), wh_json:object()}], knm_number:knm_numbers()) ->
-                                     knm_number:knm_numbers().
-format_blocks_resp_fold([], Numbers) -> Numbers;
-format_blocks_resp_fold([{Num, JObj}|T], Numbers) ->
+-spec format_block_resp(wh_json:object(), knm_number:knm_numbers(), api_binary(), ne_binary(), ne_binary()) ->
+                               knm_number:knm_numbers().
+format_block_resp(JObj, Numbers, AccountId, Start, End) ->
+    [block_resp(JObj, AccountId, Start)
+     ,block_resp(JObj, AccountId, End)
+     | Numbers
+    ].
+
+-spec block_resp(wh_json:object(), api_binary(), ne_binary()) ->
+                        knm_number:knm_number().
+block_resp(JObj, AccountId, Num) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     Updates = [{fun knm_phone_number:set_number/2, NormalizedNum}
@@ -335,10 +353,10 @@ format_blocks_resp_fold([{Num, JObj}|T], Numbers) ->
                ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
                ,{fun knm_phone_number:set_carrier_data/2, JObj}
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
+               ,{fun knm_phone_number:set_assign_to/2, AccountId}
               ],
     PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
-    format_blocks_resp_fold(T, [Number|Numbers]).
+    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------
 %% @private

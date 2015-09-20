@@ -51,6 +51,22 @@
            ]
           )
        ).
+
+-define(BLOCK_PHONEBOOK_URL, <<"http://blocks.tld">>).
+
+-define(START_BLOCK, <<"+14158867900">>).
+-define(END_BLOCK, <<"+14158897909">>).
+-define(BLOCK_RESP
+        ,wh_json:from_list([{<<"start_number">>, ?START_BLOCK}
+                            ,{<<"end_number">>, ?END_BLOCK}
+                           ])
+       ).
+
+-define(BLOCKS_RESP
+        ,wh_json:from_list([{<<"status">>, <<"success">>}
+                            ,{<<"data">>, [?BLOCK_RESP]}
+                           ])
+       ).
 -endif.
 
 -define(KNM_HRL, 'true').

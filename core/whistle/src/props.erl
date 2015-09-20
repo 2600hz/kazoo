@@ -231,10 +231,7 @@ delete_keys([_|_]=Ks, Props) -> lists:foldl(fun ?MODULE:delete/2, Props, Ks).
 
 -spec is_defined(wh_proplist_key(), wh_proplist()) -> boolean().
 is_defined(Key, Props) ->
-    case lists:keyfind(Key, 1, Props) of
-        {Key,_} -> 'true';
-        'false' -> lists:member(Key, Props)
-    end.
+    get_value(Key, Props) =/= 'undefined'.
 
 -spec unique(wh_proplist()) -> wh_proplist().
 unique(List) ->
