@@ -22,6 +22,10 @@
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
 -ifdef(TEST).
+-export([process_carrier_results/2
+         ,process_bulk_carrier_results/2
+        ]).
+
 -define(DEFAULT_CARRIER_MODULE
         ,?CARRIER_LOCAL
        ).
@@ -203,12 +207,17 @@ found_number_to_jobj(PhoneNumber, _Carrier) ->
      ).
 
 -spec activation_charge(ne_binary(), api_binary()) -> api_number().
+-ifdef(TEST).
+activation_charge(?START_BLOCK, _AccountId) -> 5.0;
+activation_charge(?END_BLOCK, _AccountId) -> 'undefined'.
+-else.
 activation_charge(_DID, 'undefined') -> 'undefined';
 activation_charge(DID, AccountId) ->
     wh_services:activation_charges(<<"phone_numbers">>
                                    ,knm_converters:classify(DID)
                                    ,AccountId
                                   ).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
