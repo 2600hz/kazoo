@@ -176,6 +176,7 @@ determine_channel_type(JObj) ->
     To = wh_json:get_value(<<"To">>, JObj),
     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
     CalleeIdName = wh_json:get_value(<<"Callee-ID-Name">>, JObj),
+    CallerIdName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
     ResourceId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Resource-ID">>], JObj),
     Result = case ResourceId of
                   'undefined' ->
@@ -195,14 +196,15 @@ determine_channel_type(JObj) ->
                        _ ->
                            FromPart = binary:part(From, {byte_size(From), -2}),
                            ToPart = binary:part(To, {byte_size(To), -2}),
-                           case {FromPart, ToPart, CalleeIdName} of
+                           case {FromPart, ToPart, CallerIdName, CalleeIdName} of
                            % Special type of FreeSwitch channel (see FreeSwitch sources: src/switch_ivr_originate.c:2651)
-                               {_, _, <<"Outbound Call">>} -> 'loopback';
+                               {_, _, <<"Outbound Call">>, _} -> 'loopback';
+                               {_, _, _, <<"Outbound Call">>} -> 'loopback';
                            % Loopback patterns
-                               {<<"-a">>, _, _} -> 'loopback';
-                               {<<"-b">>, _, _} -> 'loopback';
-                               {_, <<"-a">>, _} -> 'loopback';
-                               {_, <<"-b">>, _} -> 'loopback';
+                               {<<"-a">>, _, _, _} -> 'loopback';
+                               {<<"-b">>, _, _, _} -> 'loopback';
+                               {_, <<"-a">>, _, _} -> 'loopback';
+                               {_, <<"-b">>, _, _} -> 'loopback';
                                _ -> 'normal'
                            end
                    end
