@@ -144,7 +144,7 @@ handle_accounting_req(JObj, _Props) ->
             lager:debug("Trying to make 'start' accounting operation for outer inbound leg. The operation should be delayed."),
             % store delayed accounting call
             ets:insert(?ETS_DELAY_ACCOUNTING, {CallId, JObj});
-        _ when IsInboundOuterLegOnChannelDestroy ->
+        'undefined' when IsInboundOuterLegOnChannelDestroy ->
             % this situation can be if outer inbound leg wasn't authorized so ETS doesn't any account
             % as result we shouldn't do 'stop' accounting operation
             lager:debug("Delete SIP Device Info from ETS for CallId ~p", [CallId]),
