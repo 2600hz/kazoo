@@ -140,11 +140,11 @@ handle_accounting_req(JObj, _Props) ->
         andalso (wh_json:get_value(<<"Call-Direction">>, JObj) =:= <<"inbound">>),
     IsInboundOuterLegOnChannelDestroy = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_DESTROY">>},
     case wh_json:get_value([?CCV, <<"Account-ID">>], JObj) of
-        'undefined' when IsInboundOuterLegOnChannelCreate ->
+        _ when IsInboundOuterLegOnChannelCreate ->
             lager:debug("Trying to make 'start' accounting operation for outer inbound leg. The operation should be delayed."),
             % store delayed accounting call
             ets:insert(?ETS_DELAY_ACCOUNTING, {CallId, JObj});
-        'undefined' when IsInboundOuterLegOnChannelDestroy ->
+        _ when IsInboundOuterLegOnChannelDestroy ->
             % this situation can be if outer inbound leg wasn't authorized so ETS doesn't any account
             % as result we shouldn't do 'stop' accounting operation
             lager:debug("Delete SIP Device Info from ETS for CallId ~p", [CallId]),
