@@ -22,7 +22,15 @@
 -include("../knm.hrl").
 
 -define(DEFAULT_COUNTRY, <<"US">>).
--define(KNM_OTHER_CONFIG_CAT, <<"number_manager.other">>).
+-define(KNM_OTHER_CONFIG_CAT, <<?KNM_CONFIG_CAT/binary, ".other">>).
+
+-ifdef(TEST).
+-define(COUNTRY, ?DEFAULT_COUNTRY).
+-else.
+-define(COUNTRY
+        ,whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY)
+       ).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -206,25 +214,35 @@ format_check_numbers_success(Body) ->
                          {'ok', knm_number:knm_numbers()}.
 get_numbers(Url, Number, Quantity, Options) ->
     Offset = props:get_binary_value(<<"offset">>, Options, <<"0">>),
-    Country = whapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
+    Country = ?COUNTRY,
     ReqBody = <<"?prefix=", Number/binary, "&limit=", (wh_util:to_binary(Quantity))/binary, "&offset=", Offset/binary>>,
     Uri = <<Url/binary, "/numbers/", Country/binary, "/search", ReqBody/binary>>,
-    case ibrowse:send_req(wh_util:to_list(Uri), [], 'get') of
-        {'error', _Reason} ->
-            lager:error("number lookup error to ~s: ~p", [Uri, _Reason]),
-            {'error', 'non_available'};
-        {'ok', "200", _Headers, Body} ->
-            format_numbers_resp(wh_json:decode(Body), Options);
-        {'ok', _Status, _Headers, _Body} ->
-            lager:error("number lookup failed to ~s with ~s: ~s", [Uri, _Status, _Body]),
-            {'error', 'non_available'}
-    end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+    Results = query_for_numbers(Uri),
+    handle_number_query_results(Results, Options).
+
+-spec query_for_numbers(ne_binary()) -> ibrowse_ret().
+-ifdef(TEST).
+query_for_numbers(<<?NUMBER_PHONEBOOK_URL_L, _/binary>>) ->
+    {'ok', "200", [], wh_json:encode(?NUMBERS_RESPONSE)}.
+-else.
+query_for_numbers(Uri) ->
+    lager:debug("querying ~s for numbers", [Uri]),
+    ibrowse:send_req(wh_util:to_list(Uri), [], 'get').
+-endif.
+
+-spec handle_number_query_results(ibrowse_ret(), wh_proplist()) ->
+                                         {'error', 'non_available'} |
+                                         {'ok', knm_number:knm_numbers()}.
+handle_number_query_results({'error', _Reason}, _Options) ->
+    lager:error("number query failed: ~p", [_Reason]),
+    {'error', 'non_available'};
+handle_number_query_results({'ok', "200", _Headers, Body}, Options) ->
+    format_numbers_resp(wh_json:decode(Body), Options);
+handle_number_query_results({'ok', _Status, _Headers, _Body}, _Options) ->
+    lager:error("number query failed with ~s: ~s", [_Status, _Body]),
+    {'error', 'non_available'}.
+
 -spec format_numbers_resp(wh_json:object(), wh_proplist()) ->
                                  {'error', 'non_available'} |
                                  {'ok', knm_number:knm_numbers()}.
@@ -235,18 +253,23 @@ format_numbers_resp(JObj, Options) ->
             AccountId = props:get_value(<<"account_id">>, Options),
 
             {'ok'
-             ,wh_json:map(fun(K, V) -> format_numbers_resp_map(K, V, AccountId) end
-                          ,DataJObj
-                         )
+             ,lists:reverse(
+                wh_json:foldl(fun(K, V, Acc) ->
+                                      [format_number_resp(K, V, AccountId) | Acc]
+                              end
+                              ,[]
+                              ,DataJObj
+                             )
+               )
             };
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
             {'error', 'non_available'}
     end.
 
--spec format_numbers_resp_map(ne_binary(), wh_json:object(), knm_number:knm_numbers()) ->
-                                 knm_number:knm_number().
-format_numbers_resp_map(DID, CarrierData, AccountId) ->
+-spec format_number_resp(ne_binary(), wh_json:object(), knm_number:knm_numbers()) ->
+                                knm_number:knm_number().
+format_number_resp(DID, CarrierData, AccountId) ->
     NormalizedNum = knm_converters:normalize(DID),
     NumberDb = knm_converters:to_db(NormalizedNum),
 
@@ -254,7 +277,6 @@ format_numbers_resp_map(DID, CarrierData, AccountId) ->
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_module_name/2, wh_util:to_binary(?MODULE)}
                ,{fun knm_phone_number:set_carrier_data/2, CarrierData}
-               ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
                ,{fun knm_phone_number:set_assign_to/2, AccountId}
               ],

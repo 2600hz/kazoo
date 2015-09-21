@@ -67,6 +67,26 @@
                             ,{<<"data">>, [?BLOCK_RESP]}
                            ])
        ).
+
+-define(NUMBER_PHONEBOOK_URL_L, "http://numbers.tld").
+-define(NUMBER_PHONEBOOK_URL, <<?NUMBER_PHONEBOOK_URL_L>>).
+
+-define(NUMBERS_DATA
+        ,wh_json:from_list(
+           [{<<"+1415886790", (D + $0)>>
+             ,wh_json:from_list([{<<"extension">>, D}])
+            }
+            || D <- lists:seq(0,9)
+           ]
+          )
+       ).
+
+-define(NUMBERS_RESPONSE
+        ,wh_json:from_list([{<<"status">>, <<"success">>}
+                            ,{<<"data">>, ?NUMBERS_DATA}
+                           ])
+       ).
+
 -endif.
 
 -define(KNM_HRL, 'true').

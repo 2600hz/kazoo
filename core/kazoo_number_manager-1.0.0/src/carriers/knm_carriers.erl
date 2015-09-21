@@ -209,7 +209,8 @@ found_number_to_jobj(PhoneNumber, _Carrier) ->
 -spec activation_charge(ne_binary(), api_binary()) -> api_number().
 -ifdef(TEST).
 activation_charge(?START_BLOCK, _AccountId) -> 5.0;
-activation_charge(?END_BLOCK, _AccountId) -> 'undefined'.
+activation_charge(?END_BLOCK, _AccountId) -> 'undefined';
+activation_charge(_Number, _AccountId) -> 1.0.
 -else.
 activation_charge(_DID, 'undefined') -> 'undefined';
 activation_charge(DID, AccountId) ->
