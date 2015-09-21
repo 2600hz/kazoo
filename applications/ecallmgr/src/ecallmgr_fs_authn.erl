@@ -187,7 +187,7 @@ handle_directory_lookup(Id, Props, Node) ->
 -spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
     Domain = props:get_value(<<"domain">>, Props),
-    Realm = get_auth_realm(Props),
+    [Realm|_] = binary:split(get_auth_realm(Props), [<<":">>, <<";">>]),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
     ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Props),
     {'ok', Xml} = handle_lookup_resp(Method, Domain, Username, ReqResp),
