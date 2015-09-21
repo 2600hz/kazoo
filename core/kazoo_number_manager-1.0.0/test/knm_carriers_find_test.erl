@@ -40,13 +40,15 @@ find_blocks() ->
                ,{<<"blocks">>, 'true'}
                ,{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
               ],
-    {'bulk', Numbers} = knm_other:find_numbers(<<"415">>, 10, Options),
-    Results = knm_carriers:process_bulk_carrier_results([], Numbers),
+    {'bulk', [StartNumber, EndNumber]=Numbers} =
+        knm_other:find_numbers(<<"415">>, 10, Options),
+    [StartJObj, EndJObj]=Results =
+        knm_carriers:process_bulk_carrier_results([], Numbers),
     [{"Verify the same number of numbers and results"
      ,?_assertEqual(length(Numbers), length(Results))
      }
-     | verify_start(hd(Numbers), hd(Results))
-     ++ verify_end(hd(tl(Numbers)), hd(tl(Results)))
+     | verify_start(StartNumber, StartJObj)
+     ++ verify_end(EndNumber, EndJObj)
     ].
 
 verify_start(StartNumber, StartJObj) ->
