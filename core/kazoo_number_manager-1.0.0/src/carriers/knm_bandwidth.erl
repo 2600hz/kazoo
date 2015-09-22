@@ -25,17 +25,40 @@
 
 -define(SERVER, ?MODULE).
 -define(BW_XML_PROLOG, "<?xml version=\"1.0\"?>").
--define(BW_XML_NAMESPACE, [{'xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance"}
-                           ,{'xmlns:xsd', "http://www.w3.org/2001/XMLSchema"}
-                           ,{'xmlns', "http://www.bandwidth.com/api/"}
-                          ]).
--define(BW_NUMBER_URL, whapps_config:get_string(?KNM_BW_CONFIG_CAT
-                                                   ,<<"numbers_api_url">>
-                                                   ,<<"https://api.bandwidth.com/public/v2/numbers.api">>)).
--define(BW_CDR_URL, whapps_config:get_string(?KNM_BW_CONFIG_CAT
-                                                ,<<"cdrs_api_url">>
-                                                ,<<"https://api.bandwidth.com/api/public/v2/cdrs.api">>)).
--define(BW_DEBUG, whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')).
+-define(BW_XML_NAMESPACE
+        ,[{'xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance"}
+          ,{'xmlns:xsd', "http://www.w3.org/2001/XMLSchema"}
+          ,{'xmlns', "http://www.bandwidth.com/api/"}
+         ]).
+-define(BW_NUMBER_URL
+        ,whapps_config:get_string(?KNM_BW_CONFIG_CAT
+                                  ,<<"numbers_api_url">>
+                                  ,<<"https://api.bandwidth.com/public/v2/numbers.api">>
+                                 )
+       ).
+
+-define(BW_CDR_URL
+        ,whapps_config:get_string(?KNM_BW_CONFIG_CAT
+                                  ,<<"cdrs_api_url">>
+                                  ,<<"https://api.bandwidth.com/api/public/v2/cdrs.api">>
+                                 )
+       ).
+
+-ifdef(TEST).
+-define(BW_DEBUG, 'false').
+-else.
+-define(BW_DEBUG
+        ,whapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')
+       ).
+-endif.
+
+-define(BW_DEBUG(Format, Args)
+        ,?BW_DEBUG
+        andalso file:write_file("/tmp/bandwidth.com.xml"
+                                ,io_lib:format(Format, Args)
+                                ,['append']
+                               )
+       ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -232,10 +255,12 @@ make_numbers_request(Verb, Props) ->
     lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
     DevKey = whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
     Request = [{'developerKey', [DevKey]}
-               | Props],
+               | Props
+              ],
     Body = xmerl:export_simple([{Verb, ?BW_XML_NAMESPACE, Request}]
                                ,'xmerl_xml'
-                               ,[{'prolog', ?BW_XML_PROLOG}]),
+                               ,[{'prolog', ?BW_XML_PROLOG}]
+                              ),
     Headers = [{"Accept", "*/*"}
                ,{"User-Agent", ?KNM_USER_AGENT}
                ,{"X-BWC-IN-Control-Processing-Type", "process"}
@@ -245,8 +270,9 @@ make_numbers_request(Verb, Props) ->
                    ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ],
-    ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                      ,io_lib:format("Request:~n~s ~s~n~s~n", ['post', ?BW_NUMBER_URL, Body])),
+    ?BW_DEBUG("Request:~n~s ~s~n~s~n"
+              ,['post', ?BW_NUMBER_URL, Body]
+             ),
     case ibrowse:send_req(?BW_NUMBER_URL
                           ,Headers
                           ,'post'
@@ -256,39 +282,27 @@ make_numbers_request(Verb, Props) ->
                          )
     of
         {'ok', "401", _, _Response} ->
-            ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                              ,io_lib:format("Response:~n401~n~s~n", [_Response])
-                                              ,['append']),
+            ?BW_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 401 (unauthenticated)"),
             {'error', 'authentication'};
         {'ok', "403", _, _Response} ->
-            ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                              ,io_lib:format("Response:~n403~n~s~n", [_Response])
-                                              ,['append']),
+            ?BW_DEBUG("Response:~n403~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 403 (unauthorized)"),
             {'error', 'authorization'};
         {'ok', "404", _, _Response} ->
-            ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                              ,io_lib:format("Response:~n404~n~s~n", [_Response])
-                                              ,['append']),
+            ?BW_DEBUG("Response:~n404~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 404 (not found)"),
             {'error', 'not_found'};
         {'ok', "500", _, _Response} ->
-            ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                              ,io_lib:format("Response:~n500~n~s~n", [_Response])
-                                              ,['append']),
+            ?BW_DEBUG("Response:~n500~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 500 (server error)"),
             {'error', 'server_error'};
         {'ok', "503", _, _Response} ->
-            ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                              ,io_lib:format("Response:~n503~n~s~n", [_Response])
-                                              ,['append']),
+            ?BW_DEBUG("Response:~n503~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 503"),
             {'error', 'server_error'};
         {'ok', Code, _, [$<,$?,$x,$m,$l|_]=Response} ->
-            ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                              ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
-                                              ,['append']),
+            ?BW_DEBUG("Response:~n~p~n~s~n", [Code, Response]),
             lager:debug("received response from bandwidth.com"),
             try
                 {Xml, _} = xmerl_scan:string(Response),
@@ -299,9 +313,7 @@ make_numbers_request(Verb, Props) ->
                     {'error', 'empty_response'}
             end;
         {'ok', Code, _, _Response} ->
-            ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                              ,io_lib:format("Response:~n~p~n~s~n", [Code, _Response])
-                                              ,['append']),
+            ?BW_DEBUG("Response:~n~p~n~s~n", [Code, _Response]),
             lager:debug("bandwidth.com empty response: ~p", [Code]),
             {'error', 'empty_response'};
         {'error', _}=E ->
