@@ -17,7 +17,7 @@ find_local_test_() ->
                     )
      }
      ,{"Finding local numbers returns empty list"
-       ,?_assertEqual([], knm_carriers:find(<<"415">>, 1))
+       ,?_assertEqual([], knm_carriers:find(<<"415">>))
       }
     ].
 
@@ -28,10 +28,10 @@ find_other_test_() ->
     ].
 
 find_no_phonebook() ->
+    Options = [{<<"carriers">>, [?CARRIER_OTHER]}],
+
     [{"Verify no phonebook url yields no results"
-      ,?_assertMatch({'error', 'non_available'}
-                     ,knm_other:find_numbers(<<"415">>, 1, [])
-                    )
+      ,?_assertEqual([], knm_carriers:find(<<"415">>, 1, Options))
      }
     ].
 
@@ -39,11 +39,15 @@ find_blocks() ->
     Options = [{<<"phonebook_url">>, ?BLOCK_PHONEBOOK_URL}
                ,{<<"blocks">>, 'true'}
                ,{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
+               ,{<<"carriers">>, [?CARRIER_OTHER]}
               ],
+    Limit = 10,
+
     {'bulk', [StartNumber, EndNumber]=Numbers} =
-        knm_other:find_numbers(<<"415">>, 10, Options),
+        knm_other:find_numbers(<<"415">>, Limit, Options),
     [StartJObj, EndJObj]=Results =
-        knm_carriers:process_bulk_carrier_results([], Numbers),
+        knm_carriers:find(<<"415">>, Limit, Options),
+
     [{"Verify the same number of numbers and results"
      ,?_assertEqual(length(Numbers), length(Results))
      }
@@ -53,12 +57,10 @@ find_blocks() ->
 
 verify_start(StartNumber, StartJObj) ->
     PhoneNumber = knm_number:phone_number(StartNumber),
-
     verify_block(PhoneNumber, StartJObj, ?START_BLOCK, 5.0).
 
 verify_end(EndNumber, EndJObj) ->
     PhoneNumber = knm_number:phone_number(EndNumber),
-
     verify_block(PhoneNumber, EndJObj, ?END_BLOCK, 'undefined').
 
 verify_block(PhoneNumber, JObj, DID, Activation) ->
@@ -86,59 +88,16 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
 find_numbers() ->
     Options = [{<<"phonebook_url">>, ?NUMBER_PHONEBOOK_URL}
                ,{<<"account_id">>, ?MASTER_ACCOUNT_ID}
+               ,{<<"carriers">>, [?CARRIER_OTHER]}
               ],
     Limit = 10,
-    {'ok', Numbers} = knm_other:find_numbers(<<"415">>, Limit, Options),
-    Results = knm_carriers:process_bulk_carrier_results([], Numbers),
+    Results = knm_carriers:find(<<"415">>, Limit, Options),
 
-    [{"Verify numbers returned is the expected amount"
-      ,?_assertEqual(Limit, length(Numbers))
+    [{"Verify results returned is the expected amount"
+      ,?_assertEqual(Limit, length(Results))
      }
-     ,{"Verify results returned is the expected amount"
-       ,?_assertEqual(Limit, length(Results))
-      }
-     | verify_numbers(Numbers, Options)
-     ++ verify_number_results(Results)
+     | verify_number_results(Results)
     ].
-
-verify_numbers(Numbers, Options) ->
-    {Tests, _} =
-        lists:foldl(fun(N, Ts) -> verify_number(N, Ts, Options) end
-                    ,{[], 0}
-                    ,Numbers
-                   ),
-    Tests.
-
-verify_number(Number, {Tests, N}, Options) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AccountId = props:get_value(<<"account_id">>, Options),
-    {[{"Verify assign_to is set properly"
-       ,?_assertEqual(AccountId, knm_phone_number:assign_to(PhoneNumber))
-      }
-      ,{"Verify DID is next in sequence"
-        ,?_assertEqual(<<"+1415886790", (N + $0)>>
-                           ,knm_phone_number:number(PhoneNumber)
-                      )
-       }
-      ,{"Verify carrier module"
-        ,?_assertEqual(?CARRIER_OTHER
-                       ,knm_phone_number:module_name(PhoneNumber)
-                      )
-      }
-      ,{"Verify carrier data"
-        ,?_assertMatch({[{<<"extension">>, N}]}
-                       ,knm_phone_number:carrier_data(PhoneNumber)
-                      )
-       }
-      ,{"Verify number state"
-        ,?_assertEqual(?NUMBER_STATE_DISCOVERY
-                       ,knm_phone_number:state(PhoneNumber)
-                      )
-       }
-      | Tests
-     ]
-     ,N+1
-    }.
 
 verify_number_results(Results) ->
     {Tests, _} =
