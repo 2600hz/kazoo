@@ -13,7 +13,7 @@
 
 -export([find/1, find/2, find/3
          ,check/1, check/2
-         ,available_carriers/0
+         ,available_carriers/0, available_carriers/1
          ,default_carriers/0, default_carrier/0
          ,acquire/1
          ,disconnect/1
@@ -69,7 +69,7 @@ find(Num, Quantity, Options) ->
                         find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
                 end
                 ,[]
-                ,?MODULE:available_carriers()
+                ,?MODULE:available_carriers(Options)
                ).
 
 -spec find_fold(atom(), wh_json:objects(), ne_binary(), non_neg_integer(), wh_proplist()) ->
@@ -96,10 +96,12 @@ process_bulk_carrier_results(Acc, Numbers) ->
                                      wh_json:objects().
 process_carrier_results(Acc, []) -> Acc;
 process_carrier_results(Acc, Numbers) ->
-    lists:foldl(fun process_number_result/2
-                ,Acc
-                ,Numbers
-               ).
+    lists:reverse(
+      lists:foldl(fun process_number_result/2
+                  ,[]
+                  ,Numbers
+                 )
+     ) ++ Acc.
 
 -spec process_number_result(knm_number:knm_number(), wh_json:objects()) ->
                                    wh_json:objects().
@@ -240,7 +242,7 @@ check(Numbers, Options) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
     lager:info("attempting to check ~p ", [FormattedNumbers]),
     [{Module, catch(Module:check_numbers(FormattedNumbers, Options))}
-     || Module <- ?MODULE:available_carriers()
+     || Module <- ?MODULE:available_carriers(Options)
     ].
 
 %%--------------------------------------------------------------------
@@ -255,6 +257,21 @@ available_carriers() ->
      || M <- ?CARRIER_MODULES,
         (Module = wh_util:try_load_module(M)) =/= 'false'
     ].
+
+-ifdef(TEST).
+available_carriers(Options) ->
+    case props:get_value(<<"carriers">>, Options) of
+        'undefined' -> available_carriers();
+        [] -> available_carriers();
+        Cs -> [Module
+               || C <- Cs,
+                  (Module = wh_util:try_load_module(C)) =/= 'false'
+              ]
+    end.
+-else.
+available_carriers(_Options) ->
+    available_carriers().
+-endif.
 
 -spec default_carriers() -> atoms().
 default_carriers() ->
