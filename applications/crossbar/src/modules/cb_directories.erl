@@ -87,9 +87,9 @@ content_types_provided(Context, _Id) ->
     case cb_context:req_verb(Context) of
         ?HTTP_GET ->
             cb_context:add_content_types_provided(
-                Context
-                ,[{'to_pdf', ?PDF_CONTENT_TYPES}]
-            );
+              Context
+              ,?CONTENT_PROVIDED ++ [{'to_pdf', ?PDF_CONTENT_TYPES}]
+             );
         _Verb ->
             Context
     end.
@@ -111,9 +111,6 @@ to_pdf({Req, Context}) ->
                 _Status -> {Req, Context1}
             end
     end.
-
-
-
 
 %%--------------------------------------------------------------------
 %% @public

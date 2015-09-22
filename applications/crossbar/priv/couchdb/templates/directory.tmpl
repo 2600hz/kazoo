@@ -1,0 +1,29 @@
+<html>
+    <body>
+        <h1>{{directory.name}}</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Last Name</th>
+                    <th>First Name</th>
+                    <th>Numbers</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in users %}
+                <tr>
+                    <td>{{ data.user.last_name }}</td>
+                    <td>{{ data.user.first_name }}</td>
+                    <td>
+                        <ul>
+                            {% for number in data.callflow.numbers %}
+                            <li>{{number}}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </body>
+</html>
