@@ -544,9 +544,15 @@ req_headers(Token) ->
          ,{"User-Agent", wh_util:to_list(erlang:node())}
         ]).
 
--spec get_cluster_id() -> 'undefined' | string().
+-spec get_cluster_id() -> string().
 get_cluster_id() ->
-    whapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>).
+    case whapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>) of
+        'undefined' ->
+            ClusterId = wh_util:rand_hex_binary(16),
+            {'ok', _JObj} = whapps_config:set_default(?MOD_CONFIG_CAT, <<"cluster_id">>, ClusterId),
+            wh_util:to_list(ClusterId);
+        ClusterId -> ClusterId
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
