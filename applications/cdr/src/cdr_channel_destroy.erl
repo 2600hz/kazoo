@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% @end
@@ -166,19 +166,22 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
                                   )
     end.
 
--spec set_group(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+-spec set_group(api_binary(), gregorian_seconds(), wh_json:object()) ->
+                       wh_json:object().
 set_group(_AccountId, _Timestamp, JObj) ->
     GroupKey = [<<"custom_channel_vars">>, <<"call_group_id">>],
     <<Time:11/binary, "-", Key/binary>> = Group = wh_json:get_value(GroupKey, JObj),
     Timestamp = wh_util:to_integer(Time),
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
+
     wh_json:set_values(
       [{<<"group_time">>, Timestamp}
        ,{<<"group_key">>, Key}
        ,{<<"group_id">>, Group}
-      ], wh_json:delete_key(GroupKey, wh_doc:set_id(JObj, DocId))
-      ).
+      ]
+      ,wh_json:delete_key(GroupKey, wh_doc:set_id(JObj, DocId))
+     ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->
