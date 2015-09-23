@@ -20,7 +20,7 @@ Example:
          ]
      }
      ,"from": "peter@email.com"
-     ,"subject": "Hello {{user.first_name}}, you recieved a new voicemail!"
+     ,"subject": "Hello {{user.first_name}}, you received a new voicemail!"
      ,"enabled": true
      ,"template_charset": "utf-8"
      ,"macros": {
@@ -241,7 +241,7 @@ Similar to the PUT, POST will update an existing config:
 
 Omit `/accounts/{ACCOUNT_ID}` to update the system's version.
 
-#### Delete - remove a notification template
+#### DELETE - remove a notification template
 
     curl -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type:application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -293,8 +293,8 @@ All accounts will continue to be processed by the `notify` app until the Crossba
 
 ## Logs
 
-* GET - Gets the notification(s) smtp log.
+* GET - Gets the notification(s) SMTP log.
 
 ```
-curl  -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain"  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/logs
+curl -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 ```
