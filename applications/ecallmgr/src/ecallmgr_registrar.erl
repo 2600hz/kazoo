@@ -798,7 +798,7 @@ create_registration(JObj) ->
         ,expires=Expires
         ,registrar_node=RegistrarNode
         ,registrar_hostname=RegistrarHostname
-        ,contact=fix_contact(OriginalContact)
+        ,contact=fix_contact(OriginalContact, Username, Realm)
         ,original_contact=OriginalContact
         ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
         ,previous_contact=wh_json:get_value(<<"Previous-Contact">>, JObj, Reg#registration.previous_contact)
@@ -870,14 +870,33 @@ augment_registration(Reg, JObj) ->
                                     )
      }.
 
--spec fix_contact(api_binary()) -> api_binary().
-fix_contact('undefined') -> 'undefined';
-fix_contact(Contact) ->
-    binary:replace(Contact
-                   ,[<<"<">>, <<">">>]
-                   ,<<>>
-                   ,['global']
-                  ).
+-spec fix_contact(api_binary(), ne_binary(), ne_binary()) -> api_binary().
+fix_contact('undefined', _, _) -> 'undefined';
+fix_contact(OriginalContact, Username, Realm) ->
+    TempContact = binary:replace(OriginalContact
+                                 ,[<<"<">>, <<">">>]
+                                 ,<<>>
+                                 ,['global']
+                                ),
+    Contact = case binary:split(TempContact, <<";">>, ['global']) of
+                  [<<>> | L] ->
+                      lists:foldl(fun(A,B) ->
+                                          <<B/binary, ";", A/binary>>
+                                  end, <<"sip:", Username/binary, "@", Realm/binary>>, L);
+                  _L ->
+                      OriginalContact
+              end,
+    case nksip_parse_uri:uris(Contact) of
+        [#uri{user = <<>>, domain = <<>>, ext_opts=Opts}=Uri] ->
+            nksip_unparse:ruri(Uri#uri{user=Username, domain=Realm, opts=Opts});
+        [#uri{user = <<>>, ext_opts=Opts}=Uri] ->
+            nksip_unparse:ruri(Uri#uri{user=Username, opts=Opts});
+        [#uri{domain = <<>>, ext_opts=Opts}=Uri] ->
+            nksip_unparse:ruri(Uri#uri{domain=Realm, opts=Opts});
+        [#uri{ext_opts=Opts}=Uri] ->
+            nksip_unparse:ruri(Uri#uri{opts=Opts});
+        _Else -> 'undefined'
+    end.
 
 -spec bridge_uri(api_binary(), api_binary(), binary(), binary()) -> api_binary().
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';
