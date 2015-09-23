@@ -915,6 +915,9 @@ apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
                                     || JObj <- JObjs,
                                        filtered_doc_by_qs(JObj, HasQSFilter, Context)
                                    ]),
+    lager:debug("filter resulted in ~p out of ~p objects"
+                ,[length(Filtered), length(JObjs)]
+               ),
     case Direction of
         'ascending' -> Filtered;
         'descending' -> lists:reverse(Filtered)
@@ -1219,9 +1222,7 @@ filter_doc_by_querystring(Doc, QueryString) ->
 should_filter_doc(Doc, K, V) ->
     try filter_prop(Doc, K, V) of
         'undefined' -> 'true';
-        Bool ->
-            lager:debug("doc filtered by ~s(~p): ~s", [K, V, Bool]),
-            Bool
+        Bool -> Bool
     catch
         _E:_R ->
             lager:debug("failed to process filter ~s: ~s:~p", [K, _E, _R]),
