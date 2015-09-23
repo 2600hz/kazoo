@@ -1878,9 +1878,9 @@ check_attachment_length(AttachmentName, DocId, Call) ->
         {'ok', JObj} ->
             case wh_doc:attachment_length(JObj, AttachmentName) of
                 'undefined' ->
-                    Err = {'error', io_lib:format("attachment ~s is missing from doc ~s", [AttachmentName, DocId])},
+                    Err = io_lib:format("attachment ~s is missing from doc ~s", [AttachmentName, DocId]),
                     lager:debug(Err),
-                    {'error', whapps_call:kvs_store('error_details', Err, Call)};
+                    {'error', whapps_call:kvs_store('error_details', {'error', Err}, Call)};
                 AttachmentLength ->
                     lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
                     is_integer(AttachmentLength) andalso AttachmentLength > MinLength
