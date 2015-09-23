@@ -386,8 +386,11 @@ route_resp_ccvs(JObj) ->
         CCVs -> [action_el(<<"kz_multiset">>, route_ccvs_list(wh_json:to_proplist(CCVs)) )]
     end.
 
+-spec route_ccvs_list(wh_proplist()) -> ne_binary().
 route_ccvs_list(CCVs) ->
-    L = [wh_util:to_list(ecallmgr_util:get_fs_kv(K, V)) || {K, V} <- CCVs],
+    L = [wh_util:to_list(ecallmgr_util:get_fs_kv(K, V))
+         || {K, V} <- CCVs
+        ],
     wh_util:to_binary(string:join(L, " ")).
 
 -spec route_resp_transfer_ringback(wh_json:object()) -> xml_el().
