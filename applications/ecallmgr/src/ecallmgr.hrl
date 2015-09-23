@@ -447,7 +447,10 @@
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
 
 -define(CALL_GROUP_ID, "Call-Group-ID").
--define(CALL_GROUP_DEFAULT, <<(wh_util:to_binary(wh_util:current_tstamp()))/binary,"-", (wh_util:rand_hex_binary(4))/binary>>).
+-define(CALL_GROUP_DEFAULT
+        ,<<(wh_util:to_binary(wh_util:current_tstamp()))/binary
+           ,"-", (wh_util:rand_hex_binary(4))/binary
+         >>).
 
 -define(ECALLMGR_HRL, 'true').
 -endif.
