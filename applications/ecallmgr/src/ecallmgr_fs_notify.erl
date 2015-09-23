@@ -257,25 +257,7 @@ register_overwrite(JObj, Props) ->
 
 -spec ensure_contact_user(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
 ensure_contact_user(OriginalContact, Username, Realm) ->
-    Contact = case binary:split(OriginalContact, <<";">>, ['global']) of
-                  [<<>> | L] ->
-                      lists:foldl(fun(A,B) ->
-                                          <<B/binary, ";", A/binary>>
-                                  end, <<"sip:", Username/binary, "@", Realm/binary>>, L);
-                  _L ->
-                      OriginalContact
-              end,
-    case nksip_parse_uri:uris(Contact) of
-        [#uri{user = <<>>, domain = <<>>, ext_opts=Opts}=Uri] ->
-            nksip_unparse:ruri(Uri#uri{user=Username, domain=Realm, opts=Opts});
-        [#uri{user = <<>>, ext_opts=Opts}=Uri] ->
-            nksip_unparse:ruri(Uri#uri{user=Username, opts=Opts});
-        [#uri{domain = <<>>, ext_opts=Opts}=Uri] ->
-            nksip_unparse:ruri(Uri#uri{domain=Realm, opts=Opts});
-        [#uri{ext_opts=Opts}=Uri] ->
-            nksip_unparse:ruri(Uri#uri{opts=Opts});
-        _Else -> 'undefined'
-    end.
+    ecallmgr_util:fix_contact(OriginalContact, Username, Realm).
 
 %%%===================================================================
 %%% gen_server callbacks
