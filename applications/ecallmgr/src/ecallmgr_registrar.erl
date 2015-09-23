@@ -878,25 +878,7 @@ fix_contact(OriginalContact, Username, Realm) ->
                                  ,<<>>
                                  ,['global']
                                 ),
-    Contact = case binary:split(TempContact, <<";">>, ['global']) of
-                  [<<>> | L] ->
-                      lists:foldl(fun(A,B) ->
-                                          <<B/binary, ";", A/binary>>
-                                  end, <<"sip:", Username/binary, "@", Realm/binary>>, L);
-                  _L ->
-                      OriginalContact
-              end,
-    case nksip_parse_uri:uris(Contact) of
-        [#uri{user = <<>>, domain = <<>>, ext_opts=Opts}=Uri] ->
-            nksip_unparse:ruri(Uri#uri{user=Username, domain=Realm, opts=Opts});
-        [#uri{user = <<>>, ext_opts=Opts}=Uri] ->
-            nksip_unparse:ruri(Uri#uri{user=Username, opts=Opts});
-        [#uri{domain = <<>>, ext_opts=Opts}=Uri] ->
-            nksip_unparse:ruri(Uri#uri{domain=Realm, opts=Opts});
-        [#uri{ext_opts=Opts}=Uri] ->
-            nksip_unparse:ruri(Uri#uri{opts=Opts});
-        _Else -> 'undefined'
-    end.
+    ecallmgr_util:fix_contact(TempContact, Username, Realm).
 
 -spec bridge_uri(api_binary(), api_binary(), binary(), binary()) -> api_binary().
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';
