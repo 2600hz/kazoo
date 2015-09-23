@@ -587,7 +587,12 @@ channel_resp_dialprefix(ReqProps, Channel, ChannelVars) ->
                ,{<<"sip_h_X-ecallmgr_Account-ID">>, props:get_value(<<"Account-ID">>, ChannelVars)}
                ,{<<"sip_h_X-ecallmgr_Realm">>, props:get_value(<<"Realm">>, ChannelVars)}
               ]),
-    X = string:join([wh_util:to_list(<<K/binary, "='", (wh_util:to_binary(V))/binary, "'">>) || {K, V}  <- Props], ","),
+    X = string:join(
+          [wh_util:to_list(<<K/binary, "='", (wh_util:to_binary(V))/binary, "'">>)
+           || {K, V}  <- Props
+          ]
+          ,","
+         ),
     wh_util:to_binary(["[", X, "]"]).
 
 -spec channel_not_found(atom(), ne_binary()) -> 'ok'.
@@ -607,7 +612,8 @@ process_event(UUID, Props, Node, Pid) ->
 
     process_specific_event(EventName, UUID, Props, Node).
 
--spec process_specific_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+-spec process_specific_event(ne_binary(), api_binary(), wh_proplist(), atom()) ->
+                                    any().
 process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = maybe_publish_channel_state(Props, Node),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
@@ -629,9 +635,11 @@ process_specific_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
 process_specific_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
     ecallmgr_fs_channels:updates(UUID, props:filter_undefined(
-                                   [{#channel.other_leg, OtherLeg}
-                                    | update_callee(UUID, Props)
-                                   ])),
+                                         [{#channel.other_leg, OtherLeg}
+                                          | update_callee(UUID, Props)
+                                         ]
+                                        )
+                                ),
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, UUID);
 process_specific_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
@@ -678,8 +686,10 @@ props_to_record(Props, Node) ->
              ,authorizing_type=props:get_value(<<"Authorizing-Type">>, CCVs)
              ,owner_id=props:get_value(<<"Owner-ID">>, CCVs)
              ,resource_id=props:get_value(<<"Resource-ID">>, CCVs)
-             ,presence_id=props:get_value(<<"Channel-Presence-ID">>, CCVs
-                                          ,props:get_value(<<"variable_presence_id">>, Props))
+             ,presence_id=props:get_value(<<"Channel-Presence-ID">>
+                                          ,CCVs
+                                          ,props:get_value(<<"variable_presence_id">>, Props)
+                                         )
              ,fetch_id=props:get_value(<<"Fetch-ID">>, CCVs)
              ,bridge_id=props:get_value(<<"Bridge-ID">>, CCVs, UUID)
              ,reseller_id=props:get_value(<<"Reseller-ID">>, CCVs)
@@ -703,18 +713,29 @@ props_to_record(Props, Node) ->
 
 -spec handling_locally(wh_proplist()) -> boolean().
 handling_locally(Props) ->
-    props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) =:= wh_util:to_binary(node()).
+    props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
+        =:= wh_util:to_binary(node()).
 
 -spec get_username(wh_proplist()) -> api_binary().
 get_username(Props) ->
-    case props:get_first_defined([?GET_CCV(<<"Username">>), <<"variable_user_name">>], Props) of
+    case props:get_first_defined([?GET_CCV(<<"Username">>)
+                                  ,<<"variable_user_name">>
+                                 ]
+                                 ,Props
+                                )
+    of
         'undefined' -> 'undefined';
         Username -> wh_util:to_lower_binary(Username)
     end.
 
 -spec get_realm(wh_proplist()) -> api_binary().
 get_realm(Props) ->
-    case props:get_first_defined([?GET_CCV(<<"Realm">>), <<"variable_domain_name">>], Props) of
+    case props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                  ,<<"variable_domain_name">>
+                                 ]
+                                 ,Props
+                                )
+    of
         'undefined' -> 'undefined';
         Realm -> wh_util:to_lower_binary(Realm)
     end.
@@ -753,19 +774,17 @@ props_to_update(Props) ->
 -spec update_callee(binary(), wh_proplist()) -> wh_proplist().
 update_callee(UUID, Props) ->
     {'ok', Channel} = fetch(UUID, 'record'),
-    [{#channel.callee_number,
-      maybe_update_callee_field(
-        props:get_first_defined([<<"variable_effective_callee_id_number">>
-                                 ,<<"Caller-Callee-ID-Number">>
-                                ], Props),
-        Channel#channel.callee_number)
+    [{#channel.callee_number
+      ,maybe_update_callee_field(
+         kzd_freeswitch:callee_id_number(Props)
+         ,Channel#channel.callee_number
+        )
      }
-     ,{#channel.callee_name,
-      maybe_update_callee_field(
-        props:get_first_defined([<<"variable_effective_callee_id_name">>
-                                 ,<<"Caller-Callee-ID-Name">>
-                                ], Props),
-         Channel#channel.callee_name)
+     ,{#channel.callee_name
+       ,maybe_update_callee_field(
+          kzd_freeswitch:callee_id_name(Props)
+          ,Channel#channel.callee_name
+         )
       }
     ].
 
@@ -779,10 +798,15 @@ get_other_leg(UUID, Props) ->
 
 -spec get_other_leg_name(ne_binary(), wh_proplist(), ne_binary()) -> api_binary().
 get_other_leg_name(UUID, Props, _ChannelName) ->
-    get_other_leg(UUID, Props, props:get_first_defined([<<"Other-Leg-Unique-ID">>
-                                                        ,<<"Other-Leg-Call-ID">>
-                                                        ,<<"variable_origination_uuid">>
-                                                       ], Props)).
+    get_other_leg(UUID
+                  ,Props
+                  ,props:get_first_defined([<<"Other-Leg-Unique-ID">>
+                                            ,<<"Other-Leg-Call-ID">>
+                                            ,<<"variable_origination_uuid">>
+                                           ]
+                                           ,Props
+                                          )
+                 ).
 
 -spec get_other_leg(ne_binary(), wh_proplist(), api_binary()) -> api_binary().
 get_other_leg(UUID, Props, 'undefined') ->
@@ -793,7 +817,8 @@ get_other_leg(UUID, Props, 'undefined') ->
                           );
 get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 
--spec maybe_other_bridge_leg(ne_binary(), wh_proplist(), ne_binary(), ne_binary()) -> api_binary().
+-spec maybe_other_bridge_leg(ne_binary(), wh_proplist(), ne_binary(), ne_binary()) ->
+                                    api_binary().
 maybe_other_bridge_leg(UUID, _Props, UUID, OtherLeg) -> OtherLeg;
 maybe_other_bridge_leg(UUID, _Props, OtherLeg, UUID) -> OtherLeg;
 maybe_other_bridge_leg(UUID, Props, _, _) ->
@@ -828,8 +853,6 @@ maybe_update_group_id(Props, Node, _) ->
             end
     end.
 
+-spec new(wh_proplist(), atom()) -> 'ok'.
 new(Props, Node) ->
     ecallmgr_fs_channels:new(props_to_record(Props, Node)).
-
-
-
