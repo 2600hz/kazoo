@@ -598,7 +598,8 @@ create_event(EventName, ApplicationName, Props) ->
        ++ specific_call_channel_vars_props(EventName, Props)
       ]).
 
--spec specific_call_channel_vars_props(ne_binary(), wh_proplist()) -> wh_proplist().
+-spec specific_call_channel_vars_props(ne_binary(), wh_proplist()) ->
+                                              wh_proplist().
 specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
     Vars = ecallmgr_util:custom_channel_vars(Props),
@@ -610,12 +611,11 @@ specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
             [{<<"Custom-Channel-Vars">>, wh_json:from_list(Vars)}]
     end;
 specific_call_channel_vars_props(_EventName, Props) ->
-     [{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}].
+    [{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}].
 
 -spec generic_call_event_props(wh_proplist()) -> wh_proplist().
 generic_call_event_props(Props) ->
-    {Mega,Sec,Micro} = os:timestamp(),
-    Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
+    Timestamp = wh_util:now_us(os:timestamp()),
     FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
     NormalizedFSTimestamp = wh_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
 
@@ -629,17 +629,14 @@ generic_call_event_props(Props) ->
      ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
      ,{<<"Channel-Moving">>, get_channel_moving(Props)}
      ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-     ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
-                                                        ,<<"Caller-Caller-ID-Number">>
-                                                       ], Props)}
-     ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
-                                                      ,<<"Caller-Caller-ID-Name">>
-                                                     ], Props)}
+     ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props)}
+     ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props)}
      ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
      ,{<<"Other-Leg-Call-ID">>, get_other_leg(Props)}
+
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
      ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
@@ -660,7 +657,8 @@ generic_call_event_props(Props) ->
      ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_value(<<"variable_loopback_bowout_on_execute">>, Props)}
      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
-     | callee_call_event_props(Props) ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | callee_call_event_props(Props)
+     ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec publish_event(wh_proplist()) -> 'ok'.
@@ -760,7 +758,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
      ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
-     | maybe_debug_channel(Props, ?DEBUG_CHANNEL)
+     | debug_channel_props(Props)
     ];
 specific_call_event_props(<<"RECORD_START">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -1147,17 +1145,22 @@ callee_call_event_props(Props) ->
              ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}
             ];
         _ ->
-            [{<<"Callee-ID-Number">>, props:get_first_defined([<<"variable_effective_callee_id_number">>
-                                                               ,<<"Caller-Callee-ID-Number">>
-                                                              ], Props)}
-             ,{<<"Callee-ID-Name">>, props:get_first_defined([<<"variable_effective_callee_id_name">>
-                                                              ,<<"Caller-Callee-ID-Name">>
-                                                             ], Props)}
+            [{<<"Callee-ID-Number">>, kzd_freeswitch:callee_id_number(Props)}
+             ,{<<"Callee-ID-Name">>, kzd_freeswitch:callee_id_name(Props)}
             ]
     end.
 
-maybe_debug_channel(_Props, 'false') -> [];
-maybe_debug_channel(Props, 'true') ->
-    [
-    {<<"Channel-Log">>, wh_json:from_list(lists:sort(fun({A,_}, {B,_}) -> A =< B end, Props))}
+-spec debug_channel_props(wh_proplist()) -> wh_proplist().
+-spec debug_channel_props(wh_proplist(), boolean()) -> wh_proplist().
+debug_channel_props(Props) ->
+    debug_channel_props(Props, ?DEBUG_CHANNEL).
+
+debug_channel_props(_Props, 'false') -> [];
+debug_channel_props(Props, 'true') ->
+    [{<<"Channel-Log">>
+      ,wh_json:from_list(lists:sort(fun sort_debug/2, Props))
+     }
     ].
+
+-spec sort_debug({any(), any()}, {any(), any()}) -> boolean().
+sort_debug({A,_}, {B,_}) -> A =< B.
