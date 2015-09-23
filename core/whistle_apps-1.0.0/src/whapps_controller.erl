@@ -71,7 +71,7 @@ stop_app(App) ->
 -spec restart_app(atom() | nonempty_string() | ne_binary()) ->
                          'ok' | 'error' | 'exists'.
 restart_app(App) when not is_atom(App) ->
-    restart_app(wh_util:to_atom(App));
+    restart_app(wh_util:to_atom(App, 'true'));
 restart_app(App) when is_atom(App) ->
     lager:info("restarting whistle application ~s", [App]),
     _ = stop_app(App),
