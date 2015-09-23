@@ -256,7 +256,15 @@ register_overwrite(JObj, Props) ->
                  ]).
 
 -spec ensure_contact_user(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
-ensure_contact_user(Contact, Username, Realm) ->
+ensure_contact_user(OriginalContact, Username, Realm) ->
+    Contact = case binary:split(OriginalContact, <<";">>, ['global']) of
+                  [<<>> | L] ->
+                      lists:foldl(fun(A,B) ->
+                                          <<B/binary, ";", A/binary>>
+                                  end, <<"sip:", Username/binary, "@", Realm/binary>>, L);
+                  _L ->
+                      OriginalContact
+              end,
     case nksip_parse_uri:uris(Contact) of
         [#uri{user = <<>>, domain = <<>>, ext_opts=Opts}=Uri] ->
             nksip_unparse:ruri(Uri#uri{user=Username, domain=Realm, opts=Opts});
