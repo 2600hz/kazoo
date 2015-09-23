@@ -379,9 +379,9 @@ check_ports(#number{number=MaybePortNumber}=Number) ->
 %% Add and reserve a number for an account
 %% @end
 %%--------------------------------------------------------------------
--spec create_number(ne_binary(), api_binary(), ne_binary() | 'system') ->
+-spec create_number(ne_binary(), ne_binary(), ne_binary() | 'system') ->
                            operation_return().
--spec create_number(ne_binary(), api_binary(), ne_binary() | 'system', wh_json:object()) ->
+-spec create_number(ne_binary(), ne_binary(), ne_binary() | 'system', wh_json:object()) ->
                            operation_return().
 -spec create_number(ne_binary(), ne_binary(), ne_binary() | 'system', wh_json:object(), boolean()) ->
                            operation_return().
@@ -436,8 +436,8 @@ create_number(Number, AssignTo, AuthBy, PublicFields, DryRun, ModuleName) ->
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
 
--spec create_not_found_number(ne_binary(), api_binary(), 'system' | ne_binary(), wh_json:object(), wnm_number(), api_binary()) ->
-                                     wnm_number().
+-spec create_not_found_number(ne_binary(), ne_binary(), 'system' | ne_binary(), wh_json:object(), wnm_number(), api_binary())
+                             -> wnm_number().
 create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N, ModuleName) ->
     case account_can_create_number(AuthBy) of
         'true' ->
