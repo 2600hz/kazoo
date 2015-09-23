@@ -776,10 +776,9 @@ maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoin
             <<"sofia/", ?SIP_INTERFACE, "/", Contact/binary>>
     end;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface= <<"sofia/", _/binary>>=SIPInterface}) ->
-    <<(wh_util:strip_right_binary(SIPInterface, <<"/">>))/binary, "/", Contact/binary>>;
+    <<(wh_util:strip_right_binary(SIPInterface, $/))/binary, "/", Contact/binary>>;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<"sofia/", SIPInterface/binary, "/", Contact/binary>>.
-
 
 -spec append_channel_vars(ne_binary(), bridge_endpoint()) -> ne_binary().
 append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'}) ->
