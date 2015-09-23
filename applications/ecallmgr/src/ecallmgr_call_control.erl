@@ -768,10 +768,10 @@ add_leg(Props, LegId, #state{other_legs=Legs
                           publish_leg_addition(props:set_value(<<"Other-Leg-Unique-ID">>, CallId, Props))
                   end),
             _ = case ecallmgr_fs_channel:fetch(CallId) of
-                {'ok', Channel} ->
-                    CDR = wh_json:get_value(<<"group_id">>, Channel),
-                    ecallmgr_fs_command:set(Node, LegId, ?CCV(<<?CALL_GROUP_ID>>), CDR);
-                _ -> 'ok'
+                    {'ok', Channel} ->
+                        CDR = wh_json:get_value(<<"group_id">>, Channel),
+                        ecallmgr_fs_command:set(Node, LegId, ?CCV(<<?CALL_GROUP_ID>>), CDR);
+                    _ -> 'ok'
                 end,
             State#state{other_legs=[LegId|Legs]}
     end.
