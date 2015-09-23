@@ -142,7 +142,7 @@ maybe_create_default_template(DocType, AttachmentId) ->
         {'ok', Template} -> create_default_template(Template, DocType, AttachmentId)
     end.
 
--spec create_default_template(iolist(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec create_default_template(binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 create_default_template(Template, DocType, AttachmentId) ->
     lager:debug("creating default template ~s", [DocType]),
     Default = wh_json:from_list([{<<"template_name">>, DocType}]),
@@ -166,7 +166,7 @@ create_default_template(Template, DocType, AttachmentId) ->
             Error
     end.
 
--spec save_default_attachment(iolist(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec save_default_attachment(binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 save_default_attachment(Template, DocType, AttachmentId) ->
     lager:debug("saving default template ~s attachment", [DocType]),
     case
