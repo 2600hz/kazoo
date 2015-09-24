@@ -152,7 +152,7 @@ build_bindings(BindingProps) ->
 document_bindings(BindingProps) ->
      [{'conf', ['federate'|P]} || P <- BindingProps].
 
--spec database_binding() -> wh_proplist().
+-spec database_binding() -> tuple().
 database_binding() ->
     {'conf', ['federate', {'type', <<"database">>}]}.
 
