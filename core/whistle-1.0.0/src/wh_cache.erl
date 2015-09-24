@@ -132,8 +132,10 @@ start_link(Name, ExpirePeriod, Props) ->
             lager:debug("started new cache process (gen_server): ~s", [Name]),
             gen_server:start_link({'local', Name}, ?MODULE, [Name, ExpirePeriod, Props], []);
         BindingProps ->
+            lager:debug("DEBUG BindingProps: ~p",[BindingProps]),
             lager:debug("started new cache process (gen_listener): ~s", [Name]),
             Bindings = [{'conf', ['federate' | P]} || P <- maybe_add_db_binding(BindingProps)],
+            lager:debug("DEBUG Bindings: ~p",[Bindings]),
             gen_listener:start_link({'local', Name}, ?MODULE
                                     ,[{'bindings', Bindings}
                                       ,{'responders', ?RESPONDERS}
@@ -146,6 +148,7 @@ start_link(Name, ExpirePeriod, Props) ->
     end.
 
 -spec maybe_add_db_binding(wh_proplists()) -> wh_proplists().
+maybe_add_db_binding([]) -> [];
 maybe_add_db_binding([[]]) -> [[]];
 maybe_add_db_binding(BindingProps) ->
     [?DATABASE_BINDING | BindingProps].
