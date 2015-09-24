@@ -41,11 +41,11 @@
                    | 'is_format' | 'numeric_min'
                    | 'numeric_max' | 'numeric_between'
                    | 'width'.
--type validator_rule() :: {validator(), list() | []}.
+-type validator_rule() :: {validator(), list()}.
 -type validator_rules() :: [validator_rule()].
 
 -type couch_doc_path() :: ne_binaries().
--type couch_schema() :: list({couch_doc_path(), validator_rules()}).
+-type couch_schema() :: [{couch_doc_path(), validator_rules()}].
 
 -define(HTTP_GET, <<"GET">>).
 -define(HTTP_POST, <<"POST">>).

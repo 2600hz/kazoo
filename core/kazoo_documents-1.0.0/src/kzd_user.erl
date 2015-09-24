@@ -84,8 +84,7 @@ vcard_escape_chars(Val) ->
     Val1 = re:replace(Val, "(:|;|,)", "\\\\&", ['global', {'return', 'binary'}]),
     re:replace(Val1, "\n", "\\\\n", ['global', {'return', 'binary'}]).
 
--spec vcard_fields_acc(vcard_field(), list({ne_binary(), binary()})) ->
-                              list({ne_binary(), binary()}).
+-spec vcard_fields_acc(vcard_field(), [{ne_binary(), binary()}]) -> [{ne_binary(), binary()}].
 vcard_fields_acc({_, Val}, Acc)
   when Val =:= 'undefined'; Val =:= []; Val =:= <<>> ->
     Acc;
@@ -114,9 +113,9 @@ vcard_normalize_type(T) -> T.
 
 -type vcard_val() :: binary() | {char(), binaries()} | 'undefined'.
 -type vcard_type_token() :: ne_binary() | {ne_binary(), ne_binary()}.
--type vcard_type() :: list(vcard_type_token()) | vcard_type_token().
+-type vcard_type() :: [vcard_type_token()] | vcard_type_token().
 -type vcard_field_token() :: {vcard_type(), vcard_val()}.
--type vcard_field() :: vcard_field_token() | list(vcard_field_token()).
+-type vcard_field() :: vcard_field_token() | [vcard_field_token()].
 
 -spec card_field(ne_binary(), wh_json:object()) -> vcard_field().
 card_field(Key = <<"BEGIN">>, _) ->

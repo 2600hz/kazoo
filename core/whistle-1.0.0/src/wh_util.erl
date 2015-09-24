@@ -971,7 +971,7 @@ to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 to_upper_char(C) -> C.
 
 -spec strip_binary(binary()) -> binary().
--spec strip_binary(binary(), 'both' | 'left' | 'right' | char() | list(char())) -> binary().
+-spec strip_binary(binary(), 'both' | 'left' | 'right' | char() | [char()]) -> binary().
 -spec strip_left_binary(binary(), char()) -> binary().
 -spec strip_right_binary(binary(), char()) -> binary().
 strip_binary(B) -> strip_binary(B, 'both').

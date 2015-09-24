@@ -25,7 +25,7 @@ start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
     Dispatch = cowboy_router:compile([
-                                      %% {HostMatch, list({PathMatch, Handler, Opts})}
+                                      %% :: {HostMatch, [{PathMatch, Handler, Opts}]}
                                       {'_', [{<<"/fax/[...]">>, 'fax_file_proxy', []}]}
                                      ]),
 

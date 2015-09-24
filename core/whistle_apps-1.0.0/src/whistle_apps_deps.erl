@@ -42,7 +42,7 @@ deps_on_path_fold(Filename, Acc) ->
 %% @doc Find new siblings paths relative to Module that aren't already on the
 %%      code path.
 -spec new_siblings(atom()) -> filenames().
--spec new_siblings(atom(), list(string()), filenames()) -> filenames().
+-spec new_siblings(atom(), [string()], filenames()) -> filenames().
 new_siblings(Module) ->
     new_siblings(Module, ["deps", "lib"], []).
 

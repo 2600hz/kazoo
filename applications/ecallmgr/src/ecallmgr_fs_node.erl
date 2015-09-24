@@ -698,7 +698,7 @@ maybe_replay_registrations(Node) ->
     wh_util:put_callid(Node),
     replay_registration(Node, get_registrations(Node)).
 
--spec replay_registration(atom(), list(wh_proplist()) | []) -> 'ok'.
+-spec replay_registration(atom(), [wh_proplist()]) -> 'ok'.
 replay_registration(_Node, [[]]) -> 'ok';
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
@@ -732,7 +732,7 @@ replay_expires(V) ->
 replay_contact(V) ->
     <<"<", (lists:nth(3, binary:split(V, <<"/">>, ['global'] ) ))/binary, ">">>.
 
--spec get_registrations(atom()) -> list(wh_proplist()).
+-spec get_registrations(atom()) -> [wh_proplist()].
 get_registrations(Node) ->
     case freeswitch:api(Node, 'show', "registrations") of
         {'ok', Response} ->
@@ -744,7 +744,7 @@ get_registrations(Node) ->
         _Else -> [[]]
     end.
 
--spec get_registration_details(list()) -> list(wh_proplist()).
+-spec get_registration_details(list()) -> [wh_proplist()].
 get_registration_details([Header, _, _, _| _] = Lines) ->
     [begin
          {Res, _Total} = lists:mapfoldl(

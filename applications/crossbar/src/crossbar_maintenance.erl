@@ -974,7 +974,7 @@ add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
         {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [ImageId, AppId, _E])
     end.
 
--spec read_images(list(file:filename())) -> {'ok', [{file:filename(), binary()}]}.
+-spec read_images([file:filename()]) -> {'ok', [{file:filename(), binary()}]}.
 read_images(Images) ->
     {'ok', [{Image, read_image(ImagePath)}
             || {Image, ImagePath} <- Images
