@@ -63,6 +63,8 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
+-define(DATABASE_BINDING, [{'type', <<"database">>}]).
+
 -type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
 -type callback_funs() :: [callback_fun()].
 -type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
@@ -131,7 +133,7 @@ start_link(Name, ExpirePeriod, Props) ->
             gen_server:start_link({'local', Name}, ?MODULE, [Name, ExpirePeriod, Props], []);
         BindingProps ->
             lager:debug("started new cache process (gen_listener): ~s", [Name]),
-            Bindings = build_bindings(BindingProps),
+            Bindings = [{'conf', ['federate' | P]} || P <- maybe_add_db_binding(BindingProps)],
             gen_listener:start_link({'local', Name}, ?MODULE
                                     ,[{'bindings', Bindings}
                                       ,{'responders', ?RESPONDERS}
@@ -143,18 +145,10 @@ start_link(Name, ExpirePeriod, Props) ->
                                    )
     end.
 
--spec build_bindings(wh_proplist()) -> wh_proplist().
-build_bindings([[]]) -> document_bindings([[]]);
-build_bindings(BindingProps) ->
-    [database_binding() | document_bindings(BindingProps)].
-
--spec document_bindings(wh_proplist()) -> wh_proplist().
-document_bindings(BindingProps) ->
-     [{'conf', ['federate'|P]} || P <- BindingProps].
-
--spec database_binding() -> tuple().
-database_binding() ->
-    {'conf', ['federate', {'type', <<"database">>}]}.
+-spec maybe_add_db_binding(wh_proplists()) -> wh_proplists().
+maybe_add_db_binding([[]]) -> [[]];
+maybe_add_db_binding(BindingProps) ->
+    [?DATABASE_BINDING | BindingProps].
 
 -spec store(term(), term()) -> 'ok'.
 -spec store(term(), term(), wh_proplist()) -> 'ok'.
