@@ -160,7 +160,7 @@ get_sub_msg(#jid{raw=JFull
 -define(NS_PUSH, 'google:push').
 -define(XML_CTX_OPTIONS,[{'namespace', [{"g", "google:push"}]}]).
 
--spec process_received_packet(packet(), state()) -> _.
+-spec process_received_packet(packet(), state()) -> any().
 process_received_packet(#received_packet{raw_packet=Packet}
                         ,#state{jid=#jid{node=JUser
                                          ,domain=JDomain
@@ -176,7 +176,7 @@ process_received_packet(#received_packet{raw_packet=Packet}
             send_notify(PrinterId, BareJID)
     end.
 
--spec send_notify(ne_binary(), ne_binary()) -> _.
+-spec send_notify(ne_binary(), ne_binary()) -> any().
 send_notify(PrinterId, JID) ->
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"push">>}
@@ -190,7 +190,7 @@ send_notify(PrinterId, JID) ->
 
 -spec connect(string(), string()) ->
                      {'ok', {pid(), jid()}} |
-                     {'error', _}.
+                     {'error', any()}.
 connect(JID, Password) ->
     Session = exmpp_session:start({1,0}),
     Jid = exmpp_jid:parse(JID),
@@ -217,7 +217,7 @@ init_session(Session, Password) ->
     exmpp_session:send_packet(Session, exmpp_presence:set_status(exmpp_presence:available(), "Pubsubber Ready")),
     'ok'.
 
--spec disconnect(pid()) -> _.
+-spec disconnect(pid()) -> any().
 disconnect(MySession) ->
     try
         exmpp_session:stop(MySession)

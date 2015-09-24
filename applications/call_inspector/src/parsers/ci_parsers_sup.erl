@@ -56,7 +56,7 @@ init([]) ->
     {'ok', {SupFlags, []}}.
 
 -type parser() :: 'ci_parser_freeswitch' | 'ci_parser_kamailio' | 'ci_parser_hep'.
--spec start_child(parser(), [{'parser_args',_,_} | {'parser_args',_,_,_}]) ->
+-spec start_child(parser(), [{'parser_args',any(),any()} | {'parser_args',any(),any(),any()}]) ->
                          {'ok', atom()}.
 start_child(Module, Args) ->
     Id = ci_parsers_util:make_name(lists:keyfind('parser_args', 1, Args)),

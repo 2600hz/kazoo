@@ -32,7 +32,7 @@
 
 -spec search(whapps_conference:conference()) ->
                     {'ok', wh_json:object()} |
-                    {'error', _}.
+                    {'error', any()}.
 search(Conference) ->
     AppName = whapps_conference:application_name(Conference),
     AppVersion = whapps_conference:application_version(Conference),

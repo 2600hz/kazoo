@@ -202,11 +202,11 @@ handle_STARTTLS(State) ->
     lager:debug("SMTP TLS Started"),
     State.
 
--spec code_change(_, state(), _) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec terminate(_, state()) ->  {'ok', _, state()}.
+-spec terminate(any(), state()) ->  {'ok', any(), state()}.
 terminate('normal', State) ->
     _ = wh_util:spawn(fun()-> handle_message(State) end),
     {'ok', 'normal', State};
@@ -794,10 +794,10 @@ maybe_process_image(CT, Body, Size, State) ->
 
 -spec write_tmp_file(ne_binary(), binary() | mimemail:mimetuple()) ->
                             {'ok', api_binary()} |
-                            {'error', _}.
+                            {'error', any()}.
 -spec write_tmp_file(api_binary() , ne_binary(), binary() | mimemail:mimetuple()) ->
                             {'ok', api_binary()} |
-                            {'error', _}.
+                            {'error', any()}.
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).
 

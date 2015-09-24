@@ -23,7 +23,7 @@
 
 -include("../blackhole.hrl").
 
--spec handle_event(bh_context:context(), wh_json:object()) -> _.
+-spec handle_event(bh_context:context(), wh_json:object()) -> any().
 handle_event(Context, EventJObj) ->
     lager:debug("handling conference event ~s", [get_response_key(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context)

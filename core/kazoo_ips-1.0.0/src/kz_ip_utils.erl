@@ -28,7 +28,7 @@ refresh_database() ->
                                          ),
     'ok'.
 
--spec refresh_database(function()) -> _.
+-spec refresh_database(function()) -> any().
 refresh_database(Callback) ->
     _ = refresh_database(),
     case refresh_database_retries() < 2 of

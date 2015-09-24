@@ -29,8 +29,8 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec generate(ne_binary(), wh_proplist()) -> {'ok', ne_binary()} | {'error', _}.
--spec generate(ne_binary(), wh_proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec generate(ne_binary(), wh_proplist()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec generate(ne_binary(), wh_proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 generate(AccountId, Props) ->
     DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Props),
     case find_template(AccountId, DocType) of
@@ -90,7 +90,7 @@ cmd_fold({Search, Replace}, Subject) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec find_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 find_template(AccountId, DocType) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:fetch_attachment(AccountDb, ?TEMPLATE_DOC_ID(DocType), ?TEMPLATE_ATTACHMENT_ID) of
@@ -106,7 +106,7 @@ find_template(AccountId, DocType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec default_template(ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec default_template(ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 default_template(DocType) ->
     lager:debug("searching for default template ~s", [DocType]),
     case couch_mgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID(DocType), ?TEMPLATE_ATTACHMENT_ID) of
@@ -121,7 +121,7 @@ default_template(DocType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_default_template(ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec create_default_template(ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 create_default_template(DocType) ->
     lager:debug("creating default template ~s", [DocType]),
     JObj =
@@ -142,7 +142,7 @@ create_default_template(DocType) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_default_template(ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec save_default_template(ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 save_default_template(DocType) ->
     lager:debug("saving default template ~s", [DocType]),
 

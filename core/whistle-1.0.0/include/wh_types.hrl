@@ -63,12 +63,12 @@
 -type api_non_neg_integer() :: non_neg_integer() | 'undefined'.
 -type api_float() :: float() | 'undefined'.
 
--type wh_deeplist() :: iolist(). %[_ | wh_deeplist()].
+-type wh_deeplist() :: iolist(). %[any() | wh_deeplist()].
 
--type wh_std_return() :: {'ok', _} | {'error', _}.
+-type wh_std_return() :: {'ok', any()} | {'error', any()}.
 
--type wh_jobj_return() :: {'ok', wh_json:object()} | {'error', _}.
--type wh_jobjs_return() :: {'ok', wh_json:objects()} | {'error', _}.
+-type wh_jobj_return() :: {'ok', wh_json:object()} | {'error', any()}.
+-type wh_jobjs_return() :: {'ok', wh_json:objects()} | {'error', any()}.
 
 %% non-empty binary
 -define(NE_BINARY, <<_:8,_/binary>>).
@@ -87,7 +87,7 @@
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].
 
--type wh_proplist_value() :: _.
+-type wh_proplist_value() :: any().
 -type wh_proplist_values() :: [wh_proplist_value()].
 -type wh_proplist_key() :: ne_binary() | atom() | number() | string() | function() | ne_binaries().
 -type wh_proplist_keys() :: [wh_proplist_key()].
@@ -130,11 +130,15 @@
 -type sup_child_spec() :: supervisor:child_spec().
 -type sup_child_specs() :: [sup_child_spec()].
 -type sup_start_flags() :: {supervisor:strategy(), non_neg_integer(), non_neg_integer()}.
--type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} | 'ignore'.
+-type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
+                        'ignore'.
 
 -type sup_child_id() :: pid() | 'undefined'.
--type sup_startchild_err() :: 'already_present' | {'already_started', sup_child_id()} | _.
--type sup_startchild_ret() :: {'ok', sup_child_id()} | {'ok', sup_child_id(), _} |
+-type sup_startchild_err() :: 'already_present' |
+                              {'already_started', sup_child_id()} |
+                              any().
+-type sup_startchild_ret() :: {'ok', sup_child_id()} |
+                              {'ok', sup_child_id(), any()} |
                               {'error', sup_startchild_err()}.
 
 %% Helper macro for declaring children of supervisor
@@ -155,38 +159,58 @@
 -define(CACHE_ARGS(N, Arg), {N, {'wh_cache', 'start_link', [N, Arg]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_cache']}).
 
 %% Recreate the non-exported types defined in the erlang gen_server source
--type startlink_err() :: {'already_started', pid()} | 'shutdown' | _.
--type startlink_ret() :: {'ok', pid()} | 'ignore' | {'error', startlink_err()}.
--type startapp_ret() :: {'ok', pid()} | {'ok', pid(), _} | {'error', startlink_err()}.
+-type startlink_err() :: {'already_started', pid()} |
+                         'shutdown' |
+                         any().
+-type startlink_ret() :: {'ok', pid()} |
+                         'ignore' |
+                         {'error', startlink_err()}.
+-type startapp_ret() :: {'ok', pid()} |
+                        {'ok', pid(), any()} |
+                        {'error', startlink_err()}.
 
 -type call_from() :: pid_ref().
 -type gen_server_timeout() :: 'hibernate' | non_neg_integer().
--type handle_call_ret() :: {'reply', _, _} | {'reply', _, _, gen_server_timeout()} |
-                           {'noreply', _} | {'noreply', _, gen_server_timeout()} |
-                           {'stop', _, _} | {'stop', _, _, _}.
+-type handle_call_ret() :: {'reply', any(), any()} |
+                           {'reply', any(), any(), gen_server_timeout()} |
+                           {'noreply', any()} |
+                           {'noreply', any(), gen_server_timeout()} |
+                           {'stop', any(), any()} |
+                           {'stop', any(), any(), any()}.
 
--type handle_call_ret_state(State) :: {'reply', _, State} | {'reply', _, State, gen_server_timeout()} |
-                                      {'noreply', State} | {'noreply', State, gen_server_timeout()} |
-                                      {'stop', _, State} | {'stop', _, State, _}.
+-type handle_call_ret_state(State) :: {'reply', any(), State} |
+                                      {'reply', any(), State, gen_server_timeout()} |
+                                      {'noreply', State} |
+                                      {'noreply', State, gen_server_timeout()} |
+                                      {'stop', any(), State} |
+                                      {'stop', any(), State, any()}.
 
--type handle_cast_ret() :: {'noreply', _} | {'noreply', _, gen_server_timeout()} |
-                           {'stop', _, _}.
--type handle_cast_ret_state(State) :: {'noreply', State} | {'noreply', State, gen_server_timeout()} |
-                                      {'stop', _, State}.
+-type handle_cast_ret() :: {'noreply', any()} |
+                           {'noreply', any(), gen_server_timeout()} |
+                           {'stop', any(), any()}.
+-type handle_cast_ret_state(State) :: {'noreply', State} |
+                                      {'noreply', State, gen_server_timeout()} |
+                                      {'stop', any(), State}.
 
--type handle_info_ret() :: {'noreply', _} | {'noreply', _, gen_server_timeout()} |
-                           {'stop', _, _}.
--type handle_info_ret_state(State) :: {'noreply', State} | {'noreply', State, gen_server_timeout()} |
-                                      {'stop', _, State}.
+-type handle_info_ret() :: {'noreply', any()} |
+                           {'noreply', any(), gen_server_timeout()} |
+                           {'stop', any(), any()}.
+-type handle_info_ret_state(State) :: {'noreply', State} |
+                                      {'noreply', State, gen_server_timeout()} |
+                                      {'stop', any(), State}.
 
 -type handle_event_ret() :: 'ignore' |
                             {'reply', wh_proplist()}.
 
--type server_ref() :: atom() | {atom(), atom()} | {'global', _} | {'via', atom(), _} | pid().
+-type server_ref() :: atom() |
+                      {atom(), atom()} |
+                      {'global', any()} |
+                      {'via', atom(), any()} |
+                      pid().
 
 -type gen_server_name() :: {'local', atom()} |
-                           {'global', _} |
-                           {'via', atom(), _}.
+                           {'global', any()} |
+                           {'via', atom(), any()}.
 -type gen_server_option() :: {'debug', list()} |
                              {'timeout', non_neg_integer()} |
                              {'spawn_opt', list()}.
@@ -195,11 +219,11 @@
 %% Ibrowse-related types
 -type ibrowse_error() :: {'error', 'req_timedout'
                           | 'sel_conn_closed'
-                          | {'EXIT', _}
+                          | {'EXIT', any()}
                           | {'conn_failed', {'error', atom()}}
                          }.
 -type ibrowse_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
-                       {'ibrowse_req_id', _} |
+                       {'ibrowse_req_id', any()} |
                        ibrowse_error().
 %% When using the stream_to option, ibrowse:send_req returns this tuple ReqID
 -type ibrowse_req_id() :: {pos_integer(), pos_integer(), pos_integer()}.

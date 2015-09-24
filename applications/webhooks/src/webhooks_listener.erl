@@ -120,7 +120,7 @@ find_and_remove_hook(JObj, Srv) ->
 
 -spec find_hook(wh_json:object()) ->
                        {'ok', wh_json:object()} |
-                       {'error', _}.
+                       {'error', any()}.
 find_hook(JObj) ->
     couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB
                              ,wapi_conf:get_id(JObj)

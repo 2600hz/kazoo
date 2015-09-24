@@ -19,7 +19,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary(), ne_binary()) -> {'ok', integer()} | {'error', _}.
+-spec get(ne_binary(), ne_binary()) -> {'ok', integer()} | {'error', any()}.
 get(Account, Name) ->
     Options = [
         'reduce'
@@ -38,8 +38,8 @@ get(Account, Name) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec credit(ne_binary(), integer(), ne_binary()) -> {'ok', ledger()} | {'error', _}.
--spec credit(ne_binary(), integer(), ne_binary(), api_binary()) -> {'ok', ledger()} | {'error', _}.
+-spec credit(ne_binary(), integer(), ne_binary()) -> {'ok', ledger()} | {'error', any()}.
+-spec credit(ne_binary(), integer(), ne_binary(), api_binary()) -> {'ok', ledger()} | {'error', any()}.
 credit(Name, Amount, Account) ->
     credit(Name, Amount, Account, 'undefined').
 
@@ -52,8 +52,8 @@ credit(Name, Amount, Account, Desc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec debit(ne_binary(), integer(), ne_binary()) -> {'ok', ledger()} | {'error', _}.
--spec debit(ne_binary(), integer(), ne_binary(), api_binary()) -> {'ok', ledger()} | {'error', _}.
+-spec debit(ne_binary(), integer(), ne_binary()) -> {'ok', ledger()} | {'error', any()}.
+-spec debit(ne_binary(), integer(), ne_binary(), api_binary()) -> {'ok', ledger()} | {'error', any()}.
 debit(Name, Amount, Account) ->
     debit(Name, Amount, Account, 'undefined').
 
@@ -72,7 +72,7 @@ debit(Name, Amount, Account, Desc) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), integer(), ne_binary(), api_binary(), ne_binary()) ->
                     {'ok', ledger()} |
-                    {'error', _}.
+                    {'error', any()}.
 create(Name, Amount, Account, Desc, Type) ->
     Routines = [
         fun(L) -> kazoo_ledger:set_name(L, Name) end

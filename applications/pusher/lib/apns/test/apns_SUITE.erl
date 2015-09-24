@@ -22,7 +22,7 @@ end_per_suite(Config) ->
   Config.
 
 %%% Tests
--spec minimal(_) -> {comment, []}.
+-spec minimal(any()) -> {comment, []}.
 minimal(_Config) ->
   Now = lists:flatten(io_lib:format("~p", [calendar:local_time()])),
   ok = apns:start(),

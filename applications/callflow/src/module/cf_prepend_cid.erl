@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--spec handle(wh_json:object(), whapps_call:call()) -> _.
+-spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     {CIDNamePrefix, CIDNumberPrefix} =
         case wh_json:get_ne_value(<<"action">>, Data) of

@@ -139,7 +139,7 @@ login_resp(JObj, Status) ->
 -spec maybe_start_agent(api_binary(), api_binary()) ->
                                {'ok', pid()} |
                                {'exists', pid()} |
-                               {'error', _}.
+                               {'error', any()}.
 maybe_start_agent(AccountId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
         'undefined' ->
@@ -222,7 +222,7 @@ handle_call_event(JObj, Props) ->
             end
     end.
 
--spec handle_call_event(ne_binary(), ne_binary(), server_ref(), wh_json:object(), wh_proplist()) -> _.
+-spec handle_call_event(ne_binary(), ne_binary(), server_ref(), wh_json:object(), wh_proplist()) -> any().
 handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, FSM, JObj, Props) ->
     Urls = props:get_value('cdr_urls', Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),

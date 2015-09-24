@@ -15,15 +15,15 @@
 
 -record(state, {key}).
 
--spec init(_) -> {ok, #state{}} | {ok, #state{}, non_neg_integer()} | {ok, #state{}, hibernate} | {stop, _} | ignore.
--spec handle_call(_, {pid(),_}, #state{}) -> {reply, _, #state{}} | {reply, _, #state{}, non_neg_integer()} | {reply, _, #state{}, hibernate} | {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, _, _, #state{}} | {stop, _, #state{}}.
--spec handle_cast(_, #state{}) -> {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, _, #state{}}.
--spec handle_info(_, #state{}) -> {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, _, #state{}}.
--spec terminate(_, #state{}) -> _.
--spec code_change(_, #state{}, _) -> {ok, _} | {error, _}.
+-spec init(any()) -> {ok, #state{}} | {ok, #state{}, non_neg_integer()} | {ok, #state{}, hibernate} | {stop, any()} | ignore.
+-spec handle_call(any(), {pid(),any()}, #state{}) -> {reply, any(), #state{}} | {reply, any(), #state{}, non_neg_integer()} | {reply, any(), #state{}, hibernate} | {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), any(), #state{}} | {stop, any(), #state{}}.
+-spec handle_cast(any(), #state{}) -> {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), #state{}}.
+-spec handle_info(any(), #state{}) -> {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {noreply, #state{}, hibernate} | {stop, any(), #state{}}.
+-spec terminate(any(), #state{}) -> any().
+-spec code_change(any(), #state{}, any()) -> {ok, any()} | {error, any()}.
 
 
--spec start(atom(), _) -> {ok, undefined | pid()} | {error, _}.
+-spec start(atom(), any()) -> {ok, undefined | pid()} | {error, any()}.
 start(Name, Key) when is_binary(Key) ->
     start(Name, wh_util:to_list(Key));
 start(Name, Key) ->
@@ -33,25 +33,25 @@ start(Name, Key) ->
 stop(Name) ->
     gen_server:call(Name, stop).
 
--spec push(atom(), list(), _) -> ok.
+-spec push(atom(), list(), any()) -> ok.
 push(Name, RegIds, Message) ->
     push(Name, RegIds, Message, ?RETRY).
 
--spec push(atom(), list(), _, non_neg_integer()) -> ok.
+-spec push(atom(), list(), any(), non_neg_integer()) -> ok.
 push(Name, RegIds, Message, Retry) ->
     gen_server:cast(Name, {send, RegIds, Message, Retry}).
 
--spec sync_push(atom(), list(), non_neg_integer()) -> ok | {ok, _} | {error, _}.
+-spec sync_push(atom(), list(), non_neg_integer()) -> ok | {ok, any()} | {error, any()}.
 sync_push(Name, RegIds, Message) ->
     sync_push(Name, RegIds, Message, ?RETRY).
 
--spec sync_push(atom(), list(), _, non_neg_integer()) -> ok | {ok, _} | {error, _}.
+-spec sync_push(atom(), list(), any(), non_neg_integer()) -> ok | {ok, any()} | {error, any()}.
 sync_push(Name, RegIds, Message, Retry) ->
     gen_server:call(Name, {send, RegIds, Message, Retry}).
 
 %% OTP
 
--spec start_link(atom(), _) -> {ok, pid()} | {error, _}.
+-spec start_link(atom(), any()) -> {ok, pid()} | {error, any()}.
 start_link(Name, Key) ->
     gen_server:start_link({local, Name}, ?MODULE, [Key], []).
 

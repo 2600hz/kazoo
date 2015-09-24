@@ -40,7 +40,7 @@ get_file_name(Props, Ext) ->
 %%--------------------------------------------------------------------
 -spec get_attachment(ne_binary(), wh_proplist()) ->
                             {ne_binary(), ne_binary(), ne_binary()} |
-                            {'error', _}.
+                            {'error', any()}.
 get_attachment(Category, Props) ->
     {'ok', AttachmentBin, ContentType} = raw_attachment_binary(Props),
     case whapps_config:get_binary(Category, <<"attachment_format">>, <<"pdf">>) of
@@ -109,7 +109,7 @@ convert_to_tiff(AttachmentBin, Props, _ContentType) ->
 %%--------------------------------------------------------------------
 -spec convert_to_pdf(ne_binary(), wh_proplist(), ne_binary()) ->
                             {ne_binary(), ne_binary(), ne_binary()} |
-                            {'error', _}.
+                            {'error', any()}.
 convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
     {<<"application/pdf">>, get_file_name(Props, "pdf"), AttachmentBin};
 convert_to_pdf(AttachmentBin, Props, _ContentType) ->

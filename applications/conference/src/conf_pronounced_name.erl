@@ -73,9 +73,9 @@ record(Call) ->
         _ -> 'undefined'
     end.
 
--type predicate() :: fun((_) -> boolean()).
--type generator() :: fun(() -> _).
--spec while(predicate(), generator(), _, boolean()) -> _.
+-type predicate() :: fun((any()) -> boolean()).
+-type generator() :: fun(() -> any()).
+-spec while(predicate(), generator(), any(), boolean()) -> any().
 while(Predicate, GeneratorFun, _, 'true') ->
     Value = GeneratorFun(),
     while(Predicate, GeneratorFun, Value, Predicate(Value));

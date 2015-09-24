@@ -124,7 +124,7 @@ maybe_attach_extension(A, CT) ->
 
 -spec save_fax_docs(wh_json:objects(), binary(), ne_binary()) ->
                            'ok' |
-                           {'error', _}.
+                           {'error', any()}.
 save_fax_docs([], _FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES_DB, Doc) of
@@ -172,7 +172,7 @@ save_fax_attachment(JObj, FileContents, CT, Count) ->
 -spec check_fax_attachment(ne_binary(), ne_binary())->
                                   {'ok', wh_json:object()} |
                                   {'missing', wh_json:object()} |
-                                  {'error', _}.
+                                  {'error', any()}.
 check_fax_attachment(DocId, Name) ->
     case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
         {'ok', JObj} ->
@@ -185,7 +185,7 @@ check_fax_attachment(DocId, Name) ->
 
 -spec save_fax_doc_completed(wh_json:object())->
                                     {'ok', wh_json:object()} |
-                                    {'error', _}.
+                                    {'error', any()}.
 save_fax_doc_completed(JObj)->
     DocId = wh_doc:id(JObj),
     case couch_mgr:save_doc(?WH_FAXES_DB, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of

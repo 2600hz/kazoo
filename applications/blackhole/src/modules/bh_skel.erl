@@ -17,7 +17,7 @@
 -include("../blackhole.hrl").
 
 
--spec handle_event(bh_context:context(), wh_json:object()) -> _.
+-spec handle_event(bh_context:context(), wh_json:object()) -> any().
 handle_event(Context, EventJObj) ->
     wh_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),

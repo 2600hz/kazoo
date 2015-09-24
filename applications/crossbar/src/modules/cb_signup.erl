@@ -371,7 +371,7 @@ exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
 %%--------------------------------------------------------------------
 -spec send_activation_email(cb_context:context(), #state{}) ->
                                    {'ok', pid()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 send_activation_email(#cb_context{doc=JObj
                                   ,req_id=ReqId
                                  }=Context
@@ -547,7 +547,7 @@ init_state() ->
 
 -spec get_configs() -> {'ok', proplist()} |
                        {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
-                        | {integer(), module(), _}
+                        | {integer(), module(), any()}
                        }.
 get_configs() ->
     file:consult(lists:flatten(?SIGNUP_CONF)).

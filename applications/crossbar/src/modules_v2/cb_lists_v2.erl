@@ -59,7 +59,7 @@ migrate(AccountDb, [List | Lists]) ->
 migrate(_AccountDb, []) ->
     'ok'.
 
--spec init() -> _.
+-spec init() -> any().
 init() ->
     [crossbar_bindings:bind(Binding, ?MODULE, F)
      || {Binding, F} <- [{<<"v2_resource.allowed_methods.lists">>, 'allowed_methods'}

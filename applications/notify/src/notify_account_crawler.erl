@@ -147,7 +147,7 @@ handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
--spec check_then_process_account(ne_binary(), {'ok', wh_json:object()} | {'error',_}) -> 'ok'.
+-spec check_then_process_account(ne_binary(), {'ok', wh_json:object()} | {'error',any()}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', JObj}) ->
     case wh_doc:is_soft_deleted(JObj) of
         'true' ->
@@ -288,7 +288,7 @@ handle_initial_call(AccountId, AccountDb) ->
         _ -> 'ok'
     end.
 
--spec notify_initial_call(ne_binary(), wh_json:object()) -> _.
+-spec notify_initial_call(ne_binary(), wh_json:object()) -> any().
 notify_initial_call(AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
                                 ,'true'

@@ -53,7 +53,7 @@ maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) -
 
 -spec get_global_from_account(account(), ne_binary(), wh_json:key(), wh_json:json_term()) ->
                                      {'ok', wh_json:object()} |
-                                     {'error', _}.
+                                     {'error', any()}.
 get_global_from_account(Account, Category, _Key, _Default) ->
     AccountId = account_id(Account),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),

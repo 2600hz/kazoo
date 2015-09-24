@@ -97,7 +97,7 @@ load_default_apps() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec create_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 create_apps_store_doc(Account) ->
     Doc = kz_apps_store:new(Account),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
@@ -112,7 +112,7 @@ create_apps_store_doc(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec get_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 get_apps_store_doc(Account) ->
     case kz_apps_store:fetch(Account) of
         {'error', 'not_found'} ->

@@ -36,7 +36,7 @@ new() -> #kz_ledger{}.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(ledger()) -> {'ok', ledger()} | {'error', _}.
+-spec save(ledger()) -> {'ok', ledger()} | {'error', any()}.
 save(Ledger) ->
     JObj = to_json(Ledger),
     AccountId = account(Ledger),

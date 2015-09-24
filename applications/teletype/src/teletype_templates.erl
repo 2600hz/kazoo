@@ -319,7 +319,7 @@ maybe_update(TemplateJObj, Params) ->
 %%--------------------------------------------------------------------
 -spec update(wh_json:object(), init_params()) ->
                     'ok' | {'ok', wh_json:object()} |
-                    {'error', _}.
+                    {'error', any()}.
 update(TemplateJObj, Params) ->
     case update_from_params(TemplateJObj, Params) of
         {'false', _} -> lager:debug("no updates to template");
@@ -335,7 +335,7 @@ update(TemplateJObj, Params) ->
 %%--------------------------------------------------------------------
 -spec save(wh_json:object()) ->
                   {'ok', wh_json:object()} |
-                  {'error', _}.
+                  {'error', any()}.
 save(TemplateJObj) ->
     SaveJObj = wh_doc:update_pvt_parameters(TemplateJObj, ?WH_CONFIG_DB),
     case couch_mgr:save_doc(?WH_CONFIG_DB, SaveJObj) of
@@ -573,7 +573,7 @@ does_attachment_exist(DocId, AName) ->
 %%--------------------------------------------------------------------
 -spec save_attachment(ne_binary(), ne_binary(), ne_binary(), binary()) ->
                              {'ok', wh_json:object()} |
-                             {'error', _}.
+                             {'error', any()}.
 save_attachment(DocId, AName, ContentType, Contents) ->
     case
         couch_mgr:put_attachment(

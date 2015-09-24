@@ -53,7 +53,7 @@
 just(X) ->
     {'Just', X}.
 
--spec nothing() -> maybe(_).
+-spec nothing() -> maybe(any()).
 nothing() ->
     'Nothing'.
 

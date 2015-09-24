@@ -33,7 +33,7 @@
                                {'error', 'failed_to_charge'} |
                                {'errors', wh_proplist()}.
 
--spec init() -> _.
+-spec init() -> any().
 init() ->
     _ = couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
     couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
@@ -212,7 +212,7 @@ enable_numbers([Number|Numbers], JObj, Errors) ->
              )
     end.
 
--spec enable_number(ne_binary()) -> 'ok' | {'error', _}.
+-spec enable_number(ne_binary()) -> 'ok' | {'error', any()}.
 enable_number(N) ->
     try wh_number_manager:ported(N) of
         {'ok', _NumberDoc} ->
@@ -329,7 +329,7 @@ fetch_and_send(Url, JObj) ->
       ,Attachments
      ).
 
--spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), _) -> 'error' | 'ok'.
+-spec send_attachement(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), any()) -> 'error' | 'ok'.
 send_attachement(Url, Id, Name, Options, Attachment) ->
     ContentType = wh_json:get_value(<<"content_type">>, Options),
 

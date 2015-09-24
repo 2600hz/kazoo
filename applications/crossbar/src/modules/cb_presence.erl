@@ -104,7 +104,7 @@ validate_search(Context, _Type) ->
 
 -spec search_req(cb_context:context()) ->
                         {'ok', wh_json:object()} |
-                        {'error', _}.
+                        {'error', any()}.
 search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
            ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
@@ -200,7 +200,7 @@ validate_presentity_search(Context) ->
 
 -spec presentity_search_req(cb_context:context()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 presentity_search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
            ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}

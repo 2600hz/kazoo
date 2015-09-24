@@ -244,7 +244,7 @@ route_to_match(Call, Callflow) ->
 %%------------------------------------------------------------------------------
 %% Audio Prompts
 %%------------------------------------------------------------------------------
--spec play_user(whapps_call:call(), whapps_call_command:audio_macro_prompt(), _) ->
+-spec play_user(whapps_call:call(), whapps_call_command:audio_macro_prompt(), any()) ->
                        {'ok', binary()}.
 play_user(Call, UsernameTuple, _MatchNum) ->
     play_and_collect(Call, [{'prompt', ?PROMPT_RESULT_NUMBER}
@@ -359,7 +359,7 @@ get_sort_by(_) -> 'last'.
 
 -spec get_directory_listing(ne_binary(), ne_binary()) ->
                                    {'ok', directory_users()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 get_directory_listing(Db, DirId) ->
     case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{'key', DirId}, 'include_docs']) of
         {'ok', []} ->

@@ -64,7 +64,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(_) -> startlink_ret().
+-spec start_link(any()) -> startlink_ret().
 start_link(_) ->
     _ = ssl:start(),
     gen_server:start_link(?MODULE, [], []).
@@ -346,7 +346,7 @@ maybe_enable_ssl(<<"https", _/binary>>, Props) ->
     [{'ssl', [{'verify', 0}]}|Props];
 maybe_enable_ssl(_, Props) -> Props.
 
--spec maybe_enable_auth(_, wh_proplist()) -> wh_proplist().
+-spec maybe_enable_auth(any(), wh_proplist()) -> wh_proplist().
 maybe_enable_auth(_, Props) ->
     Username = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),

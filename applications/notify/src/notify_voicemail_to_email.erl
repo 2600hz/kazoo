@@ -40,7 +40,7 @@ stop_processing(Format, Args) ->
     lager:debug(Format, Args),
     throw('stop').
 
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_v(JObj),
     _ = wh_util:put_callid(JObj),

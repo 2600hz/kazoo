@@ -30,7 +30,7 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
--spec init(_) -> {'ok', reference()}.
+-spec init(any()) -> {'ok', reference()}.
 init(_) ->
     wh_util:put_callid(?MODULE),
     {'ok', start_check_timer()}.

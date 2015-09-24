@@ -225,7 +225,7 @@ write_to_db(Database, Name, Str, Args) ->
 
 -spec start_file(ne_binary()) ->
                         {'ok', file:io_device()} |
-                        {'error', _}.
+                        {'error', any()}.
 start_file(Filename) ->
     _ = file:rename(Filename, iolist_to_binary([Filename, ".", wh_util:to_binary(wh_util:current_tstamp())])),
     file:open(Filename, ['append', 'raw', 'delayed_write']).
@@ -248,7 +248,7 @@ trunc_database(Database, Name) ->
 
 -spec get_docs_by_name(ne_binary(), ne_binary()) ->
                               {'ok', wh_json:objects()} |
-                              {'error', _}.
+                              {'error', any()}.
 get_docs_by_name(Database, Name) ->
     get_docs_by_name(Database, Name, []).
 get_docs_by_name(Database, Name, Opts) ->

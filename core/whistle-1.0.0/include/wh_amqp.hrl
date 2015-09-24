@@ -158,7 +158,7 @@
                              #'basic.cancel_ok'{}.
 -type command_ret() :: 'ok' |
                        {'ok', ne_binary() | wh_command_ret_ok()} |
-                       {'error', _}.
+                       {'error', any()}.
 
 -define(WH_AMQP_ETS, 'wh_amqp_ets').
 

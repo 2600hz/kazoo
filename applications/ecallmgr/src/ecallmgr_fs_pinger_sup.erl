@@ -36,9 +36,9 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec add_node(atom(), wh_proplist()) -> {'error', _} |
+-spec add_node(atom(), wh_proplist()) -> {'error', any()} |
                                          {'ok', api_pid()} |
-                                         {'ok', api_pid(), _}.
+                                         {'ok', api_pid(), any()}.
 add_node(Node, Options) ->
     supervisor:start_child(?SERVER, ?PINGER(Node, Options)).
 

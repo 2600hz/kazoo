@@ -208,7 +208,7 @@ successful_hook(#webhook{hook_id=HookId
     save_attempt(Attempt, AccountId).
 
 -spec failed_hook(webhook()) -> 'ok'.
--spec failed_hook(webhook(), hook_retries(), _) -> 'ok'.
+-spec failed_hook(webhook(), hook_retries(), any()) -> 'ok'.
 -spec failed_hook(webhook(), hook_retries(), string(), binary()) -> 'ok'.
 failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId

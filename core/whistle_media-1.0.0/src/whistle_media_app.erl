@@ -19,7 +19,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(_, _) ->
+-spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_Type, _Args) ->
@@ -35,7 +35,7 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(_) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) ->
     wh_media_proxy:stop(),
     'ok'.

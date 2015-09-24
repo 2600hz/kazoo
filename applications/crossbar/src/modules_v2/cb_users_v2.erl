@@ -353,7 +353,7 @@ update_devices_presence(Context, DeviceDocs) ->
 
 -spec user_devices(cb_context:context()) ->
                           {'ok', kz_device:docs()} |
-                          {'error', _}.
+                          {'error', any()}.
 user_devices(Context) ->
     UserId = wh_doc:id(cb_context:doc(Context)),
     AccountDb = cb_context:account_db(Context),

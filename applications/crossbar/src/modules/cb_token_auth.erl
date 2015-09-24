@@ -109,7 +109,7 @@ finish_request(Context, AuthDoc) ->
     cb_context:put_reqid(Context),
     maybe_save_auth_doc(AuthDoc).
 
--spec maybe_save_auth_doc(wh_json:object()) -> _.
+-spec maybe_save_auth_doc(wh_json:object()) -> any().
 maybe_save_auth_doc(OldAuthDoc) ->
     OldAuthModified = wh_doc:modified(OldAuthDoc),
     Now = wh_util:current_tstamp(),
@@ -274,7 +274,7 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
 
 -spec get_descendants(ne_binary()) ->
                              {'ok', wh_json:objects()} |
-                             {'error', _}.
+                             {'error', any()}.
 get_descendants(AccountId) ->
     case couch_mgr:get_results(<<"accounts">>
                                ,<<"accounts/listing_by_descendants">>

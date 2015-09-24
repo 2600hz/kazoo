@@ -22,7 +22,7 @@
 %% route
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_offnet_resource:req_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -38,8 +38,8 @@ handle_req(JObj, _Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_audio_req(wh_json:object()) -> _.
--spec handle_audio_req(ne_binary(), wh_json:object()) -> _.
+-spec handle_audio_req(wh_json:object()) -> any().
+-spec handle_audio_req(ne_binary(), wh_json:object()) -> any().
 handle_audio_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound audio resource request for ~s: ~p", [Number, JObj]),
@@ -58,7 +58,7 @@ handle_audio_req(Number, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_originate_req(wh_json:object()) -> _.
+-spec handle_originate_req(wh_json:object()) -> any().
 handle_originate_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound audio resource request for ~s from account ~s"
@@ -77,7 +77,7 @@ handle_originate_req(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_sms_req(wh_json:object()) -> _.
+-spec handle_sms_req(wh_json:object()) -> any().
 handle_sms_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound sms resource request for ~s", [Number]),
@@ -93,7 +93,7 @@ handle_sms_req(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> _.
+-spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound(Props, JObj) ->
     case wh_number_properties:should_force_outbound(Props)
         orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
@@ -110,7 +110,7 @@ maybe_force_outbound(Props, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_force_outbound_sms(wh_proplist(), wh_json:object()) -> _.
+-spec maybe_force_outbound_sms(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound_sms(Props, JObj) ->
     case props:get_is_true('force_outbound', Props)
         orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
@@ -127,14 +127,14 @@ maybe_force_outbound_sms(Props, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_bridge(ne_binary(), wh_json:object()) -> _.
+-spec maybe_bridge(ne_binary(), wh_json:object()) -> any().
 maybe_bridge(Number, JObj) ->
     case stepswitch_resources:endpoints(Number, JObj) of
         [] -> maybe_correct_shortdial(Number, JObj);
         Endpoints -> stepswitch_request_sup:bridge(Endpoints, JObj)
     end.
 
--spec maybe_correct_shortdial(ne_binary(), wh_json:object()) -> _.
+-spec maybe_correct_shortdial(ne_binary(), wh_json:object()) -> any().
 maybe_correct_shortdial(Number, JObj) ->
     case stepswitch_util:correct_shortdial(Number, JObj) of
         'undefined' ->
@@ -154,7 +154,7 @@ maybe_correct_shortdial(Number, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_sms(ne_binary(), wh_json:object()) -> _.
+-spec maybe_sms(ne_binary(), wh_json:object()) -> any().
 maybe_sms(Number, JObj) ->
     case stepswitch_resources:endpoints(Number, JObj) of
         [] -> publish_no_resources(JObj);
@@ -167,7 +167,7 @@ maybe_sms(Number, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_extension(wh_proplist(), wh_json:object()) -> _.
+-spec local_extension(wh_proplist(), wh_json:object()) -> any().
 local_extension(Props, JObj) -> stepswitch_request_sup:local_extension(Props, JObj).
 
 %%--------------------------------------------------------------------
@@ -176,7 +176,7 @@ local_extension(Props, JObj) -> stepswitch_request_sup:local_extension(Props, JO
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_sms(wh_proplist(), wh_json:object()) -> _.
+-spec local_sms(wh_proplist(), wh_json:object()) -> any().
 local_sms(Props, JObj) -> stepswitch_local_sms:local_message_handling(Props, JObj).
 
 %%--------------------------------------------------------------------
@@ -185,7 +185,7 @@ local_sms(Props, JObj) -> stepswitch_local_sms:local_message_handling(Props, JOb
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_originate(ne_binary(), wh_json:object()) -> _.
+-spec maybe_originate(ne_binary(), wh_json:object()) -> any().
 maybe_originate(Number, JObj) ->
     case stepswitch_resources:endpoints(Number, JObj) of
         [] -> publish_no_resources(JObj);

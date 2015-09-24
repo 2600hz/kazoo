@@ -495,7 +495,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(_, _) -> 'ok'.
+-spec terminate(any(), any()) -> 'ok'.
 terminate(_Reason, _) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("ecallmgr registrar ~p termination", [_Reason]).
@@ -560,7 +560,7 @@ fetch_registration(Username, Realm) ->
 
 -spec query_for_registration(api_terms()) ->
                                     {'ok', wh_json:objects()} |
-                                    {'error', _}.
+                                    {'error', any()}.
 query_for_registration(Reg) ->
     wh_amqp_worker:call_collect(Reg
                                 ,fun wapi_registration:publish_query_req/1
@@ -661,7 +661,7 @@ expire_objects() ->
                 ],
     expire_object(ets:select(?MODULE, MatchSpec, 1)).
 
--spec expire_object(_) -> 'ok'.
+-spec expire_object(any()) -> 'ok'.
 expire_object('$end_of_table') -> 'ok';
 expire_object({[#registration{id=Id}=Reg], Continuation}) ->
     _ = wh_util:spawn(fun() -> maybe_send_deregister_notice(Reg) end),
@@ -700,7 +700,7 @@ build_query_spec(JObj, CountOnly) ->
      }
     ].
 
--spec build_query_spec_maybe_username(ne_binary(), wh_json:object()) -> _.
+-spec build_query_spec_maybe_username(ne_binary(), wh_json:object()) -> any().
 build_query_spec_maybe_username(Realm, JObj) ->
     case wh_json:get_value(<<"Username">>, JObj) of
         'undefined' ->
@@ -1174,7 +1174,7 @@ get_fs_contact(Props) ->
     <<User/binary, "@", (wh_util:to_binary(mochiweb_util:unquote(AfterAt)))/binary>>.
 
 -type ets_continuation() :: '$end_of_table' |
-                            {registrations(), _}.
+                            {registrations(), any()}.
 
 -spec print_summary(ets_continuation()) -> 'ok'.
 -spec print_summary(ets_continuation(), non_neg_integer()) -> 'ok'.

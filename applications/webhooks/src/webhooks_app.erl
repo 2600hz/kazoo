@@ -19,7 +19,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(_, _) ->
+-spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_Type, _Args) -> webhooks:start_link().
@@ -30,5 +30,5 @@ start(_Type, _Args) -> webhooks:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(_) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) -> webhooks:stop().

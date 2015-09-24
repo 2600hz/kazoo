@@ -295,7 +295,7 @@ is_blacklisted(JObj) ->
 
 -spec get_blacklists(ne_binary()) ->
                             {'ok', ne_binaries()} |
-                            {'error', _}.
+                            {'error', any()}.
 get_blacklists(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'error', _R}=E ->

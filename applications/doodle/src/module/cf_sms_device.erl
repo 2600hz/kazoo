@@ -49,7 +49,7 @@ handle_result_status(Call, _Status) ->
     lager:info("completed successful message to the device"),
     doodle_exe:continue(Call).
 
--spec maybe_handle_bridge_failure({'error', _}, whapps_call:call()) -> 'ok'.
+-spec maybe_handle_bridge_failure({'error', any()}, whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->

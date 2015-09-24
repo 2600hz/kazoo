@@ -25,10 +25,10 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec available() -> {'ok', wh_json:objects()} |
-                     {'error', _}.
+                     {'error', any()}.
 -spec available(api_binary()) ->
                        {'ok', wh_json:objects()} |
-                       {'error', _}.
+                       {'error', any()}.
 
 available() -> available('undefined').
 
@@ -36,7 +36,7 @@ available(Zone) -> available(Zone, 1).
 
 -spec available(api_binary(), non_neg_integer()) ->
                        {'ok', wh_json:objects()} |
-                       {'error', _}.
+                       {'error', any()}.
 available(Zone, Quantity) ->
     ViewOptions = props:filter_undefined(
                     [{'key', Zone}
@@ -67,7 +67,7 @@ available(Zone, Quantity) ->
 %%--------------------------------------------------------------------
 -spec assigned(ne_binary()) ->
                       {'ok', wh_json:objects()} |
-                      {'error', _}.
+                      {'error', any()}.
 assigned(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     ViewOptions = [{'key', AccountId}],
@@ -95,7 +95,7 @@ assigned(Account) ->
 %%--------------------------------------------------------------------
 -spec zones() ->
                    {'ok', ne_binaries()} |
-                   {'error', _}.
+                   {'error', any()}.
 zones() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
@@ -126,7 +126,7 @@ zones() ->
 %%--------------------------------------------------------------------
 -spec hosts() ->
                    {'ok', ne_binaries()} |
-                   {'error', _}.
+                   {'error', any()}.
 hosts() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
@@ -157,7 +157,7 @@ hosts() ->
 %%--------------------------------------------------------------------
 -spec summary(api_binary()) ->
                      {'ok', wh_json:objects()} |
-                     {'error', _}.
+                     {'error', any()}.
 summary(Host) ->
     ViewOptions = props:filter_undefined([{'key', Host}]),
     case couch_mgr:get_results(?WH_DEDICATED_IP_DB

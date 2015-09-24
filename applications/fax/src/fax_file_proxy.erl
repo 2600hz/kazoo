@@ -46,5 +46,5 @@ handle(Req0, State) ->
             {'ok', Req1, State}
     end.
 
--spec terminate(_, cowboy_req:req(), _) -> 'ok'.
+-spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
 terminate(_Reason, _Req, _State) -> 'ok'.
