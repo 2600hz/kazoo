@@ -327,16 +327,20 @@ settings_feature_keys(JObj) ->
     Brand = get_brand(JObj),
     Family = get_family(JObj),
     AccountId = wh_doc:account_id(JObj),
-    wh_json:foldl(
-      fun(Key, Value, Acc) ->
-              Type = wh_json:get_binary_value(<<"type">>, Value),
-              V = wh_json:get_binary_value(<<"value">>, Value),
-              FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
-              maybe_add_feature_key(Key, FeatureKey, Acc)
-      end
-      ,wh_json:new()
-      ,FeatureKeys
-     ).
+    Keys =
+        wh_json:foldl(
+          fun(Key, Value, Acc) ->
+                  Type = wh_json:get_binary_value(<<"type">>, Value),
+                  V = wh_json:get_binary_value(<<"value">>, Value),
+                  FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
+                  maybe_add_feature_key(Key, FeatureKey, Acc)
+          end
+          ,wh_json:new()
+          ,FeatureKeys
+         ),
+    wh_json:merge_jobjs(wh_json:from_list([{<<"account">>, get_line_key(Brand, Family)}])
+                        ,Keys
+                       ).
 
 -spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary()) ->
                              api_object().
