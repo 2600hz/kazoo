@@ -39,9 +39,11 @@
 -export([maybe_add_expires_deviation/1, maybe_add_expires_deviation_ms/1]).
 
 -export([get_dial_separator/2]).
+-export([fix_contact/3]).
 
 -include_lib("whistle/src/api/wapi_dialplan.hrl").
 -include("ecallmgr.hrl").
+-include_lib("nksip/include/nksip.hrl").
 
 -define(HTTP_GET_PREFIX, "http_cache://").
 
@@ -1146,3 +1148,25 @@ get_dial_separator(JObj, Endpoints) ->
     get_dial_separator(wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, ?DIAL_METHOD_SINGLE)
                        ,Endpoints
                       ).
+
+-spec fix_contact(api_binary() | list(), ne_binary(), ne_binary()) -> api_binary().
+fix_contact('undefined', _, _) -> 'undefined';
+fix_contact(<<";", _/binary>> = OriginalContact, Username, Realm) ->
+    fix_contact(<<"sip:", Username/binary, "@", Realm/binary, OriginalContact/binary>>, Username, Realm);
+fix_contact(OriginalContact, Username, Realm)
+  when is_binary(OriginalContact) ->
+    fix_contact(binary:split(wh_util:strip_binary(OriginalContact), <<";">>, ['global']), Username, Realm);
+fix_contact([<<>> | Options], Username, Realm) ->
+    [<<"sip:", Username/binary, "@", Realm/binary>> | Options];
+fix_contact([Contact | Options], Username, Realm) ->
+    case nksip_parse_uri:uris(Contact) of
+        [#uri{user = <<>>, domain = <<>>}=Uri] ->
+            fix_contact([nksip_unparse:ruri(Uri#uri{user=Username, domain=Realm}) | Options], Username, Realm);
+        [#uri{user = <<>>}=Uri] ->
+            fix_contact([nksip_unparse:ruri(Uri#uri{user=Username}) | Options], Username, Realm);
+        [#uri{domain = <<>>}=Uri] ->
+            fix_contact([nksip_unparse:ruri(Uri#uri{domain=Realm}) | Options], Username, Realm);
+        [#uri{}=Uri] ->
+            list_to_binary([nksip_unparse:ruri(Uri)] ++ [<<";", Option/binary>> || Option <- Options]);
+        _Else -> 'undefined'
+    end.
