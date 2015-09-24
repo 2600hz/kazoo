@@ -307,7 +307,7 @@ db_create(#server{}=Conn, DbName) ->
 db_create(#server{}=Conn, DbName, Options) ->
     case couchbeam:create_db(Conn, wh_util:to_list(DbName), [], Options) of
         {'error', _} -> 'false';
-        {'ok', _} -> 
+        {'ok', _} ->
             _ = maybe_publish_db(DbName, 'created'),
             'true'
     end.
@@ -316,7 +316,7 @@ db_create(#server{}=Conn, DbName, Options) ->
 db_delete(#server{}=Conn, DbName) ->
     case couchbeam:delete_db(Conn, wh_util:to_list(DbName)) of
         {'error', _} -> 'false';
-        {'ok', _} -> 
+        {'ok', _} ->
             _ = maybe_publish_db(DbName, 'deleted'),
             'true'
     end.
