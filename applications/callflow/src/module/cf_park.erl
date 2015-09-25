@@ -116,6 +116,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
             case maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) of
                 'ok' ->
+                    _ = publish_retrieved(Call, SlotNumber),
                     _ = cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)),
                     whapps_call_command:wait_for_hangup();
                 {'error', _E}=E ->
@@ -220,6 +221,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
         {_, {'ok', _}} ->
             ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
             lager:info("call ~s parked in slot ~s", [ParkedCallId, SlotNumber]),
+            _ = publish_parked(Call, SlotNumber),
             update_presence(?PARKED_PRESENCE_TYPE, Slot),
             wait_for_pickup(SlotNumber, Slot, Call)
     end.
@@ -387,6 +389,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
     case find_slot_by_callid(Slots, Replaces) of
         {'ok', SlotNumber, Slot} ->
             lager:info("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
+            _ = publish_parked(Call, SlotNumber),
             CallerNode = whapps_call:switch_nodename(Call),
             Updaters = [fun(J) -> wh_json:set_value(<<"Call-ID">>, CallId, J) end
                         ,fun(J) -> wh_json:set_value(<<"Node">>, CallerNode, J) end
@@ -580,6 +583,7 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
             case ChannelUp andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Call) of
                 'answered' ->
                     lager:info("parked caller ringback was answered"),
+                    _ = publish_retrieved(Call, SlotNumber),
                     cf_exe:continue(Call);
                 'failed' ->
                     lager:info("ringback was not answered, continuing to hold parked call"),
@@ -600,12 +604,9 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
                     cf_exe:transfer(Call)
             end;
-        {'error', _} ->
-            lager:info("parked caller has hungup"),
-            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
-            cf_exe:transfer(Call);
-        {'ok', _} ->
+        _Else ->
             lager:info("parked caller has been picked up"),
+            _ = publish_abandoned(Call, SlotNumber),
             _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call)
     end.
@@ -694,3 +695,50 @@ update_presence(State, Slot) ->
                 ]),
     lager:info("update presence-id '~s' with state: ~s", [PresenceId, State]),
     wh_amqp_worker:cast(Command, fun wapi_presence:publish_update/1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_parked(whapps_call:call(), ne_binary()) -> 'ok'.
+publish_parked(Call, SlotNumber) ->
+    publish_event(Call, SlotNumber, <<"PARK_PARKED">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_retrieved(whapps_call:call(), ne_binary()) -> 'ok'.
+publish_retrieved(Call, SlotNumber) ->
+    publish_event(Call, SlotNumber, <<"PARK_RETRIEVED">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_abandoned(whapps_call:call(), ne_binary()) -> 'ok'.
+publish_abandoned(Call, Slot) ->
+    publish_event(Call, Slot, <<"PARK_ABANDONED">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_event(whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+publish_event(Call, SlotNumber, Event) ->
+    Cmd = [
+        {<<"Event-Name">>, Event}
+        ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+        ,{<<"Parking-Slot">>, wh_util:to_binary(SlotNumber)}
+        ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+        ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+        ,{<<"Callee-ID-Number">>, whapps_call:callee_id_number(Call)}
+        ,{<<"Callee-ID-Name">>, whapps_call:callee_id_name(Call)}
+        ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
+        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ],
+    wapi_call:publish_event(Cmd).
