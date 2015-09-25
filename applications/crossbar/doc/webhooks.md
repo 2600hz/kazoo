@@ -194,7 +194,7 @@ Most of these fields should be present on all payloads.
     * hangup_code: SIP Hangup Code (404, 503, etc)
 * doc
     * hook_event: doc
-    * action: cod_created, doc_updated, doc_deleted
+    * action: doc_created, doc_updated, doc_deleted
     * type: user, vmbox, callflow, account, device, faxbox, media
 
 ### Hook Specific Custom Data
@@ -209,4 +209,3 @@ To restrict the kind of doc or the action or both. You can set the custom data t
    "action": "doc_edited"
 }
 ```
-
