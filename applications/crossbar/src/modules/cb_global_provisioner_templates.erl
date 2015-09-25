@@ -65,8 +65,10 @@ init() ->
 %% Add content types provided by this module
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided(cb_context:context(), path_token(), path_token()) -> crossbar_content_handlers().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) -> crossbar_content_handlers().
+-spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) ->
+                                    cb_context:context().
 content_types_provided(Context, PT1, PT2) ->
     content_types_provided(Context, PT1, PT2, cb_context:req_verb(Context)).
 
