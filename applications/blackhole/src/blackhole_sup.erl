@@ -44,6 +44,7 @@ start_link() ->
                                                                           ,{'callback', 'blackhole_socket_callback'}
                                                                           ,{'protocol', 'socketio_data_protocol'}
                                                                           ])]}
+                                            ,{"/", 'blackhole_default_handler', []}
                                             ]
                                       }
                                      ]),
