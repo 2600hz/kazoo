@@ -15,7 +15,7 @@
 
 -spec playback(api_binary(), wh_json:object()) ->
                       {'ok', ne_binary()} |
-                      {'error', _}.
+                      {'error', any()}.
 playback('undefined', _) ->
     {'error', 'invalid_media_name'};
 playback(<<"tts://", _/binary>> = TTS, Options) ->
@@ -42,7 +42,7 @@ playback(Media, Options) ->
 
 -spec store(ne_binary(), ne_binary(), ne_binary()) ->
                    {'ok', ne_binary()} |
-                   {'error', _}.
+                   {'error', any()}.
 store(Db, Id, Attachment) ->
     Options = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
     Rev = case couch_mgr:lookup_doc_rev(Db, Id) of

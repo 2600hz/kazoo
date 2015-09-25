@@ -150,7 +150,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> handle_cast_return().
+-spec handle_cast(any(), state()) -> handle_cast_return().
 handle_cast('start_action', #state{call=_Call
                                    ,action='receive'
                                    ,owner_id=OwnerId
@@ -361,7 +361,7 @@ maybe_add_owner_to_notify_list(List, OwnerEmail) ->
     NotifyList = fax_util:notify_email_list('undefined', OwnerEmail, List),
     wh_json:set_value([<<"email">>, <<"send_to">>], NotifyList, wh_json:new()).
 
--spec maybe_update_fax_settings_from_account(state()) -> _.
+-spec maybe_update_fax_settings_from_account(state()) -> any().
 maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
     case kz_account:fetch(whapps_call:account_id(Call)) of
         {'ok', JObj} ->
@@ -453,7 +453,7 @@ maybe_store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) ->
 
 -spec store_fax(wh_json:object(), state() ) ->
                        {'ok', ne_binary()} |
-                       {'error', _}.
+                       {'error', any()}.
 store_fax(JObj, #state{storage=#fax_storage{id=FaxDocId
                                             ,attachment_id=_AttachmentId
                                            }

@@ -62,14 +62,14 @@
 
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue(), <<"foo.bar">>}
 
--type payload() :: term().
+-type payload() :: any().
 
 -record(kz_responder, {module :: atom()
                        ,function :: atom()
-                       ,payload :: term()
+                       ,payload :: any()
                       }).
 -type kz_responder() :: #kz_responder{}.
--type kz_responders() :: [kz_responder(),...] | [].
+-type kz_responders() :: [kz_responder()].
 
 -record(kz_binding, {binding :: ne_binary() | '_'
                      ,binding_parts :: ne_binaries() | '_'
@@ -78,7 +78,7 @@
                      ,binding_prefix :: api_binary() | '$1' | '_'
                     }).
 -type kz_binding() :: #kz_binding{}.
--type kz_bindings() :: [kz_binding(),...] | [].
+-type kz_bindings() :: [kz_binding()].
 
 -record(state, {bindings = [] :: kz_bindings()}).
 
@@ -237,7 +237,7 @@ stop() -> gen_server:cast(?MODULE, 'stop').
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
--type bind_results() :: [bind_result(),...] | [].
+-type bind_results() :: [bind_result()].
 -spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
@@ -253,11 +253,11 @@ bind(Binding, Module, Fun, Payload) ->
 
 -type unbind_result() :: {'ok', 'deleted_binding' | 'updated_binding'} |
                          {'error', 'not_found'}.
--type unbind_results() :: [unbind_result(),...] | [].
+-type unbind_results() :: [unbind_result()].
 
 -spec unbind(ne_binary() | ne_binaries(), atom(), atom()) ->
                     unbind_result() | unbind_results().
--spec unbind(ne_binary() | ne_binaries(), atom(), atom(), term()) ->
+-spec unbind(ne_binary() | ne_binaries(), atom(), atom(), any()) ->
                     unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun) ->
     [unbind(Binding, Module, Fun) || Binding <- Bindings];
@@ -280,7 +280,7 @@ flush(Binding) -> gen_server:cast(?MODULE, {'flush', Binding}).
 -spec flush_mod(atom()) -> 'ok'.
 flush_mod(Module) -> gen_server:cast(?MODULE, {'flush_mod', Module}).
 
--type filter_fun() :: fun((ne_binary(), atom(), atom(), term()) -> boolean()).
+-type filter_fun() :: fun((ne_binary(), atom(), atom(), any()) -> boolean()).
 -spec filter(filter_fun()) -> 'ok'.
 filter(Predicate) when is_function(Predicate, 4) ->
     gen_server:cast(?MODULE, {'filter', Predicate}).
@@ -356,7 +356,7 @@ handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     lager:debug("maybe rm binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State}.
 
--spec maybe_add_binding(ne_binary(), atom(), atom(), term()) ->
+-spec maybe_add_binding(ne_binary(), atom(), atom(), any()) ->
                                'ok' |
                                {'error', 'exists'}.
 maybe_add_binding(Binding, Mod, Fun, Payload) ->
@@ -389,7 +389,7 @@ maybe_add_binding(Binding, Mod, Fun, Payload) ->
             end
     end.
 
--spec maybe_rm_binding(ne_binary(), atom(), atom(), term()) ->
+-spec maybe_rm_binding(ne_binary(), atom(), atom(), any()) ->
                               {'ok', 'deleted_binding' | 'updated_binding'} |
                               {'error', 'not_found'}.
 maybe_rm_binding(Binding, Mod, Fun, Payload) ->
@@ -572,13 +572,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% previous payload being passed to the next invocation.
 %% @end
 %%--------------------------------------------------------------------
--spec fold_bind_results(kz_responders(), term(), ne_binary()) -> term().
+-spec fold_bind_results(kz_responders(), any(), ne_binary()) -> any().
 fold_bind_results(_, {'error', _}=E, _) -> [E];
 fold_bind_results([], Payload, _Route) -> Payload;
 fold_bind_results(Responders, Payload, Route) ->
     fold_bind_results(Responders, Payload, Route, length(Responders), []).
 
--spec fold_bind_results(kz_responders(), term(), ne_binary(), non_neg_integer(), kz_responders()) -> term().
+-spec fold_bind_results(kz_responders(), any(), ne_binary(), non_neg_integer(), kz_responders()) -> any().
 fold_bind_results([#kz_responder{module=M
                                  ,function=F
                                  ,payload='undefined'
@@ -634,7 +634,7 @@ fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
             Payload
     end.
 
--spec apply_responder(kz_responder(), term()) -> term().
+-spec apply_responder(kz_responder(), any()) -> any().
 apply_responder(#kz_responder{module=M
                               ,function=F
                               ,payload='undefined'

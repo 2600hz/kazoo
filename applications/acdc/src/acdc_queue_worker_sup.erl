@@ -73,7 +73,7 @@ start_fsm(WorkerSup, MgrPid, QueueJObj) ->
     ListenerPid = self(),
     supervisor:start_child(WorkerSup, ?WORKER_ARGS('acdc_queue_fsm', [MgrPid, ListenerPid, QueueJObj])).
 
--spec child_of_type(pid(), atom()) -> list(pid()).
+-spec child_of_type(pid(), atom()) -> [pid()].
 child_of_type(WSup, T) ->
     [P || {Type, P,'worker', [_]} <- supervisor:which_children(WSup), T =:= Type].
 

@@ -406,7 +406,7 @@ get_summary_start_key(Context) ->
 get_attempts_start_key(Context) ->
     get_start_key(Context, wh_json:new(), fun wh_util:to_integer/1).
 
--spec get_start_key(cb_context:context(), term(), fun()) -> term().
+-spec get_start_key(cb_context:context(), any(), fun()) -> any().
 get_start_key(Context, Default, Formatter) ->
     case cb_context:req_value(Context, <<"start_key">>) of
         'undefined' -> Default;

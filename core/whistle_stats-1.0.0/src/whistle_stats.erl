@@ -258,7 +258,7 @@ send(RawPayload) ->
     amqp_util:targeted_publish(<<"statistics">>,Payload).
 
 %% Prepares nested proplists to convert to JSON
--spec recursive_from_proplist(term()) -> wh_json:object().
+-spec recursive_from_proplist(any()) -> wh_json:object().
 recursive_from_proplist([]) -> wh_json:new();
 recursive_from_proplist(List) when is_list(List) ->
     case lists:all(fun is_integer/1, List) of

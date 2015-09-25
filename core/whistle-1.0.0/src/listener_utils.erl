@@ -19,7 +19,7 @@
 %% { {Event-Category, Event-Name}, CallbackModule | {CallbackModule, Function} }
 -type responder_callback() :: {atom(), atom()}.
 -type responder() :: {{binary(), binary()}, responder_callback()}.
--type responders() :: [responder(),...] | [].
+-type responders() :: [responder()].
 -export_type([responder/0
               ,responders/0
              ]).

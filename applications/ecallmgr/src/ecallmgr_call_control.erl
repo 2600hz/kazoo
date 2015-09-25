@@ -1177,7 +1177,7 @@ send_error_resp(CallId, Cmd, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_keep_alive_ref(state()) -> 'undefined' | reference().
+-spec get_keep_alive_ref(state()) -> api_reference().
 get_keep_alive_ref(#state{is_call_up='true'}) -> 'undefined';
 get_keep_alive_ref(#state{keep_alive_ref='undefined'
                           ,is_call_up='false'

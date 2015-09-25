@@ -166,7 +166,7 @@ dst(Bin = <<_/binary>>) ->
     [IP, Port] = binary:split(Bin, <<":">>),
     {IP, wh_util:to_integer(Port)}.
 
--spec is_chunk(_) -> boolean().
+-spec is_chunk(any()) -> boolean().
 is_chunk(#ci_chunk{}) -> 'true';
 is_chunk(_) -> 'false'.
 

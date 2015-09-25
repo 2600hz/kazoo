@@ -11,7 +11,7 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _) ->
     'true' = wapi_authz:authz_req_v(JObj),
     wh_util:put_callid(JObj),

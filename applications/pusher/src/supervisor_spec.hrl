@@ -6,8 +6,8 @@
 -type supervisor_restart() :: permanent | transient | temporary.
 -type supervisor_shutdown() :: brutal_kill | non_neg_integer().
 -type supervisor_child_type() :: worker | supervisor.
--type supervisor_child_id() :: term().
--type supervisor_mfargs() :: {M::module(), F::atom(), A::[term()] | undefined}.
+-type supervisor_child_id() :: any().
+-type supervisor_mfargs() :: {M::module(), F::atom(), A::[any()] | undefined}.
 
 -type supervisor_child_spec() :: {
     Id :: supervisor_child_id(),

@@ -1537,7 +1537,7 @@ find_endpoint_id(EP) ->
 find_endpoint_id(EP, 'undefined') -> wh_json:get_value(<<"Endpoint-ID">>, EP);
 find_endpoint_id(_EP, EPId) -> EPId.
 
--spec monitor_endpoint(wh_json:object(), ne_binary(), server_ref()) -> _.
+-spec monitor_endpoint(wh_json:object(), ne_binary(), server_ref()) -> any().
 monitor_endpoint(EP, AccountId, AgentListener) ->
     %% Bind for outbound call requests
     acdc_agent_listener:add_endpoint_bindings(AgentListener
@@ -1548,7 +1548,7 @@ monitor_endpoint(EP, AccountId, AgentListener) ->
     catch gproc:reg(?ENDPOINT_UPDATE_REG(AccountId, find_endpoint_id(EP))),
     catch gproc:reg(?NEW_CHANNEL_REG(AccountId, find_username(EP))).
 
--spec unmonitor_endpoint(wh_json:object(), ne_binary(), server_ref()) -> _.
+-spec unmonitor_endpoint(wh_json:object(), ne_binary(), server_ref()) -> any().
 unmonitor_endpoint(EP, AccountId, AgentListener) ->
     %% Bind for outbound call requests
     acdc_agent_listener:remove_endpoint_bindings(AgentListener
@@ -1559,7 +1559,7 @@ unmonitor_endpoint(EP, AccountId, AgentListener) ->
     catch gproc:unreg(?ENDPOINT_UPDATE_REG(AccountId, wh_doc:id(EP))),
     catch gproc:unreg(?NEW_CHANNEL_REG(AccountId, find_username(EP))).
 
--spec maybe_add_endpoint(ne_binary(), wh_json:object(), wh_json:objects(), ne_binary(), server_ref()) -> _.
+-spec maybe_add_endpoint(ne_binary(), wh_json:object(), wh_json:objects(), ne_binary(), server_ref()) -> any().
 maybe_add_endpoint(EPId, EP, EPs, AccountId, AgentListener) ->
     case lists:partition(fun(E) -> wh_doc:id(E) =:= EPId end, EPs) of
         {[], _} ->
@@ -1580,7 +1580,7 @@ maybe_remove_endpoint(EPId, EPs, AccountId, AgentListener) ->
 
 -spec get_endpoints(wh_json:objects(), server_ref(), whapps_call:call(), api_binary(), api_binary()) ->
                            {'ok', wh_json:objects()} |
-                           {'error', _}.
+                           {'error', any()}.
 get_endpoints(OrigEPs, AgentListener, Call, AgentId, QueueId) ->
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
@@ -1744,7 +1744,7 @@ apply_state_updates(#state{agent_state_updates=Q}=State) ->
     {'next_state', Atom, ModState#state{agent_state_updates = []}}.
 
 -type state_acc() :: {atom(), fsm_state()}.
--spec state_step(term(), state_acc()) -> state_acc().
+-spec state_step(any(), state_acc()) -> state_acc().
 state_step({'pause', Timeout}, {_, State}) ->
     {'paused', handle_pause(Timeout, State)};
 state_step({'resume'}, {_, State}) ->

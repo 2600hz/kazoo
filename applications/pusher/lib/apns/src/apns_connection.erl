@@ -66,7 +66,7 @@ build_payload(Msg) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% @hidden
--spec init(apns:connection()) -> {ok, state()} | {stop, term()}.
+-spec init(apns:connection()) -> {ok, state()} | {stop, any()}.
 init(Connection) ->
   try
     {ok, QID} = apns_queue:start_link(),
@@ -142,7 +142,7 @@ handle_call(Request, _From, State) ->
 
 %% @hidden
 -spec handle_cast(stop | apns:msg(), state()) ->
-  {noreply, state()} | {stop, normal | {error, term()}, state()}.
+  {noreply, state()} | {stop, normal | {error, any()}, state()}.
 handle_cast(Msg, State=#state{ out_socket = undefined
                              , connection = Connection}) ->
   try
@@ -260,11 +260,11 @@ handle_info(Request, State) ->
   {stop, {unknown_request, Request}, State}.
 
 %% @hidden
--spec terminate(term(), state()) -> ok.
+-spec terminate(any(), state()) -> ok.
 terminate(_Reason, _State) -> ok.
 
 %% @hidden
--spec code_change(term(), state(), term()) -> {ok, state()}.
+-spec code_change(any(), state(), any()) -> {ok, state()}.
 code_change(_OldVsn, State, _Extra) ->  {ok, State}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -320,7 +320,7 @@ do_build_payload([], Payload) ->
   {Payload}.
 
 -spec send_payload(tuple(), binary(), non_neg_integer(), binary(), binary(), integer()) ->
-  ok | {error, term()}.
+  ok | {error, any()}.
 send_payload(Socket, MsgId, Expiry, BinToken, Payload, Priority) ->
     Frame = build_frame(MsgId, Expiry, BinToken, Payload, Priority),
     FrameLength = erlang:size(Frame),

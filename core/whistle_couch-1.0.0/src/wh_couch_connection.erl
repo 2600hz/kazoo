@@ -46,12 +46,11 @@ start_link(#wh_couch_connection{}=Connection) ->
 -spec config() -> couch_connection().
 config() -> config('undefined').
 
--spec config('undefined' | string()) -> couch_connection().
+-spec config(api_string()) -> couch_connection().
 config('undefined') -> #wh_couch_connection{};
 config(URI) -> config(URI, #wh_couch_connection{}).
 
--spec config(string(), integer() | string() | couch_connection()) ->
-                    couch_connection().
+-spec config(string(), integer() | string() | couch_connection()) -> couch_connection().
 config(URI, #wh_couch_connection{}=Connection) ->
     case http_uri:parse(URI) of
         {'error', 'no_scheme'} ->
@@ -232,7 +231,7 @@ code_change(_OldVsn, Connection, _Extra) ->
 %%%===================================================================
 -spec maybe_reconnect(couch_connection()) ->
                              {'ok', couch_connection()} |
-                             {'error', _}.
+                             {'error', any()}.
 maybe_reconnect(#wh_couch_connection{host=Host
                                      ,port=Port
                                      ,username=User
@@ -247,7 +246,7 @@ maybe_reconnect(#wh_couch_connection{host=Host
         _:Error -> handle_error(Connection, Error)
     end.
 
--spec handle_error(couch_connection(), tuple()) -> {'error', _}.
+-spec handle_error(couch_connection(), tuple()) -> {'error', any()}.
 handle_error(Connection, {'badmatch',Error}) ->
     handle_error(Connection, Error);
 handle_error(#wh_couch_connection{host=Host

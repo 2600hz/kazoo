@@ -202,11 +202,11 @@ handle_STARTTLS(State) ->
     lager:debug("SMTP TLS Started"),
     State.
 
--spec code_change(_, state(), _) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec terminate(_, state()) ->  {'ok', _, state()}.
+-spec terminate(any(), state()) ->  {'ok', any(), state()}.
 terminate('normal', State) ->
     _ = wh_util:spawn(fun()-> handle_message(State) end),
     {'ok', 'normal', State};

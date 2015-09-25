@@ -252,7 +252,7 @@ maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
     end.
 
 -spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
-                                             'ok' | {'error', _}.
+                                             'ok' | {'error', any()}.
 unsolicited_endpoint_mwi_update('undefined', _) ->
     {'error', 'missing_account_db'};
 unsolicited_endpoint_mwi_update(_, 'undefined') ->
@@ -405,7 +405,7 @@ correct_media_path(Media, Call) ->
 %%--------------------------------------------------------------------
 -spec owner_ids_by_sip_username(ne_binary(), ne_binary()) ->
                                        {'ok', ne_binaries()} |
-                                       {'error', _}.
+                                       {'error', any()}.
 owner_ids_by_sip_username(AccountDb, Username) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, ?SIP_USER_OWNERS_KEY(AccountDb, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -415,7 +415,7 @@ owner_ids_by_sip_username(AccountDb, Username) ->
 
 -spec get_owner_ids_by_sip_username(ne_binary(), ne_binary()) ->
                                            {'ok', ne_binaries()} |
-                                           {'error', _}.
+                                           {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
@@ -571,7 +571,7 @@ get_account_realm(AccountId, Default) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -type lookup_callflow_ret() :: {'ok', wh_json:object(), boolean()} |
-                               {'error', _}.
+                               {'error', any()}.
 
 -spec lookup_callflow(whapps_call:call()) -> lookup_callflow_ret().
 lookup_callflow(Call) ->
@@ -633,7 +633,7 @@ is_digit(_) -> 'false'.
 %%-----------------------------------------------------------------------------
 -spec lookup_callflow_patterns(ne_binary(), ne_binary()) ->
                                       {'ok', {wh_json:object(), api_binary()}} |
-                                      {'error', term()}.
+                                      {'error', any()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
     case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
@@ -922,7 +922,7 @@ wait_for_noop(Call, NoopId) ->
 
 -spec process_event(whapps_call:call(), ne_binary(), wh_json:object()) ->
                            {'ok', whapps_call:call()} |
-                           {'error', _}.
+                           {'error', any()}.
 process_event(Call, NoopId, JObj) ->
     case whapps_call_command:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->

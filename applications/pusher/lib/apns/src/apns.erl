@@ -67,7 +67,7 @@ stop() ->
   application:stop(apns).
 
 %% @doc Opens an unnamed connection using the default parameters
--spec connect() -> {ok, pid()} | {error, Reason::term()}.
+-spec connect() -> {ok, pid()} | {error, Reason::any()}.
 connect() ->
   connect(default_connection()).
 
@@ -75,8 +75,8 @@ connect() ->
 %% Application callbacks
 %% ===================================================================
 %% @hidden
--spec start(normal | {takeover, node()} | {failover, node()}, term()) ->
-  {ok, pid()} | {error, term()}.
+-spec start(normal | {takeover, node()} | {failover, node()}, any()) ->
+                   {ok, pid()} | {error, any()}.
 start(_StartType, _StartArgs) ->
     apns_sup:start_link().
 
@@ -87,8 +87,8 @@ stop([]) -> ok.
 %% @doc Opens an unnamed connection using the given feedback or error function
 %%      or using the given connection() parameters
 %%      or the name and default configuration if a name is given
--spec connect(atom() | string() | fun((string()) -> _) | connection()) ->
-  {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::term()}.
+-spec connect(atom() | string() | fun((string()) -> any()) | connection()) ->
+  {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::any()}.
 connect(Name) when is_atom(Name) ->
   connect(Name, default_connection());
 connect(Connection) when is_record(Connection, apns_connection) ->
@@ -101,8 +101,8 @@ connect(Fun) when is_function(Fun, 2) ->
 %% @doc Opens an connection named after the atom()
 %%      using the given feedback or error function
 %%      or using the given connection() parameters
--spec connect(atom(), string() | fun((string()) -> _) | connection()) ->
-    {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::term()}.
+-spec connect(atom(), string() | fun((string()) -> any()) | connection()) ->
+    {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::any()}.
 connect(Name, Connection) when is_record(Connection, apns_connection) ->
   apns_sup:start_connection(Name, Connection);
 connect(Name, Fun) when is_function(Fun, 1) ->
@@ -113,8 +113,8 @@ connect(Name, Fun) when is_function(Fun, 2) ->
 %% @doc Opens an connection named after the atom()
 %%      using the given feedback and error functions
 -spec connect(
-  atom(), fun((binary(), apns:status()) -> stop | _), fun((string()) -> _)) ->
-    {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::term()}.
+  atom(), fun((binary(), apns:status()) -> stop | any()), fun((string()) -> any())) ->
+    {ok, pid()} | {error, {already_started, pid()}} | {error, Reason::_}.
 connect(Name, ErrorFun, FeedbackFun) ->
   connect(
     Name, (default_connection())#apns_connection{error_fun    = ErrorFun,

@@ -117,7 +117,7 @@ is_conference(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"is_conference">>, {fun wh_json:is_true/3, 'false'}).
 
 -spec maybe_leak_ccv(wh_json:object(), wh_json:key()) -> wh_json:object().
--spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), _}) -> wh_json:object().
+-spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), any()}) -> wh_json:object().
 maybe_leak_ccv(JObj, Key) ->
     maybe_leak_ccv(JObj, Key, {fun wh_json:get_value/3, 'undefined'}).
 

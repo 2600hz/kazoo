@@ -162,7 +162,7 @@ find_master_account_id({'ok', Accounts}) ->
     Ok.
 
 -spec get_master_account_db() -> {'ok', ne_binary()} |
-                                 {'error', _}.
+                                 {'error', any()}.
 get_master_account_db() ->
     case get_master_account_id() of
         {'error', _}=E -> E;

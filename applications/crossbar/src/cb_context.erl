@@ -99,8 +99,8 @@
 
 -type context() :: #cb_context{}.
 -type setter_fun_1() :: fun((context()) -> context()).
--type setter_fun_2() :: fun((context(), term()) -> context()).
--type setter_fun_3() :: fun((context(), term(), term()) -> context()).
+-type setter_fun_2() :: fun((context(), any()) -> context()).
+-type setter_fun_3() :: fun((context(), any(), any()) -> context()).
 -type setter_fun() :: setter_fun_1() | setter_fun_2() | setter_fun_3().
 -export_type([context/0
               ,setter_fun/0
@@ -110,9 +110,9 @@
              ]).
 
 -type setter_kv() :: setter_fun_1() |
-                     {setter_fun_2(), term()} |
-                     {setter_fun_3(), term(), term()}.
--type setters() :: [setter_kv(),...] | [].
+                     {setter_fun_2(), any()} |
+                     {setter_fun_3(), any(), any()}.
+-type setters() :: [setter_kv()].
 
 -spec new() -> context().
 new() -> #cb_context{}.
@@ -397,7 +397,7 @@ add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, Headers) ->
 add_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
     Context#cb_context{resp_headers=add_resp_header_fold({K, V}, RespHeaders)}.
 
--spec add_resp_header_fold({ne_binary(), _}, wh_proplist()) -> wh_proplist().
+-spec add_resp_header_fold({ne_binary(), any()}, wh_proplist()) -> wh_proplist().
 add_resp_header_fold({K, V}, Hs) ->
     props:set_value(wh_util:to_lower_binary(K), V, Hs).
 
@@ -469,7 +469,7 @@ maybe_add_content_type_provided(Context, AttachmentId) ->
 %% this request.
 %% @end
 %%--------------------------------------------------------------------
--spec store(context(), term(), term()) -> context().
+-spec store(context(), any(), any()) -> context().
 store(#cb_context{storage=Storage}=Context, Key, Data) ->
     Context#cb_context{storage=[{Key, Data} | props:delete(Key, Storage)]}.
 
@@ -479,8 +479,8 @@ store(#cb_context{storage=Storage}=Context, Key, Data) ->
 %% Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(context(), term()) -> term().
--spec fetch(context(), term(), term()) -> term().
+-spec fetch(context(), any()) -> any().
+-spec fetch(context(), any(), any()) -> any().
 
 fetch(#cb_context{}=Context, Key) ->
     fetch(Context, Key, 'undefined').
@@ -1058,7 +1058,7 @@ add_system_error(Error, JObj, Context) ->
 -spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | wh_json:object(), cb_context:context()) ->
                                 cb_context:context().
 build_system_error(Code, Error, JObj, Context) ->
-    ApiVersion = cb_context:api_version(Context),
+    ApiVersion = ?MODULE:api_version(Context),
     Message = build_error_message(ApiVersion, JObj),
     Context#cb_context{resp_status='error'
                        ,resp_error_code=Code
@@ -1131,7 +1131,7 @@ add_depreciated_validation_error(Property, Code, Message, Context) when is_binar
 add_depreciated_validation_error(Property, Code, Message, #cb_context{validation_errors=JObj}=Context) ->
     %% Maintain the same error format we are currently using until we are ready to
     %% convert to something that makes sense....
-    ApiVersion = cb_context:api_version(Context),
+    ApiVersion = ?MODULE:api_version(Context),
     Error = build_error_message(ApiVersion, Message),
     Key = wh_util:join_binary(Property, <<".">>),
     Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Error, JObj)

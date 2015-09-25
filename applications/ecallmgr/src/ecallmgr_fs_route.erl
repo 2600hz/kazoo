@@ -209,7 +209,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec should_expand_var(term()) -> boolean().
+-spec should_expand_var(any()) -> boolean().
 should_expand_var({<<?CHANNEL_VAR_PREFIX, _/binary>>, _}) -> 'true';
 should_expand_var({<<"sip_", _/binary>>, _}) -> 'true';
 should_expand_var(_) -> 'false'.

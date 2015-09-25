@@ -114,8 +114,8 @@ start_link() ->
                             ,[]
                            ).
 
--spec bindings() -> [{ne_binary(), atoms() | ne_binaries()},...] | [].
--spec bindings(ne_binary()) -> [{ne_binary(), atoms() | ne_binaries()},...] | [].
+-spec bindings() -> [{ne_binary(), atoms() | ne_binaries()}].
+-spec bindings(ne_binary()) -> [{ne_binary(), atoms() | ne_binaries()}].
 bindings() ->
     [{props:get_value('callid', Props), props:get_value('restrict_to', Props)}
      || {'call', Props} <- gen_listener:bindings(?MODULE)
@@ -199,7 +199,7 @@ really_remove_call_bindings(CallId, Events) ->
     gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
     gen_listener:rm_binding(?MODULE, ?META_BINDINGS(CallId)).
 
--spec handle_call_event(wh_json:object(), wh_proplist()) -> _.
+-spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
 handle_call_event(JObj, Props) ->
     'true' = wapi_call:event_v(JObj)
         orelse wapi_dialplan:error_v(JObj),
@@ -217,7 +217,7 @@ handle_call_event(JObj, _Props, Event) ->
     _ = relay_to_fsms(CallId, Event, JObj),
     relay_to_pids(CallId, JObj).
 
--spec handle_originate_event(wh_json:object(), wh_proplist()) -> _.
+-spec handle_originate_event(wh_json:object(), wh_proplist()) -> any().
 handle_originate_event(JObj, _Props) ->
     CallId = wh_json:get_first_defined([<<"Call-ID">>, <<"Outbound-Call-ID">>], JObj),
     relay_to_pids(CallId, JObj).
@@ -250,7 +250,7 @@ handle_konami_api(JObj, <<"transferred">> = Event) ->
 -spec queue_name() -> ne_binary().
 queue_name() -> gen_listener:queue_name(?MODULE).
 
--spec relay_to_fsms(ne_binary(), ne_binary(), wh_json:object()) -> _.
+-spec relay_to_fsms(ne_binary(), ne_binary(), wh_json:object()) -> any().
 relay_to_fsms(CallId, Event, JObj) ->
     [konami_code_fsm:event(FSM, CallId, Event, JObj)
      || FSM <- fsms_for_callid(CallId)
@@ -278,7 +278,7 @@ relay_to_fsm(CallId, Event, JObj) ->
     [FSM | _] = fsms_for_callid(CallId),
     konami_code_fsm:event(FSM, CallId, Event, JObj).
 
--spec relay_to_pids(ne_binary(), wh_json:object()) -> _.
+-spec relay_to_pids(ne_binary(), wh_json:object()) -> any().
 relay_to_pids(CallId, JObj) ->
     [begin
          whapps_call_command:relay_event(Pid, JObj),

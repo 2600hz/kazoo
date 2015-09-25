@@ -50,7 +50,7 @@ charge_transactions(_BillingId, _Transactions) -> [].
 %%--------------------------------------------------------------------
 -spec transactions(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                           {'ok', wh_transaction:transactions()} |
-                          {'error', _}.
+                          {'error', any()}.
 transactions(AccountId, From, To) ->
     case wh_transactions:fetch_local(AccountId, From, To) of
         {'error', _Reason}=Error -> Error;

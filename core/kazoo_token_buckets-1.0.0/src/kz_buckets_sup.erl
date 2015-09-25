@@ -43,7 +43,7 @@ start_link() ->
 start_bucket(MaxTokens, FillRate, FillTime) ->
     supervisor:start_child(?SERVER, [MaxTokens, FillRate, 'true', FillTime]).
 
--spec stop_bucket(server_ref()) -> 'ok' | {'error', _}.
+-spec stop_bucket(server_ref()) -> 'ok' | {'error', any()}.
 stop_bucket(Pid) ->
     supervisor:terminate_child(?SERVER, Pid).
 

@@ -21,7 +21,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
+-spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_Type, _Args) -> webseq_sup:start_link().
@@ -32,5 +32,5 @@ start(_Type, _Args) -> webseq_sup:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) -> webseq:stop().

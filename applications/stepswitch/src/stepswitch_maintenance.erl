@@ -197,10 +197,10 @@ reload_resources(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_number(text()) -> _.
+-spec process_number(text()) -> any().
 process_number(Number) -> process_number(Number, 'undefined').
 
--spec process_number(text(), text() | 'undefined') -> _.
+-spec process_number(text(), text() | 'undefined') -> any().
 process_number(Number, 'undefined') ->
     Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), wh_json:new()),
     pretty_print_endpoints(Endpoints);
@@ -211,14 +211,14 @@ process_number(Number, AccountId) ->
     Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), JObj),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoints(wh_json:objects()) -> _.
+-spec pretty_print_endpoints(wh_json:objects()) -> any().
 pretty_print_endpoints([]) -> 'ok';
 pretty_print_endpoints([Endpoint|Endpoints]) ->
     _ = pretty_print_endpoint(wh_json:to_proplist(Endpoint)),
     io:format("~n"),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoint(wh_proplist()) -> _.
+-spec pretty_print_endpoint(wh_proplist()) -> any().
 pretty_print_endpoint([]) -> 'ok';
 pretty_print_endpoint([{_, []}|Props]) ->
     pretty_print_endpoint(Props);

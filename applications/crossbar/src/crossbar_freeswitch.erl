@@ -499,7 +499,7 @@ maybe_accumulate_realm('false', Realm) ->
     put(<<"Realms">>, [Realm | get(<<"Realms">>)]).
 
 -spec query_registrar(ne_binary(), ne_binary()) -> {'ok', wh_json:object()}
-                                                       | {'error', _}.
+                                                       | {'error', any()}.
 query_registrar(Realm, Username) ->
     FullUser = <<Username/binary, "@", Realm/binary>>,
     Req = [{<<"To">>, FullUser}
@@ -527,7 +527,7 @@ template_file_name(?FS_CHATPLAN) -> "chatplan_template.xml";
 template_file_name(?FS_DIRECTORY) -> "directory_template.xml";
 template_file_name(?FS_DIRECTORY_REALM) -> "directory_realm_template.xml".
 
--spec compile_templates() -> ['ok',...] | [].
+-spec compile_templates() -> ['ok'].
 compile_templates() ->
     [compile_template(wh_util:to_atom(T,'true')) || T <- ?FS_ALL_TEMPLATES].
 
@@ -548,7 +548,7 @@ compile_template(Module, Template) ->
             lager:debug("compiled template ~s with warnings: ~p", [_T, _W])
     end.
 
--spec render(atom(), wh_proplist()) -> {'ok', iolist()} | {'error', _}.
+-spec render(atom(), wh_proplist()) -> {'ok', iolist()} | {'error', any()}.
 render(Module, Props) ->
     try Module:render(props:filter_empty(Props)) of
         {'ok', _}=OK -> OK

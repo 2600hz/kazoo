@@ -59,7 +59,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link([term()]) -> startlink_ret().
+-spec start_link([any()]) -> startlink_ret().
 start_link(JObj) ->
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}

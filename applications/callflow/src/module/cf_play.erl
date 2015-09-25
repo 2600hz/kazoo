@@ -33,7 +33,7 @@ handle(Data, Call) ->
             handle_noop_recv(Call, cf_util:wait_for_noop(Call, NoopId))
     end.
 
--spec handle_noop_recv(whapps_call:call(), {'ok', whapps_call:call()} | {'error', _}) -> 'ok'.
+-spec handle_noop_recv(whapps_call:call(), {'ok', whapps_call:call()} | {'error', any()}) -> 'ok'.
 handle_noop_recv(_OldCall, {'ok', Call}) ->
     cf_exe:set_call(Call),
     cf_exe:continue(Call);

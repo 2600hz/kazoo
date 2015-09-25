@@ -126,7 +126,7 @@
                       ,is_moderator = 'false' :: boolean() | '_'
                      }).
 -type participant() :: #participant{}.
--type participants() :: [participant(),...] | [].
+-type participants() :: [participant()].
 
 -define(DEFAULT_REALM, ecallmgr_config:get(<<"default_realm">>, <<"nodomain.com">>)).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10 * ?MILLISECONDS_IN_SECOND)). % 10 seconds

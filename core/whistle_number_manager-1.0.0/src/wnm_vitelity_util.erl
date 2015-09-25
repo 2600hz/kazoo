@@ -48,7 +48,7 @@ add_options_fold({_K, 'undefined'}, Opts) -> Opts;
 add_options_fold({K, V}, Opts) ->
     props:insert_value(K, V, Opts).
 
--spec get_query_value(atom(), wh_proplist()) -> term().
+-spec get_query_value(atom(), wh_proplist()) -> any().
 get_query_value(Key, Opts) ->
     case props:get_value(Key, Opts) of
         'undefined' -> whapps_config:get(?WNM_VITELITY_CONFIG_CAT, Key);
@@ -60,8 +60,8 @@ get_query_value(Key, Opts) ->
 default_options() ->
      default_options([]).
 default_options(Opts) ->
-    [{'login', wnm_vitelity_util:get_query_value('login', Opts)}
-     ,{'pass', wnm_vitelity_util:get_query_value('pass', Opts)}
+    [{'login', ?MODULE:get_query_value('login', Opts)}
+     ,{'pass', ?MODULE:get_query_value('pass', Opts)}
     ].
 
 -spec build_uri(wh_proplist()) -> ne_binary().
@@ -156,7 +156,7 @@ xml_el_to_kv_pair(#xmlElement{name=Name
 
 -spec query_vitelity(ne_binary()) ->
                             {'ok', text()} |
-                            {'error', _}.
+                            {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of

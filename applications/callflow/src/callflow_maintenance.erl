@@ -136,7 +136,7 @@ migrate_recorded_names([Account|Accounts]) ->
     _ = (catch migrate_recorded_name(Account)),
     migrate_recorded_names(Accounts).
 
--spec migrate_recorded_name(ne_binary()) -> _.
+-spec migrate_recorded_name(ne_binary()) -> any().
 migrate_recorded_name(Db) ->
     lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
 
@@ -149,8 +149,8 @@ migrate_recorded_name(Db) ->
             ]
     end.
 
--spec do_recorded_name_migration(ne_binary(), wh_json:object()) -> _.
--spec do_recorded_name_migration(ne_binary(), wh_json:object(), api_binary()) -> _.
+-spec do_recorded_name_migration(ne_binary(), wh_json:object()) -> any().
+-spec do_recorded_name_migration(ne_binary(), wh_json:object(), api_binary()) -> any().
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = wh_doc:id(VMBox),
     case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of

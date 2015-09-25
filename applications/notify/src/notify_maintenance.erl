@@ -388,6 +388,6 @@ open_system_config(Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {error, _}.
+-spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {error, any()}.
 update_smtp_client_document(Key, Value) ->
     whapps_config:set(?SMTP_CLIENT_DOC, Key, Value).

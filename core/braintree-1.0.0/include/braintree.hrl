@@ -1,8 +1,8 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--type bt_result() :: {'ok', term()}.
--type bt_xml() :: term(). %%  record_proplist() | braintree_util:char_to_bin_res().
+-type bt_result() :: {'ok', any()}.
+-type bt_xml() :: any(). %%  record_proplist() | braintree_util:char_to_bin_res().
 
 -type braintree_failures() :: 'no_payment_token' |
                               'authentication' |
@@ -88,7 +88,7 @@
                      ,updated_at :: api_binary()
                     }).
 -type bt_address() :: #bt_address{}.
--type bt_addresses() :: [bt_address(),...] | [].
+-type bt_addresses() :: [bt_address()].
 
 -record(bt_card, {token :: api_binary()
                   ,bin :: api_binary()
@@ -113,7 +113,7 @@
                   ,billing_address :: bt_address() | 'undefined'
                  }).
 -type bt_card() :: #bt_card{}.
--type bt_cards() :: [bt_card(),...] | [].
+-type bt_cards() :: [bt_card()].
 
 -record(bt_addon, {id :: api_binary()
                    ,amount :: api_binary()
@@ -125,7 +125,7 @@
                    ,existing_id :: api_binary()
                   }).
 -type bt_addon() :: #bt_addon{}.
--type bt_addons() :: [bt_addon(),...] | [].
+-type bt_addons() :: [bt_addon()].
 
 -record(bt_discount, {id :: api_binary()
                       ,amount :: api_binary()
@@ -137,7 +137,7 @@
                       ,existing_id :: api_binary()
                      }).
 -type bt_discount() :: #bt_discount{}.
--type bt_discounts() :: [bt_discount(),...] | [].
+-type bt_discounts() :: [bt_discount()].
 
 -record(bt_subscription, {id :: api_binary()
                           ,balance :: api_binary()
@@ -174,7 +174,7 @@
                           ,create = 'false' :: boolean()
                          }).
 -type bt_subscription() :: #bt_subscription{}.
--type bt_subscriptions() :: [bt_subscription(),...] | [].
+-type bt_subscriptions() :: [bt_subscription()].
 
 -record(bt_customer, {id :: api_binary()
                       ,first_name :: api_binary()
@@ -191,7 +191,7 @@
                       ,subscriptions = [] :: bt_subscriptions()
                      }).
 -type bt_customer() :: #bt_customer{}.
--type bt_customers() :: [bt_customer(),...] | [].
+-type bt_customers() :: [bt_customer()].
 
 -record(bt_transaction, {id :: ne_binary()
                          ,status :: ne_binary()
@@ -238,14 +238,14 @@
                          ,is_recurring = 'false' :: boolean()
                         }).
 -type bt_transaction() :: #bt_transaction{}.
--type bt_transactions() :: [bt_transaction(),...] | [].
+-type bt_transactions() :: [bt_transaction()].
 
 -record(bt_error, {code :: api_binary()
                    ,message :: api_binary()
                    ,attribute :: api_binary()
                   }).
 -type bt_error() :: #bt_error{}.
--type bt_errors() :: [#bt_error{},...] | [].
+-type bt_errors() :: [#bt_error{}].
 
 -record(bt_verification, {verification_status :: api_binary()
                           ,processor_response_code :: api_binary()

@@ -79,7 +79,7 @@ create_children_spec(Node, Props) ->
     Children = create_event_children(Node, Props, []),
     create_custom_children(Node, Props, Children).
 
--spec create_event_children(atom(), _, sup_child_specs()) -> sup_child_specs().
+-spec create_event_children(atom(), any(), sup_child_specs()) -> sup_child_specs().
 create_event_children(Node, _Props, Children) ->
     lists:foldr(fun(Event, Kids) ->
                         [?WORKER_NAME_ARGS('ecallmgr_fs_event_stream'
@@ -90,7 +90,7 @@ create_event_children(Node, _Props, Children) ->
                         ]
                 end, Children, ?FS_EVENTS).
 
--spec create_custom_children(atom(), _, sup_child_specs()) -> sup_child_specs().
+-spec create_custom_children(atom(), any(), sup_child_specs()) -> sup_child_specs().
 create_custom_children(Node, _Props, Children) ->
     lists:foldr(fun(Subclass, Kids) ->
                         [?WORKER_NAME_ARGS('ecallmgr_fs_event_stream'

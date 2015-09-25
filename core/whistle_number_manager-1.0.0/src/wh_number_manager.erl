@@ -194,7 +194,7 @@ lookup_account_in_ports(N, Error) ->
 
 -spec maybe_check_account(wnm_number()) ->
                                  {'ok', ne_binary(), wh_proplist()} |
-                                 {'error', _}.
+                                 {'error', any()}.
 maybe_check_account(#number{assigned_to='undefined'
                             ,number=_Number
                            }) ->
@@ -227,7 +227,7 @@ maybe_check_account(#number{assigned_to=AssignedTo
 
 -spec check_account(wnm_number()) ->
                            {'ok', ne_binary(), wh_proplist()} |
-                           {'error', _}.
+                           {'error', any()}.
 check_account(#number{assigned_to=AssignedTo}=N) ->
     case wh_util:is_account_enabled(AssignedTo) of
         'false' -> {'error', {'account_disabled', AssignedTo}};
@@ -1046,7 +1046,7 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) -
             prepare_find_results(Numbers, ModuleName, ModuleResults, Found, Opts)
     end.
 
--spec maybe_get_activation_charge(wh_proplist()) -> 'undefined' | non_neg_integer().
+-spec maybe_get_activation_charge(wh_proplist()) -> api_non_neg_integer().
 maybe_get_activation_charge(Opts) ->
     case props:get_value(<<"services">>, Opts) of
         'undefined' -> 'undefined';

@@ -441,7 +441,7 @@ build_body(User, Props) ->
     Body = wh_util:to_binary(Text),
     binary:replace(Body, <<"\n\n">>, <<"\n">>, ['global']).
 
--spec ensure_template() -> {'ok', _}.
+-spec ensure_template() -> {'ok', any()}.
 ensure_template() ->
     BasePath = code:lib_dir('omnipresence', 'priv'),
     File = lists:concat([BasePath, "/packages/dialog.xml"]),

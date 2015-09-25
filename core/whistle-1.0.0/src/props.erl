@@ -70,7 +70,7 @@ insert_values(KVs, Props) ->
 
 -type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
 -spec filter(filter_fun(), wh_proplist()) -> wh_proplist();
-            (wh_proplist(), term()) -> wh_proplist().
+            (wh_proplist(), any()) -> wh_proplist().
 filter(Fun, Props) when is_function(Fun, 1), is_list(Props) ->
     [P || P <- Props, Fun(P)];
 filter(Props, Term) when is_list(Props) ->
@@ -94,10 +94,9 @@ filter_undefined(Props) ->
            end
     ].
 
--spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist()) ->
-                       term().
+-spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist()) -> any().
 -spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist(), Default) ->
-                       Default | term().
+                       Default | any().
 get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
@@ -121,8 +120,8 @@ get_value(Key, Props, Default) when is_list(Props) ->
     end.
 
 %% Given a list of keys, find the first one defined
--spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> 'undefined' | term().
--spec get_first_defined(wh_proplist_keys(), wh_proplist(), Default) -> Default | term().
+-spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> 'undefined' | any().
+-spec get_first_defined(wh_proplist_keys(), wh_proplist(), Default) -> Default | any().
 get_first_defined(Keys, Props) -> get_first_defined(Keys, Props, 'undefined').
 
 get_first_defined([], _Props, Default) -> Default;
@@ -269,13 +268,13 @@ to_querystring(Props, Prefix) ->
 %% foreach key/value pair, encode the key/value with the prefix and prepend the &
 %% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
 %% and reverse the list (putting the key/value at the end of the list)
--spec fold_kvs(ne_binaries(), term(), binary() | iolist(), iolist()) -> iolist().
+-spec fold_kvs(ne_binaries(), any(), binary() | iolist(), iolist()) -> iolist().
 fold_kvs([], [], _, Acc) -> Acc;
 fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
 fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
     fold_kvs(Ks, Vs, Prefix, [<<"&">>, encode_kv(Prefix, K, V) | Acc]).
 
--spec encode_kv(iolist() | binary(), ne_binary(), term()) -> iolist().
+-spec encode_kv(iolist() | binary(), ne_binary(), any()) -> iolist().
 %% If a list of values, use the []= as a separator between the key and each value
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
     encode_kv(Prefix, wh_util:to_binary(K), Vs, <<"[]=">>, []);
@@ -293,7 +292,7 @@ encode_kv(Prefix, K, [_|_]=Props) -> to_querystring(Props, [Prefix, <<"[">>, wh_
 encode_kv(<<>>, K, Sep, V) -> [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
 encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>, Sep, wh_util:to_binary(V)].
 
--spec encode_kv(iolist() | binary(), ne_binary(), [string(),...] | [], ne_binary(), iolist()) -> iolist().
+-spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
     lists:reverse([ encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
 encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
@@ -306,9 +305,9 @@ to_log(Props) ->
 
 -spec to_log(wh_proplist(), ne_binary()) -> 'ok'.
 to_log(Props, Header) ->
-  Keys = props:get_keys(Props),
+  Keys = ?MODULE:get_keys(Props),
   K = wh_util:rand_hex_binary(4),
   lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
-  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,props:get_value(A,Props)]) end,Keys),
+  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,?MODULE:get_value(A,Props)]) end,Keys),
   lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
   'ok'.

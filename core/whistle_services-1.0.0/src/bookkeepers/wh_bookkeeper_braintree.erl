@@ -25,7 +25,7 @@
                             ,plan_id :: ne_binary()
                            }).
 
--record(wh_service_updates, {bt_subscriptions = [] :: [update(),...] | []
+-record(wh_service_updates, {bt_subscriptions = [] :: [update()]
                              ,account_id :: api_binary()
                              ,bt_customer :: braintree_customer:customer()
                             }).

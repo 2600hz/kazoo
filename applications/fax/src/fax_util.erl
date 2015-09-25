@@ -124,7 +124,7 @@ maybe_attach_extension(A, CT) ->
 
 -spec save_fax_docs(wh_json:objects(), binary(), ne_binary()) ->
                            'ok' |
-                           {'error', term()}.
+                           {'error', any()}.
 save_fax_docs([], _FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES_DB, Doc) of

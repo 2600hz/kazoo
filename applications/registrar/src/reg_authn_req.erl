@@ -199,7 +199,7 @@ get_tel_uri(Number) -> <<"<tel:", Number/binary,">">>.
 %%-----------------------------------------------------------------------------
 -spec lookup_auth_user(ne_binary(), ne_binary(), wh_json:object()) ->
                               {'ok', auth_user()} |
-                              {'error', _}.
+                              {'error', any()}.
 lookup_auth_user(Username, Realm, Req) ->
     case get_auth_user(Username, Realm) of
         {'error', _}=E -> E;
@@ -327,7 +327,7 @@ account_ccvs_from_ip_auth(Doc) ->
 %%-----------------------------------------------------------------------------
 -spec check_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
                              {'ok', auth_user()} |
-                             {'error', _}.
+                             {'error', any()}.
 check_auth_user(JObj, Username, Realm, Req) ->
     case is_account_enabled(JObj)
         andalso maybe_auth_type_enabled(JObj)
@@ -389,7 +389,7 @@ is_owner_enabled(AccountDb, OwnerId) ->
 
 -spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
                                {'ok', auth_user()} |
-                               {'error', _}.
+                               {'error', any()}.
 jobj_to_auth_user(JObj, Username, Realm, Req) ->
     AuthValue = get_auth_value(JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),
@@ -443,7 +443,7 @@ get_auth_method(JObj) ->
 
 -spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
                                {'ok', auth_user()} |
-                               {'error', _}.
+                               {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     GsmDoc = wh_json:get_value(<<"gsm">>, JObj),
     CachedNonce = wh_json:get_value(<<"nonce">>, GsmDoc, wh_util:rand_hex_binary(16)),

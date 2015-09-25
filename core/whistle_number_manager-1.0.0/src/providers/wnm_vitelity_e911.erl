@@ -99,7 +99,7 @@ maybe_update_e911(#number{current_number_doc=CurrentJObj
 
 -spec remove_number(ne_binary()) ->
                            {'ok', _} |
-                           {'error', _}.
+                           {'error', any()}.
 remove_number(DID) ->
     case query_vitelity(wnm_vitelity_util:build_uri(remove_e911_options(DID))) of
         {'error', _}=E -> E;
@@ -118,7 +118,7 @@ remove_e911_options(DID) ->
 
 -spec get_location(ne_binary() | wnm_number()) ->
                           {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'error', any()}.
 get_location(#number{number=DID}) -> get_location(DID);
 get_location(DID) ->
     case query_vitelity(wnm_vitelity_util:build_uri(get_location_options(DID))) of
@@ -215,7 +215,7 @@ query_vitelity(N, URI) ->
 
 -spec query_vitelity(ne_binary()) ->
                             {'ok', text()} |
-                            {'error', _}.
+                            {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of

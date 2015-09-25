@@ -212,7 +212,7 @@ add_srv_host(Domains, Host, Settings) ->
     wh_json:set_value([?KEY_SRV, Host], Settings, Domains).
 
 -spec save(doc()) -> {'ok', doc()} |
-                     {'error', _}.
+                     {'error', any()}.
 save(Domains) ->
     save(Domains, 'undefined').
 save(Domains, PvtFields) ->
@@ -225,7 +225,7 @@ save(Domains, PvtFields) ->
 
 -spec try_save(doc(), api_object()) ->
                       {'ok', doc()} |
-                      {'error', _}.
+                      {'error', any()}.
 try_save(Domains, PvtFields) ->
     case whapps_config:update_default(
            <<"whitelabel">>
@@ -241,8 +241,8 @@ try_save(Domains, PvtFields) ->
 
 -spec is_valid(doc()) ->
                       'true' | {'false', _}.
--spec is_valid(doc(), {'ok', wh_json:object()} | {'error', _}) ->
-                      'true' | {'false', _}.
+-spec is_valid(doc(), {'ok', wh_json:object()} | {'error', any()}) ->
+                      'true' | {'false', any()}.
 is_valid(Domains) ->
     is_valid(Domains, wh_json_schema:load(<<"domains">>)).
 is_valid(_Domains, {'error', E}) ->

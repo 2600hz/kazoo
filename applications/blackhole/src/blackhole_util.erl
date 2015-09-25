@@ -88,9 +88,9 @@ respond_with_authn_failure(Context) ->
 
 -spec remove_binding(ne_binary(), bh_context:context()) -> 'ok'.
 remove_binding(Binding, Context) ->
-    case blackhole_util:get_callback_module(Binding) of
+    case ?MODULE:get_callback_module(Binding) of
         'undefined' -> 'ok';
         Module ->
-            blackhole_util:maybe_rm_binding_from_listener(Module, Binding, Context),
+            ?MODULE:maybe_rm_binding_from_listener(Module, Binding, Context),
             blackhole_bindings:unbind(Binding, Module, 'handle_event', Context)
     end.

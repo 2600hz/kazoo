@@ -40,7 +40,7 @@ init(Account, Balance) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_top_up(api_binary() | wh_json:object()) ->
-                        {'error', any()} |
+                        {'error', _} |
                         {'ok', integer(), integer()}.
 get_top_up(<<_/binary>> = Account) ->
     case whapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of

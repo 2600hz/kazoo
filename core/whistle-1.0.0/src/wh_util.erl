@@ -346,7 +346,7 @@ pad_month(Month) ->
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
-       || <<Char>> <= wh_util:to_lower_binary(AccountName),
+       || <<Char>> <= ?MODULE:to_lower_binary(AccountName),
           (Char >= $a andalso Char =< $z)
               orelse (Char >= $0 andalso Char =< $9)
     >>.
@@ -368,8 +368,8 @@ is_in_account_hierarchy(CheckFor, InAccount) ->
 is_in_account_hierarchy('undefined', _, _) -> 'false';
 is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
-    CheckId = wh_util:format_account_id(CheckFor, 'raw'),
-    AccountId = wh_util:format_account_id(InAccount, 'raw'),
+    CheckId = ?MODULE:format_account_id(CheckFor, 'raw'),
+    AccountId = ?MODULE:format_account_id(InAccount, 'raw'),
     case (IncludeSelf andalso AccountId =:= CheckId) orelse kz_account:fetch(AccountId) of
         'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
@@ -436,7 +436,7 @@ is_account_expired('undefined') -> 'false';
 is_account_expired(Account) ->
     case kz_account:fetch(Account) of
         {'ok', Doc} ->
-            Now = wh_util:current_tstamp(),
+            Now = ?MODULE:current_tstamp(),
             Trial = kz_account:trial_expiration(Doc, Now+1),
             Trial < Now;
         {'error', _R} ->
@@ -454,8 +454,8 @@ is_account_expired(Account) ->
 -spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
 get_account_realm(AccountId) ->
     get_account_realm(
-      wh_util:format_account_id(AccountId, 'encoded')
-      ,wh_util:format_account_id(AccountId, 'raw')
+      ?MODULE:format_account_id(AccountId, 'encoded')
+      ,?MODULE:format_account_id(AccountId, 'raw')
      ).
 
 get_account_realm('undefined', _) -> 'undefined';
@@ -476,7 +476,7 @@ get_account_realm(Db, AccountId) ->
 %%--------------------------------------------------------------------
 -spec try_load_module(string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
-    Module = wh_util:to_atom(Name, 'true'),
+    Module = ?MODULE:to_atom(Name, 'true'),
     try Module:module_info('imports') of
         _ when Module =:= 'undefined' -> 'false';
         _ ->
@@ -594,11 +594,11 @@ spawn(Fun) ->
                          Fun()
                  end).
 
--spec set_startup() -> 'undefined' | gregorian_seconds().
+-spec set_startup() -> api_seconds().
 set_startup() ->
     put('$startup', current_tstamp()).
 
--spec startup() -> 'undefined' | gregorian_seconds().
+-spec startup() -> api_seconds().
 startup() ->
     get('$startup').
 
@@ -630,15 +630,15 @@ get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
         [#xmlText{value=Value}] ->
-            wh_util:to_binary(Value);
+            ?MODULE:to_binary(Value);
         [#xmlText{}|_]=Values ->
-            iolist_to_binary([wh_util:to_binary(Value)
+            iolist_to_binary([?MODULE:to_binary(Value)
                               || #xmlText{value=Value} <- Values
                              ]);
         [#xmlAttribute{value=Value}] ->
-            wh_util:to_binary(Value);
+            ?MODULE:to_binary(Value);
         [#xmlAttribute{}|_]=Values ->
-            iolist_to_binary([wh_util:to_binary(Value)
+            iolist_to_binary([?MODULE:to_binary(Value)
                               || #xmlAttribute{value=Value} <- Values
                              ]);
         _Else -> 'undefined'
@@ -696,7 +696,7 @@ hex_char_to_binary(B) ->
 
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
-    rand_hex_binary(wh_util:to_integer(Size));
+    rand_hex_binary(?MODULE:to_integer(Size));
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
     to_hex_binary(rand_hex(Size)).
 
@@ -896,7 +896,7 @@ is_boolean("false") -> 'true';
 is_boolean('false') -> 'true';
 is_boolean(_) -> 'false'.
 
--spec is_empty(term()) -> boolean().
+-spec is_empty(any()) -> boolean().
 is_empty(0) -> 'true';
 is_empty([]) -> 'true';
 is_empty("0") -> 'true';
@@ -918,7 +918,7 @@ is_empty(MaybeJObj) ->
         'true' -> wh_json:is_empty(MaybeJObj)
     end.
 
--spec is_not_empty(term()) -> boolean().
+-spec is_not_empty(any()) -> boolean().
 is_not_empty(Term) -> (not is_empty(Term)).
 
 -spec is_proplist(any()) -> boolean().
@@ -929,12 +929,12 @@ is_proplist(_) -> 'false'.
 -spec identity(X) -> X.
 identity(X) -> X.
 
--spec to_lower_binary(term()) -> api_binary().
+-spec to_lower_binary(any()) -> api_binary().
 to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
 
--spec to_lower_string(term()) -> 'undefined' | list().
+-spec to_lower_string(any()) -> 'undefined' | list().
 to_lower_string('undefined') -> 'undefined';
 to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
@@ -954,12 +954,12 @@ to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from st
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.
 
--spec to_upper_binary(term()) -> api_binary().
+-spec to_upper_binary(any()) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
 to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).
 
--spec to_upper_string(term()) -> 'undefined' | list().
+-spec to_upper_string(any()) -> 'undefined' | list().
 to_upper_string('undefined') -> 'undefined';
 to_upper_string(L) when is_list(L) -> [to_upper_char(C) || C <- L];
 to_upper_string(Else) -> to_upper_string(to_list(Else)).
@@ -971,7 +971,7 @@ to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 to_upper_char(C) -> C.
 
 -spec strip_binary(binary()) -> binary().
--spec strip_binary(binary(), 'both' | 'left' | 'right' | char() | list(char())) -> binary().
+-spec strip_binary(binary(), 'both' | 'left' | 'right' | char() | [char()]) -> binary().
 -spec strip_left_binary(binary(), char()) -> binary().
 -spec strip_right_binary(binary(), char()) -> binary().
 strip_binary(B) -> strip_binary(B, 'both').
@@ -1072,7 +1072,7 @@ whistle_version() ->
         {'ok', File} ->
             {'ok', Line} = file:read_line(File),
             _ = file:close(File),
-            wh_util:to_binary(string:strip(Line, 'right', $\n));
+            ?MODULE:to_binary(string:strip(Line, 'right', $\n));
         _ -> <<"unknown">>
     end.
 
@@ -1080,7 +1080,7 @@ whistle_version() ->
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
 
--spec ensure_started(atom()) -> 'ok' | {'error', term()}.
+-spec ensure_started(atom()) -> 'ok' | {'error', any()}.
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
         'ok' -> 'ok';
@@ -1188,7 +1188,7 @@ decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
         'false' -> Diff
     end;
 decr_timeout(Timeout, Start) ->
-    decr_timeout(Timeout, wh_util:elapsed_ms(Start)).
+    decr_timeout(Timeout, ?MODULE:elapsed_ms(Start)).
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
@@ -1250,14 +1250,14 @@ format_date() ->
 
 format_date(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([wh_util:to_binary(Y), "-", wh_util:to_binary(M), "-", wh_util:to_binary(D)]).
+    list_to_binary([?MODULE:to_binary(Y), "-", ?MODULE:to_binary(M), "-", ?MODULE:to_binary(D)]).
 
 format_time() ->
     format_time(current_tstamp()).
 
 format_time(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)]).
+    list_to_binary([?MODULE:to_binary(H), ":", ?MODULE:to_binary(I), ":", ?MODULE:to_binary(S)]).
 
 format_datetime() ->
     format_datetime(current_tstamp()).
@@ -1322,7 +1322,7 @@ anonymous_caller_id_number() ->
 
 -include_lib("eunit/include/eunit.hrl").
 
--spec resolve_uri_test() -> _.
+-spec resolve_uri_test() -> any().
 resolve_uri_test() ->
     RawPath = <<"http://pivot/script.php">>,
     Relative = <<"script2.php">>,

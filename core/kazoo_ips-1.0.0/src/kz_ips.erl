@@ -25,10 +25,10 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec available() -> {'ok', wh_json:objects()} |
-                     {'error', _}.
+                     {'error', any()}.
 -spec available(api_binary()) ->
                        {'ok', wh_json:objects()} |
-                       {'error', _}.
+                       {'error', any()}.
 
 available() -> available('undefined').
 
@@ -36,7 +36,7 @@ available(Zone) -> available(Zone, 1).
 
 -spec available(api_binary(), non_neg_integer()) ->
                        {'ok', wh_json:objects()} |
-                       {'error', _}.
+                       {'error', any()}.
 available(Zone, Quantity) ->
     ViewOptions = props:filter_undefined(
                     [{'key', Zone}
@@ -50,7 +50,7 @@ available(Zone, Quantity) ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:available(Zone, Quantity) end
+              fun() -> ?MODULE:available(Zone, Quantity) end
              );
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
@@ -67,7 +67,7 @@ available(Zone, Quantity) ->
 %%--------------------------------------------------------------------
 -spec assigned(ne_binary()) ->
                       {'ok', wh_json:objects()} |
-                      {'error', _}.
+                      {'error', any()}.
 assigned(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     ViewOptions = [{'key', AccountId}],
@@ -78,7 +78,7 @@ assigned(Account) ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:assigned(Account) end
+              fun() -> ?MODULE:assigned(Account) end
              );
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
@@ -95,7 +95,7 @@ assigned(Account) ->
 %%--------------------------------------------------------------------
 -spec zones() ->
                    {'ok', ne_binaries()} |
-                   {'error', _}.
+                   {'error', any()}.
 zones() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
@@ -107,7 +107,7 @@ zones() ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:zones() end
+              fun() -> ?MODULE:zones() end
              );
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"key">>, JObj)
@@ -126,7 +126,7 @@ zones() ->
 %%--------------------------------------------------------------------
 -spec hosts() ->
                    {'ok', ne_binaries()} |
-                   {'error', _}.
+                   {'error', any()}.
 hosts() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
@@ -138,7 +138,7 @@ hosts() ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:hosts() end
+              fun() -> ?MODULE:hosts() end
              );
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"key">>, JObj)
@@ -157,7 +157,7 @@ hosts() ->
 %%--------------------------------------------------------------------
 -spec summary(api_binary()) ->
                      {'ok', wh_json:objects()} |
-                     {'error', _}.
+                     {'error', any()}.
 summary(Host) ->
     ViewOptions = props:filter_undefined([{'key', Host}]),
     case couch_mgr:get_results(?WH_DEDICATED_IP_DB
@@ -167,7 +167,7 @@ summary(Host) ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:summary(Host) end
+              fun() -> ?MODULE:summary(Host) end
              );
         {'ok', JObjs} -> {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->

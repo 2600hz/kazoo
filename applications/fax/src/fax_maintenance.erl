@@ -312,8 +312,8 @@ restart_job(JobID) ->
         end,
     'no_return'.
 
--spec update_job(binary(), binary()) -> 'ok' | {'error', _}.
--spec update_job(binary(), binary(), wh_json:object()) -> 'ok' | {'error', _}.
+-spec update_job(binary(), binary()) -> 'ok' | {'error', any()}.
+-spec update_job(binary(), binary(), wh_json:object()) -> 'ok' | {'error', any()}.
 update_job(JobID, State) ->
     case couch_mgr:open_doc(?WH_FAXES_DB, JobID) of
         {'error', _}=E -> E;

@@ -173,7 +173,7 @@ init([Call, JObj]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(term(), pid_ref(), state()) -> {'reply', 'ok', state()}.
+-spec handle_call(any(), pid_ref(), state()) -> {'reply', 'ok', state()}.
 handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
 
@@ -187,8 +187,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> {'noreply', state()} |
-                                      {'stop', 'normal', state()}.
+-spec handle_cast(any(), state()) -> {'noreply', state()} |
+                                     {'stop', 'normal', state()}.
 handle_cast('usurp', State) ->
     lager:debug("terminating pivot call because of usurp"),
     {'stop', 'normal', State#state{call='undefined'}};
@@ -282,8 +282,8 @@ handle_cast(_Req, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(term(), state()) -> {'noreply', state()} |
-                                      {'stop', term(), state()}.
+-spec handle_info(any(), state()) -> {'noreply', state()} |
+                                     {'stop', any(), state()}.
 handle_info({'stop', _Call}, State) ->
     {'stop', 'normal', State};
 handle_info({'ibrowse_async_headers', ReqId, "200"=StatusCode, Hdrs}
@@ -410,7 +410,7 @@ handle_event(_JObj, #state{response_pid=Pid
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), state()) -> 'ok'.
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{response_pid=Pid}) ->
     exit(Pid, 'kill'),
     lager:info("pivot call terminating: ~p", [_Reason]).
@@ -423,7 +423,7 @@ terminate(_Reason, #state{response_pid=Pid}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {'ok', NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(term(), state(), term()) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

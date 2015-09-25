@@ -149,7 +149,7 @@
 -type amqp_payload() :: iolist() | ne_binary().
 
 -type amqp_property() :: {ne_binary(), atom(), any()}.
--type amqp_properties() :: [amqp_property(),...] | [].
+-type amqp_properties() :: [amqp_property()].
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -540,42 +540,42 @@ declare_exchange(Exchange, Type, Options) ->
 %% Create AMQP queues
 %% @end
 %%------------------------------------------------------------------------------
--spec new_targeted_queue() -> ne_binary() | {'error', _}.
--spec new_targeted_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_targeted_queue() -> ne_binary() | {'error', any()}.
+-spec new_targeted_queue(binary()) -> ne_binary() | {'error', any()}.
 new_targeted_queue() -> new_targeted_queue(<<>>).
 new_targeted_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
--spec new_nodes_queue() -> ne_binary() | {'error', _}.
--spec new_nodes_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_nodes_queue() -> ne_binary() | {'error', any()}.
+-spec new_nodes_queue(binary()) -> ne_binary() | {'error', any()}.
 new_nodes_queue() -> new_nodes_queue(<<>>).
 new_nodes_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
--spec new_whapps_queue() -> ne_binary() | {'error', _}.
--spec new_whapps_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_whapps_queue() -> ne_binary() | {'error', any()}.
+-spec new_whapps_queue(binary()) -> ne_binary() | {'error', any()}.
 new_whapps_queue() -> new_whapps_queue(<<>>).
 new_whapps_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
--spec new_presence_queue() -> ne_binary() | {'error', _}.
--spec new_presence_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_presence_queue() -> ne_binary() | {'error', any()}.
+-spec new_presence_queue(binary()) -> ne_binary() | {'error', any()}.
 new_presence_queue() -> new_presence_queue(<<>>).
 new_presence_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
--spec new_registrar_queue() -> ne_binary() | {'error', _}.
--spec new_registrar_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_registrar_queue() -> ne_binary() | {'error', any()}.
+-spec new_registrar_queue(binary()) -> ne_binary() | {'error', any()}.
 new_registrar_queue() -> new_registrar_queue(<<>>).
 new_registrar_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
--spec new_notifications_queue() -> ne_binary() | {'error', _}.
--spec new_notifications_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_notifications_queue() -> ne_binary() | {'error', any()}.
+-spec new_notifications_queue(binary()) -> ne_binary() | {'error', any()}.
 new_notifications_queue() -> new_notifications_queue(<<>>).
 new_notifications_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
--spec new_sysconf_queue() -> ne_binary() | {'error', _}.
--spec new_sysconf_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_sysconf_queue() -> ne_binary() | {'error', any()}.
+-spec new_sysconf_queue(binary()) -> ne_binary() | {'error', any()}.
 new_sysconf_queue() -> new_sysconf_queue(<<>>).
 new_sysconf_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
--spec new_callevt_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_callevt_queue(binary()) -> ne_binary() | {'error', any()}.
 new_callevt_queue(<<>>) ->
     new_queue(<<>>, [{'exclusive', 'false'}
                      ,{'auto_delete', 'true'}
@@ -588,7 +588,7 @@ new_callevt_queue(CallID) ->
                 ,{'nowait', 'false'}
                ]).
 
--spec new_callctl_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_callctl_queue(binary()) -> ne_binary() | {'error', any()}.
 new_callctl_queue(<<>>) ->
     new_queue(<<>>, [{'exclusive', 'false'}
                      ,{'auto_delete', 'true'}
@@ -601,8 +601,8 @@ new_callctl_queue(CallID) ->
                 ,{'nowait', 'false'}
                ]).
 
--spec new_resource_queue() -> ne_binary() | {'error', _}.
--spec new_resource_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_resource_queue() -> ne_binary() | {'error', any()}.
+-spec new_resource_queue(binary()) -> ne_binary() | {'error', any()}.
 new_resource_queue() -> new_resource_queue(?RESOURCE_QUEUE_NAME).
 new_resource_queue(Queue) ->
     new_queue(Queue, [{'exclusive', 'false'}
@@ -610,26 +610,26 @@ new_resource_queue(Queue) ->
                       ,{'nowait', 'false'}
                      ]).
 
--spec new_callmgr_queue(binary()) -> ne_binary() | {'error', _}.
--spec new_callmgr_queue(binary(), wh_proplist()) -> ne_binary() | {'error', _}.
+-spec new_callmgr_queue(binary()) -> ne_binary() | {'error', any()}.
+-spec new_callmgr_queue(binary(), wh_proplist()) -> ne_binary() | {'error', any()}.
 new_callmgr_queue(Queue) -> new_callmgr_queue(Queue, []).
 new_callmgr_queue(Queue, Opts) -> new_queue(Queue, Opts).
 
--spec new_configuration_queue(ne_binary()) -> ne_binary() | {'error', _}.
--spec new_configuration_queue(ne_binary(), wh_proplist()) -> ne_binary() | {'error', _}.
+-spec new_configuration_queue(ne_binary()) -> ne_binary() | {'error', any()}.
+-spec new_configuration_queue(ne_binary(), wh_proplist()) -> ne_binary() | {'error', any()}.
 new_configuration_queue(Queue) -> new_configuration_queue(Queue, []).
 new_configuration_queue(Queue, Options) -> new_queue(Queue, Options).
 
--spec new_monitor_queue() -> ne_binary() | {'error', _}.
--spec new_monitor_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_monitor_queue() -> ne_binary() | {'error', any()}.
+-spec new_monitor_queue(binary()) -> ne_binary() | {'error', any()}.
 new_monitor_queue() -> new_monitor_queue(<<>>).
 new_monitor_queue(Queue) ->
     new_queue(Queue, [{'exclusive', 'false'}
                       ,{'auto_delete', 'true'}
                      ]).
 
--spec new_conference_queue() -> ne_binary() | {'error', _}.
--spec new_conference_queue(binary()) -> ne_binary() | {'error', _}.
+-spec new_conference_queue() -> ne_binary() | {'error', any()}.
+-spec new_conference_queue(binary()) -> ne_binary() | {'error', any()}.
 new_conference_queue() -> new_conference_queue(<<>>).
 new_conference_queue(Queue) ->
     new_queue(Queue, [{'exclusive', 'false'}
@@ -640,7 +640,7 @@ new_conference_queue(Queue) ->
 %% Declare a queue and returns the queue Name
 -type new_queue_ret() :: api_binary() | integer() |
                          {ne_binary(), integer(), integer()} |
-                         {'error', _}.
+                         {'error', any()}.
 -spec new_queue() -> new_queue_ret().
 -spec new_queue(binary()) -> new_queue_ret().
 -spec new_queue(binary(), wh_proplist()) -> new_queue_ret().
@@ -898,9 +898,9 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec unbind_q_from_conference(ne_binary(), conf_routing_type()) ->
-                                      'ok' | {'error', _}.
+                                      'ok' | {'error', any()}.
 -spec unbind_q_from_conference(ne_binary(), conf_routing_type(), api_binary()) ->
-                                      'ok' | {'error', _}.
+                                      'ok' | {'error', any()}.
 unbind_q_from_conference(Queue, 'discovery') ->
     unbind_q_from_conference(Queue, 'discovery', 'undefined');
 unbind_q_from_conference(Queue, 'command') ->
@@ -956,7 +956,7 @@ unbind_q_from_registrar(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_REGISTRAR).
 
 -spec unbind_q_from_exchange(ne_binary(), ne_binary(), ne_binary()) ->
-                                    'ok' | {'error', _}.
+                                    'ok' | {'error', any()}.
 unbind_q_from_exchange(Queue, Routing, Exchange) ->
     QU = #'queue.unbind'{
             queue = Queue
@@ -973,8 +973,8 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 %% @end
 %%------------------------------------------------------------------------------
 %% create a consumer for a Queue
--spec basic_consume(ne_binary()) -> 'ok' | {'error', _}.
--spec basic_consume(ne_binary(), wh_proplist()) -> 'ok' | {'error', _}.
+-spec basic_consume(ne_binary()) -> 'ok' | {'error', any()}.
+-spec basic_consume(ne_binary(), wh_proplist()) -> 'ok' | {'error', any()}.
 basic_consume(Queue) -> basic_consume(Queue, []).
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{

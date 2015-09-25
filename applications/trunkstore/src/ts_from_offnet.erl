@@ -191,8 +191,8 @@ get_endpoint_data(JObj) ->
                    ])
     }.
 
--spec routing_data(ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>,_},...] | [].
--spec routing_data(ne_binary(), ne_binary(), wh_json:object()) -> [{<<_:48,_:_*8>>,_},...] | [].
+-spec routing_data(ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>, any()}].
+-spec routing_data(ne_binary(), ne_binary(), wh_json:object()) -> [{<<_:48,_:_*8>>, any()}].
 routing_data(ToDID, AcctID) ->
     case ts_util:lookup_did(ToDID, AcctID) of
         {'ok', Settings} ->

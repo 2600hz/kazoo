@@ -31,7 +31,7 @@
 -include_lib("braintree/include/braintree.hrl").
 
 -type customer() :: #bt_customer{}.
--type customers() :: [customer(),...] | [].
+-type customers() :: [customer()].
 -export_type([customer/0
               ,customers/0
              ]).

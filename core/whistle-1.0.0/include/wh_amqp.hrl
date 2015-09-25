@@ -142,13 +142,13 @@
                            #'confirm.select'{} |
                            #'channel.flow'{} | #'channel.flow_ok'{} |
                            '_' | 'undefined'.
--type wh_amqp_commands() :: [wh_amqp_command(),...] | [].
+-type wh_amqp_commands() :: [wh_amqp_command()].
 
 -type wh_amqp_exchange() :: #'exchange.declare'{}.
--type wh_amqp_exchanges() :: [#'exchange.declare'{},...] | [].
+-type wh_amqp_exchanges() :: [#'exchange.declare'{}].
 
 -type wh_amqp_queue() :: #'queue.declare'{}.
--type wh_amqp_queues() :: [#'queue.declare'{},...] | [].
+-type wh_amqp_queues() :: [#'queue.declare'{}].
 
 -type wh_command_ret_ok() :: #'basic.qos_ok'{} | #'queue.declare_ok'{} |
                              #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
@@ -158,7 +158,7 @@
                              #'basic.cancel_ok'{}.
 -type command_ret() :: 'ok' |
                        {'ok', ne_binary() | wh_command_ret_ok()} |
-                       {'error', _}.
+                       {'error', any()}.
 
 -define(WH_AMQP_ETS, 'wh_amqp_ets').
 
@@ -178,9 +178,9 @@
                             }).
 
 -type wh_amqp_assignment() :: #wh_amqp_assignment{}.
--type wh_amqp_assignments() :: [wh_amqp_assignment(),...] | [].
+-type wh_amqp_assignments() :: [wh_amqp_assignment()].
 
--type wh_exchanges() :: [#'exchange.declare'{},...] | [].
+-type wh_exchanges() :: [#'exchange.declare'{}].
 
 -record(wh_amqp_connection, {broker :: ne_binary() | '_'
                              ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{} | '_'
@@ -210,7 +210,7 @@
                               ,hidden = 'false' :: boolean() | '$3' | '_'
                              }).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.
--type wh_amqp_connections_list() :: [wh_amqp_connections(), ...] | [].
+-type wh_amqp_connections_list() :: [wh_amqp_connections()].
 
 -type basic_publish() :: #'basic.publish'{}.
 -type basic_deliver() :: #'basic.deliver'{}.

@@ -84,9 +84,9 @@ import_prompts_from_files(Files, Lang) ->
          (Err = (catch import_prompt(F, Lang))) =/= 'ok'
      ].
 
--spec import_prompt(text() | file:filename()) -> 'ok' | {'error', _}.
--spec import_prompt(text() | file:filename(), text()) -> 'ok' | {'error', _}.
--spec import_prompt(text() | file:filename(), text(), ne_binary()) -> 'ok' | {'error', _}.
+-spec import_prompt(text() | file:filename()) -> 'ok' | {'error', any()}.
+-spec import_prompt(text() | file:filename(), text()) -> 'ok' | {'error', any()}.
+-spec import_prompt(text() | file:filename(), text(), ne_binary()) -> 'ok' | {'error', any()}.
 
 import_prompt(Path) ->
     import_prompt(Path, wh_media_util:default_prompt_language()).
@@ -155,10 +155,10 @@ import_prompt(Path0, Lang0, Contents) ->
 
 -spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                            'ok' |
-                           {'error', _}.
+                           {'error', any()}.
 -spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), wh_proplist(), non_neg_integer()) ->
                            'ok' |
-                           {'error', _}.
+                           {'error', any()}.
 upload_prompt(ID, AttachmentName, Contents, Options) ->
     upload_prompt(ID, AttachmentName, Contents, Options, 3).
 
@@ -177,7 +177,7 @@ upload_prompt(ID, AttachmentName, Contents, Options, Retries) ->
             maybe_cleanup_metadoc(ID, E)
     end.
 
--spec maybe_cleanup_metadoc(ne_binary(), _) -> {'error', _}.
+-spec maybe_cleanup_metadoc(ne_binary(), any()) -> {'error', any()}.
 maybe_cleanup_metadoc(ID, E) ->
     io:format("  deleting metadata from ~s~n", [?WH_MEDIA_DB]),
     case couch_mgr:del_doc(?WH_MEDIA_DB, ID) of
@@ -191,7 +191,7 @@ maybe_cleanup_metadoc(ID, E) ->
 
 -spec maybe_retry_upload(ne_binary(), ne_binary(), ne_binary(), wh_proplist(), non_neg_integer()) ->
                                 'ok' |
-                                {'error', _}.
+                                {'error', any()}.
 maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
     case couch_mgr:open_doc(?WH_MEDIA_DB, ID) of
         {'ok', JObj} ->

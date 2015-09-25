@@ -326,7 +326,7 @@ handle_info(?HOOK_EVT(_AccountId, _, JObj), State) ->
     AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     SIPName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
     lager:debug("available device: ~s(~s)", [SIPName, AcctId]),
-    camper_onnet_handler:available_device(AcctId, SIPName),
+    ?MODULE:available_device(AcctId, SIPName),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

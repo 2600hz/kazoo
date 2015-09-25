@@ -16,7 +16,7 @@
 
 -record(builder_action, {module_fun_name :: atom()
                          ,metaflow_key :: ne_binary()
-                         ,builders = [] :: [{pos_integer(), atom()},...] | []
+                         ,builders = [] :: [{pos_integer(), atom()}]
                         }).
 -type builder_action() :: #builder_action{}.
 
@@ -125,7 +125,7 @@ pattern_builder(Default, SaveFun) ->
                                  }
                 ).
 
--spec print_builders(wh_proplist()) -> ['ok',...] | [].
+-spec print_builders(wh_proplist()) -> ['ok'].
 print_builders(Builders) ->
     [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders].
 

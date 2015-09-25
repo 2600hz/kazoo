@@ -57,7 +57,7 @@ handle(Data, Call) ->
 
 -spec maybe_build_call_waiting_record(wh_json:object(), whapps_call:call()) ->
                                     {'ok', call_waiting()} |
-                                    {'error', _}.
+                                    {'error', any()}.
 maybe_build_call_waiting_record(Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     DocId = get_doc_id(wh_json:get_value(<<"scope">>, Data, <<"device">>), Call),

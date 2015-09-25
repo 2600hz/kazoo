@@ -157,7 +157,7 @@ new(#channel{}=Channel) ->
 destroy(UUID, Node) ->
     gen_server:cast(?MODULE, {'destroy_channel', UUID, Node}).
 
--spec update(ne_binary(), pos_integer(), _) -> 'ok'.
+-spec update(ne_binary(), pos_integer(), any()) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
 
@@ -389,7 +389,7 @@ handle_call(_, _, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> {'noreply', state()}.
+-spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'destroy_channel', UUID, Node}, State) ->
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
                   ,[{'andalso', {'=:=', '$2', {'const', Node}}

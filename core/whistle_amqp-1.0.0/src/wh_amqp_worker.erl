@@ -60,7 +60,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--type publish_fun() :: fun((api_terms()) -> _).
+-type publish_fun() :: fun((api_terms()) -> any()).
 -type validate_fun() :: fun((api_terms()) -> boolean()).
 
 -type collect_until_acc() :: any().
@@ -176,7 +176,7 @@ default_timeout() -> 2 * ?MILLISECONDS_IN_SECOND.
 -type request_return() :: {'ok', wh_json:object() | wh_json:objects()} |
                           {'returned', wh_json:object(), wh_json:object()} |
                           {'timeout', wh_json:objects()} |
-                          {'error', _}.
+                          {'error', any()}.
 -spec call(api_terms(), publish_fun(), validate_fun()) ->
                   request_return().
 -spec call(api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
@@ -364,8 +364,8 @@ call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
         checkin_worker(Worker)
     end.
 
--spec cast(api_terms(), publish_fun()) -> 'ok' | {'error', _}.
--spec cast(api_terms(), publish_fun(), pid() | atom()) -> 'ok' | {'error', _}.
+-spec cast(api_terms(), publish_fun()) -> 'ok' | {'error', any()}.
+-spec cast(api_terms(), publish_fun(), pid() | atom()) -> 'ok' | {'error', any()}.
 cast(Req, PubFun) ->
     cast(Req, PubFun, wh_amqp_sup:pool_name()).
 
@@ -444,7 +444,7 @@ handle_resp(JObj, Props) ->
                      ).
 
 -spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
-                          'ok' | {'error', _}.
+                          'ok' | {'error', any()}.
 send_request(CallId, Self, PublishFun, ReqProps)
   when is_function(PublishFun, 1) ->
     wh_util:put_callid(CallId),

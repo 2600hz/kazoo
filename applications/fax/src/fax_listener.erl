@@ -189,7 +189,7 @@ start_all_printers() ->
                  ]
     ].
 
--spec send_start_printer(ne_binary(), ne_binary()) -> _.
+-spec send_start_printer(ne_binary(), ne_binary()) -> any().
 send_start_printer(PrinterId, JID) ->
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"start">>}

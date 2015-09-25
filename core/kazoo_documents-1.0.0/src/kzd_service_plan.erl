@@ -36,7 +36,7 @@
 -include("kz_documents.hrl").
 
 -type doc() :: wh_json:object().
--type docs() :: [doc(),...] | [].
+-type docs() :: [doc()].
 -type api_doc() :: api_object().
 -export_type([doc/0
               ,api_doc/0

@@ -33,7 +33,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(start_link() ->
-    {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
+    {ok, Pid :: pid()} | ignore | {error, Reason :: any()}).
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 

@@ -75,8 +75,8 @@ check_numbers(Numbers, _Props) ->
     end.
 
 -spec format_check_numbers(wh_json:object()) ->
-                                  {'error', any()} |
-                                  {'ok', any()}.
+                                  {'error', _} |
+                                  {'ok', _}.
 format_check_numbers(Body) ->
     case wh_json:get_value(<<"status">>, Body) of
         <<"success">> ->

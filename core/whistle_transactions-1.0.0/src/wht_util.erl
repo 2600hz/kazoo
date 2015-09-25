@@ -199,7 +199,7 @@ maybe_rollup_previous_month(Account, Balance) ->
 
 -spec get_rollup_from_previous(ne_binary()) ->
                                       {'ok', integer()} |
-                                      {'error', _}.
+                                      {'error', any()}.
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
@@ -223,7 +223,7 @@ get_rollup_from_previous(Account) ->
 
 -spec get_rollup_balance(ne_binary(), wh_proplist()) ->
                                 {'ok', integer()} |
-                                {'error', _}.
+                                {'error', any()}.
 get_rollup_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     case kazoo_modb:get_results(Account, View, ViewOptions) of
@@ -245,8 +245,8 @@ get_rollup_balance(Account, ViewOptions) ->
 %%--------------------------------------------------------------------
 -spec current_account_dollars(ne_binary()) -> float().
 current_account_dollars(Account) ->
-    Units = wht_util:current_balance(Account),
-    wht_util:units_to_dollars(Units).
+    Units = ?MODULE:current_balance(Account),
+    ?MODULE:units_to_dollars(Units).
 
 %%--------------------------------------------------------------------
 %% @public

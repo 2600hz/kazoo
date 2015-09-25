@@ -97,7 +97,7 @@ init([Call, Callback, Args]) ->
 %% Handle call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(term(), term(), state()) ->
+-spec handle_call(any(), any(), state()) ->
                          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
@@ -108,7 +108,7 @@ handle_call(_Request, _From, State) ->
 %% Handle cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) ->
+-spec handle_cast(any(), state()) ->
                          {'noreply', state()} |
                          {'stop', 'normal', state()}.
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
@@ -128,7 +128,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(term(), state()) -> {'noreply', state()}.
+-spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info({'DOWN', Ref, 'process', Pid, Reason}
             ,#state{ref=Ref
                     ,pid=Pid
@@ -159,7 +159,7 @@ handle_event(_JObj, #state{pid=Pid}) ->
 %% with Reason. The return value is ignored.
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), state()) -> any().
+-spec terminate(any(), state()) -> any().
 terminate(_Reason, _State) ->
     lager:debug("callflow task terminating: ~p", [_Reason]).
 
@@ -169,7 +169,7 @@ terminate(_Reason, _State) ->
 %% Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(term(), state(), term()) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

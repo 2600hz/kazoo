@@ -40,7 +40,7 @@
           ,contents = <<>> :: binary()
           ,status :: 'streaming' | 'ready'
           ,ibrowse_req_id :: ibrowse_req_id()
-          ,reqs :: [{pid(), reference()},...] | []
+          ,reqs :: [{pid(), reference()}]
           ,meta :: wh_json:object()
           ,timer_ref :: reference()
           ,id :: ne_binary() %% used in publishing doc_deleted
@@ -279,7 +279,7 @@ kv_to_bin(L) ->
 start_timer() ->
     erlang:start_timer(?TIMEOUT_LIFETIME, self(), ?TIMEOUT_MESSAGE).
 
--spec stop_timer(reference() | any()) -> 'ok'.
+-spec stop_timer(reference() | _) -> 'ok'.
 stop_timer(Ref) when is_reference(Ref) ->
     _ = erlang:cancel_timer(Ref),
     'ok';

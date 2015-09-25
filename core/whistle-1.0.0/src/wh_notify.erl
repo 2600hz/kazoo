@@ -135,7 +135,7 @@ transaction(Account, Transaction, ServicePlan) ->
                ]),
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_transaction/1).
 
--spec system_alert(atom() | string() | binary(), [term()]) -> 'ok'.
+-spec system_alert(atom() | string() | binary(), [any()]) -> 'ok'.
 system_alert(Format, Args) ->
     Msg = io_lib:format(Format, Args),
     Notify= [{<<"Message">>, wh_util:to_binary(Msg)}

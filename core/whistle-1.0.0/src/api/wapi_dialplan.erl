@@ -317,7 +317,7 @@ tones_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES);
 tones_v(JObj) -> tones_v(wh_json:to_proplist(JObj)).
 
--spec tone_timeout_v(term()) -> boolean().
+-spec tone_timeout_v(any()) -> boolean().
 tone_timeout_v(Timeout) ->
     %% <<"+123">> converts to 123, so yay!
     try wh_util:to_integer(Timeout) of
@@ -1111,7 +1111,7 @@ metaflow_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?METAFLOW_HEADERS, ?METAFLOW_VALUES, ?METAFLOW_TYPES);
 metaflow_v(JObj) -> metaflow_v(wh_json:to_proplist(JObj)).
 
--spec metaflow_digit_timeout_v(term()) -> boolean().
+-spec metaflow_digit_timeout_v(any()) -> boolean().
 metaflow_digit_timeout_v(X) ->
     is_integer(wh_util:to_integer(X)).
 

@@ -193,11 +193,11 @@ get_admin_url() ->
     get_url(Host, Port, Username, Password).
 
 -spec test_conn() -> {'ok', wh_json:object()} |
-                     {'error', _}.
+                     {'error', any()}.
 test_conn() -> couch_util:server_info(get_server()).
 
 -spec test_admin_conn() -> {'ok', wh_json:object()} |
-                           {'error', _}.
+                           {'error', any()}.
 test_admin_conn() -> couch_util:server_info(get_admin_server()).
 
 -spec add_change_handler(ne_binary()) -> 'ok'.

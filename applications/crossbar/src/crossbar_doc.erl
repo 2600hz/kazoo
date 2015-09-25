@@ -87,8 +87,8 @@
 -type load_view_params() :: #load_view_params{}.
 
 -spec pagination_page_size() -> pos_integer().
--spec pagination_page_size(cb_context:context()) -> 'undefined' | pos_integer().
--spec pagination_page_size(cb_context:context(), ne_binary()) -> 'undefined' | pos_integer().
+-spec pagination_page_size(cb_context:context()) -> api_pos_integer().
+-spec pagination_page_size(cb_context:context(), ne_binary()) -> api_pos_integer().
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
@@ -242,7 +242,7 @@ merge(DataJObj, JObj, Context) ->
 -spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
                                 cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = ?MODULE:load(Id, Context),
     Context2 = case cb_context:resp_status(Context1) of
                    'success' ->
                        PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
@@ -383,10 +383,8 @@ load_view(#load_view_params{view=View
                                                )
     end.
 
--spec limit_by_page_size(api_binary() | pos_integer()) ->
-                                'undefined' | pos_integer().
--spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) ->
-                                'undefined' | pos_integer().
+-spec limit_by_page_size(api_binary() | pos_integer()) -> api_pos_integer().
+-spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) -> api_pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
@@ -626,7 +624,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
 
 -spec maybe_delete_doc(cb_context:context(), ne_binary()) ->
                               {'ok', _} |
-                              {'error', _}.
+                              {'error', any()}.
 maybe_delete_doc(Context, DocId) ->
     AccountDb = cb_context:account_db(Context),
     case couch_mgr:open_doc(AccountDb, DocId) of
@@ -751,7 +749,7 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined') ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined') ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
     update_pagination_envelope_params(Context
@@ -761,7 +759,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize) ->
                                       ,cb_context:should_paginate(Context)
                                      ).
 
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary()) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined', api_binary()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
     update_pagination_envelope_params(Context
@@ -771,7 +769,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                       ,cb_context:should_paginate(Context)
                                      ).
 
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary(), boolean()) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined', api_binary(), boolean()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
     lager:debug("pagination disabled, removing resp envelope keys"),
@@ -1186,7 +1184,7 @@ has_qs_filter(Context) ->
 %% represents a filter parameter
 %% @end
 %%--------------------------------------------------------------------
--spec is_filter_key({binary(), term()}) -> boolean().
+-spec is_filter_key({binary(), any()}) -> boolean().
 is_filter_key({<<"filter_", _/binary>>, _}) -> 'true';
 is_filter_key({<<"has_key", _/binary>>, _}) -> 'true';
 is_filter_key({<<"key_missing", _/binary>>, _}) -> 'true';
@@ -1235,7 +1233,7 @@ should_filter_doc(Doc, K, V) ->
 %% Returns 'true' or 'false' if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop(wh_json:object(), ne_binary(), term()) -> api_boolean().
+-spec filter_prop(wh_json:object(), ne_binary(), any()) -> api_boolean().
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->

@@ -1349,7 +1349,7 @@ ensure_views(Context, [Id|Ids], Retries) ->
 %%--------------------------------------------------------------------
 -spec replicate_account_definition(wh_json:object()) ->
                                           {'ok', wh_json:object()} |
-                                          {'error', _}.
+                                          {'error', any()}.
 replicate_account_definition(JObj) ->
     AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of

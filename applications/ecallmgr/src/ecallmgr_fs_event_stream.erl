@@ -215,9 +215,9 @@ handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
 
--spec handle_no_switch({'tcp', term(), binary()}, state()) ->
+-spec handle_no_switch({'tcp', any(), binary()}, state()) ->
                               {'noreply', state(), wh_timeout()} |
-                              {'stop', _, state()}.
+                              {'stop', any(), state()}.
 handle_no_switch({'tcp', Socket, Data}, State) ->
     case handle_info({'tcp', Socket, Data}, State#state{switch_info='true'}) of
         {'noreply', _State, Timeout} -> {'noreply', State, Timeout};
@@ -300,10 +300,10 @@ get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) 
 
 -spec maybe_bind(atom(), atoms()) ->
                         {'ok', {text(), inet:port_number()}} |
-                        {'error', _}.
+                        {'error', any()}.
 -spec maybe_bind(atom(), atoms(), non_neg_integer()) ->
                         {'ok', {text(), inet:port_number()}} |
-                        {'error', _}.
+                        {'error', any()}.
 maybe_bind(Node, Bindings) ->
     maybe_bind(Node, Bindings, 0).
 

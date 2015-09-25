@@ -88,6 +88,6 @@ to_json(#ci_analysis{}=Analysis) ->
         ])
      ).
 
--spec is_analysis(_) -> boolean().
+-spec is_analysis(any()) -> boolean().
 is_analysis(#ci_analysis{}) -> 'true';
 is_analysis(_) -> 'false'.

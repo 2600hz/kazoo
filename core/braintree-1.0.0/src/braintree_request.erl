@@ -168,7 +168,7 @@ http_options() ->
 %% If braintree verbose debuging is enabled write the log line to the file
 %% @end
 %%--------------------------------------------------------------------
--spec verbose_debug(string(), [term()]) -> 'ok'.
+-spec verbose_debug(string(), [any()]) -> 'ok'.
 verbose_debug(Format, Args) ->
     case ?BT_DEBUG of
         'false' -> 'ok';

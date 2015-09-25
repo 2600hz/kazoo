@@ -77,7 +77,7 @@ oauth_service_from_jobj(AppId, Provider, JObj) ->
 
 -spec load_service_app_keys(oauth_service_app()) ->
                                    {'ok', oauth_service_app()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 load_service_app_keys(#oauth_service_app{name=AppId}=App) ->
     case couch_mgr:fetch_attachment(?KZ_OAUTH_DB, AppId, <<"public_key.pem">>) of
         {'ok', PublicKey} ->
@@ -100,7 +100,7 @@ oauth_service_app_from_keys(PublicKey, PrivateKey, App) ->
                           ,private_key=pem_to_rsa(PrivateKey)
                          }.
 
--spec pem_to_rsa(binary()) -> term().
+-spec pem_to_rsa(binary()) -> any().
 pem_to_rsa(PemFileContents) ->
     [RSAEntry] = public_key:pem_decode(PemFileContents),
     public_key:pem_entry_decode(RSAEntry).
@@ -206,13 +206,13 @@ verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
 
 -spec refresh_token(oauth_app(), api_binary(), api_binary(), wh_proplist() ) ->
                            {'ok', api_object()} |
-                           {'error', _}.
+                           {'error', any()}.
 refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
     refresh_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
 
 -spec refresh_token(oauth_app(), api_binary(), api_binary(), wh_proplist(), api_binary()) ->
                            {'ok', api_object()} |
-                           {'error', _}.
+                           {'error', any()}.
 refresh_token(#oauth_app{name=ClientId
                          ,secret=Secret
                          ,provider=#oauth_provider{auth_url=URL}

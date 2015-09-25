@@ -92,7 +92,7 @@ fix_numbers(JObj) ->
          ),
     wh_json:set_value(<<"numbers">>, Numbers, JObj).
 
--spec fix_number_fold(wh_json:object(), _, wh_json:keys()) -> wh_json:keys().
+-spec fix_number_fold(wh_json:object(), any(), wh_json:keys()) -> wh_json:keys().
 fix_number_fold(Number, _Value, Acc) ->
     [Number|Acc].
 

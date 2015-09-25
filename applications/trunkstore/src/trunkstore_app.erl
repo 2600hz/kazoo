@@ -19,9 +19,9 @@
 %% Application callbacks
 %% ===================================================================
 
--spec start(term(), term()) ->
+-spec start(any(), any()) ->
                    {'ok', pid()} |
-                   {'error', term()}.
+                   {'error', any()}.
 start(_StartType, _StartArgs) -> trunkstore:start_link().
 
 stop(_State) -> trunkstore:stop().

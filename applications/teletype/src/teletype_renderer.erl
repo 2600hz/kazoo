@@ -23,13 +23,13 @@
          ,code_change/3
         ]).
 
--spec start_link(term()) -> startlink_ret().
+-spec start_link(any()) -> startlink_ret().
 start_link(Args) ->
     gen_server:start_link(?MODULE, [], [Args]).
 
 -spec render(ne_binary(), binary(), wh_proplist()) ->
                     {'ok', iolist()} |
-                    {'error', _}.
+                    {'error', any()}.
 render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
     try gen_server:call(Renderer
@@ -153,7 +153,7 @@ code_change(_Old, TemplateModule, _Extra) ->
 
 -spec render_template(atom(), wh_proplist()) ->
                              {'ok', iolist()} |
-                             {'error', _}.
+                             {'error', any()}.
 render_template(TemplateModule, TemplateData) ->
     try TemplateModule:render(TemplateData) of
         {'ok', _IOList}=OK ->

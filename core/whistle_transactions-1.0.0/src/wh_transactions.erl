@@ -180,7 +180,7 @@ is_per_minute(Transaction) ->
 %%--------------------------------------------------------------------
 -spec fetch_last(ne_binary(), pos_integer()) ->
                         {'ok', wh_transactions()} |
-                        {'error', _}.
+                        {'error', any()}.
 fetch_last(Account, Count) ->
     ViewOptions = [{'limit', Count}
                    ,'include_docs'
@@ -195,7 +195,7 @@ fetch_last(Account, Count) ->
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                    {'ok', wh_transactions()} |
-                   {'error', _}.
+                   {'error', any()}.
 fetch(Account, From, To) ->
     ViewOptionsList = get_range(Account, From, To),
     fetch(Account, ViewOptionsList).
@@ -203,7 +203,7 @@ fetch(Account, From, To) ->
 %% @private
 -spec fetch(ne_binary(), wh_proplists()) ->
                    {'ok', wh_transactions()} |
-                   {'error', _}.
+                   {'error', any()}.
 fetch(Account, ViewOptionsList) ->
     case {fetch_local(Account, ViewOptionsList)
           ,fetch_bookkeeper(Account, ViewOptionsList)
@@ -238,7 +238,7 @@ get_range(Account, From, To) ->
 %%--------------------------------------------------------------------
 -spec fetch_local(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                          {'ok', wh_transactions()} |
-                         {'error', _}.
+                         {'error', any()}.
 fetch_local(Account, From, To) ->
     ViewOptionsList = get_range(Account, From, To),
     fetch_local(Account, ViewOptionsList).
@@ -246,7 +246,7 @@ fetch_local(Account, From, To) ->
 %% @private
 -spec fetch_local(ne_binary(), wh_proplists()) ->
                          {'ok', wh_transactions()} |
-                         {'error', _}.
+                         {'error', any()}.
 fetch_local(_Account, []) -> {'ok', []};
 fetch_local(Account, ViewOptionsList) ->
     do_fetch_local(Account, ViewOptionsList, []).
@@ -254,7 +254,7 @@ fetch_local(Account, ViewOptionsList) ->
 %% @private
 -spec do_fetch_local(ne_binary(), wh_proplists(), wh_json:objects()) ->
                             {'ok', wh_transactions()} |
-                            {'error', _}.
+                            {'error', any()}.
 do_fetch_local(Account, [ViewOptions|ViewOptionsList], Acc) ->
     case kazoo_modb:get_results(Account, <<"transactions/by_timestamp">>, ViewOptions) of
         {'error', _}=Error -> Error;
@@ -269,14 +269,14 @@ do_fetch_local(_Account, [], ViewRes) ->
 %% @private
 -spec fetch_bookkeeper(ne_binary(), wh_proplists()) ->
                               {'ok', wh_transactions()} |
-                              {'error', _}.
+                              {'error', any()}.
 fetch_bookkeeper(Account, ViewOptionsList) ->
     do_fetch_bookkeeper(Account, ViewOptionsList, []).
 
 %% @private
 -spec do_fetch_bookkeeper(ne_binary(), wh_proplists(), wh_json:objects()) ->
                               {'ok', wh_transactions()} |
-                              {'error', _}.
+                              {'error', any()}.
 do_fetch_bookkeeper(Account, [ViewOptions|ViewOptionsList], Acc) ->
     From = props:get_value('startkey', ViewOptions),
     To   = props:get_value('endkey', ViewOptions),
@@ -296,7 +296,7 @@ do_fetch_bookkeeper(_Account, [], Transactions) ->
 %%--------------------------------------------------------------------
 -spec fetch_bookkeeper(ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
                               {'ok', wh_transactions()} |
-                              {'error', _}.
+                              {'error', any()}.
 fetch_bookkeeper(Account, From, To) ->
     Bookkeeper = whapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>),
     try Bookkeeper:transactions(Account, From, To) of
@@ -346,7 +346,7 @@ transaction_to_prop_fold(Transaction, Acc) ->
 %% Save list of record
 %% @end
 %%--------------------------------------------------------------------
--type save_acc() :: [{'ok' | 'error', wh_transaction:transaction()},...] | [].
+-type save_acc() :: [{'ok' | 'error', wh_transaction:transaction()}].
 
 -spec save(wh_transactions()) -> save_acc().
 -spec save(wh_transactions(), save_acc()) -> save_acc().
@@ -369,7 +369,7 @@ save([Transaction | Transactions], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--type remove_acc() :: ['ok' | {'error', wh_transaction:transaction()},...] | [].
+-type remove_acc() :: ['ok' | {'error', wh_transaction:transaction()}].
 
 -spec remove(wh_transactions()) -> remove_acc().
 -spec remove(wh_transactions(), remove_acc()) -> remove_acc().

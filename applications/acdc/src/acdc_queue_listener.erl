@@ -122,7 +122,7 @@ start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
 accept_member_calls(Srv) ->
     gen_listener:cast(Srv, {'accept_member_calls'}).
 
--spec member_connect_req(pid(), wh_json:object(), _, api_binary()) -> 'ok'.
+-spec member_connect_req(pid(), wh_json:object(), any(), api_binary()) -> 'ok'.
 member_connect_req(Srv, MemberCallJObj, Delivery, Url) ->
     gen_listener:cast(Srv, {'member_connect_req', MemberCallJObj, Delivery, Url}).
 
@@ -180,7 +180,7 @@ send_sync_req(Srv, Type) ->
 config(Srv) ->
     gen_listener:call(Srv, 'config').
 
--spec send_sync_resp(pid(), atom(), term(), wh_json:object()) -> 'ok'.
+-spec send_sync_resp(pid(), atom(), any(), wh_json:object()) -> 'ok'.
 send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
     gen_listener:cast(Srv, {'send_sync_resp', Strategy, StrategyState, ReqJObj}).
 

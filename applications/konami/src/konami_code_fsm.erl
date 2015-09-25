@@ -414,7 +414,7 @@ disarm_state(#state{a_digit_timeout_ref=ARef
                 ,b_leg_armed = 'false'
                }.
 
--spec maybe_cancel_timer(term()) -> 'ok'.
+-spec maybe_cancel_timer(any()) -> 'ok'.
 maybe_cancel_timer(Ref) when is_reference(Ref) ->
     catch erlang:cancel_timer(Ref),
     'ok';

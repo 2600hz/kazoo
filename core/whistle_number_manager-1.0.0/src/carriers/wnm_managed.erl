@@ -29,7 +29,7 @@ find_numbers(Number, Quantity, Opts) ->
     find_numbers(<<"+",Number/binary>>, Quantity,Opts).
 
 -spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
-          {'error', any()} | {'ok', wh_json:object()}.
+          {'error', _} | {'ok', wh_json:object()}.
 find_numbers_in_account(Number, Quantity, AccountId) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
         {'error', 'non_available'}=A ->
@@ -41,7 +41,7 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
     end.
 
 -spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
-          {'error', any()} | {'ok', wh_json:object()}.
+          {'error', _} | {'ok', wh_json:object()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
                    ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Number/binary, "\ufff0">>]}

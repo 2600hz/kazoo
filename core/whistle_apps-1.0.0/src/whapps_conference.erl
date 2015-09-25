@@ -193,7 +193,7 @@ to_proplist(#whapps_conference{}=Conference) ->
      ,{<<"Call">>, whapps_call:to_json(call(Conference))}
     ].
 
--spec is_conference(_) -> boolean().
+-spec is_conference(any()) -> boolean().
 is_conference(#whapps_conference{}) -> 'true';
 is_conference(_) -> 'false'.
 
@@ -306,19 +306,19 @@ bridge_password(#whapps_conference{bridge_password=BridgePassword}) ->
 set_bridge_password(BridgePassword, Conference) when is_binary(BridgePassword) ->
     Conference#whapps_conference{bridge_password=BridgePassword}.
 
--spec member_pins(whapps_conference:conference()) -> [ne_binary(),...] | [].
+-spec member_pins(whapps_conference:conference()) -> [ne_binary()].
 member_pins(#whapps_conference{member_pins=MemberPins}) ->
     MemberPins.
 
--spec set_member_pins([ne_binary(),...] | [], whapps_conference:conference()) -> whapps_conference:conference().
+-spec set_member_pins([ne_binary()], whapps_conference:conference()) -> whapps_conference:conference().
 set_member_pins(MemberPins, Conference) when is_list(MemberPins) ->
     Conference#whapps_conference{member_pins=MemberPins}.
 
--spec moderator_pins(whapps_conference:conference()) -> [ne_binary(),...] | [].
+-spec moderator_pins(whapps_conference:conference()) -> [ne_binary()].
 moderator_pins(#whapps_conference{moderator_pins=ModeratorPins}) ->
     ModeratorPins.
 
--spec set_moderator_pins([ne_binary(),...] | [], whapps_conference:conference()) -> whapps_conference:conference().
+-spec set_moderator_pins([ne_binary()], whapps_conference:conference()) -> whapps_conference:conference().
 set_moderator_pins(ModeratorPins, Conference) when is_list(ModeratorPins) ->
     Conference#whapps_conference{moderator_pins=ModeratorPins}.
 
@@ -439,19 +439,19 @@ conference_doc(#whapps_conference{conference_doc=JObj}) -> JObj.
 set_conference_doc(JObj, Conference) ->
     Conference#whapps_conference{conference_doc=JObj}.
 
--spec kvs_append(_, _, whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_append(any(), any(), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_append(Key, Value, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:append(wh_util:to_binary(Key), Value, Dict)}.
 
--spec kvs_append_list(_, [_,...], whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_append_list(any(), [any(),...], whapps_conference:conference()) -> whapps_conference:conference().
 kvs_append_list(Key, ValList, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:append_list(wh_util:to_binary(Key), ValList, Dict)}.
 
--spec kvs_erase(_, whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_erase(any(), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_erase(Key, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:erase(wh_util:to_binary(Key), Dict)}.
 
--spec kvs_fetch(_, whapps_conference:conference()) -> _.
+-spec kvs_fetch(any(), whapps_conference:conference()) -> any().
 kvs_fetch(Key, #whapps_conference{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
         Ok -> Ok
@@ -463,15 +463,15 @@ kvs_fetch(Key, #whapps_conference{kvs=Dict}) ->
 kvs_fetch_keys( #whapps_conference{kvs=Dict}) ->
     orddict:fetch_keys(Dict).
 
--spec kvs_filter(fun((_, _) -> boolean()), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_filter(fun((any(), any()) -> boolean()), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_filter(Pred, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:filter(Pred, Dict)}.
 
--spec kvs_find(_, whapps_conference:conference()) -> {'ok', _} | 'error'.
+-spec kvs_find(any(), whapps_conference:conference()) -> {'ok', any()} | 'error'.
 kvs_find(Key, #whapps_conference{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
 
--spec kvs_fold(fun((_, _, _) -> _), _, whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_fold(fun((any(), any(), any()) -> any()), any(), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_fold(Fun, Acc0, #whapps_conference{kvs=Dict}) ->
     orddict:fold(Fun, Acc0, Dict).
 
@@ -480,15 +480,15 @@ kvs_from_proplist(List, #whapps_conference{kvs=Dict}=Conference) ->
     L = orddict:from_list([{wh_util:to_binary(K), V} || {K, V} <- List]),
     Conference#whapps_conference{kvs=orddict:merge(fun(_, V, _) -> V end, L, Dict)}.
 
--spec kvs_is_key(_, whapps_conference:conference()) -> boolean().
+-spec kvs_is_key(any(), whapps_conference:conference()) -> boolean().
 kvs_is_key(Key, #whapps_conference{kvs=Dict}) ->
     orddict:is_key(wh_util:to_binary(Key), Dict).
 
--spec kvs_map(fun((_, _) -> _), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_map(fun((any(), any()) -> any()), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_map(Pred, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:map(Pred, Dict)}.
 
--spec kvs_store(_, _, whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_store(any(), any(), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_store(Key, Value, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:store(wh_util:to_binary(Key), Value, Dict)}.
 
@@ -502,15 +502,15 @@ kvs_store_proplist(List, #whapps_conference{kvs=Dict}=Conference) ->
 kvs_to_proplist(#whapps_conference{kvs=Dict}) ->
     orddict:to_list(Dict).
 
--spec kvs_update(_, fun((_) -> _), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_update(any(), fun((any()) -> any()), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_update(Key, Fun, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:update(wh_util:to_binary(Key), Fun, Dict)}.
 
--spec kvs_update(_, fun((_) -> _), _, whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_update(any(), fun((any()) -> any()), any(), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_update(Key, Fun, Initial, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:update(wh_util:to_binary(Key), Fun, Initial, Dict)}.
 
--spec kvs_update_counter(_, number(), whapps_conference:conference()) -> whapps_conference:conference().
+-spec kvs_update_counter(any(), number(), whapps_conference:conference()) -> whapps_conference:conference().
 kvs_update_counter(Key, Number, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
 
@@ -541,7 +541,7 @@ set_call(Call, Conference) ->
 
 
 %% @private
--spec get_tone(_) -> tone().
+-spec get_tone(any()) -> tone().
 get_tone(Thing) ->
     case wh_util:is_boolean(Thing) of
         'true' -> wh_util:is_true(Thing);

@@ -57,10 +57,8 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_query(wh_json:object(), wh_proplist()) ->
-                          any().
--spec handle_query(wh_json:object(), ne_binary(), boolean()) ->
-                          any().
+-spec handle_query(wh_json:object(), wh_proplist()) -> any().
+-spec handle_query(wh_json:object(), ne_binary(), boolean()) -> any().
 handle_query(JObj, _Props) ->
     'true' = wapi_hangups:query_req_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),

@@ -95,7 +95,7 @@
 -type compactor_heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
 -type node_with_options() :: {ne_binary(), wh_proplist()}.
--type nodes_with_options() :: [node_with_options(),...] | [].
+-type nodes_with_options() :: [node_with_options()].
 -record(state, {
           nodes :: ne_binaries() | nodes_with_options()
           ,dbs :: ne_binaries()
@@ -1554,7 +1554,7 @@ get_ports(Node) ->
             {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()}
     end.
 
--spec get_port(atom(), list(string()), fun(() -> pos_integer())) -> pos_integer().
+-spec get_port(atom(), [string()], fun(() -> pos_integer())) -> pos_integer().
 get_port(Node, Key, DefaultFun) ->
     case rpc:call(Node, 'couch_config', 'get', Key) of
         {'badrpc', _} -> DefaultFun();

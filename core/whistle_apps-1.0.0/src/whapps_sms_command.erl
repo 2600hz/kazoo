@@ -188,7 +188,7 @@ amqp_exchange_options(JObj) ->
      || {K, V} <- wh_json:to_proplist(JObj)
     ].
 
--spec send_amqp_sms(wh_proplist(), atom()) -> 'ok' | {'error', term()}.
+-spec send_amqp_sms(wh_proplist(), atom()) -> 'ok' | {'error', any()}.
 send_amqp_sms(Payload, Pool) ->
     case wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1, Pool) of
         {'returned', _JObj, Deliver} ->
@@ -258,7 +258,7 @@ create_sms_endpoint(Endpoint, <<"sip">>) ->
         {'error', _E} -> 'undefined'
     end.
 
--spec lookup_reg(ne_binary(), ne_binary()) -> {'error', _} |
+-spec lookup_reg(ne_binary(), ne_binary()) -> {'error', any()} |
                                               {'ok', ne_binary()}.
 lookup_reg(Username, Realm) ->
     Req = [{<<"Realm">>, Realm}

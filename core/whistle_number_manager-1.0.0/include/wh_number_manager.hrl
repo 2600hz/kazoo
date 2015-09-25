@@ -66,7 +66,7 @@
                            {'number', api_binary()} |
                            {'account_id', api_binary()} |
                            {'prepend', 'false' | api_binary()}.
--type number_properties() :: [number_property(),...] | [].
+-type number_properties() :: [number_property()].
 
 -define(WNM_DEFAULT_CARRIER_MODULES, [<<"wnm_local">>]).
 -define(WNM_DEFAULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>

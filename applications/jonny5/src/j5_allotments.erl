@@ -23,7 +23,7 @@ authorize(Request, Limits) ->
     Allotment = find_allotment(Request, Limits),
     maybe_consume_allotment(Allotment, Request, Limits).
 
--spec maybe_consume_allotment('undefined'| wh_json:object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
+-spec maybe_consume_allotment(api_object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_consume_allotment('undefined', Request, _) ->
     lager:debug("account has no allotment", []),
     Request;
@@ -166,7 +166,7 @@ find_allotment_by_classification(Classification, Limits) ->
 %%--------------------------------------------------------------------
 -spec allotment_consumed_so_far(wh_json:object(), j5_limits:limits()) ->
                                        integer() |
-                                       {'error', _}.
+                                       {'error', any()}.
 allotment_consumed_so_far(Allotment, Limits) ->
     Classification = wh_json:get_value(<<"classification">>, Allotment),
     Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
@@ -181,7 +181,7 @@ allotment_consumed_so_far(Allotment, Limits) ->
 
 -spec allotment_consumed_so_far(non_neg_integer(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
                                        integer() |
-                                       {'error', _}.
+                                       {'error', any()}.
 allotment_consumed_so_far(_, _, _, _, Attempts) when Attempts > 2 -> 0;
 allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
@@ -218,7 +218,7 @@ sum_allotment_consumed_so_far([JObj|JObjs], CycleStart, Seconds) ->
 
 -spec add_transactions_view(ne_binary(), non_neg_integer(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
                                    integer() |
-                                   {'error', _}.
+                                   {'error', any()}.
 add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     _ = couch_mgr:revise_views_from_folder(LedgerDb, 'jonny5'),
     allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1).

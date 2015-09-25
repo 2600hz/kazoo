@@ -18,7 +18,7 @@ Version: 3.19
 |`inbound_rate_required`|boolean()|`false`|Is a rate required for the inbound call to proceed
 |`outbound_rate_required`|boolean()|`false`|Is a rate required for the outbound call to proceed
 |`node_down_grace_period`|integer()|10000|Time, in milliseconds, ecallmgr will flush the internal channels cache of channels from the down FreeSWITCH node
-|`fs_nodes`|list(string())|\[]|The list of FreeSWITCH servers to connect to when ecallmgr starts
+|`fs_nodes`|[string()]|\[]|The list of FreeSWITCH servers to connect to when ecallmgr starts
 |`acls`|json\_object()|`{}`|The list carrier/sbc/endpoint ACLs to load into FreeSWITCH
 |`send_registrar_notifications`|boolean()|`true`|Should ecallmgr figure out which registrar is the oldest and send a register update if the local ecallmgr is the oldest
 |`default_fax_extension`|string()|`.tiff`|What extension fax files should be stored with on the local FreeSWITCH disk

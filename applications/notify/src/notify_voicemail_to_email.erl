@@ -40,7 +40,7 @@ stop_processing(Format, Args) ->
     lager:debug(Format, Args),
     throw('stop').
 
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -286,7 +286,7 @@ mime_to_extension(_) -> <<"wav">>.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec preaty_print_length('undefined' | integer() | wh_json:object()) -> ne_binary().
+-spec preaty_print_length(integer() | api_object()) -> ne_binary().
 preaty_print_length('undefined') ->
     <<"00:00">>;
 preaty_print_length(Milliseconds) when is_integer(Milliseconds) ->

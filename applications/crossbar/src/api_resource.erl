@@ -353,7 +353,7 @@ options(Req0, Context) ->
 
 -type content_type_callbacks() :: [{{ne_binary(), ne_binary(), wh_proplist()}, atom()} |
                                    {ne_binary(), atom()}
-                                   ,...] | [].
+                                   ].
 -spec content_types_provided(cowboy_req:req(), cb_context:context()) ->
                                     {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_provided(Req, Context0) ->
@@ -425,7 +425,7 @@ default_content_types_accepted(Req, Context) ->
     {CTA, Req, Context}.
 
 -type content_type_fun() :: {content_type(), atom()}.
--type content_types_funs() :: [content_type_fun(),...] | [].
+-type content_types_funs() :: [content_type_fun()].
 
 -spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context()) ->
                                     {content_types_funs(), cowboy_req:req(), cb_context:context()}.
@@ -457,7 +457,7 @@ content_types_accepted_fold({Fun, L}, Acc, CT) ->
                 ,L
                ).
 
--spec content_type_accepted_fold(_, content_type_fun(), atom(), content_type()) ->
+-spec content_type_accepted_fold(any(), content_type_fun(), atom(), content_type()) ->
                                         content_type_fun().
 content_type_accepted_fold({Type, SubType}, Acc, Fun, CT) ->
     case api_util:content_type_matches(CT, {Type, SubType, []}) of
@@ -869,7 +869,7 @@ csv_ize([F|Rest]) ->
      ,<<"\n">>
     ].
 
--spec try_to_binary(_) -> binary().
+-spec try_to_binary(any()) -> binary().
 try_to_binary(Value) ->
     try wh_util:to_binary(Value) of
         V -> V

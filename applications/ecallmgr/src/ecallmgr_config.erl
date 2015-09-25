@@ -30,7 +30,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -spec flush() -> 'ok'.
--spec flush(wh_json:key()) -> 'ok' | {'error', _}.
+-spec flush(wh_json:key()) -> 'ok' | {'error', any()}.
 
 flush() ->
     wh_cache:flush_local(?ECALLMGR_UTIL_CACHE),
@@ -197,7 +197,7 @@ fetch(Key, Default, Node, RequestTimeout) ->
             Value
     end.
 
--spec maybe_cache_resp(ne_binary(), ne_binary(), term()) -> 'ok'.
+-spec maybe_cache_resp(ne_binary(), ne_binary(), any()) -> 'ok'.
 maybe_cache_resp(_, _ , 'undefined') -> 'ok';
 maybe_cache_resp(_, _ , 'null') -> 'ok';
 maybe_cache_resp(_, _ , <<"undefined">>) -> 'ok';
@@ -244,7 +244,7 @@ set(Key, Value, Node, Opt) ->
             lager:debug("set config for key '~s' failed: ~p", [Key, _R])
     end.
 
--spec get_response_value(wh_json:object(), term()) -> term().
+-spec get_response_value(wh_json:object(), any()) -> any().
 get_response_value(JObj, Default) ->
     case wh_json:get_value(<<"Value">>, JObj) of
         'undefined' -> Default;
@@ -254,6 +254,6 @@ get_response_value(JObj, Default) ->
         Value -> Value
     end.
 
--spec cache_key(term(), atom() | ne_binary()) ->
-                       {?MODULE, term(), atom() | ne_binary()}.
-cache_key(K, Node) -> {?MODULE, K, Node}.
+-spec cache_key(any(), atom() | ne_binary()) -> {?MODULE, any(), atom() | ne_binary()}.
+cache_key(K, Node) ->
+    {?MODULE, K, Node}.

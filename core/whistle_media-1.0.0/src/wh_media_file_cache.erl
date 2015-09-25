@@ -38,7 +38,7 @@
          ,contents = <<>> :: binary()
          ,stream_ref :: reference()
          ,status :: 'streaming' | 'ready'
-         ,reqs :: [{pid(), reference()},...] | []
+         ,reqs :: [{pid(), reference()}]
          ,timer_ref :: reference()
          }).
 -type state() :: #state{}.

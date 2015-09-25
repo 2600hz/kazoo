@@ -123,7 +123,7 @@ set_node(Node, UUID) ->
 
 -spec former_node(ne_binary()) ->
                          {'ok', atom()} |
-                         {'error', _}.
+                         {'error', any()}.
 former_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', former_node = '$2', _ = '_'}
                   ,[{'=:=', '$1', {'const', UUID}}]
@@ -394,7 +394,7 @@ handle_channel_req(UUID, FetchId, Node) ->
 -spec handle_channel_req(ne_binary(), ne_binary(), atom(), pid()) -> 'ok'.
 handle_channel_req(UUID, FetchId, Node, Pid) ->
     wh_amqp_channel:consumer_pid(Pid),
-    case ecallmgr_fs_channel:fetch(UUID, 'proplist') of
+    case ?MODULE:fetch(UUID, 'proplist') of
         {'error', 'not_found'} -> fetch_channel(UUID, FetchId, Node);
         {'ok', Props} ->
             ChannelNode = props:get_value(<<"node">>, Props),

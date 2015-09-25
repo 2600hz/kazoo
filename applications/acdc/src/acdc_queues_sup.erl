@@ -83,7 +83,7 @@ status() ->
     _ = wh_util:spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- Ws] end),
     'ok'.
 
--spec queues_running() -> [{pid(), term()},...] | [].
+-spec queues_running() -> [{pid(), any()}].
 queues_running() ->
     [{W, catch acdc_queue_manager:config(acdc_queue_sup:manager(W))} || W <- workers()].
 

@@ -535,7 +535,7 @@ send_provisioning_template(JObj, Context) ->
 %%--------------------------------------------------------------------
 -spec get_template(cb_context:context()) ->
                           {'ok', wh_json:object()} |
-                          {'error', term()}.
+                          {'error', any()}.
 get_template(Context) ->
     DocId = wh_json:get_value([<<"provision">>, <<"id">>], cb_context:doc(Context)),
     case is_binary(DocId)

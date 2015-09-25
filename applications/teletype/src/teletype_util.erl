@@ -40,9 +40,9 @@
                                   ]).
 
 -spec send_email(email_map(), ne_binary(), rendered_templates()) ->
-                        'ok' | {'error', _}.
+                        'ok' | {'error', any()}.
 -spec send_email(email_map(), ne_binary(), rendered_templates(), attachments()) ->
-                        'ok' | {'error', _}.
+                        'ok' | {'error', any()}.
 send_email(Emails, Subject, RenderedTemplates) ->
     send_email(Emails, Subject, RenderedTemplates, []).
 send_email(Emails, Subject, RenderedTemplates, Attachments) ->
@@ -129,7 +129,7 @@ email_parameters([{Key, V}|T], Params) ->
     email_parameters(T, [{Key, V} | Params]).
 
 -spec relay_email(api_binaries(), ne_binary(), mimemail:mimetuple()) ->
-                         'ok' | {'error', _}.
+                         'ok' | {'error', any()}.
 relay_email(To, From, {_Type
                        ,_SubType
                        ,Addresses
@@ -162,14 +162,14 @@ maybe_relay_to_bcc(From, Encoded, Bcc) ->
     end.
 
 -spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries() | ne_binary()) ->
-          {'ok', ne_binary()} | {'error', _}.
+          {'ok', ne_binary()} | {'error', any()}.
 relay_to_bcc(From, Encoded, Bcc) when is_binary(Bcc) ->
     relay_encoded_email([Bcc], From, Encoded);
 relay_to_bcc(From, Encoded, Bcc) ->
     relay_encoded_email(Bcc, From, Encoded).
 
 -spec relay_encoded_email(api_binaries(), ne_binary(), ne_binary()) ->
-                                 {'ok', ne_binary()} | {'error', _}.
+                                 {'ok', ne_binary()} | {'error', any()}.
 relay_encoded_email('undefined', _From, _Encoded) ->
     lager:debug("failed to send email as the TO address(es) are missing"),
     {'error', 'invalid_to_addresses'};
@@ -379,7 +379,7 @@ render(TemplateId, Template, Macros) ->
 sort_templates(RenderedTemplates) ->
     lists:sort(fun sort_templates/2, RenderedTemplates).
 
--spec sort_templates({ne_binary(), _}, {ne_binary(), _}) -> boolean().
+-spec sort_templates({ne_binary(), any()}, {ne_binary(), any()}) -> boolean().
 sort_templates({K1, _}, {K2, _}) ->
     props:get_value(K1, ?TEMPLATE_RENDERING_ORDER, 1) =<
         props:get_value(K2, ?TEMPLATE_RENDERING_ORDER, 1).
@@ -693,8 +693,8 @@ find_address(Key, DataJObj, TemplateMetaJObj) ->
 -spec find_admin_emails(wh_json:object(), ne_binary(), wh_json:key()) ->
                                api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
-    case teletype_util:find_account_rep_email(
-           teletype_util:find_account_id(DataJObj)
+    case ?MODULE:find_account_rep_email(
+           ?MODULE:find_account_id(DataJObj)
           )
     of
         'undefined' ->
@@ -713,7 +713,7 @@ find_default(ConfigCat, Key) ->
 
 -spec open_doc(ne_binary(), api_binary(), wh_json:object()) ->
                       {'ok', wh_json:object()} |
-                      {'error', _}.
+                      {'error', any()}.
 open_doc(Type, 'undefined', DataJObj) ->
     maybe_load_preview(Type, {'error', 'empty_doc_id'}, is_preview(DataJObj));
 open_doc(Type, DocId, DataJObj) ->

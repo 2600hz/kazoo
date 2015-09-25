@@ -87,7 +87,7 @@
                          ,<<"pvt_modified">>
                         ]).
 
--type db_create_options() :: [{'q',integer()} | {'n',integer()},...] | [].
+-type db_create_options() :: [{'q',integer()} | {'n',integer()}].
 
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
 
@@ -268,7 +268,7 @@ get_new_conn(Host, Port, Opts) ->
     end.
 
 -spec server_info(server()) -> {'ok', wh_json:object()} |
-                               {'error', _}.
+                               {'error', any()}.
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
@@ -937,7 +937,7 @@ maybe_add_pvt_type(Db, DocId, JObj) ->
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
--type retry504_ret() :: any().
+-type retry504_ret() :: _.
 %% 'ok' | ne_binary() |
 %% {'ok', wh_json:object() | wh_json:objects() |
 %%  binary() | ne_binaries() | boolean() | integer()
@@ -1132,7 +1132,7 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
 
 -spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:keys()}) ->
                               {'ok', ne_binary()} |
-                              {'error', _}.
+                              {'error', any()}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
     #wh_copy_doc{dest_dbname = DestDbName
                  ,dest_doc_id = DestDocId

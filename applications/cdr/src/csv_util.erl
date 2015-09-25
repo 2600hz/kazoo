@@ -58,7 +58,7 @@ test_convert(AccountDb) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_save_csv(file:name(), iolist()) -> 'ok' | {'error', _}.
+-spec maybe_save_csv(file:name(), iolist()) -> 'ok' | {'error', any()}.
 maybe_save_csv(FileName, CsvData) ->
     TestPath = filename:join(code:priv_dir('cdr'), "test_data"),
     case filelib:ensure_dir(TestPath) of

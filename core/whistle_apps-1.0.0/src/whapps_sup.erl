@@ -33,15 +33,15 @@ start_link(Whapps) ->
 
 -spec start_app(atom()) ->
                        {'ok', pid() | 'undefined'} |
-                       {'ok', pid() | 'undefined', term()} |
-                       {'error', term()}.
+                       {'ok', pid() | 'undefined', any()} |
+                       {'error', any()}.
 start_app(App) ->
     supervisor:start_child(?MODULE, ?SUPER(App)).
 
 -spec restart_app(atom()) ->
                          {'ok', pid() | 'undefined'} |
-                         {'ok', pid() | 'undefined', term()} |
-                         {'error', term()}.
+                         {'ok', pid() | 'undefined', any()} |
+                         {'error', any()}.
 restart_app(App) ->
     _ = supervisor:terminate_child(?MODULE, App),
     supervisor:restart_child(?MODULE, App).

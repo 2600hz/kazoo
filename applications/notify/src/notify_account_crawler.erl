@@ -147,7 +147,7 @@ handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
--spec check_then_process_account(ne_binary(), {'ok', wh_json:object()} | {'error',_}) -> 'ok'.
+-spec check_then_process_account(ne_binary(), {'ok', wh_json:object()} | {'error',any()}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', JObj}) ->
     case wh_doc:is_soft_deleted(JObj) of
         'true' ->

@@ -115,7 +115,7 @@ update_call_status(Status, Call) ->
 get_call_status(Call) ->
     whapps_call:kvs_fetch(<<"call_status">>, Call).
 
--spec add_error(whapps_call:call(), ne_binary(), term()) -> whapps_call:call().
+-spec add_error(whapps_call:call(), ne_binary(), any()) -> whapps_call:call().
 add_error(Call, K, V) ->
     case whapps_call:kvs_fetch(<<"response_errors">>, Call) of
         'undefined' ->

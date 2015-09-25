@@ -36,7 +36,7 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec new(term(), atom(), list()) -> sup_startchild_ret().
+-spec new(any(), atom(), list()) -> sup_startchild_ret().
 new(Name, M, A) ->
     supervisor:start_child(?MODULE, ?WORKER_NAME_ARGS_TYPE(Name, M, A, 'temporary')).
 

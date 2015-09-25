@@ -45,7 +45,7 @@
          }).
 
 -type subscription() :: #omnip_subscription{}.
--type subscriptions() :: [subscription(),...] | [].
+-type subscriptions() :: [subscription()].
 
 -record(channel, {call_id     :: api_binary()
                   ,direction  :: api_binary()
@@ -54,7 +54,7 @@
                  }).
 
 -type channel() :: #channel{}.
--type channels() :: [channel(),...] | [].
+-type channels() :: [channel()].
 
 -define(SUBSCRIPTION_SIP_VERSION, 2).
 

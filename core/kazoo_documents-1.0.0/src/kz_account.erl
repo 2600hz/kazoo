@@ -160,7 +160,7 @@ allow_number_additions(JObj) ->
     wh_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
 
 -spec fetch(api_binary()) -> {'ok', doc()} |
-                            {'error', _}.
+                            {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = Account) ->

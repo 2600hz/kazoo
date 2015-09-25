@@ -508,7 +508,7 @@ check_sync(Username, Realm) ->
                                   ,wh_util:to_binary(Realm)
                                  ).
 
--spec add_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', _}.
+-spec add_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', any()}.
 add_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->
     add_fs_node(wh_util:to_binary(FSNode), FSNodes, ConfigFun);
 add_fs_node(FSNode, FSNodes, ConfigFun) ->
@@ -521,7 +521,7 @@ add_fs_node(FSNode, FSNodes, ConfigFun) ->
         end,
     ecallmgr_fs_nodes:add(wh_util:to_atom(FSNode, 'true')).
 
--spec remove_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', _}.
+-spec remove_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', any()}.
 remove_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->
     remove_fs_node(wh_util:to_binary(FSNode), FSNodes, ConfigFun);
 remove_fs_node(FSNode, FSNodes, ConfigFun) ->

@@ -28,7 +28,7 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:fax_inbound_error_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -39,7 +39,7 @@ handle_req(JObj, _Props) ->
         'false' -> 'ok'
     end.
 
--spec send(wh_json:object(), wh_json:object()) -> _.
+-spec send(wh_json:object(), wh_json:object()) -> any().
 send(JObj, AcctObj) ->
     Docs = [JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),

@@ -23,9 +23,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
+-spec start(any(), any()) ->
                    {'ok', pid()} |
-                   {'ok', pid(), term()} |
+                   {'ok', pid(), any()} |
                    {'error', startlink_err()}.
 start(_StartType, _StartArgs) -> crossbar:start_link().
 
@@ -35,5 +35,5 @@ start(_StartType, _StartArgs) -> crossbar:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) -> crossbar:stop().

@@ -114,7 +114,7 @@ limits_summary() ->
             limits_summary(Limits)
     end.
 
--spec limits_summary([j5_limits:limits(),...] | [] | ne_binary()) -> 'no_return'.
+-spec limits_summary([j5_limits:limits()] | ne_binary()) -> 'no_return'.
 limits_summary([]) -> 'no_return';
 limits_summary([Limit|Limits]) ->
     case j5_limits:enabled(Limit) of

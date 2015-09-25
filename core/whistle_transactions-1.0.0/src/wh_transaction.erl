@@ -73,7 +73,7 @@
                         }).
 
 -type transaction() :: #wh_transaction{}.
--type transactions() :: [transaction(),...] | [].
+-type transactions() :: [transaction()].
 -export_type([transaction/0
               ,transactions/0
              ]).
@@ -484,7 +484,7 @@ from_json(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove(transaction()) -> 'ok' | {'error', _}.
+-spec remove(transaction()) -> 'ok' | {'error', any()}.
 remove(#wh_transaction{}=Transaction) ->
     case prepare_transaction(Transaction) of
         {'error', _}=E -> E;
@@ -492,7 +492,7 @@ remove(#wh_transaction{}=Transaction) ->
             remove_transaction(T)
     end.
 
--spec remove_transaction(transaction()) -> 'ok' | {'error', _}.
+-spec remove_transaction(transaction()) -> 'ok' | {'error', any()}.
 remove_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
     case couch_mgr:del_doc(AccountDb, to_json(Transaction)) of
         {'ok', _} -> 'ok';
@@ -505,7 +505,7 @@ remove_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(transaction()) -> {'ok', transaction()} | {'error', _}.
+-spec save(transaction()) -> {'ok', transaction()} | {'error', any()}.
 save(#wh_transaction{}=Transaction) ->
     case prepare_transaction(Transaction) of
         {'error', _}=E -> E;
@@ -513,7 +513,7 @@ save(#wh_transaction{}=Transaction) ->
             save_transaction(T)
     end.
 
--spec save_transaction(transaction()) -> {'ok', transaction()} | {'error', _}.
+-spec save_transaction(transaction()) -> {'ok', transaction()} | {'error', any()}.
 save_transaction(#wh_transaction{pvt_account_id=AccountId
                                  ,pvt_created=Created
                                 }=Transaction) ->
@@ -531,7 +531,7 @@ save_transaction(#wh_transaction{pvt_account_id=AccountId
 %%--------------------------------------------------------------------
 -spec service_save(transaction()) ->
                           {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'error', any()}.
 service_save(#wh_transaction{}=Transaction) ->
     case prepare_transaction(Transaction) of
         {'error', _}=E -> E;
@@ -541,7 +541,7 @@ service_save(#wh_transaction{}=Transaction) ->
 
 -spec service_save_transaction(transaction()) ->
                                       {'ok', wh_json:object()} |
-                                      {'error', _}.
+                                      {'error', any()}.
 service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
     TransactionJObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
@@ -565,7 +565,7 @@ service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) 
 %%--------------------------------------------------------------------
 -spec prepare_transaction(transaction()) ->
                                  transaction() |
-                                 {'error', _}.
+                                 {'error', any()}.
 prepare_transaction(#wh_transaction{pvt_account_id='undefined'}) ->
     {'error', 'account_id_missing'};
 prepare_transaction(#wh_transaction{pvt_account_db='undefined'}) ->
@@ -597,7 +597,7 @@ prepare_transaction(Transaction) ->
 
 -spec prepare_call_transaction(transaction()) ->
                                       transaction() |
-                                      {'error', _}.
+                                      {'error', any()}.
 prepare_call_transaction(#wh_transaction{call_id='undefined'}) ->
     {'error', 'call_id_missing'};
 prepare_call_transaction(#wh_transaction{sub_account_id='undefined'
@@ -617,7 +617,7 @@ prepare_call_transaction(#wh_transaction{call_id=CallId
 
 -spec prepare_feature_activation_transaction(transaction()) ->
                                                     transaction() |
-                                                    {'error', _}.
+                                                    {'error', any()}.
 prepare_feature_activation_transaction(#wh_transaction{feature='undefined'}) ->
     {'error', 'feature_name_missing'};
 prepare_feature_activation_transaction(#wh_transaction{number='undefined'}) ->
@@ -631,7 +631,7 @@ prepare_feature_activation_transaction(Transaction) ->
 
 -spec prepare_number_activation_transaction(transaction()) ->
                                                    transaction() |
-                                                   {'error', _}.
+                                                   {'error', any()}.
 prepare_number_activation_transaction(#wh_transaction{number='undefined'}) ->
     {'error', 'number_missing'};
 prepare_number_activation_transaction(#wh_transaction{sub_account_id='undefined'
@@ -643,7 +643,7 @@ prepare_number_activation_transaction(Transaction) ->
 
 -spec prepare_manual_addition_transaction(transaction()) ->
                                                  transaction() |
-                                                 {'error', _}.
+                                                 {'error', any()}.
 prepare_manual_addition_transaction(#wh_transaction{bookkeeper_info='undefined'}) ->
     {'error', 'bookkeeper_info_missing'};
 prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined'

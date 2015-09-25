@@ -67,7 +67,7 @@ init([]) ->
     {ok, #state{}}.
 
 %% @hidden
--spec handle_cast(stop | term(), state()) -> {noreply, state()} | {stop, normal | {error, term()}, state()}.
+-spec handle_cast(stop | any(), state()) -> {noreply, state()} | {stop, normal | {error, any()}, state()}.
 handle_cast(stop, State) ->
     {stop, normal, State};
 
@@ -82,7 +82,7 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 %% @hidden
--spec handle_call(X::term(), {pid(), reference()}, state()) -> {reply, {apns:msg(), [apns:msg()]}, state()}.
+-spec handle_call(X::any(), {pid(), reference()}, state()) -> {reply, {apns:msg(), [apns:msg()]}, state()}.
 handle_call({fail, ID}, _From, #state{queue=Queue}=State) ->
     {reply, recover_fail(ID, Queue), State#state{queue=queue:new()}};
 
@@ -90,17 +90,17 @@ handle_call(_Msg, _From, State) ->
     {reply, ok, State}.
 
 %% @hidden
--spec handle_info(term(), state()) -> {noreply, state()}.
+-spec handle_info(any(), state()) -> {noreply, state()}.
 handle_info(_Info, State) ->
     {noreply, State}.
 
 %% @hidden
--spec terminate(term(), state()) -> ok.
+-spec terminate(any(), state()) -> ok.
 terminate(_Reason, _State) ->
     ok.
 
 %% @hidden
--spec code_change(term(), state(), term()) -> {ok, state()}.
+-spec code_change(any(), state(), any()) -> {ok, state()}.
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 

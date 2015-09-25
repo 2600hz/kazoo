@@ -213,7 +213,7 @@ set_reseller_id(Reseller, Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_services(ne_binary(), ne_binary(), term()) -> 'ok'.
+-spec maybe_update_services(ne_binary(), ne_binary(), any()) -> 'ok'.
 maybe_update_services(AccountId, Key, Value) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R} ->
@@ -234,7 +234,7 @@ maybe_update_services(AccountId, Key, Value) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_account_definition(ne_binary(), ne_binary(), term()) -> 'ok'.
+-spec update_account_definition(ne_binary(), ne_binary(), any()) -> 'ok'.
 update_account_definition(AccountId, Key, Value) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of

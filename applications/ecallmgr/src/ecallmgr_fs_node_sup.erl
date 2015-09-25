@@ -125,7 +125,7 @@ init([Node, Options]) ->
 
     {'ok', {SupFlags, Children}}.
 
--spec srv([{atom(), pid(), _, _},...] | [], list()) -> api_pid().
+-spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';
 srv([{Name, Pid, _, _} | Children], Suffix) ->
     case lists:prefix(Suffix, lists:reverse(wh_util:to_list(Name))) of

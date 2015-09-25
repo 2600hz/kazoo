@@ -368,6 +368,6 @@ maybe_restrict_call(#ts_callflow_state{acctid=AccountId
     lager:debug("Trunkstore classified number as ~p", [Classification]),
     Username = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Username">>], RRObj),
     Realm = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Realm">>], RRObj),
-    {'ok', Opts} = ts_util:lookup_user_flags(Username, Realm, AccountId),
+    {'ok', Opts} = ?MODULE:lookup_user_flags(Username, Realm, AccountId),
     lager:debug("Trunkstore lookup_user_flag results: ~p", [Opts]),
     wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], Opts) =:= <<"deny">>.

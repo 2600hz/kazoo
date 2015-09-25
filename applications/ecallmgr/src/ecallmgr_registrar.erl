@@ -107,7 +107,7 @@
                       }).
 
 -type registration() :: #registration{}.
--type registrations() :: [registration(),...] | [].
+-type registrations() :: [registration()].
 
 %%%===================================================================
 %%% API
@@ -495,7 +495,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), term()) -> 'ok'.
+-spec terminate(any(), any()) -> 'ok'.
 terminate(_Reason, _) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("ecallmgr registrar ~p termination", [_Reason]).
@@ -661,7 +661,7 @@ expire_objects() ->
                 ],
     expire_object(ets:select(?MODULE, MatchSpec, 1)).
 
--spec expire_object(_) -> 'ok'.
+-spec expire_object(any()) -> 'ok'.
 expire_object('$end_of_table') -> 'ok';
 expire_object({[#registration{id=Id}=Reg], Continuation}) ->
     _ = wh_util:spawn(fun() -> maybe_send_deregister_notice(Reg) end),
@@ -700,7 +700,7 @@ build_query_spec(JObj, CountOnly) ->
      }
     ].
 
--spec build_query_spec_maybe_username(ne_binary(), wh_json:object()) -> _.
+-spec build_query_spec_maybe_username(ne_binary(), wh_json:object()) -> any().
 build_query_spec_maybe_username(Realm, JObj) ->
     case wh_json:get_value(<<"Username">>, JObj) of
         'undefined' ->
@@ -1174,7 +1174,7 @@ get_fs_contact(Props) ->
     <<User/binary, "@", (wh_util:to_binary(mochiweb_util:unquote(AfterAt)))/binary>>.
 
 -type ets_continuation() :: '$end_of_table' |
-                            {registrations(), term()}.
+                            {registrations(), any()}.
 
 -spec print_summary(ets_continuation()) -> 'ok'.
 -spec print_summary(ets_continuation(), non_neg_integer()) -> 'ok'.
@@ -1245,7 +1245,7 @@ print_property(Key, Value, _) ->
                          {'transport', ne_binary()} |
                          {'fs_path', ne_binary()} |
                          {'received', ne_binary()}.
--type contact_params() :: [contact_param(),...] | [].
+-type contact_params() :: [contact_param()].
 
 -spec breakup_contact(text()) -> contact_params().
 breakup_contact(Contact) when is_binary(Contact) ->

@@ -35,7 +35,7 @@
                             ,account_id :: ne_binary()
                             ,email :: ne_binary()
                             ,public_key_fingerprints :: ne_binary()
-                            ,public_key :: term()
+                            ,public_key :: any()
                             ,private_key :: public_key:rsa_private_key() | public_key:dsa_private_key()
                             ,provider :: oauth_provider()
                            }).

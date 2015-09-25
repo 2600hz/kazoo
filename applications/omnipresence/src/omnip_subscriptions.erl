@@ -688,7 +688,7 @@ subscribe(#omnip_subscription{user=_U
             {'subscribe', S}
     end.
 
--spec notify_update(wh_json:object()) -> 'ok' | {'error', _}.
+-spec notify_update(wh_json:object()) -> 'ok' | {'error', any()}.
 notify_update(JObj) ->
     Sequence = wh_json:get_integer_value(<<"Sequence">>, JObj),
     Reply = wh_json:get_integer_value(<<"Reply">>, JObj),

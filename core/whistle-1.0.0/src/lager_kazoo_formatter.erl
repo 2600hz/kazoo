@@ -76,7 +76,7 @@ format(Message,Config,Colors) ->
 format(Msg, Config) ->
     format(Msg, Config, []).
 
--spec output(term(),lager_msg:lager_msg()) -> iolist().
+-spec output(any(), lager_msg:lager_msg()) -> iolist().
 output(message,Msg) -> lager_msg:message(Msg);
 output(date,Msg) ->
     {D, _T} = lager_msg:datetime(Msg),

@@ -191,10 +191,10 @@ fetch(<<_/binary>> = Account) ->
 
 -spec fetch_services_doc(ne_binary()) ->
                                 {'ok', wh_json:object()} |
-                                {'error', _}.
+                                {'error', any()}.
 -spec fetch_services_doc(ne_binary(), boolean()) ->
                                 {'ok', wh_json:object()} |
-                                {'error', _}.
+                                {'error', any()}.
 fetch_services_doc(AccountId) ->
     fetch_services_doc(AccountId, 'false').
 
@@ -1054,7 +1054,7 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #wh_services{jobj=JObj}
     case kzd_services:item_quantity(JObj, CategoryId, ItemId) of
         Quantity -> JObjs;
         OldQuantity ->
-            ServicesJObj = wh_services:to_json(Services),
+            ServicesJObj = ?MODULE:to_json(Services),
             Plans = wh_service_plans:from_service_json(ServicesJObj),
             ServicePlan = wh_service_plans:public_json(Plans),
             ItemPlan = get_item_plan(CategoryId, ItemId, ServicePlan),

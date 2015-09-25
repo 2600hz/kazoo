@@ -51,7 +51,7 @@ name_to_method(Name) ->
 resolve_method(Method) ->
     props:get_value(Method, lists:zip(methods(), names())).
 
--spec handle_rate_req(wh_json:object(), wh_proplist()) -> _.
+-spec handle_rate_req(wh_json:object(), wh_proplist()) -> any().
 handle_rate_req(JObj, _Props) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
     IncludeRealm = wh_json:is_true(<<"With-Realm">>, JObj, 'false'),

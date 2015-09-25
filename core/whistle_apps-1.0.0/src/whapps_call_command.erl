@@ -199,7 +199,7 @@
                               {'tts', ne_binary()} |
                               {'tts', ne_binary(), ne_binary()} |
                               {'tts', ne_binary(), ne_binary(), ne_binary()}.
--type audio_macro_prompts() :: [audio_macro_prompt(),...] | [].
+-type audio_macro_prompts() :: [audio_macro_prompt()].
 -export_type([audio_macro_prompt/0
               ,audio_macro_prompts/0
              ]).
@@ -353,7 +353,7 @@ channel_status_filter([JObj|JObjs]) ->
 %%      for them in the receive blocks below.
 %% @end
 %%--------------------------------------------------------------------
--type relay_fun() :: fun((pid() | atom(), term()) -> any()).
+-type relay_fun() :: fun((pid() | atom(), any()) -> any()).
 -spec relay_event(pid(), wh_json:object()) -> any().
 -spec relay_event(pid(), wh_json:object(), relay_fun()) -> any().
 relay_event(Pid, JObj) ->
@@ -366,7 +366,7 @@ relay_event(Pid, JObj, RelayFun) ->
                            {'error', 'timeout'}.
 -spec receive_event(wh_timeout(), boolean()) ->
                            {'ok', wh_json:object()} |
-                           {'other', wh_json:object() | term()} |
+                           {'other', wh_json:object() | any()} |
                            {'error', 'timeout'}.
 receive_event(Timeout) -> receive_event(Timeout, 'true').
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
@@ -2135,13 +2135,13 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                                         {'noop_complete'} |
                                         {'continue'} |
                                         {'decrement'} |
-                                        {'error', _}.
+                                        {'error', any()}.
 -spec handle_collect_digit_event(wh_json:object(), api_binary(), {ne_binary(), ne_binary(), ne_binary()}) ->
                                         {'dtmf', ne_binary()} |
                                         {'noop_complete'} |
                                         {'continue'} |
                                         {'decrement'} |
-                                        {'error', _}.
+                                        {'error', any()}.
 handle_collect_digit_event(JObj, NoopId) ->
     handle_collect_digit_event(JObj, NoopId, get_event_type(JObj)).
 

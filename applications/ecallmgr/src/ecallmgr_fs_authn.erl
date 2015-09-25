@@ -243,7 +243,7 @@ handle_lookup_resp(_, _, _, {'error', _R}) ->
 
 -spec maybe_query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), wh_proplist()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
     case wh_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -252,7 +252,7 @@ maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
 
 -spec query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), wh_proplist()) ->
                              {'ok', wh_json:object()} |
-                             {'error', _}.
+                             {'error', any()}.
 query_registrar(Realm, Username, Node, Id, Method, Props) ->
     lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm, Method]),
     Req = [{<<"Msg-ID">>, Id}

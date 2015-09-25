@@ -62,7 +62,7 @@ find_candidate_translators(<<"application/json">>) ->
 find_candidate_translators(_) ->
     ['kzt_twiml', 'kzt_kazoo'].
 
--spec is_recognized(atom(), term()) -> {boolean(), term()}.
+-spec is_recognized(atom(), any()) -> {boolean(), any()}.
 is_recognized(M, Cmds) ->
     case catch M:parse_cmds(Cmds) of
         {'error', _E} -> {'false', []};

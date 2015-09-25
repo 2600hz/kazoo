@@ -207,7 +207,7 @@ maybe_remove_aggregate(_ResourceId, _Context, _Status) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -type sip_auth_ip() :: {ne_binary(), ne_binary()}.
--type sip_auth_ips() :: [sip_auth_ip(),...] | [].
+-type sip_auth_ips() :: [sip_auth_ip()].
 
 -spec get_all_sip_auth_ips() -> sip_auth_ips().
 get_all_sip_auth_ips() ->
@@ -255,7 +255,7 @@ extract_all_ips(JObj) ->
                 end, [], wh_json:get_keys(JObj)).
 
 -type gateway_ip() :: {non_neg_integer(), api_binary(), api_binary()}.
--type gateway_ips() :: [gateway_ip(),...] | [].
+-type gateway_ips() :: [gateway_ip()].
 -spec extract_gateway_ips(wh_json:objects(), non_neg_integer(), gateway_ips()) -> gateway_ips().
 extract_gateway_ips([], _, IPs) -> IPs;
 extract_gateway_ips([Gateway|Gateways], Idx, IPs) ->

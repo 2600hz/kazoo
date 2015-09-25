@@ -18,7 +18,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -spec load(ne_binary()) -> {'ok', wh_json:object()} |
-                           {'error', term()}.
+                           {'error', any()}.
 load(<<_/binary>> = Schema) ->
     case couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
@@ -101,7 +101,7 @@ maybe_add_default(Key, Default, JObj) ->
 {'default_schema_ver', binary()} |
 {'schema_loader_fun', fun((binary()) -> {'ok', jesse:json_term()} | jesse:json_term() | 'not_found')}.
 
--type jesse_options() :: [jesse_option(),...] | [].
+-type jesse_options() :: [jesse_option()].
 
 -spec validate(ne_binary() | wh_json:object(), wh_json:object()) ->
                       {'ok', wh_json:object()} |

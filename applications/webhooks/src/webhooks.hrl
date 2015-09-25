@@ -21,7 +21,7 @@
           ,custom_data :: wh_json:object() | '_'
          }).
 -type webhook() :: #webhook{}.
--type webhooks() :: [webhook(),...] | [].
+-type webhooks() :: [webhook()].
 
 -define(CACHE_NAME, 'webhooks_cache').
 

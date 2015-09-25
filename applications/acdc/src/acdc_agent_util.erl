@@ -172,7 +172,7 @@ reduce_agent_statuses(_, Data, {T, _}=Acc) ->
         _:_ -> Acc
     end.
 
--type receive_info() :: [{pid(), reference()} | 'undefined',...] | [].
+-type receive_info() :: [{pid(), reference()} | 'undefined'].
 -spec receive_statuses(receive_info()) ->
                               wh_json:object().
 -spec receive_statuses(receive_info(), wh_json:object()) ->
@@ -231,10 +231,10 @@ async_most_recent_db_statuses(AccountId, AgentId, Options, Pid) ->
 
 -spec most_recent_ets_statuses(ne_binary()) ->
                                       statuses_return() |
-                                      {'error', _}.
+                                      {'error', any()}.
 -spec most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
-                                      {'error', _}.
+                                      {'error', any()}.
 most_recent_ets_statuses(AccountId) ->
     most_recent_ets_statuses(AccountId, 'undefined', []).
 
@@ -261,10 +261,10 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
 
 -spec most_recent_db_statuses(ne_binary()) ->
                                      statuses_return() |
-                                     {'error', _}.
+                                     {'error', any()}.
 -spec most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
-                                      {'error', _}.
+                                      {'error', any()}.
 most_recent_db_statuses(AccountId) ->
     most_recent_db_statuses(AccountId, 'undefined', []).
 most_recent_db_statuses(AccountId, ?NE_BINARY = AgentId) ->

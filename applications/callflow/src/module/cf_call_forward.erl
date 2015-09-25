@@ -116,7 +116,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
 %% not, and disabling it if it is
 %% @end
 %%--------------------------------------------------------------------
--spec cf_toggle(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
+-spec cf_toggle(callfwd(), api_binary(), whapps_call:call()) -> callfwd().
 cf_toggle(#callfwd{enabled='false'
                    ,number=Number
                   }=CF, _, Call) when is_binary(Number), size(Number) > 0 ->
@@ -139,7 +139,7 @@ cf_toggle(CF, _, Call) ->
 %% document to enable call forwarding
 %% @end
 %%--------------------------------------------------------------------
--spec cf_activate(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
+-spec cf_activate(callfwd(), api_binary(), whapps_call:call()) -> callfwd().
 cf_activate(CF1, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     lager:info("activating call forwarding to '~s'", [CaptureGroup]),
     CF2 = #callfwd{number=Number} = cf_update_number(CF1, CaptureGroup, Call),
@@ -180,10 +180,9 @@ cf_deactivate(CF, Call) ->
 %% document with a new number
 %% @end
 %%--------------------------------------------------------------------
--spec cf_update_number(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
-cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call) when is_atom(CaptureGroup)
-                                                                                      ;CaptureGroup =:= <<>>
-                                                                                      ->
+-spec cf_update_number(callfwd(), api_binary(), whapps_call:call()) -> callfwd().
+cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call)
+  when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     EnterNumber = wh_media_util:get_prompt(<<"cf-enter_number">>, Call),
 
     NoopId = whapps_call_command:play(EnterNumber, Call),

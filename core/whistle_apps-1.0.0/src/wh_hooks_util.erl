@@ -181,7 +181,7 @@ handle_call_event(JObj, AccountId, HookEvent, _CallId, 'true') ->
     gproc:send(?HOOK_REG_RR(AccountId), Evt),
     gproc:send(?HOOK_REG_RR(AccountId, HookEvent), Evt).
 
--spec lookup_account_id(wh_json:object()) -> {'ok', ne_binary()} | {'error', _}.
+-spec lookup_account_id(wh_json:object()) -> {'ok', ne_binary()} | {'error', any()}.
 lookup_account_id(JObj) ->
     case kz_call_event:account_id(JObj) of
         'undefined' ->
@@ -193,7 +193,7 @@ lookup_account_id(JObj) ->
         Id -> {'ok', Id}
     end.
 
--spec fetch_account_id(ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec fetch_account_id(ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 fetch_account_id(Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {'ok', AccountId, _} ->

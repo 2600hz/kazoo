@@ -65,29 +65,29 @@ start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec new(wh_amqp_connection() | text()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 new(Broker) -> new(Broker, 'local').
 
 -spec new(wh_amqp_connection() | text(), text()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 new(<<_/binary>> = Broker, Zone) ->
     case broker_connections(Broker) =:= 0 of
         'false' -> {'error', 'exists'};
-        'true' -> wh_amqp_connections:add(Broker, Zone)
+        'true' -> ?MODULE:add(Broker, Zone)
     end;
 new(Broker, Zone) ->
     new(wh_util:to_binary(Broker), Zone).
 
 -spec add(wh_amqp_connection() | text()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 -spec add(wh_amqp_connection() | text(), text()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 -spec add(wh_amqp_connection() | text(), text(), list()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 
 add(Broker) -> add(Broker, 'local').
 

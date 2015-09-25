@@ -57,7 +57,7 @@ find_file_server(Id, Doc, Attachment) ->
 
 -spec start_file_server(ne_binary(), ne_binary(), ne_binary()) ->
                                {'ok', pid()} |
-                               {'error', _}.
+                               {'error', any()}.
 start_file_server(Id, Doc, Attachment) ->
     Name = [Id, Doc, Attachment],
     start_file_server(Id, Doc, Attachment, Name).
@@ -71,9 +71,8 @@ start_file_server(Id, Doc, Attachment, Name) ->
         {'error', _}=E -> E
     end.
 
--spec find_tts_server(term()) ->
-                             {'ok', pid()} |
-                             {'error', 'no_file_server'}.
+-spec find_tts_server(any()) -> {'ok', pid()} |
+                                {'error', 'no_file_server'}.
 find_tts_server(Id) ->
     case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Id, is_pid(P)] of
         [] -> {'error', 'no_file_server'};
@@ -82,10 +81,10 @@ find_tts_server(Id) ->
 
 -spec find_tts_server(ne_binary(), wh_json:object()) ->
                              {'ok', pid()} |
-                             {'error', _}.
+                             {'error', any()}.
 -spec find_tts_server(ne_binary(), wh_json:object(), ne_binary()) ->
                              {'ok', pid()} |
-                             {'error', _}.
+                             {'error', any()}.
 find_tts_server(Text, JObj) ->
     Id = wh_util:binary_md5(Text),
     find_tts_server(Text, JObj, Id).

@@ -547,7 +547,7 @@ get_http_verb(Method, Context) ->
 %%--------------------------------------------------------------------
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
--type cb_mods_with_tokens() :: [cb_mod_with_tokens(),...] | [].
+-type cb_mods_with_tokens() :: [cb_mod_with_tokens()].
 -spec parse_path_tokens(cb_context:context(), path_tokens()) -> cb_mods_with_tokens().
 parse_path_tokens(Context, Tokens) ->
     parse_path_tokens(Context, Tokens, []).
@@ -666,7 +666,7 @@ is_authentic(Req, Context, ?HTTP_OPTIONS) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
 is_authentic(Req, Context0, _ReqVerb) ->
-    Event = api_util:create_event_name(Context0, <<"authenticate">>),
+    Event = ?MODULE:create_event_name(Context0, <<"authenticate">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             is_authentic(Req, Context0, _ReqVerb, cb_context:req_nouns(Context0));
@@ -687,7 +687,7 @@ is_authentic(Req, Context, _ReqVerb, []) ->
     lager:debug("failed to authenticate"),
     ?MODULE:halt(Req, cb_context:add_system_error('invalid_credentials', Context));
 is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
-    Event = api_util:create_event_name(Context, <<"authenticate.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(Context, <<"authenticate.", Mod/binary>>),
     Payload = [Context | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [] ->
@@ -754,7 +754,7 @@ is_permitted_verb(Req, Context, ?HTTP_OPTIONS) ->
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
 is_permitted_verb(Req, Context0, _ReqVerb) ->
-    Event = api_util:create_event_name(Context0, <<"authorize">>),
+    Event = ?MODULE:create_event_name(Context0, <<"authorize">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
@@ -776,7 +776,7 @@ is_permitted_nouns(Req, Context, _ReqVerb, []) ->
     lager:debug("no one authz'd the request"),
     ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context));
 is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
-    Event = api_util:create_event_name(Context0, <<"authorize.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [] ->
@@ -808,7 +808,7 @@ is_known_content_type(Req, Context, ?HTTP_DELETE) ->
 is_known_content_type(Req0, Context0, _ReqVerb) ->
     Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = api_util:create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
+                            Event = ?MODULE:create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, cb_context:req_nouns(Context0)),
@@ -836,7 +836,7 @@ is_known_content_type(Req, Context, CT, CTAs) ->
 fold_in_content_type({Type, Sub}, Acc) ->
     [{Type, Sub, []} | Acc].
 
--spec is_acceptable_content_type(content_type(), [content_type(),...] | []) -> boolean().
+-spec is_acceptable_content_type(content_type(), [content_type()]) -> boolean().
 is_acceptable_content_type(CTA, CTAs) ->
     [ 'true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
 
@@ -874,7 +874,7 @@ does_resource_exist(Context) ->
     does_resource_exist(Context, cb_context:req_nouns(Context)).
 
 does_resource_exist(Context, [{Mod, Params}|_]) ->
-    Event = api_util:create_event_name(Context, <<"resource_exists.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(Context, <<"resource_exists.", Mod/binary>>),
     Responses = crossbar_bindings:map(Event, Params),
     crossbar_bindings:any(Responses) and 'true';
 does_resource_exist(_Context, _ReqNouns) ->
@@ -914,7 +914,7 @@ validate(Context, ReqNouns) ->
 
 -spec validate_data(cb_context:context(), list()) -> cb_context:context().
 validate_data(Context, [{Mod, Params}|_]) ->
-    Event = api_util:create_event_name(Context, <<"validate.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(Context, <<"validate.", Mod/binary>>),
     Payload = [cb_context:set_resp_status(Context, 'fatal') | Params],
     cb_context:import_errors(crossbar_bindings:fold(Event, Payload)).
 
@@ -928,7 +928,7 @@ validate_resources(Context, ReqNouns) ->
 
 -spec validate_resources_fold(req_noun(), cb_context:context()) -> cb_context:context().
 validate_resources_fold({Mod, Params}, ContextAcc) ->
-    Event = api_util:create_event_name(ContextAcc, <<"validate_resource.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(ContextAcc, <<"validate_resource.", Mod/binary>>),
     Payload = [ContextAcc | Params],
     crossbar_bindings:fold(Event, Payload).
 
@@ -941,7 +941,7 @@ validate_resources_fold({Mod, Params}, ContextAcc) ->
 %%--------------------------------------------------------------------
 -spec process_billing(cb_context:context()) -> cb_context:context().
 process_billing(Context)->
-    Event = api_util:create_event_name(Context, <<"billing">>),
+    Event = ?MODULE:create_event_name(Context, <<"billing">>),
     process_billing_response(Context, crossbar_bindings:fold(Event, Context)).
 
 process_billing_response(Context, NewContext) ->

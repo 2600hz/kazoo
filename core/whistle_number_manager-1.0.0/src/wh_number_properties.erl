@@ -22,8 +22,8 @@
 
 -include("wnm.hrl").
 
--spec get(atom(), number_properties()) -> term().
--spec get(atom(), number_properties(), term()) -> term().
+-spec get(atom(), number_properties()) -> any().
+-spec get(atom(), number_properties(), any()) -> any().
 get(Key, Props) ->
     get(Key, Props, 'undefined').
 get(Key, Props, Default) ->

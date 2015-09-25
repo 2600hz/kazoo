@@ -38,7 +38,7 @@
 
 -type start_args() :: [{'table_id', atom()} |
                        {'table_options', list()} |
-                       {'gift_data', term()} |
+                       {'gift_data', any()} |
                        {'find_me_function', find_me_fun()}
                        ,...
                       ].

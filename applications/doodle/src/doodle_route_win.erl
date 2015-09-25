@@ -27,7 +27,7 @@
          ,maybe_replay_sms/2
         ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     wh_util:put_callid(CallId),

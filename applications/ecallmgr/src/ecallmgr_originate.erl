@@ -34,8 +34,8 @@
                 ,app :: api_binary()
                 ,dialstrings :: api_binary()
                 ,queue :: api_binary()
-                ,control_pid :: 'undefined' | pid()
-                ,tref :: 'undefined' | reference()
+                ,control_pid :: api_pid()
+                ,tref :: api_reference()
                 ,fetch_id = wh_util:rand_hex_binary(16)
                }).
 -type state() :: #state{}.
@@ -781,7 +781,7 @@ find_max_endpoint_timeout([EP|EPs], T) ->
 
 -spec start_control_process(state()) ->
                                    {'ok', state()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 start_control_process(#state{originate_req=JObj
                              ,node=Node
                              ,uuid={_, Id}=UUID

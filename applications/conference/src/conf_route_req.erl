@@ -46,7 +46,7 @@ send_route_response(JObj, Q, Call, Conference) ->
     whapps_util:amqp_pool_send(Resp, Publisher),
     lager:info("conference knows how to route the call! sent park response").
 
--spec find_conference(whapps_call:call()) -> {'error', _} |
+-spec find_conference(whapps_call:call()) -> {'error', any()} |
                                              {'ok', whapps_conference:conference()}.
 find_conference(Call) ->
     find_conference(Call, find_account_db(Call)).

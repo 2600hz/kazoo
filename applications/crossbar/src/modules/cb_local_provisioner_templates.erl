@@ -323,7 +323,7 @@ update_provisioner_template(DocId, #cb_context{}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec on_successful_validation(api_binary(), #cb_context{}) -> #cb_context{}.
 on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
     C = Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
                                                    ,{<<"pvt_provider">>, <<"provisioner.net">>}

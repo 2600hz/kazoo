@@ -1032,9 +1032,9 @@ skel_v(JObj) -> skel_v(wh_json:to_proplist(JObj)).
                        'webhook_disabled' |
                        'denied_emergency_bridge' |
                        'skel'.
--type restrictions() :: [restriction(),...] | [].
+-type restrictions() :: [restriction()].
 -type option() :: {'restrict_to', restrictions()}.
--type options() :: [option(),...] | [].
+-type options() :: [option()].
 
 -spec bind_q(ne_binary(), options()) -> 'ok'.
 bind_q(Queue, Props) ->

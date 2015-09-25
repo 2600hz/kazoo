@@ -134,7 +134,7 @@ fetch_ticket(JobId, Authorization) ->
             wh_json:new()
     end.
 
--spec update_job_status(ne_binary(), ne_binary(), ne_binary() | wh_json:object()) -> _.
+-spec update_job_status(ne_binary(), ne_binary(), ne_binary() | wh_json:object()) -> any().
 update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>=Status) ->
     StateObj = wh_json:set_value(<<"state">>, wh_json:set_value(<<"type">>, Status, wh_json:new()), wh_json:new()),
     update_job_status(PrinterId, JobId, StateObj);
@@ -189,7 +189,7 @@ send_update_job_status(JobId, Status, Authorization) ->
 
 -spec download_file(ne_binary(), ne_binary()) ->
                            {'ok', ne_binary(), ne_binary()} |
-                           {'error', _}.
+                           {'error', any()}.
 download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
     case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
@@ -243,7 +243,7 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
 
 -spec save_fax_document(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
                                {'ok', wh_json:object()} |
-                               {'error', _}.
+                               {'error', any()}.
 save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     {'ok', FaxBoxDoc} = get_faxbox_doc(PrinterId),
 
@@ -306,7 +306,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
 
 -spec get_faxbox_doc(ne_binary()) ->
                             {'ok', wh_json:object()} |
-                            {'error', _}.
+                            {'error', any()}.
 get_faxbox_doc(PrinterId) ->
     case wh_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
         {'ok', _Doc}=OK -> OK;
@@ -316,7 +316,7 @@ get_faxbox_doc(PrinterId) ->
 
 -spec fetch_faxbox_doc(ne_binary()) ->
                               {'ok', wh_json:object()} |
-                              {'error', _}.
+                              {'error', any()}.
 fetch_faxbox_doc(PrinterId) ->
     ViewOptions = [{'key', PrinterId}, 'include_docs'],
     case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>, ViewOptions) of
@@ -353,7 +353,7 @@ get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
 
 -spec get_printer_oauth_credentials(ne_binary()) ->
                                            {'ok', ne_binary()} |
-                                           {'error', _}.
+                                           {'error', any()}.
 get_printer_oauth_credentials(PrinterId) ->
     case wh_cache:peek_local(?FAX_CACHE, {'gcp', PrinterId }) of
         {'ok', _Auth}=OK -> OK;
@@ -363,7 +363,7 @@ get_printer_oauth_credentials(PrinterId) ->
 
 -spec fetch_printer_oauth_credentials(ne_binary()) ->
                                              {'ok', ne_binary()} |
-                                             {'error', _}.
+                                             {'error', any()}.
 fetch_printer_oauth_credentials(PrinterId) ->
     case get_faxbox_doc(PrinterId) of
         {'error', _}=E -> E;
@@ -408,7 +408,7 @@ check_registration(AppId, <<"registered">>, JObj) ->
     end;
 check_registration(_, _, _JObj) -> 'ok'.
 
--spec process_registration_result(boolean(), ne_binary(), wh_json:object(), wh_json:object() ) -> _.
+-spec process_registration_result(boolean(), ne_binary(), wh_json:object(), wh_json:object() ) -> any().
 process_registration_result('true', AppId, JObj, Result) ->
     _AccountId = wh_doc:account_id(JObj),
     _PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
@@ -477,7 +477,7 @@ update_printer(JObj) ->
     {'ok', _} = couch_mgr:ensure_saved(?WH_FAXES_DB, JObj),
     'ok'.
 
--spec handle_faxbox_deleted(wh_json:object(), wh_proplist()) -> _.
+-spec handle_faxbox_deleted(wh_json:object(), wh_proplist()) -> any().
 handle_faxbox_deleted(JObj, _Props) ->
     lager:debug("faxbox_deleted ~p",[JObj]),
     'true' = wapi_conf:doc_update_v(JObj),

@@ -104,22 +104,22 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), any()} | whapps_call:call()) -> 'ok'.
 bind_to_call_events(Call) ->
     bind_to_call_events(Call, self()).
 
--spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), any()} | whapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
 bind_to_call_events(Call, Pid) -> bind_to_call_events(whapps_call:call_id(Call), Pid).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | {api_binary(), any()} | whapps_call:call()) -> 'ok'.
 unbind_from_call_events(Call) ->
     unbind_from_call_events(Call, self()).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | {api_binary(), any()} | whapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _Pid) -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);

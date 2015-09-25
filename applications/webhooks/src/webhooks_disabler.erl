@@ -30,7 +30,7 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
--spec init(_) -> {'ok', reference()}.
+-spec init(any()) -> {'ok', reference()}.
 init(_) ->
     wh_util:put_callid(?MODULE),
     {'ok', start_check_timer()}.
@@ -64,7 +64,7 @@ check_failed_attempts() ->
     check_failures(Failures).
 
 -type failure() :: {{ne_binary(), ne_binary()}, integer()}.
--type failures() :: [failure(),...] | [].
+-type failures() :: [failure()].
 
 -spec find_failures() -> failures().
 -spec find_failures([tuple()]) -> failures().

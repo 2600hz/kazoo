@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> _.
+-spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     case get_endpoints(wh_json:get_value(<<"endpoints">>, Data, []), Call) of
         [] ->
@@ -62,8 +62,7 @@ get_endpoints(Members, Call) ->
                         end
                 end, [], Builders).
 
--spec resolve_endpoint_ids(wh_json:objects(), whapps_call:call()) ->
-                                  [] | [{ne_binary(), wh_json:object()},...].
+-spec resolve_endpoint_ids(wh_json:objects(), whapps_call:call()) -> [{ne_binary(), wh_json:object()}].
 resolve_endpoint_ids(Members, Call) ->
     [{Id, wh_json:set_value(<<"source">>, ?MODULE, Member)}
      || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Call)
@@ -72,7 +71,7 @@ resolve_endpoint_ids(Members, Call) ->
     ].
 
 -type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
--type endpoint_intermediates() :: [] | [endpoint_intermediate(),...].
+-type endpoint_intermediates() :: [endpoint_intermediate()].
 -spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), whapps_call:call()) ->
                                   endpoint_intermediates().
 resolve_endpoint_ids([], EndpointIds, _) ->

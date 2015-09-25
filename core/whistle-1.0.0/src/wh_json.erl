@@ -142,19 +142,19 @@ try_converting(JSON, E) ->
             throw(E)
     end.
 
--spec is_empty(term()) -> boolean().
+-spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
--spec is_json_object(term()) -> boolean().
--spec is_json_object(key(), term()) -> boolean().
+-spec is_json_object(any()) -> boolean().
+-spec is_json_object(key(), any()) -> boolean().
 is_json_object(?JSON_WRAPPER(P)) when is_list(P) -> 'true';
 is_json_object(_) -> 'false'.
 
 is_json_object(Key, JObj) ->
     is_json_object(get_value(Key, JObj)).
 
--spec is_valid_json_object(term()) -> boolean().
+-spec is_valid_json_object(any()) -> boolean().
 is_valid_json_object(MaybeJObj) ->
     try
         lists:all(fun(K) ->
@@ -294,7 +294,7 @@ encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [Prefix, <<"
 encode_kv(<<>>, K, Sep, V) -> [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
 encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>, Sep, wh_util:to_binary(V)].
 
--spec encode_kv(iolist() | binary(), ne_binary(), [string(),...] | [], ne_binary(), iolist()) -> iolist().
+-spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
     lists:reverse([ encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
 encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
@@ -337,7 +337,7 @@ all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
 any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:any(Pred, Prop).
 
--spec foldl(fun((key(), json_term(), _) -> _), _, object()) -> _.
+-spec foldl(fun((key(), json_term(), any()) -> any()), any(), object()) -> any().
 foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
     lists:foldl(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
@@ -363,7 +363,7 @@ get_list_value(Key, JObj, Default) ->
         _Else -> Default
     end.
 
--spec get_binary_value(key(), object() | objects()) -> 'undefined' | binary().
+-spec get_binary_value(key(), object() | objects()) -> api_binary().
 -spec get_binary_value(key(), object() | objects(), Default) -> binary() | Default.
 get_binary_value(Key, JObj) ->
     get_binary_value(Key, JObj, 'undefined').
@@ -384,7 +384,7 @@ get_ne_binary_value(Key, JObj, Default) ->
         Value -> Value
     end.
 
--spec get_lower_binary(key(), object() | objects()) -> 'undefined' | binary().
+-spec get_lower_binary(key(), object() | objects()) -> api_binary().
 -spec get_lower_binary(key(), object() | objects(), Default) -> binary() | Default.
 get_lower_binary(Key, JObj) ->
     get_lower_binary(Key, JObj, 'undefined').
@@ -396,7 +396,7 @@ get_lower_binary(Key, JObj, Default) ->
     end.
 
 %% must be an existing atom
--spec get_atom_value(key(), object() | objects()) -> 'undefined' | atom().
+-spec get_atom_value(key(), object() | objects()) -> api_atom().
 -spec get_atom_value(key(), object() | objects(), Default) -> atom() | Default.
 get_atom_value(Key, JObj) ->
     get_atom_value(Key, JObj, 'undefined').
@@ -426,7 +426,7 @@ safe_cast(Value, Default, CastFun) ->
         _:_ -> Default
     end.
 
--spec get_number_value(key(), object() | objects()) -> 'undefined' | number().
+-spec get_number_value(key(), object() | objects()) -> api_number().
 -spec get_number_value(key(), object() | objects(), Default) -> number() | Default.
 get_number_value(Key, JObj) ->
     get_number_value(Key, JObj, 'undefined').
@@ -437,7 +437,7 @@ get_number_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun wh_util:to_number/1)
     end.
 
--spec get_float_value(key(), object() | objects()) -> 'undefined' | float().
+-spec get_float_value(key(), object() | objects()) -> api_float().
 -spec get_float_value(key(), object() | objects(), Default) -> float() | Default.
 get_float_value(Key, JObj) ->
     get_float_value(Key, JObj, 'undefined').
@@ -861,8 +861,8 @@ normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so
 normalize_key_char(C) -> C.
 
 -type search_replace_format() :: {ne_binary(), ne_binary()} |
-                                  {ne_binary(), ne_binary(), fun((term()) -> term())}.
--type search_replace_formatters() :: [search_replace_format(),...] | [].
+                                  {ne_binary(), ne_binary(), fun((any()) -> any())}.
+-type search_replace_formatters() :: [search_replace_format()].
 -spec normalize_jobj(object(), ne_binaries(), search_replace_formatters()) -> object().
 normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->
     normalize_jobj(

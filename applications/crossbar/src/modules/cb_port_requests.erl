@@ -890,7 +890,7 @@ summary_descendants_by_number(Context, Number) ->
       ,fun normalize_view_results/2
      ).
 
--type descendant_keys() :: [ne_binaries(),...] | [].
+-type descendant_keys() :: [ne_binaries()].
 
 -spec build_keys(cb_context:context(), ne_binary()) ->
                         descendant_keys().
@@ -1564,7 +1564,7 @@ remove_phone_number(Number, _, {_, Acc}) ->
 %%--------------------------------------------------------------------
 -spec get_phone_numbers_doc(cb_context:context()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),

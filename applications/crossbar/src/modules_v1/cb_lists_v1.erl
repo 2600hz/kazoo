@@ -131,7 +131,7 @@ check_list_schema(ListId, Context) ->
             crossbar_util:response('error', <<"API changed: entries not acceptable">>, 406, Context)
     end.
 
--spec filter_list_req_data({ne_binary(), _}) -> boolean().
+-spec filter_list_req_data({ne_binary(), any()}) -> boolean().
 filter_list_req_data({Key, _Val})
   when Key =:= <<"name">>;
        Key =:= <<"org">>;

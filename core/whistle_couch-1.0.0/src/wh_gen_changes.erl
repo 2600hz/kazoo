@@ -57,7 +57,7 @@ behaviour_info(_) ->
                       | 'longpoll'.
 -type changesoptions() :: [changeoption()].
 
--spec start_link(atom(), couchbeam_db(), changesoptions(), list()) -> term().
+-spec start_link(atom(), couchbeam_db(), changesoptions(), list()) -> any().
 start_link(Module, Db, Options, InitArgs) ->
     gen_server:start_link({'local', server_name(Db)}, ?MODULE
                           ,[Module, Db, Options, InitArgs], []
@@ -74,13 +74,13 @@ stop(Pid) when is_pid(Pid) -> gen_server:cast(Pid, 'stop').
 -spec get_seq(pid()) -> list().
 get_seq(Pid) when is_pid(Pid) -> gen_server:call(Pid, '$get_seq').
 
--spec call(pid() | atom(), _) -> _.
+-spec call(pid() | atom(), any()) -> any().
 call(Name, Request) -> gen_server:call(Name, Request).
 
--spec call(pid() | atom(), _, wh_timeout()) -> _.
+-spec call(pid() | atom(), any(), wh_timeout()) -> any().
 call(Name, Request, Timeout) -> gen_server:call(Name, Request, Timeout).
 
--spec cast(pid() | atom(), _) -> 'ok'.
+-spec cast(pid() | atom(), any()) -> 'ok'.
 cast(Dest, Request) -> gen_server:cast(Dest, Request).
 
 %%%===================================================================
@@ -101,7 +101,7 @@ cast(Dest, Request) -> gen_server:cast(Dest, Request).
 init([Module, Db, Options, InitArgs]) ->
     case Module:init(InitArgs) of
         {'ok', ModState} ->
-            wh_gen_changes:cast(self(), '$start_change_feed'),
+            ?MODULE:cast(self(), '$start_change_feed'),
             {'ok', #gen_changes_state{mod=Module
                                       ,modstate=ModState
                                       ,db=Db

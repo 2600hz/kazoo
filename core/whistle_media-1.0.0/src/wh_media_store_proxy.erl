@@ -15,7 +15,7 @@
 
 -include("whistle_media.hrl").
 
--spec init({_, _}, cowboy_req:req(), wh_proplist()) ->
+-spec init({any(), any()}, cowboy_req:req(), wh_proplist()) ->
                   {'ok', cowboy_req:req(), ne_binaries()} |
                   {'shutdown',  cowboy_req:req(), 'ok'}.
 init({_Transport, _Proto}, Req0, _Opts) ->
@@ -232,14 +232,14 @@ success(JObj, Req0) ->
     {'ok', Req2} = cowboy_req:reply(200, Req1),
     Req2.
 
--spec failure(term(), cowboy_req:req()) -> cowboy_req:req().
+-spec failure(any(), cowboy_req:req()) -> cowboy_req:req().
 failure(Reason, Req0) ->
     Body = io_lib:format("~p~n", [Reason]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),
     {'ok', Req2} = cowboy_req:reply(500, Req1),
     Req2.
 
--spec terminate(_, cowboy_req:req(), _) -> cowboy_req:req().
+-spec terminate(any(), cowboy_req:req(), any()) -> cowboy_req:req().
 terminate(_Reason, Req, _State) ->
     lager:debug("terminating store proxy: ~p", [_Reason]),
     Req.

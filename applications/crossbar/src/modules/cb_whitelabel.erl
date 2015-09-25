@@ -291,7 +291,7 @@ validate_attachment(Context, ?WELCOME_REQ, ?HTTP_GET) ->
 validate_attachment(Context, AttachType, ?HTTP_POST) ->
     validate_attachment_post(Context, AttachType, cb_context:req_files(Context)).
 
--spec validate_attachment_post(cb_context:context(), path_token(), _) ->
+-spec validate_attachment_post(cb_context:context(), path_token(), any()) ->
                                       cb_context:context().
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
     cb_context:add_validation_error(

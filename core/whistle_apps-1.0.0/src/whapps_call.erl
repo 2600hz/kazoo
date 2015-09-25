@@ -463,7 +463,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"From-Tag">>, from_tag(Call)}
     ].
 
--spec is_call(_) -> boolean().
+-spec is_call(any()) -> boolean().
 is_call(#whapps_call{}) -> 'true';
 is_call(_) -> 'false'.
 
@@ -813,12 +813,12 @@ set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->
 from_tag(#whapps_call{from_tag=FromTag}) ->
     FromTag.
 
--spec set_custom_channel_var(term(), term(), call()) -> call().
+-spec set_custom_channel_var(any(), any(), call()) -> call().
 set_custom_channel_var(Key, Value, Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), 'undefined', Call),
     insert_custom_channel_var(Key, Value, Call).
 
--spec insert_custom_channel_var(term(), term(), call()) -> call().
+-spec insert_custom_channel_var(any(), any(), call()) -> call().
 insert_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
 
@@ -834,11 +834,11 @@ update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->
     whapps_call_command:set(NewCCVs, 'undefined', Call),
     handle_ccvs_update(NewCCVs, Call).
 
--spec custom_channel_var(term(), Default, call()) -> Default | term().
+-spec custom_channel_var(any(), Default, call()) -> Default | _.
 custom_channel_var(Key, Default, #whapps_call{ccvs=CCVs}) ->
     wh_json:get_value(Key, CCVs, Default).
 
--spec custom_channel_var(term(), call()) -> term().
+-spec custom_channel_var(any(), call()) -> any().
 custom_channel_var(Key, #whapps_call{ccvs=CCVs}) ->
     wh_json:get_value(Key, CCVs).
 
@@ -884,15 +884,15 @@ clear_custom_publish_function(#whapps_call{}=Call) ->
 -spec custom_publish_function(call()) -> 'undefined' | whapps_custom_publish().
 custom_publish_function(#whapps_call{custom_publish_fun=Fun}) -> Fun.
 
--spec kvs_append(term(), term(), call()) -> call().
+-spec kvs_append(any(), any(), call()) -> call().
 kvs_append(Key, Value, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:append(wh_util:to_binary(Key), Value, Dict)}.
 
--spec kvs_append_list(term(), [term(),...], call()) -> call().
+-spec kvs_append_list(any(), [any(),...], call()) -> call().
 kvs_append_list(Key, ValList, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:append_list(wh_util:to_binary(Key), ValList, Dict)}.
 
--spec kvs_erase(term() | [term(),...], call()) -> call().
+-spec kvs_erase(any() | [any(),...], call()) -> call().
 kvs_erase(Keys, #whapps_call{kvs=Dict}=Call) when is_list(Keys)->
     Call#whapps_call{kvs=lists:foldl(fun(K, D) -> orddict:erase(wh_util:to_binary(K), D) end, Dict, Keys)};
 kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
@@ -901,8 +901,8 @@ kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
 -spec kvs_flush(call()) -> call().
 kvs_flush(#whapps_call{}=Call) -> Call#whapps_call{kvs=orddict:new()}.
 
--spec kvs_fetch(wh_json:key(), call()) -> term().
--spec kvs_fetch(wh_json:key(), Default, call()) -> term() | Default.
+-spec kvs_fetch(wh_json:key(), call()) -> any().
+-spec kvs_fetch(wh_json:key(), Default, call()) -> any() | Default.
 kvs_fetch(Key, Call) -> kvs_fetch(Key, 'undefined', Call).
 kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
@@ -911,19 +911,19 @@ kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
         'error':'function_clause' -> Default
     end.
 
--spec kvs_fetch_keys(call()) -> [term(),...].
+-spec kvs_fetch_keys(call()) -> [any(),...].
 kvs_fetch_keys(#whapps_call{kvs=Dict}) -> orddict:fetch_keys(Dict).
 
--spec kvs_filter(fun((term(), term()) -> boolean()), call()) ->
+-spec kvs_filter(fun((any(), any()) -> boolean()), call()) ->
                               call().
 kvs_filter(Pred, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:filter(Pred, Dict)}.
 
--spec kvs_find(term(), call()) -> {'ok', term()} | 'error'.
+-spec kvs_find(any(), call()) -> {'ok', any()} | 'error'.
 kvs_find(Key, #whapps_call{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
 
--spec kvs_fold(fun((term(), term(), term()) -> term()), term(), call()) -> call().
+-spec kvs_fold(fun((any(), any(), any()) -> any()), any(), call()) -> call().
 kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) -> orddict:fold(Fun, Acc0, Dict).
 
 -spec kvs_from_proplist(wh_proplist(), call()) -> call().
@@ -931,15 +931,15 @@ kvs_from_proplist(List, #whapps_call{kvs=Dict}=Call) ->
     L = orddict:from_list([{wh_util:to_binary(K), V} || {K, V} <- List]),
     Call#whapps_call{kvs=orddict:merge(fun(_, V1, _) -> V1 end, L, Dict)}.
 
--spec kvs_is_key(term(), call()) -> boolean().
+-spec kvs_is_key(any(), call()) -> boolean().
 kvs_is_key(Key, #whapps_call{kvs=Dict}) ->
     orddict:is_key(wh_util:to_binary(Key), Dict).
 
--spec kvs_map(fun((term(), term()) -> term()), call()) -> call().
+-spec kvs_map(fun((any(), any()) -> any()), call()) -> call().
 kvs_map(Pred, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:map(Pred, Dict)}.
 
--spec kvs_store(term(), term(), call()) -> call().
+-spec kvs_store(any(), any(), call()) -> call().
 kvs_store(Key, Value, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:store(wh_util:to_binary(Key), Value, Dict)}.
 
@@ -953,15 +953,15 @@ kvs_store_proplist(List, #whapps_call{kvs=Dict}=Call) ->
 kvs_to_proplist(#whapps_call{kvs=Dict}) ->
     orddict:to_list(Dict).
 
--spec kvs_update(term(), fun((term()) -> term()), call()) -> call().
+-spec kvs_update(any(), fun((any()) -> any()), call()) -> call().
 kvs_update(Key, Fun, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update(wh_util:to_binary(Key), Fun, Dict)}.
 
--spec kvs_update(term(), fun((term()) -> term()), term(), call()) -> call().
+-spec kvs_update(any(), fun((any()) -> any()), any(), call()) -> call().
 kvs_update(Key, Fun, Initial, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update(wh_util:to_binary(Key), Fun, Initial, Dict)}.
 
--spec kvs_update_counter(term(), number(), call()) -> call().
+-spec kvs_update_counter(any(), number(), call()) -> call().
 kvs_update_counter(Key, Number, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
 
@@ -1034,29 +1034,29 @@ retrieve(CallId, AppName) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--define(UPDATERS, [fun(C) -> whapps_call:set_call_id(<<"123456789ABCDEF">>, C) end
-                   ,fun(C) -> whapps_call:set_control_queue(<<"control_queue">>, C) end
-                   ,fun(C) -> whapps_call:set_controller_queue(<<"controller_queue">>, C) end
-                   ,fun(C) -> whapps_call:set_caller_id_name(<<"caller_id_name">>, C) end
-                   ,fun(C) -> whapps_call:set_caller_id_number(<<"caller_id_number">>, C) end
-                   ,fun(C) -> whapps_call:set_callee_id_name(<<"callee_id_name">>, C) end
-                   ,fun(C) -> whapps_call:set_callee_id_number(<<"callee_id_number">>, C) end
-                   ,fun(C) -> whapps_call:set_request(<<"request_user@request_domain">>, C) end
-                   ,fun(C) -> whapps_call:set_from(<<"from_user@from_domain">>, C) end
-                   ,fun(C) -> whapps_call:set_to(<<"to_user@to_domain">>, C) end
-                   ,fun(C) -> whapps_call:set_account_db(<<"account%2F12%2F3456789">>, C) end
-                   ,fun(C) -> whapps_call:set_account_id(<<"123456789">>, C) end
-                   ,fun(C) -> whapps_call:set_authorizing_id(<<"987654321">>, C) end
-                   ,fun(C) -> whapps_call:set_authorizing_type(<<"test">>, C) end
-                   ,fun(C) -> whapps_call:set_owner_id(<<"abcdefghi">>, C) end
-                   ,fun(C) -> whapps_call:set_fetch_id(<<"1234567890ABCDEFG">>, C) end
-                   ,fun(C) -> whapps_call:set_bridge_id(<<"1234567890ABCDEF">>, C) end
-                   ,fun(C) -> whapps_call:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
-                   ,fun(C) -> whapps_call:set_custom_channel_var(<<"key2">>, 2600, C) end
-                   ,fun(C) -> whapps_call:set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
-                   ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
-                   ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
-                   ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_2">>, wh_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
+-define(UPDATERS, [fun(C) -> ?MODULE:set_call_id(<<"123456789ABCDEF">>, C) end
+                   ,fun(C) -> ?MODULE:set_control_queue(<<"control_queue">>, C) end
+                   ,fun(C) -> ?MODULE:set_controller_queue(<<"controller_queue">>, C) end
+                   ,fun(C) -> ?MODULE:set_caller_id_name(<<"caller_id_name">>, C) end
+                   ,fun(C) -> ?MODULE:set_caller_id_number(<<"caller_id_number">>, C) end
+                   ,fun(C) -> ?MODULE:set_callee_id_name(<<"callee_id_name">>, C) end
+                   ,fun(C) -> ?MODULE:set_callee_id_number(<<"callee_id_number">>, C) end
+                   ,fun(C) -> ?MODULE:set_request(<<"request_user@request_domain">>, C) end
+                   ,fun(C) -> ?MODULE:set_from(<<"from_user@from_domain">>, C) end
+                   ,fun(C) -> ?MODULE:set_to(<<"to_user@to_domain">>, C) end
+                   ,fun(C) -> ?MODULE:set_account_db(<<"account%2F12%2F3456789">>, C) end
+                   ,fun(C) -> ?MODULE:set_account_id(<<"123456789">>, C) end
+                   ,fun(C) -> ?MODULE:set_authorizing_id(<<"987654321">>, C) end
+                   ,fun(C) -> ?MODULE:set_authorizing_type(<<"test">>, C) end
+                   ,fun(C) -> ?MODULE:set_owner_id(<<"abcdefghi">>, C) end
+                   ,fun(C) -> ?MODULE:set_fetch_id(<<"1234567890ABCDEFG">>, C) end
+                   ,fun(C) -> ?MODULE:set_bridge_id(<<"1234567890ABCDEF">>, C) end
+                   ,fun(C) -> ?MODULE:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
+                   ,fun(C) -> ?MODULE:set_custom_channel_var(<<"key2">>, 2600, C) end
+                   ,fun(C) -> ?MODULE:set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
+                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
+                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
+                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_2">>, wh_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
                   ]).
 
 %% TODO: I am out of the alloted time for this module, please add during another refactor
@@ -1068,11 +1068,11 @@ from_route_win_test() ->
     'ok'.
 
 json_conversion_test() -> 'ok'.
-    %% Call1 = lists:foldr(fun(F, C) -> F(C) end, whapps_call:new(), ?UPDATERS),
+    %% Call1 = lists:foldr(fun(F, C) -> F(C) end, ?MODULE:new(), ?UPDATERS),
     %% _Call2 = from_json(to_json(Call1)).
     %% TODO: These are equal, but the order of the CCVs json headers
     %%       is reversed.... and I am out of time for this module
-    %%       Your just goind to have to take my word it works hehe ;)
+    %%       You're just goind to have to take my word it works hehe ;)
 %%    ?assertEqual(Call1, Call2).
 
 -endif.
