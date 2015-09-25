@@ -15,8 +15,8 @@
          ,hooks_configured/1
          ,handle_doc_type_update/2
 
-         ,add_doc_bindings/1
-         ,remove_doc_bindings/1
+         ,add_object_bindings/1
+         ,remove_object_bindings/1
         ]).
 -export([init/1
          ,handle_call/3
@@ -171,9 +171,9 @@ print_summary({[#webhook{uri=URI
              ),
     print_summary(ets:select(Continuation), Count+1).
 
--spec add_doc_bindings(ne_binary()) -> 'ok'.
-add_doc_bindings(AccountId) ->
-    Bindings = webhooks_doc:account_bindings(AccountId),
+-spec add_object_bindings(ne_binary()) -> 'ok'.
+add_object_bindings(AccountId) ->
+    Bindings = webhooks_object:account_bindings(AccountId),
     Srv = webhooks_sup:shared_listener(),
 
     _ = [gen_listener:add_binding(Srv, Binding)
@@ -181,9 +181,9 @@ add_doc_bindings(AccountId) ->
         ],
     'ok'.
 
--spec remove_doc_bindings(ne_binary()) -> 'ok'.
-remove_doc_bindings(AccountId) ->
-    Bindings = webhooks_doc:account_bindings(AccountId),
+-spec remove_object_bindings(ne_binary()) -> 'ok'.
+remove_object_bindings(AccountId) ->
+    Bindings = webhooks_object:account_bindings(AccountId),
     Srv = webhooks_sup:shared_listener(),
 
     _ = [gen_listener:rm_binding(Srv, Binding)
