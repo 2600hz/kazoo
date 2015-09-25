@@ -142,7 +142,7 @@
 -record(bt_subscription, {id :: api_binary()
                           ,balance :: api_binary()
                           ,billing_dom :: api_binary()
-                          ,billing_first_date :: api_binary()
+                          ,billing_first_date :: api_binary()  %% Read only
                           ,billing_end_date :: api_binary()
                           ,billing_start_date :: api_binary()
                           ,billing_cycle :: api_binary()
@@ -153,7 +153,7 @@
                           ,never_expires = 'true' :: boolean()
                           ,next_bill_amount :: api_binary()
                           ,next_cycle_amount :: api_binary()
-                          ,next_bill_date :: api_binary()
+                          ,next_bill_date :: api_binary()  %% Read only
                           ,paid_through_date :: api_binary()
                           ,payment_token :: api_binary()
                           ,plan_id :: api_binary()

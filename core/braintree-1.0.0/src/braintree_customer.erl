@@ -199,38 +199,46 @@ update(#bt_customer{}=Customer) ->
     of
         [] -> do_update(Customer);
         [Card] ->
-            Cards = [ braintree_card:make_default(Card, 'false')
-                      | lists:delete(Card, get_cards(Customer))
-                    ],
-            %% Add new credit card, not setting it as default yet.
-            UpdatedRecord = do_update(Customer#bt_customer{credit_cards = Cards}),
-
-            NewPaymentToken = braintree_card:payment_token(Card),
-            %% NewCard = Card with updated fields
-            {[NewCard], OldCards} =
-                lists:partition(fun(CC) -> braintree_card:payment_token(CC) =:= NewPaymentToken end
-                                ,get_cards(UpdatedRecord)
-                               ),
-
-            NewSubscriptions =
-                [braintree_subscription:update(
-                   braintree_subscription:update_payment_token(Sub, NewPaymentToken))
-                 || Sub <- get_subscriptions(UpdatedRecord)
-                        , not braintree_subscription:is_cancelled(Sub)
-                ],
-
-            %% Make card as default /after/ updating subscriptions: this way subscriptions
-            %%  are not attached to a deleted card and thus do not get cancelled before
-            %%  we can update their payment token.
-            NewCards = [ braintree_card:update(braintree_card:make_default(NewCard, 'true')) ],
-
-            %% Delete previous cards /after/ changing subscriptions' payment token.
-            lists:foreach(fun braintree_card:delete/1, OldCards),
-
-            UpdatedRecord#bt_customer{credit_cards = NewCards
-                                      ,subscriptions = NewSubscriptions
-                                     }
+            update_card(Customer, Card)
     end.
+
+-spec update_card(customer(), bt_card()) -> customer().
+update_card(Customer, Card) ->
+    Cards = [braintree_card:make_default(Card, 'false')
+             | lists:delete(Card, get_cards(Customer))
+            ],
+    %% Add new credit card, not setting it as default yet.
+    UpdatedCustomer = do_update(Customer#bt_customer{credit_cards = Cards}),
+
+    NewPaymentToken = braintree_card:payment_token(Card),
+    %% NewCard = Card with updated fields
+    {[NewCard], OldCards} =
+        lists:partition(fun(CC) -> braintree_card:payment_token(CC) =:= NewPaymentToken end
+                        ,get_cards(UpdatedCustomer)
+                       ),
+
+    NewSubscriptions =
+        [braintree_subscription:update(
+           braintree_subscription:update_payment_token(Sub, NewPaymentToken)
+          )
+         || Sub <- get_subscriptions(UpdatedCustomer),
+            not braintree_subscription:is_cancelled(Sub)
+                andalso not braintree_subscription:is_expired(Sub)
+        ],
+    %% Make card as default /after/ updating subscriptions: this way
+    %%  subscriptions are not attached to a deleted card and thus do not
+    %%  get cancelled before we can update their payment token.
+    NewCards = [braintree_card:update(
+                  braintree_card:make_default(NewCard, 'true')
+                 )
+               ],
+
+    %% Delete previous cards /after/ changing subscriptions' payment token.
+    lists:foreach(fun braintree_card:delete/1, OldCards),
+
+    UpdatedCustomer#bt_customer{credit_cards = NewCards
+                                ,subscriptions = NewSubscriptions
+                               }.
 
 -spec do_update(bt_customer()) -> bt_customer().
 do_update(#bt_customer{id=CustomerId}=Customer) ->
