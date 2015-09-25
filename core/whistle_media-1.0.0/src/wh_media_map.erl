@@ -32,6 +32,7 @@
         ]).
 
 -include("whistle_media.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -record(state, {}).
 
@@ -103,7 +104,7 @@ handle_media_doc(JObj, _Props) ->
     handle_media_doc_change(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
 
 -spec handle_media_doc_change(wh_json:object(), ne_binary()) -> 'ok'.
-handle_media_doc_change(JObj, <<"doc_deleted">>) ->
+handle_media_doc_change(JObj, ?DOC_DELETED) ->
     MediaId = wh_json:get_value(<<"ID">>, JObj),
     Database = wh_json:get_value(<<"Database">>, JObj),
     gen_listener:cast(?MODULE, {'rm_mapping'

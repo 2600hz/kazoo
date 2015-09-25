@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -11,6 +11,7 @@
 -export([handle_req/2]).
 
 -include("doodle.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
@@ -22,7 +23,7 @@ handle_req(JObj, _Props) ->
     handle_doc(Action, Type, Db, Id).
 
 -spec handle_doc(api_binary(), api_binary(), api_binary(), api_binary()) -> 'ok'.
-handle_doc(<<"doc_created">>, <<"sms">>, Db, Id) ->
+handle_doc(?DOC_CREATED, <<"sms">>, Db, Id) ->
     doodle_api:handle_api_sms(Db, Id);
 handle_doc(_, <<"device">>, <<_:32/binary>>=AccountId, Id) ->
     doodle_maintenance:check_sms_by_device_id(AccountId, Id);

@@ -26,6 +26,7 @@
         ]).
 
 -include("fax.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(NOTIFY_RESTRICT, ['outbound_fax'
                           ,'outbound_fax_error'
@@ -45,13 +46,13 @@
                        ,[{<<"xmpp_event">>, <<"push">>}]
                       }
                      ,{{'fax_cloud', 'handle_faxbox_created'}
-                       ,[{<<"configuration">>, <<"doc_created">>}]
+                       ,[{<<"configuration">>, ?DOC_CREATED}]
                       }
                      ,{{'fax_cloud', 'handle_faxbox_edited'}
-                       ,[{<<"configuration">>, <<"doc_edited">>}]
+                       ,[{<<"configuration">>, ?DOC_EDITED}]
                       }
                      ,{{'fax_cloud', 'handle_faxbox_deleted'}
-                       ,[{<<"configuration">>, <<"doc_deleted">>}]
+                       ,[{<<"configuration">>, ?DOC_DELETED}]
                       }
                      ,{{?MODULE, 'new_request'}
                        ,[{<<"dialplan">>, <<"fax_req">>}]

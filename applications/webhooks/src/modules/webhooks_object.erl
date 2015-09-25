@@ -13,6 +13,7 @@
         ]).
 
 -include("../webhooks.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(ID, wh_util:to_binary(?MODULE)).
 -define(NAME, <<"object">>).
@@ -23,7 +24,7 @@
    ,wh_json:from_list(
       [{<<"type">>, <<"array">>}
        ,{<<"description">>, <<"A list of object types to handle">>}
-       ,{<<"items">>, ?DOC_TYPES}
+       ,{<<"items">>, ?OBJECT_TYPES}
       ])
   ).
 
@@ -32,7 +33,7 @@
    ,wh_json:from_list(
       [{<<"type">>, <<"array">>}
        ,{<<"description">>, <<"A list of object actions to handle">>}
-       ,{<<"items">>, [<<"doc_created">>, <<"doc_updated">>, <<"doc_deleted">>]}
+       ,{<<"items">>, [?DOC_CREATED, ?DOC_EDITED, ?DOC_DELETED]}
       ])
   ).
 
@@ -55,7 +56,7 @@
   ).
 
 -define(
-   DOC_TYPES
+   OBJECT_TYPES
    ,whapps_config:get(
       ?APP_NAME
       ,<<"object_types">>
@@ -166,7 +167,7 @@ bindings(AccountsWithObjectHook) ->
         ,{'db', Account}
        ]
      }
-     || Type <- ?DOC_TYPES,
+     || Type <- ?OBJECT_TYPES,
         Account <- lists:usort(AccountsWithObjectHook)
     ].
 

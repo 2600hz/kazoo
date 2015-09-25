@@ -20,6 +20,7 @@
         ]).
 
 -include("doodle.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -record(state, {}).
 
@@ -35,8 +36,8 @@
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
                      ,{'doodle_notify_handler', [{<<"directory">>, <<"reg_success">>}]}
-                     ,{'doodle_doc_handler', [{<<"configuration">>, <<"doc_created">>}]}
-                     ,{'doodle_doc_handler', [{<<"configuration">>, <<"doc_edited">>}]}
+                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_CREATED}]}
+                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_EDITED}]}
                     ]).
 -define(QUEUE_NAME, <<"doodle_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).

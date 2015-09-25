@@ -23,6 +23,7 @@
         ]).
 
 -include("webhooks.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -record(state, {}).
 -type state() :: #state{}.
@@ -69,12 +70,12 @@ handle_config(JObj, Props) ->
                   ,wh_api:event_name(JObj)
                  ).
 
-handle_config(JObj, Srv, <<"doc_created">>) ->
+handle_config(JObj, Srv, ?DOC_CREATED) ->
     case wapi_conf:get_doc(JObj) of
         'undefined' -> find_and_add_hook(JObj, Srv);
         Hook -> webhooks_util:load_hook(Srv, Hook)
     end;
-handle_config(JObj, Srv, <<"doc_edited">>) ->
+handle_config(JObj, Srv, ?DOC_EDITED) ->
     case wapi_conf:get_id(JObj) of
         'undefined' -> find_and_update_hook(JObj, Srv);
         HookId ->
@@ -89,7 +90,7 @@ handle_config(JObj, Srv, <<"doc_edited">>) ->
                     gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
             end
     end;
-handle_config(JObj, Srv, <<"doc_deleted">>) ->
+handle_config(JObj, Srv, ?DOC_DELETED) ->
     case wapi_conf:get_doc(JObj) of
         'undefined' -> find_and_remove_hook(JObj, Srv);
         Hook ->
@@ -261,11 +262,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec maybe_add_shared_bindings(webhook()) -> 'ok'.
-maybe_add_shared_bindings(#webhook{hook_event = <<"object">>
+maybe_add_shared_bindings(#webhook{hook_event = <<"doc">>
                                    ,account_id=AccountId
                                   }) ->
-    lager:debug("adding object bindings for ~s", [AccountId]),
-    webhooks_shared_listener:add_object_bindings(AccountId);
+    lager:debug("adding doc bindings for ~s", [AccountId]),
+    webhooks_shared_listener:add_doc_bindings(AccountId);
 maybe_add_shared_bindings(_Hook) -> 'ok'.
 
 -spec maybe_remove_shared_bindings(ne_binary()) -> 'true'.
@@ -278,7 +279,7 @@ maybe_remove_shared_bindings(Id) ->
     ets:delete(webhooks_util:table_id(), Id).
 
 -spec remove_shared_bindings(webhook()) -> 'ok'.
-remove_shared_bindings(#webhook{hook_event = <<"object">>
+remove_shared_bindings(#webhook{hook_event = <<"doc">>
                                 ,account_id = AccountId
                                 ,id = Id
                                }
@@ -288,10 +289,10 @@ remove_shared_bindings(#webhook{hook_event = <<"object">>
                ),
     case ets:select(webhooks_util:table_id(), object_account_ms(AccountId, Id)) of
         [] ->
-            lager:debug("no other object bindings, removing ~s", [AccountId]),
-            webhooks_shared_listener:remove_object_bindings(AccountId);
+            lager:debug("no other doc bindings, removing ~s", [AccountId]),
+            webhooks_shared_listener:remove_doc_bindings(AccountId);
         _ ->
-            lager:debug("account ~s has other object bindings", [AccountId])
+            lager:debug("account ~s has other doc bindings", [AccountId])
     end.
 
 -spec object_account_ms(ne_binary(), ne_binary()) -> ets:match_spec().

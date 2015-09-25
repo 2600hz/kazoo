@@ -76,6 +76,7 @@
 
 -include_lib("wh_couch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch
 -define(MAX_BULK_INSERT, 2000).
@@ -1066,13 +1067,7 @@ publish(Action, Db, Doc) ->
     Id = wh_doc:id(Doc),
 
     IsSoftDeleted = wh_doc:is_soft_deleted(Doc),
-    EventName =
-        case IsSoftDeleted of
-            'true' ->
-                <<"doc_deleted">>;
-            'false' ->
-                <<"doc_", (wh_util:to_binary(Action))/binary>>
-        end,
+    EventName = doc_change_event_name(Action, IsSoftDeleted),
 
     Props =
         [{<<"ID">>, Id}
@@ -1091,6 +1086,12 @@ publish(Action, Db, Doc) ->
         ],
     Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
     whapps_util:amqp_pool_send(Props, Fun).
+
+-spec doc_change_event_name(wapi_conf:action(), boolean()) -> ne_binary().
+doc_change_event_name(_Action, 'true') ->
+    ?DOC_DELETED;
+doc_change_event_name(Action, 'false') ->
+    <<"doc_", (wh_util:to_binary(Action))/binary>>.
 
 -spec doc_acct_id(ne_binary(), wh_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->

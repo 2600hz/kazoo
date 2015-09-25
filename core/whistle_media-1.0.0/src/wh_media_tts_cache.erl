@@ -27,6 +27,7 @@
         ]).
 
 -include("whistle_media.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
@@ -292,7 +293,7 @@ publish_doc_update(Id) ->
          ,{<<"Type">>, Type = <<"media">>}
          ,{<<"Database">>, Db = <<"tts">>}
          ,{<<"Rev">>, <<"0">>}
-         | wh_api:default_headers(<<"configuration">>, <<"doc_deleted">>, ?APP_NAME, ?APP_VERSION)
+         | wh_api:default_headers(<<"configuration">>, ?DOC_DELETED, ?APP_NAME, ?APP_VERSION)
         ],
     wh_amqp_worker:cast(API
                         ,fun(P) -> wapi_conf:publish_doc_update('deleted', Db, Type, Id, P) end
