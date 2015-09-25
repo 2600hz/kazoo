@@ -19,6 +19,7 @@
          ,handle_member_call/2
          ,handle_member_call_cancel/2
          ,handle_agent_change/2
+         ,are_agents_available/1
          ,handle_config_change/2
          ,should_ignore_member_call/3, should_ignore_member_call/4
          ,config/1
@@ -155,6 +156,10 @@ handle_member_call(JObj, Props) ->
         'true' ->
             start_queue_call(JObj, Props, Call)
     end.
+
+-spec are_agents_available(server_ref()) -> boolean().
+are_agents_available(Srv) ->
+    are_agents_available(Srv, gen_listener:call(Srv, 'enter_when_empty')).
 
 are_agents_available(Srv, EnterWhenEmpty) ->
     agents_available(Srv) > 0 orelse EnterWhenEmpty.
@@ -347,6 +352,9 @@ handle_call('agents_available', _, #state{strategy_state=[_|_]}=State) ->
     {'reply', 1, State};
 handle_call('agents_available', _, #state{strategy_state=SS}=State) ->
     {'reply', queue:len(SS), State};
+
+handle_call('enter_when_empty', _, #state{enter_when_empty=EnterWhenEmpty}=State) ->
+    {'reply', EnterWhenEmpty, State};
 
 handle_call('next_winner', _, #state{strategy='mi'}=State) ->
     {'reply', 'undefined', State};

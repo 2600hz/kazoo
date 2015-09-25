@@ -28,6 +28,7 @@
          ,timeout_member_call/1, timeout_member_call/2
          ,timeout_agent/2
          ,exit_member_call/1
+         ,exit_member_call_empty/1
          ,finish_member_call/1, finish_member_call/2
          ,ignore_member_call/3
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
@@ -149,6 +150,10 @@ timeout_member_call(Srv, JObj) ->
 -spec exit_member_call(pid()) -> 'ok'.
 exit_member_call(Srv) ->
     gen_listener:cast(Srv, {'exit_member_call'}).
+
+-spec exit_member_call_empty(pid()) -> 'ok'.
+exit_member_call_empty(Srv) ->
+    gen_listener:cast(Srv, {'exit_member_call_empty'}).
 
 -spec finish_member_call(pid()) -> 'ok'.
 -spec finish_member_call(pid(), wh_json:object()) -> 'ok'.
@@ -384,6 +389,23 @@ handle_cast({'exit_member_call'}, #state{delivery=Delivery
     lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_failure(Q, AccountId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"Caller exited the queue via DTMF">>),
+
+    {'noreply', clear_call_state(State), 'hibernate'};
+handle_cast({'exit_member_call_empty'}, #state{delivery=Delivery
+                                               ,call=Call
+                                               ,shared_pid=Pid
+                                               ,member_call_queue=Q
+                                               ,acct_id=AcctId
+                                               ,queue_id=QueueId
+                                               ,my_id=MyId
+                                               ,agent_id=AgentId
+                                              }=State) ->
+    lager:debug("no agents left in queue to handle callers, kick everyone out"),
+
+    acdc_util:unbind_from_call_events(Call),
+    lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
+    acdc_queue_shared:ack(Pid, Delivery),
+    send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"No agents left in queue">>),
 
     {'noreply', clear_call_state(State), 'hibernate'};
 handle_cast({'finish_member_call'}, #state{call='undefined'}=State) ->
