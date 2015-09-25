@@ -733,7 +733,7 @@ publish_event(Call, SlotNumber, Event) ->
     Cmd = [
         {<<"Event-Name">>, Event}
         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-        ,{<<"Slot">>, wh_util:to_binary(SlotNumber)}
+        ,{<<"Parking-Slot">>, wh_util:to_binary(SlotNumber)}
         ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
         ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
         ,{<<"Callee-ID-Number">>, whapps_call:callee_id_number(Call)}
