@@ -80,7 +80,6 @@
          ,change_notice/0
         ]).
 
-
 %% Types
 -export_type([get_results_return/0
               ,couchbeam_error/0
