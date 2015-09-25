@@ -10,14 +10,15 @@
 %%%-------------------------------------------------------------------
 -module(cf_endpoint).
 
--include("callflow.hrl").
-
 -export([get/1, get/2]).
 -export([flush_account/1, flush/2]).
 -export([build/2, build/3]).
 -export([create_call_fwd_endpoint/3
          ,create_sip_endpoint/3
         ]).
+
+-include("callflow.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(NON_DIRECT_MODULES, ['cf_ring_group', 'acdc_util']).
 
@@ -472,12 +473,15 @@ flush(Db, Id) ->
         [{<<"ID">>, Id}
          ,{<<"Database">>, Db}
          ,{<<"Rev">>, Rev}
-         ,{<<"Type">>, <<"device">>}
-         | wh_api:default_headers(<<"configuration">>, <<"doc_edited">>
-                                      ,?APP_NAME, ?APP_VERSION)
+         ,{<<"Type">>, kz_device:type()}
+         | wh_api:default_headers(<<"configuration">>
+                                  ,?DOC_EDITED
+                                  ,?APP_NAME
+                                  ,?APP_VERSION
+                                 )
         ],
     Fun = fun(P) ->
-                  wapi_conf:publish_doc_update('edited', Db, <<"device">>, Id, P)
+                  wapi_conf:publish_doc_update('edited', Db, kz_device:type(), Id, P)
           end,
     whapps_util:amqp_pool_send(Props, Fun).
 

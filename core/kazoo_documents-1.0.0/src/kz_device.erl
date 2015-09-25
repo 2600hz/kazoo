@@ -261,7 +261,6 @@ enabled(DeviceJObj, Default) ->
 set_enabled(DeviceJObj, Enabled) ->
     wh_json:set_value(?ENABLED, Enabled, DeviceJObj).
 
-
 -spec timezone(doc()) -> api_binary().
 -spec timezone(doc(), Default) -> ne_binary() | Default.
 timezone(Box) ->

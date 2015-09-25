@@ -76,6 +76,7 @@
 
 -include_lib("wh_couch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch
 -define(MAX_BULK_INSERT, 2000).
@@ -1002,11 +1003,11 @@ maybe_publish_doc(#db{}=Db, Doc, JObj) ->
         'false' -> 'ok'
     end.
 
--spec maybe_publish_db(couchbeam_db(), atom()) -> 'ok'.
-maybe_publish_db(Db, Action) ->
+-spec maybe_publish_db(ne_binary(), wapi_conf:action()) -> 'ok'.
+maybe_publish_db(DbName, Action) ->
     case couch_mgr:change_notice() of
         'true' ->
-            _ = wh_util:spawn(fun() -> publish_db(Db, Action) end),
+            _ = wh_util:spawn(fun() -> publish_db(DbName, Action) end),
             'ok';
         'false' -> 'ok'
     end.
@@ -1034,19 +1035,19 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
             end
     end.
 
--spec publish_db(couchbeam_db(), atom()) -> 'ok'.
-publish_db(Db, Action) ->
+-spec publish_db(ne_binary(), wapi_conf:action()) -> 'ok'.
+publish_db(DbName, Action) ->
     Props =
         [{<<"Type">>, 'database'}
-         ,{<<"ID">>, Db}
-         ,{<<"Database">>, Db}
+         ,{<<"ID">>, DbName}
+         ,{<<"Database">>, DbName}
          | wh_api:default_headers(<<"configuration">>
                                   ,<<"db_", (wh_util:to_binary(Action))/binary>>
                                   ,?CONFIG_CAT
                                   ,<<"1.0.0">>
                                  )
         ],
-    Fun = fun(P) -> wapi_conf:publish_db_update(Action, Db, P) end,
+    Fun = fun(P) -> wapi_conf:publish_db_update(Action, DbName, P) end,
     whapps_util:amqp_pool_send(Props, Fun).
 
 -spec publish_fields(wh_json:object()) -> wh_proplist().
@@ -1065,6 +1066,9 @@ publish(Action, Db, Doc) ->
     Type = wh_doc:type(Doc),
     Id = wh_doc:id(Doc),
 
+    IsSoftDeleted = wh_doc:is_soft_deleted(Doc),
+    EventName = doc_change_event_name(Action, IsSoftDeleted),
+
     Props =
         [{<<"ID">>, Id}
          ,{<<"Type">>, Type}
@@ -1073,15 +1077,21 @@ publish(Action, Db, Doc) ->
          ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
          ,{<<"Date-Modified">>, wh_doc:created(Doc)}
          ,{<<"Date-Created">>, wh_doc:modified(Doc)}
-         ,{<<"Is-Soft-Deleted">>, wh_doc:is_soft_deleted(Doc)}
+         ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
          | wh_api:default_headers(<<"configuration">>
-                                  ,<<"doc_", (wh_util:to_binary(Action))/binary>>
+                                  ,EventName
                                   ,?CONFIG_CAT
                                   ,<<"1.0.0">>
                                  )
         ],
     Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
     whapps_util:amqp_pool_send(Props, Fun).
+
+-spec doc_change_event_name(wapi_conf:action(), boolean()) -> ne_binary().
+doc_change_event_name(_Action, 'true') ->
+    ?DOC_DELETED;
+doc_change_event_name(Action, 'false') ->
+    <<"doc_", (wh_util:to_binary(Action))/binary>>.
 
 -spec doc_acct_id(ne_binary(), wh_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->

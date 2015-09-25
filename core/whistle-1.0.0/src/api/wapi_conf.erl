@@ -30,16 +30,22 @@
 
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Database">>]).
--define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Rev">>, <<"Account-ID">>, <<"Type">>, <<"Version">>
-                                           ,<<"Date-Modified">>, <<"Date-Created">>
-                                           ,<<"Doc">>, <<"Is-Soft-Deleted">>
+-define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-ID">>
+                                           ,<<"Date-Created">>
+                                           ,<<"Date-Modified">>
+                                           ,<<"Doc">>
+                                           ,<<"Is-Soft-Deleted">>
+                                           ,<<"Rev">>
+                                           ,<<"Type">>
+                                           ,<<"Version">>
                                           ]).
 -define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
-                                 ,{<<"Event-Name">>, [<<"doc_edited">>
-                                                      ,<<"doc_created">>
-                                                      ,<<"doc_deleted">>
+                                 ,{<<"Event-Name">>, [?DOC_EDITED
+                                                      ,?DOC_CREATED
+                                                      ,?DOC_DELETED
                                                       ,<<"db_created">>
                                                       ,<<"db_deleted">>
                                                      ]}

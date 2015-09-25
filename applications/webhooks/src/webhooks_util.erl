@@ -79,6 +79,7 @@ from_json(Hook) ->
              ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
              ,account_id = wh_doc:account_id(Hook)
              ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
+             ,modifiers = wh_json:get_ne_value(<<"modifiers">>, Hook)
             }.
 
 -spec to_json(webhook()) -> wh_json:object().
@@ -90,6 +91,7 @@ to_json(Hook) ->
        ,{<<"retries">>, Hook#webhook.retries}
        ,{<<"account_id">>, Hook#webhook.account_id}
        ,{<<"custom_data">>, Hook#webhook.custom_data}
+       ,{<<"modifiers">>, Hook#webhook.modifiers}
       ]).
 
 -spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
@@ -113,8 +115,42 @@ find_webhooks(HookEvent, AccountId) ->
 -spec fire_hooks(wh_json:object(), webhooks()) -> 'ok'.
 fire_hooks(_, []) -> 'ok';
 fire_hooks(JObj, [Hook | Hooks]) ->
-    fire_hook(wh_json:normalize_jobj(JObj), Hook),
+    maybe_fire_hook(JObj, Hook),
     fire_hooks(JObj, Hooks).
+
+-spec maybe_fire_hook(wh_json:object(), webhook()) -> 'ok'.
+maybe_fire_hook(JObj, #webhook{modifiers='undefined'}=Hook) ->
+    fire_hook(JObj, Hook);
+maybe_fire_hook(JObj, #webhook{modifiers=Modifiers}=Hook) ->
+    {ShouldFireHook, _} =
+        wh_json:foldl(
+          fun maybe_fire_foldl/3
+          ,{'true', JObj}
+          ,Modifiers
+         ),
+    case ShouldFireHook of
+        'false' -> 'ok';
+        'true' ->  fire_hook(JObj, Hook)
+    end.
+
+-type maybe_fire_acc() :: {boolean(), wh_json:object()}.
+-spec maybe_fire_foldl(ne_binary(), any(), maybe_fire_acc()) ->
+                              maybe_fire_acc().
+maybe_fire_foldl(_Key, _Value, {'false', _}=Acc) ->
+    Acc;
+maybe_fire_foldl(_Key, [], Acc) -> Acc;
+maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) when is_list(Value) ->
+    case wh_json:get_value(Key, JObj) of
+        'undefined' -> {'true', JObj};
+        Data ->
+            {lists:member(Data, Value), JObj}
+    end;
+maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) ->
+    case wh_json:get_value(Key, JObj) of
+        'undefined' -> {'true', JObj};
+        Value -> {'true', JObj};
+        _Else -> {'false', JObj}
+    end.
 
 -spec fire_hook(wh_json:object(), webhook()) -> 'ok'.
 -spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), 0 | hook_retries()) -> 'ok'.
@@ -123,7 +159,12 @@ fire_hook(JObj, #webhook{uri=URI
                          ,retries=Retries
                          ,custom_data='undefined'
                         }=Hook) ->
-    fire_hook(JObj, Hook, wh_util:to_list(URI), Method, Retries);
+    fire_hook(JObj
+              ,Hook
+              ,wh_util:to_list(URI)
+              ,Method
+              ,Retries
+             );
 fire_hook(JObj, #webhook{uri=URI
                          ,http_verb=Method
                          ,retries=Retries
@@ -133,25 +174,35 @@ fire_hook(JObj, #webhook{uri=URI
               ,Hook
               ,wh_util:to_list(URI)
               ,Method
-              ,Retries).
+              ,Retries
+             ).
 
 fire_hook(_JObj, Hook, _URI, _Method, 0) ->
     failed_hook(Hook),
     lager:debug("retries exhausted for ~s", [_URI]);
 fire_hook(JObj, Hook, URI, 'get', Retries) ->
     lager:debug("sending event via 'get'(~b): ~s", [Retries, URI]),
-    fire_hook(JObj, Hook, URI, 'get', Retries
+    fire_hook(JObj
+              ,Hook
+              ,URI
+              ,'get'
+              ,Retries
               ,ibrowse:send_req(URI ++ [$?|wh_json:to_querystring(JObj)]
                                 ,?IBROWSE_REQ_HEADERS(Hook)
                                 ,'get'
                                 ,[]
                                 ,?IBROWSE_OPTS
                                 ,?IBROWSE_TIMEOUT_MS
-                               ));
+                               )
+             );
 fire_hook(JObj, Hook, URI, 'post', Retries) ->
     lager:debug("sending event via 'post'(~b): ~s", [Retries, URI]),
 
-    fire_hook(JObj, Hook, URI, 'post', Retries
+    fire_hook(JObj
+              ,Hook
+              ,URI
+              ,'post'
+              ,Retries
               ,ibrowse:send_req(URI
                                 ,[{"Content-Type", "application/x-www-form-urlencoded"}
                                   | ?IBROWSE_REQ_HEADERS(Hook)
@@ -160,7 +211,8 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
                                 ,wh_json:to_querystring(JObj)
                                 ,?IBROWSE_OPTS
                                 ,?IBROWSE_TIMEOUT_MS
-                               )).
+                               )
+             ).
 
 -spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), ibrowse_ret()) -> 'ok'.
 fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
@@ -200,7 +252,7 @@ successful_hook(_Hook, 'false') -> 'ok';
 successful_hook(#webhook{hook_id=HookId
                          ,account_id=AccountId
                         }
-               ,'true'
+                ,'true'
                ) ->
     Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
                                  ,{<<"result">>, <<"success">>}
@@ -214,30 +266,37 @@ failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId
                     }) ->
     note_failed_attempt(AccountId, HookId),
-    Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
-                                 ,{<<"result">>, <<"failure">>}
-                                 ,{<<"reason">>, <<"retries exceeded">>}
-                                ]),
+    Attempt = wh_json:from_list(
+                [{<<"hook_id">>, HookId}
+                 ,{<<"result">>, <<"failure">>}
+                 ,{<<"reason">>, <<"retries exceeded">>}
+                ]),
     save_attempt(Attempt, AccountId).
 
 failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId
                     }
-            ,Retries, RespCode, RespBody) ->
+            ,Retries
+            ,RespCode
+            ,RespBody
+           ) ->
     note_failed_attempt(AccountId, HookId),
-    Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
-                                 ,{<<"result">>, <<"failure">>}
-                                 ,{<<"reason">>, <<"bad response code">>}
-                                 ,{<<"response_code">>, wh_util:to_binary(RespCode)}
-                                 ,{<<"response_body">>, wh_util:to_binary(RespBody)}
-                                 ,{<<"retries_left">>, Retries-1}
-                                ]),
+    Attempt = wh_json:from_list(
+                [{<<"hook_id">>, HookId}
+                 ,{<<"result">>, <<"failure">>}
+                 ,{<<"reason">>, <<"bad response code">>}
+                 ,{<<"response_code">>, wh_util:to_binary(RespCode)}
+                 ,{<<"response_body">>, wh_util:to_binary(RespBody)}
+                 ,{<<"retries_left">>, Retries-1}
+                ]),
     save_attempt(Attempt, AccountId).
 
 failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId
                     }
-            ,Retries, E) ->
+            ,Retries
+            ,E
+           ) ->
     note_failed_attempt(AccountId, HookId),
     Error = try wh_util:to_binary(E) of
                 Bin -> Bin
@@ -246,12 +305,13 @@ failed_hook(#webhook{hook_id=HookId
                     lager:debug("failed to convert error ~p", [E]),
                     <<"unknown">>
             end,
-    Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
-                                 ,{<<"result">>, <<"failure">>}
-                                 ,{<<"reason">>, <<"kazoo http client error">>}
-                                 ,{<<"retries_left">>, Retries-1}
-                                 ,{<<"client_error">>, Error}
-                                ]),
+    Attempt = wh_json:from_list(
+                [{<<"hook_id">>, HookId}
+                 ,{<<"result">>, <<"failure">>}
+                 ,{<<"reason">>, <<"kazoo http client error">>}
+                 ,{<<"retries_left">>, Retries-1}
+                 ,{<<"client_error">>, Error}
+                ]),
     save_attempt(Attempt, AccountId).
 
 %%%===================================================================
@@ -270,7 +330,9 @@ save_attempt(Attempt, AccountId) ->
                ,{<<"pvt_type">>, <<"webhook_attempt">>}
                ,{<<"pvt_created">>, Now}
                ,{<<"pvt_modified">>, Now}
-              ]), Attempt),
+              ])
+            ,Attempt
+           ),
 
     _ = couch_mgr:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
     'ok'.
@@ -280,9 +342,12 @@ save_attempt(Attempt, AccountId) ->
 hook_id(JObj) ->
     hook_id(wh_json:get_first_defined([<<"pvt_account_id">>
                                        ,<<"Account-ID">>
-                                      ], JObj)
+                                      ]
+                                      ,JObj
+                                     )
             ,wh_json:get_first_defined([<<"_id">>, <<"ID">>], JObj)
            ).
+
 hook_id(AccountId, Id) ->
     <<AccountId/binary, ".", Id/binary>>.
 
@@ -368,6 +433,7 @@ jobj_to_rec(Hook) ->
              ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
              ,account_id = wh_doc:account_id(Hook)
              ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
+             ,modifiers = wh_json:get_ne_value(<<"modifiers">>, Hook)
             }.
 
 -spec init_webhooks() -> 'ok'.
@@ -495,22 +561,26 @@ maybe_enable_descendant_hooks(Account) ->
     io:format("## checking account ~s for hooks to enable ##~n", [Account]),
     enable_account_hooks(Account).
 
+-spec init_metadata(ne_binary(), wh_json:object()) -> 'ok'.
 init_metadata(Id, JObj) ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-    init(Id, JObj, MasterAccountDb).
+    init_metadata(Id, JObj, MasterAccountDb).
 
-init(Id, JObj, MasterAccountDb) ->
+-spec init_metadata(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+init_metadata(Id, JObj, MasterAccountDb) ->
     case metadata_exists(MasterAccountDb, Id) of
-        'true' -> lager:debug("~s already exists, not loading", [Id]);
-        'false' -> load_metadata(MasterAccountDb, JObj)
+        {'error', _} -> load_metadata(MasterAccountDb, JObj);
+        {'ok', Doc} ->
+            lager:debug("~s already exists, updating", [Id]),
+            Merged = wh_json:merge_recursive(Doc, JObj),
+            load_metadata(MasterAccountDb, Merged)
     end.
 
--spec metadata_exists(ne_binary(), ne_binary()) -> boolean().
+-spec metadata_exists(ne_binary(), ne_binary()) ->
+                             {'ok', wh_json:object()} |
+                             couch_mgr:couchbeam_error().
 metadata_exists(MasterAccountDb, Id) ->
-    case couch_mgr:open_cache_doc(MasterAccountDb, Id) of
-        {'ok', _} -> 'true';
-        {'error', _} -> 'false'
-    end.
+    couch_mgr:open_doc(MasterAccountDb, Id).
 
 -spec load_metadata(ne_binary(), wh_json:object()) -> 'ok'.
 load_metadata(MasterAccountDb, JObj) ->

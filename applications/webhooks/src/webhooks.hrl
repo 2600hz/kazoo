@@ -19,6 +19,7 @@
           ,retries = 3 :: hook_retries() | '_'
           ,account_id :: ne_binary() | '_' | '$1'
           ,custom_data :: wh_json:object() | '_'
+          ,modifiers :: wh_json:object() | '_'
          }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook()].
@@ -31,6 +32,8 @@
 -define(FAILURE_CACHE_KEY(AccountId, HookId, Timestamp)
         ,{'failure', AccountId, HookId, Timestamp}
        ).
+
+-define(WEBHOOK_META_LIST, <<"webhooks/webhook_meta_listing">>).
 
 -define(WEBHOOKS_HRL, 'true').
 -endif.

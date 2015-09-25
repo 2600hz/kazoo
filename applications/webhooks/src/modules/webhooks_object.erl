@@ -13,84 +13,131 @@
         ]).
 
 -include("../webhooks.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(ID, wh_util:to_binary(?MODULE)).
 -define(NAME, <<"object">>).
 -define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 
--define(TYPE_MODIFIER
-        ,wh_json:from_list([{<<"type">>, <<"array">>}
-                            ,{<<"description">>, <<"A list of object types to handle">>}
-                            ,{<<"items">>, wh_json:from_list([{<<"type">>, <<"string">>}])}
-                           ])
-       ).
+-define(
+   TYPE_MODIFIER
+   ,wh_json:from_list(
+      [{<<"type">>, <<"array">>}
+       ,{<<"description">>, <<"A list of object types to handle">>}
+       ,{<<"items">>, ?OBJECT_TYPES}
+      ])
+  ).
 
--define(MODIFIERS
-        ,wh_json:from_list([{<<"types">>, ?TYPE_MODIFIER}])
-       ).
+-define(
+   ACTIONS_MODIFIER
+   ,wh_json:from_list(
+      [{<<"type">>, <<"array">>}
+       ,{<<"description">>, <<"A list of object actions to handle">>}
+       ,{<<"items">>, [?DOC_CREATED, ?DOC_EDITED, ?DOC_DELETED]}
+      ])
+  ).
 
--define(METADATA
-        ,wh_json:from_list([{<<"_id">>, ?ID}
-                            ,{<<"name">>, ?NAME}
-                            ,{<<"description">>, ?DESC}
-                            ,{<<"modifiers">>, ?MODIFIERS}
-                           ])
-       ).
+-define(
+   MODIFIERS
+   ,wh_json:from_list(
+      [{<<"type">>, ?TYPE_MODIFIER}
+       ,{<<"action">>, ?ACTIONS_MODIFIER}
+      ])
+  ).
 
--define(OBJECT_TYPES
-        ,whapps_config:get(?APP_NAME
-                           ,<<"object_types">>
-                           ,[kz_account:type()
-                             ,kzd_callflow:type()
-                             ,kz_device:type()
-                             ,kzd_fax_box:type()
-                             ,kzd_media:type()
-                             ,kzd_user:type()
-                             ,kzd_voicemail_box:type()
-                            ]
-                          )
-       ).
+-define(
+   METADATA
+   ,wh_json:from_list(
+      [{<<"_id">>, ?ID}
+       ,{<<"name">>, ?NAME}
+       ,{<<"description">>, ?DESC}
+       ,{<<"modifiers">>, ?MODIFIERS}
+      ])
+  ).
 
+-define(
+   OBJECT_TYPES
+   ,whapps_config:get(
+      ?APP_NAME
+      ,<<"object_types">>
+      ,[kz_account:type()
+        ,kzd_callflow:type()
+        ,kz_device:type()
+        ,kzd_fax_box:type()
+        ,kzd_media:type()
+        ,kzd_user:type()
+        ,kzd_voicemail_box:type()
+       ]
+     )
+  ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     webhooks_util:init_metadata(?ID, ?METADATA).
 
--spec bindings_and_responders() ->
-                                     {gen_listener:bindings()
-                                      ,gen_listener:responders()
-                                     }.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
-    {bindings(load_accounts())
-     ,[{{?MODULE, 'handle_event'}
-        ,[{<<"configuration">>, <<"*">>}]
-       }
-      ]
-    }.
+    Bindings = bindings(load_accounts()),
+    Responders = [{{?MODULE, 'handle_event'}, [{<<"configuration">>, <<"*">>}]}],
+    {Bindings, Responders}.
 
--spec bindings(ne_binaries()) -> gen_listener:bindings().
-bindings([]) ->
-    lager:debug("no accounts configured"),
-    [];
-bindings(AccountsWithObjectHook) ->
-    [{'conf', [{'restrict_to', ['doc_updates']}
-               ,{'type', Type}
-               ,{'db', Account}
-              ]
-     }
-     || Type <- ?OBJECT_TYPES,
-        Account <- lists:usort(AccountsWithObjectHook)
-    ].
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec account_bindings(ne_binary()) -> gen_listener:bindings().
 account_bindings(AccountId) ->
     bindings([wh_util:format_account_id(AccountId, 'encoded')]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_event(wh_json:object(), wh_proplist()) -> any().
+handle_event(JObj, _Props) ->
+    wh_util:put_callid(JObj),
+    'true' = wapi_conf:doc_update_v(JObj),
+
+    AccountId = find_account_id(JObj),
+    case webhooks_util:find_webhooks(?NAME, AccountId) of
+        [] ->
+            lager:debug(
+              "no hooks to handle ~s for ~s"
+              ,[wh_api:event_name(JObj), AccountId]
+             );
+        Hooks ->
+            webhooks_util:fire_hooks(format_event(JObj, AccountId), Hooks)
+    end.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec load_accounts() -> ne_binaries().
 load_accounts() ->
-    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
-                               ,<<"webhooks/hook_listing">>
-                               ,[{'key', ?NAME}]
-                              )
+    case
+        couch_mgr:get_results(
+          ?KZ_WEBHOOKS_DB
+          ,<<"webhooks/hook_listing">>
+          ,[{'key', ?NAME}]
+         )
     of
         {'ok', View} ->
             [wh_util:format_account_id(
@@ -104,21 +151,31 @@ load_accounts() ->
             []
     end.
 
--spec handle_event(wh_json:object(), wh_proplist()) -> any().
-handle_event(JObj, _Props) ->
-    wh_util:put_callid(JObj),
-    'true' = wapi_conf:doc_update_v(JObj),
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec bindings(ne_binaries()) -> gen_listener:bindings().
+bindings([]) ->
+    lager:debug("no accounts configured"),
+    [];
+bindings(AccountsWithObjectHook) ->
+    [{'conf'
+      ,[{'restrict_to', ['doc_updates']}
+        ,{'type', Type}
+        ,{'db', Account}
+       ]
+     }
+     || Type <- ?OBJECT_TYPES,
+        Account <- lists:usort(AccountsWithObjectHook)
+    ].
 
-    AccountId = find_account_id(JObj),
-    case webhooks_util:find_webhooks(?NAME, AccountId) of
-        [] ->
-            lager:debug("no hooks to handle ~s for ~s"
-                        ,[wh_api:event_name(JObj)
-                          ,AccountId
-                         ]);
-        Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId), Hooks)
-    end.
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec format_event(wh_json:object(), ne_binary()) -> wh_json:object().
 format_event(JObj, AccountId) ->
     wh_json:from_list(
@@ -127,10 +184,14 @@ format_event(JObj, AccountId) ->
          ,{<<"account_id">>, AccountId}
          ,{<<"action">>, wh_api:event_name(JObj)}
          ,{<<"type">>, wapi_conf:get_type(JObj)}
-        ]
-       )
+        ])
      ).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec find_account_id(wh_json:object()) -> ne_binary().
 find_account_id(JObj) ->
     case wapi_conf:get_account_id(JObj) of
