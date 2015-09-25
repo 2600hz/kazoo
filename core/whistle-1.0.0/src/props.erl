@@ -305,9 +305,9 @@ to_log(Props) ->
 
 -spec to_log(wh_proplist(), ne_binary()) -> 'ok'.
 to_log(Props, Header) ->
-  Keys = props:get_keys(Props),
+  Keys = ?MODULE:get_keys(Props),
   K = wh_util:rand_hex_binary(4),
   lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
-  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,props:get_value(A,Props)]) end,Keys),
+  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,?MODULE:get_value(A,Props)]) end,Keys),
   lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
   'ok'.

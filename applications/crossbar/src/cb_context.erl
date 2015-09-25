@@ -1058,7 +1058,7 @@ add_system_error(Error, JObj, Context) ->
 -spec build_system_error(integer(), atom() | ne_binary(), ne_binary() | wh_json:object(), cb_context:context()) ->
                                 cb_context:context().
 build_system_error(Code, Error, JObj, Context) ->
-    ApiVersion = cb_context:api_version(Context),
+    ApiVersion = ?MODULE:api_version(Context),
     Message = build_error_message(ApiVersion, JObj),
     Context#cb_context{resp_status='error'
                        ,resp_error_code=Code
@@ -1131,7 +1131,7 @@ add_depreciated_validation_error(Property, Code, Message, Context) when is_binar
 add_depreciated_validation_error(Property, Code, Message, #cb_context{validation_errors=JObj}=Context) ->
     %% Maintain the same error format we are currently using until we are ready to
     %% convert to something that makes sense....
-    ApiVersion = cb_context:api_version(Context),
+    ApiVersion = ?MODULE:api_version(Context),
     Error = build_error_message(ApiVersion, Message),
     Key = wh_util:join_binary(Property, <<".">>),
     Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Error, JObj)

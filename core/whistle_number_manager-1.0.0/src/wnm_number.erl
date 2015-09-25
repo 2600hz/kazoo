@@ -962,15 +962,15 @@ exec_providers([Provider|Providers], Action, Number) ->
                 {'error', Reason} ->
                     lager:debug("failed attempting ~s:~s/1: ~p", [Mod, Action, Reason]),
                     Error = wh_json:from_list([{Provider, Reason}]),
-                    wnm_number:error_provider_fault(Error, Number);
+                    ?MODULE:error_provider_fault(Error, Number);
                 {'invalid', Data} ->
                     lager:debug("failed attempting ~s:~s/1: ~p", [Mod, Action, Data]),
                     Error = wh_json:set_value(<<"provider">>, Provider, Data),
-                    wnm_number:error_user_fault(Error, Number);
+                    ?MODULE:error_user_fault(Error, Number);
                 {'multiple_choice', Update} ->
                     lager:debug("update sent by ~s", [Mod]),
                     Error = wh_json:from_list([{Provider, Update}]),
-                    wnm_number:error_provider_update(Error, Number)
+                    ?MODULE:error_provider_update(Error, Number)
             end
     end.
 

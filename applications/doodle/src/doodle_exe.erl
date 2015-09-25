@@ -389,8 +389,8 @@ handle_cast('initialize', #state{call=Call}) ->
     log_call_information(Call),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> whapps_call:kvs_store('consumer_pid', self(), C) end
-                ,fun(C) -> whapps_call:call_id_helper(fun doodle_exe:callid/2, C) end
-                ,fun(C) -> whapps_call:control_queue_helper(fun doodle_exe:control_queue/2, C) end
+                ,fun(C) -> whapps_call:call_id_helper(fun ?MODULE:callid/2, C) end
+                ,fun(C) -> whapps_call:control_queue_helper(fun ?MODULE:control_queue/2, C) end
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     {'noreply', #state{call=CallWithHelpers

@@ -693,8 +693,8 @@ find_address(Key, DataJObj, TemplateMetaJObj) ->
 -spec find_admin_emails(wh_json:object(), ne_binary(), wh_json:key()) ->
                                api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
-    case teletype_util:find_account_rep_email(
-           teletype_util:find_account_id(DataJObj)
+    case ?MODULE:find_account_rep_email(
+           ?MODULE:find_account_id(DataJObj)
           )
     of
         'undefined' ->

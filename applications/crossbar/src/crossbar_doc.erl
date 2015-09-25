@@ -242,7 +242,7 @@ merge(DataJObj, JObj, Context) ->
 -spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
                                 cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = ?MODULE:load(Id, Context),
     Context2 = case cb_context:resp_status(Context1) of
                    'success' ->
                        PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),

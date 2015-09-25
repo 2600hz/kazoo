@@ -74,7 +74,7 @@ new(Broker) -> new(Broker, 'local').
 new(<<_/binary>> = Broker, Zone) ->
     case broker_connections(Broker) =:= 0 of
         'false' -> {'error', 'exists'};
-        'true' -> wh_amqp_connections:add(Broker, Zone)
+        'true' -> ?MODULE:add(Broker, Zone)
     end;
 new(Broker, Zone) ->
     new(wh_util:to_binary(Broker), Zone).

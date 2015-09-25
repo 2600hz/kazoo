@@ -941,7 +941,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
 -spec maybe_get_t38(wh_json:object(), whapps_call:call()) -> wh_proplist().
 maybe_get_t38(Endpoint, Call) ->
     Opt =
-        case cf_endpoint:get(Call) of
+        case ?MODULE:get(Call) of
             {'ok', JObj} -> wh_json:is_true([<<"media">>, <<"fax_option">>], JObj);
             {'error', _} -> 'undefined'
         end,

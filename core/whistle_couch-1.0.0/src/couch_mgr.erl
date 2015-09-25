@@ -973,7 +973,7 @@ change_notice() ->
 
 -spec db_archive(ne_binary()) -> 'ok'.
 db_archive(Db) ->
-    {'ok', DbInfo} = couch_mgr:db_info(Db),
+    {'ok', DbInfo} = ?MODULE:db_info(Db),
 
     MaxDocs = whapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
@@ -996,7 +996,7 @@ archive(Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
                    ,{'skip', Pos}
                    ,'include_docs'
                   ],
-    case couch_mgr:all_docs(Db, ViewOptions) of
+    case ?MODULE:all_docs(Db, ViewOptions) of
         {'ok', []} -> lager:debug("no docs left after pos ~p, done", [Pos]);
         {'ok', Docs} ->
             'ok' = archive_docs(File, Docs),
@@ -1012,7 +1012,7 @@ archive(Db, File, MaxDocs, N, Pos) ->
                    ,{'skip', Pos}
                    ,'include_docs'
                   ],
-    case couch_mgr:all_docs(Db, ViewOptions) of
+    case ?MODULE:all_docs(Db, ViewOptions) of
         {'ok', []} -> lager:debug("no docs left after pos ~p, done", [Pos]);
         {'ok', Docs} ->
             'ok' = archive_docs(File, Docs),

@@ -346,7 +346,7 @@ pad_month(Month) ->
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
-       || <<Char>> <= wh_util:to_lower_binary(AccountName),
+       || <<Char>> <= ?MODULE:to_lower_binary(AccountName),
           (Char >= $a andalso Char =< $z)
               orelse (Char >= $0 andalso Char =< $9)
     >>.
@@ -368,8 +368,8 @@ is_in_account_hierarchy(CheckFor, InAccount) ->
 is_in_account_hierarchy('undefined', _, _) -> 'false';
 is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
-    CheckId = wh_util:format_account_id(CheckFor, 'raw'),
-    AccountId = wh_util:format_account_id(InAccount, 'raw'),
+    CheckId = ?MODULE:format_account_id(CheckFor, 'raw'),
+    AccountId = ?MODULE:format_account_id(InAccount, 'raw'),
     case (IncludeSelf andalso AccountId =:= CheckId) orelse kz_account:fetch(AccountId) of
         'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
@@ -436,7 +436,7 @@ is_account_expired('undefined') -> 'false';
 is_account_expired(Account) ->
     case kz_account:fetch(Account) of
         {'ok', Doc} ->
-            Now = wh_util:current_tstamp(),
+            Now = ?MODULE:current_tstamp(),
             Trial = kz_account:trial_expiration(Doc, Now+1),
             Trial < Now;
         {'error', _R} ->
@@ -454,8 +454,8 @@ is_account_expired(Account) ->
 -spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
 get_account_realm(AccountId) ->
     get_account_realm(
-      wh_util:format_account_id(AccountId, 'encoded')
-      ,wh_util:format_account_id(AccountId, 'raw')
+      ?MODULE:format_account_id(AccountId, 'encoded')
+      ,?MODULE:format_account_id(AccountId, 'raw')
      ).
 
 get_account_realm('undefined', _) -> 'undefined';
@@ -476,7 +476,7 @@ get_account_realm(Db, AccountId) ->
 %%--------------------------------------------------------------------
 -spec try_load_module(string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
-    Module = wh_util:to_atom(Name, 'true'),
+    Module = ?MODULE:to_atom(Name, 'true'),
     try Module:module_info('imports') of
         _ when Module =:= 'undefined' -> 'false';
         _ ->
@@ -630,15 +630,15 @@ get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
         [#xmlText{value=Value}] ->
-            wh_util:to_binary(Value);
+            ?MODULE:to_binary(Value);
         [#xmlText{}|_]=Values ->
-            iolist_to_binary([wh_util:to_binary(Value)
+            iolist_to_binary([?MODULE:to_binary(Value)
                               || #xmlText{value=Value} <- Values
                              ]);
         [#xmlAttribute{value=Value}] ->
-            wh_util:to_binary(Value);
+            ?MODULE:to_binary(Value);
         [#xmlAttribute{}|_]=Values ->
-            iolist_to_binary([wh_util:to_binary(Value)
+            iolist_to_binary([?MODULE:to_binary(Value)
                               || #xmlAttribute{value=Value} <- Values
                              ]);
         _Else -> 'undefined'
@@ -696,7 +696,7 @@ hex_char_to_binary(B) ->
 
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
-    rand_hex_binary(wh_util:to_integer(Size));
+    rand_hex_binary(?MODULE:to_integer(Size));
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
     to_hex_binary(rand_hex(Size)).
 
@@ -1072,7 +1072,7 @@ whistle_version() ->
         {'ok', File} ->
             {'ok', Line} = file:read_line(File),
             _ = file:close(File),
-            wh_util:to_binary(string:strip(Line, 'right', $\n));
+            ?MODULE:to_binary(string:strip(Line, 'right', $\n));
         _ -> <<"unknown">>
     end.
 
@@ -1188,7 +1188,7 @@ decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
         'false' -> Diff
     end;
 decr_timeout(Timeout, Start) ->
-    decr_timeout(Timeout, wh_util:elapsed_ms(Start)).
+    decr_timeout(Timeout, ?MODULE:elapsed_ms(Start)).
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
@@ -1250,14 +1250,14 @@ format_date() ->
 
 format_date(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([wh_util:to_binary(Y), "-", wh_util:to_binary(M), "-", wh_util:to_binary(D)]).
+    list_to_binary([?MODULE:to_binary(Y), "-", ?MODULE:to_binary(M), "-", ?MODULE:to_binary(D)]).
 
 format_time() ->
     format_time(current_tstamp()).
 
 format_time(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    list_to_binary([wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)]).
+    list_to_binary([?MODULE:to_binary(H), ":", ?MODULE:to_binary(I), ":", ?MODULE:to_binary(S)]).
 
 format_datetime() ->
     format_datetime(current_tstamp()).

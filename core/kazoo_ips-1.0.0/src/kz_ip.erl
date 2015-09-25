@@ -72,7 +72,7 @@ create(IP, Zone, Host) ->
     case couch_mgr:save_doc(?WH_DEDICATED_IP_DB, JObj) of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ip:create(IP, Zone, Host) end
+              fun() -> ?MODULE:create(IP, Zone, Host) end
              );
         {'ok', SavedJObj} ->
             lager:debug("created dedicated ip ~s in zone ~s on host ~s"

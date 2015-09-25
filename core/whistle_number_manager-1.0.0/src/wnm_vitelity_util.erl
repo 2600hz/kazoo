@@ -60,8 +60,8 @@ get_query_value(Key, Opts) ->
 default_options() ->
      default_options([]).
 default_options(Opts) ->
-    [{'login', wnm_vitelity_util:get_query_value('login', Opts)}
-     ,{'pass', wnm_vitelity_util:get_query_value('pass', Opts)}
+    [{'login', ?MODULE:get_query_value('login', Opts)}
+     ,{'pass', ?MODULE:get_query_value('pass', Opts)}
     ].
 
 -spec build_uri(wh_proplist()) -> ne_binary().

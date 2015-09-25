@@ -101,7 +101,7 @@ cast(Dest, Request) -> gen_server:cast(Dest, Request).
 init([Module, Db, Options, InitArgs]) ->
     case Module:init(InitArgs) of
         {'ok', ModState} ->
-            wh_gen_changes:cast(self(), '$start_change_feed'),
+            ?MODULE:cast(self(), '$start_change_feed'),
             {'ok', #gen_changes_state{mod=Module
                                       ,modstate=ModState
                                       ,db=Db

@@ -245,8 +245,8 @@ get_rollup_balance(Account, ViewOptions) ->
 %%--------------------------------------------------------------------
 -spec current_account_dollars(ne_binary()) -> float().
 current_account_dollars(Account) ->
-    Units = wht_util:current_balance(Account),
-    wht_util:units_to_dollars(Units).
+    Units = ?MODULE:current_balance(Account),
+    ?MODULE:units_to_dollars(Units).
 
 %%--------------------------------------------------------------------
 %% @public

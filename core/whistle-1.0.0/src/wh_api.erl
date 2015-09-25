@@ -284,7 +284,7 @@ error_resp_v(JObj) ->
 publish_error(TargetQ, JObj) ->
     publish_error(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(TargetQ, Error, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun ?MODULE:error_resp/1),
+    {'ok', Payload} = ?MODULE:prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun ?MODULE:error_resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 %%%===================================================================

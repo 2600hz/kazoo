@@ -1034,29 +1034,29 @@ retrieve(CallId, AppName) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--define(UPDATERS, [fun(C) -> whapps_call:set_call_id(<<"123456789ABCDEF">>, C) end
-                   ,fun(C) -> whapps_call:set_control_queue(<<"control_queue">>, C) end
-                   ,fun(C) -> whapps_call:set_controller_queue(<<"controller_queue">>, C) end
-                   ,fun(C) -> whapps_call:set_caller_id_name(<<"caller_id_name">>, C) end
-                   ,fun(C) -> whapps_call:set_caller_id_number(<<"caller_id_number">>, C) end
-                   ,fun(C) -> whapps_call:set_callee_id_name(<<"callee_id_name">>, C) end
-                   ,fun(C) -> whapps_call:set_callee_id_number(<<"callee_id_number">>, C) end
-                   ,fun(C) -> whapps_call:set_request(<<"request_user@request_domain">>, C) end
-                   ,fun(C) -> whapps_call:set_from(<<"from_user@from_domain">>, C) end
-                   ,fun(C) -> whapps_call:set_to(<<"to_user@to_domain">>, C) end
-                   ,fun(C) -> whapps_call:set_account_db(<<"account%2F12%2F3456789">>, C) end
-                   ,fun(C) -> whapps_call:set_account_id(<<"123456789">>, C) end
-                   ,fun(C) -> whapps_call:set_authorizing_id(<<"987654321">>, C) end
-                   ,fun(C) -> whapps_call:set_authorizing_type(<<"test">>, C) end
-                   ,fun(C) -> whapps_call:set_owner_id(<<"abcdefghi">>, C) end
-                   ,fun(C) -> whapps_call:set_fetch_id(<<"1234567890ABCDEFG">>, C) end
-                   ,fun(C) -> whapps_call:set_bridge_id(<<"1234567890ABCDEF">>, C) end
-                   ,fun(C) -> whapps_call:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
-                   ,fun(C) -> whapps_call:set_custom_channel_var(<<"key2">>, 2600, C) end
-                   ,fun(C) -> whapps_call:set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
-                   ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
-                   ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
-                   ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_2">>, wh_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
+-define(UPDATERS, [fun(C) -> ?MODULE:set_call_id(<<"123456789ABCDEF">>, C) end
+                   ,fun(C) -> ?MODULE:set_control_queue(<<"control_queue">>, C) end
+                   ,fun(C) -> ?MODULE:set_controller_queue(<<"controller_queue">>, C) end
+                   ,fun(C) -> ?MODULE:set_caller_id_name(<<"caller_id_name">>, C) end
+                   ,fun(C) -> ?MODULE:set_caller_id_number(<<"caller_id_number">>, C) end
+                   ,fun(C) -> ?MODULE:set_callee_id_name(<<"callee_id_name">>, C) end
+                   ,fun(C) -> ?MODULE:set_callee_id_number(<<"callee_id_number">>, C) end
+                   ,fun(C) -> ?MODULE:set_request(<<"request_user@request_domain">>, C) end
+                   ,fun(C) -> ?MODULE:set_from(<<"from_user@from_domain">>, C) end
+                   ,fun(C) -> ?MODULE:set_to(<<"to_user@to_domain">>, C) end
+                   ,fun(C) -> ?MODULE:set_account_db(<<"account%2F12%2F3456789">>, C) end
+                   ,fun(C) -> ?MODULE:set_account_id(<<"123456789">>, C) end
+                   ,fun(C) -> ?MODULE:set_authorizing_id(<<"987654321">>, C) end
+                   ,fun(C) -> ?MODULE:set_authorizing_type(<<"test">>, C) end
+                   ,fun(C) -> ?MODULE:set_owner_id(<<"abcdefghi">>, C) end
+                   ,fun(C) -> ?MODULE:set_fetch_id(<<"1234567890ABCDEFG">>, C) end
+                   ,fun(C) -> ?MODULE:set_bridge_id(<<"1234567890ABCDEF">>, C) end
+                   ,fun(C) -> ?MODULE:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
+                   ,fun(C) -> ?MODULE:set_custom_channel_var(<<"key2">>, 2600, C) end
+                   ,fun(C) -> ?MODULE:set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
+                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
+                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
+                   ,fun(C) -> ?MODULE:kvs_store(<<"kvs_key_2">>, wh_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
                   ]).
 
 %% TODO: I am out of the alloted time for this module, please add during another refactor
@@ -1068,11 +1068,11 @@ from_route_win_test() ->
     'ok'.
 
 json_conversion_test() -> 'ok'.
-    %% Call1 = lists:foldr(fun(F, C) -> F(C) end, whapps_call:new(), ?UPDATERS),
+    %% Call1 = lists:foldr(fun(F, C) -> F(C) end, ?MODULE:new(), ?UPDATERS),
     %% _Call2 = from_json(to_json(Call1)).
     %% TODO: These are equal, but the order of the CCVs json headers
     %%       is reversed.... and I am out of time for this module
-    %%       Your just goind to have to take my word it works hehe ;)
+    %%       You're just goind to have to take my word it works hehe ;)
 %%    ?assertEqual(Call1, Call2).
 
 -endif.

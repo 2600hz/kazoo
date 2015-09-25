@@ -50,7 +50,7 @@ available(Zone, Quantity) ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:available(Zone, Quantity) end
+              fun() -> ?MODULE:available(Zone, Quantity) end
              );
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
@@ -78,7 +78,7 @@ assigned(Account) ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:assigned(Account) end
+              fun() -> ?MODULE:assigned(Account) end
              );
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
@@ -107,7 +107,7 @@ zones() ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:zones() end
+              fun() -> ?MODULE:zones() end
              );
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"key">>, JObj)
@@ -138,7 +138,7 @@ hosts() ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:hosts() end
+              fun() -> ?MODULE:hosts() end
              );
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"key">>, JObj)
@@ -167,7 +167,7 @@ summary(Host) ->
     of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
-              fun() -> kz_ips:summary(Host) end
+              fun() -> ?MODULE:summary(Host) end
              );
         {'ok', JObjs} -> {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->

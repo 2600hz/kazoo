@@ -93,7 +93,7 @@ pretty_print(Number) ->
 
 -spec pretty_print(ne_binary(), ne_binary()) -> ne_binary().
 pretty_print(Format, Number) ->
-    Num = wnm_util:normalize_number(Number),
+    Num = ?MODULE:normalize_number(Number),
     pretty_print(Format, Num, <<>>).
 
 -spec pretty_print(binary(), binary(), binary()) -> binary().
@@ -139,7 +139,7 @@ binary_head(Binary) ->
 pretty_print_format(Number) ->
     Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
     Classifiers = whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default),
-    Num = wnm_util:normalize_number(Number),
+    Num = ?MODULE:normalize_number(Number),
     pretty_print_format(Num, wh_json:to_proplist(Classifiers)).
 
 -spec pretty_print_format(ne_binary(), wh_proplist()) -> api_binary().
@@ -219,7 +219,7 @@ correct_depreciated_classifiers([{Classifier, J}|Classifiers], JObj) ->
 classify_number(Number) ->
     Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
     Classifiers = whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default),
-    Num = wnm_util:normalize_number(Number),
+    Num = ?MODULE:normalize_number(Number),
     classify_number(Num, wh_json:to_proplist(Classifiers)).
 
 classify_number(Num, []) ->
@@ -252,7 +252,7 @@ get_classifier_regex(JObj) ->
 is_reconcilable(<<"id">>) -> 'false';
 is_reconcilable(Number) ->
     Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, ?DEFAULT_RECONCILE_REGEX),
-    Num = wnm_util:normalize_number(Number),
+    Num = ?MODULE:normalize_number(Number),
     case re:run(Num, Regex) of
         'nomatch' ->
             lager:debug("number '~s' is not reconcilable", [Num]),
@@ -265,7 +265,7 @@ is_reconcilable(Number) ->
 -spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
 is_reconcilable(Number, AccountId) ->
     Regex = whapps_account_config:get_global(AccountId, ?WNM_CONFIG_CAT, <<"reconcile_regex">>, ?DEFAULT_RECONCILE_REGEX),
-    Num = wnm_util:normalize_number(Number, AccountId),
+    Num = ?MODULE:normalize_number(Number, AccountId),
     case re:run(Num, Regex) of
         'nomatch' ->
             lager:debug("number '~s' is not reconcilable", [Num]),
