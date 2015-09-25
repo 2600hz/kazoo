@@ -22,8 +22,6 @@
          ,post/2, post/3, post/4
          ,delete/2, delete/4
          ,cleanup/1
-
-         ,update_default_template/0
          ,find_template/1, find_template/2
          ,authority/1
         ]).
@@ -37,11 +35,9 @@
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
 -define(TEMPLATE_ATTACHMENT_ID, <<"template">>).
 
--define(LOA_BUILDER, whapps_config:get(?MY_CONFIG_CAT, <<"loa_builder">>, <<"htmldoc">>)).
-
--define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"pdf">>}
-                                ,{<<"application">>, <<"octet-stream">>}
+-define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}
                                 ,{<<"text">>, <<"plain">>}
+                                | ?PDF_CONTENT_TYPES
                                ]).
 
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
@@ -229,7 +225,7 @@ content_types_provided(Context, _Id) ->
     Context.
 
 content_types_provided(Context, _Id, ?PATH_TOKEN_LOA) ->
-    cb_context:add_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"x-pdf">>}]}]);
+    cb_context:add_content_types_provided(Context, [{'to_binary', ?PDF_CONTENT_TYPES}]);
 content_types_provided(Context, _Id, _) ->
     Context.
 
@@ -1228,123 +1224,23 @@ generate_loa(Context, _RespStatus) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec generate_loa_from_port(cb_context:context(), wh_json:object()) ->
-                                    cb_context:context().
--spec generate_loa_from_port(cb_context:context(), wh_json:object(), ne_binary()) ->
-                                    cb_context:context().
-generate_loa_from_port(Context, PortRequest) ->
-    generate_loa_from_port(Context, PortRequest, ?LOA_BUILDER).
-
-generate_loa_from_port(Context, PortRequest, <<"htmldoc">>) ->
-    cb_loa_htmldoc:generate_loa(Context, PortRequest).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec find_template(ne_binary()) -> ne_binary().
 -spec find_template(ne_binary(), api_binary()) -> ne_binary().
 find_template(ResellerId) ->
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    case couch_mgr:fetch_attachment(ResellerDb, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> default_template()
-    end.
+    {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
+    Template.
 
 find_template(ResellerId, 'undefined') ->
     find_template(ResellerId);
 find_template(ResellerId, CarrierName) ->
-    CarrierTemplate = list_to_binary([?TEMPLATE_DOC_ID
-                                      ,<<".">>
-                                      ,wh_util:to_lower_binary(wh_util:uri_encode(CarrierName))
-                                     ]),
-    lager:debug("looking for carrier template ~s or plain template for reseller ~s", [CarrierTemplate, ResellerId]),
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    case couch_mgr:fetch_attachment(ResellerDb, CarrierTemplate, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> find_carrier_template(ResellerDb, CarrierTemplate)
+    TemplateName = <<(wh_util:to_lower_binary(wh_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
+    lager:debug("looking for carrier template ~s or plain template for reseller ~s"
+                ,[TemplateName, ResellerId]
+               ),
+    case kz_pdf:find_template(ResellerId, <<"loa">>, TemplateName) of
+        {'error', _} -> find_template(ResellerId);
+        {'ok', Template} -> Template
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec find_carrier_template(ne_binary(), ne_binary()) -> ne_binary().
-find_carrier_template(ResellerDb, CarrierTemplate) ->
-    case couch_mgr:fetch_attachment(ResellerDb, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> default_carrier_template(CarrierTemplate)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec default_template() -> ne_binary().
-default_template() ->
-    case couch_mgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> create_default_template()
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec default_carrier_template(ne_binary()) -> ne_binary().
-default_carrier_template(CarrierTemplate) ->
-    case couch_mgr:fetch_attachment(?WH_CONFIG_DB, CarrierTemplate, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> default_template()
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec create_default_template() -> ne_binary().
-create_default_template() ->
-    {'ok', _Doc} =
-        couch_mgr:save_doc(?WH_CONFIG_DB
-                           ,wh_json:from_list([{<<"template_name">>, <<"loa">>}
-                                               ,{<<"_id">>, ?TEMPLATE_DOC_ID}
-                                              ])
-                          ),
-    save_default_template().
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec update_default_template() -> ne_binary().
-update_default_template() ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID) of
-        {'ok', _Doc} -> save_default_template();
-        {'error', 'not_found'} -> create_default_template()
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec save_default_template() -> ne_binary().
-save_default_template() ->
-    PrivDir = code:priv_dir('crossbar'),
-    TemplateFile = filename:join([PrivDir, <<"couchdb">>, <<"templates">>, <<"loa.tmpl">>]),
-    lager:debug("loading template from ~s", [TemplateFile]),
-
-    {'ok', Template} = file:read_file(TemplateFile),
-
-    {'ok', _} =
-        couch_mgr:put_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID, Template),
-    Template.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1601,4 +1497,73 @@ save_phone_numbers_doc(Context, JObj) ->
         _Status ->
             lager:error("failed to save phone_numbers doc in ~s : ~p", [AccountId, _Status]),
             'error'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec generate_loa_from_port(cb_context:context(), wh_json:object()) ->
+                                    cb_context:context().
+generate_loa_from_port(Context, PortRequest) ->
+    AccountId = cb_context:account_id(Context),
+
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerDoc = cb_context:account_doc(cb_context:set_account_id(Context, ResellerId)),
+
+    AccountDoc = cb_context:account_doc(Context),
+
+    Numbers = [wnm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
+
+    QRCode = create_qr_code(cb_context:account_id(Context), wh_doc:id(PortRequest)),
+
+    generate_loa_from_template(Context
+                               ,props:filter_undefined(
+                                  [{<<"reseller">>, wh_json:to_proplist(ResellerDoc)}
+                                   ,{<<"account">>, wh_json:to_proplist(AccountDoc)}
+                                   ,{<<"numbers">>, Numbers}
+                                   ,{<<"bill">>, wh_json:to_proplist(wh_json:get_value(<<"bill">>, PortRequest, wh_json:new()))}
+                                   ,{<<"request">>, wh_json:to_proplist(PortRequest)}
+                                   ,{<<"qr_code">>, QRCode}
+                                   ,{<<"type">>, <<"loa">>}
+                                  ])
+                               ,ResellerId
+                               ,wh_json:get_value(<<"carrier">>, PortRequest)
+                              ).
+
+-spec generate_loa_from_template(cb_context:context(), wh_proplist(), ne_binary(), api_binary()) ->
+                                        cb_context:context().
+generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
+    Template = find_template(ResellerId, Carrier),
+    case kz_pdf:generate(ResellerId, TemplateData, Template) of
+        {'error', _R} -> cb_context:set_resp_status(Context, 'error');
+        {'ok', PDF} ->
+            cb_context:set_resp_status(
+              cb_context:set_resp_data(Context, PDF)
+              ,'success'
+             )
+    end.
+
+-spec create_qr_code(api_binary(), api_binary()) -> wh_proplist() | 'undefined'.
+create_qr_code('undefined', _) -> 'undefined';
+create_qr_code(_, 'undefined') -> 'undefined';
+create_qr_code(AccountId, PortRequestId) ->
+    lager:debug("create qr code for ~s - ~s", [AccountId, PortRequestId]),
+    CHL = <<AccountId/binary, "-", PortRequestId/binary>>,
+    Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
+
+    case ibrowse:send_req(wh_util:to_list(Url)
+                          ,[]
+                          ,'get'
+                          ,[]
+                          ,[{'response', 'binary'}]
+                         )
+    of
+        {'ok', "200", _RespHeaders, RespBody} ->
+            lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
+            [{<<"image">>, base64:encode(RespBody)}];
+        _E ->
+            lager:debug("failed to generate QR code: ~p", [_E]),
+            'undefined'
     end.

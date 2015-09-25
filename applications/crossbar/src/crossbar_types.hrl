@@ -78,7 +78,9 @@
                                ,{<<"application">>, <<"x-base64">>}
                               ]).
 
--define(PDF_CONTENT_TYPES, [{<<"application">>, <<"pdf">>}]).
+-define(PDF_CONTENT_TYPES, [{<<"application">>, <<"pdf">>}
+                            ,{<<"application">>, <<"x-pdf">>}
+                           ]).
 
 -define(JSONP_CONTENT_TYPE, <<"application/javascript">>).
 
