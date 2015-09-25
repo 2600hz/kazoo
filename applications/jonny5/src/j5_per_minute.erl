@@ -66,24 +66,19 @@ maybe_credit_available(Amount, Limits) ->
 -spec maybe_prepay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
 maybe_prepay_credit_available(Balance, Amount, Limits) ->
     AccountId = j5_limits:account_id(Limits),
+    Dbg = [AccountId
+           ,wht_util:units_to_dollars(Amount)
+           ,wht_util:units_to_dollars(Balance)
+          ],
     case j5_limits:allow_prepay(Limits) of
         'false' ->
-            lager:debug("account ~s is restricted from using prepay"
-                        ,[AccountId]),
+            lager:debug("account ~s is restricted from using prepay", [AccountId]),
             'false';
         'true' when (Balance - Amount) > 0 ->
-            lager:debug("using prepay from account ~s $~w/$~w"
-                        ,[AccountId
-                          ,wht_util:units_to_dollars(Amount)
-                          ,wht_util:units_to_dollars(Balance)
-                         ]),
+            lager:debug("using prepay from account ~s $~w/$~w", Dbg),
             'true';
         'true' ->
-            lager:debug("account ~s does not have enough prepay credit $~w/$~w"
-                        ,[AccountId
-                          ,wht_util:units_to_dollars(Amount)
-                          ,wht_util:units_to_dollars(Balance)
-                         ]),
+            lager:debug("account ~s does not have enough prepay credit $~w/$~w", Dbg),
             'false'
     end.
 

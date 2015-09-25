@@ -123,9 +123,30 @@ validate(Context, PathToken) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?DEBIT) ->
     case cb_context:resp_status(Context) of
-        'success' ->
-           maybe_create_debit_tansaction(Context);
-        _RespStatus -> Context
+        'success' -> maybe_debit_billing_id(Context);
+        _Error -> Context
+    end.
+
+%% Note: really similar to cb_braintree:maybe_charge_billing_id/2
+-spec maybe_debit_billing_id(cb_context:context()) -> cb_context:context().
+maybe_debit_billing_id(Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+
+    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
+        MasterAccountId ->
+            lager:debug("invoking a bookkeeper to remove requested credit"),
+            maybe_create_debit_tansaction(Context);
+        AuthAccountId when AuthAccountId =/= MasterAccountId ->
+            lager:debug("allowing reseller to remove credit without invoking a bookkeeper"),
+            maybe_create_debit_tansaction(Context);
+        ResellerId ->
+            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit"),
+            Resp = wh_json:from_list(
+                     [{<<"message">>, <<"Please contact your phone provider to remove credit.">>}
+                      ,{<<"cause">>, ResellerId}
+                     ]),
+            cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Resp, Context)
     end.
 
 -spec maybe_create_debit_tansaction(cb_context:context()) -> cb_context:context().

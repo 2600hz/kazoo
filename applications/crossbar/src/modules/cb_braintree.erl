@@ -475,16 +475,11 @@ maybe_charge_billing_id(Amount, Context) ->
             crossbar_util:response(Resp, Context);
         ResellerId ->
             lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit"),
-            Message = <<"Please contact your phone provider to add credit.">>,
-            cb_context:add_validation_error(
-              <<"amount">>
-              ,<<"forbidden">>
-              ,wh_json:from_list(
-                 [{<<"message">>, Message}
-                  ,{<<"cause">>, ResellerId}
-                 ])
-              ,Context
-             )
+            Resp = wh_json:from_list(
+                     [{<<"message">>, <<"Please contact your phone provider to add credit.">>}
+                      ,{<<"cause">>, ResellerId}
+                     ]),
+            cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Resp, Context)
     end.
 
 -spec charge_billing_id(float(), cb_context:context()) -> cb_context:context().
