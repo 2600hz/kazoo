@@ -96,5 +96,19 @@
           )
        ).
 
+-define(ARGUMENTS_RESTRICTIONS(Arg)
+        ,wh_json:from_list(
+           [{<<"devices">>
+             ,[wh_json:from_list(
+                 [{<<"allowed_accounts">>, [?ACCOUNT_ID]}
+                  ,{<<"rules">>, wh_json:from_list([{Arg, ?HTTP_ANY}])}
+                 ]
+                )
+              ]
+            }
+           ]
+          )
+       ).
+
 -define(CB_TOKEN_RESTRICTIONS_TEST_HRL, 'true').
 -endif.

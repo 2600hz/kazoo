@@ -79,6 +79,34 @@ allow_accounts_assertions({Account, Expected}) ->
 
     build_assertions(Label, Context, [Expected, Expected, Expected, Expected]).
 
+argument_test_() ->
+    ArgPatterns =
+        [{?ARGS_EMPTY, [?ALLOW_REQ, ?DENY_REQ, ?DENY_REQ, ?DENY_REQ]}
+         ,{?ARGS_SINGLE, [?DENY_REQ, ?ALLOW_REQ, ?DENY_REQ, ?DENY_REQ]}
+         ,{?ARGS_ANY, [?ALLOW_REQ, ?ALLOW_REQ, ?ALLOW_REQ, ?ALLOW_REQ]}
+         ,{?ARGS_EXACT, [?DENY_REQ, ?ALLOW_REQ, ?DENY_REQ, ?DENY_REQ]}
+         ,{?ARGS_ANY_TWO, [?DENY_REQ, ?DENY_REQ, ?ALLOW_REQ, ?DENY_REQ]}
+         ,{?ARGS_ANY_THREE, [?DENY_REQ, ?DENY_REQ, ?DENY_REQ, ?ALLOW_REQ]}
+         ,{?ARGS_EXACT_THEN_ANY, [?DENY_REQ, ?ALLOW_REQ, ?ALLOW_REQ, ?ALLOW_REQ]}
+        ],
+    [argument_assertions(ArgPattern) || ArgPattern <- ArgPatterns].
+
+argument_assertions({ArgPattern, ExpectedResults}) ->
+    Context =
+        cb_context:setters(
+          cb_context:new()
+          ,[{fun cb_context:set_auth_account_id/2, ?AUTH_ACCOUNT_ID}
+            ,{fun cb_context:set_account_id/2, ?ACCOUNT_ID}
+            ,{fun cb_context:set_req_verb/2, ?HTTP_GET}
+            ,{fun cb_context:set_auth_doc/2
+              ,auth_doc(?ARGUMENTS_RESTRICTIONS(ArgPattern))
+             }
+           ]
+         ),
+
+    Label = "Verify argument pattern matching works",
+    build_assertions(Label, Context, ExpectedResults).
+
 -define(TEST_ARGS, [[]
                     ,[?DEVICE_ID]
                     ,[?DEVICE_ID, <<"sync">>]
