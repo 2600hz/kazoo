@@ -9,7 +9,7 @@ Language: en-US
 ## configuring haproxy
 
 combining a http listener for both api and websockets
- 
+
 ```
 listen kazoo-crossbar-https
         bind *:8443 ssl crt /etc/haproxy/certs/mycert.pem
@@ -30,12 +30,12 @@ backend whapps-blackhole
     option forceclose
     no option httpclose
     option httpchk HEAD  /
-    
+
    server srv-01 srv-01.mydomain.com:5555 check
    server srv-02 srv-02.mydomain.com:5555 check
    server srv-03 srv-03.mydomain.com:5555 check
    server srv-04 srv-04.mydomain.com:5555 check
-   
+
 ```
 
 ## configuring monster-ui
@@ -55,4 +55,3 @@ define(function(require){
         },
         ...
 ```
-        
