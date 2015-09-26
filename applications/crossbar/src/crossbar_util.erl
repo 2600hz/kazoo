@@ -963,9 +963,9 @@ create_auth_token(Context, AuthModule, JObj) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end.
 
--spec get_token_restrictions(ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec get_token_restrictions(ne_binary(), ne_binary(), ne_binary()) ->
+                                    api_object().
 get_token_restrictions(AuthModule, AccountId, OwnerId) ->
-    %% dont restrict SuperAdmin
     case wh_util:is_system_admin(AccountId) of
         'true' -> 'undefined';
         'false' ->
@@ -979,10 +979,12 @@ get_token_restrictions(AuthModule, AccountId, OwnerId) ->
     end.
 
 -spec get_priv_level(ne_binary(), ne_binary()) -> api_binary().
-%%
 %% for api_auth tokens we force "admin" priv_level
-%%
-get_priv_level(_AccountId, 'undefined') -> <<"admin">>;
+get_priv_level(_AccountId, 'undefined') ->
+    whapps_config:get(cb_token_restrictions:config_cat()
+                      ,<<"default_priv_level">>
+                      ,<<"admin">>
+                     );
 get_priv_level(AccountId, OwnerId) ->
     AccountDB = wh_util:format_account_db(AccountId),
     {'ok', Doc} = couch_mgr:open_cache_doc(AccountDB, OwnerId),
@@ -990,9 +992,9 @@ get_priv_level(AccountId, OwnerId) ->
 
 -spec get_system_token_restrictions(ne_binary()) -> api_object().
 get_system_token_restrictions(AuthModule) ->
-    case whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, AuthModule) of
+    case whapps_config:get(cb_token_restrictions:config_cat(), AuthModule) of
         'undefined' ->
-            whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, <<"_">>);
+            whapps_config:get(cb_token_restrictions:config_cat(), <<"_">>);
         MethodRestrictions -> MethodRestrictions
     end.
 

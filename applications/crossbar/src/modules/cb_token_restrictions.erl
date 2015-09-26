@@ -20,12 +20,18 @@
          ,post/1
          ,delete/1
          ,authorize/1
+
+         ,config_cat/0
         ]).
 
 -include("../crossbar.hrl").
 
 -define(PVT_TYPE, <<"token_restrictions">>).
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".token_restrictions">>).
 -define(CATCH_ALL, <<"_">>).
+
+config_cat() ->
+    ?MOD_CONFIG_CAT.
 
 %%%===================================================================
 %%% API
