@@ -243,25 +243,35 @@ match_arguments(_Context, 'undefined') -> [];
 match_arguments(Context, RulesJObj) ->
     [{_, ReqParams}|_] = cb_context:req_nouns(Context),
     RuleKeys = wh_json:get_keys(RulesJObj),
+    match_argument_patterns(ReqParams, RulesJObj, RuleKeys).
+
+-spec match_argument_patterns(req_nouns(), wh_json:object(), ne_binaries()) ->
+                                     http_methods().
+match_argument_patterns(_ReqParams, _RulesJObj, []) -> [];
+match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
     case match_rules(ReqParams, RuleKeys) of
-        'undefined' ->
-            ?LOG_DEBUG("failed to find rule to match request parameters"),
-            [];
+        'undefined' -> [];
         MatchedRuleKey ->
             wh_json:get_value(MatchedRuleKey, RulesJObj, [])
     end.
 
+-spec match_rules(ne_binaries(), ne_binaries()) -> api_binary().
 match_rules(_ReqParams, []) ->
     ?LOG_DEBUG("failed to find rule for req params: ~p", [_ReqParams]),
     'undefined';
 match_rules(ReqParams, [RuleKey|RuleKeys]) ->
-    Rule = binary:split(RuleKey, <<"/">>, ['global', 'trim']),
-    case kazoo_bindings:matches(Rule, ReqParams) of
-        'true' ->
-            ?LOG_DEBUG("rule ~s matches req params ~p", [RuleKey, ReqParams]),
-            RuleKey;
-        'false' -> match_rules(ReqParams, RuleKeys)
+    case maybe_match_rule(ReqParams
+                          ,binary:split(RuleKey, <<"/">>, ['global', 'trim'])
+                         )
+    of
+        'false' -> match_rules(ReqParams, RuleKeys);
+        'true' -> RuleKey
     end.
+
+-spec maybe_match_rule(ne_binaries(), ne_binaries()) -> api_binary().
+maybe_match_rule(ReqParams, Rule) ->
+    ?LOG_DEBUG("rule to match: ~p against ~p", [Rule, ReqParams]),
+    kazoo_bindings:matches(Rule, ReqParams).
 
 -spec match_verb(cb_context:context(), http_methods()) -> boolean().
 match_verb(_Context, [?CATCH_ALL]) -> 'true';
