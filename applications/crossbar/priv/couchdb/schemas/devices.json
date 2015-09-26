@@ -149,6 +149,13 @@
             "required": false,
             "type": "boolean"
         },
+        "exclude_from_queues": {
+            "default": false,
+            "description": "Do not ring this device when calling user/agent in queue",
+            "name": "Exclude from Queues",
+            "required": false,
+            "type": "boolean"
+        },
         "language": {
             "description": "The language for the device",
             "name": "Language",
