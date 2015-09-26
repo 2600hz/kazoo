@@ -107,6 +107,30 @@ argument_assertions({ArgPattern, ExpectedResults}) ->
     Label = "Verify argument pattern matching works",
     build_assertions(Label, Context, ExpectedResults).
 
+http_method_test_() ->
+    Methods = [{?HTTP_ANY, ?ALLOW_REQ}
+               ,{?HTTP_GET_ONLY, ?ALLOW_REQ}
+               ,{?HTTP_GET_POST, ?ALLOW_REQ}
+               ,{?HTTP_POST_ONLY, ?DENY_REQ}
+              ],
+    [method_assertions(Method) || Method <- Methods].
+
+method_assertions({Verbs, Expected}) ->
+        Context =
+        cb_context:setters(
+          cb_context:new()
+          ,[{fun cb_context:set_auth_account_id/2, ?AUTH_ACCOUNT_ID}
+            ,{fun cb_context:set_account_id/2, ?ACCOUNT_ID}
+            ,{fun cb_context:set_req_verb/2, ?HTTP_GET}
+            ,{fun cb_context:set_auth_doc/2
+              ,auth_doc(?HTTP_VERB_RESTRICTIONS(Verbs))
+             }
+           ]
+         ),
+
+    Label = "Verify HTTP Verb matching works",
+    build_assertions(Label, Context, [Expected, Expected, Expected, Expected]).
+
 -define(TEST_ARGS, [[]
                     ,[?DEVICE_ID]
                     ,[?DEVICE_ID, <<"sync">>]

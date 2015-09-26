@@ -15,7 +15,8 @@
 -define(ARGS_EXACT_THEN_ANY, <<?DEVICE_ID/binary, "/#">>).
 
 -define(HTTP_ANY, [?CATCH_ALL]).
--define(HTTP_SINGLE, [?HTTP_GET]).
+-define(HTTP_GET_ONLY, [?HTTP_GET]).
+-define(HTTP_POST_ONLY, [?HTTP_POST]).
 -define(HTTP_GET_POST, [?HTTP_GET, ?HTTP_POST]).
 
 -define(ACCOUNT_AUTH, <<"{AUTH_ACCOUNT_ID}">>).
@@ -102,6 +103,20 @@
              ,[wh_json:from_list(
                  [{<<"allowed_accounts">>, [?ACCOUNT_ID]}
                   ,{<<"rules">>, wh_json:from_list([{Arg, ?HTTP_ANY}])}
+                 ]
+                )
+              ]
+            }
+           ]
+          )
+       ).
+
+-define(HTTP_VERB_RESTRICTIONS(Verbs)
+        ,wh_json:from_list(
+           [{<<"devices">>
+             ,[wh_json:from_list(
+                 [{<<"allowed_accounts">>, [?ACCOUNT_ID]}
+                  ,{<<"rules">>, wh_json:from_list([{?ARGS_ANY, Verbs}])}
                  ]
                 )
               ]
