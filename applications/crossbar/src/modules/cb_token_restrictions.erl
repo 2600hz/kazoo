@@ -160,27 +160,24 @@ maybe_deny_access(Context, Restrictions) ->
 
 -spec match_endpoint(cb_context:context(), api_object()) ->
                             api_object().
--spec match_endpoint(cb_context:context(), api_object(), ne_binary()) ->
-                            api_object().
 match_endpoint(Context, Restrictions) ->
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
 
-    match_endpoint(Context, Restrictions, ReqEndpoint).
+    match_request_endpoint(Restrictions, ReqEndpoint).
 
-match_endpoint(Context, Restrictions, ReqEndpoint) ->
+-spec match_request_endpoint(api_object(), ne_binary()) ->
+                                    api_object().
+match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
+    wh_json:get_value(ReqEndpoint, Restrictions);
+match_request_endpoint(Restrictions, ReqEndpoint) ->
     case wh_json:get_value(ReqEndpoint, Restrictions) of
-        'undefined' when ReqEndpoint =/= ?CATCH_ALL ->
-            match_endpoint(Context, Restrictions, ?CATCH_ALL);
-        'undefined' ->
-            lager:info("no match endpoint for: ~p", [ReqEndpoint]),
-            'undefined';
-        EndpointRestrictions ->
-            ?LOG_DEBUG("match endpoint ~p", [ReqEndpoint]),
-            EndpointRestrictions
+        'undefined' -> match_request_endpoint(Restrictions, ?CATCH_ALL);
+        EndpointRestrictions -> EndpointRestrictions
     end.
 
 -spec match_account(cb_context:context(), api_objects()) -> api_object().
 match_account(_Context, 'undefined') -> 'undefined';
+match_account(_Context, []) -> 'undefined';
 match_account(Context, EndpointRestrictions) ->
     AllowedAccounts = allowed_accounts(Context),
     find_endpoint_restrictions_by_account(AllowedAccounts, EndpointRestrictions).
@@ -188,30 +185,28 @@ match_account(Context, EndpointRestrictions) ->
 -spec find_endpoint_restrictions_by_account(ne_binaries(), wh_json:objects()) ->
                                                    api_object().
 find_endpoint_restrictions_by_account(_Accounts, []) ->
-    ?LOG_DEBUG("failed to find endpoint rules for the requested accounts: ~p"
-               ,[_Accounts]
-              ),
     'undefined';
-find_endpoint_restrictions_by_account(AllowedAccounts, [Restriction|Restrictions]) ->
-    case maybe_match_accounts(AllowedAccounts, wh_json:get_value(<<"allowed_accounts">>, Restriction)) of
+find_endpoint_restrictions_by_account(AllowedAccounts
+                                      ,[Restriction|Restrictions]
+                                     ) ->
+    case maybe_match_accounts(AllowedAccounts
+                              ,wh_json:get_value(<<"allowed_accounts">>, Restriction)
+                             )
+    of
         'true' -> wh_json:get_value(<<"rules">>, Restriction);
-        'false' -> find_endpoint_restrictions_by_account(AllowedAccounts, Restrictions)
+        'false' ->
+            find_endpoint_restrictions_by_account(AllowedAccounts, Restrictions)
     end.
 
 -spec maybe_match_accounts(ne_binaries(), api_binaries()) -> boolean().
-maybe_match_accounts(_AllowedAccounts, 'undefined') ->
-    ?LOG_DEBUG("allowed accounts restriction has catch-all ('undefined')"),
-    'true';
-maybe_match_accounts(_AllowedAccounts, [?CATCH_ALL]) ->
-    ?LOG_DEBUG("allowed accounts restriction has catch-all"),
-    'true';
+maybe_match_accounts(_AllowedAccounts, 'undefined') -> 'true';
+maybe_match_accounts(_AllowedAccounts, [?CATCH_ALL]) -> 'true';
 maybe_match_accounts(AllowedAccounts, RestrictionAccounts) ->
     SetsAllowedAccounts = sets:from_list(AllowedAccounts),
     SetsRsAccounts = sets:from_list(RestrictionAccounts),
-    SetsMatch = sets:intersection(SetsAllowedAccounts, SetsRsAccounts),
-
-    ?LOG_DEBUG("rs: ~p aa: ~p", [RestrictionAccounts, AllowedAccounts]),
-    sets:to_list(SetsMatch) =/= [].
+    sets:size(
+      sets:intersection(SetsAllowedAccounts, SetsRsAccounts)
+     ) > 0.
 
 -spec allowed_accounts(cb_context:context()) -> ne_binaries().
 allowed_accounts(Context) ->
@@ -256,9 +251,7 @@ match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
     end.
 
 -spec match_rules(ne_binaries(), ne_binaries()) -> api_binary().
-match_rules(_ReqParams, []) ->
-    ?LOG_DEBUG("failed to find rule for req params: ~p", [_ReqParams]),
-    'undefined';
+match_rules(_ReqParams, []) -> 'undefined';
 match_rules(ReqParams, [RuleKey|RuleKeys]) ->
     case maybe_match_rule(ReqParams
                           ,binary:split(RuleKey, <<"/">>, ['global', 'trim'])
@@ -270,7 +263,6 @@ match_rules(ReqParams, [RuleKey|RuleKeys]) ->
 
 -spec maybe_match_rule(ne_binaries(), ne_binaries()) -> api_binary().
 maybe_match_rule(ReqParams, Rule) ->
-    ?LOG_DEBUG("rule to match: ~p against ~p", [Rule, ReqParams]),
     kazoo_bindings:matches(Rule, ReqParams).
 
 -spec match_verb(cb_context:context(), http_methods()) -> boolean().
