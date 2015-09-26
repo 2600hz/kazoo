@@ -15,6 +15,7 @@
 -define(ETS_DELAY_ACCOUNTING, 'cm_delay_accounting').
 -define(ETS_DEVICE_INFO, 'cm_device_info').
 -define(ETS_LOOPBACK_CHANNELS, 'cm_loopback_channels').
+-define(ETS_ORIG_INBOUND_LEG, 'cm_orig_inbound_leg').
 
 -define(CCV, <<"Custom-Channel-Vars">>).
 
