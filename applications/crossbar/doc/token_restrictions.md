@@ -181,7 +181,7 @@ After Crossbar finds the endpoint it tries to find rules for the requested accou
 
 List of account IDs set in parameter `"allowed_accounts"`. You can write exact IDs or one of the following special macros:
 
-* `"{AUTH_ACCOUNT_ID}"` - match account which created auth token
+* `"{AUTH_ACCOUNT_ID}"` - match request account id to the account of the auth token
 * `"{DESCENDANT_ACCOUNT_ID}"` - match any descendants of the auth account
 * `"_"` - match any account. **If the `"allowed_accounts"` parameter is missing, it is treated as a catch-all**
 
