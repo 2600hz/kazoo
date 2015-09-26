@@ -84,7 +84,9 @@
         ,wh_json:from_list(
            [{<<"devices">>
              ,[wh_json:from_list(
-                 [{<<"allowed_accounts">>, [AccountId]}
+                 [{<<"allowed_accounts">>
+                   ,case AccountId of 'undefined' -> 'undefined'; _ -> [AccountId] end
+                  }
                   ,{<<"rules">>, wh_json:from_list([{?ARGS_ANY, ?HTTP_ANY}])}
                  ]
                 )

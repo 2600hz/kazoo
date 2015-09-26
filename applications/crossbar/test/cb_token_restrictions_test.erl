@@ -59,6 +59,7 @@ allow_accounts_test_() ->
                 ,{?ACCOUNT_DESCENDANT, ?ALLOW_REQ} %% auth can change descendant
                 ,{?ACCOUNT_ID, ?ALLOW_REQ} %% explicit account
                 ,{?AUTH_ACCOUNT_ID, ?DENY_REQ} %% explicit auth account
+                ,{'undefined', ?ALLOW_REQ} %% missing "allowed_accounts"
                ],
     [allow_accounts_assertions(Account) || Account <- Accounts].
 
