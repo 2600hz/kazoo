@@ -963,7 +963,7 @@ create_auth_token(Context, AuthModule, JObj) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end.
 
--spec get_token_restrictions(ne_binary(), ne_binary(), ne_binary()) ->
+-spec get_token_restrictions(atom(), ne_binary(), ne_binary()) ->
                                     api_object().
 get_token_restrictions(AuthModule, AccountId, OwnerId) ->
     case wh_util:is_system_admin(AccountId) of
@@ -990,7 +990,7 @@ get_priv_level(AccountId, OwnerId) ->
     {'ok', Doc} = couch_mgr:open_cache_doc(AccountDB, OwnerId),
     wh_json:get_ne_value(<<"priv_level">>, Doc).
 
--spec get_system_token_restrictions(ne_binary()) -> api_object().
+-spec get_system_token_restrictions(atom()) -> api_object().
 get_system_token_restrictions(AuthModule) ->
     case whapps_config:get(cb_token_restrictions:config_cat(), AuthModule) of
         'undefined' ->
@@ -998,7 +998,7 @@ get_system_token_restrictions(AuthModule) ->
         MethodRestrictions -> MethodRestrictions
     end.
 
--spec get_account_token_restrictions(ne_binary(), ne_binary()) -> api_object().
+-spec get_account_token_restrictions(ne_binary(), atom()) -> api_object().
 get_account_token_restrictions(AccountId, AuthModule) ->
     AccountDB = wh_util:format_account_db(AccountId),
     case couch_mgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of

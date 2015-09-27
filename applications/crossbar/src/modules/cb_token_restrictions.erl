@@ -261,7 +261,7 @@ match_rules(ReqParams, [RuleKey|RuleKeys]) ->
         'true' -> RuleKey
     end.
 
--spec does_rule_match(ne_binaries(), ne_binaries()) -> api_binary().
+-spec does_rule_match(ne_binaries(), ne_binaries()) -> boolean().
 does_rule_match(Rule, ReqParams) ->
     kazoo_bindings:matches(Rule, ReqParams).
 
