@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "user_auth_recovery_reset",
+    "description": "2nd step in the resetting password endeavour",
+    "name": "Password Reset",
+    "properties": {
+        "uuid": {
+            "description": "The UUID provided in step 1",
+            "maxLength": 40,
+            "minLength": 40,
+            "required": true,
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
