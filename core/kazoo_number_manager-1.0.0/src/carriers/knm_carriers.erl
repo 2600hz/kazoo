@@ -22,6 +22,10 @@
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-define(LOG_WARN(F,A), ?debugFmt(F ++ "\n",A)).
+-define(LOG_DEBUG(F,A), ?debugFmt(F ++ "\n",A)).
+
 -export([process_carrier_results/2
          ,process_bulk_carrier_results/2
         ]).
@@ -32,6 +36,9 @@
 -define(CARRIER_MODULES, ?DEFAULT_CARRIER_MODULES).
 
 -else.
+
+-define(LOG_WARN(F,A), lager:warning(F,A)).
+-define(LOG_DEBUG(F,A), lager:debug(F,A)).
 
 -define(DEFAULT_CARRIER_MODULE
         ,whapps_config:get_binary(?KNM_CONFIG_CAT
@@ -78,12 +85,16 @@ find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options) ->
     try Carrier:find_numbers(NormalizedNumber, Quantity, Options) of
         {'ok', Numbers} -> process_carrier_results(Acc, Numbers);
         {'bulk', Numbers} -> process_bulk_carrier_results(Acc, Numbers);
-        {'error', _E} -> Acc
+        {'error', _E} ->
+            ?LOG_DEBUG("error in carrier ~s: ~p", [Carrier, _E]),
+            Acc
     catch
         _E:_R ->
-            lager:warning("failed to query carrier ~s for ~p numbers: ~s: ~p"
-                          ,[Carrier, Quantity, _E, _R]
-                         ),
+            ST = erlang:get_stacktrace(),
+            ?LOG_WARN("failed to query carrier ~s for ~p numbers: ~s: ~p"
+                      ,[Carrier, Quantity, _E, _R]
+                     ),
+            log_stacktrace(ST),
             Acc
     end.
 
@@ -114,9 +125,11 @@ process_number_result(Number, Acc, ?CARRIER_OTHER) ->
 process_number_result(Number, Acc, Carrier) ->
     PhoneNumber = knm_number:phone_number(Number),
     DID = knm_phone_number:number(PhoneNumber),
+
     check_for_existing_did(Number, Acc, Carrier, knm_phone_number:fetch(DID)).
 
--spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), number_return()) -> wh_json:objects().
+-spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), number_return()) ->
+                                    wh_json:objects().
 check_for_existing_did(Number, Acc, _Carrier, {'error', 'not_found'}) ->
     create_discovery(Number, Acc);
 check_for_existing_did(_Number, Acc, _Carrier, {'error', _}) ->
@@ -142,6 +155,11 @@ create_discovery(Number, Acc) ->
           Number
           ,knm_phone_number:setters(PhoneNumber, DiscoveryUpdates)
          ),
+    collect_if_saved(DiscoveryNumber, Acc).
+
+-spec collect_if_saved(knm_number:knm_number(), wh_json:objects()) ->
+                              wh_json:objects().
+collect_if_saved(DiscoveryNumber, Acc) ->
     case knm_number:save(DiscoveryNumber) of
         {'ok', SavedNumber} ->
             [found_number_to_jobj(SavedNumber) | Acc];
@@ -335,3 +353,18 @@ carrier_module(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+log_stacktrace(ST) ->
+    ?LOG_DEBUG("stacktrace:", []),
+    _ = [log_stacktrace_mfa(M, F, A, Info)
+         || {M, F, A, Info} <- ST
+        ],
+    'ok'.
+
+log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
+    ?LOG_DEBUG("st: ~s:~s/~b at (~b)"
+               ,[M, F, Arity, props:get_value('line', Info, 0)]
+              );
+log_stacktrace_mfa(M, F, Args, Info) ->
+    ?LOG_DEBUG("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
+    _ = [?LOG_DEBUG("args: ~p", [Arg]) || Arg <- Args],
+    'ok'.
