@@ -258,7 +258,7 @@ match_rules(ReqParams, [RuleKey|RuleKeys]) ->
         'true' -> RuleKey
     end.
 
--spec does_rule_match(ne_binaries(), ne_binaries()) -> boolean().
+-spec does_rule_match(ne_binary(), ne_binaries()) -> boolean().
 does_rule_match(RuleKey, ReqParams) ->
     kazoo_bindings:matches(binary:split(RuleKey, <<"/">>, ['global', 'trim'])
                            ,ReqParams
