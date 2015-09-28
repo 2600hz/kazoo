@@ -87,6 +87,46 @@
                            ])
        ).
 
+-define(BANDWIDTH_NPAN_RESPONSE
+        ,knm_util:fixture("bandwidth_npan_response.xml")
+       ).
+
+-define(BANDWIDTH_AREACODE_RESPONSE
+        ,knm_util:fixture("bandwidth_areacode_response.xml")
+       ).
+-define(BW_EXISTING_DID, <<"+14122065197">>).
+-define(BW_EXISTING_JSON
+        ,wh_json:from_list(
+           [{<<"_id">>,<<"+14122065197">>},
+            {<<"pvt_db_name">>,<<"numbers%2F%2B1412">>},
+            {<<"pvt_features">>,wh_json:new()},
+            {<<"pvt_state">>,<<"discovery">>},
+            {<<"pvt_reserve_history">>,[]},
+            {<<"pvt_ported_in">>,'false'},
+            {<<"pvt_module_name">>,<<"knm_bandwidth">>},
+            {<<"pvt_carrier_data">>
+             ,wh_json:from_list(
+                [{<<"number_id">>, <<"0C107941-CDDA-42FE-823C-042EADBD3719">>},
+                 {<<"ten_digit">>,<<"4122065197">>},
+                 {<<"formatted_number">>,<<"1-412-206-5197">>},
+                 {<<"e164">>,<<"+14122065197">>},
+                 {<<"npa_nxx">>,<<"412206">>},
+                 {<<"status">>,<<"Available">>},
+                 {<<"rate_center">>
+                  ,wh_json:from_list(
+                     [{<<"name">>,<<"PITTSBURGH SUBURBAN ZONE 13">>},
+                      {<<"lata">>,<<"234">>},
+                      {<<"state">>,<<"PA">>}
+                     ])
+                 }
+                ])
+            },
+            {<<"pvt_modified">>,63610268576},
+            {<<"pvt_created">>,63610268576},
+            {<<"pvt_type">>,<<"number">>}]
+          )
+       ).
+
 -endif.
 
 -define(KNM_HRL, 'true').
