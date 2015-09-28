@@ -84,7 +84,12 @@ find(#bt_card{token = CardId}) -> find(CardId);
 find(Token) ->
 % github.com/braintree/braintree_php/blob/master/lib/Braintree/CreditCardGateway.php#L149
     Url = url(Token, ''),
-    Xml = braintree_request:get(Url),
+    Xml = try braintree_request:get(Url) of
+              Ok -> Ok
+          catch
+              'throw':{'not_found', _JObj} ->
+                  #bt_card{}
+          end,
     xml_to_record(Xml).
 
 %%--------------------------------------------------------------------

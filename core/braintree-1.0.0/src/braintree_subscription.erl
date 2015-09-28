@@ -421,29 +421,21 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_payment_token(subscription(), ne_binary()) -> subscription().
-update_payment_token(#bt_subscription{}=Subscription, PaymentToken) ->
-    case is_past_due(Subscription) of
-        'false' -> simple_update(Subscription, PaymentToken);
-        'true' -> past_due_update(simple_update(Subscription, PaymentToken))
-    end.
-
--spec past_due_update(subscription()) -> subscription().
-past_due_update(Subscription) ->
+update_payment_token(#bt_subscription{id=Id}, PaymentToken) ->
     %% Fixes: 91920: Cannot edit price changing fields on past due subscription.
     %% For reference:
     %% https://developers.braintreepayments.com/ios+ruby/guides/recurring-billing/manage
     %% https://articles.braintreepayments.com/guides/recurring-billing/subscriptions
-    Subscription#bt_subscription{price = 'undefined'
-                                 ,billing_first_date = 'undefined'
-                                 ,number_of_cycles = 'undefined'
-                                 ,plan_id = 'undefined'
-                                }.
-
--spec simple_update(subscription(), ne_binary()) -> subscription().
-simple_update(Subscription, PaymentToken) ->
-    Subscription#bt_subscription{payment_token = PaymentToken
-                                 ,start_immediately = 'false'
-                                }.
+    #bt_subscription{payment_token = PaymentToken
+                     ,id = Id
+                     ,do_not_inherit = 'undefined'
+                     ,revert_on_prorate_fail = 'undefined'
+                     ,replace_add_ons = 'undefined'
+                     ,start_immediately = 'undefined'
+                     ,prorate_charges = 'undefined'
+                     ,never_expires = 'undefined'
+                     ,trial_period = <<"false">>
+                   }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -464,16 +456,6 @@ is_cancelled(#bt_subscription{}) -> 'false'.
 -spec is_expired(subscription()) -> boolean().
 is_expired(#bt_subscription{status = ?BT_EXPIRED}) -> 'true';
 is_expired(#bt_subscription{}) -> 'false'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Returns whether a subscription is past due (account is then delinquent)
-%% @end
-%%--------------------------------------------------------------------
--spec is_past_due(subscription()) -> boolean().
-is_past_due(#bt_subscription{status = ?BT_PAST_DUE}) -> 'true';
-is_past_due(#bt_subscription{}) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -639,6 +621,7 @@ should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_options(any(), any(), wh_proplist()) -> wh_proplist().
+update_options(_, 'undefined', Props) -> Props;
 update_options(Key, Value, Props) ->
     case props:get_value('options', Props) of
         'undefined' ->
