@@ -251,6 +251,16 @@ should_lookup_cnam() -> 'true'.
 -spec make_numbers_request(atom(), wh_proplist()) ->
                                   {'ok', term()} |
                                   {'error', term()}.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+make_numbers_request('npaNxxNumberSearch', _Props) ->
+    {Xml, _} = xmerl_scan:string(?BANDWIDTH_NPAN_RESPONSE),
+    verify_response(Xml);
+make_numbers_request('areaCodeNumberSearch', _Props) ->
+    {Xml, _} = xmerl_scan:string(?BANDWIDTH_AREACODE_RESPONSE),
+    verify_response(Xml).
+-else.
 make_numbers_request(Verb, Props) ->
     lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
     DevKey = whapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
@@ -320,6 +330,7 @@ make_numbers_request(Verb, Props) ->
             lager:debug("bandwidth.com request error: ~p", [E]),
             E
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -333,15 +344,17 @@ number_order_response_to_json([]) ->
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
-    Props = [{<<"order_id">>, wh_util:get_xml_value("orderID/text()", Xml)}
-             ,{<<"order_number">>, wh_util:get_xml_value("orderNumber/text()", Xml)}
-             ,{<<"order_name">>, wh_util:get_xml_value("orderName/text()", Xml)}
-             ,{<<"ext_ref_id">>, wh_util:get_xml_value("extRefID/text()", Xml)}
-             ,{<<"accountID">>, wh_util:get_xml_value("accountID/text()", Xml)}
-             ,{<<"accountName">>, wh_util:get_xml_value("accountName/text()", Xml)}
-             ,{<<"quantity">>, wh_util:get_xml_value("quantity/text()", Xml)}
+    Props = [{<<"order_id">>, get_cleaned("orderID/text()", Xml)}
+             ,{<<"order_number">>, get_cleaned("orderNumber/text()", Xml)}
+             ,{<<"order_name">>, get_cleaned("orderName/text()", Xml)}
+             ,{<<"ext_ref_id">>, get_cleaned("extRefID/text()", Xml)}
+             ,{<<"accountID">>, get_cleaned("accountID/text()", Xml)}
+             ,{<<"accountName">>, get_cleaned("accountName/text()", Xml)}
+             ,{<<"quantity">>, get_cleaned("quantity/text()", Xml)}
              ,{<<"number">>, number_search_response_to_json(
-                               xmerl_xpath:string("telephoneNumbers/telephoneNumber", Xml))}
+                               xmerl_xpath:string("telephoneNumbers/telephoneNumber", Xml)
+                              )
+              }
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -357,15 +370,22 @@ number_search_response_to_json([]) ->
 number_search_response_to_json([Xml]) ->
     number_search_response_to_json(Xml);
 number_search_response_to_json(Xml) ->
-    Props = [{<<"number_id">>, wh_util:get_xml_value("numberID/text()", Xml)}
-             ,{<<"ten_digit">>, wh_util:get_xml_value("tenDigit/text()", Xml)}
-             ,{<<"formatted_number">>, wh_util:get_xml_value("formattedNumber/text()", Xml)}
-             ,{<<"e164">>, wh_util:get_xml_value("e164/text()", Xml)}
-             ,{<<"npa_nxx">>, wh_util:get_xml_value("npaNxx/text()", Xml)}
-             ,{<<"status">>, wh_util:get_xml_value("status/text()", Xml)}
+    Props = [{<<"number_id">>, get_cleaned("numberID/text()", Xml)}
+             ,{<<"ten_digit">>, get_cleaned("tenDigit/text()", Xml)}
+             ,{<<"formatted_number">>, get_cleaned("formattedNumber/text()", Xml)}
+             ,{<<"e164">>, get_cleaned("e164/text()", Xml)}
+             ,{<<"npa_nxx">>, get_cleaned("npaNxx/text()", Xml)}
+             ,{<<"status">>, get_cleaned("status/text()", Xml)}
              ,{<<"rate_center">>, rate_center_to_json(xmerl_xpath:string("rateCenter", Xml))}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+-spec get_cleaned(wh_deeplist(), xml_el()) -> api_binary().
+get_cleaned(Path, Xml) ->
+    case wh_util:get_xml_value(Path, Xml) of
+        'undefined' -> 'undefined';
+        V -> wh_util:strip_binary(V, [$\s, $\n])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -379,9 +399,9 @@ rate_center_to_json([]) ->
 rate_center_to_json([Xml]) ->
     rate_center_to_json(Xml);
 rate_center_to_json(Xml) ->
-    Props = [{<<"name">>, wh_util:get_xml_value("name/text()", Xml)}
-             ,{<<"lata">>, wh_util:get_xml_value("lata/text()", Xml)}
-             ,{<<"state">>, wh_util:get_xml_value("state/text()", Xml)}
+    Props = [{<<"name">>, get_cleaned("name/text()", Xml)}
+             ,{<<"lata">>, get_cleaned("lata/text()", Xml)}
+             ,{<<"state">>, get_cleaned("state/text()", Xml)}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -396,11 +416,11 @@ rate_center_to_json(Xml) ->
                              {'ok', term()} |
                              {'error', api_binary() | ne_binaries()}.
 verify_response(Xml) ->
-    case wh_util:get_xml_value("/*/status/text()", Xml) of
+    case get_cleaned("/*/status/text()", Xml) of
         <<"success">> ->
             lager:debug("request was successful"),
             {'ok', Xml};
         _ ->
             lager:debug("request failed"),
-            {'error', wh_util:get_xml_value("/*/errors/error/message/text()", Xml)}
+            {'error', get_cleaned("/*/errors/error/message/text()", Xml)}
     end.
