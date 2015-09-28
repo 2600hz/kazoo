@@ -146,6 +146,7 @@
 log_stacktrace() ->
     ST = erlang:get_stacktrace(),
     log_stacktrace(ST).
+
 log_stacktrace(ST) ->
     lager:info("stacktrace:"),
     _ = [log_stacktrace_mfa(M, F, A, Info)
