@@ -16,12 +16,16 @@ find_test_() ->
     ].
 
 npan_tests() ->
-    [].
-    %% Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
-    %%            ,{<<"carriers">>, [<<"knm_bandwidth">>]}
-    %%           ],
-    %% Limit = 10,
-    %% knm_carriers:find(?START_BLOCK, Limit, Options).
+    Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
+               ,{<<"carriers">>, [<<"knm_bandwidth">>]}
+              ],
+    Limit = 1,
+    Results = knm_carriers:find(<<"+14158867900">>, Limit, Options),
+
+    [{"Verify area code result size"
+      ,?_assertEqual(Limit, length(Results))
+     }
+    ].
 
 area_code_tests() ->
     Options = [{<<"account_id">>, ?RESELLER_ACCOUNT_ID}
