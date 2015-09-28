@@ -88,12 +88,13 @@
        ).
 
 -define(BANDWIDTH_NPAN_RESPONSE
-        ,knm_util:fixture("bandwidth_npan_response.xml")
+        ,knm_util:fixture("bandwidth_numbersearch_response.xml")
        ).
 
 -define(BANDWIDTH_AREACODE_RESPONSE
         ,knm_util:fixture("bandwidth_areacode_response.xml")
        ).
+
 -define(BW_EXISTING_DID, <<"+14122065197">>).
 -define(BW_EXISTING_JSON
         ,wh_json:from_list(
