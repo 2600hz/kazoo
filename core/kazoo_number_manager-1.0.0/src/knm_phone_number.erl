@@ -84,7 +84,11 @@
 fetch(?TEST_CREATE_NUM) ->
     {'error', 'not_found'};
 fetch(?TEST_EXISTING_NUM) ->
-    {'ok', from_json(?EXISTING_NUMBER)}.
+    {'ok', from_json(?EXISTING_NUMBER)};
+fetch(?BW_EXISTING_DID) ->
+    {'ok', from_json(?BW_EXISTING_JSON)};
+fetch(_DID) -> {'error', 'not_found'}.
+
 -else.
 fetch(Num) ->
     fetch(Num, ?MODULE:default_options()).
