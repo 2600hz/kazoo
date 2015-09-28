@@ -182,6 +182,7 @@ content_types_provided_for_fax(Context) ->
         [AttachmentId|_] ->
             CT = wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId),
             [Type, SubType] = binary:split(CT, <<"/">>),
+            lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end.
 

@@ -30,7 +30,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.allotments">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.allotments">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.allotments">>, ?MODULE, 'validate'),
-   crossbar_bindings:bind(<<"*.execute.post.allotments">>, ?MODULE, 'post').
+    _ = crossbar_bindings:bind(<<"*.execute.post.allotments">>, ?MODULE, 'post').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -114,18 +114,27 @@ load_consumed(Context) ->
     Mode = get_consumed_mode(Context),
     {ContextResult, _, Result} = wh_json:foldl(fun foldl_consumed/3, {Context, Mode, wh_json:new()}, Allotments),
     case cb_context:resp_status(ContextResult) of
-        'error' -> ContextResult;
-        _ ->
-            cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                                 ,{fun cb_context:set_resp_data/2, Result}
-                                ])
+        'success' ->
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                         ,{fun cb_context:set_resp_data/2, Result}
+                                        ]);
+        _Error -> ContextResult
     end.
 
--spec foldl_consumed(api_binary(), wh_json:object(), {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}) ->
-    {cb_context:context(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()} , wh_json:objects()}.
-foldl_consumed(_Classification, _Value, {#cb_context{resp_status='error'}=ContextErr, Mode, Acc}) -> {ContextErr, Mode, Acc};
+-type mode() :: {'cycle', wh_datetime()} |
+                {'manual', api_seconds(), api_seconds()}.
+
+-spec foldl_consumed(api_binary(), wh_json:object(), CMA) -> CMA when
+      CMA :: {cb_context:context(), mode(), wh_json:objects()}.
 foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
+    case cb_context:resp_status(Context) of
+        'success' -> consume_allotment(Classification, Value, {Context,Mode,Acc});
+        _Error -> {Context, Mode, Acc}
+    end.
+
+-spec consume_allotment(api_binary(), wh_json:object(), CMA) -> CMA when
+      CMA :: {cb_context:context(), mode(), wh_json:objects()}.
+consume_allotment(Classification, Value, {Context,Mode,Acc}) ->
     case create_viewoptions(Context, Classification, Value, Mode) of
         {Cycle, ViewOptions} ->
             [_, From] = props:get_value('startkey', ViewOptions),
@@ -139,7 +148,9 @@ foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
         ContextErr -> {ContextErr, Mode, Acc}
     end.
 
--spec normalize_result(api_binary(), gregorian_seconds(), gregorian_seconds(), wh_json:object(), wh_json:objects()) -> wh_json:object().
+
+-spec normalize_result(api_binary(), gregorian_seconds(), gregorian_seconds(), wh_json:object(), wh_json:objects())
+                      -> wh_json:object().
 normalize_result(_Cycle, _From, _To, Acc, []) -> Acc;
 normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
     [Classification] = wh_json:get_value(<<"key">>, Head),
@@ -159,9 +170,8 @@ normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
            end,
     normalize_result(Cycle, From, To, Acc1, Tail).
 
--spec create_viewoptions(cb_context:context(), api_binary(), wh_json:object(), {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}) ->
-    {api_binary(), wh_proplist()} |
-    cb_context:context().
+-spec create_viewoptions(cb_context:context(), api_binary(), wh_json:object(), mode()) -> {api_binary(), wh_proplist()} |
+                                                                                          cb_context:context().
 create_viewoptions(Context, Classification, JObj, {'cycle', DateTime}) ->
     Cycle = wh_json:get_value(<<"cycle">>, JObj),
     From = cycle_start(Cycle, DateTime),
@@ -177,7 +187,7 @@ create_viewoptions(Context, Classification, _JObj, {'manual', From, To}) ->
         ContextErr -> ContextErr
     end.
 
--spec get_consumed_mode(cb_context:context()) -> {'cycle', wh_datetime()} | {'manual', api_seconds(), api_seconds()}.
+-spec get_consumed_mode(cb_context:context()) -> mode().
 get_consumed_mode(Context) ->
     case
         {maybe_req_seconds(Context, <<"created_from">>)
@@ -238,10 +248,8 @@ is_allowed(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_handle_load_failure(cb_context:context()) ->
-                                       cb_context:context().
--spec maybe_handle_load_failure(cb_context:context(), pos_integer()) ->
-                                       cb_context:context().
+-spec maybe_handle_load_failure(cb_context:context()) -> cb_context:context().
+-spec maybe_handle_load_failure(cb_context:context(), pos_integer()) -> cb_context:context().
 maybe_handle_load_failure(Context) ->
     maybe_handle_load_failure(Context, cb_context:resp_error_code(Context)).
 
@@ -294,7 +302,7 @@ cycle_end(Cycle, Seconds) when is_integer(Seconds) -> cycle_end(Cycle, calendar:
 cycle_end(<<"monthly">>, {{Year, Month, _}, _}) ->
     LastDay = calendar:last_day_of_the_month(Year, Month),
     calendar:datetime_to_gregorian_seconds({{Year, Month, LastDay}, {23, 59, 59}}) + 1;
-cycle_end(<<"weekly">>, DateTime) -> cycle_start(<<"weekly">>, DateTime) + ?SECONDS_IN_WEEK;
-cycle_end(<<"daily">>, DateTime) ->  cycle_start(<<"daily">>, DateTime) + ?SECONDS_IN_DAY;
-cycle_end(<<"hourly">>, DateTime) -> cycle_start(<<"hourly">>, DateTime) + ?SECONDS_IN_HOUR;
+cycle_end(<<"weekly">>, DateTime) ->   cycle_start(<<"weekly">>, DateTime) + ?SECONDS_IN_WEEK;
+cycle_end(<<"daily">>, DateTime) ->    cycle_start(<<"daily">>, DateTime) + ?SECONDS_IN_DAY;
+cycle_end(<<"hourly">>, DateTime) ->   cycle_start(<<"hourly">>, DateTime) + ?SECONDS_IN_HOUR;
 cycle_end(<<"minutely">>, DateTime) -> cycle_start(<<"minutely">>, DateTime) + ?SECONDS_IN_MINUTE.

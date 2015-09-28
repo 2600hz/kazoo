@@ -77,10 +77,7 @@ raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
         {'ok', FaxJObj} ->
             case wh_doc:attachment_names(FaxJObj) of
                 [AttachmentId | _] ->
-                    ContentType = case wh_doc:attachment_content_type(FaxJObj, AttachmentId) of
-                                      'undefined' -> <<"image/tiff">>;
-                                      CT -> CT
-                                  end,
+                    ContentType = wh_doc:attachment_content_type(FaxJObj, AttachmentId, <<"image/tiff">>),
                     {'ok', AttachmentBin} = couch_mgr:fetch_attachment(Db, FaxId, AttachmentId),
                     {'ok', AttachmentBin, ContentType};
                 [] ->

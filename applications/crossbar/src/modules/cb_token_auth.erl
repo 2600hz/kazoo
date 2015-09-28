@@ -202,7 +202,9 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
             'false'
     end.
 
--spec is_expired(cb_context:context(), wh_json:object()) -> boolean() | {'halt', cb_context:context()}.
+-spec is_expired(cb_context:context(), wh_json:object()) ->
+                        boolean() |
+                        {'halt', cb_context:context()}.
 is_expired(Context, JObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     case wh_util:is_account_expired(AccountId) of
@@ -216,11 +218,11 @@ is_expired(Context, JObj) ->
 -spec maybe_disable_account(ne_binary()) -> 'ok'.
 maybe_disable_account(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
-            case wh_json:get_value(<<"pvt_enabled">>, JObj, 'false') of
+            case kz_account:is_enabled(JObj) of
                 'false' -> 'ok';
-                _ -> disable_account(AccountId)
+                'true' -> disable_account(AccountId)
             end;
         {'error', _R} -> disable_account(AccountId)
     end.
@@ -255,7 +257,8 @@ check_as_payload(Context, JObj, AccountId) ->
     end.
 
 -spec check_descendants(cb_context:context(), wh_json:object()
-                        ,ne_binary() ,ne_binary() ,ne_binary()) ->
+                        ,ne_binary() ,ne_binary() ,ne_binary()
+                       ) ->
                                boolean() |
                                {'true', cb_context:context()}.
 check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
@@ -265,29 +268,34 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
             case lists:member(AsAccountId, Descendants) of
                 'false' -> 'false';
                 'true' ->
-                    JObj1 = wh_json:set_values([{<<"account_id">>, AsAccountId}
-                                                 ,{<<"owner_id">>, AsOwnerId}
-                                               ], JObj),
+                    JObj1 = wh_json:set_values(
+                              [{<<"account_id">>, AsAccountId}
+                               ,{<<"owner_id">>, AsOwnerId}
+                              ]
+                              ,JObj
+                             ),
                     {'true', set_auth_doc(Context, JObj1)}
             end
     end.
 
 -spec get_descendants(ne_binary()) ->
-                             {'ok', wh_json:objects()} |
-                             {'error', any()}.
+                             {'ok', ne_binaries()} |
+                             couch_mgr:couchbeam_error().
 get_descendants(AccountId) ->
     case couch_mgr:get_results(<<"accounts">>
                                ,<<"accounts/listing_by_descendants">>
-                              ,[{'startkey', [AccountId]}
-                                ,{'endkey', [AccountId, wh_json:new()]}
-                               ])
+                               ,[{'startkey', [AccountId]}
+                                 ,{'endkey', [AccountId, wh_json:new()]}
+                                ]
+                              )
     of
         {'error', _}=Error -> Error;
         {'ok', JObjs} ->
             {'ok', [wh_doc:id(JObj) || JObj <- JObjs]}
     end.
 
--spec set_auth_doc(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec set_auth_doc(cb_context:context(), wh_json:object()) ->
+                          cb_context:context().
 set_auth_doc(Context, JObj) ->
     Setters = [{fun cb_context:set_auth_doc/2, JObj}
                ,{fun cb_context:set_auth_account_id/2

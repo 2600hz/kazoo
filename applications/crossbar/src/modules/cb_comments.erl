@@ -125,7 +125,7 @@ put(Context) ->
     Context1 = create(Context),
     case cb_context:resp_status(Context1) of
         'success' -> only_return_comments(Context1);
-        _ -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -140,7 +140,7 @@ post(Context, Id) ->
     Context1 = update(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' -> only_return_comment(Context1, Id);
-        _ -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -155,14 +155,14 @@ delete(Context) ->
     Context1 = remove(Context),
     case cb_context:resp_status(Context1) of
         'success' -> only_return_comments(Context1);
-        _ -> Context1
+        _Status -> Context1
     end.
 
 delete(Context, Id) ->
     Context1 = remove(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' -> only_return_comments(Context1);
-        _ -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -171,7 +171,7 @@ delete(Context, Id) ->
 %% The response has gone out, do some cleanup of your own here.
 %% @end
 %%--------------------------------------------------------------------
--spec finish_request(cb_context:context()) -> cb_context:context().
+-spec finish_request(cb_context:context()) -> 'ok'.
 finish_request(Context) ->
     {Type, _} = cb_context:fetch(Context, 'ressource'),
     Verb = cb_context:req_verb(Context),
@@ -199,7 +199,8 @@ get_ressource(Context, [{?COMMENTS, _}, Data | _]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_comments(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_comments(cb_context:context(), http_method()) ->
+                               cb_context:context().
 validate_comments(Context, ?HTTP_GET) ->
     summary(Context);
 validate_comments(Context, ?HTTP_PUT) ->
@@ -212,7 +213,8 @@ validate_comments(Context, ?HTTP_DELETE) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------`
--spec validate_comment(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+-spec validate_comment(cb_context:context(), path_token(), http_method()) ->
+                              cb_context:context().
 validate_comment(Context, Id, ?HTTP_GET) ->
     read(Context, Id);
 validate_comment(Context, Id, ?HTTP_POST) ->
@@ -230,7 +232,7 @@ summary(Context) ->
     Context1 = load_doc(Context),
     case cb_context:resp_status(Context1) of
         'success' -> only_return_comments(Context1);
-        _ -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -243,7 +245,7 @@ read(Context, Id) ->
     Context1 = check_comment_number(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' -> only_return_comment(Context1, Id);
-        _ -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -261,10 +263,10 @@ create(Context) ->
 
     Doc1 =
         wh_json:set_value(
-            ?COMMENTS
-            ,lists:append(Comments, NewComments)
-            ,Doc
-        ),
+          ?COMMENTS
+          ,lists:append(Comments, NewComments)
+          ,Doc
+         ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%--------------------------------------------------------------------
@@ -284,10 +286,10 @@ update(Context, Id) ->
 
     Doc1 =
         wh_json:set_value(
-            ?COMMENTS
-            ,lists:append([Head1, [Comment], Tail])
-            ,Doc
-        ),
+          ?COMMENTS
+          ,lists:append([Head1, [Comment], Tail])
+          ,Doc
+         ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%--------------------------------------------------------------------
@@ -300,10 +302,10 @@ update(Context, Id) ->
 remove(Context) ->
     Doc =
         wh_json:set_value(
-            ?COMMENTS
-            ,[]
-            ,cb_context:doc(Context)
-        ),
+          ?COMMENTS
+          ,[]
+          ,cb_context:doc(Context)
+         ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc)).
 
 remove(Context, Id) ->
@@ -313,10 +315,10 @@ remove(Context, Id) ->
     Comment = lists:nth(Number, Comments),
     Doc1 =
         wh_json:set_value(
-            ?COMMENTS
-            ,lists:delete(Comment, Comments)
-            ,Doc
-        ),
+          ?COMMENTS
+          ,lists:delete(Comment, Comments)
+          ,Doc
+         ),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%--------------------------------------------------------------------
@@ -336,7 +338,8 @@ finish_req(_Context, _Type, _Verb) -> 'ok'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_comment_number(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec check_comment_number(cb_context:context(), ne_binary()) ->
+                                  cb_context:context().
 check_comment_number(Context, Id) ->
     Context1 = load_doc(Context),
     case cb_context:resp_status(Context1) of
@@ -349,7 +352,7 @@ check_comment_number(Context, Id) ->
                     cb_context:add_system_error('bad_identifier', Context1);
                 _ -> Context1
             end;
-        _ -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -357,8 +360,10 @@ check_comment_number(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_doc(cb_context:context()) -> cb_context:context().
--spec load_doc(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+-spec load_doc(cb_context:context()) ->
+                      cb_context:context().
+-spec load_doc(cb_context:context(), ne_binary(), ne_binaries()) ->
+                      cb_context:context().
 load_doc(Context) ->
     {Type, Id} = cb_context:fetch(Context, 'ressource'),
     load_doc(Context, Type, Id).
@@ -380,31 +385,32 @@ only_return_comments(Context) ->
     Doc = cb_context:doc(Context),
     Comments = wh_json:get_value(?COMMENTS, Doc, []),
     cb_context:set_resp_data(
-        Context
-        ,wh_json:from_list([{?COMMENTS, Comments}])
-    ).
+      Context
+      ,wh_json:from_list([{?COMMENTS, Comments}])
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec only_return_comment(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec only_return_comment(cb_context:context(), ne_binary()) ->
+                                 cb_context:context().
 only_return_comment(Context, Id) ->
     Doc = cb_context:doc(Context),
     Comments = wh_json:get_value(?COMMENTS, Doc, []),
     Number = id_to_number(Id),
     cb_context:set_resp_data(
-        Context
-        ,lists:nth(Number, Comments)
-    ).
+      Context
+      ,lists:nth(Number, Comments)
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec id_to_number(ne_binary()) -> cb_context:context().
+-spec id_to_number(ne_binary()) -> pos_integer().
 id_to_number(Id) -> wh_util:to_integer(Id) + 1.
 
 %%--------------------------------------------------------------------
