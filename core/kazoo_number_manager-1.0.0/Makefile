@@ -19,10 +19,10 @@ ERLC_OPTS = -Werror +debug_info $(PA)
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
-TEST_MODULES = $(shell ls test/*.erl | sed 's/test\///;s/\.erl/,/' | sed '$$s/.$$//')
 CARRIERS = $(shell ls src/carriers/*.erl | sed 's/src\/carriers\///;s/\.erl/,/' | sed '$$s/.$$//')
 PROVIDERS = $(shell ls src/providers/*.erl | sed 's/src\/providers\///;s/\.erl/,/' | sed '$$s/.$$//')
 CONVERTERS = $(shell ls src/converters/*.erl | sed 's/src\/converters\///;s/\.erl/,/' | sed '$$s/.$$//')
+TEST_MODULES = $(shell ls test/*.erl | sed 's/test\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app json
 	@cat src/$(PROJECT).app.src \
@@ -64,4 +64,4 @@ eunit: compile-test
 	erl -noshell $(PA) -pa test -eval "case eunit:test([$(TEST_MODULES),$(MODULES),$(CARRIERS),$(PROVIDERS),$(CONVERTERS)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
 
 cover: clean-test compile-test
-	erl -noshell $(PA) -pa test -s cover -eval "Fs = [$(TEST_MODULES),$(MODULES),$(CARRIERS),$(PROVIDERS),$(CONVERTERS)], Each = fun(F, L) -> lists:foreach(fun(I) -> F(I) end, L) end, cover:compile_directory(\"./src/carriers\", [{'d', 'TEST', 'true'}]), cover:compile_directory(\"./src\", [{'d', 'TEST', 'true'}]), case eunit:test(Fs, [verbose]) of 'ok' -> Each(fun(F) -> cover:analyse_to_file(F, [\"test/\", atom_to_list(F), \".html\"], [html]) end, Fs), init:stop(); _ -> init:stop(1) end."
+	erl -noshell $(PA) -pa test -s cover -eval "Fs = [$(TEST_MODULES),$(MODULES),$(CARRIERS),$(PROVIDERS),$(CONVERTERS)], Each = fun(F, L) -> lists:foreach(fun(I) -> F(I) end, L) end, [cover:compile_module(F, [{'d', 'TEST', 'true'}]) || F <- filelib:fold_files(code:lib_dir(kazoo_number_manager, src), \"\\.erl\$\", true, fun(F, A) -> [F|A] end, [])], Cover = fun() -> Each(fun(F) -> cover:analyse_to_file(F, [\"test/\", atom_to_list(F), \".html\"], [html]) end, Fs) end, case eunit:test(Fs, [verbose]) of 'ok' -> Cover(), init:stop(); _ -> Cover(), init:stop(1) end."
