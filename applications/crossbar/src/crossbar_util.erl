@@ -994,7 +994,7 @@ get_priv_level(AccountId, OwnerId) ->
 get_system_token_restrictions(AuthModule) ->
     case whapps_config:get(cb_token_restrictions:config_cat(), AuthModule) of
         'undefined' ->
-            whapps_config:get(cb_token_restrictions:config_cat(), <<"_">>);
+            whapps_config:get(cb_token_restrictions:config_cat(), ?CATCH_ALL);
         MethodRestrictions -> MethodRestrictions
     end.
 
@@ -1006,7 +1006,7 @@ get_account_token_restrictions(AccountId, AuthModule) ->
         {'ok', RestrictionsDoc} ->
             wh_json:get_first_defined(
               [[<<"restrictions">>, wh_util:to_binary(AuthModule)]
-               ,[<<"restrictions">>, <<"_">>]
+               ,[<<"restrictions">>, ?CATCH_ALL]
               ]
               ,RestrictionsDoc
              )
@@ -1018,7 +1018,7 @@ get_priv_level_restrictions(Restrictions, PrivLevel) ->
     RestrictionLevels = wh_json:get_keys(Restrictions),
     case lists:member(PrivLevel, RestrictionLevels) of
         'true' -> wh_json:get_json_value(PrivLevel, Restrictions);
-        'false' -> wh_json:get_json_value(<<"_">>, Restrictions)
+        'false' -> wh_json:get_json_value(?CATCH_ALL, Restrictions)
     end.
 
 %%--------------------------------------------------------------------
