@@ -117,7 +117,7 @@ get_classifier_regex(Classifier) when is_binary(Classifier) ->
 get_classifier_regex(JObj) ->
     wh_json:get_value(<<"regex">>, JObj, <<"^$">>).
 
--spec fixture(file:filename()) -> binary().
+-spec fixture(file:filename()) -> string().
 fixture(Filename) ->
     Priv = code:priv_dir('kazoo_number_manager'),
     Fixture = filename:join([Priv, "fixtures", Filename]),

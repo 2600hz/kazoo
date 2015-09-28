@@ -92,7 +92,7 @@ find_numbers(Search, Quanity, Options) ->
         {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end.
 
--spec process_numbers_search_resp(string(), wh_proplist()) ->
+-spec process_numbers_search_resp(xml_el(), wh_proplist()) ->
                                          {'ok', knm_number:knm_numbers()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
@@ -103,7 +103,7 @@ process_numbers_search_resp(Xml, Options) ->
            ]
     }.
 
--spec found_number_to_object(term(), api_binary()) ->
+-spec found_number_to_object(xml_el() | xml_els(), api_binary()) ->
                                     knm_number:knm_number().
 found_number_to_object(Found, AccountId) ->
     JObj = number_search_response_to_json(Found),
@@ -364,7 +364,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json(term()) -> wh_json:object().
+-spec number_search_response_to_json(xml_el() | xml_els()) -> wh_json:object().
 number_search_response_to_json([]) ->
     wh_json:new();
 number_search_response_to_json([Xml]) ->
@@ -412,8 +412,8 @@ rate_center_to_json(Xml) ->
 %% error text
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response(term()) ->
-                             {'ok', term()} |
+-spec verify_response(xml_el()) ->
+                             {'ok', xml_el()} |
                              {'error', api_binary() | ne_binaries()}.
 verify_response(Xml) ->
     case get_cleaned("/*/status/text()", Xml) of
