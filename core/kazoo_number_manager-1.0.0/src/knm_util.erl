@@ -11,7 +11,9 @@
 
 -export([get_all_number_dbs/0]).
 
--export([pretty_print/1, pretty_print/2]).
+-export([pretty_print/1, pretty_print/2
+         ,fixture/1
+        ]).
 
 -include("knm.hrl").
 
@@ -114,3 +116,14 @@ get_classifier_regex(Classifier) when is_binary(Classifier) ->
     Classifier;
 get_classifier_regex(JObj) ->
     wh_json:get_value(<<"regex">>, JObj, <<"^$">>).
+
+-spec fixture(file:filename()) -> binary().
+fixture(Filename) ->
+    Priv = code:priv_dir('kazoo_number_manager'),
+    Fixture = filename:join([Priv, "fixtures", Filename]),
+    read_fixture(file:read_file(Fixture), Fixture).
+
+read_fixture({'ok', Contents}, _F) ->
+    wh_util:to_list(Contents);
+read_fixture({'error', 'enoent'}, F) ->
+    throw({'error', 'missing_fixture', F}).
