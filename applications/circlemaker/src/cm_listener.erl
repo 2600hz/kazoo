@@ -391,7 +391,7 @@ ets_update_leg_jobj_originator_type(OrigLegCallId, LegJObj) ->
         [] ->
             lager:warning("No inbound orig legs with CallID ~p", [OrigLegCallId]),
             LegJObj;
-        [{{OrigLegCallId}, 0, 'orig'}] ->
+        [{{OrigLegCallId}, _, 'orig'}] ->
             case whapps_call_command:fs_channel_status(OrigLegCallId) of
                 {'ok', ChannelStatus} ->
                     OriginatorType = wh_json:get_value([?CCV, <<"Originator-Type">>], ChannelStatus),

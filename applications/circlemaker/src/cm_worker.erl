@@ -296,7 +296,8 @@ maybe_block_processing(JObj, AaaProps, BlockKey) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Type1 = case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), Type} of
                 {<<"call_event">>, <<"CHANNEL_CREATE">>, 'loopback'} ->
-                    cm_util:mark_channel_as_loopback(CallId);
+                    cm_util:mark_channel_as_loopback(CallId),
+                    'loopback';
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     case cm_util:is_channel_loopback(CallId) of
                         'true' ->
