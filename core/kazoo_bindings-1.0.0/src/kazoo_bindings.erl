@@ -720,10 +720,10 @@ map_processor_fold(#kz_binding{binding_parts=BParts
 
 -spec map_responders(list(), map_responder_fun(), queue()) -> list().
 map_responders(Acc, Map, Responders) ->
-    [catch Map(Responder)
+    [catch(Map(Responder))
      || Responder <- queue:to_list(Responders)
     ]
-        ++ Acc.
+    ++ Acc.
 
 -spec fold_processor(ne_binary(), payload(), kz_bindings()) -> fold_results().
 fold_processor(Routing, Payload, Bindings) when not is_list(Payload) ->

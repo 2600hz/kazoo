@@ -218,11 +218,11 @@ allowed_accounts(Context) ->
             allowed_accounts(AuthAccountId, AccountId)
     end.
 
--spec allowed_accounts(api_binary(), api_binary()) -> ne_binaries().
 -ifdef(TEST).
 allowed_accounts(?AUTH_ACCOUNT_ID, ?ACCOUNT_ID = AccountId) ->
     [?CATCH_ALL, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">>].
 -else.
+-spec allowed_accounts(api_binary(), api_binary()) -> ne_binaries().
 allowed_accounts('undefined', _AccountId) -> [?CATCH_ALL];
 allowed_accounts(_AuthAccountId, 'undefined') -> [?CATCH_ALL];
 allowed_accounts(AuthAccountId, AccountId) ->
