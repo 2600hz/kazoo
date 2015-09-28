@@ -253,17 +253,16 @@ match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
 -spec match_rules(ne_binaries(), ne_binaries()) -> api_binary().
 match_rules(_ReqParams, []) -> 'undefined';
 match_rules(ReqParams, [RuleKey|RuleKeys]) ->
-    case does_rule_match(binary:split(RuleKey, <<"/">>, ['global', 'trim'])
-                         ,ReqParams
-                        )
-    of
+    case does_rule_match(RuleKey, ReqParams) of
         'false' -> match_rules(ReqParams, RuleKeys);
         'true' -> RuleKey
     end.
 
 -spec does_rule_match(ne_binaries(), ne_binaries()) -> boolean().
-does_rule_match(Rule, ReqParams) ->
-    kazoo_bindings:matches(Rule, ReqParams).
+does_rule_match(RuleKey, ReqParams) ->
+    kazoo_bindings:matches(binary:split(RuleKey, <<"/">>, ['global', 'trim'])
+                           ,ReqParams
+                          ).
 
 -spec match_verb(cb_context:context(), http_methods()) -> boolean().
 match_verb(_Context, [?CATCH_ALL]) -> 'true';
