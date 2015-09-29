@@ -1265,15 +1265,19 @@ lowerbound(DocTimestamp, QSTimestamp) ->
 
 -spec should_filter(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
 should_filter(Doc, Key, Val) ->
-    Keys = binary:split(Key, <<".">>, ['global']),
+    Keys = binary_key_to_json_key(Key),
     wh_json:get_binary_value(Keys, Doc, <<>>) =:= wh_util:to_binary(Val).
 
 -spec has_key(wh_json:object(), ne_binary()) -> boolean().
 has_key(Doc, Key) ->
-    Keys = binary:split(Key, <<".">>, ['global']),
+    Keys = binary_key_to_json_key(Key),
     wh_json:get_value(Keys, Doc) =/= 'undefined'.
 
 -spec has_value(wh_json:object(), ne_binary()) -> boolean().
 has_value(Doc, Key) ->
-    Keys = binary:split(Key, <<".">>, ['global']),
+    Keys = binary_key_to_json_key(Key),
     wh_json:get_ne_value(Keys, Doc) =/= 'undefined'.
+
+-spec binary_key_to_json_key(ne_binary()) -> ne_binaries().
+binary_key_to_json_key(Key) ->
+    binary:split(Key, <<".">>, ['global']).
