@@ -18,8 +18,15 @@
 -define(KNM_USER_AGENT, "Kazoo Number Manager 1.0.0").
 
 -ifdef(TEST).
--define(TEST_CREATE_NUM, <<"5559871234">>).
+-include_lib("eunit/include/eunit.hrl").
+-define(LOG_WARN(F,A), ?debugFmt(F ++ "\n",A)).
+-define(LOG_DEBUG(F,A), ?debugFmt(F ++ "\n",A)).
+-define(LOG_DEBUG(F),?debugFmt(F ++ "\n",[])).
+
+-define(TEST_CREATE_NUM, <<"+15559871234">>).
 -define(TEST_EXISTING_NUM, <<"+15551239876">>).
+-define(TEST_CREATE_TOLL, <<"+18887771111">>).
+-define(TEST_EXISTING_TOLL, <<"+18005551212">>).
 
 -define(MASTER_ACCOUNT_ID, <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
@@ -45,6 +52,24 @@
             ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
             ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
             ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
+            ,{?PVT_CREATED, 63565934344}
+            ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
+            ,{?PVT_USED_BY, <<"callflow">>}
+           ]
+          )
+       ).
+
+-define(EXISTING_TOLL
+        ,wh_json:from_list(
+           [{<<"_id">>, ?TEST_EXISTING_TOLL}
+            ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
+            ,{?PVT_MODIFIED, 63565934349}
+            ,{?PVT_FEATURES, wh_json:new()}
+            ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+            ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+            ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
+            ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
+            ,{?PVT_DB_NAME, <<"numbers%2F%2B1800">>}
             ,{?PVT_CREATED, 63565934344}
             ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
             ,{?PVT_USED_BY, <<"callflow">>}
@@ -127,6 +152,11 @@
             {<<"pvt_type">>,<<"number">>}]
           )
        ).
+-else.
+
+-define(LOG_WARN(F,A), lager:warning(F,A)).
+-define(LOG_DEBUG(F,A), lager:debug(F,A)).
+-define(LOG_DEBUG(F), lager:debug(F)).
 
 -endif.
 

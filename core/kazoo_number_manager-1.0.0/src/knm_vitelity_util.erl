@@ -29,43 +29,7 @@
         ]).
 
 -include("knm.hrl").
-
--define(KNM_VITELITY_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".vitelity">>).
-
--define(VITELITY_URI
-        ,whapps_config:get(?KNM_VITELITY_CONFIG_CAT
-                           ,<<"api_uri">>
-                           ,<<"http://api.vitelity.net/api.php">>
-                          )
-       ).
-
-%% <<"yes">> or <<"no">>
--type yes_or_no() :: <<_:16>> | <<_:24>>.
--type state_two_letters() :: <<_:16>>.
-
--type qs_option() :: {'did', ne_binary()} |
-                     {'name', ne_binary()} |
-                     {'cmd', ne_binary()} |
-                     {'xml', yes_or_no()} |
-                     {'routesip', ne_binary()} |
-                     {'npanxx', ne_binary()} |
-                     {'type', ne_binary()} |
-                     {'withrates', yes_or_no()} |
-                     {'provider', ne_binary()} |
-                     {'cnam', yes_or_no()} |
-                     {'address', ne_binary()} |
-                     {'city', ne_binary()} |
-                     {'state', state_two_letters()} |
-                     {'zip', ne_binary() | integer()} |
-                     {'ratecenter', ne_binary()} |
-                     {'smsonly', yes_or_no()} |
-                     {'login', ne_binary()} |
-                     {'pass', ne_binary()}.
--type qs_options() :: [qs_option()].
-
--type query_option() :: {'qs', qs_options()} |
-                        {'uri', ne_binary()}.
--type query_options() :: [query_option()].
+-include("knm_vitelity.hrl").
 
 -export_type([query_options/0]).
 
@@ -83,6 +47,10 @@ add_options_fold({_K, 'undefined'}, Options) -> Options;
 add_options_fold({K, V}, Options) ->
     props:insert_value(K, V, Options).
 
+-ifdef(TEST).
+get_query_value(Key, Options) ->
+    props:get_value(Key, Options).
+-else.
 -spec get_query_value(atom() | ne_binary(), query_options()) -> term().
 get_query_value(Key, Options) ->
     case props:get_value(Key, Options) of
@@ -90,6 +58,7 @@ get_query_value(Key, Options) ->
             whapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
         Value -> Value
     end.
+-endif.
 
 -spec default_options() -> qs_options().
 -spec default_options(wh_proplist()) -> qs_options().
