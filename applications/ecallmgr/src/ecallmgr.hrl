@@ -79,6 +79,7 @@
                   ,handling_locally = 'false' :: boolean() | '_' %% is this ecallmgr handling the call control?
                   ,to_tag :: api_binary() | '_'
                   ,from_tag :: api_binary() | '_'
+                  ,control_q :: api_binary() | '_'
                  }).
 
 -type channel() :: #channel{}.

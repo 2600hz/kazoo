@@ -31,9 +31,6 @@
 -export([usurp_control/1, usurp_control_v/1]).
 -export([usurp_publisher/1, usurp_publisher_v/1]).
 
--export([control_queue_req/1, control_queue_req_v/1]).
--export([control_queue_resp/1, control_queue_resp_v/1]).
-
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 
@@ -56,9 +53,6 @@
 
 -export([publish_usurp_control/2, publish_usurp_control/3]).
 -export([publish_usurp_publisher/2, publish_usurp_publisher/3]).
-
--export([publish_control_queue_req/1, publish_control_queue_req/2]).
--export([publish_control_queue_resp/2, publish_control_queue_resp/3]).
 
 -export([get_status/1]).
 -export([event_routing_key/2]).
@@ -223,20 +217,6 @@
                                          ,{<<"Event-Name">>, <<"usurp_publisher">>}
                                         ]).
 -define(PUBLISHER_USURP_CONTROL_TYPES, []).
-
--define(CONTROL_QUEUE_REQ_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_CONTROL_QUEUE_REQ_HEADERS, []).
--define(CONTROL_QUEUE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                                   ,{<<"Event-Name">>, <<"control_queue_req">>}
-                                  ]).
--define(CONTROL_QUEUE_REQ_TYPES, []).
-
--define(CONTROL_QUEUE_RESP_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_CONTROL_QUEUE_RESP_HEADERS, []).
--define(CONTROL_QUEUE_RESP_VALUES, [{<<"Event-Category">>, <<"call">>}
-                                    ,{<<"Event-Name">>, <<"control_queue_resp">>}
-                                   ]).
--define(CONTROL_QUEUE_RESP_TYPES, []).
 
 -spec optional_call_event_headers() -> ne_binaries().
 optional_call_event_headers() ->
@@ -476,42 +456,6 @@ usurp_publisher_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PUBLISHER_USURP_CONTROL_HEADERS, ?PUBLISHER_USURP_CONTROL_VALUES, ?PUBLISHER_USURP_CONTROL_TYPES);
 usurp_publisher_v(JObj) -> usurp_publisher_v(wh_json:to_proplist(JObj)).
 
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
--spec control_queue_req(wh_json:object() | wh_proplist()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
-control_queue_req(Prop) when is_list(Prop) ->
-    case control_queue_req_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?CONTROL_QUEUE_REQ_HEADERS, ?OPTIONAL_CONTROL_QUEUE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for control_queue_req"}
-    end;
-control_queue_req(JObj) -> control_queue_req(wh_json:to_proplist(JObj)).
-
--spec control_queue_req_v(wh_json:object() | wh_proplist()) -> boolean().
-control_queue_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CONTROL_QUEUE_REQ_HEADERS, ?CONTROL_QUEUE_REQ_VALUES, ?CONTROL_QUEUE_REQ_TYPES);
-control_queue_req_v(JObj) -> control_queue_req_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
--spec control_queue_resp(wh_json:object() | wh_proplist()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
-control_queue_resp(Prop) when is_list(Prop) ->
-    case control_queue_resp_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?CONTROL_QUEUE_RESP_HEADERS, ?OPTIONAL_CONTROL_QUEUE_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for control_queue_resp"}
-    end;
-control_queue_resp(JObj) -> control_queue_resp(wh_json:to_proplist(JObj)).
-
--spec control_queue_resp_v(wh_json:object() | wh_proplist()) -> boolean().
-control_queue_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CONTROL_QUEUE_RESP_HEADERS, ?CONTROL_QUEUE_RESP_VALUES, ?CONTROL_QUEUE_RESP_TYPES);
-control_queue_resp_v(JObj) -> control_queue_resp_v(wh_json:to_proplist(JObj)).
-
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallId = props:get_value('callid', Props, <<"*">>),
@@ -689,33 +633,6 @@ publish_usurp_publisher(CallId, JObj) ->
 publish_usurp_publisher(CallId, JObj, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?PUBLISHER_USURP_CONTROL_VALUES, fun ?MODULE:usurp_publisher/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('publisher_usurp', CallId), Payload, ContentType).
-
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
--spec publish_control_queue_req(api_terms()) -> 'ok'.
--spec publish_control_queue_req(api_terms(), ne_binary()) -> 'ok'.
-publish_control_queue_req(JObj) ->
-    publish_control_queue_req(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_control_queue_req(Req, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CONTROL_QUEUE_REQ_VALUES, fun ?MODULE:control_queue_req/1),
-    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('control_queue_req', call_id(Req)), Payload, ContentType).
-
-call_id([_|_]=API) ->
-    props:get_value(<<"Call-ID">>, API);
-call_id(JObj) ->
-    wh_json:get_value(<<"Call-ID">>, JObj).
-
-%%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
--spec publish_control_queue_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_control_queue_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_control_queue_resp(Q, JObj) ->
-    publish_control_queue_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_control_queue_resp(Q, Req, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CONTROL_QUEUE_RESP_VALUES, fun ?MODULE:control_queue_resp/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec get_status(api_terms()) -> ne_binary().
 get_status(API) when is_list(API) -> props:get_value(<<"Status">>, API);
