@@ -236,6 +236,8 @@ load_device_summary(Context, [{<<"devices">>, []}
 load_device_summary(Context, _ReqNouns) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
+-spec load_users_device_summary(cb_context:context(), ne_binary()) ->
+                                       cb_context:context().
 load_users_device_summary(Context, UserId) ->
     crossbar_doc:load_view(?OWNER_LIST
                            ,[{'key', UserId}]
