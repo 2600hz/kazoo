@@ -407,7 +407,8 @@ process_callflow(Number, AccountId, <<"user">>, UserId) ->
     case couch_mgr:get_results(AccountDb, ?DEVICES_VIEW, ViewOptions) of
         {'ok', JObjs} ->
             Devices = [wh_json:get_value([<<"value">>,<<"id">>], JObj)
-                       || JObj <- JObjs
+                       || JObj <- JObjs,
+                          wh_json:is_false([<<"value">>, <<"hotdesked">>], JObj)
                       ],
             [process_callflow(Number, AccountId, <<"device">>, DeviceId)
              || DeviceId <- Devices
