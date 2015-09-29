@@ -60,3 +60,27 @@ Occassionally a phone's BLF might be out of sync with the true state of the phon
     curl -v -X POST -H "X-Auth-Token:{AUTH_TOKEN}" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence
 
 No data payload at this time is required. This will send the appropriate internal command to reset the presence of the device (following `presence_id` if required.
+
+## Load a user's devices
+
+Often you'll want to see what devices belong to a user, or devices that a user has hot-desked into.
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": [
+         {
+             "hotdesked": false,
+             "id": "{DEVICE_ID_1}",
+             "name": "{NAME_1}"
+         },
+         {
+             "hotdesked": true,
+             "id": "{DEVICE_ID_2}",
+             "name": "{NAME_2}"
+         }
+      ],
+     "request_id": "{REQUEST_ID}",
+     "revision": "{REVISION}",
+     "status": "success"
+    }
