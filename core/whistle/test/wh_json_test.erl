@@ -16,7 +16,6 @@
 
 -include_lib("whistle/src/wh_json.hrl").
 
-
 %% PropEr Testing
 -ifdef(PROPER).
 
