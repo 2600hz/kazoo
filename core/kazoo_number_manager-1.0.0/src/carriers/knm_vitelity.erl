@@ -20,6 +20,7 @@
         ]).
 
 -include("../knm.hrl").
+-include("../knm_vitelity.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -31,10 +32,8 @@
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', _}.
-find_numbers(Prefix, Quantity, Options) when not is_integer(Quantity) ->
-    find_numbers(Prefix, wh_util:to_integer(Quantity), Options);
 find_numbers(Prefix, Quantity, Options) ->
-    case props:is_true(<<"tollfree">>, Options) of
+    case props:is_true(<<"tollfree">>, Options, 'false') of
         'true' ->
             find(Prefix
                  ,Quantity
@@ -262,6 +261,22 @@ response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-ifdef(TEST).
+query_vitelity(Prefix, Quantity, URI) ->
+    {'ok'
+     ,{'http', [], _Host, _Port, _Path, [$? | QueryString]}
+    } = http_uri:parse(wh_util:to_list(URI)),
+    Options = cow_qs:parse_qs(wh_util:to_binary(QueryString)),
+
+    XML =
+        case props:get_value(<<"cmd">>, Options) of
+            ?PREFIX_SEARCH_CMD -> ?PREFIX_SEARCH_RESP;
+            ?NUMBER_SEARCH_CMD -> ?NUMBER_SEARCH_RESP;
+            ?TOLLFREE_SEARCH_CMD -> ?TOLLFREE_SEARCH_RESP
+        end,
+    ?LOG_DEBUG("for ~s, use ~p", [URI, XML]),
+    process_xml_resp(Prefix, Quantity, XML).
+-else.
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
                             {'ok', wh_json:object()} |
                             {'error', _}.
@@ -278,6 +293,7 @@ query_vitelity(Prefix, Quantity, URI) ->
             lager:debug("error querying: ~p", [_R]),
             {'error', 'not_available'}
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -293,7 +309,7 @@ process_xml_resp(Prefix, Quantity, XML) ->
         {XmlEl, _} -> process_xml_content_tag(Prefix, Quantity, XmlEl)
     catch
         _E:_R ->
-            lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
+            ?LOG_DEBUG("failed to decode xml: ~s: ~p", [_E, _R]),
             {'error', 'xml_decode_failed'}
     end.
 
@@ -315,6 +331,7 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
             {'error', knm_vitelity_util:xml_resp_error_msg(Els)};
         Status when Status =:= <<"ok">>;
                     Status =:= 'undefined' ->
+            ?LOG_DEBUG("response status: ~p", [Status]),
             process_xml_numbers(Prefix, Quantity, knm_vitelity_util:xml_resp_numbers(Els))
     end.
 
@@ -331,6 +348,7 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                  {'ok', wh_json:object()} |
                                  {'error', _}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
+    ?LOG_DEBUG("no numbers in xml response", []),
     {'error', 'no_numbers'};
 process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
                                                   ,content=Content
@@ -338,25 +356,28 @@ process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
     process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
-    lager:debug("reached quantity requested"),
+    ?LOG_DEBUG("reached quantity requested"),
     {'ok', wh_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
                                                      ,content=Reason
                                                     }
                                          |_], _Acc) ->
-    lager:debug("response tag found, error!"),
+    ?LOG_DEBUG("response tag found, error!"),
     {'error', kz_xml:texts_to_binary(Reason)};
 process_xml_numbers(_Prefix, _Quantity, [], Acc) ->
-    lager:debug("no more results: ~p", [_Quantity]),
+    ?LOG_DEBUG("no more results: ~p", [_Quantity]),
     {'ok', wh_json:from_list(Acc)};
 process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
     JObj = xml_did_to_json(El),
+    ?LOG_DEBUG("el: ~p jobj: ~p", [El, JObj]),
     case number_matches_prefix(JObj, Prefix) of
         'true' ->
             N = wh_json:get_value(<<"number">>, JObj),
-            lager:debug("adding number ~s to accumulator", [N]),
+            ?LOG_DEBUG("adding number ~s to accumulator", [N]),
             process_xml_numbers(Prefix, Quantity-1, Els, [{N, JObj}|Acc]);
-        'false' -> process_xml_numbers(Prefix, Quantity, Els, Acc)
+        'false' ->
+            ?LOG_DEBUG("failed to match number ~p to prefix ~p", [JObj, Prefix]),
+            process_xml_numbers(Prefix, Quantity, Els, Acc)
     end.
 
 %%--------------------------------------------------------------------
@@ -386,7 +407,12 @@ number_matches_prefix(JObj, Prefix) ->
 xml_did_to_json(#xmlElement{name='did'
                             ,content=[#xmlText{}]=DID
                            }) ->
-    wh_json:from_list([{<<"number">>, kz_xml:texts_to_binary(DID)}]);
+    wh_json:from_list([{<<"number">>
+                        ,knm_converters:normalize(
+                           kz_xml:texts_to_binary(DID)
+                          )
+                       }
+                      ]);
 xml_did_to_json(#xmlElement{name='did'
                             ,content=DIDInfo
                            }) ->
@@ -442,12 +468,17 @@ purchase_tollfree_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-ifdef(TEST).
+get_routesip() ->
+    <<"1.2.3.4">>.
+-else.
 -spec get_routesip() -> api_binary().
 get_routesip() ->
     case whapps_config:get(knm_vitelity_util:config_cat(), <<"routesip">>) of
         [Route|_] -> Route;
         Route -> Route
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -458,13 +489,13 @@ get_routesip() ->
 -spec query_vitelity(knm_number:knm_number(), ne_binary()) ->
                             knm_number:knm_number().
 query_vitelity(Number, URI) ->
-    lager:debug("querying ~s", [URI]),
+    ?LOG_DEBUG("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
-            lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
+            ?LOG_DEBUG("recv ~s: ~s", [_RespCode, RespXML]),
             process_xml_resp(Number, RespXML);
         {'error', Error} ->
-            lager:debug("error querying: ~p", [Error]),
+            ?LOG_DEBUG("error querying: ~p", [Error]),
             knm_errors:unspecified(Error, Number)
     end.
 
@@ -481,7 +512,7 @@ process_xml_resp(Number, XML) ->
         {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
     catch
         _E:_R ->
-            lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
+            ?LOG_DEBUG("failed to decode xml: ~s: ~p", [_E, _R]),
             knm_errors:unspecified('failed_decode_resp', Number)
     end.
 
@@ -500,10 +531,10 @@ process_xml_content_tag(Number, #xmlElement{name='content'
     case knm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->
             Msg = knm_vitelity_util:xml_resp_error_msg(Els),
-            lager:debug("xml status is 'fail': ~s", [Msg]),
+            ?LOG_DEBUG("xml status is 'fail': ~s", [Msg]),
             knm_errors:unspecified(Msg, Number);
         <<"ok">> ->
-            lager:debug("successful provisioning"),
+            ?LOG_DEBUG("successful provisioning"),
             Number
     end.
 

@@ -22,10 +22,6 @@
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--define(LOG_WARN(F,A), ?debugFmt(F ++ "\n",A)).
--define(LOG_DEBUG(F,A), ?debugFmt(F ++ "\n",A)).
-
 -export([process_carrier_results/2
          ,process_bulk_carrier_results/2
         ]).
@@ -36,10 +32,6 @@
 -define(CARRIER_MODULES, ?DEFAULT_CARRIER_MODULES).
 
 -else.
-
--define(LOG_WARN(F,A), lager:warning(F,A)).
--define(LOG_DEBUG(F,A), lager:debug(F,A)).
-
 -define(DEFAULT_CARRIER_MODULE
         ,whapps_config:get_binary(?KNM_CONFIG_CAT
                                   ,<<"available_module_name">>
