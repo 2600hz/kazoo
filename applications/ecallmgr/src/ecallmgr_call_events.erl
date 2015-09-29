@@ -983,7 +983,7 @@ get_fax_success(Props) ->
 get_fax_t38_used(Props) ->
     case props:get_value(<<"variable_has_t38">>, Props) of
         'undefined' -> 'undefined';
-        Else -> Else =:= <<"true">>
+        Else -> wh_util:is_true(Else)
     end.
 
 -spec get_fax_ecm_used(wh_proplist()) -> api_boolean().
