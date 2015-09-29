@@ -135,15 +135,19 @@ handle_accounting_req(JObj, _Props) ->
     lager:debug("cm_listener handled accounting request ~p", [JObj]),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     % check that is inbound outer leg which has no Account-ID
-    IsInboundOuterLegOnChannelCreate = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_CREATE">>}
-        andalso (wh_json:get_value([?CCV, <<"Resource-ID">>], JObj) =:= 'undefined')
-        andalso (wh_json:get_value(<<"Call-Direction">>, JObj) =:= <<"inbound">>),
-    IsInboundOuterLegOnChannelDestroy = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_DESTROY">>},
-    % if the channel is inbound but not loopback, then remember it for later use
-    is_inbound_originate_leg_on_create(JObj) andalso
+    IsChannelCreate = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_CREATE">>},
+    IsChannelDestroy = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_DESTROY">>},
+    % get channel type
+    {ChannelProps, ChannelType, ChannelOrig} = cm_util:determine_channel_type(JObj),
+    IsInboundOuterLegOnChannelCreate = ({IsChannelCreate, ChannelProps, ChannelType, ChannelOrig} =:=
+        {'true', [<<"external">>, <<"inbound">>], 'normal', 'orig'}),
+    IsInboundOuterLegOnChannelDestroy = ({IsChannelDestroy, ChannelProps, ChannelType, ChannelOrig} =:=
+        {'true', [<<"external">>, <<"inbound">>], 'normal', 'orig'}),
+    % remember orig ext inbound leg Call-ID
+    IsInboundOuterLegOnChannelCreate andalso
         begin
-            lager:debug("Originate non-loopback inbound leg detected"),
-            ets_add_inbound_originate_leg(CallId)
+            lager:debug("Originate non-loopback external inbound leg detected when CHANNEL_CREATE event raised"),
+            cm_util:ets_add_inbound_originate_leg(CallId, JObj)
         end,
     case wh_json:get_value([?CCV, <<"Account-ID">>], JObj) of
         _ when IsInboundOuterLegOnChannelCreate ->
@@ -156,7 +160,7 @@ handle_accounting_req(JObj, _Props) ->
             lager:debug("Delete SIP Device Info from ETS for CallId ~p", [CallId]),
             ets:delete(?ETS_DEVICE_INFO, CallId),
             OtherLegCallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-            ets_cleanup_other_and_orig_legs(OtherLegCallId, CallId),
+            cm_util:ets_cleanup_other_and_orig_legs(OtherLegCallId, CallId),
             case ets:lookup(?ETS_DELAY_ACCOUNTING, CallId) of
                 [] ->
                     lager:debug("Nothing to clean");
@@ -179,10 +183,11 @@ handle_accounting_req(JObj, _Props) ->
                         [] -> 'ok';
                         [{OtherLegCallId, JObjDelayed4}] ->
                             lager:debug("Found corresponding delayed operation for outer inbound leg accounting. The operation should be retrieved and executed."),
-                            JObjDelayed = ets_update_leg_jobj_originator_type(OtherLegCallId, JObjDelayed4),
+                            JObjDelayed = cm_util:ets_update_leg_jobj_originator_type(OtherLegCallId, JObjDelayed4),
                             ets:delete(?ETS_DELAY_ACCOUNTING, OtherLegCallId),
                             JObjDelayed1 = wh_json:set_values([{[?CCV, <<"Account-ID">>], AccountId}
-                                                               ,{[?CCV, <<"Account-Name">>], AccountName}]
+                                                               ,{[?CCV, <<"Account-Name">>], AccountName}
+                                                               ,{[?CCV, <<"Is-Inbound-External">>], 'true'}]
                                                                ,JObjDelayed),
                             % delayed leg info was found
                             CallIdDelayed = wh_json:get_value(<<"Call-ID">>, JObjDelayed1),
@@ -197,8 +202,8 @@ handle_accounting_req(JObj, _Props) ->
                             cm_pool_mgr:do_request(JObjDelayed3)
                     end,
                     BridgeId = wh_json:get_value([?CCV, <<"Bridge-ID">>], JObj),
-                    JObj1 = ets_update_leg_jobj_originator_type(OtherLegCallId, JObj),
-                    ets_add_other_leg_of_inbound_originate_leg(CallId, OtherLegCallId),
+                    JObj1 = cm_util:ets_update_leg_jobj_originator_type(OtherLegCallId, JObj),
+                    cm_util:ets_add_other_leg_of_inbound_originate_leg(CallId, JObj, OtherLegCallId),
                     maybe_start_session_timer(AccountId, BridgeId),
                     maybe_start_interim_update_timer(AccountId, CallId),
                     JObj2 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Start">>}
@@ -211,20 +216,22 @@ handle_accounting_req(JObj, _Props) ->
                     lager:debug("Sending accounting start operation: ~p", [JObj3]),
                     cm_pool_mgr:do_request(JObj3);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+                    OtherLegCallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
                     case ets:lookup(?ETS_DELAY_ACCOUNTING, CallId) of
                         [] ->
                             BridgeId = wh_json:get_value([?CCV, <<"Bridge-ID">>], JObj),
                             maybe_cancel_session_timer(AccountId, BridgeId),
                             maybe_cancel_interim_update_timer(AccountId, CallId),
-                            JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
+                            JObj1 = cm_util:ets_update_leg_jobj_originator_type(OtherLegCallId, JObj),
+                            JObj2 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Stop">>}
                                                         ,{<<"Acct-Delay-Time">>, 0}
                                                         ,{<<"NAS-IP-Address">>, NasAddress}
                                                         ,{[?CCV, <<"Account-Name">>], AccountName}
-                                                       ], JObj),
-                            JObj2 = cm_util:insert_device_info_if_needed(JObj1, 'accounting'),
+                                                       ], JObj1),
+                            JObj3 = cm_util:insert_device_info_if_needed(JObj2, 'accounting'),
                             % send accounting stop
-                            lager:debug("Sending accounting stop operation: ~p", [JObj2]),
-                            cm_pool_mgr:do_request(JObj2);
+                            lager:debug("Sending accounting stop operation: ~p", [JObj3]),
+                            cm_pool_mgr:do_request(JObj3);
                         [{CallId, LostJObj}] ->
                             % outbound channel wasn't created, so there is no channel creation was for CallId
                             % so we should bypass this accounting "stop" request
@@ -232,9 +239,7 @@ handle_accounting_req(JObj, _Props) ->
                             ets:delete(?ETS_DEVICE_INFO, CallId),
                             lager:debug("Cleanup of the delayed operation for outer inbound leg: ~p", [LostJObj]),
                             ets:delete(?ETS_DELAY_ACCOUNTING, CallId)
-                    end,
-                    OtherLegCallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-                    ets_cleanup_other_and_orig_legs(OtherLegCallId, CallId);
+                    end;
                 {<<"call_event">>, <<"channel_fs_status_resp">>} ->
                     % Interim-Update
                     JObj1 = wh_json:set_values([{<<"Acct-Status-Type">>, <<"Interim-Update">>}
@@ -246,20 +251,6 @@ handle_accounting_req(JObj, _Props) ->
                     cm_pool_mgr:do_request(JObj1)
             end
     end.
-
-is_inbound_originate_leg_on_create(JObj) ->
-    IsChannelCreate = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_CREATE">>},
-    IsInboundLeg = case cm_util:determine_channel_type(JObj) of
-                       {_, 'loopback'} ->
-                           'false';
-                       {[_, <<"inbound">>], _} ->
-                           'true';
-                       _ ->
-                           'false'
-                   end,
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    IsOriginateLeg = (wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj, CallId) =:= CallId),
-    IsChannelCreate and IsInboundLeg and IsOriginateLeg.
 
 maybe_start_session_timer(AccountId, CallId) ->
     case cm_util:get_session_timeout(AccountId) of
@@ -368,63 +359,6 @@ maybe_processing_authz(JObj) ->
     end.
 
 %%%===================================================================
-%%% ETS Manipulations
-%%%===================================================================
-
-ets_add_inbound_originate_leg(OrigLegCallId) ->
-    lager:debug("Store inbound originate leg ~p", [OrigLegCallId]),
-    ets:insert(?ETS_ORIG_INBOUND_LEG, {{OrigLegCallId}, 0, 'orig'}).
-
-ets_add_other_leg_of_inbound_originate_leg(OtherLegCallId, OrigLegCallId) ->
-    case ets:lookup(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}) of
-        [] ->
-            lager:warning("No inbound orig legs with CallID ~p", [OrigLegCallId]);
-        [_] ->
-            ets:insert(?ETS_ORIG_INBOUND_LEG, {{OrigLegCallId, OtherLegCallId}, 'other'}),
-            ets:update_counter(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}, {2, 1}),
-            lager:debug("Store other leg ~p of inbound originate leg ~p. Number of legs is ~p",
-                [OtherLegCallId, OrigLegCallId, ets:lookup_element(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}, 2)])
-    end.
-
-ets_update_leg_jobj_originator_type(OrigLegCallId, LegJObj) ->
-    case ets:lookup(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}) of
-        [] ->
-            lager:warning("No inbound orig legs with CallID ~p", [OrigLegCallId]),
-            LegJObj;
-        [{{OrigLegCallId}, _, 'orig'}] ->
-            case whapps_call_command:fs_channel_status(OrigLegCallId) of
-                {'ok', ChannelStatus} ->
-                    OriginatorType = wh_json:get_value([?CCV, <<"Originator-Type">>], ChannelStatus),
-                    CallId = wh_json:get_value(<<"Call-ID">>, LegJObj),
-                    lager:info("Current Originator-Type is ~p. Copy it from the channel ~p into the channel ~p",
-                        [OriginatorType, OrigLegCallId, CallId]),
-                    wh_json:set_values([{[?CCV, <<"Originator-Type">>], OriginatorType}], LegJObj);
-                {'error', Error} ->
-                    lager:error("Error on getting channel status. No update.", [Error]),
-                    LegJObj
-            end
-    end.
-
-ets_cleanup_other_and_orig_legs(OrigLegCallId, OtherLegCallId) ->
-    case ets:lookup(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId, OtherLegCallId}) of
-        [] ->
-            lager:warning("No records where other leg is ~p of inbound originate leg ~p",
-                [OtherLegCallId, OrigLegCallId]);
-        [{Key = {OrigLegCallId, OtherLegCallId}, 'other'}] ->
-            lager:debug("Cleanup other leg ~p of inbound originate leg ~p", [OtherLegCallId, OrigLegCallId]),
-            ets:delete(?ETS_ORIG_INBOUND_LEG, Key),
-            ets:update_counter(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}, {2, -1}),
-            case (Counter = ets:lookup_element(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}, 2)) > 0 of
-                'true' ->
-                    lager:debug("No needs to cleanup inbound originate leg ~p because ~p other legs still exists",
-                        [OrigLegCallId, Counter]);
-                'false' ->
-                    lager:debug("Cleanup inbound originate leg ~p", [OrigLegCallId]),
-                    ets:delete(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId})
-            end
-    end.
-
-%%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
 
@@ -447,6 +381,8 @@ init([]) ->
     ets:new(?ETS_DEVICE_INFO, ['named_table', {'keypos', 1}, 'public']),
     ets:new(?ETS_LOOPBACK_CHANNELS, ['named_table', {'keypos', 1}, 'public']),
     ets:new(?ETS_ORIG_INBOUND_LEG, ['named_table', {'keypos', 1}, 'public']),
+    ets:new(?ETS_CACHED_CHANNEL_FS_STATUS, ['named_table', {'keypos', 1}, 'public']),
+    ets:new(?ETS_CACHED_CHANNEL_TYPE, ['named_table', {'keypos', 1}, 'public']),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -519,6 +455,8 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    ets:delete(?ETS_CACHED_CHANNEL_TYPE),
+    ets:delete(?ETS_CACHED_CHANNEL_FS_STATUS),
     ets:delete(?ETS_ORIG_INBOUND_LEG),
     ets:delete(?ETS_LOOPBACK_CHANNELS),
     ets:delete(?ETS_DEVICE_INFO),

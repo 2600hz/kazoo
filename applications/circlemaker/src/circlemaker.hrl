@@ -16,6 +16,8 @@
 -define(ETS_DEVICE_INFO, 'cm_device_info').
 -define(ETS_LOOPBACK_CHANNELS, 'cm_loopback_channels').
 -define(ETS_ORIG_INBOUND_LEG, 'cm_orig_inbound_leg').
+-define(ETS_CACHED_CHANNEL_FS_STATUS, 'cm_cached_channel_fs_status').
+-define(ETS_CACHED_CHANNEL_TYPE, 'cm_cached_channel_type').
 
 -define(CCV, <<"Custom-Channel-Vars">>).
 

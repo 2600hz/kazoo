@@ -290,7 +290,7 @@ maybe_server_request([Server | Servers] = AllServers, JObj, AaaProps, AccountId,
 
 -spec maybe_block_processing(wh_json:object(), wh_json:object(), ne_binary()) -> any().
 maybe_block_processing(JObj, AaaProps, BlockKey) ->
-    {ChannelProps, Type} = cm_util:determine_channel_type(JObj),
+    {ChannelProps, Type, _InboundOriginate} = cm_util:determine_channel_type(JObj),
     % check special case when a loopback channel transformed to normal,
     % so on CHANNEL_CREATE and authz operation he has loopback type, but on channel destroy it has loopback type.
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),

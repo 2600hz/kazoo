@@ -26,7 +26,16 @@
          ,insert_device_info_if_needed/2
          ,mark_channel_as_loopback/1
          ,unmark_channel_as_loopback/1
-         ,is_channel_loopback/1]).
+         ,is_channel_loopback/1
+         ,get_channel_fs_status/1
+         ,cleanup_channel_fs_status/1
+         ,store_channel_type/2
+         ,read_channel_type/1
+         ,cleanup_channel_type/1
+         ,ets_add_inbound_originate_leg/2
+         ,ets_add_other_leg_of_inbound_originate_leg/3
+         ,ets_update_leg_jobj_originator_type/2
+         ,ets_cleanup_other_and_orig_legs/2]).
 
 -include("circlemaker.hrl").
 
@@ -175,45 +184,76 @@ determine_aaa_request_type(JObj) ->
 
 -spec determine_channel_type(wh_json:object()) -> {ne_binaries(), 'normal'|'loopback'}.
 determine_channel_type(JObj) ->
-    From = wh_json:get_value(<<"From">>, JObj),
-    To = wh_json:get_value(<<"To">>, JObj),
-    CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
-    CalleeIdName = wh_json:get_value(<<"Callee-ID-Name">>, JObj),
-    CallerIdName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
-    ResourceId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Resource-ID">>], JObj),
-    Result = case ResourceId of
-                  'undefined' ->
-                      [<<"internal">>, CallDirection];
-                  Val when is_binary(Val) ->
-                      [<<"external">>, CallDirection]
-              end,
-    Type = case Result of
-               [<<"external">>, <<"outbound">>] ->
-                   'normal';
-               _ ->
-                   case {From, To} of
-                       {'undefined', 'undefined'} ->
-                           % special case for Interim-Update, because there are no "From" and "To" fields
-                           % and because this channel is already authorized, it should be 'normal' type
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    lager:debug("Determine type of channel ~p", [CallId]),
+    case cm_util:read_channel_type(CallId) of
+        {'error', 'not_found'} ->
+            From = wh_json:get_value(<<"From">>, JObj),
+            To = wh_json:get_value(<<"To">>, JObj),
+            CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
+            CalleeIdName = wh_json:get_value(<<"Callee-ID-Name">>, JObj),
+            CallerIdName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
+            ResourceId = wh_json:get_value([?CCV, <<"Resource-ID">>], JObj),
+            AccountId = wh_json:get_value([?CCV, <<"Account-ID">>], JObj),
+            IsInboundExternal = wh_json:is_true([?CCV, <<"Is-Inbound-External">>], JObj),
+            Result = case {ResourceId, AccountId, IsInboundExternal} of
+                         {_, _, 'true'} ->
+                             [<<"external">>, <<"inbound">>];
+                         {'undefined', 'undefined', _} ->
+                             [<<"external">>, <<"inbound">>];
+                         {'undefined', _, _} ->
+                             [<<"internal">>, CallDirection];
+                         {Val, _, _} when is_binary(Val) ->
+                             [<<"external">>, CallDirection]
+                     end,
+            Type = case Result of
+                       [<<"external">>, <<"outbound">>] ->
                            'normal';
                        _ ->
-                           FromPart = binary:part(From, {byte_size(From), -2}),
-                           ToPart = binary:part(To, {byte_size(To), -2}),
-                           case {FromPart, ToPart, CallerIdName, CalleeIdName} of
-                           % Special type of FreeSwitch channel (see FreeSwitch sources: src/switch_ivr_originate.c:2651)
-                               {_, _, <<"Outbound Call">>, _} -> 'loopback';
-                               {_, _, _, <<"Outbound Call">>} -> 'loopback';
-                           % Loopback patterns
-                               {<<"-a">>, _, _, _} -> 'loopback';
-                               {<<"-b">>, _, _, _} -> 'loopback';
-                               {_, <<"-a">>, _, _} -> 'loopback';
-                               {_, <<"-b">>, _, _} -> 'loopback';
-                               _ -> 'normal'
+                           case {From, To} of
+                               {'undefined', 'undefined'} ->
+                                   % special case for Interim-Update, because there are no "From" and "To" fields
+                                   % and because this channel is already authorized, it should be 'normal' type
+                                   'normal';
+                               _ ->
+                                   FromPart = binary:part(From, {byte_size(From), -2}),
+                                   ToPart = binary:part(To, {byte_size(To), -2}),
+                                   case {FromPart, ToPart, CallerIdName, CalleeIdName} of
+                                   % Special type of FreeSwitch channel (see FreeSwitch sources: src/switch_ivr_originate.c:2651)
+                                       {_, _, <<"Outbound Call">>, _} -> 'loopback';
+                                       {_, _, _, <<"Outbound Call">>} -> 'loopback';
+                                   % Loopback patterns
+                                       {<<"-a">>, _, _, _} -> 'loopback';
+                                       {<<"-b">>, _, _, _} -> 'loopback';
+                                       {_, <<"-a">>, _, _} -> 'loopback';
+                                       {_, <<"-b">>, _, _} -> 'loopback';
+                                       _ -> 'normal'
+                                   end
                            end
-                   end
-           end,
-    lager:debug("Channel type is ~p", [{Result, Type}]),
-    {Result, Type}.
+                   end,
+            % additional check if this leg is inboung originate
+            IsInboundLeg = case {Result, Type} of
+                               {_, 'loopback'} ->
+                                   'false';
+                               {[<<"external">>, <<"inbound">>], _} ->
+                                   'true';
+                               _ ->
+                                   'false'
+                           end,
+            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            IsOriginateLeg = (wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj, CallId) =:= CallId),
+            InboundOriginate = case (IsInboundLeg and IsOriginateLeg) of
+                                   'true' -> 'orig';
+                                   'false' -> 'nonorig'
+                               end,
+            lager:debug("Channel type is ~p", [{Result, Type, InboundOriginate}]),
+            % store in cache
+            IsChannelCreate = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_CREATE">>},
+            IsChannelCreate andalso cm_util:store_channel_type(CallId, {Result, Type, InboundOriginate}),
+            {Result, Type, InboundOriginate};
+        {ChannelProps, ChannelType, ChannelOrig} ->
+            {ChannelProps, ChannelType, ChannelOrig}
+    end.
 
 -spec put_session_timeout(pos_integer(), ne_binary()) -> any().
 put_session_timeout(SessionTimeout, AccountId) ->
@@ -414,25 +454,31 @@ get_sip_device_info(JObj) ->
 insert_device_info_if_needed(JObj, _Type) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("Trying to get device info for CallID ~p", [CallId]),
-    case ets:lookup(?ETS_DEVICE_INFO, CallId) of
-        [] ->
-            lager:debug("Device info wasn't found in ETS. Trying to detect it."),
-            case get_sip_device_info(JObj) of
-                {'ok', {DeviceName, SipUserName}} ->
-                    lager:debug("Store SIP Device Info in ETS: ~p", [{CallId, DeviceName, SipUserName}]),
-                    ets:insert(?ETS_DEVICE_INFO, {CallId, DeviceName, SipUserName}),
-                    wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
-                                        ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
-                                        ,JObj);
-                {'error', _} ->
-                    lager:debug("No device info was found, so no changes were applied."),
-                    JObj
-            end;
-        [{CallId, DeviceName, SipUserName}] ->
-            lager:debug("Device info was found in ETS. Using it: ~p", [{CallId, DeviceName, SipUserName}]),
-            wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
+    case wh_json:get_value([?CCV, <<"Originator-Type">>], JObj) of
+        <<"SIP">> ->
+            case ets:lookup(?ETS_DEVICE_INFO, CallId) of
+                [] ->
+                    lager:debug("Device info wasn't found in ETS. Trying to detect it."),
+                    case get_sip_device_info(JObj) of
+                        {'ok', {DeviceName, SipUserName}} ->
+                            lager:debug("Store SIP Device Info in ETS: ~p", [{CallId, DeviceName, SipUserName}]),
+                            ets:insert(?ETS_DEVICE_INFO, {CallId, DeviceName, SipUserName}),
+                            wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
                                 ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
-                                ,JObj)
+                                ,JObj);
+                        {'error', _} ->
+                            lager:debug("No device info was found, so no changes were applied."),
+                            JObj
+                    end;
+                [{CallId, DeviceName, SipUserName}] ->
+                    lager:debug("Device info was found in ETS. Using it: ~p", [{CallId, DeviceName, SipUserName}]),
+                    wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
+                        ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
+                        ,JObj)
+            end;
+        _Other ->
+            lager:debug("Originator-Type is ~p so there no SIP info", [_Other]),
+            JObj
     end.
 
 mark_channel_as_loopback(CallId) ->
@@ -448,4 +494,96 @@ is_channel_loopback(CallId) ->
     case ets:lookup(?ETS_LOOPBACK_CHANNELS, CallId) of
         [] -> 'false';
         [{CallId, 'loopback'}] -> 'true'
+    end.
+
+get_channel_fs_status(CallId) ->
+    case whapps_call_command:fs_channel_status(CallId) of
+        {'ok', ChannelStatus} ->
+            ets:insert(?ETS_CACHED_CHANNEL_FS_STATUS, {CallId, ChannelStatus}),
+            {'ok', ChannelStatus};
+        {'error', Error} ->
+            lager:error("Error (~p) when getting status of channel ~p from FreeSwitch. Trying get cached value...", [Error, CallId]),
+            case ets:lookup(?ETS_CACHED_CHANNEL_FS_STATUS, CallId) of
+                [] ->
+                    lager:error("No status of channel ~p in cache", [CallId]),
+                    {'error', 'not_found'};
+                [{CallId, ChannelStatus}] ->
+                    {'ok', ChannelStatus}
+            end
+    end.
+
+cleanup_channel_fs_status(CallId) ->
+    lager:debug("Cleanup cached channel status for the channel ~p", [CallId]),
+    ets:delete(?ETS_CACHED_CHANNEL_FS_STATUS, CallId).
+
+store_channel_type(CallId, ChannelType) ->
+    lager:debug("Channel type ~p of channel ~p stored in cache", [ChannelType, CallId]),
+    ets:insert(?ETS_CACHED_CHANNEL_TYPE, {CallId, ChannelType}).
+
+read_channel_type(CallId) ->
+    case ets:lookup(?ETS_CACHED_CHANNEL_TYPE, CallId) of
+        [] ->
+            lager:error("No type of channel ~p was found in cache", [CallId]),
+            {'error', 'not_found'};
+        [{CallId, ChannelType}] ->
+            lager:error("Channel type ~p of channel ~p got from cache", [ChannelType, CallId]),
+            ChannelType
+    end.
+
+cleanup_channel_type(CallId) ->
+    lager:debug("Cleanup cached channel type for the channel ~p", [CallId]),
+    ets:delete(?ETS_CACHED_CHANNEL_TYPE, CallId).
+
+ets_add_inbound_originate_leg(OrigLegCallId, OrigJObj) ->
+    lager:debug("Store inbound originate leg ~p", [OrigLegCallId]),
+    ets:insert(?ETS_ORIG_INBOUND_LEG, {{OrigLegCallId}, 0, OrigJObj, 'orig'}).
+
+ets_add_other_leg_of_inbound_originate_leg(OtherLegCallId, OtherJObj, OrigLegCallId) ->
+    case ets:lookup(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}) of
+        [] ->
+            lager:warning("No inbound orig legs with CallID ~p", [OrigLegCallId]);
+        [_|_] ->
+            ets:insert(?ETS_ORIG_INBOUND_LEG, {{OrigLegCallId, OtherLegCallId}, OtherJObj, 'other'}),
+            ets:update_counter(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}, {2, 1}),
+            lager:debug("Store other leg ~p of inbound originate leg ~p. Number of legs is ~p",
+                [OtherLegCallId, OrigLegCallId, ets:lookup_element(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}, 2)])
+    end.
+
+ets_update_leg_jobj_originator_type(OrigLegCallId, LegJObj) ->
+    case ets:lookup(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}) of
+        [] ->
+            lager:warning("No inbound orig legs with CallID ~p", [OrigLegCallId]),
+            LegJObj;
+        [{{OrigLegCallId}, _, _, 'orig'}] ->
+            case cm_util:get_channel_fs_status(OrigLegCallId) of
+                {'ok', ChannelStatus} ->
+                    OriginatorType = wh_json:get_value([?CCV, <<"Originator-Type">>], ChannelStatus),
+                    CallId = wh_json:get_value(<<"Call-ID">>, LegJObj),
+                    lager:info("Current Originator-Type is ~p. Copy it from the channel ~p into the channel ~p",
+                        [OriginatorType, OrigLegCallId, CallId]),
+                    wh_json:set_values([{[?CCV, <<"Originator-Type">>], OriginatorType}], LegJObj);
+                {'error', Error} ->
+                    lager:error("Error (~p) when getting status of channel ~p . No update.", [Error, OrigLegCallId]),
+                    LegJObj
+            end
+    end.
+
+ets_cleanup_other_and_orig_legs(OrigLegCallId, OtherLegCallId) ->
+    case ets:lookup(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId, OtherLegCallId}) of
+        [] ->
+            lager:warning("No records where other leg is ~p of inbound originate leg ~p",
+                [OtherLegCallId, OrigLegCallId]);
+        [{Key = {OrigLegCallId, OtherLegCallId}, _, 'other'}] ->
+            lager:debug("Cleanup other leg ~p of inbound originate leg ~p", [OtherLegCallId, OrigLegCallId]),
+            ets:delete(?ETS_ORIG_INBOUND_LEG, Key),
+            ets:update_counter(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}, {2, -1}),
+            case (Counter = ets:lookup_element(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}, 2)) > 0 of
+                'true' ->
+                    lager:debug("No needs to cleanup inbound originate leg ~p because ~p other legs still exists",
+                        [OrigLegCallId, Counter]);
+                'false' ->
+                    lager:debug("Cleanup inbound originate leg ~p", [OrigLegCallId]),
+                    ets:delete(?ETS_ORIG_INBOUND_LEG, {OrigLegCallId}),
+                    cm_util:cleanup_channel_fs_status(OrigLegCallId)
+            end
     end.

@@ -215,6 +215,16 @@ handle_cast({'response', Response, JObj, Worker}, State) ->
 handle_cast({'accounting_response', Response, JObj, Worker}, State) ->
     wh_util:put_callid(JObj),
     lager:debug("accounting response message is ~p", [Response]),
+    OtherLegCallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    % cleanup
+    IsChannelDestroy = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_DESTROY">>},
+    IsChannelDestroy andalso
+        begin
+            cm_util:ets_cleanup_other_and_orig_legs(OtherLegCallId, CallId),
+            cm_util:cleanup_channel_type(CallId)
+        end,
+    % return worker to the pool
     poolboy:checkin(?WORKER_POOL, Worker),
     {'noreply', State};
 handle_cast(Message, State) ->
