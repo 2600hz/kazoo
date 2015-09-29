@@ -291,8 +291,13 @@ encode_kv(<<>>, K, [_|_]=Props) -> to_querystring(Props, [wh_util:to_binary(K)])
 encode_kv(Prefix, K, [_|_]=Props) -> to_querystring(Props, [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>]).
 
 -spec encode_kv(iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
-encode_kv(<<>>, K, Sep, V) -> [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
-encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>, Sep, wh_util:to_binary(V)].
+encode_kv(<<>>, K, Sep, V) ->
+    [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
+encode_kv(Prefix, K, Sep, V) ->
+    [Prefix
+     ,<<"[">>, wh_util:to_binary(K), <<"]">>
+     ,Sep, wh_util:to_binary(V)
+    ].
 
 -spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
