@@ -104,7 +104,7 @@ handle_MAIL(From, State) ->
 -spec handle_MAIL_extension(binary(), state()) ->
                                    'error'.
 handle_MAIL_extension(Extension, _State) ->
-    Error = io_lib:format("554 Unknown MAIL FROM extension ~s", [Extension]),
+    Error = wh_util:to_binary(io_lib:format("554 Unknown MAIL FROM extension ~s", [Extension])),
     lager:debug(Error),
     'error'.
 
@@ -118,7 +118,7 @@ handle_RCPT(To, State) ->
 -spec handle_RCPT_extension(binary(), state()) ->
                                    'error'.
 handle_RCPT_extension(Extension, _State) ->
-    Error = io_lib:format("554 Unknown RCPT TO extension ~s", [Extension]),
+    Error = wh_util:to_binary(io_lib:format("554 Unknown RCPT TO extension ~s", [Extension])),
     lager:debug(Error),
     'error'.
 
@@ -529,7 +529,7 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
                         ,errors=[]
                        };
         {'ok', [_JObj | _JObjs]} ->
-            Error = io_lib:format("user ~s : ~s has multiples faxboxes", [OwnerId, From]),
+            Error = wh_util:to_binary(io_lib:format("user ~s : ~s has multiples faxboxes", [OwnerId, From])),
             maybe_faxbox_by_rules(AccountId
                                   ,State#state{owner_id=OwnerId
                                                ,owner_email=From
@@ -537,7 +537,7 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
                                               }
                                  );
         _ ->
-            Error = io_lib:format("user ~s : ~s does not have a faxbox", [OwnerId, From]),
+            Error = wh_util:to_binary(io_lib:format("user ~s : ~s does not have a faxbox", [OwnerId, From])),
             lager:debug("user ~s : ~s from account ~s does not have a faxbox, trying by rules"
                         ,[OwnerId, From, AccountId]
                        ),
