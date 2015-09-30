@@ -395,7 +395,7 @@ handle_cast({'exit_member_call_empty'}, #state{delivery=Delivery
                                                ,call=Call
                                                ,shared_pid=Pid
                                                ,member_call_queue=Q
-                                               ,acct_id=AcctId
+                                               ,account_id=AccountId
                                                ,queue_id=QueueId
                                                ,my_id=MyId
                                                ,agent_id=AgentId
@@ -405,7 +405,7 @@ handle_cast({'exit_member_call_empty'}, #state{delivery=Delivery
     acdc_util:unbind_from_call_events(Call),
     lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"No agents left in queue">>),
+    send_member_call_failure(Q, AccountId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"No agents left in queue">>),
 
     {'noreply', clear_call_state(State), 'hibernate'};
 handle_cast({'finish_member_call'}, #state{call='undefined'}=State) ->
