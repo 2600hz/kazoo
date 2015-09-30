@@ -4,10 +4,10 @@
 %%% "data":{
 %%%   "action": "manual" | "list"
 %%%   "media_id":"id_of_media"
-%%%   // optional after this
-%%%   "interdigit_timeout":2000
 %%%   "id":"{LIST_ID}" // the list referenced above is kept in a couchdb document with this id
 %%%                    // required for  action:"list"
+%%%   // optional after this
+%%%   "interdigit_timeout":2000
 %%% }
 %%% @end
 %%% @contributors
@@ -22,27 +22,33 @@
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".dynamic_cid">>).
 
--record(prompts, {accept_tone =
-                      whapps_config:get_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>),
-                  reject_tone =
-                      wh_media_util:get_prompt(
-                        whapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
-                       ),
-                  default_prompt =
-                      wh_media_util:get_prompt(
-                        whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
-                       )
-                 }).
+-define(CONFIG_BIN(Key, Default)
+        ,whapps_config:get_binary(?MOD_CONFIG_CAT, Key, Default)
+       ).
+-define(CONFIG_INT(Key, Default)
+        ,whapps_config:get_integer(?MOD_CONFIG_CAT, Key, Default)
+       ).
+
+-record(prompts, {
+          accept_tone =
+              ?CONFIG_BIN(<<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
+          ,reject_tone =
+              wh_media_util:get_prompt(
+                ?CONFIG_BIN(<<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
+               )
+          ,default_prompt =
+              wh_media_util:get_prompt(
+                ?CONFIG_BIN(<<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
+               )
+         }).
 -type prompts() :: #prompts{}.
 
 -record(dynamic_cid, {
-          prompts = #prompts{} :: prompts(),
-
-          max_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_digits">>, 10),
-          min_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_digits">>, 10),
-          whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>)
+          prompts = #prompts{} :: prompts()
+          ,max_digits = ?CONFIG_INT(<<"max_digits">>, 10) :: integer()
+          ,min_digits = ?CONFIG_INT(<<"min_digits">>, 10) :: integer()
+          ,whitelist = ?CONFIG_BIN(<<"whitelist_regex">>, <<"\\d+">>) :: ne_binary()
          }).
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -54,9 +60,6 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case wh_json:get_value(<<"action">>, Data) of
-        <<"manual">> ->
-            lager:info("user must manually enter on keypad the caller id for this call"),
-	    handle_manual(Data, Call);
         <<"list">> ->
             lager:info("user is choosing a caller id for this call from couchdb doc"),
 	    handle_list(Data, Call);
@@ -93,17 +96,17 @@ handle_manual(Data, Call) ->
     DefaultCID = whapps_call:caller_id_number(Call),
 
     Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>
-					  ,Data
-					  ,whapps_call_command:default_interdigit_timeout()
+                                           ,Data
+                                           ,whapps_call_command:default_interdigit_timeout()
                                           ),
 
     NoopId = whapps_call_command:play(Media, Call),
 
     CID = case whapps_call_command:collect_digits(Max
-						 ,whapps_call_command:default_collect_timeout()
-						 ,Interdigit
-						 ,NoopId
-						 ,Call
+                                                  ,whapps_call_command:default_collect_timeout()
+                                                  ,Interdigit
+                                                  ,NoopId
+                                                  ,Call
                                                  )
           of
               {'ok', <<>>} ->
@@ -130,7 +133,6 @@ handle_manual(Data, Call) ->
               ],
     cf_exe:set_call(whapps_call:exec(Updates, C1)),
     cf_exe:continue(Call).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -171,7 +173,9 @@ maybe_route_to_callflow(Data, Call, Number) ->
             Updates = [{fun whapps_call:set_request/2
                         ,list_to_binary([Number, "@", whapps_call:request_realm(Call)])
                        }
-                       ,{fun whapps_call:set_to/2, list_to_binary([Number, "@", whapps_call:to_realm(Call)])}
+                       ,{fun whapps_call:set_to/2
+                         ,list_to_binary([Number, "@", whapps_call:to_realm(Call)])
+                        }
                       ],
             {'ok', C} = cf_exe:get_call(Call),
             cf_exe:set_call(whapps_call:exec(Updates, C)),
@@ -181,7 +185,6 @@ maybe_route_to_callflow(Data, Call, Number) ->
             _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
 	    cf_exe:stop(Call)
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -201,20 +204,20 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call)
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_restrict_call(wh_json:object(), whapps_call:call(), ne_binary()) -> boolean().
+-spec should_restrict_call(wh_json:object(), whapps_call:call(), ne_binary()) ->
+                                  boolean().
 should_restrict_call(Data, Call, Number) ->
     case wh_json:is_true(<<"enforce_call_restriction">>, Data, 'true') of
-        'false' -> 'false',
-		   lager:info("not enforcing call restrictions");
-        'true' -> should_restrict_call(Call, Number)
+        'true' -> should_restrict_call(Call, Number);
+        'false' ->
+            lager:info("not enforcing call restrictions"),
+            'false'
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -227,7 +230,7 @@ should_restrict_call(Call, Number) ->
         {'error', _} -> 'false';
         {'ok', JObj} ->
             Classification = wnm_util:classify_number(Number),
-            lager:info("classified number as ~p", [Classification]),
+            lager:info("classified number as ~s", [Classification]),
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
 
@@ -237,15 +240,15 @@ should_restrict_call(Call, Number) ->
 %% Pull in document from couch with the callerid switching information inside..
 %% @end
 %%--------------------------------------------------------------------
--spec get_list_entry(wh_json:object(), whapps_call:call()) -> wh_json:objects().
+-spec get_list_entry(wh_json:object(), whapps_call:call()) ->
+                            {wh_json:object(), binary()} |
+                            {'error', couch_mgr:couchbeam_error()}.
 get_list_entry(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
-    lager:info("get_list_entries start"),
 
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->
-            lager:info("match list loaded: ~s", [ListId]),
             LengthDigits = wh_json:get_ne_value(<<"length">>, ListJObj),
 	    lager:debug("digit length to limit lookup key in number: ~p ", [LengthDigits]),
 	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
@@ -256,8 +259,8 @@ get_list_entry(Data, Call) ->
             lager:info("list of possible values to use: ~p", [JObj]),
 	    NewCallerId = wh_json:get_value(CIDKey, JObj),
 	    lager:info("new caller id data : ~p",  [NewCallerId]),
-	    { NewCallerId, Dest};
-	{'error', Reason} ->
-            lager:info("failed to load match list box ~s, ~p", [ListId, Reason]),
-            []
+	    {NewCallerId, Dest};
+	{'error', _Reason}=E ->
+            lager:info("failed to load match list box ~s: ~p", [ListId, _Reason]),
+            E
     end.

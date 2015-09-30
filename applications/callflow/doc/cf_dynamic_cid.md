@@ -13,7 +13,6 @@ The `dynamic_cid` callflow enables you to change the caller id (CID).
 
 If undefined, will revert to historical behavior, *manual*.
 
-
 ## Manual action mode
 ### Optional fields
 
@@ -39,21 +38,18 @@ In this exmaple length is 2.
 On a handset you dial `*2015149072508`
 
 It's hooked in as a part of the feature codes.  The callflow regex looks like this:
-```
-   "patterns": [
-       "^\\*2([0-9]{2,})$"
-	   ],
-```
+
+    "patterns": [
+        "^\\*2([0-9]{2,})$"
+    ],
 
 This means that `*2` is the "feature code" for this feature.
 
-`01` is the entry in the `cidlist` document to use.  It's *length* is
-2 digits.
+`01` is the entry in the `cidlist` document to use.  It's *length* is 2 digits.
 
 `5149072508` becomes `+15149072508` and gets dialed as such.
 
-Example "list" CouchDB document.  This CouchDB doc will end up being
-cached by Kazoo.  Make sure you flush changes..
+Example "list" CouchDB document.  This CouchDB doc will end up being cached by Kazoo.  Make sure you flush changes..
 
 If you were to use the length 1 example..
 
@@ -61,7 +57,6 @@ On a handset you dial
 `*2115149072508`
 or
 `*215149072508`
-
 
 In this case
 
