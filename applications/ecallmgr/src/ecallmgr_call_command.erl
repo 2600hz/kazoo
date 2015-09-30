@@ -14,7 +14,9 @@
 -export([exec_cmd/4]).
 
 -ifdef(TEST).
--export([get_conference_flags/1]).
+-export([get_conference_flags/1
+         ,tones_app/1
+        ]).
 -endif.
 
 -include("ecallmgr.hrl").
@@ -246,25 +248,8 @@ get_fs_app(Node, UUID, JObj, <<"tones">>) ->
         'false' -> {'error', <<"tones failed to execute as JObj did not validate">>};
         'true' ->
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-            Tones = wh_json:get_value(<<"Tones">>, JObj, []),
-            FSTones = [begin
-                           Vol = case wh_json:get_value(<<"Volume">>, Tone) of
-                                     'undefined' -> [];
-                                     %% need to map V (0-100) to FS values
-                                     V -> list_to_binary(["v=", wh_util:to_list(V), ";"])
-                                 end,
-                           Repeat = case wh_json:get_value(<<"Repeat">>, Tone) of
-                                        'undefined' -> [];
-                                        R -> list_to_binary(["l=", wh_util:to_list(R), ";"])
-                                    end,
-                           Freqs = string:join([wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, Tone)], ","),
-                           On = wh_util:to_list(wh_json:get_value(<<"Duration-ON">>, Tone)),
-                           Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
-                           wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
-                       end || Tone <- Tones
-                      ],
-            Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
-            {<<"playback">>, Arg}
+            Tones = wh_json:get_list_value(<<"Tones">>, JObj, []),
+            tones_app(Tones)
     end;
 
 get_fs_app(_Node, _UUID, _JObj, <<"answer">>) ->
@@ -1470,3 +1455,54 @@ get_sample_rate(JObj) ->
         'undefined' -> ?DEFAULT_SAMPLE_RATE;
         SampleRate -> SampleRate
     end.
+
+-spec tones_app(wh_json:objects()) -> {ne_binary(), iodata()}.
+tones_app(Tones) ->
+    FSTones = [tone_to_fs_tone(Tone) || Tone <- Tones],
+    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+    {<<"playback">>, Arg}.
+
+-spec tone_to_fs_tone(wh_json:object()) -> string().
+tone_to_fs_tone(Tone) ->
+    Vol = tone_volume(Tone),
+    Repeat = tone_repeat(Tone),
+    Freqs = tone_frequencies(Tone),
+
+    On = tone_duration_on(Tone),
+    Off = tone_duration_off(Tone),
+
+    wh_util:to_list(
+      list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"])
+     ).
+
+-spec tone_volume(wh_json:object()) -> binary().
+tone_volume(Tone) ->
+    case wh_json:get_value(<<"Volume">>, Tone) of
+        'undefined' -> <<>>;
+        %% need to map V (0-100) to FS values
+        V -> list_to_binary(["v=", wh_util:to_list(V), ";"])
+    end.
+
+-spec tone_repeat(wh_json:object()) -> binary().
+tone_repeat(Tone) ->
+    case wh_json:get_value(<<"Repeat">>, Tone) of
+        'undefined' -> <<>>;
+        R -> list_to_binary(["l=", wh_util:to_list(R), ";"])
+    end.
+
+-spec tone_frequencies(wh_json:object()) -> ne_binary().
+tone_frequencies(Tone) ->
+    wh_util:join_binary(
+      [wh_util:to_binary(V)
+       || V <- wh_json:get_value(<<"Frequencies">>, Tone, [])
+      ]
+      ,<<",">>
+     ).
+
+-spec tone_duration_on(wh_json:object()) -> ne_binary().
+tone_duration_on(Tone) ->
+    wh_json:get_binary_value(<<"Duration-ON">>, Tone).
+
+-spec tone_duration_off(wh_json:object()) -> ne_binary().
+tone_duration_off(Tone) ->
+    wh_json:get_binary_value(<<"Duration-OFF">>, Tone).
