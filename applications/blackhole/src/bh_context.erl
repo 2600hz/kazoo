@@ -27,6 +27,7 @@
           ,binding :: api_binary()
           ,websocket_session_id :: api_binary()
           ,websocket_pid :: api_pid()
+          ,req_id = <<(wh_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary()
          }).
 
 -type context() :: #bh_context{}.
@@ -34,13 +35,18 @@
 
 -spec new() -> context().
 new()->
-    #bh_context{}.
+    put_reqid(#bh_context{}).
 
 -spec new(pid(), ne_binary()) -> context().
 new(SessionPid, SessionId) ->
-    #bh_context{websocket_session_id = SessionId
-                ,websocket_pid = SessionPid
-               }.
+    put_reqid(#bh_context{websocket_session_id = SessionId
+                          ,websocket_pid = SessionPid
+                         }).
+
+-spec put_reqid(context()) -> context().
+put_reqid(#bh_context{req_id = ReqId} = Context) ->
+    wh_util:put_callid(ReqId),
+    Context.
 
 -spec from_subscription(wh_json:object()) -> context().
 -spec from_subscription(context(), wh_json:object()) -> context().
