@@ -11,6 +11,8 @@
 -module(cb_webhooks).
 
 -export([init/0
+         ,authorize/1
+         ,authenticate/1
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
@@ -44,6 +46,8 @@ init() ->
     _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
 
     Bindings = [{<<"*.allowed_methods.webhooks">>, 'allowed_methods'}
+                ,{<<"*.authorize">>, 'authorize'}
+                ,{<<"*.authenticate">>, 'authenticate'}
                 ,{<<"*.resource_exists.webhooks">>, 'resource_exists'}
                 ,{<<"*.validate.webhooks">>, 'validate'}
                 ,{<<"*.execute.put.webhooks">>, 'put'}
@@ -54,6 +58,26 @@ init() ->
                 ,{crossbar_cleanup:binding_system(), 'cleanup'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
+
+authorize(Context) ->
+    authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize(http_method(), req_nouns()) -> boolean().
+authorize(?HTTP_GET, [{<<"webhooks">>, []}]) ->
+    lager:debug("authorizing request"),
+    'true';
+authorize(_Verb, _Nouns) -> 'false'.
+
+authenticate(Context) ->
+    authenticate(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), http_method(), req_nouns()) ->
+                          {'true', cb_context:context()} |
+                          'false'.
+authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
+    lager:debug("authenticating request"),
+    {'true', Context};
+authenticate(_Context, _Verb, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public

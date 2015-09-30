@@ -46,9 +46,46 @@ Webhooks are installed by the system administrator. You can query Crossbar to se
              "description": "Events for when the channel is answered by the endpoint",
              "id": "channel_answer",
              "name": "channel_answer"
-         }
+        },
+        {
+            "description": "Receive notifications when objects in Kazoo are changed",
+            "id": "object",
+            "modifiers": {
+                "action": {
+                    "description": "A list of object actions to handle",
+                    "items": [
+                        "doc_created",
+                        "doc_edited",
+                        "doc_deleted"
+                    ],
+                    "type": "array"
+                },
+                "type": {
+                    "description": "A list of object types to handle",
+                    "items": [
+                        "account",
+                        "callflow",
+                        "device",
+                        "faxbox",
+                        "media",
+                        "user",
+                        "vmbox"
+                    ],
+                    "type": "array"
+                },
+                "types": {
+                    "description": "A list of object types to handle",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "name": "object"
+        }
+
      ],
-     "page_size": 3,
+     "page_size": 4,
      "request_id": "{REQUEST_ID}",
      "revision": "{REVISION}",
      "status": "success"

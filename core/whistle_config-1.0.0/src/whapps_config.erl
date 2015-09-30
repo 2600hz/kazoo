@@ -405,12 +405,11 @@ maybe_save_category(Category, JObj, PvtFields) ->
     maybe_save_category(Category, JObj, PvtFields, 'false').
 
 maybe_save_category(Category, JObj, PvtFields, Looped) ->
-    lager:debug("updating configuration category ~s(~s)", [Category, wh_doc:revision(JObj)]),
+    lager:debug("updating configuration category ~s(~s)"
+                ,[Category, wh_doc:revision(JObj)]
+               ),
 
     JObj1 = update_pvt_fields(Category, JObj, PvtFields),
-
-    lager:debug("updating with pvt ~p", [PvtFields]),
-    lager:debug("res: ~p", [JObj1]),
 
     case couch_mgr:save_doc(?WH_CONFIG_DB, JObj1) of
         {'ok', SavedJObj} ->
