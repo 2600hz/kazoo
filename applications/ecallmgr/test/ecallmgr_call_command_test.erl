@@ -31,3 +31,27 @@ one_conference_flag_test() ->
 no_conference_flags_test() ->
     JObj = wh_json:new(),
     ?assertEqual(<<>>, ecallmgr_call_command:get_conference_flags(JObj)).
+
+tones_test() ->
+    Tones =
+        [wh_json:from_list(
+           [{<<"Frequencies">>, [1000, <<"2000">>]}
+            ,{<<"Duration-ON">>, 30000}
+            ,{<<"Duration-OFF">>, <<"1000">>}
+           ]
+          )
+         ,wh_json:from_list(
+           [{<<"Frequencies">>, [1000, <<"2000">>, 3000, <<"4000">>]}
+            ,{<<"Duration-ON">>, <<"30000">>}
+            ,{<<"Duration-OFF">>, 1000}
+            ,{<<"Volume">>, 25}
+            ,{<<"Repeat">>, 3}
+           ]
+          )
+        ],
+    ?assertEqual(
+       {<<"playback">>
+        ,"tone_stream://%(30000,1000,1000,2000);v=25;l=3;%(30000,1000,1000,2000,3000,4000)"
+       }
+       ,ecallmgr_call_command:tones_app(Tones)
+      ).
