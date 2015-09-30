@@ -805,7 +805,9 @@ elapsed(Time) -> wh_util:elapsed_s(Time).
 %%                   queue_fsm_state()
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_connect_re_req(pid(), pid(), queue_fsm_state()) -> queue_fsm_state().
+-spec maybe_connect_re_req(pid(), pid(), queue_fsm_state()) ->
+                                {'next_state', atom(), queue_fsm_state()}
+                                | {'next_state', atom(), queue_fsm_state(), 'hibernate'}.
 maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
                                                  ,queue_id=QueueId
                                                  ,member_call=Call
