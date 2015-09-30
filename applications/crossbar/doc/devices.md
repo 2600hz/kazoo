@@ -68,19 +68,29 @@ Often you'll want to see what devices belong to a user, or devices that a user h
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices
     {"auth_token": "{AUTH_TOKEN}",
-     "data": [
-         {
-             "hotdesked": false,
-             "id": "{DEVICE_ID_1}",
-             "name": "{NAME_1}"
-         },
-         {
-             "hotdesked": true,
-             "id": "{DEVICE_ID_2}",
-             "name": "{NAME_2}"
-         }
+    "data": [
+        {
+            "device_type": "sip_device",
+            "enabled": true,
+            "hotdesked": false,
+            "id": "{DEVICE_ID_1}",
+            "mac_address": "",
+            "name": "USER_ID_DEVICE",
+            "owner_id": "{USER_ID}"
+        },
+        {
+            "device_type": "sip_device",
+            "enabled": true,
+            "hotdesked": true,
+            "id": "{DEVICE_ID_2}",
+            "mac_address": "",
+            "name": "OWNER_ID_DEVICE",
+            "owner_id": "{OWNER_ID}"
+        }
       ],
      "request_id": "{REQUEST_ID}",
      "revision": "{REVISION}",
      "status": "success"
     }
+
+Notice that the first device, `{DEVICE_ID_1}` is owned by `{USER_ID}` but the second device, `{DEVICE_ID_2}`, is owned by `{OWNER_ID}` **and** is currently hotdesked to `{USER_ID}` (see the `"hotdesked":true` attribute).
