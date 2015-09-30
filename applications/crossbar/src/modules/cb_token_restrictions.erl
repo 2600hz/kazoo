@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
@@ -21,10 +20,30 @@
          ,post/1
          ,delete/1
          ,authorize/1
+
+         ,config_cat/0
         ]).
 
+-ifdef(TEST).
+-export([maybe_deny_access/1]).
+
+-include_lib("eunit/include/eunit.hrl").
+-include("../../test/cb_token_restrictions_test.hrl").
+
+-define(LOG_DEBUG(F), ?debugFmt(F ++ "\n", [])).
+-define(LOG_DEBUG(F, A), ?debugFmt(F ++ "\n", A)).
+-else.
+-define(LOG_DEBUG(F), lager:debug(F)).
+-define(LOG_DEBUG(F, A), lager:debug(F, A)).
+-endif.
+
 -include("../crossbar.hrl").
+
 -define(PVT_TYPE, <<"token_restrictions">>).
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".token_restrictions">>).
+
+config_cat() ->
+    ?MOD_CONFIG_CAT.
 
 %%%===================================================================
 %%% API
@@ -73,7 +92,7 @@ on_successful_validation(Context) ->
     Context1 = crossbar_doc:load_merge(?CB_ACCOUNT_TOKEN_RESTRICTIONS, Context),
     case cb_context:resp_status(Context1) of
         'success' -> Context1;
-        _ ->
+        _Status ->
             Setters = [fun add_doc_id/1
                        ,fun add_pvt_type/1
                       ],
@@ -106,147 +125,147 @@ delete(Context) ->
                           {'true' | 'halt', cb_context:context()}.
 authorize(Context) ->
     case maybe_deny_access(Context) of
-        'false' ->
-            %%---------------------------------------------------------
-            %% We dont halt this request, let someone else authorize it
-            %%---------------------------------------------------------
-            'false';
+        'false' -> 'false';
         'true' ->
-            lager:info("deny access"),
-            Cause = wh_json:from_list([{<<"cause">>, <<"access denied by token restrictions">>}]),
+            lager:info("denying access"),
+            Cause = wh_json:from_list(
+                      [{<<"cause">>, <<"access denied by token restrictions">>}]
+                     ),
             {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
     end.
 
 -spec maybe_deny_access(cb_context:context()) -> boolean().
 maybe_deny_access(Context) ->
     AuthDoc = cb_context:auth_doc(Context),
-    case wh_json:get_ne_value(<<"restrictions">>, AuthDoc) of
-        'undefined' ->
-            lager:debug("no restrictions"),
-            'false';
-        Rs ->
-            maybe_deny_access(Context, Rs)
+    case wh_json:get_json_value(<<"restrictions">>, AuthDoc) of
+        'undefined' -> 'false';
+        Restrictions ->
+            maybe_deny_access(Context, Restrictions)
     end.
 
--spec maybe_deny_access(cb_context:context(), wh_json:objects()) -> boolean().
-maybe_deny_access(Context, Rs) ->
+-spec maybe_deny_access(cb_context:context(), wh_json:object()) -> boolean().
+maybe_deny_access(Context, Restrictions) ->
     MatchFuns = [fun match_endpoint/2
-                ,fun match_account/2
-                ,fun match_param/2
-                ,fun match_verb/2
+                 ,fun match_account/2
+                 ,fun match_arguments/2
+                 ,fun match_verb/2
                 ],
-    Result = lists:foldl(fun(F, R) ->
-                             case wh_util:is_empty(R) of
-                                 'false' -> F(Context, R);
-                                 'true' -> 'undefined'
-                             end
-                     end,
-                     Rs,
-                     MatchFuns
-                    ),
-    wh_util:is_empty(Result).
 
--spec match_endpoint(cb_context:context(), wh_json:object() | 'undefined') ->
-                            wh_json:objects() | 'undefined'.
-match_endpoint(Context, Rs) ->
+    not lists:foldl(fun(F, RestrictionContext) ->
+                            F(Context, RestrictionContext)
+                    end
+                    ,Restrictions
+                    ,MatchFuns
+                   ).
+
+-spec match_endpoint(cb_context:context(), api_object()) ->
+                            api_object().
+match_endpoint(Context, Restrictions) ->
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
-    case wh_json:get_value(ReqEndpoint, Rs) of
-        'undefined' ->
-            case wh_json:get_value(<<"_">>, Rs) of
-                'undefined' ->
-                    lager:info("no match endpoint for: ~p", [ReqEndpoint]),
-                    'undefined';
-                R ->
-                    lager:debug("match endpoint \"_\""),
-                    R
-            end;
-        R ->
-            lager:debug("match endpoint ~p",[ReqEndpoint]),
-            R
+
+    match_request_endpoint(Restrictions, ReqEndpoint).
+
+-spec match_request_endpoint(api_object(), ne_binary()) ->
+                                    api_object().
+match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
+    wh_json:get_value(ReqEndpoint, Restrictions);
+match_request_endpoint(Restrictions, ReqEndpoint) ->
+    case wh_json:get_value(ReqEndpoint, Restrictions) of
+        'undefined' -> match_request_endpoint(Restrictions, ?CATCH_ALL);
+        EndpointRestrictions -> EndpointRestrictions
     end.
 
--spec match_account(cb_context:context(), wh_json:objects()) -> wh_json:objects() | 'undefined'.
-match_account(Context, Rs) ->
+-spec match_account(cb_context:context(), api_objects()) -> api_object().
+match_account(_Context, 'undefined') -> 'undefined';
+match_account(_Context, []) -> 'undefined';
+match_account(Context, EndpointRestrictions) ->
     AllowedAccounts = allowed_accounts(Context),
-    filter_by_account(AllowedAccounts, Rs).
+    find_endpoint_restrictions_by_account(AllowedAccounts, EndpointRestrictions).
 
-filter_by_account(Accounts, []) ->
-    lager:info("no match account for: ~p",[Accounts]),
+-spec find_endpoint_restrictions_by_account(ne_binaries(), wh_json:objects()) ->
+                                                   api_object().
+find_endpoint_restrictions_by_account(_Accounts, []) ->
     'undefined';
-filter_by_account(AllowedAccounts, [R|Rs]) ->
-    case wh_json:get_value(<<"allowed_accounts">>, R) of
-        'undefined' ->
-            lager:debug("no \"allowed_accounts\" parameter in rule, match any account"),
-            wh_json:get_value(<<"rules">>, R);
-        RsAccounts ->
-            SetsAllowedAccounts = sets:from_list(AllowedAccounts),
-            SetsRsAccounts = sets:from_list(RsAccounts),
-            SetsMatch = sets:intersection(SetsAllowedAccounts, SetsRsAccounts),
-            case sets:to_list(SetsMatch) of
-                [] -> filter_by_account(AllowedAccounts, Rs);
-                Match ->
-                    lager:debug("match account: ~p",[Match]),
-                    wh_json:get_value(<<"rules">>, R)
-            end
+find_endpoint_restrictions_by_account(AllowedAccounts
+                                      ,[Restriction|Restrictions]
+                                     ) ->
+    case maybe_match_accounts(AllowedAccounts
+                              ,wh_json:get_value(<<"allowed_accounts">>, Restriction)
+                             )
+    of
+        'true' -> wh_json:get_value(<<"rules">>, Restriction);
+        'false' ->
+            find_endpoint_restrictions_by_account(AllowedAccounts, Restrictions)
     end.
+
+-spec maybe_match_accounts(ne_binaries(), api_binaries()) -> boolean().
+maybe_match_accounts(_AllowedAccounts, 'undefined') -> 'true';
+maybe_match_accounts(_AllowedAccounts, [?CATCH_ALL]) -> 'true';
+maybe_match_accounts(AllowedAccounts, RestrictionAccounts) ->
+    SetsAllowedAccounts = sets:from_list(AllowedAccounts),
+    SetsRsAccounts = sets:from_list(RestrictionAccounts),
+    sets:size(
+      sets:intersection(SetsAllowedAccounts, SetsRsAccounts)
+     ) > 0.
 
 -spec allowed_accounts(cb_context:context()) -> ne_binaries().
 allowed_accounts(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    AccountId = cb_context:account_id(Context),
-    %%
-    %% cb_context:account_id/1 not always contain AccountId, try found it from req_nouns
-    %%
-%%    AccountId = case cb_context:account_id(Context) of
-%%        'undefined' ->
-%%            Nouns = cb_context:req_nouns(Context),
-%%            case props:get_value(?WH_ACCOUNTS_DB, Nouns) of
-%%                'undefined' -> 'undefined';
-%%                [] -> 'undefined';
-%%                [A|_] -> A
-%%            end;
-%%        A -> A
-%%    end,
-    case AccountId =:= AuthAccountId of
-        'true' -> [ <<"_">>, AuthAccountId, <<"{AUTH_ACCOUNT_ID}">> ];
-        'false' ->
-            case wh_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
-                'true' -> [ <<"_">>, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">> ];
-                'false' when AccountId =:= 'undefined' -> [ <<"_">> ];
-                'false' when AuthAccountId =:= 'undefined' -> [ <<"_">> ];
-                'false' -> [ <<"_">>, AccountId ]
-            end
+
+    case cb_context:account_id(Context) of
+        AuthAccountId -> [?CATCH_ALL, AuthAccountId, <<"{AUTH_ACCOUNT_ID}">> ];
+        AccountId ->
+            allowed_accounts(AuthAccountId, AccountId)
     end.
 
--spec match_param(cb_context:context(), wh_json:objects()) -> wh_json:object() | 'undefined'.
-match_param(Context, R) ->
-    [{_, ReqParam}|_] = cb_context:req_nouns(Context),
-    Rules = wh_json:get_keys(R),
-    case match_rules(ReqParam, Rules) of
-        'undefined' ->
-            lager:info("no match rule for: ~p",[ReqParam]),
-                'undefined';
-        MatchRule ->
-            lager:debug("match rule: ~p",[MatchRule]),
-            wh_json:get_value(MatchRule, R)
+-ifdef(TEST).
+allowed_accounts(?AUTH_ACCOUNT_ID, ?ACCOUNT_ID = AccountId) ->
+    [?CATCH_ALL, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">>].
+-else.
+-spec allowed_accounts(api_binary(), api_binary()) -> ne_binaries().
+allowed_accounts('undefined', _AccountId) -> [?CATCH_ALL];
+allowed_accounts(_AuthAccountId, 'undefined') -> [?CATCH_ALL];
+allowed_accounts(AuthAccountId, AccountId) ->
+    case wh_util:is_in_account_hierarchy(AuthAccountId, AccountId) of
+        'true' -> [?CATCH_ALL, AccountId, <<"{DESCENDANT_ACCOUNT_ID}">>];
+        'false' -> [?CATCH_ALL, AccountId]
+    end.
+-endif.
+
+-spec match_arguments(cb_context:context(), api_object()) ->
+                             http_methods().
+match_arguments(_Context, 'undefined') -> [];
+match_arguments(Context, RulesJObj) ->
+    [{_, ReqParams}|_] = cb_context:req_nouns(Context),
+    RuleKeys = wh_json:get_keys(RulesJObj),
+    match_argument_patterns(ReqParams, RulesJObj, RuleKeys).
+
+-spec match_argument_patterns(req_nouns(), wh_json:object(), ne_binaries()) ->
+                                     http_methods().
+match_argument_patterns(_ReqParams, _RulesJObj, []) -> [];
+match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
+    case match_rules(ReqParams, RuleKeys) of
+        'undefined' -> [];
+        MatchedRuleKey ->
+            wh_json:get_value(MatchedRuleKey, RulesJObj, [])
     end.
 
-match_rules(_ReqParam, []) -> 'undefined';
-match_rules(ReqParam, [R|Rules]) ->
-    Rule = binary:split(R, <<"/">>, [global, trim]),
-    case kazoo_bindings:matches(Rule, ReqParam) of
-        'true' -> R;
-        'false' -> match_rules(ReqParam, Rules)
+-spec match_rules(ne_binaries(), ne_binaries()) -> api_binary().
+match_rules(_ReqParams, []) -> 'undefined';
+match_rules(ReqParams, [RuleKey|RuleKeys]) ->
+    case does_rule_match(RuleKey, ReqParams) of
+        'false' -> match_rules(ReqParams, RuleKeys);
+        'true' -> RuleKey
     end.
 
--spec match_verb(cb_context:context(), list()) -> list() | 'undefined'.
-match_verb(Context, Verbs) ->
-    Verb = cb_context:req_verb(Context),
-    case lists:member(Verb, Verbs) orelse lists:member(<<"_">>, Verbs) of
-        'true' ->
-            lager:debug("match verb: ~p", [Verb]),
-            [Verb];
-        'false' ->
-            lager:info("no match verb for: ~p", [Verb]),
-            'undefined'
-    end.
+-spec does_rule_match(ne_binary(), ne_binaries()) -> boolean().
+does_rule_match(RuleKey, ReqParams) ->
+    kazoo_bindings:matches(binary:split(RuleKey, <<"/">>, ['global', 'trim'])
+                           ,ReqParams
+                          ).
+
+-spec match_verb(cb_context:context(), http_methods()) -> boolean().
+match_verb(_Context, [?CATCH_ALL]) -> 'true';
+match_verb(Context, RuleVerbs) ->
+    lists:member(cb_context:req_verb(Context), RuleVerbs)
+        orelse lists:member(?CATCH_ALL, RuleVerbs).

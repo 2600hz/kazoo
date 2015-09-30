@@ -1,4 +1,7 @@
 -ifndef(CROSSBAR_TYPES_INCLUDED).
+-include_lib("whistle/include/wh_types.hrl").
+
+-define(CATCH_ALL, <<"_">>).
 
 -type crossbar_status() :: 'success' | 'error' | 'fatal'.
 -type crossbar_module_result() :: {crossbar_status(), wh_proplist()} |
