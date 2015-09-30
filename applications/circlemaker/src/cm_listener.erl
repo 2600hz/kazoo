@@ -175,8 +175,8 @@ handle_accounting_req(JObj, _Props) ->
                 [{CallId, LostJObj}] ->
                     % outbound channel wasn't created, so there is no channel creation was for CallId
                     % so we should bypass this accounting "stop" request
-                    lager:debug("Cleanup of the delayed operation for outer inbound leg: ~p", [LostJObj]),
-                    ets:delete(?ETS_DELAY_ACCOUNTING, CallId)
+                    ets:delete(?ETS_DELAY_ACCOUNTING, CallId),
+                    lager:debug("Cleanup of the delayed operation for outer inbound leg: ~p", [LostJObj])
             end;
         AccountId ->
             {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
@@ -191,9 +191,9 @@ handle_accounting_req(JObj, _Props) ->
                         [] ->
                             'ok';
                         [{OtherLegCallId, JObjDelayed4}] ->
+                            ets:delete(?ETS_DELAY_ACCOUNTING, OtherLegCallId),
                             lager:debug("Found corresponding delayed operation for outer inbound leg accounting. The operation should be retrieved and executed."),
                             JObjDelayed = cm_util:ets_update_leg_jobj_originator_type(OtherLegCallId, JObjDelayed4),
-                            ets:delete(?ETS_DELAY_ACCOUNTING, OtherLegCallId),
                             JObjDelayed1 = wh_json:set_values([{[?CCV, <<"Account-ID">>], AccountId}
                                                                ,{[?CCV, <<"Account-Name">>], AccountName}
                                                                ,{[?CCV, <<"Is-Inbound-External">>], 'true'}]
@@ -252,10 +252,10 @@ handle_accounting_req(JObj, _Props) ->
                         [{CallId, LostJObj}] ->
                             % outbound channel wasn't created, so there is no channel creation was for CallId
                             % so we should bypass this accounting "stop" request
-                            lager:debug("Delete SIP Device Info from ETS for CallId ~p", [CallId]),
+                            ets:delete(?ETS_DELAY_ACCOUNTING, CallId),
                             ets:delete(?ETS_DEVICE_INFO, CallId),
                             lager:debug("Cleanup of the delayed operation for outer inbound leg: ~p", [LostJObj]),
-                            ets:delete(?ETS_DELAY_ACCOUNTING, CallId)
+                            lager:debug("Delete SIP Device Info from ETS for CallId ~p", [CallId])
                     end;
                 {<<"call_event">>, <<"channel_fs_status_resp">>} ->
                     % Interim-Update
