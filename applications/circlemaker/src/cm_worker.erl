@@ -371,17 +371,20 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
     {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
     {'ok', AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
-    % TODO: next line should be moved to the cm_util
-    CustomData = wh_json:set_values([{<<"account_id">>, AccountId}
-                                     ,{<<"account_name">>, wh_json:get_value(<<"name">>, Account)}
-                                     ,{<<"account_realm">>, wh_json:get_value(<<"realm">>, Account)}
-                                    ], wh_json:new()),
     {AllAVPs, RadiusCmdType} = case cm_util:determine_aaa_request_type(JObj) of
                   'authz' = RequestType ->
                       lager:debug("Operation is authz"),
                       WholeRequest = wh_json:get_value(<<"Custom-Auth-Vars">>, JObj),
                       WholeRequest1 = cm_util:append_resource_name_to_request(WholeRequest),
                       WholeRequest2 = cm_util:insert_device_info_if_needed(WholeRequest1, RequestType),
+                      % TODO: next line should be moved to the cm_util
+                      OrigAccountId = wh_json:get_value([?CCV, <<"Account-ID">>], WholeRequest2),
+                      {'ok', OrigAccount} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, OrigAccountId),
+                      CustomData = wh_json:set_values([{<<"account_id">>, OrigAccountId}
+                                                       ,{<<"account_name">>, wh_json:get_value(<<"name">>, OrigAccount)}
+                                                       ,{<<"account_realm">>, wh_json:get_value(<<"realm">>, OrigAccount)}
+                                                      ], wh_json:new()),
+                      lager:debug("CustomData is ~p", [CustomData]),
                       % TODO: it's a quick hack, should be removed.
                       WholeRequestTemp = wh_json:set_values([{<<"Event-Category">>, <<"authz">>}
                                                              ,{<<"Event-Name">>, <<"authz">>}
@@ -411,6 +414,14 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                           _ ->
                               'ok'
                       end,
+                      % TODO: next line should be moved to the cm_util
+                      OrigAccountId = wh_json:get_value([?CCV, <<"Account-ID">>], JObj1),
+                      {'ok', OrigAccount} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, OrigAccountId),
+                      CustomData = wh_json:set_values([{<<"account_id">>, OrigAccountId}
+                          ,{<<"account_name">>, wh_json:get_value(<<"name">>, OrigAccount)}
+                          ,{<<"account_realm">>, wh_json:get_value(<<"realm">>, OrigAccount)}
+                      ], wh_json:new()),
+                      lager:debug("CustomData is ~p", [CustomData]),
                       JObj2 = cm_util:transform_leg_kvs(JObj1, CustomData, AaaDoc),
                       lager:debug("Request is: ~p", [JObj2]),
                       {cm_util:maybe_translate_kv_into_avps(JObj2, AaaProps, RequestType), 'accreq'}
