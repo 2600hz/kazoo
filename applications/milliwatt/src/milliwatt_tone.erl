@@ -30,9 +30,10 @@ get_tone() ->
     JObj = whapps_config:get_non_empty(<<"milliwatt">>, <<"tone">>),
     Hz = wh_json:get_list_value(<<"frequencies">>, JObj, ?FREQUENCIES),
     Duration = wh_json:get_value(<<"duration">>, JObj, ?DURATION),
+
     wh_json:from_list(
       [{<<"Frequencies">>, Hz}
-       ,{<<"Duration-ON">>, [wh_util:to_binary(Duration)]}
+       ,{<<"Duration-ON">>, wh_util:to_binary(Duration)}
        ,{<<"Duration-OFF">>, <<"1000">>}
       ]
      ).
