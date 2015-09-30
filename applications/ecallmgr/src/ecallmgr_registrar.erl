@@ -816,7 +816,7 @@ create_registration(JObj) ->
         ,expires=Expires
         ,registrar_node=RegistrarNode
         ,registrar_hostname=RegistrarHostname
-        ,contact=fix_contact(OriginalContact, Username, Realm)
+        ,contact=fix_contact(OriginalContact)
         ,original_contact=OriginalContact
         ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
         ,previous_contact=wh_json:get_value(<<"Previous-Contact">>, JObj, Reg#registration.previous_contact)
@@ -888,15 +888,14 @@ augment_registration(Reg, JObj) ->
                                     )
      }.
 
--spec fix_contact(api_binary(), ne_binary(), ne_binary()) -> api_binary().
-fix_contact('undefined', _, _) -> 'undefined';
-fix_contact(OriginalContact, Username, Realm) ->
-    TempContact = binary:replace(OriginalContact
-                                 ,[<<"<">>, <<">">>]
-                                 ,<<>>
-                                 ,['global']
-                                ),
-    ecallmgr_util:fix_contact(TempContact, Username, Realm).
+-spec fix_contact(api_binary()) -> api_binary().
+fix_contact('undefined') -> 'undefined';
+fix_contact(Contact) ->
+    binary:replace(Contact
+                   ,[<<"<">>, <<">">>]
+                   ,<<>>
+                   ,['global']
+                  ).
 
 -spec bridge_uri(api_binary(), api_binary(), binary(), binary()) -> api_binary().
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';
