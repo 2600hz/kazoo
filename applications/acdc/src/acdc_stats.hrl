@@ -28,8 +28,8 @@
           ,handled_timestamp :: api_integer() | '_'
           ,processed_timestamp :: api_integer() | '_'
 
-          ,entered_position :: pos_integer()
-          ,exited_position :: pos_integer()
+          ,entered_position :: pos_integer() | '_'
+          ,exited_position :: pos_integer() | '_'
 
           ,abandoned_reason :: api_binary() | '_'
 

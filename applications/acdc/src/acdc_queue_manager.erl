@@ -919,8 +919,8 @@ update_properties(QueueJObj, State) ->
 -spec maybe_schedule_position_announcements(whapps_call:call()
                                             ,ne_binary()
                                             ,{boolean(), boolean()}
-                                            ,proplist()
                                             ,non_neg_integer()
+                                            ,proplist()
                                             ,announce_pid_list()
                                            ) -> announce_pid_list().
 maybe_schedule_position_announcements(_Call, _, {'false', 'false'}, _, _, Pids) ->
@@ -993,7 +993,7 @@ maybe_average_wait_announcement(JObj, 'true', Media, Language, OldAverageWait) -
     average_wait_announcement(JObj, Media, Language, OldAverageWait).
 
 -spec average_wait_announcement(wh_json:object(), proplist(), binary(), non_neg_integer() | 'undefined') ->
-        {non_neg_integer() | 'undefined', list()}.
+        {{integer(), integer(), integer()}, list()}.
 average_wait_announcement(JObj, Media, Language, OldAverageWait) ->
     Abandoned = length(wh_json:get_value(<<"Abandoned">>, JObj, [])),
     Total = length(wh_json:get_value(<<"Abandoned">>, JObj, [])) +
