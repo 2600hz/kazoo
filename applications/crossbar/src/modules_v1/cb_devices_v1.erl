@@ -32,6 +32,7 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
+-define(OWNER_LIST, <<"devices/listing_by_owner">>).
 -define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
 
 -define(KEY_MAC_ADDRESS, <<"mac_address">>).
@@ -220,9 +221,29 @@ delete(Context, DeviceId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary(cb_context:context()) -> cb_context:context().
+-spec load_device_summary(cb_context:context()) ->
+                                 cb_context:context().
+-spec load_device_summary(cb_context:context(), req_nouns()) ->
+                                 cb_context:context().
 load_device_summary(Context) ->
+    load_device_summary(Context, cb_context:req_nouns(Context)).
+
+load_device_summary(Context, [{<<"devices">>, []}
+                              ,{<<"users">>, [UserId]}
+                             |_]
+                   ) ->
+    load_users_device_summary(Context, UserId);
+load_device_summary(Context, _ReqNouns) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
+-spec load_users_device_summary(cb_context:context(), ne_binary()) ->
+                                       cb_context:context().
+load_users_device_summary(Context, UserId) ->
+    crossbar_doc:load_view(?OWNER_LIST
+                           ,[{'key', UserId}]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
