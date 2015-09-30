@@ -171,7 +171,6 @@ merge_attributes(Endpoint, Type) ->
             ,<<"mobile">>
             ,<<"presence_id">>
             ,<<"call_waiting">>
-            ,<<"caller_id_format">>
             ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Endpoint, Type, Keys).
@@ -264,12 +263,6 @@ merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = get_record_call_properties(Endpoint),
     AccountAttr = get_record_call_properties(Account),
     OwnerAttr = get_record_call_properties(Owner),
-    Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
-    merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
-merge_attributes([<<"caller_id_format">> = Key|Keys], Account, Endpoint, Owner) ->
-    EndpointAttr = wh_json:get_value(Key, Endpoint, wh_json:new()),
-    AccountAttr = wh_json:get_value(Key, Account, wh_json:new()),
-    OwnerAttr = wh_json:get_value(Key, Owner, wh_json:new()),
     Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
@@ -531,8 +524,8 @@ build(Endpoint, Properties, Call) ->
 
 -spec maybe_rewrite_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 maybe_rewrite_caller_id(Endpoint, Call) ->
-    case wh_json:get_value(<<"caller_id_options">>, Endpoint, []) of
-        'undefined' -> lager:debug("no cid options defined, not modifying.~n");
+    case wh_json:get_ne_value(<<"caller_id_options">>, Endpoint) of
+        'undefined' -> Call;
         CidOptions  -> maybe_class_format(Call, wh_json:get_value(<<"format">>, CidOptions))
     end.
 
@@ -540,47 +533,55 @@ maybe_rewrite_caller_id(Endpoint, Call) ->
 maybe_class_format(Call, 'undefined') -> Call;
 maybe_class_format(Call, Format) ->
     Class = wnm_util:classify_number(whapps_call:caller_id_number(Call)),
-    case wh_json:get_value(Class, Format) of
-        'undefined' -> maybe_format_caller_id(Call, wh_json:get_value(<<"all">>, Format));
+    lager:debug("checking for caller id reformating rules for ~s numbers", [Class]),
+    case wh_json:get_ne_value(Class, Format) of
+        'undefined' -> maybe_format_caller_id(Call, wh_json:get_ne_value(<<"all">>, Format));
         UseFormat   -> maybe_format_caller_id(Call, UseFormat)
     end.
 
 -spec maybe_format_caller_id(whapps_call:call(), api_object()) -> whapps_call:call().
 maybe_format_caller_id(Call, 'undefined') -> Call;
 maybe_format_caller_id(Call, Format) ->
-    Regex   = wh_json:get_value(<<"regex">>, Format),
-    Prepend = wh_json:get_value(<<"prefix">>, Format),
-    Append  = wh_json:get_value(<<"suffix">>, Format),
-
-    Call1 = maybe_regex_caller_id(Call, Regex),
-    Call2 = maybe_prepend_caller_id(Call1, Prepend),
-    maybe_append_caller_id(Call2, Append).
-
--spec maybe_regex_caller_id(whapps_call:call(), api_binary()) -> whapps_call:call().
-maybe_regex_caller_id(Call, 'undefined') -> Call;
-maybe_regex_caller_id(Call, Regex) ->
-    case re:run(whapps_call:caller_id_number(Call), Regex, [{'capture', 'all_but_first', 'binary'}]) of
-        {match, UseCid} ->
-            lager:info("cid rewrite match ~p found! re-formatting caller id to ~p~n", [UseCid, hd(UseCid)]),
-            whapps_call:set_caller_id_number(hd(UseCid), Call);
-        _NotMatching -> Call
+    CallerId = whapps_call:caller_id_number(Call),
+    Regex = wh_json:get_ne_value(<<"regex">>, Format),
+    case maybe_regex_caller_id(CallerId, Regex, Format) of
+        CallerId -> Call;
+        Formatted ->
+            lager:info("caller id reformated from ~s to ~s", [CallerId, Formatted]),
+            whapps_call:set_caller_id_number(Formatted, Call)
     end.
 
--spec maybe_prepend_caller_id(whapps_call:call(), api_binary()) -> whapps_call:call().
-maybe_prepend_caller_id(Call, 'undefined') -> Call;
-maybe_prepend_caller_id(Call, Prefix) ->
-    OriginalCid = whapps_call:caller_id_number(Call),
-    BinPrefix   = wh_util:to_binary(Prefix),
-    lager:info("prepending cid with ~p~n", [BinPrefix]),
-    whapps_call:set_caller_id_number(<<BinPrefix/binary, OriginalCid/binary>>, Call).
+-spec maybe_regex_caller_id(ne_binary(), api_binary(), wh_json:object()) -> ne_binary().
+maybe_regex_caller_id(CallerId, 'undefined', _) -> CallerId;
+maybe_regex_caller_id(CallerId, Regex, Format) ->
+    Normalized = wnm_util:normalize_number(CallerId),
+    case re:run(Normalized, Regex, [{'capture', 'all_but_first', 'binary'}]) of
+        {'match', UseCid} ->
+            lager:info("cid rewrite match found ~s from normalized caller id ~s"
+                      ,[hd(UseCid), Normalized]),
+            maybe_append_caller_id(
+              maybe_prepend_caller_id(
+                hd(UseCid)
+                ,wh_json:get_ne_value(<<"prefix">>, Format)
+               )
+              ,wh_json:get_ne_value(<<"suffix">>, Format)
+             );
+        _NotMatching -> CallerId
+    end.
 
--spec maybe_append_caller_id(whapps_call:call(), api_binary()) -> whapps_call:call().
-maybe_append_caller_id(Call, 'undefined') -> Call;
-maybe_append_caller_id(Call, Suffix) ->
-    OriginalCid = whapps_call:caller_id_number(Call),
+-spec maybe_prepend_caller_id(ne_binary(), api_binary()) -> ne_binary().
+maybe_prepend_caller_id(CallerId, 'undefined') -> CallerId;
+maybe_prepend_caller_id(CallerId, Prefix) ->
+    BinPrefix   = wh_util:to_binary(Prefix),
+    lager:info("prepending cid with ~s~n", [BinPrefix]),
+    <<BinPrefix/binary, CallerId/binary>>.
+
+-spec maybe_append_caller_id(ne_binary(), api_binary()) -> ne_binary().
+maybe_append_caller_id(CallerId, 'undefined') -> CallerId;
+maybe_append_caller_id(CallerId, Suffix) ->
     BinSuffix   = wh_util:to_binary(Suffix),
-    lager:info("appending cid with ~p~n", [BinSuffix]),
-    whapps_call:set_caller_id_number(<<OriginalCid/binary, BinSuffix/binary>>, Call).
+    lager:info("appending cid with ~s~n", [BinSuffix]),
+    <<CallerId/binary, BinSuffix/binary>>.
 
 -spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                           'ok' | {'error', _}.
