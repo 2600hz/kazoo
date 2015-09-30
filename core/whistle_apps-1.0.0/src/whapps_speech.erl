@@ -213,7 +213,9 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
         {'ibrowse_req_id', ReqID} ->
-            lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
+            lager:debug("streaming response ~p to provided option: ~p"
+                        ,[ReqID, props:get_value('stream_to', Options)]
+                       ),
             {'ok', ReqID};
         {'ok', "200", _Headers, Content2} ->
             lager:debug("asr of media succeeded: ~s", [Content2]),
@@ -224,10 +226,14 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
             {'error', 'asr_provider_failure', wh_json:decode(Content2)}
     end.
 
--spec attempt_asr_freeform(api_binary(), binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
+-spec attempt_asr_freeform(api_binary(), binary(), ne_binary(), ne_binary(), wh_proplist()) ->
+                                  provider_return().
 attempt_asr_freeform(_, <<>>, _, _, _) -> {'error', 'no_content'};
 attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
-    BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"asr_url">>, <<"http://api.ispeech.org/api/rest">>),
+    BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT
+                                       ,<<"asr_url">>
+                                       ,<<"http://api.ispeech.org/api/rest">>
+                                      ),
     lager:debug("sending request to ~s", [BaseUrl]),
     Props = [{<<"apikey">>, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>)}
              ,{<<"action">>, <<"recognize">>}
