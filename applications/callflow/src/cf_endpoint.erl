@@ -536,7 +536,7 @@ maybe_rewrite_caller_id(Endpoint, Call) ->
         CidOptions  -> maybe_class_format(Call, wh_json:get_value(<<"format">>, CidOptions))
     end.
 
--spec maybe_class_format(whapps_call:call(), wh_json:object() | 'undefined') -> whapps_call:call().
+-spec maybe_class_format(whapps_call:call(), api_object()) -> whapps_call:call().
 maybe_class_format(Call, 'undefined') -> Call;
 maybe_class_format(Call, Format) ->
     Class = wnm_util:classify_number(whapps_call:caller_id_number(Call)),
@@ -545,7 +545,7 @@ maybe_class_format(Call, Format) ->
         UseFormat   -> maybe_format_caller_id(Call, UseFormat)
     end.
 
--spec maybe_format_caller_id(whapps_call:call(), wh_json:object() | 'undefined') -> whapps_call:call().
+-spec maybe_format_caller_id(whapps_call:call(), api_object()) -> whapps_call:call().
 maybe_format_caller_id(Call, 'undefined') -> Call;
 maybe_format_caller_id(Call, Format) ->
     Regex   = wh_json:get_value(<<"regex">>, Format),
