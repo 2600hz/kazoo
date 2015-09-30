@@ -17,7 +17,14 @@
 
 -export([cleanup_phone_numbers/0, cleanup_phone_numbers/1]).
 
+-export([create_phone_number/1, create_phone_number/2]).
+
+-export([activate_phone_number/1, activate_phone_number/2]).
+
+-export([create_and_activate_phone_number/2]).
+
 -include("wnm.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 %% These are temporary until the viewing of numbers in an account can
 %% be standardized
@@ -169,6 +176,44 @@ cleanup_phone_numbers() ->
 
 cleanup_phone_numbers(Account) ->
     wh_number_fix:fix_account_numbers(Account).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% exist
+%% @end
+%%--------------------------------------------------------------------
+-spec create_phone_number(ne_binary()) -> 'ok'.
+create_phone_number(Number) ->
+    { 'ok', AccountId } = whapps_util:get_master_account_id(),
+    create_phone_number(Number, AccountId).
+
+-spec create_phone_number(ne_binary(), ne_binary()) -> 'ok'.
+create_phone_number(Number, AccountId) ->
+    { 'ok', SystemAccountId } = whapps_util:get_master_account_id(),
+    wh_number_manager:create_number(Number
+				       ,AccountId
+				       ,SystemAccountId
+				       ).
+
+-spec activate_phone_number(ne_binary()) -> 'ok'.
+activate_phone_number(Number) ->
+    { 'ok', AccountId } = whapps_util:get_master_account_id(),
+    activate_phone_number(Number, AccountId).
+
+-spec activate_phone_number(ne_binary(), ne_binary()) -> 'ok'.
+activate_phone_number(Number, AccountId) ->
+    { 'ok', SystemAccountId } = whapps_util:get_master_account_id(),
+    wh_number_manager:assign_number_to_account(Number
+					      ,AccountId
+					      ,SystemAccountId
+					      ).
+
+-spec create_and_activate_phone_number(ne_binary(), ne_binary()) -> 'ok'.
+create_and_activate_phone_number(Number, AccountId) ->
+    _ = create_phone_number(Number, AccountId),
+    _ = activate_phone_number(Number, AccountId).
+
 
 %%--------------------------------------------------------------------
 %% @private
