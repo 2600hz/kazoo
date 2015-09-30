@@ -139,22 +139,30 @@ handle_accounting_req(JObj, _Props) ->
     IsChannelDestroy = whapps_util:get_event_type(JObj) =:= {<<"call_event">>, <<"CHANNEL_DESTROY">>},
     % get channel type
     {ChannelProps, ChannelType, ChannelOrig} = cm_util:determine_channel_type(JObj),
-    IsInboundOuterLegOnChannelCreate = ({IsChannelCreate, ChannelProps, ChannelType, ChannelOrig} =:=
-        {'true', [<<"external">>, <<"inbound">>], 'normal', 'orig'}),
-    IsInboundOuterLegOnChannelDestroy = ({IsChannelDestroy, ChannelProps, ChannelType, ChannelOrig} =:=
-        {'true', [<<"external">>, <<"inbound">>], 'normal', 'orig'}),
+    IsInboundOrigLegOnChannelCreate = case {IsChannelCreate, ChannelProps, ChannelType, ChannelOrig} of
+        {'true', [_, <<"inbound">>], 'normal', 'orig'} ->
+            'true';
+        _ ->
+            'false'
+    end,
+    IsInboundOrigLegOnChannelDestroy = case {IsChannelDestroy, ChannelProps, ChannelType, ChannelOrig} of
+        {'true', [_, <<"inbound">>], 'normal', 'orig'} ->
+            'true';
+        _ ->
+            'false'
+    end,
     % remember orig ext inbound leg Call-ID
-    IsInboundOuterLegOnChannelCreate andalso
+    IsInboundOrigLegOnChannelCreate andalso
         begin
             lager:debug("Originate non-loopback external inbound leg detected when CHANNEL_CREATE event raised"),
             cm_util:ets_add_inbound_originate_leg(CallId, JObj)
         end,
     case wh_json:get_value([?CCV, <<"Account-ID">>], JObj) of
-        _ when IsInboundOuterLegOnChannelCreate ->
+        _ when IsInboundOrigLegOnChannelCreate ->
             lager:debug("Trying to make 'start' accounting operation for outer inbound leg. The operation should be delayed."),
             % store delayed accounting call
             ets:insert(?ETS_DELAY_ACCOUNTING, {CallId, JObj});
-        'undefined' when IsInboundOuterLegOnChannelDestroy ->
+        'undefined' when IsInboundOrigLegOnChannelDestroy ->
             % this situation can be if outer inbound leg wasn't authorized so ETS doesn't any account
             % as result we shouldn't do 'stop' accounting operation
             lager:debug("Delete SIP Device Info from ETS for CallId ~p", [CallId]),
@@ -180,7 +188,8 @@ handle_accounting_req(JObj, _Props) ->
                     OtherLegCallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
                     % check if we have delayed accounting leg for this call
                     case ets:lookup(?ETS_DELAY_ACCOUNTING, OtherLegCallId) of
-                        [] -> 'ok';
+                        [] ->
+                            'ok';
                         [{OtherLegCallId, JObjDelayed4}] ->
                             lager:debug("Found corresponding delayed operation for outer inbound leg accounting. The operation should be retrieved and executed."),
                             JObjDelayed = cm_util:ets_update_leg_jobj_originator_type(OtherLegCallId, JObjDelayed4),
@@ -197,6 +206,10 @@ handle_accounting_req(JObj, _Props) ->
                                                                ,{<<"NAS-IP-Address">>, NasAddress}
                                                               ], JObjDelayed1),
                             JObjDelayed3 = cm_util:insert_device_info_if_needed(JObjDelayed2, 'accounting'),
+
+                            {'ok', AaaDoc1} = cm_util:get_actual_aaa_document(JObjDelayed3, AccountId),
+                            cm_util:store_leg_kvs(JObjDelayed3, AaaDoc1),
+
                             % send delayed accounting start
                             lager:debug("Delayed operation for outer inbound leg is ~p", [JObjDelayed3]),
                             cm_pool_mgr:do_request(JObjDelayed3)
@@ -212,6 +225,10 @@ handle_accounting_req(JObj, _Props) ->
                                                 ,{[?CCV, <<"Account-Name">>], AccountName}
                                                ], JObj1),
                     JObj3 = cm_util:insert_device_info_if_needed(JObj2, 'accounting'),
+
+                    {'ok', AaaDoc2} = cm_util:get_actual_aaa_document(JObj3, AccountId),
+                    cm_util:store_leg_kvs(JObj3, AaaDoc2),
+
                     % send accounting start
                     lager:debug("Sending accounting start operation: ~p", [JObj3]),
                     cm_pool_mgr:do_request(JObj3);
@@ -350,7 +367,12 @@ maybe_processing_authz(JObj) ->
             {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
             AccountName = wh_json:get_value(<<"name">>, AccountDoc),
             JObj2 = wh_json:set_value([<<"Custom-Auth-Vars">>, <<"Account-Name">>], AccountName, JObj1),
-            cm_pool_mgr:do_request(JObj2);
+
+            WholeRequest = wh_json:get_value(<<"Custom-Auth-Vars">>, JObj2),
+            WholeRequest1 = cm_util:insert_device_info_if_needed(WholeRequest, 'authz'),
+            JObj3 = wh_json:set_value(<<"Custom-Auth-Vars">>, WholeRequest1, JObj2),
+
+            cm_pool_mgr:do_request(JObj3);
         {'error', Error} ->
             lager:error("Account ID not found. Error is ~p", [Error]),
             Queue = wh_json:get_value(<<"Response-Queue">>, JObj),
@@ -383,6 +405,7 @@ init([]) ->
     ets:new(?ETS_ORIG_INBOUND_LEG, ['named_table', {'keypos', 1}, 'public']),
     ets:new(?ETS_CACHED_CHANNEL_FS_STATUS, ['named_table', {'keypos', 1}, 'public']),
     ets:new(?ETS_CACHED_CHANNEL_TYPE, ['named_table', {'keypos', 1}, 'public']),
+    ets:new(?ETS_LEGS_STATE_STORAGE, ['named_table', {'keypos', 1}, 'public']),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -455,6 +478,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    ets:delete(?ETS_LEGS_STATE_STORAGE),
     ets:delete(?ETS_CACHED_CHANNEL_TYPE),
     ets:delete(?ETS_CACHED_CHANNEL_FS_STATUS),
     ets:delete(?ETS_ORIG_INBOUND_LEG),

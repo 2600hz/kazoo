@@ -236,9 +236,9 @@ maybe_aaa_mode(JObj, AccountId) when is_binary(AccountId) ->
                                                                             {'error', 'no_respond'}.
 maybe_authn_special_case(JObj, AaaProps, AccountId, ParentAccountId) ->
     AaaRequestType = cm_util:determine_aaa_request_type(JObj),
-    AuthzServersList = props:get_value(<<"authentication">>, AaaProps),
+    AuthnServersList = props:get_value(<<"authentication">>, AaaProps),
     AaaMode = props:get_value(<<"aaa_mode">>, AaaProps),
-    case {AaaRequestType, AaaMode, length(AuthzServersList)} of
+    case {AaaRequestType, AaaMode, length(AuthnServersList)} of
         % special case processing - if the "aaa_mode" = "on" and no authn servers in the "authentication" list,
         % then it's assumed that standart authentication is used, and the request is accepted
         %{'authn', <<"on">>, 0} -> {'ok', {{'radius_request', _, 'accept', [], _, _, _, _}, AccountId}};
@@ -368,14 +368,28 @@ maybe_channel_blocked(AllServers, Address, JObj, AaaProps, AccountId, ParentAcco
 maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, ParentAccountId) ->
     Port = props:get_value(<<"port">>, Server),
     Secret = props:get_value(<<"secret">>, Server),
+    {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
+    % TODO: next line should be moved to the cm_util
+    CustomData = wh_json:set_values([{<<"account_id">>, AccountId}
+                                     ,{<<"account_name">>, wh_json:get_value(<<"name">>, Account)}
+                                     ,{<<"account_realm">>, wh_json:get_value(<<"realm">>, Account)}
+                                    ], wh_json:new()),
     {AllAVPs, RadiusCmdType} = case cm_util:determine_aaa_request_type(JObj) of
                   'authz' = RequestType ->
                       lager:debug("Operation is authz"),
                       WholeRequest = wh_json:get_value(<<"Custom-Auth-Vars">>, JObj),
                       WholeRequest1 = cm_util:append_resource_name_to_request(WholeRequest),
                       WholeRequest2 = cm_util:insert_device_info_if_needed(WholeRequest1, RequestType),
-                      lager:debug("Request is: ~p", [WholeRequest2]),
-                      {cm_util:maybe_translate_kv_into_avps(WholeRequest2, AaaProps, RequestType), 'request'};
+                      % TODO: it's a quick hack, should be removed.
+                      WholeRequestTemp = wh_json:set_values([{<<"Event-Category">>, <<"authz">>}
+                                                             ,{<<"Event-Name">>, <<"authz">>}
+                                                            ], WholeRequest2),
+                      WholeRequest3 = cm_util:transform_leg_kvs(WholeRequestTemp, CustomData, AaaDoc),
+                      WholeRequest4 = wh_json:delete_keys([<<"Event-Category">>, <<"Event-Name">>], WholeRequest3),
+                      lager:debug("Request is: ~p", [WholeRequest4]),
+                      {cm_util:maybe_translate_kv_into_avps(WholeRequest4, AaaProps, RequestType), 'request'};
                   'authn' = RequestType ->
                       lager:debug("Operation is authn"),
                       lager:debug("Request is: ~p", [JObj]),
@@ -397,8 +411,9 @@ maybe_eradius_request([Server | Servers], Address, JObj, AaaProps, AccountId, Pa
                           _ ->
                               'ok'
                       end,
-                      lager:debug("Request is: ~p", [JObj1]),
-                      {cm_util:maybe_translate_kv_into_avps(JObj1, AaaProps, RequestType), 'accreq'}
+                      JObj2 = cm_util:transform_leg_kvs(JObj1, CustomData, AaaDoc),
+                      lager:debug("Request is: ~p", [JObj2]),
+                      {cm_util:maybe_translate_kv_into_avps(JObj2, AaaProps, RequestType), 'accreq'}
               end,
     lager:debug("trying to resolve the next AVPs: ~p", [AllAVPs]),
     % prepare attribute param list

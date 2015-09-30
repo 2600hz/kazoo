@@ -12,6 +12,9 @@
          ,parent_account_id/1
          ,maybe_translate_kv_into_avps/3
          ,maybe_translate_avps_into_kv/3
+         ,store_leg_kvs/2
+         ,transform_leg_kvs/3
+         ,cleanup_leg_kvs/1
          ,determine_aaa_request_type/1
          ,determine_channel_type/1
          ,put_session_timeout/2
@@ -35,7 +38,8 @@
          ,ets_add_inbound_originate_leg/2
          ,ets_add_other_leg_of_inbound_originate_leg/3
          ,ets_update_leg_jobj_originator_type/2
-         ,ets_cleanup_other_and_orig_legs/2]).
+         ,ets_cleanup_other_and_orig_legs/2
+         ,get_actual_aaa_document/2]).
 
 -include("circlemaker.hrl").
 
@@ -170,6 +174,193 @@ maybe_translate_avps_into_kv_item(TranslationItem, AVPsResponse) ->
             {RequestKey, MaybeCasted}
     end.
 
+validate_leg_kvs_cfg_sections(AAADoc) ->
+    RequestKV = wh_json:get_value([<<"leg_fields_transformation">>, <<"request_fields">>], AAADoc),
+    ResultKV = wh_json:get_value([<<"leg_fields_transformation">>, <<"result_fields">>], AAADoc),
+    case (RequestKV =/= 'undefined') and (ResultKV =/= 'undefined') of
+        'true' -> 
+            'true';
+        'false' ->
+            lager:debug("No any sections to configure a leg state transformation were found in AAA-document"),
+            'false'
+    end.
+
+-spec store_leg_kvs(wh_json:object(), wh_json:object()) -> any().
+store_leg_kvs(JObj, AAADoc) ->
+    lager:debug("Store leg state"),
+    case validate_leg_kvs_cfg_sections(AAADoc) of
+        'true' ->
+            {ChannelProps, ChannelType, ChannelOrig} = determine_channel_type(JObj),
+            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            lager:debug("Channel type is ~p on store leg ~p state", [{ChannelProps, ChannelType, ChannelOrig}, CallId]),
+            LegType = case {ChannelProps, ChannelType, ChannelOrig} of
+                          {_, _, 'orig'} ->
+                              % originate inbound leg
+                              'orig_leg';
+                          {[<<"external">>, <<"outbound">>], 'normal', _} ->
+                              % external outbound leg (dest. leg)
+                              'dest_leg';
+                          _ ->
+                              'other_leg'
+                      end,
+            EventType = case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj)} of
+                            {<<"authz">>, _} ->
+                                'authz';
+                            {<<"call_event">>, <<"CHANNEL_CREATE">>} ->
+                                'channel_create';
+                            {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+                                'channel_destroy';
+                            _Evt ->
+                                lager:error("Other event ~p", [_Evt]),
+                                'other_event'
+                        end,
+            RequestKV = wh_json:get_value([<<"leg_fields_transformation">>, <<"request_fields">>], AAADoc),
+            lists:foreach(fun(Item) ->
+                ItemLegType = list_to_atom(binary_to_list(wh_json:get_value(<<"source">>, Item))),
+                ItemEventType = list_to_atom(binary_to_list(wh_json:get_value(<<"event">>, Item, <<"undefined">>))),
+                ItemKey = wh_json:get_value(<<"key">>, Item),
+                ItemAlias = wh_json:get_value(<<"alias">>, Item),
+                ItemRegexp = wh_json:get_value(<<"value_regexp">>, Item),
+                Val = wh_json:get_value(ItemKey, JObj),
+                lager:debug("wh_json:get_value(~p, JObj) returns ~p", [ItemKey, Val]),
+                lager:debug("Legs type comparsion: ~p =:= ~p", [{LegType, EventType}, {ItemLegType, ItemEventType}]),
+                (Val =/= 'undefined') andalso ({LegType, EventType} =:= {ItemLegType, ItemEventType}) andalso
+                    begin
+                        lager:debug("Trying to store state for the leg ~p", [{ChannelProps, ChannelType, ChannelOrig}]),
+                        % this request KV should be stored for later use in corresponding ETS
+                        case re:run(binary_to_list(Val), binary_to_list(ItemRegexp)) of
+                            'nomatch' ->
+                                lager:error("No match: ~p:~p", [binary_to_list(Val), binary_to_list(ItemRegexp)]);
+                            {'match', Groups} ->
+                                lager:debug("Match: ~p", [Groups]),
+                                {Pos, Len} = lists:nth(2, Groups),
+                                NewValue = lists:sublist(binary_to_list(Val), Pos + 1, Len),
+                                Rec = {{CallId, ItemLegType, ItemEventType, ItemAlias}, list_to_binary(NewValue)},
+                                lager:debug("Store leg state in ETS: ~p", [Rec]),
+                                ets:insert(?ETS_LEGS_STATE_STORAGE, Rec)
+                        end
+                    end
+            end, RequestKV);
+        'false' ->
+            'ok'
+    end.
+
+-spec transform_leg_kvs(wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:object().
+transform_leg_kvs(JObj, CustomData, AAADoc) ->
+    lager:debug("Transform leg state"),
+    case validate_leg_kvs_cfg_sections(AAADoc) of
+        'true' ->
+            {ChannelProps, ChannelType, ChannelOrig} = determine_channel_type(JObj),
+            LegType = case {ChannelProps, ChannelType, ChannelOrig} of
+                          {_, _, 'orig'} ->
+                              % originate inbound leg
+                              'orig_leg';
+                          {[<<"external">>, <<"outbound">>], 'normal', _} ->
+                              % external outbound leg (dest. leg)
+                              'dest_leg'
+                      end,
+            EventType = case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj)} of
+                            {<<"authz">>, _} ->
+                                lager:debug("Authz JObj: ~p", [JObj]),
+                                'authz';
+                            {<<"call_event">>, <<"CHANNEL_CREATE">>} ->
+                                'channel_create';
+                            {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+                                'channel_destroy';
+                            _Evt ->
+                                lager:debug("Other event ~p. Shouldn't be processed.", [_Evt]),
+                                'unrecognized_event'
+                        end,
+            ResponseKV = wh_json:get_value([<<"leg_fields_transformation">>, <<"result_fields">>], AAADoc),
+            lists:foldl(
+                fun(Item, CurrJObj) ->
+                    ItemLegType = list_to_atom(binary_to_list(wh_json:get_value(<<"dest">>, Item))),
+                    ItemEventType = list_to_atom(binary_to_list(wh_json:get_value(<<"event">>, Item))),
+                    ItemKey = wh_json:get_value(<<"key">>, Item),
+                    ItemValuePattern = wh_json:get_value(<<"value">>, Item),
+                    case ({LegType, EventType} =:= {ItemLegType, ItemEventType}) of
+                        'true' ->
+                            lager:debug("Trying to transform leg state ~p", [{ChannelProps, ChannelType, ChannelOrig}]),
+                            NewValue = process_tokens(JObj, ItemValuePattern, CustomData, AAADoc, ItemLegType, ItemEventType),
+                            wh_json:set_value(ItemKey, NewValue, CurrJObj);
+                        'false' ->
+                            CurrJObj
+                    end
+                end, JObj, ResponseKV);
+        'false' ->
+            JObj
+    end.
+
+process_tokens(JObj, ItemValuePattern, CustomData, AAADoc, ItemLegType, ItemEventType) ->
+    % find tokens and search for its values
+    case re:run(binary_to_list(ItemValuePattern), "\\$([a-zA-Z]+[0-9]*)") of
+        'nomatch' ->
+            % all tokens processed
+            lager:debug("All tokens processed. Resulting value is ~p", [ItemValuePattern]),
+            ItemValuePattern;
+        {'match', Groups} ->
+            lager:debug("match: ~p", [Groups]),
+            {Pos, Len} = lists:nth(2, Groups),
+            Alias = lists:sublist(binary_to_list(ItemValuePattern), Pos + 1, Len),
+            lager:debug("Alias found: ~p", [Alias]),
+            % find this item in ETS
+            OtherLegCallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            lager:debug("CallID of other leg is ~p", [OtherLegCallId]),
+            % get leg type and event_type of orig leg
+            RequestKV = wh_json:get_value([<<"leg_fields_transformation">>, <<"request_fields">>], AAADoc),
+            [FoundItem] = [Item || Item <- RequestKV, wh_json:get_value(<<"alias">>, Item) =:= list_to_binary(Alias)],
+            lager:debug("qwe1: ~p", [FoundItem]),
+            {ChannelType, ChannelOrig} = case wh_json:get_value(<<"source">>, FoundItem) of
+                                             <<"custom">> ->
+                                                 lager:debug("It's custom alias ~p", [FoundItem]),
+                                                 {'other', 'other'};
+                                             Source ->
+                                                 lager:error("It's not custom alias"),
+                                                 % stay as is
+                                                 {list_to_atom(binary_to_list(Source)), list_to_atom(binary_to_list(wh_json:get_value(<<"event">>, FoundItem)))}
+                                         end,
+            lager:debug("qwe3: ~p", [{OtherLegCallId, ChannelType, ChannelOrig}]),
+            ResultValue = case ets:lookup(?ETS_LEGS_STATE_STORAGE, {OtherLegCallId, ChannelType, ChannelOrig, list_to_binary(Alias)}) of
+                              [] ->
+                                  lager:debug("No data in ETS for this alias. It could be a custom data."),
+                                  % no data in ETS, so it could be an "custom" data source. Trying to find it
+                                  RequestKV = wh_json:get_value([<<"leg_fields_transformation">>, <<"request_fields">>], AAADoc),
+                                  [FoundItem] = [Item || Item <- RequestKV, wh_json:get_value(<<"alias">>, Item) =:= list_to_binary(Alias)],
+                                  lager:debug("qwe2: ~p", [FoundItem]),
+                                  case wh_json:get_value(<<"source">>, FoundItem) of
+                                      <<"custom">> ->
+                                          lager:debug("Found custom alias ~p", [FoundItem]),
+                                          Key = wh_json:get_value(<<"key">>, FoundItem),
+                                          Value = wh_json:get_value(Key, CustomData),
+                                          re:replace(binary_to_list(ItemValuePattern), "\\$[a-zA-Z0-9]+", binary_to_list(Value),[{return,list}]);
+                                      _ ->
+                                          lager:error("No alias was found"),
+                                          % stay as is
+                                          re:replace(binary_to_list(ItemValuePattern), "\\$[a-zA-Z0-9]+", "",[{return,list}])
+                                  end;
+                              ItemsList ->
+                                  lager:debug("Found data ~p in ETS for this alias", [ItemsList]),
+                                  % filter data for needed token (alias)
+                                  [{_, Value}] = [E || E = {{_, _, _, ItemAlias}, _} <- ItemsList, ItemAlias =:= list_to_binary(Alias)],
+                                  re:replace(binary_to_list(ItemValuePattern), "\\$[a-zA-Z0-9]+", binary_to_list(Value),[{return,list}])
+                          end,
+            ResultValueBin = list_to_binary(ResultValue),
+            lager:debug("Intermediate value is ~p", [ResultValueBin]),
+            process_tokens(JObj, ResultValueBin, CustomData, AAADoc, ItemLegType, ItemEventType)
+    end.
+
+-spec cleanup_leg_kvs(api_binary()) -> any().
+cleanup_leg_kvs(CallId) ->
+    lager:debug("cleanup_leg_kvs/1: ~p", [ets:match_object(?ETS_LEGS_STATE_STORAGE, {{CallId,'$1','$2', '$3'}, '_'})]),
+    case ets:match_object(?ETS_LEGS_STATE_STORAGE, {{CallId,'$1','$2', '$3'}, '_'}) of
+        [] ->
+            lager:info("No objects in legs state storage to cleanup for the leg ~p", [CallId]);
+        _ItemsList ->
+            lager:info("Cleanup cached record in legs state storage for the leg ~p", [CallId])
+%%             ,
+%%             [ets:delete(?ETS_LEGS_STATE_STORAGE, {CallId1, ItemLegType, ItemEventType, Alias}) || {{CallId1, ItemLegType, ItemEventType, Alias}, _} <- ItemsList]
+    end.
+
 -spec determine_aaa_request_type(wh_json:object()) -> 'authn' | 'authz' | 'accounting' | 'custom'.
 determine_aaa_request_type(JObj) ->
     case {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj)} of
@@ -235,7 +426,7 @@ determine_channel_type(JObj) ->
             IsInboundLeg = case {Result, Type} of
                                {_, 'loopback'} ->
                                    'false';
-                               {[<<"external">>, <<"inbound">>], _} ->
+                               {[_, <<"inbound">>], _} ->
                                    'true';
                                _ ->
                                    'false'
@@ -454,8 +645,8 @@ get_sip_device_info(JObj) ->
 insert_device_info_if_needed(JObj, _Type) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("Trying to get device info for CallID ~p", [CallId]),
-    case wh_json:get_value([?CCV, <<"Originator-Type">>], JObj) of
-        <<"SIP">> ->
+%%     case wh_json:get_value([?CCV, <<"Originator-Type">>], JObj) of
+%%         <<"SIP">> ->
             case ets:lookup(?ETS_DEVICE_INFO, CallId) of
                 [] ->
                     lager:debug("Device info wasn't found in ETS. Trying to detect it."),
@@ -475,11 +666,11 @@ insert_device_info_if_needed(JObj, _Type) ->
                     wh_json:set_values([{[?CCV, <<"Device-Name">>], DeviceName}
                         ,{[?CCV, <<"Device-SIP-User-Name">>], SipUserName}]
                         ,JObj)
-            end;
-        _Other ->
-            lager:debug("Originator-Type is ~p so there no SIP info", [_Other]),
-            JObj
-    end.
+            end.
+%%         _Other ->
+%%             lager:debug("Originator-Type is ~p so there no SIP info", [_Other]),
+%%             JObj
+%%     end.
 
 mark_channel_as_loopback(CallId) ->
     lager:debug("Channel ~p marked as loopback", [CallId]),
@@ -523,10 +714,10 @@ store_channel_type(CallId, ChannelType) ->
 read_channel_type(CallId) ->
     case ets:lookup(?ETS_CACHED_CHANNEL_TYPE, CallId) of
         [] ->
-            lager:error("No type of channel ~p was found in cache", [CallId]),
+            lager:debug("No type of channel ~p was found in cache", [CallId]),
             {'error', 'not_found'};
         [{CallId, ChannelType}] ->
-            lager:error("Channel type ~p of channel ~p got from cache", [ChannelType, CallId]),
+            lager:debug("Channel type ~p of channel ~p got from cache", [ChannelType, CallId]),
             ChannelType
     end.
 
@@ -557,11 +748,17 @@ ets_update_leg_jobj_originator_type(OrigLegCallId, LegJObj) ->
         [{{OrigLegCallId}, _, _, 'orig'}] ->
             case cm_util:get_channel_fs_status(OrigLegCallId) of
                 {'ok', ChannelStatus} ->
+                    lager:debug("Channel fs status: ~p", [ChannelStatus]),
                     OriginatorType = wh_json:get_value([?CCV, <<"Originator-Type">>], ChannelStatus),
-                    CallId = wh_json:get_value(<<"Call-ID">>, LegJObj),
-                    lager:info("Current Originator-Type is ~p. Copy it from the channel ~p into the channel ~p",
-                        [OriginatorType, OrigLegCallId, CallId]),
-                    wh_json:set_values([{[?CCV, <<"Originator-Type">>], OriginatorType}], LegJObj);
+                    case OriginatorType of
+                        'undefined' ->
+                            LegJObj;
+                        _ ->
+                            CallId = wh_json:get_value(<<"Call-ID">>, LegJObj),
+                            lager:info("Current retrieved from the channel ~p FS Originator-Type is ~p. Copy it into the channel ~p",
+                                [OrigLegCallId, OriginatorType, CallId]),
+                            wh_json:set_values([{[?CCV, <<"Originator-Type">>], OriginatorType}], LegJObj)
+                    end;
                 {'error', Error} ->
                     lager:error("Error (~p) when getting status of channel ~p . No update.", [Error, OrigLegCallId]),
                     LegJObj
@@ -587,3 +784,58 @@ ets_cleanup_other_and_orig_legs(OrigLegCallId, OtherLegCallId) ->
                     cm_util:cleanup_channel_fs_status(OrigLegCallId)
             end
     end.
+
+
+get_actual_aaa_document(_JObj, 'undefined') ->
+    lager:debug("Search for actual AAA doc..."),
+    lager:error("error: call for undefined account"),
+    {'error', 'wrong_account_id'};
+get_actual_aaa_document(JObj, AccountId) when is_binary(AccountId) ->
+    lager:debug("Search for actual AAA doc..."),
+    {'ok', Account} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
+    {'ok', AaaDoc} = couch_mgr:open_cache_doc(AccountDb, <<"aaa">>),
+    case wh_json:get_value(<<"aaa_mode">>, AaaDoc) of
+        <<"off">> ->
+            lager:debug("Searching... AAA functionality disabled for the ~p account", [AccountId]),
+            {'ok', 'aaa_mode_off'};
+        <<"on">> ->
+            % AAA functionality is on for this account
+            lager:debug("Searching... AAA functionality enabled for the ~p account", [AccountId]),
+            ParentAccountId = cm_util:parent_account_id(Account),
+            maybe_suitable_servers(JObj, AaaDoc, AccountId, ParentAccountId);
+        <<"inherit">> ->
+            % AAA functionality is in the 'inherit' mode for this account
+            lager:debug("Searching... AAA functionality enabled (inherit mode) for the ~p account", [AccountId]),
+            ParentAccountId = cm_util:parent_account_id(Account),
+            maybe_suitable_servers(JObj, AaaDoc, AccountId, ParentAccountId)
+    end.
+
+maybe_suitable_servers(JObj, AaaDoc, AccountId, ParentAccountId) ->
+    AaaRequestType = cm_util:determine_aaa_request_type(JObj),
+    ServersJson = wh_json:get_value(<<"servers">>, AaaDoc),
+    lager:debug("Searching... available servers count for this account is ~p", [length(ServersJson)]),
+    Servers = [S || S <- wh_json:recursive_to_proplist(ServersJson), props:get_is_true(<<"enabled">>, S)],
+    lager:debug("Searching... active servers: ~p", [Servers]),
+    ServersFilterArg = case AaaRequestType of
+                           'authz' -> <<"authorization">>;
+                           'accounting' -> <<"accounting">>
+                       end,
+    FilteredServers = [S || S <- Servers,
+        lists:member(props:get_value(<<"name">>, S), wh_json:get_value(ServersFilterArg, AaaDoc))],
+    maybe_server_request(FilteredServers, JObj, AaaDoc, AccountId, ParentAccountId).
+
+maybe_server_request([], JObj, AaaDoc, _AccountId, ParentAccountId) ->
+    lager:debug("Searching... all active AAA servers for this account were checked"),
+    case wh_json:get_value(<<"aaa_mode">>, AaaDoc) of
+        <<"inherit">> ->
+            % we are in the "inherit" mode so we should get parent account and use its AAA settings
+            lager:debug("Searching... the 'inherit' mode used - switching to parent account"),
+            get_actual_aaa_document(JObj, ParentAccountId);
+        _ ->
+            lager:debug("Searching... no 'inherit' mode - servers search stopped"),
+            {'error', 'no_respond'}
+    end;
+maybe_server_request(_AllServers, _JObj, AaaDoc, _AccountId, _ParentAccountId) ->
+    lager:debug("Searching... AAA Doc found"),
+    {'ok', AaaDoc}.

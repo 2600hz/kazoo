@@ -222,7 +222,8 @@ handle_cast({'accounting_response', Response, JObj, Worker}, State) ->
     IsChannelDestroy andalso
         begin
             cm_util:ets_cleanup_other_and_orig_legs(OtherLegCallId, CallId),
-            cm_util:cleanup_channel_type(CallId)
+            cm_util:cleanup_channel_type(CallId),
+            cm_util:cleanup_leg_kvs(CallId)
         end,
     % return worker to the pool
     poolboy:checkin(?WORKER_POOL, Worker),
