@@ -381,19 +381,25 @@ apply_filter(Key, Value, Numbers) ->
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
     JObj = get_find_numbers_req(Context),
-    Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
-    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
-    OnSuccess = fun(C) ->
-                        cb_context:setters(C
-                                           ,[{fun cb_context:set_resp_data/2, wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))}
-                                             ,{fun cb_context:set_resp_status/2, 'success'}
-                                            ])
-                end,
-
     cb_context:validate_request_data(?FIND_NUMBER_SCHEMA
                                      ,cb_context:set_req_data(Context, JObj)
-                                     ,OnSuccess
+                                     ,fun execute_find_numbers/1
                                     ).
+
+-spec execute_find_numbers(cb_context:context()) ->
+                                  cb_context:context().
+execute_find_numbers(Context) ->
+    JObj = cb_context:req_data(Context),
+    Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
+
+    cb_context:setters(
+      Context
+      ,[{fun cb_context:set_resp_data/2
+         ,knm_carriers:find(Prefix, Quantity, wh_json:to_proplist(JObj))
+        }
+        ,{fun cb_context:set_resp_status/2, 'success'}
+       ]).
 
 -spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
 get_find_numbers_req(Context) ->
