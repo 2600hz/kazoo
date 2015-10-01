@@ -18,7 +18,7 @@
 
 -export([handle/2]).
 
--define(DEFAULT_USE_ACCOUNT_CALLER_ID, whapps_config:get(?CF_CONFIG_CAT, <<"refault_use_account_caller_id">>, 'true')).
+-define(DEFAULT_USE_ACCOUNT_CALLER_ID, whapps_config:get(?CF_CONFIG_CAT, <<"default_use_account_caller_id">>, 'true')).
 -define(DEFAULT_PIN_LENGTH, whapps_config:get_integer(?CF_CONFIG_CAT, <<"default_pin_length">>, 10)).
 
 %%--------------------------------------------------------------------
