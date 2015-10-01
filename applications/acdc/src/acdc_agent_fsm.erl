@@ -971,6 +971,16 @@ answered('current_call', _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+wrapup({'pause', Timeout}, #state{account_id=AccountId
+                                  ,agent_id=AgentId
+                                  ,agent_listener=AgentListener
+                                 }=State) ->
+    lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
+    Ref = start_pause_timer(Timeout),
+    acdc_agent_stats:agent_paused(AccountId, AgentId, Timeout),
+    acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_FLASH),
+
+    {'next_state', 'paused', State#state{pause_ref=Ref}};
 wrapup({'member_connect_req', _}, State) ->
     {'next_state', 'wrapup', State#state{wrapup_timeout=0}};
 wrapup({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
