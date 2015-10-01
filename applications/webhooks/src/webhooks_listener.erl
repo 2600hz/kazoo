@@ -279,8 +279,7 @@ maybe_remove_shared_bindings(Id) ->
     ets:delete(webhooks_util:table_id(), Id).
 
 -spec remove_shared_bindings(webhook()) -> 'ok'.
-remove_shared_bindings(#webhook{hook_event = <<"object">>
-                                ,account_id = AccountId
+remove_shared_bindings(#webhook{account_id = AccountId
                                 ,id = Id
                                }
                       ) ->
