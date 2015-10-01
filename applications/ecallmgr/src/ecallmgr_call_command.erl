@@ -1459,7 +1459,7 @@ get_sample_rate(JObj) ->
 -spec tones_app(wh_json:objects()) -> {ne_binary(), iodata()}.
 tones_app(Tones) ->
     FSTones = [tone_to_fs_tone(Tone) || Tone <- Tones],
-    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+    Arg = "tone_stream://" ++ string:join(FSTones, ";"),
     {<<"playback">>, Arg}.
 
 -spec tone_to_fs_tone(wh_json:object()) -> string().
