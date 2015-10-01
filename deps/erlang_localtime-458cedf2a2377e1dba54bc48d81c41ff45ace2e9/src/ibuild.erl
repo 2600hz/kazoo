@@ -1,3 +1,6 @@
+%% @author  Dmitry S. Melnikov (dmitryme@gmail.com)
+%% @copyright 2010 Dmitry S. Melnikov
+
 -module(ibuild).
 
 -export([build_index/0, main/1]).

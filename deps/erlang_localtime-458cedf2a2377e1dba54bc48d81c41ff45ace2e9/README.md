@@ -16,38 +16,38 @@ is not in daylight saving, it will be corrected by library and "MSK" -> "PST" co
 
 Converts UTC time to local one
 >localtime:utc_to_local({{2010, 7, 22}, {17, 56, 23}, "Europe/Moscow").
->   
+>
 >{{2010,10,10},{21,56,23}}
 
 Converts local time to UTC one
 >localtime:local_to_utc({{2010, 10, 10}, {21, 56, 23}}, "Europe/Moscow").
->   
+>
 >{{2010,10,10},{17,56,23}}
 
 Converts time from one local timezone to another local one
 >localtime:local_to_local({{2010, 10, 10}, {21, 56, 23}}, "Europe/Moscow", "Australia/Sydney").
->   
->{{2010,10,11},{3,56,23}} 
+>
+>{{2010,10,11},{3,56,23}}
 
 Returns timezone name
 >localtime:tz_name({{2010, 10, 10}, {21, 56, 23}}, "Europe/Moscow").
->   
+>
 >{"MSK","MSK"}
 
 >localtime:tz_name({{2010,10,11},{3,56,23}}, "Australia/Sydney").
->   
+>
 >{"EST","EST"}
 
 Calculates time difference between UTC and local one
 >localtime:tz_shift({{2013, 01, 22}, {18, 17, 00}}, "Europe/Moscow").
->   
+>
 >{'+',4,0}
 
 >localtime:tz_shift({{2013, 01, 22}, {18, 17, 00}}, "America/New York").
->   
+>
 >{'-',5,0}
 
 Calculates time difference between two local timezones
 >localtime:tz_shift({{2013, 01, 22}, {18, 17, 00}}, "America/New York", "Europe/Moscow").
->   
+>
 >{'+',9,0}

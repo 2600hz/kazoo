@@ -4,8 +4,8 @@ ROOT = ../..
 EBINS = $(shell find $(ROOT)/deps/erlang_localtime-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = -Werror +debug_info +warn_export_all \
-	-I$(ROOT)/deps/erlang_localtime-1.0.1/include \
+ERLC_OPTS += +debug_info +warn_export_all \
+	-I $(wildcard $(ROOT)/deps/erlang_localtime-*/include) \
 	 $(PA)
 
 .PHONY: all compile clean

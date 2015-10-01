@@ -1,18 +1,5 @@
-%% Copyright (C) 07/01/2010 Dmitry S. Melnikov (dmitryme@gmail.com)
-%%
-%% This program is free software; you can redistribute it and/or
-%% modify it under the terms of the GNU General Public License
-%% as published by the Free Software Foundation; either version 2
-%% of the License, or (at your option) any later version.
-%%
-%% This program is distributed in the hope that it will be useful,
-%% but WITHOUT ANY WARRANTY; without even the implied warranty of
-%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%% GNU General Public License for more details.
-%%
-%% You should have received a copy of the GNU General Public License
-%% along with this program; if not, write to the Free Software
-%% Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+%% @author  Dmitry S. Melnikov (dmitryme@gmail.com)
+%% @copyright 2010 Dmitry S. Melnikov
 
 -author("Dmitry Melnikov <dmitryme@gmail.com>").
 
@@ -303,6 +290,7 @@
       {"Asia/Bishkek",{"KGT","KGT"},undef,360,0,undef,{0,0},undef,{0,0}},
       {"Asia/Brunei",{"BNT","BNT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Calcutta",{"IST","IST"},undef,330,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Chita",{"IRKT","IRKT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Choibalsan",{"CHOT","CHOT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Chongqing",{"CST","CST"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Chungking",{"CST","CST"},undef,480,0,undef,{0,0},undef,{0,0}},
@@ -319,7 +307,7 @@
       {"Asia/Ho_Chi_Minh",{"ICT","ICT"},undef,420,0,undef,{0,0},undef,{0,0}},
       {"Asia/Hong_Kong",{"HKT","HKT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Hovd",{"HOVT","HOVT"},undef,420,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Irkutsk",{"IRKT","IRKT"},undef,540,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Irkutsk",{"IRKT","IRKT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Istanbul",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
       {"Asia/Jakarta",{"WIB","WIB"},undef,420,0,undef,{0,0},undef,{0,0}},
       {"Asia/Jayapura",{"WIT","WIT"},undef,540,0,undef,{0,0},undef,{0,0}},
@@ -330,22 +318,22 @@
       {"Asia/Kashgar",{"CST","CST"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Kathmandu",{"NPT","NPT"},undef,345,0,undef,{0,0},undef,{0,0}},
       {"Asia/Katmandu",{"NPT","NPT"},undef,345,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Khandyga",{"YAKT","YAKT"},undef,600,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Khandyga",{"YAKT","YAKT"},undef,540,0,undef,{0,0},undef,{0,0}},
       {"Asia/Kolkata",{"IST","IST"},undef,330,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Krasnoyarsk",{"KRAT","KRAT"},undef,480,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Krasnoyarsk",{"KRAT","KRAT"},undef,420,0,undef,{0,0},undef,{0,0}},
       {"Asia/Kuala_Lumpur",{"MYT","MYT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Kuching",{"MYT","MYT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Kuwait",{"AST","AST"},undef,180,0,undef,{0,0},undef,{0,0}},
       {"Asia/Macao",{"CST","CST"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Macau",{"CST","CST"},undef,480,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Magadan",{"MAGT","MAGT"},undef,720,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Magadan",{"MAGT","MAGT"},undef,600,0,undef,{0,0},undef,{0,0}},
       {"Asia/Makassar",{"WITA","WITA"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Manila",{"PHT","PHT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Muscat",{"GST","GST"},undef,240,0,undef,{0,0},undef,{0,0}},
       {"Asia/Nicosia",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
-      {"Asia/Novokuznetsk",{"NOVT","NOVT"},undef,420,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Novosibirsk",{"NOVT","NOVT"},undef,420,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Omsk",{"OMST","OMST"},undef,420,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Novokuznetsk",{"KRAT","KRAT"},undef,420,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Novosibirsk",{"NOVT","NOVT"},undef,360,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Omsk",{"OMST","OMST"},undef,360,0,undef,{0,0},undef,{0,0}},
       {"Asia/Oral",{"ORAT","ORAT"},undef,300,0,undef,{0,0},undef,{0,0}},
       {"Asia/Phnom_Penh",{"ICT","ICT"},undef,420,0,undef,{0,0},undef,{0,0}},
       {"Asia/Pontianak",{"WIB","WIB"},undef,420,0,undef,{0,0},undef,{0,0}},
@@ -355,11 +343,12 @@
       {"Asia/Rangoon",{"MMT","MMT"},undef,390,0,undef,{0,0},undef,{0,0}},
       {"Asia/Riyadh",{"AST","AST"},undef,180,0,undef,{0,0},undef,{0,0}},
       {"Asia/Saigon",{"ICT","ICT"},undef,420,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Sakhalin",{"SAKT","SAKT"},undef,660,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Sakhalin",{"SAKT","SAKT"},undef,600,0,undef,{0,0},undef,{0,0}},
       {"Asia/Samarkand",{"UZT","UZT"},undef,300,0,undef,{0,0},undef,{0,0}},
       {"Asia/Seoul",{"KST","KST"},undef,540,0,undef,{0,0},undef,{0,0}},
       {"Asia/Shanghai",{"CST","CST"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Singapore",{"SGT","SGT"},undef,480,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Srednekolymsk",{"SRET","SRET"},undef,660,0,undef,{0,0},undef,{0,0}},
       {"Asia/Taipei",{"CST","CST"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Tashkent",{"UZT","UZT"},undef,300,0,undef,{0,0},undef,{0,0}},
       {"Asia/Tbilisi",{"GET","GET"},undef,240,0,undef,{0,0},undef,{0,0}},
@@ -372,11 +361,11 @@
       {"Asia/Ulaanbaatar",{"ULAT","ULAT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Ulan_Bator",{"ULAT","ULAT"},undef,480,0,undef,{0,0},undef,{0,0}},
       {"Asia/Urumqi",{"CST","CST"},undef,480,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Ust-Nera",{"VLAT","VLAT"},undef,660,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Ust-Nera",{"VLAT","VLAT"},undef,600,0,undef,{0,0},undef,{0,0}},
       {"Asia/Vientiane",{"ICT","ICT"},undef,420,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Vladivostok",{"VLAT","VLAT"},undef,660,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Yakutsk",{"YAKT","YAKT"},undef,600,0,undef,{0,0},undef,{0,0}},
-      {"Asia/Yekaterinburg",{"YEKT","YEKT"},undef,360,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Vladivostok",{"VLAT","VLAT"},undef,600,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Yakutsk",{"YAKT","YAKT"},undef,540,0,undef,{0,0},undef,{0,0}},
+      {"Asia/Yekaterinburg",{"YEKT","YEKT"},undef,300,0,undef,{0,0},undef,{0,0}},
       {"Asia/Yerevan",{"AMT","AMT"},undef,240,0,undef,{0,0},undef,{0,0}},
       {"Atlantic/Azores",{"AZOT","AZOT"},{"AZOST","AZOST"},-60,60,{last,sun,mar},{0,0},{last,sun,oct},{1,0}},
       {"Atlantic/Bermuda",{"AST","AST"},{"ADT","ADT"},-240,60,{2,sun,mar},{2,0},{1,sun,nov},{2,0}},
@@ -491,7 +480,7 @@
       {"Europe/Isle_of_Man",{"GMT","GMT"},{"BST","BST"},0,60,{last,sun,mar},{1,0},{last,sun,oct},{2,0}},
       {"Europe/Istanbul",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
       {"Europe/Jersey",{"GMT","GMT"},{"BST","BST"},0,60,{last,sun,mar},{1,0},{last,sun,oct},{2,0}},
-      {"Europe/Kaliningrad",{"FET","FET"},undef,120,0,undef,{0,0},undef,{0,0}},
+      {"Europe/Kaliningrad",{"EET","EET"},undef,120,0,undef,{0,0},undef,{0,0}},
       {"Europe/Kiev",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
       {"Europe/Lisbon",{"WET","WET"},{"WEST","WEST"},0,60,{last,sun,mar},{1,0},{last,sun,oct},{2,0}},
       {"Europe/Ljubljana",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
@@ -525,7 +514,7 @@
       {"Europe/Vatican",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Vienna",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Vilnius",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
-      {"Europe/Volgograd",{"VOLT","VOLT"},undef,180,0,undef,{0,0},undef,{0,0}},
+      {"Europe/Volgograd",{"MSK","MSK"},undef,180,0,undef,{0,0},undef,{0,0}},
       {"Europe/Warsaw",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Zagreb",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Zaporozhye",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
