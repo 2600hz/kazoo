@@ -78,6 +78,8 @@ call_id(Data) ->
 
 -spec c_seq(ne_binaries()) -> ne_binary().
 c_seq(Data) ->
+    %% FIXME: handle Kamilio log parsing: "cseq THECSEQ"
+    %%   which is different to FS's: "CSeq: THECSEQ"
     sip_field([<<"CSeq">>], Data).
 
 %% Internals
