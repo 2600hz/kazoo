@@ -117,6 +117,7 @@ handle_authz_req(JObj, _Props) ->
                         ,JObj),
                     wapi_authz:publish_authz_resp(Queue, JObj1);
                 _ ->
+                    timer:sleep(1000), % TODO: should be replaced by an algorithm which should send auth _after_ sending acc start
                     maybe_processing_authz(JObj)
             end
     end.
@@ -370,7 +371,13 @@ maybe_processing_authz(JObj) ->
 
             WholeRequest = wh_json:get_value(<<"Custom-Auth-Vars">>, JObj2),
             WholeRequest1 = cm_util:insert_device_info_if_needed(WholeRequest, 'authz'),
-            JObj3 = wh_json:set_value(<<"Custom-Auth-Vars">>, WholeRequest1, JObj2),
+            OtherLegCallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, WholeRequest1),
+            BridgeId = wh_json:get_value([?CCV, <<"Bridge-ID">>], WholeRequest1),
+            lager:debug("authz processing BridgeId=~p", [BridgeId]),
+            lager:debug("authz processing OtherLegCallId=~p", [OtherLegCallId]),
+            WholeRequest2 = cm_util:ets_update_leg_jobj_originator_type(OtherLegCallId, WholeRequest1),
+            WholeRequest3 = cm_util:ets_update_leg_jobj_originator_type(BridgeId, WholeRequest2),
+            JObj3 = wh_json:set_value(<<"Custom-Auth-Vars">>, WholeRequest3, JObj2),
 
             cm_pool_mgr:do_request(JObj3);
         {'error', Error} ->
