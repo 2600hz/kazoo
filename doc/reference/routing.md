@@ -13,7 +13,9 @@ Topic Goal: Describe how Jonny5 and HotOrNot work. This implies also teaching pe
 
 ## Let's talk billing
 
-People like to talk a lot about "billing". What **IS** billing?
+People like to talk a lot about "billing".
+
+What **IS** billing?
 
 The request usually comes in the form "I just need something simple." That's usually a gross understatement of the actual desire.
 
@@ -69,8 +71,6 @@ Rating is done by HotOrNot:
 
 ## FLOWCHART!
 
-So awesome
-
 -----
 
 ## How we do limits
@@ -82,18 +82,23 @@ You can limit based on:
 * Inbound
 * Outbound
 * Resource consuming (define what this is)
-* otherstuff?
+* Burst
+* Prepay
+* Postpay
+* Allotments
+* Hard/Soft Limits
+
+__Clarify each__
 
 -----
 
-The hierarchy of limits is:
+== Limit Flows Up
 
-* Global (system_config)
-* Overridden by reseller?
-* Overridden by account?
+1. Account limits
+2. Reseller limits
 
 If a limit is reached or not found, then we fail back to use credit based on the
-rates
+rates (if enabled).
 
 -----
 
