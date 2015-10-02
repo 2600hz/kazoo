@@ -196,6 +196,7 @@
                                ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
                                ,{<<"From-URI">>, <<"sip_from_uri">>}
                                ,{<<"Bypass-Media">>, <<"bypass_media_after_bridge">>}
+                               ,{<<"Bridge-Generate-Comfort-Noise">>,<<"bridge_generate_comfort_noise">>}
                                ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
