@@ -11,7 +11,10 @@
 -behaviour(gen_server).
 
 -export([start_link/3
-         ,init/1
+         ,originate/1
+        ]).
+
+-export([init/1
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
@@ -34,6 +37,10 @@ start_link(Req, Attempts, Interval)
                                   ,interval = Interval * ?MILLISECONDS_IN_SECOND}
                           ,[]).
 
+-spec originate(pid()) -> 'ok'.
+originate(Pid) ->
+    gen_server:cast(Pid, 'originate').
+
 -spec init(#state{}) -> {'ok', #state{}}.
 init(#state{interval = Interval} = State) ->
     Timer = start_originate_timer(Interval),
@@ -43,16 +50,11 @@ init(#state{interval = Interval} = State) ->
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
 
--spec handle_cast(any(), #state{}) -> {'noreply', #state{}}.
-handle_cast(_Msg, State) ->
-    {'noreply', State}.
-
--spec handle_info(any(), #state{}) -> {'noreply', #state{}} | {'stop', any(), #state{}}.
-handle_info({'send', 'originate'}, #state{tried = Tried, attempts = Tried} = State) ->
+-spec handle_cast('originate', #state{}) -> {'noreply', #state{}} | {'stop', any(), #state{}}.
+handle_cast('originate', #state{tried = Tried, attempts = Tried} = State) ->
     lager:info("not answered in ~p attempts, stopping", [Tried]),
     {'stop', 'normal', State};
-handle_info({'send', 'originate'}
-            ,#state{request = Req, tried = Tried, interval = Timeout} = State) ->
+handle_cast('originate', #state{request = Req, tried = Tried, interval = Timeout} = State) ->
     ReqTimeout = props:get_value(<<"Timeout">>, Req) * ?MILLISECONDS_IN_SECOND,
     TimerTimeout = case (ReqTimeout > Timeout) of
                        'true' -> ReqTimeout + Timeout;
@@ -74,9 +76,15 @@ handle_info({'send', 'originate'}
             {'noreply', NewState}
     end.
 
+-spec handle_info(any(), #state{}) -> {'noreply', #state{}}.
+handle_info(_Msg, State) ->
+    {'noreply', State}.
+
 -spec terminate(any(), #state{}) -> 'ok'.
 terminate(_, #state{timer = Timer}) ->
-    _ = erlang:cancel_timer(Timer),
+    _ = stop_originate_timer(Timer),
+    %% supervisor doesn't delete stopped child specification
+    ananke_callback_sup:delete_child(self(), 1 * ?MILLISECONDS_IN_SECOND),
     'ok'.
 
 -spec code_change(any(), #state{}, any()) -> {'ok', #state{}}.
@@ -91,7 +99,12 @@ is_resp(JObj) ->
 
 -spec start_originate_timer(integer()) -> reference().
 start_originate_timer(Timeout) ->
-    erlang:send_after(Timeout, self(), {'send', 'originate'}).
+    {'ok', Pid} = leader_cron:schedule_task({'oneshot', Timeout}, {?MODULE, originate, [self()]}),
+    Pid.
+
+-spec stop_originate_timer(pid()) -> 'ok' | {'error', term()}.
+stop_originate_timer(Timer) ->
+    leader_cron:cancel_task(Timer).
 
 -spec handle_originate_response(wh_json:object(), #state{}) -> {'stop', 'normal', #state{}}
                                                              | {'noreply', #state{}}.

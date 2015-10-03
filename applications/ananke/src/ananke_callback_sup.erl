@@ -66,7 +66,7 @@ init([]) ->
 
     {'ok', {SupFlags, []}}.
 
--spec delete_child_after_timeout(any(), non_neg_integer()) -> 'ok' | {'error', any()}.
+-spec delete_child_after_timeout(any(), non_neg_integer()) -> fun(() -> 'ok' | {'error', any()}).
 delete_child_after_timeout(Id, Timeout) ->
     fun() ->
         receive
