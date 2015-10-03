@@ -23,6 +23,7 @@
 
 -include("../crossbar.hrl").
 
+-define(CB_LIST, <<"lists/crossbar_listing">>).
 -define(ENTRIES, <<"entries">>).
 -define(VCARD, <<"vcard">>).
 -define(PHOTO, <<"photo">>).
@@ -32,7 +33,7 @@
 -spec maybe_migrate(ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:get_results(AccountDb, <<"lists/crossbar_listing_v2">>, ['include_docs']) of
+    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', Lists} -> migrate(AccountDb, Lists);
         {'error', _} -> 'ok'
@@ -43,11 +44,9 @@ migrate(AccountDb, [List | Lists]) ->
     DocId = wh_json:get_value(<<"id">>, List),
     Entries = wh_json:to_proplist(wh_json:get_value([<<"doc">>, <<"entries">>], List, wh_json:new())),
 
-    %% NOTE: this function will rewrite existing entry with the same id.
-    %% If in lists will be entry with same id only last will be saved.
     MigrateEntryFun = fun({Id, Entry}) ->
                               wh_json:set_values([{<<"pvt_type">>, <<"list_entry">>}
-                                                  ,{<<"_id">>, Id}
+                                                  ,{<<"list_entry_old_id">>, Id}
                                                   ,{<<"list_id">>, DocId}]
                                                  ,Entry)
                       end,
@@ -139,7 +138,7 @@ validate(Context, ListId, ?ENTRIES, EntryId, ?VCARD) ->
 
 -spec validate_req(http_method(), cb_context:context(), path_tokens()) -> cb_context:context().
 validate_req(?HTTP_GET, Context, []) ->
-    crossbar_doc:load_view(<<"lists/crossbar_listing_v2">>, [], Context, fun normalize_list/2);
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_list/2);
 validate_req(?HTTP_PUT, Context, []) ->
     validate_doc('undefined', <<"list">>, Context);
 
