@@ -14,16 +14,9 @@
          ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
-%%%-------------------------------------------------------------------
-%%% THIS REQUIRES WORK FROM KAZ-27 TO OPERATE
-%%% THIS IS HERE ONLY AS A PLACEHOLDER FOR NOW
-%%% DO NOT WORRY ABOUT IT UNTIL KAZ-27 IS DONE
-%%% AND COMMITTED
-%%%-------------------------------------------------------------------
-
 -include("../blackhole.hrl").
 
--spec handle_event(bh_context:context(), wh_json:object()) -> any().
+-spec handle_event(bh_context:context(), wh_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
     lager:debug("handling conference event ~s", [get_response_key(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context)
