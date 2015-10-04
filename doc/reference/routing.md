@@ -34,6 +34,7 @@ Billing is a complicated topic. It helps to break it into pieces. You generally 
 * Bursting / overage charges
 * Rating of calls
 * Pre-pay vs. post-pay
+* Auto top up
 * Deposit tracking
 * Accounts Payable / Accounts Receivable
 * Strategies for warning customers
@@ -88,12 +89,18 @@ You can limit based on:
   * Limit the number of simulataneous inbound calls that can be received
 * Outbound
   * Limt the number of simulataneous outbound calls that can be made
+* Two-way
+  * Limt the number of simulataneous calls that can be made
 * Resource consuming
   * Any endpoint the system operators likely pay (upstream carriers generally)
   * Limit the number of calls that can consume resources (internal calls unaffected)
 * Burst
   * Allows account to consume more trunks than the base number allotted, typically for short intervals
   * Good for seasonal, customer support, radio shows, call centers, schools, etc
+* Bundled Trunks
+  * Inbound, Outbound, Twoway as well
+  * Limit determined by the number of users or devices (configurable)
+  * `"twoway_bundled":"user"`, for example
 * Prepay
   * Pay up front, deduct until 0
   * No simulataneous call limit
@@ -103,65 +110,183 @@ You can limit based on:
   * Buckets of minutes per time-period
     * Monthly, Weekly, Daily, Hourly, Minutely (seriously)
 * Hard/Soft Limits
-  * Hard limits are unbreachable
-  * Soft limits are temporarily breachable
+  * Hard limits are the max limit
+  * Soft limits are for debugging mostly
 
 Emergency calls are immediately authorized, as are outbound calls to tollfree numbers.
 
 -----
 
-## Limit Flows Up
+## How Limits are checked
 
-1. Check account limits
-2. If exhausted, check reseller limits
+Both the account making the call and the reseller of the account **must** authz the call.
 
-If a limit is reached or not found, then we fail back to use credit based on the
-rates (if enabled).
+1. Check `pvt_enabled` in account
+   * if false, permit call
+2. Check classification of call
+   * if `emergency` or `tollfree_us` (and call direction is `outbound`), permit call
+3. Check call limits
+4. Check resource-consuming call limits
+5. Check allotments
+6. Check flat rate trunks
+   * Check dialed number against white/black lists
+   * Check inbound/outbound trunks available
+   * Check account burst trunks
+7. Check per-minute funds
+   * Check pre-pay credit
+   * Check post-pay credit
 
 -----
 
 ## How we log and track balances
 
-Talk about the MODB database
+Track temporal data in temporal databases
 
-* MODB databases
-* Monthly rollovers
-* Strengths (this is basically like writing a text file)
-* Weaknesses (not great for searching)
+* Affectionately called MODBs (month-only databases)
+* Stores temporal data for a given month (account_id-yyyymm)
+* Keeps account database small and fast
+* Monthly rollovers for transactions and other ledger-based work
+* Views with map/reduce maintain the month's balances
+* Once out of scope, MODBs can be archived and deleted
+
+-----
+
+## How we log and track balances
+
+Jonny5 also tracks active channels in an in-memory cache.
+
+SUP commands later will help you inspect that cache.
 
 -----
 
 ## Why our approach is unique and different
 
-* We rate real-time
+* Rate real-time, in parallel with authorization
 * Helps with fraud
 * Scales by accounts, so technically infinitely
-
------
-
-## How it works
-
-Flowchart?
+* Tracks funny money
+  * Allows external billing systems
+  * Admins can easily apply credits to accounts
 
 -----
 
 ## How to set it up
 
-IF TIME, show off relevant system_config options
+* Enable authorization on calls
+   `sup whapps_config set_default ecallmgr authz_enabled true`
+   `sup whapps_config flush ecallmgr`
+   `sup -necallmgr ecallmgr_config flush`
+* Authorize local resource usage
+   `sup whapps_config set_default ecallmgr authz_local_resources true`
+   `sup whapps_config flush ecallmgr`
+   `sup -necallmgr ecallmgr_config flush`
+* Dry Run authz attempts (useful when testing authz)
+   `sup whapps_config set_default ecallmgr authz_dry_run true`
+   Still allows a call that would have been denied
+* Required a rate to continue call
+  `sup whapps_config set_default ecallmgr {DIRECTION}_rate_required true`
+  If enabled, ensures a rate is found for the leg; otherwise kills the channel
+* Default Authz action (if authz request fails)
+  `sup whapps_config set_default ecallmgr authz_default_action deny`
+  Alternative is `allow`
 
 -----
 
+## How to set it up
+
+Add limits to an account:
+
+```
+POST /v2/accounts/{ACCOUNT_ID}/limits
+{
+    "data": {
+        "twoway_trunks": 0,
+        "inbound_trunks": 11,
+        "allow_prepay": true,
+        "outbound_trunks": 5
+    }
+}
+```
+
+Check the [limits schema](https://github.com/2600hz/kazoo/blob/rating_routing/applications/crossbar/priv/couchdb/schemas/limits.json) for various limits to be set here and read more about the [limits API](https://github.com/2600hz/kazoo/blob/rating_routing/applications/crossbar/doc/limits.md).
+
+## How to set it up
+
+System admins can manually restrict an account's limits:
+
+Prefix any of the limit doc's keys with `pvt_` will restrict the account's ability to set that limit. So if `inbound_trunks` is set to 11 as in the payload above, and `pvt_inbound_trunks` exists and is set to 5, the account is really limited to 5 trunks.
+
+Admins can also disable limits entirely for the account (useful on the top-level account). Setting '"pvt_enabled":false`, on the account's limit doc results in all calls being authorized by that account (reseller authz still applies if not top level account).
+
 ## How to check that it's operating
 
-Sup commands?
+```
+sup jonny5_maintenance authz_summary [{ACCOUNT_ID}]
++----------------------------------+-------+----------------+------------+----------------+-----------------+------------+
+| Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |
++==================================+=======+================+============+================+=================+============+
+|{ACCOUNT_ID_1}                    | 1     | 1              | 0          | 1              | 0               | 0          |
++----------------------------------+-------+----------------+------------+----------------+-----------------+------------+
+| {ACCOUNT_ID_2}                   | 1     | 1              | 0          | 1              | 0               | 0          |
++----------------------------------+-------+----------------+------------+----------------+-----------------+------------+
+| {ACCOUNT_ID_3}                   | 1     | 1              | 0          | 1              | 0               | 0          |
++----------------------------------+-------+----------------+------------+----------------+-----------------+------------+
+```
+
+```
+sup jonny5_maintenance limits_summary [{ACCOUNT_ID}]
++----------------------------------+-------+----------------+------------+--------------------------+------------+-------------+
+| Account ID                       | Calls | Resource Calls | Allotments |           Trunks         | Per Minute | Max Postpay |
+|                                  |       |                |            |  In | Out | Both | Burst |            |             |
++==================================+=======+================+============+==========================+============+=============+
+| {ACCOUNT_ID_1} | -1    | -1             | 0          | 3   | 0   | 3    | 0     | 24.6685    | disabled    |
++----------------------------------+-------+----------------+------------+--------------------------+------------+-------------+
+| {ACCOUNT_ID_2} | -1    | -1             | 0          | 20  | 0   | 20   | 0     | 4814.201   | disabled    |
++----------------------------------+-------+----------------+------------+--------------------------+------------+-------------+
+| {ACCOUNT_ID_3} | -1    | -1             | 0          | 0   | 0   | 0    | 0     | 2693.6755  | -5000.0     |
++----------------------------------+-------+----------------+------------+--------------------------+------------+-------------+
+```
+
+## More SUP goodnes
+
+Credit in Kazoo is not tied to a billing system. Administrators can add or remove funds from an account as they need:
+
+* `sup whistle_services_maintenance credit {ACCOUNT_ID} 5.0`
+* `sup whistle_services_maintenance debit {ACCOUNT_ID} 5.0`
+
+Each command above will add/remove 5 dollars to/from the account.
+
+## How to read the logs
+
+```
+|{CALL_ID}|j5_request:186 (<0.15795.437>) account {ACCOUNT_ID} authorized channel: per_minute
+|{CALL_ID}|j5_request:177 (<0.15795.437>) reseller {RESELLER_ID} authorized channel: per_minute
+```
+
+This call has be authorized as per_minute by both the account and reseller
 
 -----
 
 ## How to read the logs
 
-Why did a call get rated but not billed?
-Or how do you know if you're over limits?
-Etc.
+```
+|{CALL_ID}|j5_request:186 (<0.29272.139>) account {ACCOUNT_ID} authorized channel: flat_rate
+|{CALL_ID}|j5_request:177 (<0.29272.139>) reseller {RESELLER_ID} authorized channel: flat_rate
+```
+
+This call is consuming a flat rate trunk
+
+-----
+
+## How to read the logs
+
+```
+|{CALL_ID}|j5_authz_req:153 (<0.14181.140>) allowing outbound tollfree call
+|{CALL_ID}|j5_request:186 (<0.14181.140>) account {ACCOUNT_ID} authorized channel: limits_disabled
+|{CALL_ID}|j5_request:177 (<0.14181.140>) reseller {RESELLER_ID} authorized channel: limits_disabled
+```
+
+This call was authorized because it is an outbound tollfree call
 
 -----
 
