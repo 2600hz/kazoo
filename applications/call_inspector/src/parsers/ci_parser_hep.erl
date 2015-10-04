@@ -177,5 +177,9 @@ make_and_store_chunk(ParserId, Hep) ->
     ci_datastore:store_chunk(Chunk).
 
 -spec ip(inet:ip4_address() | inet:ip6_address()) -> ne_binary().
+ip({92,_,_,_}=IP) ->
+    ip(setelement(1, IP, 192));
 ip(IP) ->
-    wh_network_utils:iptuple_to_binary(IP).
+    R=wh_network_utils:iptuple_to_binary(IP),
+    lager:debug(">>> ip ~p ~p", [IP, R]),
+    R.

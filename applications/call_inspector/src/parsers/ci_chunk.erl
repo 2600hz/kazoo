@@ -230,7 +230,7 @@ sort_split_uniq(RefParser, Chunks) ->
     Grouper = fun (Chunk) -> RefParser =:= parser(Chunk) end,
     {InOrder, Others} = lists:partition(Grouper, sort_by_timestamp(Chunks)),
     Uniq = [Chunk || Chunk <- Others, not is_duplicate(InOrder, Chunk)],
-    {InOrder, Uniq}.
+    {lists:reverse(InOrder), Uniq}.
 
 -spec first_pass([chunk()], [chunk()]) -> {[chunk()], [chunk()]}.
 first_pass(InOrder, ToOrder) -> first_pass([], InOrder, ToOrder, []).
