@@ -180,6 +180,4 @@ make_and_store_chunk(ParserId, Hep) ->
 ip({92,_,_,_}=IP) ->
     ip(setelement(1, IP, 192));
 ip(IP) ->
-    R=wh_network_utils:iptuple_to_binary(IP),
-    lager:debug(">>> ip ~p ~p", [IP, R]),
-    R.
+    wh_network_utils:iptuple_to_binary(IP).
