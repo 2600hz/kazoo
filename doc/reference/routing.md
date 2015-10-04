@@ -62,14 +62,19 @@ Today, we're going to attempt to document and explain many of them.
 
 Rating is done by HotOrNot:
 
-* Normalizes your number dialed? Yes? (how?)
-* Checks it against a database?
-* Selects a rate based on (weight? Longest match?)
-* Adds the rate to the call as a variable (doesn't necessarily mean they're charged)
-
------
-
-## FLOWCHART!
+1. Searches for rate in global rate deck matching the normalized dialed number
+   * Breaks number into all possible prefixes
+   * +14158867900 => [1, 14, 141, 1415, 14158, ...]
+   * Matches all rate docs with prefixes in the above list
+2. Match rates found against various criteria
+   * Call Direction (inbound, outbound, both)
+   * Options - match route options+flags against rate options list
+     * each route option/flag must exist in rate options list
+   * Routes - match rate regex to dialed number
+3. Sort matched rates
+   * Larger prefix first (1415 matches before 141)
+   * Weight parameter if prefix lengths are the same
+4. Set various parameters on the call for tracking per-minute costs, if any
 
 -----
 
@@ -80,22 +85,35 @@ Limits are a concept of limiting how many flat-rate (included) calls are availab
 You can limit based on:
 
 * Inbound
+  * Limit the number of simulataneous inbound calls that can be received
 * Outbound
-* Resource consuming (define what this is)
+  * Limt the number of simulataneous outbound calls that can be made
+* Resource consuming
+  * Any endpoint the system operators likely pay (upstream carriers generally)
+  * Limit the number of calls that can consume resources (internal calls unaffected)
 * Burst
+  * Allows account to consume more trunks than the base number allotted, typically for short intervals
+  * Good for seasonal, customer support, radio shows, call centers, schools, etc
 * Prepay
+  * Pay up front, deduct until 0
+  * No simulataneous call limit
 * Postpay
+  * Basically prepay that can go negative
 * Allotments
+  * Buckets of minutes per time-period
+    * Monthly, Weekly, Daily, Hourly, Minutely (seriously)
 * Hard/Soft Limits
+  * Hard limits are unbreachable
+  * Soft limits are temporarily breachable
 
-__Clarify each__
+Emergency calls are immediately authorized, as are outbound calls to tollfree numbers.
 
 -----
 
 ## Limit Flows Up
 
-1. Account limits
-2. Reseller limits
+1. Check account limits
+2. If exhausted, check reseller limits
 
 If a limit is reached or not found, then we fail back to use credit based on the
 rates (if enabled).
