@@ -14,3 +14,6 @@ clean: clean-ebin
 .PHONY: test debug clean
 
 app: ERLCFLAGS += +debug_info
+
+distclean: clean
+	rm erl.mk
