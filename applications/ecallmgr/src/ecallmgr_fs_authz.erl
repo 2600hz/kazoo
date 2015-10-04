@@ -217,7 +217,9 @@ authorize_reseller(JObj, Props, CallId, Node) ->
             lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
             P = props:set_values([{?GET_CCV(<<"Reseller-ID">>), ResellerId}
                                   ,{?GET_CCV(<<"Reseller-Billing">>), Type}
-                                 ], Props),
+                                 ]
+                                 ,Props
+                                ),
             rate_call(P, CallId, Node)
     end.
 
