@@ -76,10 +76,10 @@ make_name({'parser_args', Filename, _IP, _Port}) ->
 call_id(Data) ->
     sip_field([<<"Call-ID">>, <<"i">>], Data).
 
+%% @doc Gets the CSeq field from SIP transaction data.
+%%   To use with HEP or FreeSwitch data; Kamailio has another format!
 -spec c_seq(ne_binaries()) -> ne_binary().
 c_seq(Data) ->
-    %% FIXME: handle Kamilio log parsing: "cseq THECSEQ"
-    %%   which is different to FS's: "CSeq: THECSEQ"
     sip_field([<<"CSeq">>], Data).
 
 %% Internals
