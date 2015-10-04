@@ -37,7 +37,9 @@ determine_account_id(Request) ->
               j5_request:deny_account(<<"disabled">>, R)
              );
         {'error', _R} ->
-            lager:debug("unable to determine account id for ~s: ~p", [Number, _R]),
+            lager:debug("unable to determine account id for ~s: ~p"
+                        ,[Number, _R]
+                       ),
             'ok'
     end.
 
@@ -89,11 +91,12 @@ maybe_account_limited(Request) ->
     Limits = j5_limits:get(AccountId),
     R = maybe_authorize(Request, Limits),
     case j5_request:is_authorized(R, Limits) of
+        'true' -> maybe_determine_reseller_id(R);
         'false' ->
             lager:debug("account ~s is not authorized to create this channel"
-                        ,[AccountId]),
-            send_response(R);
-        'true' -> maybe_determine_reseller_id(R)
+                        ,[AccountId]
+                       ),
+            send_response(R)
     end.
 
 -spec maybe_determine_reseller_id(j5_request:request()) -> 'ok'.
@@ -121,24 +124,28 @@ maybe_reseller_limited(Request) ->
               j5_request:authorize_reseller(<<"limits_disabled">>, Request)
              );
         'false' ->
-            Limits = j5_limits:get(ResellerId),
-            R = maybe_authorize(Request, Limits),
-            case j5_request:is_authorized(R, Limits) of
-                'false' ->
-                    lager:debug("reseller ~s is not authorized to create this channel"
-                                ,[ResellerId]),
-                    send_response(R);
-                'true' -> send_response(R)
-            end
+            check_reseller_limits(Request, ResellerId)
     end.
 
--spec maybe_authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
+-spec check_reseller_limits(j5_request:request(), ne_binary()) -> 'ok'.
+check_reseller_limits(Request, ResellerId) ->
+    Limits = j5_limits:get(ResellerId),
+    R = maybe_authorize(Request, Limits),
+    (not j5_request:is_authorized(R, Limits))
+        andalso lager:debug("reseller ~s is not authorized to create this channel"
+                            ,[ResellerId]
+                           ),
+    send_response(R).
+
+-spec maybe_authorize(j5_request:request(), j5_limits:limits()) ->
+                             j5_request:request().
 maybe_authorize(Request, Limits) ->
     case j5_limits:enabled(Limits) of
         'true' -> maybe_authorize_exception(Request, Limits);
         'false' ->
             lager:debug("limits are disabled for account ~s"
-                        ,[j5_limits:account_id(Limits)]),
+                        ,[j5_limits:account_id(Limits)]
+                       ),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits)
     end.
 
@@ -147,10 +154,10 @@ maybe_authorize_exception(Request, Limits) ->
     CallDirection = j5_request:call_direction(Request),
     case j5_request:classification(Request) of
         <<"emergency">> ->
-            lager:debug("allowing emergency call", []),
+            lager:debug("allowing emergency call"),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits);
         <<"tollfree_us">> when CallDirection =:= <<"outbound">> ->
-            lager:debug("allowing outbound tollfree call", []),
+            lager:debug("allowing outbound tollfree call"),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits);
         _Else -> maybe_hard_limit(Request, Limits)
     end.
@@ -175,8 +182,12 @@ authorize(Request, Limits) ->
                               'false' -> F(R, Limits);
                               'true' -> R
                           end
-                  end, Request, Routines)
-      ,Limits).
+                  end
+                  ,Request
+                  ,Routines
+                 )
+      ,Limits
+     ).
 
 -spec maybe_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_soft_limit(Request, Limits) ->
@@ -194,7 +205,7 @@ maybe_outbound_soft_limit(Request, Limits) ->
     case j5_limits:soft_limit_outbound(Limits) of
         'false' -> Request;
         'true' ->
-            lager:debug("outbound channel authorization is not enforced (soft limit)", []),
+            lager:debug("outbound channel authorization is not enforced (soft limit)"),
             j5_request:set_soft_limit(Request)
     end.
 
@@ -203,7 +214,7 @@ maybe_inbound_soft_limit(Request, Limits) ->
     case j5_limits:soft_limit_inbound(Limits) of
         'false' -> Request;
         'true' ->
-            lager:debug("inbound channel authorization is not enforced (soft limit)", []),
+            lager:debug("inbound channel authorization is not enforced (soft limit)"),
             j5_request:set_soft_limit(Request)
     end.
 
@@ -224,7 +235,7 @@ maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
 send_response(Request) ->
     ServerId  = j5_request:server_id(Request),
     AccountDb = wh_util:format_account_id(j5_request:account_id(Request), 'encoded'),
-    AuthType    = wh_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
+    AuthType  = wh_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
     AuthId    = wh_json:get_value(<<"Authorizing-ID">>, j5_request:ccvs(Request)),
 
     OutboundFlags = maybe_get_outbound_flags(AuthType, AuthId, AccountDb),
@@ -232,9 +243,11 @@ send_response(Request) ->
     CCVs = wh_json:from_list(
              props:filter_undefined(
                [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
-              ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
-              ,{<<"Outbound-Flags">>, OutboundFlags}
-               ])),
+                ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
+                ,{<<"Outbound-Flags">>, OutboundFlags}
+               ]
+              )
+            ),
 
     Resp = props:filter_undefined(
              [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}

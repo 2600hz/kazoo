@@ -185,7 +185,7 @@ provision_geocoded(JObj, E911) ->
 %% @private
 %% @doc
 %% Make a REST request to dash e911 emergency provisiong API to preform
-%% the given verb (validatelocation, addlocation, ect).
+%% the given verb (validatelocation, addlocation, etc).
 %% @end
 %%--------------------------------------------------------------------
 -type emergency_provisioning_error() :: 'authentication' |

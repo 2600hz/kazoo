@@ -177,7 +177,7 @@ disconnect_number(Number) -> Number.
 %% @private
 %% @doc
 %% Make a REST request to Bandwidth.com Numbers API to preform the
-%% given verb (purchase, search, provision, ect).
+%% given verb (purchase, search, provision, etc).
 %% @end
 %%--------------------------------------------------------------------
 -spec make_numbers_request(atom(), wh_proplist()) ->

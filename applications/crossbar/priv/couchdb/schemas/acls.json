@@ -19,7 +19,7 @@
             "type": "string"
         },
         "network-list-name": {
-            "description": "The trusted list should represent anything that can issue calls without authorization.  The authoritative list should indicate inter-network routing equipment (SBC, ect).",
+            "description": "The trusted list should represent anything that can issue calls without authorization.  The authoritative list should indicate inter-network routing equipment (SBC, etc).",
             "enum": [
                 "authoritative",
                 "trusted"

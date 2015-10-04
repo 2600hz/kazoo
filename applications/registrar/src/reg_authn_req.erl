@@ -80,7 +80,7 @@ send_auth_resp(#auth_user{password=Password
 send_auth_error(JObj) ->
     %% NOTE: Kamailio needs registrar errors since it is blocking with no
     %%   timeout (at the moment) but when we seek auth for INVITEs we need
-    %%   to wait for conferences, ect.  Since Kamailio does not honor
+    %%   to wait for conferences, etc.  Since Kamailio does not honor
     %%   Defer-Response we can use that flag on registrar errors
     %%   to queue in Kazoo but still advance Kamailio.
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
