@@ -1,11 +1,11 @@
 /*
 Section: Reference
-Title: Routing and Rating
+Title: Rating and Limits
 Language: en-US
 Version: 3.22
 */
 
-# Rating and Routing
+# Rating and Limits
 
 Topic Goal: Describe how Jonny5 and HotOrNot work. This implies also teaching people how authz and authorization work (a flowchart would be AMAZING). Things like how dry run works, etc would be extra-amazing.
 
@@ -23,7 +23,7 @@ The request usually comes in the form "I just need something simple." That's usu
 
 ## It's complicated
 
-Billing is a complicated topic. It helps to break it into pieces. You generally have:
+The truth is, billing is a complicated topic. It helps to break it into pieces. You generally have:
 
 * Recurring Subscriptions (monthly charges)
 * Pro-rated monthly subscriptions
@@ -47,19 +47,38 @@ Billing is a complicated topic. It helps to break it into pieces. You generally 
 * Rate decks (global + account based)
 * Actual cost analysis
 
-Today, we're NOT going to cover all these things. It's too much. We're going to cover only one section of this - rating and routing.
-
 -----
 
 ## Rating & Routing in Kazoo
+
+Today, we're NOT going to cover all these things. It's too much. We will give you a general overview of what exists today, how to configure it, how to monitor it, and how to parse the logs a bit to see what's going on.
 
 Kazoo's rating and routing functions are actually quite robust.
 
 But they are not well documented so it can be easy to get lost in them.
 
-Today, we're going to attempt to document and explain many of them.
+# Rating
+## What a rate document looks like
 
-## How we rate
+```
+{"prefix":"1"
+ ,"iso_country_code":"US"
+ ,"description":"US default rate"
+ ,"direction":"both"
+ ,"rate_name":"US-1"
+ ,"routes":["^\\+1\\d+$"]
+ ,"options":[]
+ ,"weight":10
+ ,"rate_increment":60
+ ,"rate_minimum":60
+ ,"rate_surcharge":1.00
+ ,"rate_cost":0.01
+}
+```
+
+-----
+
+## How Kazoo rates
 
 Rating is done by HotOrNot:
 
@@ -79,7 +98,24 @@ Rating is done by HotOrNot:
 
 -----
 
-## How we do limits
+## How to test your rates
+
+Test what rate is selected for a given dialed number:
+
+```
+sup hotornot_maintenance rates_for_did 4158867900
+Candidates:
+    RATE NAME |      COST | INCREMENT |   MINIMUM | SURCHARGE |    WEIGHT |          PREFIX |
+ US-1-INBOUND |    0.0049 |        60 |        60 |      0.00 |         2 |               1 |
+US-1-OUTBOUND |    0.0089 |        60 |        60 |      0.00 |         2 |               1 |
+Matching:
+      RATE NAME |      COST | INCREMENT |   MINIMUM | SURCHARGE |    WEIGHT |          PREFIX |
+* US-1-OUTBOUND |    0.0089 |        60 |        60 |      0.00 |         2 |               1 |
+   US-1-INBOUND |    0.0049 |        60 |        60 |      0.00 |         2 |               1 |
+```
+
+# Limits
+## How Kazoo does limits
 
 Limits are a concept of limiting how many flat-rate (included) calls are available which WON'T actually result in a charge.
 
@@ -109,11 +145,10 @@ You can limit based on:
 * Allotments
   * Buckets of minutes per time-period
     * Monthly, Weekly, Daily, Hourly, Minutely (seriously)
-* Hard/Soft Limits
-  * Hard limits are the max limit
-  * Soft limits are for debugging mostly
 
 Emergency calls are immediately authorized, as are outbound calls to tollfree numbers.
+
+Each CDR is augmented with two fields showing the trunk usage for the account and the reseller at the time of the call. The format is `{INBOUND}/{OUTBOUND}/{TWOWAY}/{BURST}`.
 
 -----
 
@@ -170,7 +205,7 @@ SUP commands later will help you inspect that cache.
 
 -----
 
-## How to set it up
+## How to set authz up
 
 * Enable authorization on calls
    `sup whapps_config set_default ecallmgr authz_enabled true`
@@ -192,7 +227,7 @@ SUP commands later will help you inspect that cache.
 
 -----
 
-## How to set it up
+## How to set account limits up
 
 Add limits to an account:
 
@@ -210,7 +245,7 @@ POST /v2/accounts/{ACCOUNT_ID}/limits
 
 Check the [limits schema](https://github.com/2600hz/kazoo/blob/rating_routing/applications/crossbar/priv/couchdb/schemas/limits.json) for various limits to be set here and read more about the [limits API](https://github.com/2600hz/kazoo/blob/rating_routing/applications/crossbar/doc/limits.md).
 
-## How to set it up
+## How to set manual limits up
 
 System admins can manually restrict an account's limits:
 
@@ -218,7 +253,7 @@ Prefix any of the limit doc's keys with `pvt_` will restrict the account's abili
 
 Admins can also disable limits entirely for the account (useful on the top-level account). Setting '"pvt_enabled":false`, on the account's limit doc results in all calls being authorized by that account (reseller authz still applies if not top level account).
 
-## How to check that it's operating
+## How to check that limits are operating
 
 ```
 sup jonny5_maintenance authz_summary [{ACCOUNT_ID}]
@@ -247,7 +282,7 @@ sup jonny5_maintenance limits_summary [{ACCOUNT_ID}]
 +----------------------------------+-------+----------------+------------+--------------------------+------------+-------------+
 ```
 
-## More SUP goodnes
+## How to credit/debit an account
 
 Credit in Kazoo is not tied to a billing system. Administrators can add or remove funds from an account as they need:
 
@@ -255,6 +290,8 @@ Credit in Kazoo is not tied to a billing system. Administrators can add or remov
 * `sup whistle_services_maintenance debit {ACCOUNT_ID} 5.0`
 
 Each command above will add/remove 5 dollars to/from the account.
+
+-----
 
 ## How to read the logs
 
@@ -289,8 +326,3 @@ This call is consuming a flat rate trunk
 This call was authorized because it is an outbound tollfree call
 
 -----
-
-## What to do when it doesn't work
-
-Helpful sup commands
-Performance impact
