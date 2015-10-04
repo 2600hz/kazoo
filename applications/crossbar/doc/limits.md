@@ -83,11 +83,6 @@ The version 2 will respond with a "402 - accept charges" first. You will then ne
     "data": {
         "twoway_trunks": 0,
         "inbound_trunks": 11,
-        "id": "limits",
-        "ui_metadata": {
-            "version": "v3.19_s3",
-            "ui": "monster-ui"
-        },
         "allow_prepay": true,
         "outbound_trunks": 5
     }
@@ -101,11 +96,6 @@ The version 2 will respond with a "402 - accept charges" first. You will then ne
     "data": {
         "twoway_trunks": 0,
         "inbound_trunks": 11,
-        "id": "limits",
-        "ui_metadata": {
-            "version": "v3.19_s3",
-            "ui": "monster-ui"
-        },
         "allow_prepay": true,
         "outbound_trunks": 5
     },
