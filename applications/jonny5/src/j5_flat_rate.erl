@@ -34,10 +34,13 @@ authorize(Request, Limits) ->
     case eligible_for_flat_rate(Request) of
         'true' ->
             lager:debug("checking if account ~s has available flat rate trunks"
-                        ,[j5_limits:account_id(Limits)]),
+                        ,[j5_limits:account_id(Limits)]
+                       ),
             maybe_consume_flat_rate(Request, Limits);
         'false' ->
-            lager:debug("number '~s' is not eligible for flat rate trunks", [j5_request:number(Request)]),
+            lager:debug("number '~s' is not eligible for flat rate trunks"
+                        ,[j5_request:number(Request)]
+                       ),
             Request
     end.
 
@@ -61,9 +64,13 @@ eligible_for_flat_rate(Request) ->
     Number = wnm_util:to_e164(j5_request:number(Request)),
     TrunkWhitelist = ?WHITELIST,
     TrunkBlacklist = ?BLACKLIST,
-    (wh_util:is_empty(TrunkWhitelist) orelse re:run(Number, TrunkWhitelist) =/= nomatch)
+    (wh_util:is_empty(TrunkWhitelist)
+     orelse re:run(Number, TrunkWhitelist) =/= 'nomatch'
+    )
         andalso
-          (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= nomatch).
+          (wh_util:is_empty(TrunkBlacklist)
+           orelse re:run(Number, TrunkBlacklist) =:= 'nomatch'
+          ).
 
 %%--------------------------------------------------------------------
 %% @private
