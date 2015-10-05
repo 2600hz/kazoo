@@ -277,7 +277,7 @@ import_missing_account(_AccountId, 'undefined') ->
     lager:debug("shared auth reply did not define an account definition"),
     'false';
 import_missing_account(AccountId, Account) ->
-    %% check if the acount datbase exists
+    %% check if the account database exists
     Db = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:db_exists(Db) of
         %% if the account database exists make sure it has the account

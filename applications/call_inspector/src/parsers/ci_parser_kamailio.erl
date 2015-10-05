@@ -327,16 +327,16 @@ rm_newline(Line0) ->
     Line.
 
 -spec label(ne_binary()) -> api_binary().
-label(<<"recieved internal reply ", Label/binary>>) -> Label;
-label(<<"recieved ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
+label(<<"received internal reply ", Label/binary>>) -> Label;
+label(<<"received ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
 label(<<"external reply ", Label/binary>>) -> Label;
 label(<<"received failure reply ", Label/binary>>) -> Label;
-label(<<"recieved ", Label/binary>>) -> Label;
+label(<<"received ", Label/binary>>) -> Label;
 label(_Other) -> 'undefined'.
 
 -spec from(ne_binaries(), Default) -> ne_binary() | Default.
 from([], Default) -> Default;
-from([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
+from([<<"start|received internal reply", _/binary>>|_Data], Default) -> Default;
 from([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
 from([<<"log|source ", From/binary>>|_Data], Default) ->
     get_ip(From, Default);
@@ -352,7 +352,7 @@ get_ip(Bin, Default) ->
 
 -spec to(ne_binaries(), Default) -> ne_binary() | Default.
 to([], Default) -> Default;
-to([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
+to([<<"start|received internal reply",_/binary>>|Data], Default) ->
     to(Data, Default);
 to([<<"start|",_/binary>>|_Data], Default) -> Default;
 to([<<"pass|",To/binary>>|_Data], Default) ->
@@ -362,7 +362,7 @@ to([_Datum|Data], Default) ->
 
 -spec from_port(ne_binaries(), Default) -> ne_binary() | Default.
 from_port([], Default) -> Default;
-from_port([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
+from_port([<<"start|received internal reply", _/binary>>|_Data], Default) -> Default;
 from_port([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
 from_port([<<"log|source ", From/binary>>|_Data], Default) ->
     get_port(From, Default);
@@ -378,7 +378,7 @@ get_port(Bin, Default) ->
 
 -spec to_port(ne_binaries(), Default) -> ne_binary() | Default.
 to_port([], Default) -> Default;
-to_port([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
+to_port([<<"start|received internal reply",_/binary>>|Data], Default) ->
     to_port(Data, Default);
 to_port([<<"start|",_/binary>>|_Data], Default) -> Default;
 to_port([<<"pass|",To/binary>>|_Data], Default) ->

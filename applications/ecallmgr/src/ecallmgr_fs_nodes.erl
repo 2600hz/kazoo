@@ -621,7 +621,7 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
 
 -spec handle_nodedown(fs_node(), state()) -> 'ok'.
 handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
-    lager:critical("recieved node down notice for ~s", [NodeName]),
+    lager:critical("received node down notice for ~s", [NodeName]),
     _ = maybe_disconnect_from_node(Node),
     gen_server:cast(Srv, {'remove_capabilities', NodeName}),
     case maybe_connect_to_node(Node) of
@@ -776,7 +776,7 @@ start_preconfigured_servers() ->
             _ = ecallmgr_config:flush(<<"fs_nodes">>),
             start_preconfigured_servers();
         _E ->
-            lager:debug("recieved a non-list for fs_nodes: ~p", [_E]),
+            lager:debug("received a non-list for fs_nodes: ~p", [_E]),
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
             _ = ecallmgr_config:flush(<<"fs_nodes">>),
             start_preconfigured_servers()

@@ -783,7 +783,7 @@ notify_expire([Node|Nodes], Pids) ->
 notify_new(Node, #state{notify_new=Set}) ->
     notify_new(Node, sets:to_list(Set));
 notify_new(Node, Pids) ->
-    lager:info("recieved heartbeat from new node ~s", [Node]),
+    lager:info("received heartbeat from new node ~s", [Node]),
     _ = [gen_listener:cast(Pid, {'wh_nodes', {'new', Node}})
          || Pid <- Pids
         ],

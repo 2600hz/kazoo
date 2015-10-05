@@ -142,7 +142,7 @@ handle_publisher_usurp(JObj, Props) ->
     Ref = props:get_value('reference', Props),
     Node = wh_util:to_binary(props:get_value('node', Props)),
 
-    lager:debug("recieved publisher usurp for ~s on ~s (if ~s != ~s)"
+    lager:debug("received publisher usurp for ~s on ~s (if ~s != ~s)"
                 ,[wh_json:get_value(<<"Call-ID">>, JObj)
                   ,wh_json:get_value(<<"Media-Node">>, JObj)
                   ,Ref
