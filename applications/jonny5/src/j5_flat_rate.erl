@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%% Dave Singer
 %%%-------------------------------------------------------------------
 -module(j5_flat_rate).
 
@@ -12,15 +13,14 @@
 
 -include("jonny5.hrl").
 
+-define(DEFAULT_TRUNK_ELIGIBLE_ON_REGEX_ERROR, 'false').
 -define(DEFAULT_WHITELIST, <<"^\\+?1\\d{10}$">>).
 -define(DEFAULT_BLACKLIST, <<"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$">>).
 
 -ifdef(TEST).
--define(WHITELIST, ?DEFAULT_WHITELIST).
--define(BLACKLIST, ?DEFAULT_BLACKLIST).
+-define(TRUNK_ELIGIBLE_ON_REGEX_ERROR, ?DEFAULT_TRUNK_ELIGIBLE_ON_REGEX_ERROR).
 -else.
--define(WHITELIST, fun() ->  whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST) end()).
--define(BLACKLIST, fun() ->  whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST) end()).
+-define(TRUNK_ELIGIBLE_ON_REGEX_ERROR, fun() ->  wh_util:is_true(whapps_config:get(<<"jonny5">>, <<"default_trunk_eligible_on_regex_error">>, ?DEFAULT_TRUNK_ELIGIBLE_ON_REGEX_ERROR)) end()).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -31,10 +31,12 @@
 %%--------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
+    lager:debug("checking if account ~s has available flat rate trunks"
+		,[j5_limits:account_id(Limits)]),
+    lager:debug("Account limits: ~p" ,[Limits]),
+    lager:debug("Req Info: ~p" ,[Request]),
     case eligible_for_flat_rate(Request) of
         'true' ->
-            lager:debug("checking if account ~s has available flat rate trunks"
-                        ,[j5_limits:account_id(Limits)]),
             maybe_consume_flat_rate(Request, Limits);
         'false' ->
             lager:debug("number '~s' is not eligible for flat rate trunks", [j5_request:number(Request)]),
@@ -58,12 +60,50 @@ reconcile_cdr(_, _) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec eligible_for_flat_rate(j5_request:request()) -> boolean().
 eligible_for_flat_rate(Request) ->
+    Direction = j5_request:call_direction(Request),
+    % sample flat_rate_whitelist_inbound ".*"
+    % sample flat_rate_whitelist_inbound "^\\+?1(800|888|877|866|855|844)\\d{7}$"
+    % For backward compatibility if there is no config setting with the direction it will try without the direction in the param name.
+    % If not using the direction in the param name the white and black lists apply to both inbound and outbound. 
+    % If that is not set it will default to the macro defined defaults that also apply to both inbound and outbound.
+    TrunkWhitelist = get_white_black_lists(<<"flat_rate">>, <<"whitelist">>, Direction, ?DEFAULT_WHITELIST),
+    TrunkBlacklist = get_white_black_lists(<<"flat_rate">>, <<"blacklist">>, Direction, ?DEFAULT_BLACKLIST),
     Number = wnm_util:to_e164(j5_request:number(Request)),
-    TrunkWhitelist = ?WHITELIST,
-    TrunkBlacklist = ?BLACKLIST,
-    (wh_util:is_empty(TrunkWhitelist) orelse re:run(Number, TrunkWhitelist) =/= nomatch)
-        andalso
-          (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= nomatch).
+    lager:debug("Checking if number, ~s, matches to ~s white and black lists.", [Number, Direction]),
+    lager:debug("whitelist: /~s/.", [TrunkWhitelist]),
+    lager:debug("blacklist: /~s/.", [TrunkBlacklist]),
+    case catch wh_util:is_empty(TrunkWhitelist) orelse re:run(Number, TrunkWhitelist) =/= 'nomatch' of
+    'true' -> 
+        lager:debug("Matched trunk whitelist or empty whitelist.", []),
+        case catch (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= 'nomatch') of
+            'true' -> 
+                lager:debug("Did NOT match trunk blacklist or empty blacklist.", []),
+                'true';
+            'false' ->
+                lager:debug("Matched trunk blacklist.", []),
+                'false';
+            Err ->
+                _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
+                lager:debug("Error in ~s blacklist. trunk eligible anyway: ~p, bad regex: /~s/ error: ~p", [Direction, _Allow, TrunkBlacklist, Err]),
+                _Allow
+        end;
+    'false' ->
+        lager:debug("Did NOT match trunk whitelist.", []),
+        'false';
+    Err ->
+        _Allow = ?TRUNK_ELIGIBLE_ON_REGEX_ERROR,
+        lager:debug("Error in ~s whitelist. trunk eligible anyway: ~p, bad regex /~s/ error: ~p", [Direction, _Allow, TrunkWhitelist, Err]),
+        _Allow
+    end.
+
+-spec get_white_black_lists(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+get_white_black_lists(List_Type, Color, Direction, Default) ->
+    case  whapps_config:get(<<"jonny5">>, <<List_Type/binary, "_", Direction/binary, "_", Color/binary>>) of
+        'undefined' ->
+            whapps_config:get(<<"jonny5">>, <<List_Type/binary, "_", Color/binary>>, Default);
+        _Result ->
+            _Result
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
