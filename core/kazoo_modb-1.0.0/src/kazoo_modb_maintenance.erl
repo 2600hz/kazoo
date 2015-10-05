@@ -62,9 +62,9 @@ should_delete(AccountModb, Months) ->
     ((ModYear * 12) + ModMonth) =< Months.
 
 -spec delete_modb(ne_binary()) -> 'ok'.
-delete_modb(<<_:42/binary, "-", _:4/binary, _:2/binary>> = AccountModb) ->
+delete_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountModb) ->
     delete_modb(wh_util:format_account_db(AccountModb));
-delete_modb(<<_:48/binary, "-", _:4/binary, _:2/binary>> = AccountModb) ->
+delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb) ->
     'ok' = couch_util:archive(AccountModb),
     _Deleted = couch_mgr:db_delete(AccountModb),
     io:format("    deleted: ~p~n", [_Deleted]),

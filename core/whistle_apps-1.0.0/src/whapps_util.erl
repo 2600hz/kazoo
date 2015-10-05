@@ -256,13 +256,13 @@ get_account_mods(AccountId, Encoding) ->
     ].
 
 -spec is_matched_account_mod(ne_binary(), ne_binary()) -> boolean().
-is_matched_account_mod(<<"account/", DbActId:34/binary, _/binary>>
-                       ,<<"account/", SearchId/binary>>
-                      ) when DbActId =:= SearchId ->
+is_matched_account_mod(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)  %% DbActId
+                       ,?MATCH_ACCOUNT_UNENCODED(A, B, Rest)  %% SearchId
+                      ) ->
     'true';
-is_matched_account_mod(<<"account%2F", DbActId:38/binary, _/binary>>
-                       ,<<"account%2F",SearchId/binary>>
-                      ) when DbActId =:= SearchId ->
+is_matched_account_mod(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)  %% DbActId
+                       ,?MATCH_ACCOUNT_ENCODED(A, B, Rest)  %% SearchId
+                      ) ->
     'true';
 is_matched_account_mod(_, _) ->
     'false'.

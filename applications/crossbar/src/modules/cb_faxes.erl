@@ -155,7 +155,7 @@ maybe_add_types_accepted(Context, _) -> Context.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(Context, ?INCOMING, <<YYYY:4/binary, MM:2/binary, "-", _/binary>> = FaxId, ?ATTACHMENT) ->
+content_types_provided(Context, ?INCOMING, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
     Year  = wh_util:to_integer(YYYY),
     Month = wh_util:to_integer(MM),
     Ctx = cb_context:set_account_modb(Context, Year, Month),
@@ -321,7 +321,7 @@ create(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(<<YYYY:4/binary, MM:2/binary, "-", _/binary>> = Id, Context) ->
+read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
     Year  = wh_util:to_integer(YYYY),
     Month = wh_util:to_integer(MM),
     crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month));
@@ -508,7 +508,7 @@ load_smtp_log(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
-load_fax_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, Context) ->
+load_fax_binary(?MATCH_MODB_PREFIX(Year,Month,_) = FaxId, Context) ->
     do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
 load_fax_binary(FaxId, Context) ->
     do_load_fax_binary(FaxId, Context).

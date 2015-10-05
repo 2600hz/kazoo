@@ -215,53 +215,35 @@ format_account_id(DbName, Timestamp)
 format_account_id(<<"accounts">>, _) -> <<"accounts">>;
 
 %% Short-circuit IDs already in encoding
-format_account_id(<<_:32/binary>> = AccountId, 'raw') ->
+format_account_id(?MATCH_ACCOUNT_RAW(AccountId), 'raw') ->
     AccountId;
-format_account_id(<<"account/", _:34/binary>> = AccountId, 'unencoded') ->
+format_account_id(?MATCH_ACCOUNT_UNENCODED(_) = AccountId, 'unencoded') ->
     AccountId;
-format_account_id(<<"account%2F", _:38/binary>> = AccountId, 'encoded') ->
+format_account_id(?MATCH_ACCOUNT_ENCODED(_) = AccountId, 'encoded') ->
     AccountId;
 
 format_account_id(AccountId, 'raw') ->
     raw_account_id(AccountId);
 format_account_id(AccountId, 'unencoded') ->
-    <<A:2/binary, B:2/binary, Rest/binary>> = raw_account_id(AccountId),
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
     to_binary(["account/", A, "/", B, "/", Rest]);
 format_account_id(AccountId, 'encoded') ->
-    <<A:2/binary, B:2/binary, Rest/binary>> = raw_account_id(AccountId),
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
     to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 -spec raw_account_id(ne_binary()) -> ne_binary().
-raw_account_id(<<_:32/binary>> = AccountId) ->
+raw_account_id(?MATCH_ACCOUNT_RAW(AccountId)) ->
     AccountId;
-raw_account_id(<<"account/"
-                 ,A:2/binary
-                 ,"/", B:2/binary
-                 ,"/", Rest:28/binary
-               >>) ->
-    <<A/binary, B/binary, Rest/binary>>;
-raw_account_id(<<"account%2F"
-                 ,A:2/binary
-                 ,"%2F", B:2/binary
-                 ,"%2F", Rest:28/binary
-               >>) ->
-    <<A/binary, B/binary, Rest/binary>>;
-raw_account_id(<<AccountId:32/binary, "-", _Date:6/binary>>) ->
+raw_account_id(?MATCH_ACCOUNT_UNENCODED(A, B, Rest)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _)) ->
     AccountId;
-raw_account_id(<<"account%2F"
-                 ,A:2/binary
-                 ,"%2F", B:2/binary
-                 ,"%2F", Rest:28/binary
-                 ,"-", _Date:6/binary
-               >>) ->
-    <<A/binary, B/binary, Rest/binary>>;
-raw_account_id(<<"account/"
-                 ,A:2/binary
-                 ,"/", B:2/binary
-                 ,"/", Rest:28/binary
-                 ,"-", _Date:6/binary
-               >>) ->
-    <<A/binary, B/binary, Rest/binary>>;
+raw_account_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
 raw_account_id(<<"number/", _/binary>>=Other) ->
     Other;
 raw_account_id(Other) ->
@@ -273,22 +255,12 @@ raw_account_id(Other) ->
     end.
 
 -spec raw_account_modb(ne_binary()) -> ne_binary().
-raw_account_modb(<<_:32/binary, "-", _Date:6/binary>>=AccountId) ->
+raw_account_modb(?MATCH_MODB_SUFFIX_RAW(_, _, _) = AccountId) ->
     AccountId;
-raw_account_modb(<<"account%2F"
-                 ,A:2/binary
-                 ,"%2F", B:2/binary
-                 ,"%2F", Rest:28/binary
-                 ,"-", Date:6/binary
-               >>) ->
-    <<A/binary, B/binary, Rest/binary, "-", Date/binary>>;
-raw_account_modb(<<"account/"
-                 ,A:2/binary
-                 ,"/", B:2/binary
-                 ,"/", Rest:28/binary
-                 ,"-", Date:6/binary
-               >>) ->
-    <<A/binary, B/binary, Rest/binary,"-", Date/binary>>.
+raw_account_modb(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)) ->
+    ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month);
+raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
+    ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
 
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
@@ -298,11 +270,10 @@ format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
 format_account_id(Account, Year, Month) when is_integer(Year),
                                              is_integer(Month) ->
     AccountId = raw_account_id(Account),
-    <<(format_account_id(AccountId, 'encoded'))/binary
-      ,"-"
-      ,(to_binary(Year))/binary
-      ,(pad_month(Month))/binary
-    >>.
+    ?MATCH_MODB_SUFFIX_ENCODED(format_account_id(AccountId, 'encoded')
+                               ,to_binary(Year)
+                               ,pad_month(Month)
+                              ).
 
 -spec format_account_mod_id(ne_binary()) -> ne_binary().
 -spec format_account_mod_id(ne_binary(), gregorian_seconds() | wh_now()) -> ne_binary().
@@ -321,17 +292,19 @@ format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
 -spec format_account_db(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
-format_account_db(AccountId) -> format_account_id(AccountId, 'encoded').
+format_account_db(AccountId) ->
+    format_account_id(AccountId, 'encoded').
 
 -spec format_account_modb(ne_binary()) -> ne_binary().
-format_account_modb(AccountId) -> format_account_modb(AccountId, 'raw').
+format_account_modb(AccountId) ->
+    format_account_modb(AccountId, 'raw').
 format_account_modb(AccountId, 'raw') ->
     raw_account_modb(AccountId);
 format_account_modb(AccountId, 'unencoded') ->
-    <<A:2/binary, B:2/binary, Rest/binary>> = raw_account_modb(AccountId),
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
     to_binary(["account/", A, "/", B, "/", Rest]);
 format_account_modb(AccountId, 'encoded') ->
-    <<A:2/binary, B:2/binary, Rest/binary>> = raw_account_modb(AccountId),
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
     to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 -spec pad_month(wh_month() | ne_binary()) -> ne_binary().
