@@ -623,7 +623,7 @@ handle_execute_complete(<<"noop">>, JObj, #state{msg_id=CurrMsgId}=State) ->
     NoopId = wh_json:get_value(<<"Application-Response">>, JObj),
     case NoopId =:= CurrMsgId of
         'false' ->
-            lager:debug("recieved noop execute complete with incorrect id ~s (expecting ~s)"
+            lager:debug("received noop execute complete with incorrect id ~s (expecting ~s)"
                         ,[NoopId, CurrMsgId]
                        ),
             State;

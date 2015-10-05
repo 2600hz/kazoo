@@ -378,7 +378,7 @@ process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
          ,{<<"Status">>, props:get_value(<<"Status">>, Props)}
              | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
         ])),
-    lager:debug("Recieved delivery event for message ~s",[CallId]),
+    lager:debug("received delivery event for message ~s",[CallId]),
     EventProps = get_event_uris(Props, BaseProps),
     wh_amqp_worker:cast(EventProps, fun(A) -> wapi_sms:publish_targeted_delivery(ServerId, A) end);
 
