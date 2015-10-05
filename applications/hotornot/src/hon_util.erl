@@ -38,14 +38,21 @@ find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
     Keys = build_keys(E164),
 
     lager:debug("searching for prefixes for ~s: ~p", [E164, Keys]),
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{'keys', Keys}
-                                                                  ,'include_docs'
-                                                                 ])
+    case couch_mgr:get_results(?WH_RATES_DB
+                               ,<<"rates/lookup">>
+                               ,[{'keys', Keys}
+                                 ,'include_docs'
+                                ]
+                              )
     of
         {'ok', []}=OK -> OK;
+        {'error', _}=E -> E;
         {'ok', ViewRows} ->
-            {'ok', [wh_json:get_value(<<"doc">>, ViewRow) || ViewRow <- ViewRows]};
-        {'error', _}=E -> E
+            {'ok'
+             ,[wh_json:get_value(<<"doc">>, ViewRow)
+               || ViewRow <- ViewRows
+              ]
+            }
     end;
 find_candidate_rates(DID, _) ->
     lager:debug("DID ~s is too short", [DID]),
@@ -130,8 +137,8 @@ matching_options(Rate, RouteOptions) ->
 options_match([], []) -> 'true';
 options_match([], _) -> 'true';
 options_match(RateOptions, RouteOptions) ->
-    lists:all(fun(RouteOpt) ->
-                      props:get_value(RouteOpt, RateOptions, 'false') =/= 'false'
+    lists:all(fun(RouteOption) ->
+                      props:get_value(RouteOption, RateOptions, 'false') =/= 'false'
               end
               ,RouteOptions
              ).

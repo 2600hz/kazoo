@@ -22,50 +22,67 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Add arbitrary credit to an account, without charing the accounts
+%% Add arbitrary credit to an account, without charging the accounts
 %% credit card
 %% @end
 %%--------------------------------------------------------------------
 -spec credit(ne_binary(), text()) -> 'no_return'.
 credit(AccountId, Amount) ->
     Units = wht_util:dollars_to_units(Amount),
-    Routines = [fun(T) -> wh_transaction:set_reason(<<"admin_discretion">>, T) end
-                ,fun(T) ->
-                         wh_transaction:set_description(<<"system adminstrator credit modification">>, T)
-                 end
-               ],
-    T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:credit(AccountId, Units), Routines),
-    case wh_transaction:save(T) of
-        {'ok', _} ->
-            lager:info("credited account ~p $~p~n", [AccountId, Amount]);
+
+    case create_transaction(wh_transaction:credit(AccountId, Units)) of
+        'ok' ->
+            lager:info("credited account ~p $~p", [AccountId, Amount]);
         {'error', _R} ->
-            lager:info("failed to credit account: ~s~n ~p", [AccountId, _R])
+            lager:info("failed to credit account: ~s: ~p", [AccountId, _R])
     end,
     'no_return'.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Add arbitrary debit to an account, without charing the accounts
+%% Add arbitrary debit to an account, without charging the accounts
 %% debit card
 %% @end
 %%--------------------------------------------------------------------
 -spec debit(ne_binary(), text()) -> 'no_return'.
 debit(AccountId, Amount) ->
     Units = wht_util:dollars_to_units(Amount),
-    Routines = [fun(T) -> wh_transaction:set_reason(<<"admin_discretion">>, T) end
-                ,fun(T) ->
-                         wh_transaction:set_description(<<"system adminstrator credit modification">>, T)
-                 end
-               ],
-    T = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:debit(AccountId, Units), Routines),
-    case wh_transaction:save(T) of
-        {'ok', _} ->
-            lager:info("debited account ~s $ ~s~n", [AccountId, Amount]);
+
+    case create_transaction(wh_transaction:debit(AccountId, Units)) of
+        'ok' -> lager:info("debited account ~s $~p", [AccountId, Amount]);
         {'error', _R} ->
-            lager:info("failed to debit account: ~s~n ~p", [AccountId, _R])
+            lager:info("failed to debit account ~s: ~p"
+                       ,[AccountId, _R]
+                      )
     end,
     'no_return'.
+
+-spec create_transaction(wh_transaction:wh_transaction()) ->
+                                'ok' |
+                                {'error', any()}.
+create_transaction(Transaction) ->
+    Routines = [fun admin_discretion/1
+                ,fun admin_description/1
+               ],
+    T = lists:foldl(fun(F, T) -> F(T) end
+                    ,Transaction
+                    ,Routines
+                   ),
+    case wh_transaction:save(T) of
+        {'ok', _} -> 'ok';
+        {'error', _R}=E -> E
+    end.
+
+-spec admin_discretion(wh_transaction:wh_transaction()) ->
+                              wh_transaction:wh_transaction().
+admin_discretion(T) ->
+    wh_transaction:set_reason(<<"admin_discretion">>, T).
+
+-spec admin_description(wh_transaction:wh_transaction()) ->
+                              wh_transaction:wh_transaction().
+admin_description(T) ->
+    wh_transaction:set_description(<<"system adminstrator credit modification">>, T).
 
 %%--------------------------------------------------------------------
 %% @public

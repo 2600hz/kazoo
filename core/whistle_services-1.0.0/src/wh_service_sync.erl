@@ -269,7 +269,7 @@ sync_services(AccountId, ServiceJObj, ServiceItems) ->
             _ = mark_clean_and_status(wh_util:to_binary(Reason), ServiceJObj),
             maybe_sync_reseller(AccountId, ServiceJObj);
         _E:R ->
-            %% TODO: certain errors (such as no CC or expired, ect) should
+            %% TODO: certain errors (such as no CC or expired, etc) should
             %%    move the account of good standing...
             lager:info("unable to sync services(~p): ~p", [_E, R]),
             {'error', R}

@@ -283,7 +283,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
 
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need
-%%   to wait for conferences, ect.  Since Kamailio does not honor
+%%   to wait for conferences, etc.  Since Kamailio does not honor
 %%   Defer-Response we can use that flag on registrar errors
 %%   to queue in Kazoo but still advance Kamailio, just need to check here.
 -spec maybe_defered_error(ne_binary(), ne_binary(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.

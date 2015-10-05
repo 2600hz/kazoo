@@ -328,7 +328,7 @@ get_limit_boolean(Key, JObj, Default) ->
     end.
 
 -spec get_public_limit_boolean(ne_binary(), wh_json:object(), boolean()) -> boolean().
-%% NOTE: all other booleans (inbound_soft_limit, allow_postpay, ect) should
+%% NOTE: all other booleans (inbound_soft_limit, allow_postpay, etc) should
 %%  not be made public via this helper.
 get_public_limit_boolean(<<"allow_prepay">> = Key, JObj, Default) ->
     case wh_json:get_value(Key, JObj) of

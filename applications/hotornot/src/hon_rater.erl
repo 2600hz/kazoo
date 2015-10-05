@@ -90,7 +90,8 @@ get_rate_data(JObj, ToDID, FromDID, Rates) ->
                         ,[wh_json:get_value(<<"rate_name">>, Rate)
                           ,FromDID
                           ,ToDID
-                         ]),
+                         ]
+                       ),
             {'ok', rate_resp(Rate, JObj)}
     end.
 

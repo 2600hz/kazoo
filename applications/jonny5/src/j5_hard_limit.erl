@@ -44,8 +44,8 @@ reconcile_cdr(_, _) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec calls_at_limit(j5_limits:limits()) -> boolean().
 calls_at_limit(Limits) ->
-    Limit =  j5_limits:calls(Limits),
-    Used = j5_channels:total_calls(j5_limits:account_id(Limits)),
+    Limit = j5_limits:calls(Limits),
+    Used  = j5_channels:total_calls(j5_limits:account_id(Limits)),
     should_deny(Limit, Used).
 
 %%--------------------------------------------------------------------
@@ -56,8 +56,8 @@ calls_at_limit(Limits) ->
 %%--------------------------------------------------------------------
 -spec resource_consumption_at_limit(j5_limits:limits()) -> boolean().
 resource_consumption_at_limit(Limits) ->
-    Limit =  j5_limits:resource_consuming_calls(Limits),
-    Used = j5_channels:resource_consuming(j5_limits:account_id(Limits)),
+    Limit = j5_limits:resource_consuming_calls(Limits),
+    Used  = j5_channels:resource_consuming(j5_limits:account_id(Limits)),
     should_deny(Limit, Used).
 
 %%--------------------------------------------------------------------
@@ -70,5 +70,3 @@ resource_consumption_at_limit(Limits) ->
 should_deny(-1, _) -> 'false';
 should_deny(0, _) -> 'true';
 should_deny(Limit, Used) -> Used > Limit.
-
-
