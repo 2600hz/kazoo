@@ -122,11 +122,11 @@ Limits are a concept of limiting how many flat-rate (included) calls are availab
 You can limit based on:
 
 * Inbound
-  * Limit the number of simulataneous inbound calls that can be received
+  * Limit the number of simultaneous inbound calls that can be received
 * Outbound
-  * Limt the number of simulataneous outbound calls that can be made
+  * Limt the number of simultaneous outbound calls that can be made
 * Two-way
-  * Limt the number of simulataneous calls that can be made
+  * Limt the number of simultaneous calls that can be made
 * Resource consuming
   * Any endpoint the system operators likely pay (upstream carriers generally)
   * Limit the number of calls that can consume resources (internal calls unaffected)
@@ -139,7 +139,7 @@ You can limit based on:
   * `"twoway_bundled":"user"`, for example
 * Prepay
   * Pay up front, deduct until 0
-  * No simulataneous call limit
+  * No simultaneous call limit
 * Postpay
   * Basically prepay that can go negative
 * Allotments
