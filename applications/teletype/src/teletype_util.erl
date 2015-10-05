@@ -106,8 +106,9 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
              ,{<<"template_id">>, get('template_id')}
              ,{<<"template_account_id">>, get('template_account_id')}
             ]),
+    lager:debug("attempting to save notify smtp log"),
     _ = kazoo_modb:save_doc(AccountDb, wh_json:from_list(Doc)),
-    lager:debug("saved notify smtp log").
+    'ok'.
 
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
 email_body(RenderedTemplates) ->

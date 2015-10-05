@@ -191,8 +191,8 @@ handle_other(<<"PROXY">>, Args, State) ->
     {State};
 handle_other(Verb, Args, State) ->
     %% You can implement other SMTP verbs here, if you need to
-    lager:debug("500 Error: command not recognized : ~p / ~p",[Verb,Args]),
-    {["500 Error: command not recognized : '", wh_util:to_list(Verb), "'"], State}.
+    lager:debug("500 Error: command not recognized : '~s ~s'",[Verb,Args]),
+    {["500 Error: command not recognized : '", Verb, "'"], State}.
 
 -spec handle_AUTH('login' | 'plain' | 'cram-md5', binary(), binary() | {binary(), binary()}, state()) ->
                          'error'.
