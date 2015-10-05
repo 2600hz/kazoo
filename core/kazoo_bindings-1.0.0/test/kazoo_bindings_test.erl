@@ -112,7 +112,7 @@ expanded_paths() ->
                   ])
          end).
 
-%% Tries to make a pattern wrong. Will not always suceed because a pattern
+%% Tries to make a pattern wrong. Will not always succeed because a pattern
 %% like "#" can be anything at all.
 %%
 %% Returns {Str, ShouldMatchOriginal}.

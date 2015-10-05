@@ -602,7 +602,7 @@ handle_request({<<"STARTTLS">>, <<>>}, #state{socket = Socket, module = Module, 
 			% TODO: certfile and keyfile should be at configurable locations
 			case socket:to_ssl_server(Socket, Options2, 5000) of
 				{ok, NewSocket} ->
-					%io:format("SSL negotiation sucessful~n"),
+					%io:format("SSL negotiation successful~n"),
 					{ok, State#state{socket = NewSocket, envelope=undefined,
 							authdata=undefined, waitingauth=false, readmessage=false,
 							tls=true, callbackstate = Module:handle_STARTTLS(OldCallbackState)}};

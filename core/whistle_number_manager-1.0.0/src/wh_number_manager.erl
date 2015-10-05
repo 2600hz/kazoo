@@ -121,7 +121,7 @@ prepare_check_result([_|Results], JObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Attempt to find the number, and if sucessful return the account
+%% Attempt to find the number, and if successful return the account
 %% assignment
 %% @end
 %%--------------------------------------------------------------------

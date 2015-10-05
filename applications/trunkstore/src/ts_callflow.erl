@@ -158,7 +158,7 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
                                           ], JObj, <<"UNSPECIFIED">>) =:= <<"SUCCESS">>
             of
                 'true' ->
-                    lager:info("bridge completed sucessfully", []),
+                    lager:info("bridge completed successfully", []),
                     {'hangup', State};
                 'false' ->
                     lager:info("bridge failed: ~s"
