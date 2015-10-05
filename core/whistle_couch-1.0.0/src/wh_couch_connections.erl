@@ -193,11 +193,11 @@ get_admin_url() ->
     get_url(Host, Port, Username, Password).
 
 -spec test_conn() -> {'ok', wh_json:object()} |
-                     {'error', any()}.
+                     {'error', _}.
 test_conn() -> couch_util:server_info(get_server()).
 
 -spec test_admin_conn() -> {'ok', wh_json:object()} |
-                           {'error', any()}.
+                           {'error', _}.
 test_admin_conn() -> couch_util:server_info(get_admin_server()).
 
 -spec add_change_handler(ne_binary()) -> 'ok'.
@@ -358,7 +358,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_start_new_connection(couch_connection()) -> any().
+-spec maybe_start_new_connection(couch_connection()) -> _.
 maybe_start_new_connection(Connection) ->
     _ = wh_couch_connection_sup:add(Connection),
     _ = ets:insert(?MODULE, Connection).

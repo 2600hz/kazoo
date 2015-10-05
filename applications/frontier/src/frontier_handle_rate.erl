@@ -51,7 +51,7 @@ name_to_method(Name) ->
 resolve_method(Method) ->
     props:get_value(Method, lists:zip(methods(), names())).
 
--spec handle_rate_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_rate_req(wh_json:object(), wh_proplist()) -> _.
 handle_rate_req(JObj, _Props) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
     IncludeRealm = wh_json:is_true(<<"With-Realm">>, JObj, 'false'),
@@ -285,7 +285,7 @@ check_fallback(AccountId, 'empty', MethodList, Realm) ->
 check_fallback(_, Acc, _, _) ->
     Acc.
 
--type couch_ret() :: {'ok', wh_json:object()} | {'error', any()}.
+-type couch_ret() :: {'ok', wh_json:object()} | {'error', _}.
 -spec build_results(couch_ret(), ne_binaries(), ne_binary()) -> wh_json:objects().
 build_results({'error', _Reason}, _, _) ->
     lager:error("Can't fetch data from db: ~p", [_Reason]),

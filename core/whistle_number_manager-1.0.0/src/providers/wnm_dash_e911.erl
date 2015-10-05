@@ -154,7 +154,7 @@ maybe_update_dash_e911(Number, Address, JObj) when is_binary(Number) ->
 %%--------------------------------------------------------------------
 -spec update_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
                          {'ok', wh_json:object()} |
-                         {'error', any()}.
+                         {'error', _}.
 update_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
@@ -263,7 +263,7 @@ emergency_provisioning_request(Verb, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_location(any()) ->
+-spec is_valid_location(_) ->
                                {'geocoded', wh_json:object() | wh_json:objects()} |
                                {'provisioned', wh_json:object() | wh_json:objects()} |
                                {'invalid', binary()} |
@@ -292,7 +292,7 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_location(ne_binary(), any(), ne_binary()) ->
+-spec add_location(ne_binary(), _, ne_binary()) ->
                           {'geocoded', wh_json:object()} |
                           {'provisioned', wh_json:object()} |
                           {'error', binary()}.
@@ -386,7 +386,7 @@ json_address_to_xml_location(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_xml_to_json_address(any()) -> wh_json:object() | wh_json:objects().
+-spec location_xml_to_json_address(_) -> wh_json:object() | wh_json:objects().
 location_xml_to_json_address([]) ->
     wh_json:new();
 location_xml_to_json_address([Xml]) ->
@@ -419,7 +419,7 @@ location_xml_to_json_address(Xml) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec legacy_data_xml_to_json(any()) -> wh_json:object().
+-spec legacy_data_xml_to_json(_) -> wh_json:object().
 legacy_data_xml_to_json([]) ->
     wh_json:new();
 legacy_data_xml_to_json([Xml]) ->

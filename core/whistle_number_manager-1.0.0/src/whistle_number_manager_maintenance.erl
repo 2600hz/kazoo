@@ -76,8 +76,8 @@ reconcile(Arg) ->
 %% in the accounts
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_numbers() -> 'no_return' | {'error', any()}.
--spec reconcile_numbers(string() | ne_binary() | 'all') -> 'no_return' | {'error', any()}.
+-spec reconcile_numbers() -> 'no_return' | {'error', _}.
+-spec reconcile_numbers(string() | ne_binary() | 'all') -> 'no_return' | {'error', _}.
 
 reconcile_numbers() ->
     reconcile_numbers('all').
@@ -137,8 +137,8 @@ reconcile_accounts(AccountId) ->
 %% exist
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_providers() -> any().
--spec reconcile_providers(ne_binaries(), ne_binaries()) -> any().
+-spec reconcile_providers() -> _.
+-spec reconcile_providers(ne_binaries(), ne_binaries()) -> _.
 reconcile_providers() ->
     Paths = filelib:wildcard([code:lib_dir('whistle_number_manager'), "/src/providers/*.erl"]),
     Mods = [wh_util:to_binary(filename:rootname(filename:basename(P))) || P <- Paths],

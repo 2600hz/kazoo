@@ -50,9 +50,9 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec initialize_whapps(atoms()) -> {'error', any()} |
+-spec initialize_whapps(atoms()) -> {'error', _} |
                                     {'ok', api_pid()} |
-                                    {'ok', api_pid(), any()}.
+                                    {'ok', api_pid(), _}.
 initialize_whapps(Whapps) ->
     supervisor:start_child(?MODULE, ?SUPER_ARGS('whapps_sup', Whapps)).
 

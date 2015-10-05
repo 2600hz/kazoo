@@ -70,7 +70,7 @@ insert_values(KVs, Props) ->
 
 -type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
 -spec filter(filter_fun(), wh_proplist()) -> wh_proplist();
-            (wh_proplist(), any()) -> wh_proplist().
+            (wh_proplist(), _) -> wh_proplist().
 filter(Fun, Props) when is_function(Fun, 1), is_list(Props) ->
     [P || P <- Props, Fun(P)];
 filter(Props, Term) when is_list(Props) ->
@@ -94,9 +94,9 @@ filter_undefined(Props) ->
            end
     ].
 
--spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist()) -> any().
+-spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist()) -> _.
 -spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist(), Default) ->
-                       Default | any().
+                       Default | _.
 get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
@@ -120,8 +120,8 @@ get_value(Key, Props, Default) when is_list(Props) ->
     end.
 
 %% Given a list of keys, find the first one defined
--spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> 'undefined' | any().
--spec get_first_defined(wh_proplist_keys(), wh_proplist(), Default) -> Default | any().
+-spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> 'undefined' | _.
+-spec get_first_defined(wh_proplist_keys(), wh_proplist(), Default) -> Default | _.
 get_first_defined(Keys, Props) -> get_first_defined(Keys, Props, 'undefined').
 
 get_first_defined([], _Props, Default) -> Default;
@@ -268,13 +268,13 @@ to_querystring(Props, Prefix) ->
 %% foreach key/value pair, encode the key/value with the prefix and prepend the &
 %% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
 %% and reverse the list (putting the key/value at the end of the list)
--spec fold_kvs(ne_binaries(), any(), binary() | iolist(), iolist()) -> iolist().
+-spec fold_kvs(ne_binaries(), _, binary() | iolist(), iolist()) -> iolist().
 fold_kvs([], [], _, Acc) -> Acc;
 fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
 fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
     fold_kvs(Ks, Vs, Prefix, [<<"&">>, encode_kv(Prefix, K, V) | Acc]).
 
--spec encode_kv(iolist() | binary(), ne_binary(), any()) -> iolist().
+-spec encode_kv(iolist() | binary(), ne_binary(), _) -> iolist().
 %% If a list of values, use the []= as a separator between the key and each value
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
     encode_kv(Prefix, wh_util:to_binary(K), Vs, <<"[]=">>, []);

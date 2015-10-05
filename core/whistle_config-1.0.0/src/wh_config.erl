@@ -221,7 +221,7 @@ local_sections([Section | T], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_local_section({ne_binary(), any()}) -> {'false', 'generic'} |
+-spec is_local_section({ne_binary(), _}) -> {'false', 'generic'} |
                                                 {boolean(), ne_binary()}.
 is_local_section({SectionHost, _}) ->
     LocalHost = wh_util:to_binary(wh_network_utils:get_hostname()),

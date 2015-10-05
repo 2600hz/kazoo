@@ -41,7 +41,7 @@
                                 {'stop', whapps_call:call()}.
 -export_types([collect_dtmfs_return/0]).
 
--spec default_on_first_fun(any()) -> 'ok'.
+-spec default_on_first_fun(_) -> 'ok'.
 default_on_first_fun(_) -> 'ok'.
 
 -spec collect_dtmfs(whapps_call:call(), api_binary(), wh_timeout(), pos_integer()) ->
@@ -651,7 +651,7 @@ maybe_start_recording(#dial_req{record_call='true'
 
 -spec recording_meta(whapps_call:call(), ne_binary()) ->
                             {'ok', wh_json:object()} |
-                            {'error', any()}.
+                            {'error', _}.
 recording_meta(Call, MediaName) ->
     AcctDb = whapps_call:account_db(Call),
     MediaDoc = wh_doc:update_pvt_parameters(

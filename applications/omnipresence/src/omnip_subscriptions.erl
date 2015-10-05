@@ -146,7 +146,7 @@ handle_sync(JObj, _Props) ->
     Node = wh_json:get_value(<<"Node">>, JObj),
     gen_server:cast(?MODULE, {'sync', {Action, Node}}).
 
--spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
+-spec handle_mwi_update(wh_json:object(), wh_proplist()) -> _.
 handle_mwi_update(JObj, _Props) ->
     'true' = wapi_presence:mwi_update_v(JObj),
     notify_packages({'omnipresence', {'mwi_update', JObj}}).
@@ -338,7 +338,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec notify_packages(any()) -> 'ok'.
+-spec notify_packages(_) -> 'ok'.
 notify_packages(Msg) ->
     _ = [gen_server:cast(Pid, Msg)
          || {_, Pid, _, _} <- supervisor:which_children('omnip_sup'),
@@ -688,7 +688,7 @@ subscribe(#omnip_subscription{user=_U
             {'subscribe', S}
     end.
 
--spec notify_update(wh_json:object()) -> 'ok' | {'error', any()}.
+-spec notify_update(wh_json:object()) -> 'ok' | {'error', _}.
 notify_update(JObj) ->
     Sequence = wh_json:get_integer_value(<<"Sequence">>, JObj),
     Reply = wh_json:get_integer_value(<<"Reply">>, JObj),

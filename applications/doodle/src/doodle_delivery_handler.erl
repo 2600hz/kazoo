@@ -18,7 +18,7 @@ handle_req(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     maybe_update_doc(JObj).
 
--spec maybe_update_doc(wh_json:object()) -> any().
+-spec maybe_update_doc(wh_json:object()) -> _.
 maybe_update_doc(JObj) ->
     DeliveryCode = wh_json:get_value(<<"Delivery-Result-Code">>, JObj),
     Status = wh_json:get_value(<<"Status">>, JObj),
@@ -30,7 +30,7 @@ maybe_update_doc(JObj) ->
             end,
     update_doc(JObj, Value).
 
--spec update_doc(wh_json:object(), ne_binary()) -> any().
+-spec update_doc(wh_json:object(), ne_binary()) -> _.
 update_doc(JObj, Value) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),

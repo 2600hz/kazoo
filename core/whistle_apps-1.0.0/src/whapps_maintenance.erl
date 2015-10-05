@@ -309,7 +309,7 @@ maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
 -type migrate_values() :: [migrate_value()].
 -spec migrate_config_setting(migrate_setting(), migrate_setting()) ->
                                     'ok' |
-                                    {'error', any()}.
+                                    {'error', _}.
 migrate_config_setting(From, To) ->
     case remove_config_setting(From) of
         {'ok', _, []} -> 'ok';
@@ -321,7 +321,7 @@ migrate_config_setting(From, To) ->
 
 -spec migrate_config_setting(wh_json:object(), migrate_values(), migrate_setting()) ->
                                     'ok' |
-                                    {'error', any()}.
+                                    {'error', _}.
 migrate_config_setting(UpdatedFrom, Removed, To) ->
     case add_config_setting(To, Removed) of
         {'ok', UpdatedTo} ->
@@ -333,13 +333,13 @@ migrate_config_setting(UpdatedFrom, Removed, To) ->
 
 -spec add_config_setting(migrate_setting(), migrate_values()) ->
                                 'ok' |
-                                {'error', any()}.
+                                {'error', _}.
 add_config_setting({Id, Setting}, Values) ->
     add_config_setting(Id, Setting, Values).
 
 -spec add_config_setting(ne_binary(), config_key(), migrate_values()) ->
                                 'ok' |
-                                {'error', any()}.
+                                {'error', _}.
 add_config_setting(Id, Setting, Values) when is_binary(Id) ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, Id) of
         {'ok', JObj} -> add_config_setting(JObj, Setting, Values);
@@ -387,13 +387,13 @@ add_config_setting(JObj, ToSetting, [{FromId, Node, FromSetting, Value} | Values
 
 -spec remove_config_setting(migrate_setting()) ->
                                    {'ok', wh_json:object(), migrate_values()} |
-                                   {'error', any()}.
+                                   {'error', _}.
 remove_config_setting({Id, Setting}) ->
     remove_config_setting(Id, Setting).
 
 -spec remove_config_setting(ne_binary() | wh_json:object(), config_key()) ->
                                    {'ok', wh_json:object(), migrate_values()} |
-                                   {'error', any()}.
+                                   {'error', _}.
 remove_config_setting(Id, Setting) when is_binary(Id) ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, Id) of
         {'ok', JObj} -> remove_config_setting(JObj, Setting);
@@ -606,7 +606,7 @@ verify_aggregated_device(AccountDb, AccountId, JObj) ->
 %%--------------------------------------------------------------------
 -spec cleanup_voicemail_media(ne_binary()) ->
                                      {'ok', wh_json:objects()} |
-                                     {'error', any()}.
+                                     {'error', _}.
 cleanup_voicemail_media(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Medias = get_medias(Account),
@@ -872,7 +872,7 @@ find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_migrate_attachments(ne_binary(), ne_binary(), wh_json:object()) -> any().
+-spec maybe_migrate_attachments(ne_binary(), ne_binary(), wh_json:object()) -> _.
 maybe_migrate_attachments(AccountDb, Id, JObj) ->
     case wh_doc:attachments(JObj) of
         'undefined' ->

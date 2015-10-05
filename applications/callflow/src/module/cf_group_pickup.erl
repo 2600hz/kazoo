@@ -35,7 +35,7 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     _ = case maybe_allowed_to_intercept(Data, Call) of
             'true' ->
@@ -254,17 +254,17 @@ find_user_endpoints(UserIds, DeviceIds, Call) ->
     UserDeviceIds = cf_attributes:owned_by(UserIds, <<"device">>, Call),
     lists:merge(lists:sort(UserDeviceIds), DeviceIds).
 
--spec no_users_in_group(whapps_call:call()) -> any().
+-spec no_users_in_group(whapps_call:call()) -> _.
 no_users_in_group(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_play(<<"system_media/pickup-no_users">>, Call).
 
--spec no_channels_ringing(whapps_call:call()) -> any().
+-spec no_channels_ringing(whapps_call:call()) -> _.
 no_channels_ringing(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_play(<<"system_media/pickup-no_channels">>, Call).
 
--spec no_permission_to_intercept(whapps_call:call()) -> any().
+-spec no_permission_to_intercept(whapps_call:call()) -> _.
 %% TODO: please convert to system_media file (say is not consistent on deployments)
 no_permission_to_intercept(Call) ->
     whapps_call_command:answer(Call),

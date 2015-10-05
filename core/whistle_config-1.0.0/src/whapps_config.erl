@@ -216,9 +216,9 @@ get_ne_binary(Category, Key, Default, Node) ->
 %% node but if there is not then use the default value.
 %% @end
 %%-----------------------------------------------------------------------------
--spec get(config_category(), config_key()) -> any() | 'undefined'.
--spec get(config_category(), config_key(), Default) -> any() | Default.
--spec get(config_category(), config_key(), Default, ne_binary() | atom()) -> any() | Default.
+-spec get(config_category(), config_key()) -> _ | 'undefined'.
+-spec get(config_category(), config_key(), Default) -> _ | Default.
+-spec get(config_category(), config_key(), Default, ne_binary() | atom()) -> _ | Default.
 
 get(Category, Key) ->
     get(Category, Key, 'undefined').
@@ -244,7 +244,7 @@ get(Category, Keys, Default, Node) ->
     end.
 
 -spec get_value(config_category(), config_key(), config_key(), Default, wh_json:object()) ->
-                         Default | any().
+                         Default | _.
 get_value(Category, ?KEY_DEFAULT, Keys, Default, JObj) ->
     get_default_value(Category, Keys, Default, JObj);
 get_value(Category, Node, Keys, Default, JObj) ->
@@ -297,42 +297,42 @@ get_all_default_kvs(JObj) ->
 %% set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
--spec set(config_category(), config_key(), any()) ->
+-spec set(config_category(), config_key(), _) ->
                  {'ok', wh_json:object()}.
 set(Category, Key, Value) ->
     set(Category, Key, Value, node()).
 
--spec set(config_category(), config_key(), any(), ne_binary() | atom()) ->
+-spec set(config_category(), config_key(), _, ne_binary() | atom()) ->
                  {'ok', wh_json:object()}.
 set(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, []).
 
--spec set_default(config_category(), config_key(), any()) ->
+-spec set_default(config_category(), config_key(), _) ->
                          {'ok', wh_json:object()} | 'ok' |
-                         {'error', any()}.
+                         {'error', _}.
 set_default(Category, Key, Value) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, []).
 
 -spec update_default(config_category(), config_key(), wh_json:json_term()) ->
                             {'ok', wh_json:object()} | 'ok' |
-                            {'error', any()}.
+                            {'error', _}.
 -spec update_default(config_category(), config_key(), wh_json:json_term(), update_options()) ->
                             {'ok', wh_json:object()} | 'ok' |
-                            {'error', any()}.
+                            {'error', _}.
 update_default(Category, Key, Value) ->
     update_default(Category, Key, Value, []).
 update_default(Category, Key, Value, Options) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, Options).
 
--spec set_node(config_category(), config_key(), any(), ne_binary() | atom()) ->
+-spec set_node(config_category(), config_key(), _, ne_binary() | atom()) ->
                       {'ok', wh_json:object()}.
 set_node(Category, _, _, 'undefined') -> get_category(Category);
 set_node(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
 
--spec update_category(config_category(), config_key(), any(), ne_binary() | atom(), update_options()) ->
+-spec update_category(config_category(), config_key(), _, ne_binary() | atom(), update_options()) ->
                              {'ok', wh_json:object()} |
-                             {'error', any()}.
+                             {'error', _}.
 update_category('undefined', _, _, _, _) -> 'ok';
 update_category(_, 'undefined', _, _, _) -> 'ok';
 update_category(_, _, 'undefined', _, _) -> 'ok';
@@ -362,7 +362,7 @@ update_category(Category, Keys, Value, Node, Options) ->
             E
     end.
 
--spec update_category(config_category(), config_key(), any(), ne_binary(), update_options(), wh_json:object())
+-spec update_category(config_category(), config_key(), _, ne_binary(), update_options(), wh_json:object())
                      -> {'ok', wh_json:object()}.
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),

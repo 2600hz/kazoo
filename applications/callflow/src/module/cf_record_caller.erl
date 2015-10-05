@@ -52,7 +52,7 @@ record_caller(Data, Call, Url) ->
                                     ),
     lager:debug("recording ended").
 
--spec set_recording_url(wh_json:object(), whapps_call:call(), ne_binary(), ne_binary()) -> any().
+-spec set_recording_url(wh_json:object(), whapps_call:call(), ne_binary(), ne_binary()) -> _.
 set_recording_url(Data, Call, Url, MediaName) ->
     lager:debug("store to ~s to ~s", [MediaName, Url]),
 

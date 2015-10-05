@@ -19,7 +19,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
+-spec start(_, _) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_Type, _Args) -> kazoo_bindings_sup:start_link().
@@ -30,7 +30,7 @@ start(_Type, _Args) -> kazoo_bindings_sup:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(_) -> 'ok'.
 stop(_State) ->
     _ = exit(whereis('kazoo_bindings_sup'), 'shutdown'),
     'ok'.

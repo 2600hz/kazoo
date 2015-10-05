@@ -194,7 +194,7 @@ lookup_account_in_ports(N, Error) ->
 
 -spec maybe_check_account(wnm_number()) ->
                                  {'ok', ne_binary(), wh_proplist()} |
-                                 {'error', any()}.
+                                 {'error', _}.
 maybe_check_account(#number{assigned_to='undefined'
                             ,number=_Number
                            }) ->
@@ -227,7 +227,7 @@ maybe_check_account(#number{assigned_to=AssignedTo
 
 -spec check_account(wnm_number()) ->
                            {'ok', ne_binary(), wh_proplist()} |
-                           {'error', any()}.
+                           {'error', _}.
 check_account(#number{assigned_to=AssignedTo}=N) ->
     case wh_util:is_account_enabled(AssignedTo) of
         'false' -> {'error', {'account_disabled', AssignedTo}};

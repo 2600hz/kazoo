@@ -434,7 +434,7 @@ correct_date_braintree_subscription_fold(Key, BSub) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_resp({'ok', any()} | {'error', any()}, cb_context:context()) -> cb_context:context().
+-spec send_resp({'ok', _} | {'error', _}, cb_context:context()) -> cb_context:context().
 send_resp({'ok', JObj}, Context) ->
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}

@@ -319,7 +319,7 @@ maybe_reassign(Consumer) ->
 
 
 
--spec maybe_reassign(wh_amqp_assignment(), any()) -> 'undefined' | wh_amqp_assignment().
+-spec maybe_reassign(wh_amqp_assignment(), _) -> 'undefined' | wh_amqp_assignment().
 maybe_reassign(_, 'undefined') -> 'undefined';
 maybe_reassign(_, '$end_of_table') -> 'undefined';
 maybe_reassign(#wh_amqp_assignment{consumer=_Consumer}=ConsumerAssignment
@@ -713,13 +713,13 @@ reserve(Consumer, _, 'float') ->
 -type down_match() :: {'channel' | 'consumer', wh_amqp_assignment()}.
 -type down_matches() :: [down_match()].
 
--spec handle_down_msg(down_matches(), any()) -> 'ok'.
+-spec handle_down_msg(down_matches(), _) -> 'ok'.
 handle_down_msg([], _) -> 'ok';
 handle_down_msg([Match|Matches], Reason) ->
     _ = handle_down_match(Match, Reason),
     handle_down_msg(Matches, Reason).
 
--spec handle_down_match(down_match(), any()) -> 'ok'.
+-spec handle_down_match(down_match(), _) -> 'ok'.
 handle_down_match({'consumer', #wh_amqp_assignment{consumer=Consumer}=Assignment}
                   ,_Reason) ->
     lager:debug("consumer ~p, went down without closing channel: ~p"
@@ -754,7 +754,7 @@ handle_down_match({'channel', #wh_amqp_assignment{channel=Channel
                 ,[Channel, Broker, Consumer, Reason]),
     maybe_defer_reassign(Assignment, Reason).
 
--spec maybe_defer_reassign(#wh_amqp_assignment{}, any()) -> 'ok'.
+-spec maybe_defer_reassign(#wh_amqp_assignment{}, _) -> 'ok'.
 maybe_defer_reassign(#wh_amqp_assignment{}=Assignment
                     ,{'shutdown',{'server_initiated_close', 404, _Msg}}) ->
     lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),

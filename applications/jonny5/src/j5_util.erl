@@ -23,7 +23,7 @@ remove_call_charges(AccountId, CallId) ->
             'ok'
     end.
 
--spec send_system_alert(j5_request:request()) -> any().
+-spec send_system_alert(j5_request:request()) -> _.
 send_system_alert(Request) ->
     AccountId = j5_request:account_id(Request),
     ResellerId = j5_request:reseller_id(Request),

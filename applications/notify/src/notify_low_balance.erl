@@ -42,7 +42,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send(integer(), wh_json:object()) -> any().
+-spec send(integer(), wh_json:object()) -> _.
 send(CurrentBalance, Account) ->
     AccountId = wh_doc:id(Account),
     case collect_recipients(AccountId) of
@@ -91,7 +91,7 @@ pretty_print_dollars(Amount) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> _.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->

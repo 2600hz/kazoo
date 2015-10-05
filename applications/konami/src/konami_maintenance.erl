@@ -44,7 +44,7 @@ add_default_account_metaflow(AccountId) ->
                                    whapps_account_config:set(AccountId, <<"metaflows">>, <<"default_metaflow">>, JObj)
                            end).
 
--type save_fun() :: fun((wh_json:object()) -> any()).
+-type save_fun() :: fun((wh_json:object()) -> _).
 
 -spec intro_builder(wh_json:object(), save_fun()) -> 'ok'.
 intro_builder(Default, SaveFun) ->

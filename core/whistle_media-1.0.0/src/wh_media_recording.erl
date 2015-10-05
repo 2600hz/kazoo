@@ -449,7 +449,7 @@ start_check_call_timer() ->
 start_time_limit_timer(TimeLimit) ->
     erlang:start_timer((TimeLimit+10) * ?MILLISECONDS_IN_SECOND, self(), 'stop_recording').
 
--spec maybe_stop_timer(any()) -> 'ok'.
+-spec maybe_stop_timer(_) -> 'ok'.
 maybe_stop_timer(Timer) when is_reference(Timer) ->
     catch erlang:cancel_timer(Timer),
     'ok';
@@ -473,7 +473,7 @@ get_format(_) -> get_format('undefined').
 
 -spec store_recording_meta(whapps_call:call(), ne_binary(), api_binary()) ->
                                   {'ok', wh_json:object()} |
-                                  {'error', any()}.
+                                  {'error', _}.
 store_recording_meta(Call, MediaName, Ext) ->
     AcctDb = whapps_call:account_db(Call),
     CallId = whapps_call:call_id(Call),
@@ -500,7 +500,7 @@ store_recording_meta(Call, MediaName, Ext) ->
 
 -spec maybe_store_recording_meta(whapps_call:call(), ne_binary(), api_binary()) ->
                                   {'ok', wh_json:object()} |
-                                  {'error', any()}.
+                                  {'error', _}.
 maybe_store_recording_meta(Call, MediaName, Ext) ->
     AcctDb = whapps_call:account_db(Call),
     CallId = whapps_call:call_id(Call),

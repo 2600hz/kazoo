@@ -340,7 +340,7 @@ accounts() ->
                 ],
     accounts(ets:select(?TAB, MatchSpec), sets:new()).
 
--spec accounts(any(), set()) -> ne_binaries().
+-spec accounts(_, set()) -> ne_binaries().
 accounts([], Accounts) ->
     lists:reverse(sets:to_list(Accounts));
 accounts([['undefined', 'undefined']|Ids], Accounts) ->

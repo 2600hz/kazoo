@@ -44,7 +44,7 @@ handle(Data, Call) ->
 
 -spec maybe_build_dnd_record(wh_json:object(), whapps_call:call()) ->
                                     {'ok', dnd()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 maybe_build_dnd_record(Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case maybe_get_data_id(AccountDb, Data, Call) of
@@ -102,7 +102,7 @@ maybe_get_doc(AccountDb, Id) ->
             E
     end.
 
--spec maybe_execute_action(ne_binary(), dnd(), whapps_call:call()) -> any().
+-spec maybe_execute_action(ne_binary(), dnd(), whapps_call:call()) -> _.
 maybe_execute_action(<<"activate">>, #dnd{enabled='true'}, Call) ->
     lager:info("dnd is already enabled on this document", []),
     whapps_call_command:b_prompt(<<"dnd-activated">>, Call);
@@ -121,7 +121,7 @@ maybe_execute_action(_Action, _, Call) ->
     lager:info("dnd action ~s is invalid", [_Action]),
     whapps_call_command:b_prompt(<<"dnd-not_available">>, Call).
 
--spec activate_dnd(dnd(), whapps_call:call()) -> any().
+-spec activate_dnd(dnd(), whapps_call:call()) -> _.
 activate_dnd(#dnd{jobj=JObj
                   ,account_db=AccountDb
                  }, Call) ->
@@ -130,7 +130,7 @@ activate_dnd(#dnd{jobj=JObj
         {'ok', _} -> whapps_call_command:b_prompt(<<"dnd-activated">>, Call)
     end.
 
--spec deactivate_dnd(dnd(), whapps_call:call()) -> any().
+-spec deactivate_dnd(dnd(), whapps_call:call()) -> _.
 deactivate_dnd(#dnd{jobj=JObj
                     ,account_db=AccountDb
                    }, Call) ->

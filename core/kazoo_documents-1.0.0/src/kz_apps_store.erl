@@ -24,7 +24,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec fetch(api_binary()) -> {'ok', wh_json:object()} | {'error', _}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
@@ -69,14 +69,14 @@ id() -> ?ID.
 %% @end
 %%--------------------------------------------------------------------
 -spec apps(wh_json:object()) -> wh_json:object().
--spec apps(wh_json:object(), any()) -> wh_json:object().
+-spec apps(wh_json:object(), _) -> wh_json:object().
 apps(JObj) ->
     wh_json:get_value(?APPS, JObj, wh_json:new()).
 
 apps(JObj, Default) ->
     wh_json:get_value(?APPS, JObj, Default).
 
--spec set_apps(wh_json:object(), any()) -> wh_json:object().
+-spec set_apps(wh_json:object(), _) -> wh_json:object().
 set_apps(JObj, Data) ->
     wh_json:set_value(?APPS, Data, JObj).
 
@@ -87,13 +87,13 @@ set_apps(JObj, Data) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec blacklist(wh_json:object()) -> ne_binaries().
--spec blacklist(wh_json:object(), any()) -> ne_binaries().
+-spec blacklist(wh_json:object(), _) -> ne_binaries().
 blacklist(JObj) ->
     wh_json:get_value(?BLACKLIST, JObj, []).
 
 blacklist(JObj, Default) ->
     wh_json:get_value(?BLACKLIST, JObj, Default).
 
--spec set_blacklist(wh_json:object(), any()) -> ne_binaries().
+-spec set_blacklist(wh_json:object(), _) -> ne_binaries().
 set_blacklist(JObj, Data) ->
     wh_json:set_value(?BLACKLIST, Data, JObj).

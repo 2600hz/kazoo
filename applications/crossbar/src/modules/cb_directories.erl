@@ -242,8 +242,8 @@ pdf_props(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pdf_users(ne_binary(), ne_binary(), wh_json:objects()) -> any().
--spec pdf_users(ne_binary(), ne_binary(), wh_json:objects(), any()) -> any().
+-spec pdf_users(ne_binary(), ne_binary(), wh_json:objects()) -> _.
+-spec pdf_users(ne_binary(), ne_binary(), wh_json:objects(), _) -> _.
 pdf_users(AccountId, SortBy, Users) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     pdf_users(AccountDb, SortBy, Users, []).

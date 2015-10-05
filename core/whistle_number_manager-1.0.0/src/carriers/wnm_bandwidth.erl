@@ -67,7 +67,7 @@ get_number_data(Number) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', wh_json:object()} |
-                          {'error', any()}.
+                          {'error', _}.
 find_numbers(<<"+", Rest/binary>>, Quanity, Opts) ->
     find_numbers(Rest, Quanity, Opts);
 find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
@@ -182,7 +182,7 @@ disconnect_number(Number) -> Number.
 %%--------------------------------------------------------------------
 -spec make_numbers_request(atom(), wh_proplist()) ->
                                   {'ok', _} |
-                                  {'error', any()}.
+                                  {'error', _}.
 make_numbers_request(Verb, Props) ->
     lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
     DevKey = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
@@ -270,7 +270,7 @@ make_numbers_request(Verb, Props) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(any()) -> wh_json:object().
+-spec number_order_response_to_json(_) -> wh_json:object().
 number_order_response_to_json([]) ->
     wh_json:new();
 number_order_response_to_json([Xml]) ->
@@ -294,7 +294,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json(any()) -> wh_json:object().
+-spec number_search_response_to_json(_) -> wh_json:object().
 number_search_response_to_json([]) ->
     wh_json:new();
 number_search_response_to_json([Xml]) ->
@@ -335,7 +335,7 @@ rate_center_to_json(Xml) ->
 %% error text
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response(any()) -> {'ok', any()} |
+-spec verify_response(_) -> {'ok', _} |
                                 {'error', api_binary() | ne_binaries()}.
 verify_response(Xml) ->
     case wh_util:get_xml_value("/*/status/text()", Xml) of

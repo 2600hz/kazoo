@@ -122,13 +122,13 @@ handle_fax_event(JObj, Props) ->
     Event = wh_json:get_value(<<"Application-Event">>, JObj),
     gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
 
--spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> any().
+-spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> _.
 handle_channel_destroy(JObj, Props) ->
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
     gen_server:cast(Srv, {'channel_destroy', JobId, JObj}).
 
--spec handle_job_status_query(wh_json:object(), wh_proplist()) -> any().
+-spec handle_job_status_query(wh_json:object(), wh_proplist()) -> _.
 handle_job_status_query(JObj, Props) ->
     'true' = wapi_fax:query_status_v(JObj),
     Srv = props:get_value('server', Props),
@@ -441,10 +441,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec attempt_to_acquire_job(ne_binary(), ne_binary()) ->
                                     {'ok', wh_json:object()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 -spec attempt_to_acquire_job(wh_json:object()) ->
                                     {'ok', wh_json:object()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 attempt_to_acquire_job(Id, Q) ->
     case couch_mgr:open_doc(?WH_FAXES_DB, Id) of
         {'error', _}=E -> E;
@@ -469,7 +469,7 @@ attempt_to_acquire_job(JObj) ->
             {'error', 'job_not_available'}
     end.
 
--spec release_failed_job(atom(), any(), wh_json:object()) -> 'failure'.
+-spec release_failed_job(atom(), _, wh_json:object()) -> 'failure'.
 release_failed_job('fetch_failed', Status, JObj) ->
     Msg = wh_util:to_binary(io_lib:format("could not retrieve file, http response ~p", [Status])),
     Result = [{<<"success">>, 'false'}
@@ -684,7 +684,7 @@ set_default_update_fields(JObj) ->
                        ,JObj
                       ).
 
--spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> any().
+-spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> _.
 maybe_notify(_Result, JObj, Resp, <<"completed">>) ->
     Message = notify_fields(JObj, Resp),
     wapi_notifications:publish_fax_outbound(Message);
@@ -747,7 +747,7 @@ elapsed_time(JObj) ->
 
 -spec fetch_document(wh_json:object()) ->
                             {'ok', string(), wh_proplist(), ne_binary()} |
-                            {'error', any()}.
+                            {'error', _}.
 fetch_document(JObj) ->
     case wh_doc:attachment_names(JObj) of
         [] -> fetch_document_from_url(JObj);
@@ -767,7 +767,7 @@ fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
 
 -spec fetch_document_from_url(wh_json:object()) ->
                                      {'ok', string(), wh_proplist(), ne_binary()} |
-                                     {'error', any()}.
+                                     {'error', _}.
 fetch_document_from_url(JObj) ->
     FetchRequest = wh_json:get_value(<<"document">>, JObj),
     Url = wh_json:get_string_value(<<"url">>, FetchRequest),
@@ -1002,19 +1002,19 @@ reset(State) ->
                 ,page = 0
                }.
 
--spec send_status(state(), ne_binary()) -> any().
+-spec send_status(state(), ne_binary()) -> _.
 send_status(State, Status) ->
     send_status(State, Status, ?FAX_SEND, 'undefined').
 
--spec send_error_status(state(), text()) -> any().
+-spec send_error_status(state(), text()) -> _.
 send_error_status(State, Status) ->
     send_status(State, Status, ?FAX_ERROR, 'undefined').
 
--spec send_status(state(), text(), api_object()) -> any().
+-spec send_status(state(), text(), api_object()) -> _.
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_SEND, FaxInfo).
 
--spec send_status(state(), text(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), text(), ne_binary(), api_object()) -> _.
 send_status(#state{job=JObj
                    ,page=Page
                    ,job_id=JobId

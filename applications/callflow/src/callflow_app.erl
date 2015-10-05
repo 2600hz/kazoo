@@ -23,7 +23,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
+-spec start(_, _) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_, _) -> callflow:start_link().
@@ -34,5 +34,5 @@ start(_, _) -> callflow:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(_) -> 'ok'.
 stop(_) -> callflow:stop().

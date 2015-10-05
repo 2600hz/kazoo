@@ -15,7 +15,7 @@
 
 -include("cccp.hrl").
 
--spec handle_route_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_route_req(wh_json:object(), wh_proplist()) -> _.
 handle_route_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
 

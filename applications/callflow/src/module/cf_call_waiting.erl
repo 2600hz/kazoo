@@ -57,7 +57,7 @@ handle(Data, Call) ->
 
 -spec maybe_build_call_waiting_record(wh_json:object(), whapps_call:call()) ->
                                     {'ok', call_waiting()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 maybe_build_call_waiting_record(Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     DocId = get_doc_id(wh_json:get_value(<<"scope">>, Data, <<"device">>), Call),
@@ -102,7 +102,7 @@ execute_action(ActionFun, #call_waiting{enabled = Enabled}=CW, Call) ->
     _ = play_related_media(NewEnabled, Call),
     maybe_update_doc(NewEnabled, CW).
 
--spec play_related_media(boolean(), whapps_call:call()) -> any().
+-spec play_related_media(boolean(), whapps_call:call()) -> _.
 play_related_media('true', Call) ->
     lager:debug("call waiting enabled"),
     whapps_call_command:b_prompt(<<"cw-activated">>, Call);

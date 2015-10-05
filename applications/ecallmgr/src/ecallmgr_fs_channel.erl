@@ -123,7 +123,7 @@ set_node(Node, UUID) ->
 
 -spec former_node(ne_binary()) ->
                          {'ok', atom()} |
-                         {'error', any()}.
+                         {'error', _}.
 former_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', former_node = '$2', _ = '_'}
                   ,[{'=:=', '$1', {'const', UUID}}]
@@ -441,11 +441,11 @@ channel_not_found(Node, FetchId) ->
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp)).
 
--spec process_event(api_binary(), wh_proplist(), atom()) -> any().
+-spec process_event(api_binary(), wh_proplist(), atom()) -> _.
 process_event(UUID, Props, Node) ->
     process_event(UUID, Props, Node, self()).
 
--spec process_event(api_binary(), wh_proplist(), atom(), pid()) -> any().
+-spec process_event(api_binary(), wh_proplist(), atom(), pid()) -> _.
 process_event(UUID, Props, Node, Pid) ->
     wh_util:put_callid(UUID),
     wh_amqp_channel:consumer_pid(Pid),
@@ -453,7 +453,7 @@ process_event(UUID, Props, Node, Pid) ->
 
     process_specific_event(EventName, UUID, Props, Node).
 
--spec process_specific_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+-spec process_specific_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> _.
 process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = ecallmgr_fs_channels:new(props_to_record(Props, Node)),
     _ = maybe_publish_channel_state(Props, Node),

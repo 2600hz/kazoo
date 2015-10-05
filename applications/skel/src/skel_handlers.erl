@@ -14,7 +14,7 @@
 
 -include("skel.hrl").
 
--spec handle_route_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_route_req(wh_json:object(), wh_proplist()) -> _.
 handle_route_req(JObj, Props) ->
     %% First validate the JSON
     'true' = wapi_route:req_v(JObj),

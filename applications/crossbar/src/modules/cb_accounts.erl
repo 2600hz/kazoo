@@ -1269,12 +1269,12 @@ set_notification_preference(Context, Preference) ->
             lager:info("notification_preference set to '~s'", [Preference])
     end.
 
--spec create_account_mod(ne_binary()) -> any().
+-spec create_account_mod(ne_binary()) -> _.
 create_account_mod(AccountId) ->
     Db = wh_util:format_account_mod_id(AccountId),
     kazoo_modb:create(Db).
 
--spec create_first_transaction(ne_binary()) -> any().
+-spec create_first_transaction(ne_binary()) -> _.
 create_first_transaction(AccountId) ->
     AccountMODb = kazoo_modb:get_modb(AccountId),
     wht_util:rollup(AccountMODb, 0).
@@ -1349,7 +1349,7 @@ ensure_views(Context, [Id|Ids], Retries) ->
 %%--------------------------------------------------------------------
 -spec replicate_account_definition(wh_json:object()) ->
                                           {'ok', wh_json:object()} |
-                                          {'error', any()}.
+                                          {'error', _}.
 replicate_account_definition(JObj) ->
     AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of

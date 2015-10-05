@@ -1,8 +1,8 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--type bt_result() :: {'ok', any()}.
--type bt_xml() :: any(). %%  record_proplist() | braintree_util:char_to_bin_res().
+-type bt_result() :: {'ok', _}.
+-type bt_xml() :: _. %%  record_proplist() | braintree_util:char_to_bin_res().
 
 -type braintree_failures() :: 'no_payment_token' |
                               'authentication' |

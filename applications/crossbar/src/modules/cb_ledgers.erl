@@ -172,8 +172,8 @@ credit_or_debit(Context, Name, Action) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec process_action(ne_binary(), ne_binary(), integer(), ne_binary(), ne_binary()) ->
-                            {'ok', any()} |
-                            {'error', any()}.
+                            {'ok', _} |
+                            {'error', _}.
 process_action(?CREDIT, Name, Amount, AccountId, Desc) ->
     kz_ledger:credit(Name, Amount, AccountId, Desc);
 process_action(?DEBIT, Name, Amount, AccountId, Desc) ->

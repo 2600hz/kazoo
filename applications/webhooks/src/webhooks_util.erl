@@ -134,7 +134,7 @@ maybe_fire_hook(JObj, #webhook{modifiers=Modifiers}=Hook) ->
     end.
 
 -type maybe_fire_acc() :: {boolean(), wh_json:object()}.
--spec maybe_fire_foldl(ne_binary(), any(), maybe_fire_acc()) ->
+-spec maybe_fire_foldl(ne_binary(), _, maybe_fire_acc()) ->
                               maybe_fire_acc().
 maybe_fire_foldl(_Key, _Value, {'false', _}=Acc) ->
     Acc;
@@ -260,7 +260,7 @@ successful_hook(#webhook{hook_id=HookId
     save_attempt(Attempt, AccountId).
 
 -spec failed_hook(webhook()) -> 'ok'.
--spec failed_hook(webhook(), hook_retries(), any()) -> 'ok'.
+-spec failed_hook(webhook(), hook_retries(), _) -> 'ok'.
 -spec failed_hook(webhook(), hook_retries(), string(), binary()) -> 'ok'.
 failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId

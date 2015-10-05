@@ -230,7 +230,7 @@ do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
             end
     end.
 
--spec is_empty(any()) -> boolean().
+-spec is_empty(_) -> boolean().
 is_empty('undefined') -> 'true';
 is_empty([]) -> 'true';
 is_empty(<<>>) -> 'true';
@@ -441,7 +441,7 @@ has_any(Prop, Headers) ->
 values_check(Prop, Values) ->
     lists:all(fun(Value) -> values_check_all(Prop, Value) end, Values).
 
--spec values_check_all(wh_proplist(), {any(), any()}) -> boolean().
+-spec values_check_all(wh_proplist(), {_, _}) -> boolean().
 values_check_all(Prop, {Key, Vs}) when is_list(Vs) ->
     case props:get_value(Key, Prop) of
         'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd

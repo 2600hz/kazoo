@@ -36,7 +36,7 @@ empty() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_updated_items(items(), items()) -> items().
--spec get_updated_items(any(), wh_service_item:item(), items(), items()) -> items().
+-spec get_updated_items(_, wh_service_item:item(), items(), items()) -> items().
 get_updated_items(UpdatedItems, ExistingItems) ->
     dict:fold(
       fun(Key, UpdatedItem, DifferingItems) ->
@@ -56,7 +56,7 @@ get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems) ->
             end
     end.
 
--spec get_item(any(), items()) -> wh_service_item:item() | 'error'.
+-spec get_item(_, items()) -> wh_service_item:item() | 'error'.
 get_item(Key, Items) ->
     case dict:find(Key, Items) of
         'error' -> 'error';

@@ -153,7 +153,7 @@ modified(JObj) ->
 modified(JObj, Default) ->
     wh_json:get_integer_value(?KEY_MODIFIED, JObj, Default).
 
--spec add_id(wh_json:object(), any(), wh_proplist()) -> wh_json:object().
+-spec add_id(wh_json:object(), _, wh_proplist()) -> wh_json:object().
 add_id(JObj, _, Opts) ->
     case props:get_value('id', Opts) of
         'undefined' -> JObj;

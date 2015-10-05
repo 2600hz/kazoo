@@ -216,7 +216,7 @@ handle_status_stat(JObj, Props) ->
                        }
                      ).
 
--spec status_stat_id(ne_binary(), pos_integer(), any()) -> ne_binary().
+-spec status_stat_id(ne_binary(), pos_integer(), _) -> ne_binary().
 status_stat_id(AgentId, Timestamp, _EventName) ->
     <<AgentId/binary, "::", (wh_util:to_binary(Timestamp))/binary>>.
 

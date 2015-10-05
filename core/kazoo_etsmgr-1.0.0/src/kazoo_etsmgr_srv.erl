@@ -38,7 +38,7 @@
 
 -type start_args() :: [{'table_id', atom()} |
                        {'table_options', list()} |
-                       {'gift_data', any()} |
+                       {'gift_data', _} |
                        {'find_me_function', find_me_fun()}
                        ,...
                       ].
@@ -52,7 +52,7 @@
                 ,give_away_pid :: pid()
                 ,find_me_fun :: find_me_fun()
                 ,find_me_pid_ref :: {pid(), reference()}
-                ,gift_data :: any()
+                ,gift_data :: _
                }).
 
 %%%===================================================================

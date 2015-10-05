@@ -447,7 +447,7 @@ run_start_cmds(Node, Options) ->
                           run_start_cmds(Node, Options, Parent)
                   end).
 
--spec run_start_cmds(atom(), wh_proplist(), pid()) -> any().
+-spec run_start_cmds(atom(), wh_proplist(), pid()) -> _.
 run_start_cmds(Node, Options, Parent) ->
     wh_util:put_callid(Node),
     timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
@@ -505,7 +505,7 @@ run_start_cmds(Node, Options, Parent, Cmds) ->
             sync(Parent)
     end.
 
--spec sync(pid()) -> any().
+-spec sync(pid()) -> _.
 sync(Parent) ->
     sync_interface(Parent),
     sync_registrations(Parent),
@@ -582,13 +582,13 @@ process_resp(ApiCmd, ApiArg, [<<"-ERR ", Err/binary>>|Resps], Acc) ->
     end;
 process_resp(_, _, [], Acc) -> Acc.
 
--spec was_bad_error(ne_binary(), atom(), any()) -> boolean().
+-spec was_bad_error(ne_binary(), atom(), _) -> boolean().
 was_bad_error(<<"[Module already loaded]">>, 'load', _) -> 'false';
 was_bad_error(_E, _, _) -> 'true'.
 
--spec was_not_successful_cmd({'ok', any()} |
-                             {'ok', any(), any()} |
-                             any()
+-spec was_not_successful_cmd({'ok', _} |
+                             {'ok', _, _} |
+                             _
                             ) -> boolean().
 
 was_not_successful_cmd({'ok', _}) -> 'false';
@@ -676,7 +676,7 @@ probe_capabilities(Node, PossibleCapabilities) ->
                             maybe_add_capability(Node, Capability)
                     end, PossibleCapabilities).
 
--spec maybe_add_capability(atom(), wh_json:object()) -> any().
+-spec maybe_add_capability(atom(), wh_json:object()) -> _.
 maybe_add_capability(Node, Capability) ->
     Module = wh_json:get_value(<<"module">>, Capability),
     lager:debug("probing ~s about ~s", [Node, Module]),

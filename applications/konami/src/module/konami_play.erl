@@ -29,7 +29,7 @@ handle(Data, Call) ->
     end,
     {'continue', Call}.
 
--spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> any().
+-spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> _.
 play(Data, Call, Media) ->
     case wh_json:is_false(<<"answer">>, Data) of
         'true' -> 'ok';

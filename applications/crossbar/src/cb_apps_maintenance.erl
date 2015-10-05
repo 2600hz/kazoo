@@ -17,7 +17,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec migrate(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec migrate(ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
 migrate(Account) when is_binary(Account) ->
     case kz_account:fetch(Account) of
         {'error', _R}=Error -> Error;
@@ -40,7 +40,7 @@ migrate(Account) when is_binary(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(ne_binary(), wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec save(ne_binary(), wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', _}.
 save(Account, Doc, AccountDoc) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:save_doc(AccountDb, Doc) of

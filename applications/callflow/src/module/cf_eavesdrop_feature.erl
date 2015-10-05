@@ -36,7 +36,7 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     Exten = whapps_call:kvs_fetch('cf_capture_group', Call),
     Target = get_target_for_extension(Exten, Call),

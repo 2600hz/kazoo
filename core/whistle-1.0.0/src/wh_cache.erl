@@ -72,8 +72,8 @@
                         {'db', ne_binary()} | %% {db, Database}
                         {'type', ne_binary()}. %% {type, PvtType}
 -type origin_tuples() :: [origin_tuple()].
--record(cache_obj, {key :: any()| '_' | '$1'
-                    ,value :: any() | '_' | '$1' | '$2'
+-record(cache_obj, {key :: _| '_' | '$1'
+                    ,value :: _ | '_' | '$1' | '$2'
                     ,expires :: wh_timeout() | '_' | '$3'
                     ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
                     ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
@@ -151,31 +151,31 @@ maybe_add_db_binding([[]]) -> [[]];
 maybe_add_db_binding(BindingProps) ->
     [?DATABASE_BINDING | BindingProps].
 
--spec store(any(), any()) -> 'ok'.
--spec store(any(), any(), wh_proplist()) -> 'ok'.
+-spec store(_, _) -> 'ok'.
+-spec store(_, _, wh_proplist()) -> 'ok'.
 
 store(K, V) -> store(K, V, []).
 
 store(K, V, Props) -> store_local(?SERVER, K, V, Props).
 
--spec peek(any()) -> {'ok', any()} |
+-spec peek(_) -> {'ok', _} |
                      {'error', 'not_found'}.
 peek(K) -> peek_local(?SERVER, K).
 
--spec fetch(any()) -> {'ok', any()} |
+-spec fetch(_) -> {'ok', _} |
                       {'error', 'not_found'}.
 fetch(K) -> fetch_local(?SERVER, K).
 
--spec erase(any()) -> 'ok'.
+-spec erase(_) -> 'ok'.
 erase(K) -> erase_local(?SERVER, K).
 
 -spec flush() -> 'ok'.
 flush() -> flush_local(?SERVER).
 
--spec fetch_keys() -> [any()].
+-spec fetch_keys() -> [_].
 fetch_keys() -> fetch_keys_local(?SERVER).
 
--spec filter(fun((any(), any()) -> boolean())) -> [{any(), any()}].
+-spec filter(fun((_, _) -> boolean())) -> [{_, _}].
 filter(Pred) when is_function(Pred, 2) -> filter_local(?SERVER, Pred).
 
 -spec dump() -> 'ok'.
@@ -184,9 +184,9 @@ dump() -> dump('false').
 -spec dump(text()) -> 'ok'.
 dump(ShowValue) -> dump_local(?SERVER, ShowValue).
 
--spec wait_for_key(any()) -> {'ok', any()} |
+-spec wait_for_key(_) -> {'ok', _} |
                              {'error', 'timeout'}.
--spec wait_for_key(any(), wh_timeout()) -> {'ok', any()} |
+-spec wait_for_key(_, wh_timeout()) -> {'ok', _} |
                                            {'error', 'timeout'}.
 
 wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
@@ -194,8 +194,8 @@ wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
 wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 %% Local cache API
--spec store_local(server_ref(), any(), any()) -> 'ok'.
--spec store_local(server_ref(), any(), any(), wh_proplist()) -> 'ok'.
+-spec store_local(server_ref(), _, _) -> 'ok'.
+-spec store_local(server_ref(), _, _, wh_proplist()) -> 'ok'.
 
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
@@ -213,7 +213,7 @@ store_local(Srv, K, V, Props) when is_pid(Srv) ->
                                               ,origin=get_props_origin(Props)
                                              }}).
 
--spec peek_local(atom(), any()) -> {'ok', any()} |
+-spec peek_local(atom(), _) -> {'ok', _} |
                                    {'error', 'not_found'}.
 peek_local(Srv, K) ->
     try ets:lookup_element(Srv, K, #cache_obj.value) of
@@ -223,7 +223,7 @@ peek_local(Srv, K) ->
             {'error', 'not_found'}
     end.
 
--spec fetch_local(atom(), any()) -> {'ok', any()} |
+-spec fetch_local(atom(), _) -> {'ok', _} |
                                     {'error', 'not_found'}.
 fetch_local(Srv, K) ->
     try ets:lookup_element(Srv, K, #cache_obj.value) of
@@ -234,7 +234,7 @@ fetch_local(Srv, K) ->
         'error':'badarg' -> {'error', 'not_found'}
     end.
 
--spec erase_local(atom(), any()) -> 'ok'.
+-spec erase_local(atom(), _) -> 'ok'.
 erase_local(Srv, K) ->
     gen_server:cast(Srv, {'erase', K}).
 
@@ -250,7 +250,7 @@ fetch_keys_local(Srv) ->
                  }],
     ets:select(Srv, MatchSpec).
 
--spec filter_erase_local(atom(), fun((any(), any()) -> boolean())) -> non_neg_integer().
+-spec filter_erase_local(atom(), fun((_, _) -> boolean())) -> non_neg_integer().
 filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Count) ->
                       case Pred(K, V) of
@@ -260,7 +260,7 @@ filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
                  (_, Count) -> Count
               end, 0, Srv).
 
--spec filter_local(atom(), fun((any(), any()) -> boolean())) -> [{any(), any()}].
+-spec filter_local(atom(), fun((_, _) -> boolean())) -> [{_, _}].
 filter_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Acc) ->
                       case Pred(K, V) of
@@ -315,10 +315,10 @@ dump_local(Srv, ShowValue) ->
         ],
     'ok'.
 
--spec wait_for_key_local(atom(), any()) -> {'ok', any()} |
+-spec wait_for_key_local(atom(), _) -> {'ok', _} |
                                            {'error', 'timeout'}.
--spec wait_for_key_local(atom(), any(), wh_timeout()) ->
-                                {'ok', any()} |
+-spec wait_for_key_local(atom(), _, wh_timeout()) ->
+                                {'ok', _} |
                                 {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT).
@@ -674,7 +674,7 @@ maybe_remove_objects(Objects, Tab) ->
     _Removed = [maybe_remove_object(Object, Tab) || Object <- Objects],
     lager:debug("removed ~b objects", [lists:sum(_Removed)]).
 
--spec maybe_remove_object(any(), atom()) -> non_neg_integer().
+-spec maybe_remove_object(_, atom()) -> non_neg_integer().
 maybe_remove_object(#cache_obj{key = Key}, Tab) ->
     maybe_remove_object(Key, Tab);
 maybe_remove_object(Key, Tab) ->
@@ -695,7 +695,7 @@ maybe_remove_object(Key, Tab) ->
           }],
     ets:select_delete(Tab, DeleteSpec).
 
--spec maybe_exec_erase_callbacks(any(), atom()) -> 'ok'.
+-spec maybe_exec_erase_callbacks(_, atom()) -> 'ok'.
 maybe_exec_erase_callbacks(Key, Tab) ->
     case ets:lookup(Tab, Key) of
         [#cache_obj{callback=Fun
@@ -724,7 +724,7 @@ maybe_exec_flush_callbacks(Tab) ->
         ],
     'ok'.
 
--spec maybe_exec_store_callbacks(state(), any(), any(), atom()) -> state().
+-spec maybe_exec_store_callbacks(state(), _, _, atom()) -> state().
 maybe_exec_store_callbacks(#state{has_monitors='false'}=State, _, _, _) -> State;
 maybe_exec_store_callbacks(State, Key, Value, Tab) ->
     MatchSpec = [{#cache_obj{value = '$1'
@@ -752,7 +752,7 @@ has_monitors(Tab) ->
                  }],
     ets:select_count(Tab, MatchSpec) =/= 0.
 
--spec exec_store_callback(callback_funs(), any(), any(), atom()) -> 'ok'.
+-spec exec_store_callback(callback_funs(), _, _, atom()) -> 'ok'.
 exec_store_callback([], Key, _, Tab) ->
     _ = delete_monitor_callbacks(Key, Tab),
     'ok';
@@ -760,7 +760,7 @@ exec_store_callback([Callback|Callbacks], Key, Value, Tab) ->
     wh_util:spawn(fun() -> Callback(Key, Value, 'store') end),
     exec_store_callback(Callbacks, Key, Value, Tab).
 
--spec delete_monitor_callbacks(any(), atom()) -> non_neg_integer().
+-spec delete_monitor_callbacks(_, atom()) -> non_neg_integer().
 delete_monitor_callbacks(Key, Tab) ->
     DeleteSpec = [{#cache_obj{value = '$1'
                               ,type = 'monitor'

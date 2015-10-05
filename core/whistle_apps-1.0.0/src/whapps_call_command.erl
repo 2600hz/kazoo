@@ -353,9 +353,9 @@ channel_status_filter([JObj|JObjs]) ->
 %%      for them in the receive blocks below.
 %% @end
 %%--------------------------------------------------------------------
--type relay_fun() :: fun((pid() | atom(), any()) -> any()).
--spec relay_event(pid(), wh_json:object()) -> any().
--spec relay_event(pid(), wh_json:object(), relay_fun()) -> any().
+-type relay_fun() :: fun((pid() | atom(), _) -> _).
+-spec relay_event(pid(), wh_json:object()) -> _.
+-spec relay_event(pid(), wh_json:object(), relay_fun()) -> _.
 relay_event(Pid, JObj) ->
     relay_event(Pid, JObj, fun erlang:send/2).
 relay_event(Pid, JObj, RelayFun) ->
@@ -366,7 +366,7 @@ relay_event(Pid, JObj, RelayFun) ->
                            {'error', 'timeout'}.
 -spec receive_event(wh_timeout(), boolean()) ->
                            {'ok', wh_json:object()} |
-                           {'other', wh_json:object() | any()} |
+                           {'other', wh_json:object() | _} |
                            {'error', 'timeout'}.
 receive_event(Timeout) -> receive_event(Timeout, 'true').
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
@@ -2135,13 +2135,13 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                                         {'noop_complete'} |
                                         {'continue'} |
                                         {'decrement'} |
-                                        {'error', any()}.
+                                        {'error', _}.
 -spec handle_collect_digit_event(wh_json:object(), api_binary(), {ne_binary(), ne_binary(), ne_binary()}) ->
                                         {'dtmf', ne_binary()} |
                                         {'noop_complete'} |
                                         {'continue'} |
                                         {'decrement'} |
-                                        {'error', any()}.
+                                        {'error', _}.
 handle_collect_digit_event(JObj, NoopId) ->
     handle_collect_digit_event(JObj, NoopId, get_event_type(JObj)).
 
@@ -2379,7 +2379,7 @@ wait_for_dtmf(Timeout) ->
 %%--------------------------------------------------------------------
 -spec wait_for_bridge(wh_timeout(), whapps_call:call()) ->
                              whapps_api_bridge_return().
--spec wait_for_bridge(wh_timeout(), 'undefined' | fun((wh_json:object()) -> any()), whapps_call:call()) ->
+-spec wait_for_bridge(wh_timeout(), 'undefined' | fun((wh_json:object()) -> _), whapps_call:call()) ->
                              whapps_api_bridge_return().
 wait_for_bridge(Timeout, Call) ->
     wait_for_bridge(Timeout, 'undefined', Call).

@@ -620,7 +620,7 @@ should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec update_options(any(), any(), wh_proplist()) -> wh_proplist().
+-spec update_options(_, _, wh_proplist()) -> wh_proplist().
 update_options(_, 'undefined', Props) -> Props;
 update_options(Key, Value, Props) ->
     case props:get_value('options', Props) of

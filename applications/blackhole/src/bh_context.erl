@@ -59,7 +59,7 @@ from_subscription(Context, Data) ->
                        ,binding = wh_json:get_value(<<"binding">>,Data)
                       }.
 
--spec is_context(any()) -> boolean().
+-spec is_context(_) -> boolean().
 is_context(#bh_context{}) -> 'true';
 is_context(_) -> 'false'.
 

@@ -69,7 +69,7 @@ collect(ACLs, PidRefs, Timeout) ->
             ACLs
     end.
 
--spec builder(pid(), fun((pid()) -> any())) -> any().
+-spec builder(pid(), fun((pid()) -> _)) -> _.
 builder(Collector, Fun) ->
     Fun(Collector).
 

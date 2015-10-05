@@ -73,10 +73,10 @@
 %%--------------------------------------------------------------------
 -spec get(whapps_call:call()) ->
                  {'ok', wh_json:object()} |
-                 {'error', any()}.
+                 {'error', _}.
 -spec get(api_binary(), ne_binary() | whapps_call:call()) ->
                  {'ok', wh_json:object()} |
-                 {'error', any()}.
+                 {'error', _}.
 get(Call) -> get(whapps_call:authorizing_id(Call), Call).
 
 get('undefined', _Call) ->
@@ -455,8 +455,8 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 %% Flush the callflow cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush_account(ne_binary()) -> any().
--spec flush(ne_binary(), ne_binary()) -> any().
+-spec flush_account(ne_binary()) -> _.
+-spec flush(ne_binary(), ne_binary()) -> _.
 flush_account(AccountDb) ->
     ToRemove =
         wh_cache:filter_local(?CALLFLOW_CACHE, fun({?MODULE, Db, _Id}, _Value) ->
@@ -526,7 +526,7 @@ build(Endpoint, Properties, Call) ->
     end.
 
 -spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                          'ok' | {'error', any()}.
+                                          'ok' | {'error', _}.
 should_create_endpoint(Endpoint, Properties, Call) ->
     Routines = [fun maybe_missing_resource_type/3
                 ,fun maybe_owner_called_self/3
@@ -540,7 +540,7 @@ should_create_endpoint(Endpoint, Properties, Call) ->
 -type ep_routine_v() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok' | _).
 -type ep_routines_v() :: [ep_routine_v()].
 -spec should_create_endpoint(ep_routines_v(), wh_json:object(), wh_json:object(),  whapps_call:call()) ->
-                                          'ok' | {'error', any()}.
+                                          'ok' | {'error', _}.
 should_create_endpoint([], _, _, _) -> 'ok';
 should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_function(Routine, 3) ->
     case Routine(Endpoint, Properties, Call) of
@@ -1042,7 +1042,7 @@ get_sip_transport(SIPJObj) ->
         Transport -> Transport
     end.
 
--spec validate_sip_transport(any()) -> api_binary().
+-spec validate_sip_transport(_) -> api_binary().
 validate_sip_transport(<<"tcp">>) -> <<"tcp">>;
 validate_sip_transport(<<"udp">>) -> <<"udp">>;
 validate_sip_transport(<<"tls">>) -> <<"tls">>;

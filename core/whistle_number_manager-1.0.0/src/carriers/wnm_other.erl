@@ -51,7 +51,7 @@ find_numbers(Number, Quantity, Props) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries(), wh_proplist()) -> {'error', any()} | {'ok', any()}.
+-spec check_numbers(ne_binaries(), wh_proplist()) -> {'error', _} | {'ok', _}.
 check_numbers(Numbers, _Props) ->
     FormatedNumbers = [wnm_util:to_npan(Number) || Number <- Numbers],
     case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of

@@ -31,8 +31,8 @@
 
 -define(DEFAULT_LISTEN_ON, 'a').
 
--type default_fun() :: fun(() -> any()).
--type formatter_fun() :: fun((any()) -> any()).
+-type default_fun() :: fun(() -> _).
+-type formatter_fun() :: fun((_) -> _).
 
 -spec numbers() -> wh_json:object().
 -spec numbers(ne_binary()) -> wh_json:object().
@@ -111,8 +111,8 @@ constrain_listen_on(_) -> ?DEFAULT_LISTEN_ON.
 -spec identity(X) -> X.
 identity(X) -> X.
 
--spec get_attribute(wh_json:object(), ne_binary(), default_fun()) -> any().
--spec get_attribute(wh_json:object(), ne_binary(), default_fun(), formatter_fun()) -> any().
+-spec get_attribute(wh_json:object(), ne_binary(), default_fun()) -> _.
+-spec get_attribute(wh_json:object(), ne_binary(), default_fun(), formatter_fun()) -> _.
 get_attribute(JObj, K, DefaultFun) ->
     get_attribute(JObj, K, DefaultFun, fun identity/1).
 

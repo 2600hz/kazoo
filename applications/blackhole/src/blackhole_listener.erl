@@ -59,7 +59,7 @@ start_link() ->
                             ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                             ], []).
 
--spec handle_amqp_event(wh_json:object(), wh_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
+-spec handle_amqp_event(wh_json:object(), wh_proplist(), gen_listener:basic_deliver() | ne_binary()) -> _.
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
     handle_amqp_event(EventJObj, Props, RoutingKey);
 handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
