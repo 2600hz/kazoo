@@ -269,7 +269,7 @@ get_new_conn(Host, Port, Opts) ->
     end.
 
 -spec server_info(server()) -> {'ok', wh_json:object()} |
-                               {'error', any()}.
+                               {'error', _}.
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
@@ -1142,7 +1142,7 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
 
 -spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:keys()}) ->
                               {'ok', ne_binary()} |
-                              {'error', any()}.
+                              {'error', _}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
     #wh_copy_doc{dest_dbname = DestDbName
                  ,dest_doc_id = DestDocId

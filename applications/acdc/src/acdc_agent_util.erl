@@ -43,7 +43,7 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
 
 -spec most_recent_status(ne_binary(), ne_binary()) ->
                                 {'ok', ne_binary()} |
-                                {'error', any()}.
+                                {'error', _}.
 most_recent_status(AccountId, AgentId) ->
     case most_recent_ets_status(AccountId, AgentId) of
         {'ok', _}=OK -> OK;
@@ -54,7 +54,7 @@ most_recent_status(AccountId, AgentId) ->
 
 -spec most_recent_ets_status(ne_binary(), ne_binary()) ->
                                     {'ok', ne_binary()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 most_recent_ets_status(AccountId, AgentId) ->
     API = [{<<"Account-ID">>, AccountId}
            ,{<<"Agent-ID">>, AgentId}
@@ -231,10 +231,10 @@ async_most_recent_db_statuses(AccountId, AgentId, Options, Pid) ->
 
 -spec most_recent_ets_statuses(ne_binary()) ->
                                       statuses_return() |
-                                      {'error', any()}.
+                                      {'error', _}.
 -spec most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
-                                      {'error', any()}.
+                                      {'error', _}.
 most_recent_ets_statuses(AccountId) ->
     most_recent_ets_statuses(AccountId, 'undefined', []).
 
@@ -261,10 +261,10 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
 
 -spec most_recent_db_statuses(ne_binary()) ->
                                      statuses_return() |
-                                     {'error', any()}.
+                                     {'error', _}.
 -spec most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
-                                      {'error', any()}.
+                                      {'error', _}.
 most_recent_db_statuses(AccountId) ->
     most_recent_db_statuses(AccountId, 'undefined', []).
 most_recent_db_statuses(AccountId, ?NE_BINARY = AgentId) ->

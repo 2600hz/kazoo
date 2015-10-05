@@ -186,7 +186,7 @@ handle_info(_Info, Connection) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(any(), wh_amqp_connection()) -> any().
+-spec terminate(_, wh_amqp_connection()) -> _.
 terminate(_Reason, #wh_amqp_connection{broker=_Broker}=Connection) ->
     lager:debug("connection to amqp broker '~s' terminated: ~p"
                 ,[_Broker, _Reason]),
@@ -396,7 +396,7 @@ establish_prechannel(#wh_amqp_connection{broker=Broker
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec open_channel(wh_amqp_connection()) -> {'ok', pid()} | {'error', any()}.
+-spec open_channel(wh_amqp_connection()) -> {'ok', pid()} | {'error', _}.
 open_channel(#wh_amqp_connection{connection=Pid}) ->
     try amqp_connection:open_channel(Pid) of
         {'ok', Channel}=Ok ->

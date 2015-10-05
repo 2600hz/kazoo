@@ -113,7 +113,7 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_debit_transaction(ne_binary(), integer(), j5_request:request(), j5_limits:limits()) -> any().
+-spec create_debit_transaction(ne_binary(), integer(), j5_request:request(), j5_limits:limits()) -> _.
 create_debit_transaction(Event, Amount, Request, Limits) ->
     LedgerId = j5_limits:account_id(Limits),
     lager:debug("creating debit transaction in ledger ~s for $~w"

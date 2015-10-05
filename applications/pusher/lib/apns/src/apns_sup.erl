@@ -18,18 +18,18 @@
 %% ===================================================================
 %% @hidden
 -spec start_link() ->
-  {ok, pid()} | ignore | {error, {already_started, pid()} | shutdown | any()}.
+  {ok, pid()} | ignore | {error, {already_started, pid()} | shutdown | _}.
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% @hidden
--spec start_connection(apns:connection()) -> {ok, pid()} | {error, any()}.
+-spec start_connection(apns:connection()) -> {ok, pid()} | {error, _}.
 start_connection(Connection) ->
   supervisor:start_child(?MODULE, [Connection]).
 
 %% @hidden
 -spec start_connection(atom(), apns:connection()) ->
-  {ok, pid()} | {error, any()}.
+  {ok, pid()} | {error, _}.
 start_connection(Name, Connection) ->
   supervisor:start_child(?MODULE, [Name, Connection]).
 
@@ -37,7 +37,7 @@ start_connection(Name, Connection) ->
 %% Supervisor callbacks
 %% ===================================================================
 %% @hidden
--spec init(any()) ->
+-spec init(_) ->
   {ok,
    {{simple_one_for_one, 5, 10},
     [{connection, {apns_connection, start_link, []},

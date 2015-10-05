@@ -448,10 +448,10 @@ maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
 %%--------------------------------------------------------------------
 -spec move_account(ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
-                          {'error', any()}.
+                          {'error', _}.
 -spec move_account(ne_binary(), wh_json:object(), ne_binaries()) ->
                           {'ok', wh_json:object()} |
-                          {'error', any()}.
+                          {'error', _}.
 move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
     case validate_move(AccountId, ToAccount) of
         {'error', _E}=Error -> Error;
@@ -501,13 +501,13 @@ validate_move(AccountId, ToAccount) ->
 %%--------------------------------------------------------------------
 -spec move_descendants(ne_binary(), ne_binaries()) ->
                               {'ok', 'done'} |
-                              {'error', any()}.
+                              {'error', _}.
 move_descendants(<<_/binary>> = AccountId, Tree) ->
     update_descendants_tree(get_descendants(AccountId), Tree).
 
 -spec update_descendants_tree(ne_binaries(), ne_binaries()) ->
                                      {'ok', 'done'} |
-                                     {'error', any()}.
+                                     {'error', _}.
 update_descendants_tree([], _) -> {'ok', 'done'};
 update_descendants_tree([Descendant|Descendants], Tree) ->
     AccountId = wh_util:format_account_id(Descendant, 'raw'),
@@ -538,7 +538,7 @@ update_descendants_tree([Descendant|Descendants], Tree) ->
 %%--------------------------------------------------------------------
 -spec move_service(ne_binary(), ne_binaries(), api_boolean()) ->
                           {'ok', wh_json:object()} |
-                          {'error', any()}.
+                          {'error', _}.
 move_service(AccountId, NewTree, Dirty) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _E}=Error -> Error;
@@ -548,7 +548,7 @@ move_service(AccountId, NewTree, Dirty) ->
 
 -spec move_service_doc(ne_binaries(), api_boolean(), wh_json:object()) ->
                           {'ok', wh_json:object()} |
-                          {'error', any()}.
+                          {'error', _}.
 move_service_doc(NewTree, Dirty, JObj) ->
     PreviousTree = kz_account:tree(JObj),
     Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
@@ -626,7 +626,7 @@ get_tree(<<_/binary>> = Account) ->
 %%--------------------------------------------------------------------
 -spec replicate_account_definition(wh_json:object()) ->
                                           {'ok', wh_json:object()} |
-                                          {'error', any()}.
+                                          {'error', _}.
 replicate_account_definition(JObj) ->
     AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
@@ -640,7 +640,7 @@ replicate_account_definition(JObj) ->
 %% Flag all descendants of the account id as disabled
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account(api_binary()) -> 'ok' | {'error', any()}.
+-spec disable_account(api_binary()) -> 'ok' | {'error', _}.
 disable_account('undefined') -> 'ok';
 disable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}
@@ -661,7 +661,7 @@ disable_account(AccountId) ->
 %% Flag all descendants of the account id as enabled
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account(api_binary()) -> 'ok' | {'error', any()}.
+-spec enable_account(api_binary()) -> 'ok' | {'error', _}.
 enable_account('undefined') -> ok;
 enable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}
@@ -1243,7 +1243,7 @@ get_devices_by_owner(AccountDb, OwnerId) ->
 %%--------------------------------------------------------------------
 -spec load_descendants_count(wh_proplist()) ->
                                     {'ok', wh_proplist()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 load_descendants_count(ViewOptions) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
         {'error', _E}=Resp -> Resp;

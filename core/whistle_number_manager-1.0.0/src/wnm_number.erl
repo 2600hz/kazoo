@@ -848,7 +848,7 @@ record_to_json_fold({K, V}, J) -> wh_json:set_value(K, V, J).
 %% conditionally merge the public fields with a number record
 %% @end
 %%--------------------------------------------------------------------
--spec merge_public_fields(any(), wnm_number()) -> wnm_number().
+-spec merge_public_fields(_, wnm_number()) -> wnm_number().
 merge_public_fields(PublicFields, #number{number_doc=JObj}=N) ->
     case wh_json:is_json_object(PublicFields) of
         'false' -> N;
@@ -923,7 +923,7 @@ delete_number_doc(#number{number_db=Db
 %%--------------------------------------------------------------------
 -spec resolve_account_phone_numbers_conflict(wh_json:object(), ne_binary(), ne_binary()) ->
                                                     {'ok', wh_json:object()} |
-                                                    {'error', any()}.
+                                                    {'error', _}.
 resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'error', _R}=E ->
@@ -1171,7 +1171,7 @@ update_phone_number_doc(Account, #number{number=Num
 %%--------------------------------------------------------------------
 -spec get_phone_number_doc(ne_binary(), wnm_number()) ->
                                   {'ok', wh_json:object()} |
-                                  {'error', any()}.
+                                  {'error', _}.
 get_phone_number_doc(Account, #number{phone_number_docs=Docs
                                       ,dry_run=DryRun
                                      }) ->
@@ -1215,13 +1215,13 @@ create_number_summary(_Account, #number{state=State
 %%--------------------------------------------------------------------
 -spec load_phone_number_doc(ne_binary()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', any()}.
+                                   {'error', _}.
 load_phone_number_doc(Account) ->
     load_phone_number_doc(Account, 'true').
 
 -spec load_phone_number_doc(ne_binary(), boolean()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', any()}.
+                                   {'error', _}.
 load_phone_number_doc(Account, 'true') ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case erlang:get({'phone_number_doc', AccountId}) of

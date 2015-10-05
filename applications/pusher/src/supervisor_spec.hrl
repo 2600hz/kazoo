@@ -6,8 +6,8 @@
 -type supervisor_restart() :: permanent | transient | temporary.
 -type supervisor_shutdown() :: brutal_kill | non_neg_integer().
 -type supervisor_child_type() :: worker | supervisor.
--type supervisor_child_id() :: any().
--type supervisor_mfargs() :: {M::module(), F::atom(), A::[any()] | undefined}.
+-type supervisor_child_id() :: _.
+-type supervisor_mfargs() :: {M::module(), F::atom(), A::[_] | undefined}.
 
 -type supervisor_child_spec() :: {
     Id :: supervisor_child_id(),
@@ -20,6 +20,6 @@
 
 -type supervisor_restart_policy() :: {restart_strategy(), non_neg_integer(), pos_integer()}.
 
--spec init(any()) -> {ok, {supervisor_restart_policy(), [supervisor_child_spec()]}} | ignore.
+-spec init(_) -> {ok, {supervisor_restart_policy(), [supervisor_child_spec()]}} | ignore.
 
 -endif.

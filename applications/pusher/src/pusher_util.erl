@@ -27,7 +27,7 @@
                       ,'not_encrypted' | cipher_info()
                      }.
 
--type cipher_info() :: any().
+-type cipher_info() :: _.
                        %% {"RC2-CBC" | "DES-CBC" | "DES-EDE3-CBC"
                        %%  ,binary() | 'PBES2-params'
                        %% }.

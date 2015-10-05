@@ -73,7 +73,7 @@
 %%% API
 %%%===================================================================
 
--spec start_fsm(whapps_call:call(), wh_json:object()) -> any().
+-spec start_fsm(whapps_call:call(), wh_json:object()) -> _.
 start_fsm(Call, JObj) ->
     ListenOn = listen_on(Call, JObj),
 
@@ -414,7 +414,7 @@ disarm_state(#state{a_digit_timeout_ref=ARef
                 ,b_leg_armed = 'false'
                }.
 
--spec maybe_cancel_timer(any()) -> 'ok'.
+-spec maybe_cancel_timer(_) -> 'ok'.
 maybe_cancel_timer(Ref) when is_reference(Ref) ->
     catch erlang:cancel_timer(Ref),
     'ok';

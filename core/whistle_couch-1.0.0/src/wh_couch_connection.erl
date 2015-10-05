@@ -231,7 +231,7 @@ code_change(_OldVsn, Connection, _Extra) ->
 %%%===================================================================
 -spec maybe_reconnect(couch_connection()) ->
                              {'ok', couch_connection()} |
-                             {'error', any()}.
+                             {'error', _}.
 maybe_reconnect(#wh_couch_connection{host=Host
                                      ,port=Port
                                      ,username=User
@@ -246,7 +246,7 @@ maybe_reconnect(#wh_couch_connection{host=Host
         _:Error -> handle_error(Connection, Error)
     end.
 
--spec handle_error(couch_connection(), tuple()) -> {'error', any()}.
+-spec handle_error(couch_connection(), tuple()) -> {'error', _}.
 handle_error(Connection, {'badmatch',Error}) ->
     handle_error(Connection, Error);
 handle_error(#wh_couch_connection{host=Host

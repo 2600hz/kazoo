@@ -577,7 +577,7 @@ maybe_handle_nodedown(NodeName, #state{nodes=Nodes}=State) ->
     end.
 
 -spec maybe_add_node(text(), text(), wh_proplist(), state()) ->
-                            'ok' | {'error', any()}.
+                            'ok' | {'error', _}.
 maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
     case dict:find(NodeName, Nodes) of
         {'ok', #node{}} -> {'error', 'node_exists'};
@@ -633,7 +633,7 @@ handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
             gen_server:cast(Srv, {'update_node', Node#node{connected='true'}})
     end.
 
--spec maybe_connect_to_node(fs_node()) -> 'ok' | {'error', any()}.
+-spec maybe_connect_to_node(fs_node()) -> 'ok' | {'error', _}.
 maybe_connect_to_node(#node{node=NodeName}=Node) ->
     lager:debug("attempting to connect to freeswitch node ~s", [NodeName]),
     case maybe_ping_node(Node) of
@@ -644,7 +644,7 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
             'ok'
     end.
 
--spec maybe_ping_node(fs_node()) -> 'ok' | {'error', any()}.
+-spec maybe_ping_node(fs_node()) -> 'ok' | {'error', _}.
 maybe_ping_node(#node{node=NodeName
                       ,cookie=Cookie
                      }=Node) ->
@@ -658,7 +658,7 @@ maybe_ping_node(#node{node=NodeName
             {'error', 'no_connection'}
     end.
 
--spec maybe_start_node_handlers(fs_node()) -> 'ok' | {'error', any()}.
+-spec maybe_start_node_handlers(fs_node()) -> 'ok' | {'error', _}.
 maybe_start_node_handlers(#node{node=NodeName
                                 ,client_version=Version
                                 ,cookie=Cookie

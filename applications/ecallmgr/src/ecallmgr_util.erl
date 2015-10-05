@@ -299,8 +299,8 @@ unserialize_fs_array(_) -> [].
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
--spec get_setting(wh_json:key()) -> {'ok', any()}.
--spec get_setting(wh_json:key(), Default) -> {'ok', Default | any()}.
+-spec get_setting(wh_json:key()) -> {'ok', _}.
+-spec get_setting(wh_json:key(), Default) -> {'ok', Default | _}.
 get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
 get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
 
@@ -689,7 +689,7 @@ maybe_collect_worker_channel(Pid, Channels) ->
 
 -spec build_channel(bridge_endpoint() | wh_json:object()) ->
                            {'ok', bridge_channel()} |
-                           {'error', any()}.
+                           {'error', _}.
 build_channel(#bridge_endpoint{endpoint_type = <<"freetdm">>}=Endpoint) ->
     build_freetdm_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"skype">>}=Endpoint) ->
@@ -738,7 +738,7 @@ build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
 
 -spec build_sip_channel(bridge_endpoint()) ->
                                {'ok', bridge_channel()} |
-                               {'error', any()}.
+                               {'error', _}.
 build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     Routines = [fun(C) -> maybe_clean_contact(C, Endpoint) end
                 ,fun(C) -> ensure_username_present(C, Endpoint) end
@@ -763,7 +763,7 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
 
 -spec maybe_failover(wh_json:object()) ->
                             {'ok', bridge_channel()} |
-                            {'error', any()}.
+                            {'error', _}.
 maybe_failover(Endpoint) ->
     case wh_util:is_empty(Endpoint) of
         'true' -> {'error', 'invalid'};
@@ -1027,7 +1027,7 @@ convert_whistle_app_name(App) ->
 -type media_types() :: 'new' | 'extant'.
 -spec lookup_media(ne_binary(), ne_binary(), wh_json:object(), media_types()) ->
                           {'ok', ne_binary()} |
-                          {'error', any()}.
+                          {'error', _}.
 lookup_media(MediaName, CallId, JObj, Type) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
                               ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
@@ -1042,7 +1042,7 @@ lookup_media(MediaName, CallId, JObj, Type) ->
 
 -spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) ->
                                {'ok', ne_binary()} |
-                               {'error', any()}.
+                               {'error', _}.
 request_media_url(MediaName, CallId, JObj, Type) ->
     Request = wh_json:set_values(
                 props:filter_undefined(
@@ -1112,12 +1112,12 @@ maybe_aggregate_headers(<<"Diversion">>, Diversion, Acc) ->
 maybe_aggregate_headers(K, V, Acc) ->
     [{K,V} | Acc].
 
--spec normalize_custom_sip_header_name(any()) -> any().
+-spec normalize_custom_sip_header_name(_) -> _.
 normalize_custom_sip_header_name({<<"variable_sip_h_", K/binary>>, V}) -> {K, V};
 normalize_custom_sip_header_name({<<"sip_h_", K/binary>>, V}) -> {K, V};
 normalize_custom_sip_header_name(A) -> A.
 
--spec is_custom_sip_header(any()) -> boolean().
+-spec is_custom_sip_header(_) -> boolean().
 is_custom_sip_header({<<"P-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"X-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"sip_h_", _/binary>>, _}) -> 'true';

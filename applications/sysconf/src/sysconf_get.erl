@@ -45,7 +45,7 @@ handle_req(ApiJObj, _Props) ->
             wapi_sysconf:publish_get_resp(RespQ, Resp)
     end.
 
--spec get_value(ne_binary(), ne_binary(), any(), ne_binary()) -> any().
+-spec get_value(ne_binary(), ne_binary(), _, ne_binary()) -> _.
 get_value(_, <<"acls">>, _, Node) ->
     sysconf_acls:build(Node);
 get_value(_, <<"gateways">>, _, Node) ->

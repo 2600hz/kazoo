@@ -577,7 +577,7 @@ init_state() ->
 
 -spec get_configs() -> {'ok', proplist()} |
                        {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
-                        | {integer(), module(), any()}
+                        | {integer(), module(), _}
                        }.
 get_configs() ->
     file:consult(lists:flatten(?SIGNUP_CONF)).

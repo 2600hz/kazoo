@@ -356,12 +356,12 @@ send_update(Stalkers, Props) ->
         ],
     wh_amqp_worker:checkin_worker(Worker).
 
--spec presence_reset(wh_json:object()) -> any().
+-spec presence_reset(wh_json:object()) -> _.
 presence_reset(JObj) ->
     User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
     reset_blf(User).
 
--spec reset_blf(ne_binary()) -> any().
+-spec reset_blf(ne_binary()) -> _.
 reset_blf(User) ->
     Headers = [{<<"From">>, User}
                ,{<<"To">>, User}
@@ -371,7 +371,7 @@ reset_blf(User) ->
               ],
     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
 
--spec reset_user_blf(ne_binary()) -> any().
+-spec reset_user_blf(ne_binary()) -> _.
 reset_user_blf(User) ->
     case omnip_subscriptions:find_user_subscriptions(?DIALOG_EVENT, User) of
         {'ok', Subs} ->

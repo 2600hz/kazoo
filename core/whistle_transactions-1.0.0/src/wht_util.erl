@@ -199,7 +199,7 @@ maybe_rollup_previous_month(Account, Balance) ->
 
 -spec get_rollup_from_previous(ne_binary()) ->
                                       {'ok', integer()} |
-                                      {'error', any()}.
+                                      {'error', _}.
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
@@ -223,7 +223,7 @@ get_rollup_from_previous(Account) ->
 
 -spec get_rollup_balance(ne_binary(), wh_proplist()) ->
                                 {'ok', integer()} |
-                                {'error', any()}.
+                                {'error', _}.
 get_rollup_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     case kazoo_modb:get_results(Account, View, ViewOptions) of
@@ -316,7 +316,7 @@ call_cost(JObj) ->
 get_integer_value(Key, JObj) ->
     get_integer_value(Key, JObj, 0).
 
--spec get_integer_value(ne_binary(), wh_json:object(), any()) -> integer().
+-spec get_integer_value(ne_binary(), wh_json:object(), _) -> integer().
 get_integer_value(Key, JObj, Default) ->
     Keys = [Key, wh_json:normalize_key(Key)],
     wh_util:to_integer(wh_json:get_first_defined(Keys, JObj, Default)).

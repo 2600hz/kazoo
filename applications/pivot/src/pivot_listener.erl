@@ -90,7 +90,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) ->
+-spec handle_call(_, pid_ref(), state()) ->
                          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
@@ -105,7 +105,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> {'noreply', state()} |
+-spec handle_cast(_, state()) -> {'noreply', state()} |
                                      {'noreply', state(), 'hibernate'}.
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State, 'hibernate'};
@@ -125,7 +125,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> {'noreply', state()}.
+-spec handle_info(_, state()) -> {'noreply', state()}.
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -153,7 +153,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(any(), state()) -> 'ok'.
+-spec terminate(_, state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -165,7 +165,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(any(), state(), any()) -> {'ok', state()}.
+-spec code_change(_, state(), _) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

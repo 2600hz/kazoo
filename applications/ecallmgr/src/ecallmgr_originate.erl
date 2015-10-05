@@ -781,7 +781,7 @@ find_max_endpoint_timeout([EP|EPs], T) ->
 
 -spec start_control_process(state()) ->
                                    {'ok', state()} |
-                                   {'error', any()}.
+                                   {'error', _}.
 start_control_process(#state{originate_req=JObj
                              ,node=Node
                              ,uuid={_, Id}=UUID

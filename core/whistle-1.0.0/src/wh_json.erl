@@ -142,19 +142,19 @@ try_converting(JSON, E) ->
             throw(E)
     end.
 
--spec is_empty(any()) -> boolean().
+-spec is_empty(_) -> boolean().
 is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
--spec is_json_object(any()) -> boolean().
--spec is_json_object(key(), any()) -> boolean().
+-spec is_json_object(_) -> boolean().
+-spec is_json_object(key(), _) -> boolean().
 is_json_object(?JSON_WRAPPER(P)) when is_list(P) -> 'true';
 is_json_object(_) -> 'false'.
 
 is_json_object(Key, JObj) ->
     is_json_object(get_value(Key, JObj)).
 
--spec is_valid_json_object(any()) -> boolean().
+-spec is_valid_json_object(_) -> boolean().
 is_valid_json_object(MaybeJObj) ->
     try
         lists:all(fun(K) ->
@@ -199,7 +199,7 @@ merge_jobjs(?JSON_WRAPPER(Props1)=_JObj1, ?JSON_WRAPPER(_)=JObj2) ->
 
 -type merge_pred() :: fun((json_term(), json_term()) -> boolean()).
 
--spec merge_true(any(), any()) -> 'true'.
+-spec merge_true(_, _) -> 'true'.
 merge_true(_, _) -> 'true'.
 
 -spec merge_recursive(objects()) -> object().
@@ -326,7 +326,7 @@ filter(Pred, JObj, Key) -> filter(Pred, JObj, [Key]).
 -spec map(fun((key(), json_term()) -> {key(), json_term()}), object()) -> object().
 map(F, ?JSON_WRAPPER(Prop)) -> from_list([ F(K, V) || {K,V} <- Prop]).
 
--spec foreach(fun(({json_key(), json_term()}) -> any()), object()) -> 'ok'.
+-spec foreach(fun(({json_key(), json_term()}) -> _), object()) -> 'ok'.
 foreach(F, ?JSON_WRAPPER(Prop)) when is_function(F, 1) -> lists:foreach(F, Prop).
 
 -spec all(fun(({json_key(), json_term()}) -> boolean()), object()) -> boolean().
@@ -337,7 +337,7 @@ all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
 any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:any(Pred, Prop).
 
--spec foldl(fun((key(), json_term(), any()) -> any()), any(), object()) -> any().
+-spec foldl(fun((key(), json_term(), _) -> _), _, object()) -> _.
 foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
     lists:foldl(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
@@ -861,7 +861,7 @@ normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so
 normalize_key_char(C) -> C.
 
 -type search_replace_format() :: {ne_binary(), ne_binary()} |
-                                  {ne_binary(), ne_binary(), fun((any()) -> any())}.
+                                  {ne_binary(), ne_binary(), fun((_) -> _)}.
 -type search_replace_formatters() :: [search_replace_format()].
 -spec normalize_jobj(object(), ne_binaries(), search_replace_formatters()) -> object().
 normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->
@@ -922,7 +922,7 @@ is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
 -spec flatten(object() | objects(), integer(), list()) -> objects().
--spec flatten(any(), list(), list(), integer()) -> objects().
+-spec flatten(_, list(), list(), integer()) -> objects().
 flatten([], _, _) -> [];
 flatten(JObj, Depth, Ids) when is_list(Ids) ->
     lists:foldl(

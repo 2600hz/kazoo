@@ -12,7 +12,7 @@
 
 -include("ts.hrl").
 
--spec handle_config_change(wh_json:object(), any()) -> any().
+-spec handle_config_change(wh_json:object(), _) -> _.
 handle_config_change(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     lager:info("trunkstore doc change detected: ~p", [JObj]),

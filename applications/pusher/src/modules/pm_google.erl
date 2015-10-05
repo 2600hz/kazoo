@@ -26,11 +26,11 @@ init([]) ->
     lager:debug("starting server"),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(_, pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(_, state()) -> handle_cast_ret_state(state()).
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
     lager:debug("process a push"),
     TokenApp = wh_json:get_value(<<"Token-App">>, JObj),
@@ -39,20 +39,20 @@ handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(_, state()) -> handle_info_ret_state(state()).
 handle_info(_Request, State) ->
     {'noreply', State}.
 
--spec terminate(any(), state()) -> 'ok'.
+-spec terminate(_, state()) -> 'ok'.
 terminate(_Reason, #state{tab=ETS}) ->
     ets:delete(ETS),
     'ok'.
 
--spec code_change(any(), state(), any()) -> {'ok', state()}.
+-spec code_change(_, state(), _) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec maybe_send_push_notification(api_pid(), wh_json:object()) -> any().
+-spec maybe_send_push_notification(api_pid(), wh_json:object()) -> _.
 maybe_send_push_notification('undefined', _JObj) -> lager:debug("no pid to send push");
 maybe_send_push_notification(Pid, JObj) ->
     TokenID = wh_json:get_value(<<"Token-ID">>, JObj),

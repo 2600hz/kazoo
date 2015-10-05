@@ -77,7 +77,7 @@ oauth_service_from_jobj(AppId, Provider, JObj) ->
 
 -spec load_service_app_keys(oauth_service_app()) ->
                                    {'ok', oauth_service_app()} |
-                                   {'error', any()}.
+                                   {'error', _}.
 load_service_app_keys(#oauth_service_app{name=AppId}=App) ->
     case couch_mgr:fetch_attachment(?KZ_OAUTH_DB, AppId, <<"public_key.pem">>) of
         {'ok', PublicKey} ->
@@ -100,7 +100,7 @@ oauth_service_app_from_keys(PublicKey, PrivateKey, App) ->
                           ,private_key=pem_to_rsa(PrivateKey)
                          }.
 
--spec pem_to_rsa(binary()) -> any().
+-spec pem_to_rsa(binary()) -> _.
 pem_to_rsa(PemFileContents) ->
     [RSAEntry] = public_key:pem_decode(PemFileContents),
     public_key:pem_entry_decode(RSAEntry).
@@ -135,7 +135,7 @@ jwt(#oauth_service_app{private_key=PrivateKey
 
 -spec token(api_binary() | oauth_app(), api_binary() | oauth_refresh_token()) ->
                    {'ok', oauth_token()} |
-                   {'error', any()}.
+                   {'error', _}.
 token(AppId, UserId) when is_binary(AppId) ->
     lager:debug("getting oauth-app ~p",[AppId]),
     case get_oauth_app(AppId) of
@@ -206,13 +206,13 @@ verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
 
 -spec refresh_token(oauth_app(), api_binary(), api_binary(), wh_proplist() ) ->
                            {'ok', api_object()} |
-                           {'error', any()}.
+                           {'error', _}.
 refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
     refresh_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
 
 -spec refresh_token(oauth_app(), api_binary(), api_binary(), wh_proplist(), api_binary()) ->
                            {'ok', api_object()} |
-                           {'error', any()}.
+                           {'error', _}.
 refresh_token(#oauth_app{name=ClientId
                          ,secret=Secret
                          ,provider=#oauth_provider{auth_url=URL}

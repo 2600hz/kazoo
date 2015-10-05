@@ -222,7 +222,7 @@ send_update(Stalkers, Props) ->
         ],
     wh_amqp_worker:checkin_worker(Worker).
 
--spec presence_reset(wh_json:object()) -> any().
+-spec presence_reset(wh_json:object()) -> _.
 presence_reset(JObj) ->
     User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
     handle_update(wh_json:new(), User).

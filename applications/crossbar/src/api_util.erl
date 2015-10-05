@@ -990,7 +990,7 @@ execute_request(Req, Context, Mod, Params, Verb) ->
             execute_request_failure(Req, Context, Context1)
     end.
 
--spec execute_request_failure(cowboy_req:req(), cb_context:context(), any()) ->
+-spec execute_request_failure(cowboy_req:req(), cb_context:context(), _) ->
                                      {'false', cowboy_req:req(), cb_context:context()}.
 execute_request_failure(Req, Context, {'error', _E}) ->
     lager:debug("error executing request: ~p", [_E]),

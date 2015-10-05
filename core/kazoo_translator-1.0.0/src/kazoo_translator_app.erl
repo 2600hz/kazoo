@@ -10,9 +10,9 @@
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
--spec start(any(), any()) -> startapp_ret().
+-spec start(_, _) -> startapp_ret().
 start(_StartType, _StartArgs) ->
     kazoo_translator_sup:start_link().
 
--spec stop(any()) -> 'ok'.
+-spec stop(_) -> 'ok'.
 stop(_State) -> 'ok'.

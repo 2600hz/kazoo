@@ -154,7 +154,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(any(), any()) -> 'ok'.
+-spec terminate(_, _) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("callflow shared queue server ~p termination", [_Reason]).
 

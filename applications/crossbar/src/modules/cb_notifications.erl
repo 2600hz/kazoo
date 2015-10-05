@@ -890,7 +890,7 @@ flush() ->
                                 ,fun is_cache_key/2
                                ).
 
--spec is_cache_key(any(), any()) -> boolean().
+-spec is_cache_key(_, _) -> boolean().
 is_cache_key({?MODULE, 'available'}, _) -> 'true';
 is_cache_key(_K, _V) -> 'false'.
 
@@ -1006,7 +1006,7 @@ normalize_available_port(Value, Acc, Context) ->
 %%--------------------------------------------------------------------
 
 -spec system_config_notification_doc(ne_binary()) -> {'ok', wh_json:object()} |
-                                              {'error', any()}.
+                                              {'error', _}.
 system_config_notification_doc(DocId) ->
     couch_mgr:open_cache_doc(?WH_CONFIG_DB, DocId).
 

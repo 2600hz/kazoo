@@ -284,7 +284,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
                                                                  ])
     end.
 
--spec save_history_item(ne_binary(), wh_json:object(), ne_binary()) -> any().
+-spec save_history_item(ne_binary(), wh_json:object(), ne_binary()) -> _.
 save_history_item(AccountId, HistoryItem, C2CId) ->
     Timestamp = wh_json:get_integer_value(<<"timestamp">>, HistoryItem, wh_util:current_tstamp()),
     AccountModb = wh_util:format_account_mod_id(AccountId, Timestamp),

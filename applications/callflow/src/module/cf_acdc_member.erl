@@ -79,7 +79,7 @@ lookup_priority(Data, Call) ->
         _ -> 'undefined'
     end.
 
--spec maybe_enter_queue(member_call(), boolean()) -> any().
+-spec maybe_enter_queue(member_call(), boolean()) -> _.
 maybe_enter_queue(#member_call{call=Call}, 'true') ->
     lager:info("queue has reached max size"),
     cf_exe:continue(Call);

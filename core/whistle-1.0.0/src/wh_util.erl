@@ -579,7 +579,7 @@ callid(JObj) ->
     wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
 
 %% @public
--spec spawn(fun(() -> any())) -> pid().
+-spec spawn(fun(() -> _)) -> pid().
 -spec spawn(atom(), atom(), list()) -> pid().
 spawn(Module, Function, Arguments) ->
     CallId = get_callid(),
@@ -875,7 +875,7 @@ is_true("true") -> 'true';
 is_true('true') -> 'true';
 is_true(_) -> 'false'.
 
--spec always_true(any()) -> 'true'.
+-spec always_true(_) -> 'true'.
 always_true(_) -> 'true'.
 
 -spec is_false(binary() | string() | atom()) -> boolean().
@@ -884,7 +884,7 @@ is_false("false") -> 'true';
 is_false('false') -> 'true';
 is_false(_) -> 'false'.
 
--spec always_false(any()) -> 'false'.
+-spec always_false(_) -> 'false'.
 always_false(_) -> 'false'.
 
 -spec is_boolean(binary() | string() | atom()) -> boolean().
@@ -896,7 +896,7 @@ is_boolean("false") -> 'true';
 is_boolean('false') -> 'true';
 is_boolean(_) -> 'false'.
 
--spec is_empty(any()) -> boolean().
+-spec is_empty(_) -> boolean().
 is_empty(0) -> 'true';
 is_empty([]) -> 'true';
 is_empty("0") -> 'true';
@@ -918,10 +918,10 @@ is_empty(MaybeJObj) ->
         'true' -> wh_json:is_empty(MaybeJObj)
     end.
 
--spec is_not_empty(any()) -> boolean().
+-spec is_not_empty(_) -> boolean().
 is_not_empty(Term) -> (not is_empty(Term)).
 
--spec is_proplist(any()) -> boolean().
+-spec is_proplist(_) -> boolean().
 is_proplist(Term) when is_list(Term) ->
     lists:all(fun({_,_}) -> 'true'; (A) -> is_atom(A) end, Term);
 is_proplist(_) -> 'false'.
@@ -929,12 +929,12 @@ is_proplist(_) -> 'false'.
 -spec identity(X) -> X.
 identity(X) -> X.
 
--spec to_lower_binary(any()) -> api_binary().
+-spec to_lower_binary(_) -> api_binary().
 to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
 
--spec to_lower_string(any()) -> 'undefined' | list().
+-spec to_lower_string(_) -> 'undefined' | list().
 to_lower_string('undefined') -> 'undefined';
 to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
@@ -954,12 +954,12 @@ to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from st
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.
 
--spec to_upper_binary(any()) -> api_binary().
+-spec to_upper_binary(_) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
 to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).
 
--spec to_upper_string(any()) -> 'undefined' | list().
+-spec to_upper_string(_) -> 'undefined' | list().
 to_upper_string('undefined') -> 'undefined';
 to_upper_string(L) when is_list(L) -> [to_upper_char(C) || C <- L];
 to_upper_string(Else) -> to_upper_string(to_list(Else)).
@@ -1080,7 +1080,7 @@ whistle_version() ->
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
 
--spec ensure_started(atom()) -> 'ok' | {'error', any()}.
+-spec ensure_started(atom()) -> 'ok' | {'error', _}.
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
         'ok' -> 'ok';
@@ -1322,7 +1322,7 @@ anonymous_caller_id_number() ->
 
 -include_lib("eunit/include/eunit.hrl").
 
--spec resolve_uri_test() -> any().
+-spec resolve_uri_test() -> _.
 resolve_uri_test() ->
     RawPath = <<"http://pivot/script.php">>,
     Relative = <<"script2.php">>,

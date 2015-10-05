@@ -261,7 +261,7 @@ get_uri(<<"<sip", _/binary>>=Uri) -> Uri;
 get_uri(<<"sip", _/binary>>=Uri) -> Uri;
 get_uri(Uri) -> <<"<sip:", Uri/binary, ">">>.
 
--spec send_error(atom(), wh_json:object(), any()) -> any().
+-spec send_error(atom(), wh_json:object(), _) -> _.
 send_error(Node, JObj, Err) ->
     ServerId =  wh_json:get_value(<<"Server-ID">>, JObj),
     Payload =
@@ -352,7 +352,7 @@ format_bounce_endpoint(Endpoint, Props, JObj) ->
        ,{"to_sip_port", wh_util:to_list(ToPort)}
       ])}.
 
--spec process_fs_event(atom(), wh_proplist()) -> any().
+-spec process_fs_event(atom(), wh_proplist()) -> _.
 process_fs_event(Node, Props) ->
     process_fs_event(
       props:get_value(<<"Event-Name">>, Props),
@@ -360,7 +360,7 @@ process_fs_event(Node, Props) ->
       Node,
       lists:usort(Props)).
 
--spec process_fs_event(ne_binary(), ne_binary(), atom(), wh_proplist()) -> any().
+-spec process_fs_event(ne_binary(), ne_binary(), atom(), wh_proplist()) -> _.
 process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
     process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props);
 process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->

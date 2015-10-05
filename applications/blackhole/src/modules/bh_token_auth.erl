@@ -35,7 +35,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec authenticate(bh_context:context()) -> {'true', bh_context:context()} |
                                             'false' |
-                                            {'halt', any()}.
+                                            {'halt', _}.
 authenticate(Context) ->
     lager:debug("trying to authenticate with token: ~s", [bh_context:auth_token(Context)]),
     case kz_buckets:consume_token(?APP_NAME, bucket_name(Context)) of

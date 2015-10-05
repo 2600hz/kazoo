@@ -230,7 +230,7 @@ fetch_account_hooks(AccountId) ->
                            ]
                          ).
 
--spec delete_account_hooks(wh_json:objects()) -> any().
+-spec delete_account_hooks(wh_json:objects()) -> _.
 delete_account_hooks(ViewJObjs) ->
     couch_mgr:del_docs(?KZ_WEBHOOKS_DB
                        ,[wh_json:get_value(<<"doc">>, ViewJObj)
@@ -430,7 +430,7 @@ get_summary_start_key(Context) ->
 get_attempts_start_key(Context) ->
     get_start_key(Context, wh_json:new(), fun wh_util:to_integer/1).
 
--spec get_start_key(cb_context:context(), any(), fun()) -> any().
+-spec get_start_key(cb_context:context(), _, fun()) -> _.
 get_start_key(Context, Default, Formatter) ->
     case cb_context:req_value(Context, <<"start_key">>) of
         'undefined' -> Default;

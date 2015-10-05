@@ -53,7 +53,7 @@
 %%
 %%    `[{pid, ["My pid is ", pid], "Unknown Pid"}]' -> if pid is in the metada print "My pid is ?.?.?", otherwise print "Unknown Pid"
 %% @end
--spec format(lager_msg:lager_msg(),list(),list()) -> any().
+-spec format(lager_msg:lager_msg(),list(),list()) -> _.
 format(Msg,[], Colors) ->
     format(Msg, [{eol, "\n"}], Colors);
 format(Msg,[{eol, EOL}], Colors) ->
@@ -72,11 +72,11 @@ format(Message,Config,Colors) ->
         _ -> output(V,Message)
       end || V <- Config ].
 
--spec format(lager_msg:lager_msg(),list()) -> any().
+-spec format(lager_msg:lager_msg(),list()) -> _.
 format(Msg, Config) ->
     format(Msg, Config, []).
 
--spec output(any(), lager_msg:lager_msg()) -> iolist().
+-spec output(_, lager_msg:lager_msg()) -> iolist().
 output(message,Msg) -> lager_msg:message(Msg);
 output(date,Msg) ->
     {D, _T} = lager_msg:datetime(Msg),
@@ -111,7 +111,7 @@ output_color(Msg,Colors) ->
         _ -> []
     end.
 
--spec make_printable(any()) -> iolist().
+-spec make_printable(_) -> iolist().
 make_printable(A) when is_atom(A) -> atom_to_list(A);
 make_printable(P) when is_pid(P) -> pid_to_list(P);
 make_printable(L) when is_list(L) orelse is_binary(L) -> L;

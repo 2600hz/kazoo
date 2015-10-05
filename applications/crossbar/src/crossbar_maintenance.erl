@@ -193,7 +193,7 @@ running_modules() -> crossbar_bindings:modules_loaded().
 %%--------------------------------------------------------------------
 -spec find_account_by_number(input_term()) ->
                                     {'ok', ne_binary()} |
-                                    {'error', any()}.
+                                    {'error', _}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(wh_util:to_binary(Number));
 find_account_by_number(Number) ->
@@ -221,7 +221,7 @@ find_account_by_number(Number) ->
 -spec find_account_by_name(input_term()) ->
                                   {'ok', ne_binary()} |
                                   {'multiples', [ne_binary(),...]} |
-                                  {'error', any()}.
+                                  {'error', _}.
 find_account_by_name(Name) when not is_binary(Name) ->
     find_account_by_name(wh_util:to_binary(Name));
 find_account_by_name(Name) ->
@@ -249,7 +249,7 @@ find_account_by_name(Name) ->
 -spec find_account_by_realm(input_term()) ->
                                    {'ok', ne_binary()} |
                                    {'multiples', [ne_binary(),...]} |
-                                   {'error', any()}.
+                                   {'error', _}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
     find_account_by_realm(wh_util:to_binary(Realm));
 find_account_by_realm(Realm) ->
@@ -276,7 +276,7 @@ find_account_by_realm(Realm) ->
 %%--------------------------------------------------------------------
 -spec find_account_by_id(input_term()) ->
                                    {'ok', ne_binary()} |
-                                   {'error', any()}.
+                                   {'error', _}.
 find_account_by_id(Id) when is_binary(Id) ->
     print_account_info(wh_util:format_account_id(Id, 'encoded'));
 find_account_by_id(Id) ->
@@ -544,9 +544,9 @@ create_user(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_account(input_term(), ne_binary(), any()) ->
+-spec update_account(input_term(), ne_binary(), _) ->
                             {'ok', wh_json:object()} |
-                            {'error', any()}.
+                            {'error', _}.
 update_account(AccountId, Key, Value) when not is_binary(AccountId) ->
     update_account(wh_util:to_binary(AccountId), Key, Value);
 update_account(AccountId, Key, Value) ->
@@ -889,7 +889,7 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
 
 -spec find_app(ne_binary(), ne_binary()) ->
                       {'ok', wh_json:object()} |
-                      {'error', any()}.
+                      {'error', _}.
 find_app(Db, Name) ->
     case couch_mgr:get_results(Db, ?CB_APPS_STORE_LIST, [{'key', Name}]) of
         {'ok', []} -> {'error', 'not_found'};

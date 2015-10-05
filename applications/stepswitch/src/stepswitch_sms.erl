@@ -271,7 +271,7 @@ send(<<"amqp">>, Endpoint, API) ->
             send_error(API, CallId, Reason)
     end.
 
--spec filter_smpp({ne_binary(), any()}) -> boolean().
+-spec filter_smpp({ne_binary(), _}) -> boolean().
 filter_smpp({<<"SMPP-", _/binary>>, _}) -> 'true';
 filter_smpp(_) -> 'false'.
 

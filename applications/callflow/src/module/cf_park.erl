@@ -57,7 +57,7 @@ get_slot_call_id(SlotNumber, ParkedCalls) ->
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     ParkedCalls = get_parked_calls(Call),
     SlotNumber = get_slot_number(ParkedCalls, whapps_call:kvs_fetch('cf_capture_group', Call)),
@@ -531,7 +531,7 @@ fetch_parked_calls(AccountDb, AccountId) ->
 %%--------------------------------------------------------------------
 -spec cleanup_slot(ne_binary(), ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
-                          {'error', any()}.
+                          {'error', _}.
 cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {'ok', JObj} ->

@@ -441,19 +441,19 @@ build_body(User, Props) ->
     Body = wh_util:to_binary(Text),
     binary:replace(Body, <<"\n\n">>, <<"\n">>, ['global']).
 
--spec ensure_template() -> {'ok', any()}.
+-spec ensure_template() -> {'ok', _}.
 ensure_template() ->
     BasePath = code:lib_dir('omnipresence', 'priv'),
     File = lists:concat([BasePath, "/packages/dialog.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_dialog">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{'record_info', [{'channel', record_info('fields', 'channel')}]}]).
 
--spec presence_reset(wh_json:object()) -> any().
+-spec presence_reset(wh_json:object()) -> _.
 presence_reset(JObj) ->
     User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
     reset_blf(User).
 
--spec reset_blf(ne_binary()) -> any().
+-spec reset_blf(ne_binary()) -> _.
 reset_blf(User) ->
     Headers = [{<<"From">>, User}
                ,{<<"To">>, User}
@@ -463,7 +463,7 @@ reset_blf(User) ->
               ],
     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
 
--spec reset_user_blf(ne_binary()) -> any().
+-spec reset_user_blf(ne_binary()) -> _.
 reset_user_blf(User) ->
     case omnip_subscriptions:find_user_subscriptions(?DIALOG_EVENT, User) of
         {'ok', Subs} ->

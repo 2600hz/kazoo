@@ -18,7 +18,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -spec load(ne_binary()) -> {'ok', wh_json:object()} |
-                           {'error', any()}.
+                           {'error', _}.
 load(<<_/binary>> = Schema) ->
     case couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;

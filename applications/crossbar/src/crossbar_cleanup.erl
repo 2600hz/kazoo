@@ -268,12 +268,12 @@ start_timers() ->
            ,day_timer_ref=start_day_timer()
           }.
 
--spec stop_timer(any()) -> any().
+-spec stop_timer(_) -> _.
 stop_timer(Ref) when is_reference(Ref) ->
     erlang:cancel_timer(Ref);
 stop_timer(_) -> 'ok'.
 
--spec start_timer(pos_integer(), any()) -> reference().
+-spec start_timer(pos_integer(), _) -> reference().
 start_timer(Expiry, Msg) ->
     erlang:send_after(Expiry, self(), Msg).
 
@@ -295,7 +295,7 @@ start_hour_timer() ->
 start_day_timer() ->
     start_timer(?MILLISECONDS_IN_DAY, 'day_cleanup').
 
--spec cleanup_soft_deletes(ne_binary()) -> any().
+-spec cleanup_soft_deletes(ne_binary()) -> _.
 cleanup_soft_deletes(Account) ->
     couch_mgr:suppress_change_notice(),
     case whapps_util:is_account_db(Account) of

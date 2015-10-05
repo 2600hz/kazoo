@@ -31,14 +31,14 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_template(ne_binary(), wh_proplist() | ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec find_template(ne_binary(), wh_proplist() | ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
 find_template(AccountId, DocType) when is_binary(DocType)  ->
     find_template(AccountId, DocType, <<DocType/binary, ".tmpl">>);
 find_template(AccountId, Props) ->
     DocType = props:get_first_defined([<<"type">>, <<"pvt_type">>], Props),
     find_template(AccountId, Props, <<DocType/binary, ".tmpl">>).
 
--spec find_template(ne_binary(), wh_proplist() | ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec find_template(ne_binary(), wh_proplist() | ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
 find_template(AccountId, DocType, AttachmentId) when is_binary(DocType) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:fetch_attachment(AccountDb, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
@@ -57,8 +57,8 @@ find_template(AccountId, Props, AttachmentId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec generate(ne_binary(), wh_proplist()) -> {'ok', ne_binary()} | {'error', any()}.
--spec generate(ne_binary(), wh_proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec generate(ne_binary(), wh_proplist()) -> {'ok', ne_binary()} | {'error', _}.
+-spec generate(ne_binary(), wh_proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
 generate(AccountId, Props) ->
     case find_template(AccountId, Props) of
         {'error', _R}=Error -> Error;
@@ -117,7 +117,7 @@ cmd_fold({Search, Replace}, Subject) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec default_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec default_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
 default_template(DocType, AttachmentId) ->
     lager:debug("searching for default template ~s", [AttachmentId]),
     case couch_mgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID(DocType), AttachmentId) of
@@ -130,7 +130,7 @@ default_template(DocType, AttachmentId) ->
             Error
     end.
 
--spec maybe_create_default_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec maybe_create_default_template(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
 maybe_create_default_template(DocType, AttachmentId) ->
     PrivDir = code:priv_dir('crossbar'),
     TemplateFile = filename:join([PrivDir, <<"couchdb">>, <<"templates">>, AttachmentId]),
@@ -142,7 +142,7 @@ maybe_create_default_template(DocType, AttachmentId) ->
         {'ok', Template} -> create_default_template(Template, DocType, AttachmentId)
     end.
 
--spec create_default_template(binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec create_default_template(binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
 create_default_template(Template, DocType, AttachmentId) ->
     lager:debug("creating default template ~s", [DocType]),
     Default = wh_json:from_list([{<<"template_name">>, DocType}]),
@@ -166,7 +166,7 @@ create_default_template(Template, DocType, AttachmentId) ->
             Error
     end.
 
--spec save_default_attachment(binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec save_default_attachment(binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
 save_default_attachment(Template, DocType, AttachmentId) ->
     lager:debug("saving default template ~s attachment", [DocType]),
     case

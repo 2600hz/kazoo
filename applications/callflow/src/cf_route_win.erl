@@ -24,7 +24,7 @@
               )
        ).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wh_json:object(), wh_proplist()) -> _.
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     wh_util:put_callid(CallId),

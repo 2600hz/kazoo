@@ -457,7 +457,7 @@ content_types_accepted_fold({Fun, L}, Acc, CT) ->
                 ,L
                ).
 
--spec content_type_accepted_fold(any(), content_type_fun(), atom(), content_type()) ->
+-spec content_type_accepted_fold(_, content_type_fun(), atom(), content_type()) ->
                                         content_type_fun().
 content_type_accepted_fold({Type, SubType}, Acc, Fun, CT) ->
     case api_util:content_type_matches(CT, {Type, SubType, []}) of
@@ -869,7 +869,7 @@ csv_ize([F|Rest]) ->
      ,<<"\n">>
     ].
 
--spec try_to_binary(any()) -> binary().
+-spec try_to_binary(_) -> binary().
 try_to_binary(Value) ->
     try wh_util:to_binary(Value) of
         V -> V

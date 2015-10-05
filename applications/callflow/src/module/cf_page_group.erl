@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     case get_endpoints(wh_json:get_value(<<"endpoints">>, Data, []), Call) of
         [] ->

@@ -1164,7 +1164,7 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec change_pin(mailbox(), whapps_call:call()) ->
-                        mailbox() | {'error', any()}.
+                        mailbox() | {'error', _}.
 change_pin(#mailbox{mailbox_id=Id
                     ,interdigit_timeout=Interdigit
                    }=Box
@@ -1213,7 +1213,7 @@ change_pin(#mailbox{mailbox_id=Id
 
 -spec invalid_pin(mailbox(), whapps_call:call()) ->
                          mailbox() |
-                         {'error', any()}.
+                         {'error', _}.
 invalid_pin(Box, Call) ->
     case whapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
         {'ok', _} -> change_pin(Box, Call);
@@ -1227,7 +1227,7 @@ invalid_pin(Box, Call) ->
 
 -spec validate_box_schema(wh_json:object()) ->
                                  {'ok', wh_json:object()} |
-                                 {'error', any()}.
+                                 {'error', _}.
 validate_box_schema(JObj) ->
     {'ok', Schema} = wh_json_schema:load(<<"vmboxes">>),
     case jesse:validate_with_schema(Schema, wh_json:public_fields(JObj)) of
@@ -1239,21 +1239,21 @@ validate_box_schema(JObj) ->
 
 -spec get_new_pin(pos_integer(), whapps_call:call()) ->
                          {'ok', binary()} |
-                         {'error', any()}.
+                         {'error', _}.
 get_new_pin(Interdigit, Call) ->
     NoopId = whapps_call_command:prompt(<<"vm-enter_new_pin">>, Call),
     collect_pin(Interdigit, Call, NoopId).
 
 -spec confirm_new_pin(pos_integer(), whapps_call:call()) ->
                              {'ok', binary()} |
-                             {'error', any()}.
+                             {'error', _}.
 confirm_new_pin(Interdigit, Call) ->
     NoopId = whapps_call_command:prompt(<<"vm-enter_new_pin_confirm">>, Call),
     collect_pin(Interdigit, Call, NoopId).
 
 -spec collect_pin(pos_integer(), whapps_call:call(), ne_binary()) ->
                          {'ok', binary()} |
-                         {'error', any()}.
+                         {'error', _}.
 collect_pin(Interdigit, Call, NoopId) ->
     whapps_call_command:collect_digits(?DEFAULT_MAX_PIN_LENGTH
                                        ,whapps_call_command:default_collect_timeout()
@@ -1267,7 +1267,7 @@ collect_pin(Interdigit, Call, NoopId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> any().
+-spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> _.
 new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     MediaId = message_media_doc(whapps_call:account_db(Call), Box, AttachmentName),
@@ -1700,7 +1700,7 @@ populate_keys(Call) ->
 %%--------------------------------------------------------------------
 -spec get_mailbox_doc(ne_binary(), api_binary(), wh_json:object(), whapps_call:call()) ->
                              {'ok', wh_json:object()} |
-                             {'error', any()}.
+                             {'error', _}.
 get_mailbox_doc(Db, Id, Data, Call) ->
     CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
@@ -1722,10 +1722,10 @@ get_mailbox_doc(Db, Id, Data, Call) ->
 
 -spec get_user_mailbox_doc(wh_json:object(), whapps_call:call()) ->
                                   {'ok', wh_json:object()} |
-                                  {'error', any()}.
+                                  {'error', _}.
 -spec get_user_mailbox_doc(wh_json:object(), whapps_call:call(), api_binary()) ->
                                   {'ok', wh_json:object()} |
-                                  {'error', any()}.
+                                  {'error', _}.
 get_user_mailbox_doc(Data, Call) ->
     get_user_mailbox_doc(Data, Call, whapps_call:owner_id(Call)).
 
@@ -1763,7 +1763,7 @@ get_user_mailbox_doc(Data, Call, OwnerId) ->
 
 -spec maybe_match_callerid(wh_json:objects(), wh_json:object(), whapps_call:call()) ->
                                   {'ok', wh_json:object()} |
-                                  {'error', any()}.
+                                  {'error', _}.
 maybe_match_callerid(Boxes, Data, Call) ->
     case wh_json:is_true(<<"callerid_match_login">>, Data, 'false') of
         'false' ->
@@ -1776,7 +1776,7 @@ maybe_match_callerid(Boxes, Data, Call) ->
 
 -spec try_match_callerid(wh_json:objects(), ne_binary()) ->
                                 {'ok', wh_json:object()} |
-                                {'error', any()}.
+                                {'error', _}.
 try_match_callerid([], _CallerId) ->
     lager:debug("no voicemail box found for owner with matching caller id ~s", [_CallerId]),
     {'error', "request voicemail box number"};
@@ -1931,7 +1931,7 @@ try_store_recording(AttachmentName, DocId, Url, Tries, Call) ->
 store_url(UrlFun) when is_function(UrlFun) -> UrlFun();
 store_url(<<_/binary>> = Url) -> Url.
 
--spec retry_store(ne_binary(), ne_binary(), store_url(), pos_integer(), whapps_call:call(), any()) ->
+-spec retry_store(ne_binary(), ne_binary(), store_url(), pos_integer(), whapps_call:call(), _) ->
                          'ok' | {'error', whapps_call:call()}.
 retry_store(AttachmentName, DocId, Url, Tries, Call, Error) ->
     timer:sleep(2000),
@@ -2157,7 +2157,7 @@ get_folder(Messages, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_folder(ne_binary(), wh_json:object(), mailbox(), whapps_call:call()) -> any().
+-spec set_folder(ne_binary(), wh_json:object(), mailbox(), whapps_call:call()) -> _.
 set_folder(Folder, Message, Box, Call) ->
     lager:info("setting folder for message to ~s", [Folder]),
     not (wh_json:get_value(?KEY_FOLDER, Message) =:= Folder) andalso
@@ -2171,7 +2171,7 @@ set_folder(Folder, Message, Box, Call) ->
 %%--------------------------------------------------------------------
 -spec update_folder(ne_binary(), ne_binary(), mailbox(), whapps_call:call()) ->
                            {'ok', wh_json:object()} |
-                           {'error', any()}.
+                           {'error', _}.
 update_folder(_, 'undefined', _, _) ->
     {'error', 'attachment_undefined'};
 update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, Call) ->

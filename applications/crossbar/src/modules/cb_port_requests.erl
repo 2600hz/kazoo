@@ -1460,7 +1460,7 @@ remove_phone_number(Number, _, {_, Acc}) ->
 %%--------------------------------------------------------------------
 -spec get_phone_numbers_doc(cb_context:context()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', any()}.
+                                   {'error', _}.
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),

@@ -26,7 +26,7 @@
 
 -include("kz_documents.hrl").
 
--spec fetch(api_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec fetch(api_binary()) -> {'ok', wh_json:object()} | {'error', _}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->

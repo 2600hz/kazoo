@@ -191,10 +191,10 @@ fetch(<<_/binary>> = Account) ->
 
 -spec fetch_services_doc(ne_binary()) ->
                                 {'ok', wh_json:object()} |
-                                {'error', any()}.
+                                {'error', _}.
 -spec fetch_services_doc(ne_binary(), boolean()) ->
                                 {'ok', wh_json:object()} |
-                                {'error', any()}.
+                                {'error', _}.
 fetch_services_doc(AccountId) ->
     fetch_services_doc(AccountId, 'false').
 

@@ -97,7 +97,7 @@ handle_action(<<"toggle">>, Hotdesk, Call) ->
 -spec bridge_to_endpoints(hotdesk(), whapps_call:call()) ->
                                  {'ok', wh_json:object()} |
                                  {'fail', wh_json:object()} |
-                                 {'error', any()}.
+                                 {'error', _}.
 
 bridge_to_endpoints(#hotdesk{endpoint_ids=EndpointIds}, Call) ->
     Endpoints = build_endpoints(EndpointIds, Call),
@@ -268,7 +268,7 @@ logged_out(_, Call) ->
 %%--------------------------------------------------------------------
 -spec get_hotdesk_profile(api_binary(), wh_json:object(), whapps_call:call()) ->
                                  hotdesk() |
-                                 {'error', any()}.
+                                 {'error', _}.
 get_hotdesk_profile('undefined', Data, Call) ->
     find_hotdesk_profile(Call, Data, ?MAX_LOGIN_ATTEMPTS, 1);
 get_hotdesk_profile(OwnerId, Data, Call) ->
@@ -283,7 +283,7 @@ get_hotdesk_profile(OwnerId, Data, Call) ->
 
 -spec find_hotdesk_profile(whapps_call:call(), wh_json:object(), pos_integer(), pos_integer()) ->
                                   hotdesk() |
-                                  {'error', any()}.
+                                  {'error', _}.
 find_hotdesk_profile(Call, _Data, Max, Loop) when Loop > Max ->
     lager:info("too many failed attempts to get the hotdesk id"),
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
@@ -317,7 +317,7 @@ find_hotdesk_profile(Call, Data, Max, Loop) ->
 
 -spec lookup_hotdesk_id(ne_binary(), wh_json:object(), whapps_call:call()) ->
                                hotdesk() |
-                               {'error', any()}.
+                               {'error', _}.
 lookup_hotdesk_id(HotdeskId, Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{'key', HotdeskId}

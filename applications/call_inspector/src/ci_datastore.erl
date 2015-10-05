@@ -140,7 +140,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(atom(), any(), state()) -> handle_call_ret().
+-spec handle_call(atom(), _, state()) -> handle_call_ret().
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',

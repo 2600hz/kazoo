@@ -31,7 +31,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> any().
+-spec handle(wh_json:object(), whapps_call:call()) -> _.
 handle(Data, Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of

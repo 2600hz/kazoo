@@ -96,7 +96,7 @@ get_type(API) ->
 get_is_soft_deleted(API) ->
     wh_util:is_true(get_value(API, <<"Is-Soft-Deleted">>)).
 
--spec get_value(api_terms(), ne_binary()) -> any().
+-spec get_value(api_terms(), ne_binary()) -> _.
 get_value(Prop, Key) when is_list(Prop) ->
     props:get_value(Key, Prop);
 get_value(JObj, Key) ->

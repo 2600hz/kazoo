@@ -273,7 +273,7 @@ process_realm(Realm, Dir, Module) ->
                        )
     end.
 
--spec build_freeswitch(pid()) -> any().
+-spec build_freeswitch(pid()) -> _.
 build_freeswitch(Pid) ->
     WorkDir = setup_directory(),
     AllDBs = wnm_util:get_all_number_dbs(),
@@ -494,13 +494,13 @@ render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
                         ,[Module, Number, AccountId, _R])
     end.
 
--spec maybe_accumulate_realm(boolean(), ne_binary()) -> any().
+-spec maybe_accumulate_realm(boolean(), ne_binary()) -> _.
 maybe_accumulate_realm('true', _) -> 'ok';
 maybe_accumulate_realm('false', Realm) ->
     put(<<"Realms">>, [Realm | get(<<"Realms">>)]).
 
 -spec query_registrar(ne_binary(), ne_binary()) -> {'ok', wh_json:object()}
-                                                       | {'error', any()}.
+                                                       | {'error', _}.
 query_registrar(Realm, Username) ->
     FullUser = <<Username/binary, "@", Realm/binary>>,
     Req = [{<<"To">>, FullUser}
@@ -549,7 +549,7 @@ compile_template(Module, Template) ->
             lager:debug("compiled template ~s with warnings: ~p", [_T, _W])
     end.
 
--spec render(atom(), wh_proplist()) -> {'ok', iolist()} | {'error', any()}.
+-spec render(atom(), wh_proplist()) -> {'ok', iolist()} | {'error', _}.
 render(Module, Props) ->
     try Module:render(props:filter_empty(Props)) of
         {'ok', _}=OK -> OK

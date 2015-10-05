@@ -97,7 +97,7 @@ succeeded(Res) when is_list(Res) ->
 %% Helpers for the result set helpers
 %% @end
 %%-------------------------------------------------------------------------
--spec check_bool({boolean(), any()} | boolean()) -> boolean().
+-spec check_bool({boolean(), _} | boolean()) -> boolean().
 check_bool({'true', _}) -> 'true';
 check_bool('true') -> 'true';
 check_bool(_) -> 'false'.
@@ -107,7 +107,7 @@ check_bool(_) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_failed({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+-spec filter_out_failed({boolean() | 'halt', _} | boolean() | _) -> boolean().
 filter_out_failed({'true', _}) -> 'true';
 filter_out_failed('true') -> 'true';
 filter_out_failed({'halt', _}) -> 'true';
@@ -121,7 +121,7 @@ filter_out_failed(Term) -> not wh_util:is_empty(Term).
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'halt', _} | boolean() | _) -> boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
 filter_out_succeeded({'halt', _}) -> 'true';
@@ -138,7 +138,7 @@ filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 bind(Bindings, Module, Fun) ->
     bind(Bindings, Module, Fun, 'undefined').
 
--spec bind(ne_binary() | ne_binaries(), atom(), atom(), any()) ->
+-spec bind(ne_binary() | ne_binaries(), atom(), atom(), _) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
@@ -149,7 +149,7 @@ bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
 unbind(Bindings, Module, Fun) ->
     unbind(Bindings, Module, Fun, 'undefined').
 
--spec unbind(ne_binary() | ne_binaries(), atom(), atom(), any()) -> 'ok'.
+-spec unbind(ne_binary() | ne_binaries(), atom(), atom(), _) -> 'ok'.
 unbind([_|_]=Bindings, Module, Fun, Payload) ->
     _ = [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings],
     'ok';

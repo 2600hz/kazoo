@@ -215,9 +215,9 @@ handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
 
--spec handle_no_switch({'tcp', any(), binary()}, state()) ->
+-spec handle_no_switch({'tcp', _, binary()}, state()) ->
                               {'noreply', state(), wh_timeout()} |
-                              {'stop', any(), state()}.
+                              {'stop', _, state()}.
 handle_no_switch({'tcp', Socket, Data}, State) ->
     case handle_info({'tcp', Socket, Data}, State#state{switch_info='true'}) of
         {'noreply', _State, Timeout} -> {'noreply', State, Timeout};
@@ -300,10 +300,10 @@ get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) 
 
 -spec maybe_bind(atom(), atoms()) ->
                         {'ok', {text(), inet:port_number()}} |
-                        {'error', any()}.
+                        {'error', _}.
 -spec maybe_bind(atom(), atoms(), non_neg_integer()) ->
                         {'ok', {text(), inet:port_number()}} |
-                        {'error', any()}.
+                        {'error', _}.
 maybe_bind(Node, Bindings) ->
     maybe_bind(Node, Bindings, 0).
 
@@ -320,7 +320,7 @@ maybe_bind(Node, Bindings, Attempts) ->
             maybe_bind(Node, Bindings, Attempts+1)
     end.
 
--spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+-spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> _.
 process_event(<<"CHANNEL_CREATE">>, UUID, _Props, Node) ->
     wh_util:put_callid(UUID),
     maybe_start_event_listener(Node, UUID);
@@ -347,7 +347,7 @@ process_event(<<"loopback::bowout">>, _UUID, Props, Node) ->
     gproc:send({'p', 'l', ?LOOPBACK_BOWOUT_REG(ResigningUUID)}, ?LOOPBACK_BOWOUT_MSG(Node, Props));
 process_event(_, _, _, _) -> 'ok'.
 
--spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+-spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> _.
 maybe_send_event(<<"HEARTBEAT">>, _UUID, _Props, _Node) -> 'ok';
 maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     wh_util:put_callid(UUID),
@@ -400,7 +400,7 @@ send_event(EventName, UUID, Props, Node) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
     maybe_send_call_event(UUID, Props, Node).
 
--spec maybe_send_call_event(api_binary(), wh_proplist(), atom()) -> any().
+-spec maybe_send_call_event(api_binary(), wh_proplist(), atom()) -> _.
 maybe_send_call_event('undefined', _, _) -> 'ok';
 maybe_send_call_event(CallId, Props, Node) ->
     gproc:send({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}, {'event', [CallId | Props]}).

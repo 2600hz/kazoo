@@ -41,7 +41,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', any()}.
+-spec start() -> 'ok' | {'error', _}.
 start() ->
     application:start(?MODULE).
 

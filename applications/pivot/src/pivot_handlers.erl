@@ -12,7 +12,7 @@
 
 -include("pivot.hrl").
 
--spec handle_pivot_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_pivot_req(wh_json:object(), wh_proplist()) -> _.
 handle_pivot_req(JObj, _Props) ->
     'true' = wapi_pivot:req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),

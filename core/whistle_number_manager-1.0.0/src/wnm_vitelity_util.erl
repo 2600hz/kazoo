@@ -48,7 +48,7 @@ add_options_fold({_K, 'undefined'}, Opts) -> Opts;
 add_options_fold({K, V}, Opts) ->
     props:insert_value(K, V, Opts).
 
--spec get_query_value(atom(), wh_proplist()) -> any().
+-spec get_query_value(atom(), wh_proplist()) -> _.
 get_query_value(Key, Opts) ->
     case props:get_value(Key, Opts) of
         'undefined' -> whapps_config:get(?WNM_VITELITY_CONFIG_CAT, Key);
@@ -156,7 +156,7 @@ xml_el_to_kv_pair(#xmlElement{name=Name
 
 -spec query_vitelity(ne_binary()) ->
                             {'ok', text()} |
-                            {'error', any()}.
+                            {'error', _}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of

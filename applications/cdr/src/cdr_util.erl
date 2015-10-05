@@ -42,7 +42,7 @@ save_cdr(AccountMOD, Doc) ->
     save_cdr(AccountMOD, Doc, 0).
 
 -spec save_cdr(api_binary(), wh_json:object(), 0..?MAX_RETRIES) ->
-                      {'error', any()} | 'ok'.
+                      {'error', _} | 'ok'.
 save_cdr(_, _, ?MAX_RETRIES) ->
     {'error', 'max_retries'};
 save_cdr(AccountMODb, Doc, Retries) ->

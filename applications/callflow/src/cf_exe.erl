@@ -235,10 +235,10 @@ get_all_branch_keys(Call) ->
 
 -spec attempt(whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', any()}}.
+                     {'attempt_resp', {'error', _}}.
 -spec attempt(ne_binary(), whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', any()}}.
+                     {'attempt_resp', {'error', _}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).
 
 attempt(Key, Srv) when is_pid(Srv) ->
@@ -254,7 +254,7 @@ wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
+-spec relay_amqp(wh_json:object(), wh_proplist()) -> _.
 relay_amqp(JObj, Props) ->
     Pids = case props:get_value('cf_module_pid', Props) of
                P when is_pid(P) -> [P | props:get_value('cf_event_pids', Props, [])];
@@ -573,7 +573,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
             {'reply', [{'cf_event_pids', Others}]}
     end.
 
--spec get_pid({pid(), any()}) -> pid().
+-spec get_pid({pid(), _}) -> pid().
 get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 

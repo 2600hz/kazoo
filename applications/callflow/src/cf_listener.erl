@@ -143,7 +143,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(any(), any()) -> 'ok'.
+-spec terminate(_, _) -> 'ok'.
 terminate(_Reason, _) ->
     lager:info("callflow listner ~p termination", [_Reason]).
 

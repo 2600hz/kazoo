@@ -244,14 +244,14 @@ build_body(User, Props) ->
     Body = wh_util:to_binary(Text),
     binary:replace(Body, <<"\n">>, <<"\r\n">>, ['global']).
 
--spec ensure_template() -> {'ok', any()}.
+-spec ensure_template() -> {'ok', _}.
 ensure_template() ->
     BasePath = code:lib_dir('omnipresence', 'priv'),
     File = lists:concat([BasePath, "/packages/message-summary.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_message_summary">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, []).
 
--spec presence_reset(wh_json:object()) -> any().
+-spec presence_reset(wh_json:object()) -> _.
 presence_reset(JObj) ->
     User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
     handle_update(wh_json:new(), User).

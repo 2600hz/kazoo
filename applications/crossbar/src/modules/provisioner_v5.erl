@@ -221,7 +221,7 @@ set_owner(JObj) ->
 
 -spec get_owner(api_binary(), ne_binary()) ->
                        {'ok', wh_json:object()} |
-                       {'error', any()}.
+                       {'error', _}.
 get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -396,7 +396,7 @@ get_feature_key_type(Type, Brand, Family) ->
                              ).
 
 -spec get_user(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
-                                            {'error', any()}.
+                                            {'error', _}.
 get_user(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_cache_doc(AccountDb, UserId).

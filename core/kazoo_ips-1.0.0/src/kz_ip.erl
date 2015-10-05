@@ -55,7 +55,7 @@ from_json(JObj) -> JObj.
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), ne_binary(), ne_binary()) ->
                     {'ok', ip()} |
-                    {'error', any()}.
+                    {'error', _}.
 create(IP, Zone, Host) ->
     Timestamp = wh_util:current_tstamp(),
     JObj = wh_json:from_list(
@@ -94,7 +94,7 @@ create(IP, Zone, Host) ->
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) ->
                    {'ok', ip()} |
-                   {'error', any()}.
+                   {'error', _}.
 fetch(IP) ->
     case couch_mgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> {'ok', from_json(JObj)};
@@ -113,7 +113,7 @@ fetch(IP) ->
 %%--------------------------------------------------------------------
 -spec assign(ne_binary(), ne_binary() | ip()) ->
                     {'ok', ip()} |
-                    {'error', any()}.
+                    {'error', _}.
 assign(Account, <<_/binary>> = Ip) ->
     case fetch(Ip) of
         {'ok', IP} -> assign(Account, IP);
@@ -144,7 +144,7 @@ assign(Account, IP) ->
 %%--------------------------------------------------------------------
 -spec release(ne_binary() | ip()) ->
                      {'ok', ip()} |
-                     {'error', any()}.
+                     {'error', _}.
 release(<<_/binary>> = Ip) ->
     case fetch(Ip) of
         {'ok', IP} -> release(IP);
@@ -169,7 +169,7 @@ release(IP) ->
 %%--------------------------------------------------------------------
 -spec delete(ne_binary() | ip()) ->
                      {'ok', ip()} |
-                    {'error', any()}.
+                    {'error', _}.
 delete(<<_/binary>> = IP) ->
     case couch_mgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> delete(from_json(JObj));
@@ -249,7 +249,7 @@ is_dedicated_ip(IP) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_available(ip() | ne_binary()) -> boolean() | {'error', any()}.
+-spec is_available(ip() | ne_binary()) -> boolean() | {'error', _}.
 is_available(Ip) when is_binary(Ip) ->
     case fetch(Ip) of
         {'ok', IP} -> is_available(IP);
@@ -266,7 +266,7 @@ is_available(IP) ->
 %%--------------------------------------------------------------------
 -spec save(wh_json:object(), api_binary()) ->
                   {'ok', ip()} |
-                  {'error', any()}.
+                  {'error', _}.
 save(JObj, PrevAccountId) ->
     case couch_mgr:save_doc(?WH_DEDICATED_IP_DB, JObj) of
         {'ok', J} ->

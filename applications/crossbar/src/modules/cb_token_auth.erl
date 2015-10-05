@@ -109,7 +109,7 @@ finish_request(Context, AuthDoc) ->
     cb_context:put_reqid(Context),
     maybe_save_auth_doc(AuthDoc).
 
--spec maybe_save_auth_doc(wh_json:object()) -> any().
+-spec maybe_save_auth_doc(wh_json:object()) -> _.
 maybe_save_auth_doc(OldAuthDoc) ->
     OldAuthModified = wh_doc:modified(OldAuthDoc),
     Now = wh_util:current_tstamp(),

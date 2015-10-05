@@ -22,9 +22,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
+-spec start(_, _) ->
                    {'ok', pid()} |
-                   {'error', any()}.
+                   {'error', _}.
 start(_StartType, _StartArgs) -> cdr:start_link().
 
 %%--------------------------------------------------------------------
@@ -33,5 +33,5 @@ start(_StartType, _StartArgs) -> cdr:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(_) -> 'ok'.
 stop(_State) -> cdr:stop().

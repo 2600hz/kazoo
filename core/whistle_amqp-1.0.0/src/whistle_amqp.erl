@@ -23,7 +23,7 @@ start_link() ->
     _ = start_deps(),
     wh_amqp_sup:start_link().
 
--spec start/0 :: () -> 'ok' | {'error', any()}.
+-spec start/0 :: () -> 'ok' | {'error', _}.
 start() ->
     _ = start_deps(),
     application:start(whistle_amqp, permanent).

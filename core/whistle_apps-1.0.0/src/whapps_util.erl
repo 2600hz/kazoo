@@ -162,7 +162,7 @@ find_master_account_id({'ok', Accounts}) ->
     Ok.
 
 -spec get_master_account_db() -> {'ok', ne_binary()} |
-                                 {'error', any()}.
+                                 {'error', _}.
 get_master_account_db() ->
     case get_master_account_id() of
         {'error', _}=E -> E;
@@ -483,7 +483,7 @@ rm_aggregate_device(Db, Device) ->
     rm_aggregate_device(Db, wh_doc:id(Device)).
 
 -spec amqp_pool_send(api_terms(), wh_amqp_worker:publish_fun()) ->
-                            'ok' | {'error', any()}.
+                            'ok' | {'error', _}.
 amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
     wh_amqp_worker:cast(Api, PubFun).
 
@@ -520,21 +520,21 @@ amqp_pool_request_custom(Api, PubFun, ValidateFun, Timeout, Bind)
 -spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun()) ->
                                {'ok', wh_json:objects()} |
                                {'timeout', wh_json:objects()} |
-                               {'error', any()}.
+                               {'error', _}.
 amqp_pool_collect(Api, PubFun) ->
     amqp_pool_collect(Api, PubFun, wh_amqp_worker:default_timeout()).
 
 -spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:timeout_or_until()) ->
                                {'ok', wh_json:objects()} |
                                {'timeout', wh_json:objects()} |
-                               {'error', any()}.
+                               {'error', _}.
 amqp_pool_collect(Api, PubFun, TimeoutOrUntil) ->
     wh_amqp_worker:call_collect(Api, PubFun, TimeoutOrUntil).
 
 -spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:collect_until(), wh_timeout()) ->
                                {'ok', wh_json:objects()} |
                                {'timeout', wh_json:objects()} |
-                               {'error', any()}.
+                               {'error', _}.
 amqp_pool_collect(Api, PubFun, Until, Timeout) ->
     wh_amqp_worker:call_collect(Api, PubFun, Until, Timeout).
 

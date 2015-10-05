@@ -65,12 +65,12 @@ start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec new(wh_amqp_connection() | text()) ->
                  wh_amqp_connection() |
-                 {'error', any()}.
+                 {'error', _}.
 new(Broker) -> new(Broker, 'local').
 
 -spec new(wh_amqp_connection() | text(), text()) ->
                  wh_amqp_connection() |
-                 {'error', any()}.
+                 {'error', _}.
 new(<<_/binary>> = Broker, Zone) ->
     case broker_connections(Broker) =:= 0 of
         'false' -> {'error', 'exists'};
@@ -81,13 +81,13 @@ new(Broker, Zone) ->
 
 -spec add(wh_amqp_connection() | text()) ->
                  wh_amqp_connection() |
-                 {'error', any()}.
+                 {'error', _}.
 -spec add(wh_amqp_connection() | text(), text()) ->
                  wh_amqp_connection() |
-                 {'error', any()}.
+                 {'error', _}.
 -spec add(wh_amqp_connection() | text(), text(), list()) ->
                  wh_amqp_connection() |
-                 {'error', any()}.
+                 {'error', _}.
 
 add(Broker) -> add(Broker, 'local').
 
@@ -251,8 +251,8 @@ wait_for_available() -> wait_for_available(fun is_available/0, 'infinity').
 -spec wait_for_available_tag(binary()) -> 'ok'.
 wait_for_available_tag(Tag) -> wait_for_available(fun() -> is_tag_available(Tag) end, 'infinity').
 
--spec wait_for_available(any(), 'infinity') -> 'ok';
-                        (any(), non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
+-spec wait_for_available(_, 'infinity') -> 'ok';
+                        (_, non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
 wait_for_available(Fun, Timeout) ->
     case apply(Fun,[]) of
         'true' -> 'ok';
@@ -409,7 +409,7 @@ notify_watchers(#state{watchers=[Watcher|Watchers]}=State) ->
 notify_watchers(#state{watchers=Watchers}=State) ->
     notify_watchers(State#state{watchers=sets:to_list(Watchers)}).
 
--spec notify_watcher(pid()) -> any().
+-spec notify_watcher(pid()) -> _.
 notify_watcher(Watcher) ->
     Watcher ! {'wh_amqp_connections', 'connection_available'}.
 

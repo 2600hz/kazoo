@@ -22,7 +22,7 @@ receipts() ->
     lists:foldl(fun print_receipt/2, 1, Sorted),
     'ok'.
 
--spec filter_receipts(any(), any()) -> boolean().
+-spec filter_receipts(_, _) -> boolean().
 filter_receipts({'receipt', _R}, #email_receipt{}) -> 'true';
 filter_receipts(_, _) -> 'false'.
 
