@@ -74,6 +74,11 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
+    %% we should wait about 7-10 seconds before gen_leader syncronization
+    %% and leader election
+    %% after gen_leader syncronization this task will be scheduled only once
+    leader_cron:schedule_task('load_schedules', {'oneshot', 60000}
+                             ,{'gen_listener', 'cast', [?MODULE, 'load_schedules']}),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -108,6 +113,11 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast('load_schedules', State) ->
+    Schedules = whapps_config:get(?CONFIG_CAT, <<"schedules">>, []),
+    NormalizedSchedules = lists:map(fun normalize_schedule/1, Schedules),
+    _ = lists:foreach(fun schedule/1, NormalizedSchedules),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -168,3 +178,110 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-type time() :: leader_cron_task:oneshot() | leader_cron_task:cron() | leader_cron_task:sleeper().
+-type time_token_value() :: 'all' | integer() | integers().
+-type leader_cron_callback() :: {atom(), atom(), list()} | {fun(), list()}.
+-spec normalize_schedule(wh_json:object()) -> {ne_binary(), time(), leader_cron_callback()}.
+normalize_schedule(Schedule) ->
+    Action = wh_json:get_value(<<"action">>, Schedule),
+    ActionType = wh_json:get_value(<<"type">>, Action),
+    ActionFun = action_fun(ActionType, Action),
+    TimeSchedule = time_schedule(Schedule),
+    ActionName = action_name(ActionType, Action, TimeSchedule),
+    {ActionName, TimeSchedule, ActionFun}.
+
+-spec time_schedule(wh_json:object()) -> time().
+time_schedule(Schedule) ->
+    GetTimeTokenFun = get_time_token_value(Schedule),
+    case wh_json:get_value(<<"type">>, Schedule) of
+        <<"every">> ->
+            [Minutes, Hours, MonthDays, Monthes, Weekdays] = lists:map(GetTimeTokenFun
+                                                                       ,[{<<"minutes">>, 'all'}
+                                                                         ,{<<"hours">>, 'all'}
+                                                                         ,{<<"month_days">>, 'all'}
+                                                                         ,{<<"monthes">>, 'all'}
+                                                                         ,{<<"weekdays">>, 'all'}
+                                                                        ]),
+            {'cron', {Minutes, Hours, MonthDays, Monthes, Weekdays}};
+        <<"once">> ->
+            [Second, Minute, Hour, Day, Month, Year] = lists:map(GetTimeTokenFun
+                                                                 ,[{<<"second">>, 0}
+                                                                   ,{<<"minute">>, 0}
+                                                                   ,{<<"hour">>, 0}
+                                                                   ,{<<"day">>, 1}
+                                                                   ,{<<"month">>, 1}
+                                                                   ,{<<"year">>, 1970}
+                                                                  ]),
+            {'oneshot', {{Year, Month, Day}, {Hour, Minute, Second}}};
+        <<"periodic">> ->
+            [Seconds, Minutes, Hours, Days] = lists:map(GetTimeTokenFun
+                                                        ,[{<<"seconds">>, 0}
+                                                          ,{<<"minutes">>, 0}
+                                                          ,{<<"hours">>, 0}
+                                                          ,{<<"days">>, 0}
+                                                         ]),
+            {'sleeper', ?MILLISECONDS_IN_SECOND * (Seconds
+                                                   + ?SECONDS_IN_MINUTE * Minutes
+                                                   + ?SECONDS_IN_HOUR * Hours
+                                                   + ?SECONDS_IN_DAY * Days)}
+    end.
+
+-spec schedule({ne_binary(), time(), fun()}) -> {'ok', pid()} | {'error', term()}.
+schedule({Name, Time, Action}) ->
+    lager:info("scheduling ~p", [Name]),
+    leader_cron:schedule_task(Name, Time, Action).
+
+-spec get_time_token_value(wh_json:object()) -> fun(({ne_binary(), any()}) -> time_token_value()).
+get_time_token_value(JObj) ->
+    fun({TokenName, Default}) ->
+            parse_time_token(TokenName, JObj, Default)
+    end.
+
+-spec parse_time_token(ne_binary(), wh_json:object(), time_token_value()) -> time_token_value().
+parse_time_token(TokenName, Schedule, Default) ->
+    case wh_json:get_value(TokenName, Schedule, Default) of
+        <<"all">> ->
+            'all';
+        'all' ->
+            'all';
+        Tokens when is_list(Tokens) ->
+            [wh_util:to_integer(X) || X <- Tokens];
+        Token ->
+            wh_util:to_integer(Token)
+    end.
+
+-spec action_fun(ne_binary(), wh_json:object()) -> leader_cron_callback().
+action_fun(Type, _JObj) ->
+    {fun unknown_type/1, [Type]}.
+
+-spec action_name(ne_binary(), wh_json:object(), time()) -> ne_binary().
+action_name(ActionType, Action, Times) ->
+    ActionSuffix = action_suffixes(ActionType, Action),
+    wh_util:join_binary([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
+
+-spec action_suffixes(ne_binary(), wh_json:object()) -> ne_binaries().
+action_suffixes(_Type, _JObj) ->
+    [].
+
+-spec time_suffix(time()) -> ne_binary().
+time_suffix({'cron', {Minutes, Hours, MonthDays, Monthes, Weekdays}}) ->
+    wh_util:join_binary(
+      lists:map(fun time_tokens_to_binary/1
+                ,[Minutes, Hours, MonthDays, Monthes, Weekdays])
+      , "-");
+time_suffix({'oneshot', {{Year, Month, Day}, {Hour, Minute, Second}}}) ->
+    wh_util:join_binary(
+      lists:map(fun wh_util:to_binary/1
+                ,[Year, Month, Day, Hour, Minute, Second])
+      , "-");
+time_suffix({'sleeper', MilliSeconds}) ->
+    wh_util:to_binary(MilliSeconds).
+
+-spec time_tokens_to_binary(time_token_value()) -> ne_binary().
+time_tokens_to_binary('all') ->
+    <<"all">>;
+time_tokens_to_binary(Tokens) when is_list(Tokens) ->
+    wh_util:join_binary([wh_util:to_binary(X) || X <- Tokens], ",").
+
+unknown_type(Type) ->
+    lager:warning("no function for type ~p", [Type]).
