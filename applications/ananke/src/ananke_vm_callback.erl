@@ -10,6 +10,7 @@
 
 -export([init/0
          ,handle_req/2
+         ,check/2
         ]).
 
 -include("ananke.hrl").
@@ -32,9 +33,31 @@ init() ->
     {'ok', _} = ananke_sup:start_supervisor('ananke_callback_sup'),
     'ok'.
 
+-spec check(ne_binary(), ne_binary()) -> any().
+check(AccountId, VMBoxId) ->
+    lager:info("checking vmbox ~p in ~p", [VMBoxId, AccountId]),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
+    case [X || X <- wh_json:get_value(<<"messages">>, VMBox, [])
+               , wh_json:get_value(<<"folder">>, X) =:= <<"new">>]
+    of
+        [] ->
+            lager:info("no unreaded messages"),
+            'ok';
+        _  ->
+            lager:info("found unreaded messages"),
+            handle_req(wh_json:set_values([{<<"Account-ID">>, AccountId}
+                                           ,{<<"Account-DB">>, AccountDb}
+                                           ,{<<"Voicemail-Box">>, VMBoxId}
+                                          ]
+                                          ,wh_json:new()),
+                       [{<<"skip_verification">>, 'true'}])
+    end.
+
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
-handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:voicemail_v(JObj),
+handle_req(JObj, Props) ->
+    'true' = props:get_value(<<"skip_verification">>, Props, 'false')
+                orelse wapi_notifications:voicemail_v(JObj),
     _ = wh_util:put_callid(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),

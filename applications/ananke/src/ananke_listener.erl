@@ -251,6 +251,10 @@ parse_time_token(TokenName, Schedule, Default) ->
     end.
 
 -spec action_fun(ne_binary(), wh_json:object()) -> leader_cron_callback().
+action_fun(<<"check_voicemail">>, JObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, JObj),
+    VmboxId = wh_json:get_value(<<"vmbox_id">>, JObj),
+    {'ananke_vm_callback', 'check', [AccountId, VmboxId]};
 action_fun(Type, _JObj) ->
     {fun unknown_type/1, [Type]}.
 
@@ -260,6 +264,8 @@ action_name(ActionType, Action, Times) ->
     wh_util:join_binary([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
 
 -spec action_suffixes(ne_binary(), wh_json:object()) -> ne_binaries().
+action_suffixes(<<"check_voicemail">>, JObj) ->
+    [wh_json:get_value(<<"account_id">>, JObj), wh_json:get_value(<<"vmbox_id">>, JObj)];
 action_suffixes(_Type, _JObj) ->
     [].
 
