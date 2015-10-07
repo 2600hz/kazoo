@@ -64,8 +64,7 @@ handle_req(JObj, Props) ->
     {'ok', VMBoxJObj} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
     case kzd_voicemail_box:owner_id(VMBoxJObj) of
         'undefined' ->
-            lager:debug("no owner"),
-            'ok';
+            lager:debug("no owner");
         UserId ->
             lager:debug("voicemail owner is ~p", [UserId]),
             {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, UserId),
@@ -141,14 +140,11 @@ get_callflow_number(Callflow, _Mailbox) ->
 
 -spec maybe_start_caller(#args{}) -> 'ok'.
 maybe_start_caller(#args{callback_number = 'undefined'}) ->
-    lager:debug("no callback number"),
-    'ok';
+    lager:debug("no callback number");
 maybe_start_caller(#args{vm_number = 'undefined', account_id = AccountId}) ->
-    lager:info("cannot find voicemail number in account ~p", [AccountId]),
-    'ok';
+    lager:info("cannot find voicemail number in account ~p", [AccountId]);
 maybe_start_caller(#args{is_callback_disabled = 'true', user_id = UserId}) ->
-    lager:debug("disabled for user ~p", [UserId]),
-    'ok';
+    lager:debug("disabled for user ~p", [UserId]);
 maybe_start_caller(StartArgs) ->
     start_caller(StartArgs).
 
@@ -165,8 +161,7 @@ start_caller(#args{callback_number = Number
         {'ok', _, _} -> lager:debug("started");
         {'error', {'already_started', _}} -> lager:info("already started");
         {'error', Error} -> lager:warning("error: ~p", [Error])
-    end,
-    'ok'.
+    end.
 
 -spec build_originate_req(#args{}) -> wh_proplist().
 build_originate_req(#args{callback_number = CallbackNumber
