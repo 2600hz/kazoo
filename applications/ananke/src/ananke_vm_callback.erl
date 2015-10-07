@@ -234,12 +234,12 @@ get_first_defined([], Default) ->
 -spec get_interval(wh_json:object(), wh_json:object(), wh_json:object()) -> integer().
 get_interval(VMBoxJObj, UserJObj, AccountJObj) ->
     DefaultInterval = whapps_config:get_binary(?CONFIG_CAT
-                                               ,<<"vm_notify_callback_interval">>
+                                               ,<<"vm_notify_callback_interval_s">>
                                                ,5*60),
     wh_util:to_integer(
-      get_first_defined([{<<"notify_callback_interval">>, VMBoxJObj}
-                         ,{<<"vm_notify_callback_interval">>, UserJObj}
-                         ,{<<"vm_notify_callback_interval">>, AccountJObj}
+      get_first_defined([{<<"notify_callback_interval_s">>, VMBoxJObj}
+                         ,{<<"vm_notify_callback_interval_s">>, UserJObj}
+                         ,{<<"vm_notify_callback_interval_s">>, AccountJObj}
                         ]
                         ,DefaultInterval)).
 
@@ -261,8 +261,8 @@ get_callback_timeout(VMBoxJObj, UserJObj, AccountJObj) ->
                                                   ,<<"vm_notify_callback_timeout">>
                                                   ,20),
     wh_util:to_integer(
-      get_first_defined([{<<"notify_callback_timeout">>, VMBoxJObj}
-                         ,{<<"vm_notify_callback_timeout">>, UserJObj}
-                         ,{<<"vm_notify_callback_timeout">>, AccountJObj}
+      get_first_defined([{<<"notify_callback_timeout_s">>, VMBoxJObj}
+                         ,{<<"vm_notify_callback_timeout_s">>, UserJObj}
+                         ,{<<"vm_notify_callback_timeout_s">>, AccountJObj}
                         ]
                         ,DefaultCallTimeout)).
