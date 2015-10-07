@@ -15,6 +15,7 @@
 -export([notify_email_list/3]).
 -export([filter_numbers/1]).
 -export([is_valid_caller_id/2]).
+-export([normalize_content_type/1]).
 
 -include("fax.hrl").
 
@@ -223,3 +224,20 @@ is_valid_caller_id(Number, AccountId) ->
 
 -spec is_digit(integer()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.
+
+-spec normalize_content_type(text()) -> ne_binary().
+normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/x-tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/x-tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"application/tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/x-tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/x-tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"application/pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"application/x-pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"text/pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"text/x-pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<_/binary>> = Else) -> Else;
+normalize_content_type(CT) ->
+    normalize_content_type(wh_util:to_binary(CT)).
