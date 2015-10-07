@@ -175,7 +175,14 @@ get_endpoint_data(JObj) ->
     {'ok', AcctId, NumberProps} = wh_number_manager:lookup_account_by_number(ToDID),
     ForceOut = wh_number_properties:should_force_outbound(NumberProps),
     lager:info("acct ~s force out ~s", [AcctId, ForceOut]),
-    RoutingData = routing_data(ToDID, AcctId),
+    RoutingData1 = routing_data(ToDID, AcctId),
+
+    CidOptions  = proplists:get_value(<<"Caller-ID-Options">>, RoutingData1),
+    CidFormat   = wh_json:get_ne_value(<<"format">>, CidOptions),
+    OldCallerId = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
+    NewCallerId = whapps_call:maybe_format_caller_id_str(OldCallerId, CidFormat),
+    RoutingData = RoutingData1 ++ [{<<"Outbound-Caller-ID-Number">>, NewCallerId}],
+
     AuthUser = props:get_value(<<"To-User">>, RoutingData),
     AuthRealm = props:get_value(<<"To-Realm">>, RoutingData),
     InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
@@ -239,6 +246,8 @@ routing_data(ToDID, AcctID, Settings) ->
         'true' -> 'ok'
     end,
 
+    CidOptions = wh_json:get_ne_value(<<"caller_id_options">>, SrvOptions),
+
     InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
     {CalleeName, CalleeNumber} = callee_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
                                             ,wh_json:get_value(<<"callerid_account">>, Settings)
@@ -277,8 +286,7 @@ routing_data(ToDID, AcctID, Settings) ->
                                   ,wh_json:get_value(<<"timeout">>, SrvOptions)
                                   ,wh_json:get_value(<<"timeout">>, AcctStuff)
                                  ]),
-    %% Bridge Endpoint fields go here
-    %% See http://wiki.2600hz.org/display/whistle/Dialplan+Actions#DialplanActions-Endpoint
+
     [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
                          ,{<<"Codecs">>, wh_json:find(<<"codecs">>, [SrvOptions, Srv])}
                          ,{<<"Bypass-Media">>, BypassMedia}
@@ -292,6 +300,7 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,{<<"Callee-ID-Number">>, CalleeNumber}
                          ,{<<"To-User">>, AuthU}
                          ,{<<"To-Realm">>, AuthR}
+                         ,{<<"Caller-ID-Options">>, CidOptions}
                          ,{<<"To-DID">>, ToDID}
                          ,{<<"To-IP">>, build_ip(ToIP, ToPort)}
                          ,{<<"Route-Options">>, RouteOpts}

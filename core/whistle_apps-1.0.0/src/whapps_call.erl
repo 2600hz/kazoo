@@ -35,6 +35,7 @@
 
 -export([clear_helpers/1]).
 
+-export([maybe_format_caller_id/2, maybe_format_caller_id_str/2]).
 -export([set_caller_id_name/2, caller_id_name/1]).
 -export([set_caller_id_number/2, caller_id_number/1]).
 -export([set_callee_id_name/2, callee_id_name/1]).
@@ -557,6 +558,59 @@ set_controller_queue(ControllerQ, #whapps_call{}=Call) when is_binary(Controller
 -spec controller_queue(call()) -> binary().
 controller_queue(#whapps_call{controller_q=ControllerQ}) ->
     ControllerQ.
+
+-spec maybe_format_caller_id(call(), api_object()) -> call().
+maybe_format_caller_id(Call, 'undefined') -> Call;
+maybe_format_caller_id(Call, Format) ->
+    set_caller_id_number(maybe_format_caller_id_str(caller_id_number(Call), Format), Call).
+
+-spec maybe_format_caller_id_str(ne_binary(), api_object()) -> ne_binary().
+maybe_format_caller_id_str(Cid, 'undefined') -> Cid;
+maybe_format_caller_id_str(Cid, Format) ->
+    Class = wnm_util:classify_number(Cid),
+    lager:debug("checking for caller id reformating rules for ~s numbers", [Class]),
+    case wh_json:get_ne_value(Class, Format) of
+        'undefined' -> maybe_reformat_caller_id(Cid, wh_json:get_ne_value(<<"all">>, Format));
+        UseFormat   -> maybe_reformat_caller_id(Cid, UseFormat)
+    end.
+
+-spec maybe_reformat_caller_id(ne_binary(), api_object()) -> ne_binary().
+maybe_reformat_caller_id(CallerId, 'undefined') -> CallerId;
+maybe_reformat_caller_id(CallerId, Format) ->
+    Regex = wh_json:get_ne_value(<<"regex">>, Format),
+    maybe_regex_caller_id(CallerId, Regex, Format).
+
+-spec maybe_regex_caller_id(ne_binary(), api_binary(), wh_json:object()) -> ne_binary().
+maybe_regex_caller_id(CallerId, 'undefined', _) -> CallerId;
+maybe_regex_caller_id(CallerId, Regex, Format) ->
+    Normalized = wnm_util:normalize_number(CallerId),
+    case re:run(Normalized, Regex, [{'capture', 'all_but_first', 'binary'}]) of
+        {'match', UseCid} ->
+            lager:info("cid rewrite match found ~s from normalized caller id ~s"
+                      ,[hd(UseCid), Normalized]),
+            maybe_append_caller_id(
+              maybe_prepend_caller_id(
+                hd(UseCid)
+                ,wh_json:get_ne_value(<<"prefix">>, Format)
+               )
+              ,wh_json:get_ne_value(<<"suffix">>, Format)
+             );
+        _NotMatching -> CallerId
+    end.
+
+-spec maybe_prepend_caller_id(ne_binary(), api_binary()) -> ne_binary().
+maybe_prepend_caller_id(CallerId, 'undefined') -> CallerId;
+maybe_prepend_caller_id(CallerId, Prefix) ->
+    BinPrefix   = wh_util:to_binary(Prefix),
+    lager:info("prepending cid with ~s~n", [BinPrefix]),
+    <<BinPrefix/binary, CallerId/binary>>.
+
+-spec maybe_append_caller_id(ne_binary(), api_binary()) -> ne_binary().
+maybe_append_caller_id(CallerId, 'undefined') -> CallerId;
+maybe_append_caller_id(CallerId, Suffix) ->
+    BinSuffix   = wh_util:to_binary(Suffix),
+    lager:info("appending cid with ~s~n", [BinSuffix]),
+    <<CallerId/binary, BinSuffix/binary>>.
 
 -spec set_caller_id_name(ne_binary(), call()) -> call().
 set_caller_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
