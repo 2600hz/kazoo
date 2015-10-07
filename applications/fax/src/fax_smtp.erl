@@ -31,6 +31,8 @@
 
 -define(RELAY, 'true').
 -define(SMTP_MAX_SESSIONS, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_sessions">>, 50)).
+-define(DEFAULT_IMAGE_SIZE_CMD_FMT, <<"echo -n `identify -format \"%[fx:w]x%[fx:h]\" ~s`">>).
+-define(IMAGE_SIZE_CMD_FMT, whapps_config:get_binary(?CONFIG_CAT, <<"image_size_cmd_format">>, ?DEFAULT_IMAGE_SIZE_CMD_FMT).
 
 -record(state, {
           options = [] :: list()
@@ -675,7 +677,7 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
                |Parts
               ], State) ->
     {_ , NewState}
-        = maybe_process_part(<<Type/binary, "/", SubType/binary>>
+        = maybe_process_part(fax_util:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
                        ,Parameters
                        ,BodyPart
                        ,State
@@ -699,6 +701,8 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
     end;
 maybe_process_part(CT, _Parameters, Body, State) ->
     case {is_allowed_content_type(CT), CT} of
+        {true, <<"image/tiff">>} ->
+            process_part(CT, Body, State);
         {true, <<"image/", _/binary>>} ->
             maybe_process_image(CT, Body, State);
         {true, _} ->
@@ -779,7 +783,7 @@ maybe_process_image(CT, Body, Size, State) ->
                        [X, Y] -> {wh_util:to_integer(X), wh_util:to_integer(Y)}
                    end,
     {'ok', NewState = #state{filename = Filename}} = process_part(CT, Body, State),
-    Cmd = io_lib:format(<<"identify -format \"%[fx:w]x%[fx:h]\" ~s">>, [Filename]),
+    Cmd = io_lib:format(?IMAGE_SIZE_CMD_FMT, [Filename]),
     [W, H] = re:split(os:cmd(Cmd), "x"),
     Width = wh_util:to_integer(W),
     Height = wh_util:to_integer(H),

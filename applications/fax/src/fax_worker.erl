@@ -789,7 +789,7 @@ fetch_document_from_url(JObj) ->
 prepare_contents(JobId, RespHeaders, RespContent) ->
     lager:debug("preparing fax contents", []),
     TmpDir = whapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
-    case normalize_content_type(props:get_value("Content-Type", RespHeaders, <<"application/octet-stream">>)) of
+    case fax_util:normalize_content_type(props:get_value("Content-Type", RespHeaders, <<"application/octet-stream">>)) of
         <<"image/tiff">> ->
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             wh_util:write_file(OutputFile, RespContent),
@@ -814,7 +814,6 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
                     lager:debug("could not covert file: ~s", [_Else]),
                     {'error', <<"can not convert file, try uploading a tiff">>}
             end;
-        %% PDF also may be converted here
         <<"image/", SubType/binary>> ->
             InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
@@ -868,23 +867,6 @@ get_sizes(OutputFile) when is_binary(OutputFile) ->
     NumberOfPages = wh_util:to_integer(Result),
     FileSize = filelib:file_size(wh_util:to_list(OutputFile)),
     {NumberOfPages, FileSize}.
-
--spec normalize_content_type(text()) -> ne_binary().
-normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
-normalize_content_type(<<"image/x-tif">>) -> <<"image/tiff">>;
-normalize_content_type(<<"image/tiff">>) -> <<"image/tiff">>;
-normalize_content_type(<<"image/x-tiff">>) -> <<"image/tiff">>;
-normalize_content_type(<<"application/tif">>) -> <<"image/tiff">>;
-normalize_content_type(<<"apppliction/x-tif">>) -> <<"image/tiff">>;
-normalize_content_type(<<"apppliction/tiff">>) -> <<"image/tiff">>;
-normalize_content_type(<<"apppliction/x-tiff">>) -> <<"image/tiff">>;
-normalize_content_type(<<"application/pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<"application/x-pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<"text/pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<"text/x-pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<_/binary>> = Else) -> Else;
-normalize_content_type(CT) ->
-    normalize_content_type(wh_util:to_binary(CT)).
 
 -spec send_fax(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
