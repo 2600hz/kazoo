@@ -24,9 +24,16 @@
 
 -include("ananke.hrl").
 
--record(state, {request, attempts, tried = 0, interval, timer}).
+-record(state, {request       :: wh_proplist()
+                ,attempts     :: pos_integer()
+                ,tried = 0    :: non_neg_integer()
+                ,interval     :: pos_integer()
+                ,timer        :: api_pid()
+               }).
 
--spec start_link(wh_proplist(), integer(), integer()) ->
+-type state() :: #state{}.
+
+-spec start_link(wh_proplist(), pos_integer(), pos_integer()) ->
     {'ok', pid()} | {'error', term()}.
 start_link(Req, Attempts, Interval)
   when is_integer(Attempts) andalso Attempts > 0
@@ -41,16 +48,16 @@ start_link(Req, Attempts, Interval)
 originate(Pid) ->
     gen_server:cast(Pid, 'originate').
 
--spec init(#state{}) -> {'ok', #state{}}.
+-spec init(state()) -> {'ok', state()}.
 init(#state{interval = Interval} = State) ->
     Timer = start_originate_timer(Interval),
     {'ok', State#state{timer = Timer}}.
 
--spec handle_call(any(), any(), #state{}) -> {'noreply', #state{}}.
+-spec handle_call(any(), any(), state()) -> {'noreply', state()}.
 handle_call(_Msg, _From, State) ->
     {'noreply', State}.
 
--spec handle_cast('originate', #state{}) -> {'noreply', #state{}} | {'stop', any(), #state{}}.
+-spec handle_cast('originate', state()) -> {'noreply', state()} | {'stop', any(), state()}.
 handle_cast('originate', #state{tried = Tried, attempts = Tried} = State) ->
     lager:info("not answered in ~p attempts, stopping", [Tried]),
     {'stop', 'normal', State};
@@ -76,18 +83,18 @@ handle_cast('originate', #state{request = Req, tried = Tried, interval = Timeout
             {'noreply', NewState}
     end.
 
--spec handle_info(any(), #state{}) -> {'noreply', #state{}}.
+-spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info(_Msg, State) ->
     {'noreply', State}.
 
--spec terminate(any(), #state{}) -> 'ok'.
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_, #state{timer = Timer}) ->
     _ = stop_originate_timer(Timer),
     %% supervisor doesn't delete stopped child specification
     ananke_callback_sup:delete_child(self(), 1 * ?MILLISECONDS_IN_SECOND),
     'ok'.
 
--spec code_change(any(), #state{}, any()) -> {'ok', #state{}}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -97,7 +104,7 @@ is_resp(JObj) ->
     wapi_resource:originate_resp_v(JObj)
     orelse wh_api:error_resp_v(JObj).
 
--spec start_originate_timer(integer()) -> reference().
+-spec start_originate_timer(integer()) -> pid().
 start_originate_timer(Timeout) ->
     {'ok', Pid} = leader_cron:schedule_task({'oneshot', Timeout}, {?MODULE, originate, [self()]}),
     Pid.
@@ -106,8 +113,8 @@ start_originate_timer(Timeout) ->
 stop_originate_timer(Timer) ->
     leader_cron:cancel_task(Timer).
 
--spec handle_originate_response(wh_json:object(), #state{}) -> {'stop', 'normal', #state{}}
-                                                             | {'noreply', #state{}}.
+-spec handle_originate_response(wh_json:object(), state()) -> {'stop', 'normal', state()}
+                                                             | {'noreply', state()}.
 handle_originate_response(Resp, State) ->
     case wh_json:get_first_defined([<<"Application-Response">>, <<"Error-Message">>], Resp) of
         <<"SUCCESS">> ->

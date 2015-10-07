@@ -15,16 +15,16 @@
 
 -include("ananke.hrl").
 
--record(args, {account_id
-               ,user_id
-               ,vm_box_id
-               ,callback_number
-               ,is_callback_disabled
-               ,vm_number
-               ,attempts
-               ,interval
-               ,call_timeout
-               ,realm
+-record(args, {account_id             :: api_binary()
+               ,user_id               :: api_binary()
+               ,vm_box_id             :: api_binary()
+               ,callback_number       :: api_binary()
+               ,is_callback_disabled  :: boolean()
+               ,vm_number             :: api_binary()
+               ,attempts              :: pos_integer()
+               ,interval              :: pos_integer()
+               ,call_timeout          :: pos_integer()
+               ,realm                 :: api_binary()
               }).
 
 -spec init() -> 'ok'.
@@ -42,15 +42,13 @@ check(AccountId, VMBoxId) ->
                , wh_json:get_value(<<"folder">>, X) =:= <<"new">>]
     of
         [] ->
-            lager:info("no unreaded messages"),
-            'ok';
+            lager:info("no unread messages");
         _  ->
-            lager:info("found unreaded messages"),
-            handle_req(wh_json:set_values([{<<"Account-ID">>, AccountId}
+            lager:info("found unread messages"),
+            handle_req(wh_json:from_list([{<<"Account-ID">>, AccountId}
                                            ,{<<"Account-DB">>, AccountDb}
                                            ,{<<"Voicemail-Box">>, VMBoxId}
-                                          ]
-                                          ,wh_json:new()),
+                                          ]),
                        [{<<"skip_verification">>, 'true'}])
     end.
 
@@ -100,7 +98,7 @@ handle_req(JObj, Props) ->
             maybe_start_caller(StartArgs)
     end.
 
--spec get_voicemail_number(ne_binary(), ne_binary()) -> ne_binary() | 'undefined'.
+-spec get_voicemail_number(ne_binary(), ne_binary()) -> api_binary().
 get_voicemail_number(AccountDb, Mailbox) ->
     {'ok', Callflows} = couch_mgr:get_results(AccountDb
                                               ,<<"callflows/crossbar_listing">>
@@ -126,7 +124,7 @@ is_voicemail_cf(JObj) ->
         _ -> is_voicemail_cf(FlowJObj)
     end.
 
--spec get_cf_flow(wh_json:object()) -> wh_json:object() | 'undefined'.
+-spec get_cf_flow(wh_json:object()) -> api_object().
 get_cf_flow(JObj) ->
     case wh_json:get_value([<<"children">>, <<"_">>], JObj) of
         'undefined' ->
@@ -134,7 +132,7 @@ get_cf_flow(JObj) ->
         FlowJObj -> FlowJObj
     end.
 
--spec get_callflow_number(wh_json:object(), ne_binary()) -> 'undefined' | ne_binary().
+-spec get_callflow_number(wh_json:object(), ne_binary()) -> api_binary().
 get_callflow_number(Callflow, _Mailbox) ->
     case wh_json:get_value([<<"doc">>, <<"numbers">>], Callflow, ['undefined']) of
         [] -> 'undefined';
@@ -218,7 +216,7 @@ build_originate_req(#args{callback_number = CallbackNumber
       ],
     props:filter_undefined(R).
 
--spec get_first_defined([{ne_binary(), wh_json:object()}]) -> 'undefined' | binary().
+-spec get_first_defined([{ne_binary(), wh_json:object()}]) -> api_binary().
 get_first_defined(Props) ->
     get_first_defined(Props, 'undefined').
 

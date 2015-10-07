@@ -289,5 +289,6 @@ time_tokens_to_binary('all') ->
 time_tokens_to_binary(Tokens) when is_list(Tokens) ->
     wh_util:join_binary([wh_util:to_binary(X) || X <- Tokens], ",").
 
+-spec unknown_type(api_binary()) -> 'ok'.
 unknown_type(Type) ->
     lager:warning("no function for type ~p", [Type]).
