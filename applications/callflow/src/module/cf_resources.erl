@@ -38,12 +38,13 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    'ok' = wapi_offnet_resource:publish_req(build_offnet_request(Data, Call)),
-    case wait_for_stepswitch(Call) of
+    UpdatedCall = update_ccvs(Call),
+    'ok' = wapi_offnet_resource:publish_req(build_offnet_request(Data, UpdatedCall)),
+    case wait_for_stepswitch(UpdatedCall) of
         {<<"SUCCESS">>, _} ->
             lager:info("completed successful offnet request"),
-            cf_exe:stop(Call);
-        {Cause, Code} -> handle_bridge_failure(Cause, Code, Call)
+            cf_exe:stop(UpdatedCall);
+        {Cause, Code} -> handle_bridge_failure(Cause, Code, UpdatedCall)
     end.
 
 -spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
@@ -111,6 +112,32 @@ maybe_get_call_from_realm(Call) ->
     case whapps_call:from_realm(Call) of
         <<"norealm">> -> get_account_realm(Call);
         Realm -> Realm
+    end.
+
+-spec update_ccvs(whapps_call:call()) -> whapps_call:call().
+update_ccvs(Call) ->
+    Props = props:filter_undefined(
+              [{<<"Bridge-Generate-Comfort-Noise">>, maybe_set_bridge_generate_comfort_noise(Call)}]),
+    whapps_call:set_custom_channel_vars(Props, Call).
+
+-spec maybe_set_bridge_generate_comfort_noise(whapps_call:call()) -> api_binary().
+maybe_set_bridge_generate_comfort_noise(Call) ->
+    case cf_endpoint:get(Call) of
+        {'ok', Endpoint} ->
+            maybe_has_comfort_noise_option_enabled(Endpoint);
+        {'error', _E} ->
+            lager:debug("error acquiring originating endpoint information"),
+            'undefined'
+    end.
+
+-spec maybe_has_comfort_noise_option_enabled(wh_json:object()) -> api_binary().
+maybe_has_comfort_noise_option_enabled(Endpoint) ->
+    Media = wh_json:get_value(<<"media">>, Endpoint),
+    case wh_json:get_ne_value(<<"bridge_generate_comfort_noise">>, Media) of
+        'undefined' ->
+            'undefined';
+        Value ->
+            wh_util:to_binary(Value)
     end.
 
 -spec get_account_realm(whapps_call:call()) -> api_binary().

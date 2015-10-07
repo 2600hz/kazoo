@@ -248,36 +248,10 @@ update_ccvs(Call) ->
               [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
                ,{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
-               ,{<<"Bridge-Generate-Comfort-Noise">>, maybe_set_bridge_generate_comfort_noise(Call)}
                | get_incoming_security(Call)
               ]),
     Call1 = whapps_call:kvs_erase(['prepend_cid_name', 'prepend_cid_number'], Call),
     whapps_call:set_custom_channel_vars(Props, Call1).
-
--spec maybe_set_bridge_generate_comfort_noise(whapps_call:call()) -> api_binary().
-maybe_set_bridge_generate_comfort_noise(Call) ->
-    case cf_endpoint:get(Call) of
-        {'ok', Endpoint} ->
-            Type = wh_json:get_ne_value(<<"device_type">>, Endpoint),
-            lager:debug("will query originating endpoint for comfort noise option, type is ~s", [Type]),
-            maybe_has_comfort_noise_option_enabled(Endpoint);
-        {'error', _E} ->
-            lager:debug("error acquiring originating endpoint information"),
-            'undefined'
-    end.
-
--spec maybe_has_comfort_noise_option_enabled(wh_json:object()) -> api_binary().
-maybe_has_comfort_noise_option_enabled(Endpoint) ->
-    lager:debug("we are here!!!"),
-    Media = wh_json:get_value(<<"media">>, Endpoint),
-    case wh_json:get_ne_value(<<"bridge_generate_comfort_noise">>, Media) of
-        'undefined' ->
-            lager:debug("comfort noise is disabled"),
-            'undefined';
-        Value ->
-            lager:debug("comfort noise is enabled"),
-            wh_util:to_binary(Value)
-    end.
 
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
 maybe_start_metaflow(Call) ->
