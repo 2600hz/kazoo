@@ -271,6 +271,12 @@ fetch_cnam(Number, JObj) ->
             CNAM
     end.
 
+-spec get_http_request(string(), list(), string()) -> {string(), list()} | {string(), list(), string(), string()}.
+get_http_request(Url, Headers, []) ->
+    {Url, Headers};
+get_http_request(Url, Headers, Body) ->
+    {Url, Headers, wh_util:to_list(?HTTP_ACCEPT_HEADER), Body}.
+
 -spec make_request(ne_binary(), wh_json:object()) -> api_binary().
 make_request(Number, JObj) ->
     Url = wh_util:to_list(get_http_url(JObj)),
@@ -278,16 +284,21 @@ make_request(Number, JObj) ->
     Method = get_http_method(),
     Headers = get_http_headers(),
     HTTPOptions = get_http_options(Url),
+    HTTPRequest = get_http_request(Url, Headers, Body),
+    Options = [{'body_format', 'binary'}],
 
-    case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions, 1500) of
-        {'ok', Status, _, <<>>} ->
-            lager:debug("cnam lookup for ~s returned as ~s and empty body", [Number, Status]),
+    case httpc:request(Method, HTTPRequest, HTTPOptions, Options) of
+        {'ok', {{_, 404, _}, _, _}} ->
+            lager:debug("cnam lookup for ~s returned 404", [Number]),
             'undefined';
-        {'ok', Status, _, ResponseBody} when size (ResponseBody) > 18 ->
-            lager:debug("cnam lookup for ~s returned ~s: ~s", [Number, Status, ResponseBody]),
+        {'ok', {Status, _, <<>>}} ->
+            lager:debug("cnam lookup for ~s returned as ~p and empty body", [Number, Status]),
+            'undefined';
+        {'ok', {Status, _, ResponseBody}} when size (ResponseBody) > 18 ->
+            lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             binary:part(ResponseBody, 0, 18);
-        {'ok', Status, _, ResponseBody} ->
-            lager:debug("cnam lookup for ~s returned ~s: ~s", [Number, Status, ResponseBody]),
+        {'ok', {Status, _, ResponseBody}} ->
+            lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             ResponseBody;
         {'error', _R} ->
             lager:debug("cnam lookup for ~s failed: ~p", [Number, _R]),
@@ -333,9 +344,9 @@ get_http_headers() ->
 
 -spec get_http_options(string()) -> wh_proplist().
 get_http_options(Url) ->
-    Defaults = [{'response_format', 'binary'}
-                ,{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
-                ,{'inactivity_timeout', 1500}
+    Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
+                ,{'timeout', 1500}
+                ,{'ssl', [{'verify', 'verify_none'}]}
                ],
     Routines = [fun maybe_enable_ssl/2
                 ,fun maybe_enable_auth/2
