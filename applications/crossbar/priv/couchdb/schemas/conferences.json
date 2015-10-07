@@ -138,6 +138,13 @@
             "required": false,
             "type": "boolean"
         },
+        "play_participants_count": {
+            "default": false,
+            "description": "Should a caller hear how many participants are already in the conference when joining?",
+            "name": "Play Participants Count",
+            "required": false,
+            "type": "boolean"
+        },
         "profile": {
             "description": "The XML profile name used to configure the conference",
             "name": "Profile",

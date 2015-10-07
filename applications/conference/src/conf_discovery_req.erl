@@ -172,7 +172,7 @@ handle_search_error(Conference, Call, Srv) ->
     try amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
         'ok' ->
             lager:debug("initial participant creating conference on switch nodename '~p'", [whapps_call:switch_hostname(Call)]),
-            play_participants_count(Call, 0),
+            maybe_play_participants_count(Conference, Call, 0),
             conf_participant:set_conference(Conference, Srv),
             conf_participant:join_local(Srv),
             wait_for_creation(Conference)
@@ -180,6 +180,13 @@ handle_search_error(Conference, Call, Srv) ->
         'exit':{{'shutdown', {'server_initiated_close', 403, <<"ACCESS_REFUSED", _/binary>>}}, _} ->
             lager:debug("conference queue ~s is exclusive, waiting for conference creation by initial participant", [Queue]),
             handle_resource_locked(Conference, Call, Srv)
+    end.
+
+-spec maybe_play_participants_count(whapps_conference:conference(), whapps_call:call(), non_neg_integer() | wh_json:object()) -> 'ok'.
+maybe_play_participants_count(Conference, Call, CountData) ->
+    case whapps_conference:play_participants_count(Conference) of
+        'true' -> play_participants_count(Call, CountData);
+        'false' -> 'ok'
     end.
 
 -spec play_participants_count(whapps_call:call(), non_neg_integer() | wh_json:object()) -> 'ok'.
@@ -232,7 +239,7 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
     Participants = length(wh_json:get_value(<<"Participants">>, JObj, [])),
     case MaxParticipants =/= 0 andalso Participants >= MaxParticipants of
         'false' ->
-            play_participants_count(Call, Participants),
+            maybe_play_participants_count(Conference, Call, Participants),
             add_participant_to_conference(JObj, Conference, Call, Srv);
         'true' ->
             _ = whapps_call_command:b_prompt(?DEFAULT_MAX_MEMBERS_MEDIA, Call),
