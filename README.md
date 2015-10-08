@@ -1,4 +1,4 @@
-**[Join us in San Francisco this October 5th and 6th for the next evolution of the telcom revolution!](http://kazoocon.com/)**
+**[From all of us thank you for coming out to SF for KazooCon! We look forward to seeing you next year!](http://kazoocon.com/)**
 
 ````
     ... ........                                                
