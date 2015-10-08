@@ -31,7 +31,7 @@
 -define(DEFAULT_METHOD, <<"get">>).
 -define(DEFAULT_CONTENT, <<>>).
 -define(DEFAULT_URL, <<"https://api.opencnam.com/v2/phone/{{phone_number}}">>).
--define(DEFAULT_ACCEPT_HDR, <<"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8">>).
+-define(DEFAULT_ACCEPT_HDR, <<"text/pbx,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8">>).
 -define(DEFAULT_USER_AGENT_HDR, <<"Kazoo Stepswitch CNAM">>).
 -define(DEFAULT_CONTENT_TYPE_HDR, <<"application/json">>).
 
@@ -337,35 +337,42 @@ get_http_body(JObj) ->
 
 -spec get_http_headers() -> wh_proplist().
 get_http_headers() ->
-    [{"Accept", ?HTTP_ACCEPT_HEADER}
-     ,{"User-Agent", ?HTTP_USER_AGENT}
-     ,{"Content-Type", ?HTTP_CONTENT_TYPE}
-    ].
+    Headers = [{"Accept", ?HTTP_ACCEPT_HEADER}
+               ,{"User-Agent", ?HTTP_USER_AGENT}
+               ,{"Content-Type", ?HTTP_CONTENT_TYPE}
+              ],
+    Routines = [
+                fun maybe_enable_auth/1
+               ],
+    lists:foldl(fun(F, P) -> F(P) end, Headers, Routines).
 
 -spec get_http_options(string()) -> wh_proplist().
 get_http_options(Url) ->
     Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
                 ,{'timeout', 1500}
-                ,{'ssl', [{'verify', 'verify_none'}]}
                ],
     Routines = [fun maybe_enable_ssl/2
-                ,fun maybe_enable_auth/2
                ],
     lists:foldl(fun(F, P) -> F(Url, P) end, Defaults, Routines).
 
 -spec maybe_enable_ssl(ne_binary(), wh_proplist()) -> wh_proplist().
 maybe_enable_ssl(<<"https", _/binary>>, Props) ->
-    [{'ssl', [{'verify', 0}]}|Props];
+    [{'ssl', [{'verify', 'verify_none'}]}|Props];
 maybe_enable_ssl(_, Props) -> Props.
 
--spec maybe_enable_auth(any(), wh_proplist()) -> wh_proplist().
-maybe_enable_auth(_, Props) ->
+-spec maybe_enable_auth(wh_proplist()) -> wh_proplist().
+maybe_enable_auth(Props) ->
     Username = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
     case wh_util:is_empty(Username) orelse wh_util:is_empty(Password) of
         'true' -> Props;
-        'false' -> [{'basic_auth', {Username, Password}}|Props]
+        'false' -> [ basic_auth(Username, Password) | Props]
     end.
+
+-spec basic_auth(string(), string()) -> {string(), string()}.
+basic_auth(Username, Password) ->
+    Encoded = base64:encode_to_string(Username ++ [$: | Password]),
+    {"Authorization", lists:flatten(["Basic ", Encoded])}.
 
 -spec get_http_method() -> 'get' | 'put' | 'post'.
 get_http_method() ->
