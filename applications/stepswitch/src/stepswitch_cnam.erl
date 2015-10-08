@@ -31,7 +31,7 @@
 -define(DEFAULT_METHOD, <<"get">>).
 -define(DEFAULT_CONTENT, <<>>).
 -define(DEFAULT_URL, <<"https://api.opencnam.com/v2/phone/{{phone_number}}">>).
--define(DEFAULT_ACCEPT_HDR, <<"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8">>).
+-define(DEFAULT_ACCEPT_HDR, <<"text/pbx,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8">>).
 -define(DEFAULT_USER_AGENT_HDR, <<"Kazoo Stepswitch CNAM">>).
 -define(DEFAULT_CONTENT_TYPE_HDR, <<"application/json">>).
 
@@ -271,6 +271,12 @@ fetch_cnam(Number, JObj) ->
             CNAM
     end.
 
+-spec get_http_request(string(), list(), string()) -> {string(), list()} | {string(), list(), string(), string()}.
+get_http_request(Url, Headers, []) ->
+    {Url, Headers};
+get_http_request(Url, Headers, Body) ->
+    {Url, Headers, wh_util:to_list(?HTTP_ACCEPT_HEADER), Body}.
+
 -spec make_request(ne_binary(), wh_json:object()) -> api_binary().
 make_request(Number, JObj) ->
     Url = wh_util:to_list(get_http_url(JObj)),
@@ -278,16 +284,21 @@ make_request(Number, JObj) ->
     Method = get_http_method(),
     Headers = get_http_headers(),
     HTTPOptions = get_http_options(Url),
+    HTTPRequest = get_http_request(Url, Headers, Body),
+    Options = [{'body_format', 'binary'}],
 
-    case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions, 1500) of
-        {'ok', Status, _, <<>>} ->
-            lager:debug("cnam lookup for ~s returned as ~s and empty body", [Number, Status]),
+    case httpc:request(Method, HTTPRequest, HTTPOptions, Options) of
+        {'ok', {{_, 404, _}, _, _}} ->
+            lager:debug("cnam lookup for ~s returned 404", [Number]),
             'undefined';
-        {'ok', Status, _, ResponseBody} when size (ResponseBody) > 18 ->
-            lager:debug("cnam lookup for ~s returned ~s: ~s", [Number, Status, ResponseBody]),
+        {'ok', {Status, _, <<>>}} ->
+            lager:debug("cnam lookup for ~s returned as ~p and empty body", [Number, Status]),
+            'undefined';
+        {'ok', {Status, _, ResponseBody}} when size (ResponseBody) > 18 ->
+            lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             binary:part(ResponseBody, 0, 18);
-        {'ok', Status, _, ResponseBody} ->
-            lager:debug("cnam lookup for ~s returned ~s: ~s", [Number, Status, ResponseBody]),
+        {'ok', {Status, _, ResponseBody}} ->
+            lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             ResponseBody;
         {'error', _R} ->
             lager:debug("cnam lookup for ~s failed: ~p", [Number, _R]),
@@ -326,35 +337,42 @@ get_http_body(JObj) ->
 
 -spec get_http_headers() -> wh_proplist().
 get_http_headers() ->
-    [{"Accept", ?HTTP_ACCEPT_HEADER}
-     ,{"User-Agent", ?HTTP_USER_AGENT}
-     ,{"Content-Type", ?HTTP_CONTENT_TYPE}
-    ].
+    Headers = [{"Accept", ?HTTP_ACCEPT_HEADER}
+               ,{"User-Agent", ?HTTP_USER_AGENT}
+               ,{"Content-Type", ?HTTP_CONTENT_TYPE}
+              ],
+    Routines = [
+                fun maybe_enable_auth/1
+               ],
+    lists:foldl(fun(F, P) -> F(P) end, Headers, Routines).
 
 -spec get_http_options(string()) -> wh_proplist().
 get_http_options(Url) ->
-    Defaults = [{'response_format', 'binary'}
-                ,{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
-                ,{'inactivity_timeout', 1500}
+    Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
+                ,{'timeout', 1500}
                ],
     Routines = [fun maybe_enable_ssl/2
-                ,fun maybe_enable_auth/2
                ],
     lists:foldl(fun(F, P) -> F(Url, P) end, Defaults, Routines).
 
 -spec maybe_enable_ssl(ne_binary(), wh_proplist()) -> wh_proplist().
 maybe_enable_ssl(<<"https", _/binary>>, Props) ->
-    [{'ssl', [{'verify', 0}]}|Props];
+    [{'ssl', [{'verify', 'verify_none'}]}|Props];
 maybe_enable_ssl(_, Props) -> Props.
 
--spec maybe_enable_auth(any(), wh_proplist()) -> wh_proplist().
-maybe_enable_auth(_, Props) ->
+-spec maybe_enable_auth(wh_proplist()) -> wh_proplist().
+maybe_enable_auth(Props) ->
     Username = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = whapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
     case wh_util:is_empty(Username) orelse wh_util:is_empty(Password) of
         'true' -> Props;
-        'false' -> [{'basic_auth', {Username, Password}}|Props]
+        'false' -> [ basic_auth(Username, Password) | Props]
     end.
+
+-spec basic_auth(string(), string()) -> {string(), string()}.
+basic_auth(Username, Password) ->
+    Encoded = base64:encode_to_string(Username ++ [$: | Password]),
+    {"Authorization", lists:flatten(["Basic ", Encoded])}.
 
 -spec get_http_method() -> 'get' | 'put' | 'post'.
 get_http_method() ->
