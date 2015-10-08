@@ -196,7 +196,7 @@ play_participants_count(Call, 0) ->
 play_participants_count(Call, 1) ->
     whapps_call_command:prompt(<<"conf-single">>, Call),
     'ok';
-play_participants_count(Call, Count) when is_integer(Count) andalso Count > 0 ->
+play_participants_count(Call, Count) when is_integer(Count) ->
     whapps_call_command:audio_macro([{'prompt', <<"conf-there_are">>}
                                      ,{'say', wh_util:to_binary(Count), <<"number">>}
                                      ,{'prompt', <<"conf-other_participants">>}
