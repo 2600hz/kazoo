@@ -77,7 +77,14 @@ process_req(DataJObj) ->
                                ),
 
     case teletype_util:is_preview(DataJObj) of
-        'false' -> handle_port_request(teletype_port_utils:fix_email(ReqData));
+        'false' ->
+            Comments = wh_json:get_value(<<"comments">>, PortReqJObj),
+            handle_port_request(
+                teletype_port_utils:fix_email(
+                    ReqData
+                    ,teletype_port_utils:is_comment_private(Comments)
+                )
+            );
         'true' -> handle_port_request(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
 

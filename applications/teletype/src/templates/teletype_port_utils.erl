@@ -8,11 +8,21 @@
 %%%-------------------------------------------------------------------
 -module(teletype_port_utils).
 
+-export([is_comment_private/1]).
 -export([get_attachments/1]).
--export([fix_email/1]).
+-export([fix_email/1, fix_email/2]).
 -export([fix_port_request_data/1]).
 
 -include("../teletype.hrl").
+
+-spec is_comment_private(any()) -> boolean().
+is_comment_private('undefined') -> 'false';
+is_comment_private([]) -> 'false';
+is_comment_private([_|_]=Comments) ->
+    [LastComment|_] = lists:reverse(Comments),
+    is_comment_private(LastComment);
+is_comment_private(Comment) ->
+    wh_json:is_true(<<"superduper_comment">>, Comment, 'false').
 
 -spec get_attachments(wh_json:object()) -> attachments().
 -spec get_attachments(wh_json:object(), boolean()) -> attachments().
@@ -38,13 +48,28 @@ get_attachment_fold(Name, Acc, PortReqId, Doc) ->
     [{ContentType, Name, BinAttachment}|Acc].
 
 -spec fix_email(wh_json:object()) -> wh_json:object().
+-spec fix_email(wh_json:object(), boolean()) -> wh_json:object().
 fix_email(ReqData) ->
+    fix_email(ReqData, 'false').
+
+fix_email(ReqData, OnlyAdmin) ->
     AccountId = wh_json:get_value(<<"account_id">>, ReqData),
-    Emails = get_emails(ReqData, AccountId),
+    Emails = get_emails(ReqData, AccountId, OnlyAdmin),
     wh_json:set_value(<<"to">>, Emails, ReqData).
 
--spec get_emails(wh_json:object(), api_binary()) -> ne_binaries().
-get_emails(ReqData, AccountId) ->
+-spec get_emails(wh_json:object(), api_binary(), boolean()) -> ne_binaries().
+get_emails(_ReqData, AccountId, 'true') ->
+    ResellerId = wh_services:find_reseller_id(AccountId),
+
+    ResellerEmail = find_reseller_port_email(ResellerId),
+    AdminEmails = teletype_util:find_account_admin_email(ResellerId),
+
+    case {ResellerEmail, AdminEmails} of
+        {'undefined', 'undefined'} -> [];
+        {'undefined', [_|_]} -> AdminEmails;
+        {ResellerEmail, _} -> [ResellerEmail]
+    end;
+get_emails(ReqData, AccountId, 'false') ->
     ResellerId = wh_services:find_reseller_id(AccountId),
 
     ResellerEmail = find_reseller_port_email(ResellerId),
