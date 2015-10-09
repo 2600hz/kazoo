@@ -28,6 +28,9 @@
           ,handled_timestamp :: api_integer() | '_'
           ,processed_timestamp :: api_integer() | '_'
 
+          ,entered_position :: pos_integer() | '_'
+          ,exited_position :: pos_integer() | '_'
+
           ,abandoned_reason :: api_binary() | '_'
 
           ,misses = [] :: agent_misses() | '_'

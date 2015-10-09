@@ -16,6 +16,8 @@
          ,call_handled/1, call_handled_v/1
          ,call_processed/1, call_processed_v/1
 
+         ,call_exited_position/1, call_exited_position_v/1
+
          ,call_flush/1, call_flush_v/1
 
          ,current_calls_req/1, current_calls_req_v/1
@@ -49,6 +51,8 @@
          ,publish_call_handled/1, publish_call_handled/2
          ,publish_call_processed/1, publish_call_processed/2
 
+         ,publish_call_exited_position/1, publish_call_exited_position/2
+
          ,publish_call_flush/1, publish_call_flush/2
 
          ,publish_current_calls_req/1, publish_current_calls_req/2
@@ -79,7 +83,7 @@
                                ]).
 
 -define(WAITING_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                          ,<<"Entered-Timestamp">>, <<"Caller-Priority">>
+                          ,<<"Entered-Timestamp">>, <<"Entered-Position">>, <<"Caller-Priority">>
                          ]).
 -define(WAITING_VALUES, ?CALL_REQ_VALUES(<<"waiting">>)).
 -define(WAITING_TYPES, []).
@@ -99,6 +103,10 @@
 -define(PROCESS_HEADERS, [<<"Agent-ID">>, <<"Processed-Timestamp">>]).
 -define(PROCESS_VALUES, ?CALL_REQ_VALUES(<<"processed">>)).
 -define(PROCESS_TYPES, []).
+
+-define(EXITED_HEADERS, [<<"Exited-Position">>]).
+-define(EXITED_VALUES, ?CALL_REQ_VALUES(<<"exited-position">>)).
+-define(EXITED_TYPES, []).
 
 -define(FLUSH_HEADERS, [<<"Call-ID">>]).
 -define(FLUSH_VALUES, ?CALL_REQ_VALUES(<<"flush">>)).
@@ -189,6 +197,23 @@ call_processed_v(Prop) when is_list(Prop) ->
 call_processed_v(JObj) ->
     call_processed_v(wh_json:to_proplist(JObj)).
 
+-spec call_exited_position(api_terms()) ->
+                            {'ok', iolist()} |
+                            {'error', string()}.
+call_exited_position(Props) when is_list(Props) ->
+    case call_exited_position_v(Props) of
+        'true' -> wh_api:build_message(Props, ?CALL_REQ_HEADERS, ?EXITED_HEADERS);
+        'false' -> {'error', "Proplist failed validation for call_exited_position"}
+    end;
+call_exited_position(JObj) ->
+    call_exited_position(wh_json:to_proplist(JObj)).
+
+-spec call_exited_position_v(api_terms()) -> boolean().
+call_exited_position_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CALL_REQ_HEADERS, ?EXITED_VALUES, ?EXITED_TYPES);
+call_exited_position_v(JObj) ->
+    call_exited_position_v(wh_json:to_proplist(JObj)).
+
 -spec call_flush(api_terms()) ->
                             {'ok', iolist()} |
                             {'error', string()}.
@@ -260,6 +285,7 @@ current_calls_err_v(JObj) ->
 -define(CURRENT_CALLS_RESP_HEADERS, [<<"Query-Time">>]).
 -define(OPTIONAL_CURRENT_CALLS_RESP_HEADERS, [<<"Waiting">>, <<"Handled">>
                                               ,<<"Abandoned">>, <<"Processed">>
+                                              ,<<"Entered-Position">>, <<"Exited-Position">>
                                              ]).
 -define(CURRENT_CALLS_RESP_VALUES, [{<<"Event-Category">>, <<"acdc_stat">>}
                                     ,{<<"Event-Name">>, <<"current_calls_resp">>}
@@ -561,7 +587,8 @@ bind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
     amqp_util:bind_q_to_whapps(Q, query_status_stat_routing_key(AcctId, AID)),
     bind_q(Q, AcctId, QID, AID, L);
 bind_q(Q, AcctId, QID, AID, [_|L]) ->
-    bind_q(Q, AcctId, QID, AID, L).
+    bind_q(Q, AcctId, QID, AID, L);
+bind_q(_, _, _, _, []) -> 'ok'.
 
 unbind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
@@ -627,6 +654,12 @@ publish_call_processed(JObj) ->
     publish_call_processed(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_processed(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PROCESS_VALUES, fun call_processed/1),
+    amqp_util:whapps_publish(call_stat_routing_key(API), Payload, ContentType).
+
+publish_call_exited_position(JObj) ->
+    publish_call_exited_position(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_call_exited_position(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?EXITED_VALUES, fun call_exited_position/1),
     amqp_util:whapps_publish(call_stat_routing_key(API), Payload, ContentType).
 
 publish_call_flush(JObj) ->

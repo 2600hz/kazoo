@@ -24,6 +24,10 @@
          ,sync_req/1, sync_req_v/1
          ,sync_resp/1, sync_resp_v/1
          ,agent_change/1, agent_change_v/1
+         ,queue_member_add/1, queue_member_add_v/1
+         ,queue_member_remove/1, queue_member_remove_v/1
+         ,call_position_req/1, call_position_req_v/1
+         ,call_position_resp/1, call_position_resp_v/1
         ]).
 
 -export([agent_change_available/0
@@ -51,6 +55,10 @@
          ,publish_sync_req/1, publish_sync_req/2
          ,publish_sync_resp/2, publish_sync_resp/3
          ,publish_agent_change/1, publish_agent_change/2
+         ,publish_queue_member_add/1, publish_queue_member_add/2
+         ,publish_queue_member_remove/1, publish_queue_member_remove/2
+         ,publish_call_position_req/1, publish_call_position_req/2
+         ,publish_call_position_resp/2, publish_call_position_resp/3
         ]).
 
 -export([queue_size/2, shared_queue_name/2]).
@@ -515,6 +523,122 @@ agent_change_v(Prop) when is_list(Prop) ->
 agent_change_v(JObj) -> agent_change_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
+%% Queue Position tracking
+%%------------------------------------------------------------------------------
+-spec queue_member_routing_key(api_terms()) -> ne_binary().
+-spec queue_member_routing_key(ne_binary(), ne_binary()) -> ne_binary().
+queue_member_routing_key(Props) when is_list(Props) ->
+    Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
+    AcctId = props:get_value(<<"Account-ID">>, Props),
+    queue_member_routing_key(AcctId, Id);
+queue_member_routing_key(JObj) ->
+    Id = wh_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    queue_member_routing_key(AcctId, Id).
+
+queue_member_routing_key(AcctId, QID) ->
+    <<"acdc.queue.position.", AcctId/binary, ".", QID/binary>>.
+
+-define(QUEUE_MEMBER_ADD_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"JObj">>]).
+-define(OPTIONAL_QUEUE_MEMBER_ADD_HEADERS, []).
+-define(QUEUE_MEMBER_ADD_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                                  ,{<<"Event-Name">>, <<"member_add">>}
+                                 ]).
+-define(QUEUE_MEMBER_ADD_TYPES, []).
+
+-spec queue_member_add(api_terms()) ->
+                          {'ok', iolist()} |
+                          {'error', string()}.
+queue_member_add(Prop) when is_list(Prop) ->
+    case queue_member_add_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?QUEUE_MEMBER_ADD_HEADERS, ?OPTIONAL_QUEUE_MEMBER_ADD_HEADERS);
+        'false' -> {'error', "proplist failed validation for queue_member_add"}
+    end;
+queue_member_add(JObj) -> queue_member_add(wh_json:to_proplist(JObj)).
+
+-spec queue_member_add_v(api_terms()) -> boolean().
+queue_member_add_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUEUE_MEMBER_ADD_HEADERS, ?QUEUE_MEMBER_ADD_VALUES, ?QUEUE_MEMBER_ADD_TYPES);
+queue_member_add_v(JObj) -> queue_member_add_v(wh_json:to_proplist(JObj)).
+
+-define(QUEUE_MEMBER_REMOVE_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
+-define(OPTIONAL_QUEUE_MEMBER_REMOVE_HEADERS, []).
+-define(QUEUE_MEMBER_REMOVE_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                                  ,{<<"Event-Name">>, <<"member_remove">>}
+                                 ]).
+-define(QUEUE_MEMBER_REMOVE_TYPES, []).
+
+-spec queue_member_remove(api_terms()) ->
+                          {'ok', iolist()} |
+                          {'error', string()}.
+queue_member_remove(Prop) when is_list(Prop) ->
+    case queue_member_remove_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?QUEUE_MEMBER_REMOVE_HEADERS, ?OPTIONAL_QUEUE_MEMBER_REMOVE_HEADERS);
+        'false' -> {'error', "proplist failed validation for queue_member_add"}
+    end;
+queue_member_remove(JObj) -> queue_member_remove(wh_json:to_proplist(JObj)).
+
+-spec queue_member_remove_v(api_terms()) -> boolean().
+queue_member_remove_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUEUE_MEMBER_REMOVE_HEADERS, ?QUEUE_MEMBER_REMOVE_VALUES, ?QUEUE_MEMBER_REMOVE_TYPES);
+queue_member_remove_v(JObj) -> queue_member_remove_v(wh_json:to_proplist(JObj)).
+
+-define(CALL_POSITION_REQ_HEADERS, [<<"Account-ID">>
+									,<<"Queue-ID">>
+									,<<"Call-ID">>
+								   ]).
+-define(OPTIONAL_CALL_POSITION_REQ_HEADERS, []).
+-define(CALL_POSITION_REQ_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                            	   ,{<<"Event-Name">>, <<"call_position_req">>}
+                          		  ]).
+-define(CALL_POSITION_REQ_TYPES, []).
+
+-spec call_position_req(api_terms()) ->
+                        {'ok', iolist()} |
+                        {'error', string()}.
+call_position_req(Props) when is_list(Props) ->
+    case call_position_req_v(Props) of
+        'true' -> wh_api:build_message(Props, ?CALL_POSITION_REQ_HEADERS, ?OPTIONAL_CALL_POSITION_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for call_position_req"}
+    end;
+call_position_req(JObj) ->
+    call_position_req(wh_json:to_proplist(JObj)).
+
+-spec call_position_req_v(api_terms()) -> boolean().
+call_position_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CALL_POSITION_REQ_HEADERS, ?CALL_POSITION_REQ_VALUES, ?CALL_POSITION_REQ_TYPES);
+call_position_req_v(JObj) ->
+    call_position_req_v(wh_json:to_proplist(JObj)).
+
+-define(CALL_POSITION_RESP_HEADERS, [<<"Account-ID">>
+									 ,<<"Queue-ID">>
+									 ,<<"Call-ID">>
+									 ,<<"Position">>
+								    ]).
+-define(OPTIONAL_CALL_POSITION_RESP_HEADERS, []).
+-define(CALL_POSITION_RESP_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                            	    ,{<<"Event-Name">>, <<"call_position_resp">>}
+                          		   ]).
+-define(CALL_POSITION_RESP_TYPES, []).
+
+-spec call_position_resp(api_terms()) ->
+                        {'ok', iolist()} |
+                        {'error', string()}.
+call_position_resp(Props) when is_list(Props) ->
+    case call_position_resp_v(Props) of
+        'true' -> wh_api:build_message(Props, ?CALL_POSITION_RESP_HEADERS, ?OPTIONAL_CALL_POSITION_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for call_position_resp"}
+    end;
+call_position_resp(JObj) ->
+    call_position_resp(wh_json:to_proplist(JObj)).
+
+-spec call_position_resp_v(api_terms()) -> boolean().
+call_position_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CALL_POSITION_RESP_HEADERS, ?CALL_POSITION_RESP_VALUES, ?CALL_POSITION_RESP_TYPES);
+call_position_resp_v(JObj) ->
+    call_position_resp_v(wh_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
 %%------------------------------------------------------------------------------
 -spec shared_queue_name(ne_binary(), ne_binary()) -> ne_binary().
@@ -569,6 +693,12 @@ bind_q(Q, AcctId, QID, ['sync_req'|T]) ->
 bind_q(Q, AcctId, QID, ['agent_change'|T]) ->
     amqp_util:bind_q_to_whapps(Q, agent_change_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
+bind_q(Q, AcctId, QID, ['member_addremove'|T]) ->
+    amqp_util:bind_q_to_whapps(Q, queue_member_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, T);
+bind_q(Q, AcctId, QID, ['member_position'|T]) ->
+	amqp_util:bind_q_to_whapps(Q, queue_member_routing_key(AcctId, QID)),
+	bind_q(Q, AcctId, QID, T);
 bind_q(Q, AcctId, QID, [_|T]) -> bind_q(Q, AcctId, QID, T);
 bind_q(_, _, _, []) -> 'ok'.
 
@@ -659,7 +789,8 @@ publish_member_call_failure(Q, JObj) ->
     publish_member_call_failure(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_call_failure(Q, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_FAIL_VALUES, fun member_call_failure/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    amqp_util:targeted_publish(Q, Payload, ContentType),
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
 
 -spec publish_member_call_success(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_member_call_success(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -667,7 +798,8 @@ publish_member_call_success(Q, JObj) ->
     publish_member_call_success(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_call_success(Q, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_SUCCESS_VALUES, fun member_call_success/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    amqp_util:targeted_publish(Q, Payload, ContentType),
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
 
 -spec publish_member_connect_req(api_terms()) -> 'ok'.
 -spec publish_member_connect_req(api_terms(), ne_binary()) -> 'ok'.
@@ -748,3 +880,35 @@ publish_agent_change(JObj) ->
 publish_agent_change(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?AGENT_CHANGE_VALUES, fun agent_change/1),
     amqp_util:whapps_publish(agent_change_publish_key(API), Payload, ContentType).
+
+-spec publish_queue_member_add(api_terms()) -> 'ok'.
+-spec publish_queue_member_add(api_terms(), ne_binary()) -> 'ok'.
+publish_queue_member_add(JObj) ->
+    publish_queue_member_add(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_queue_member_add(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?QUEUE_MEMBER_ADD_VALUES, fun queue_member_add/1),
+    amqp_util:whapps_publish(queue_member_routing_key(API), Payload, ContentType).
+
+-spec publish_queue_member_remove(api_terms()) -> 'ok'.
+-spec publish_queue_member_remove(api_terms(), ne_binary()) -> 'ok'.
+publish_queue_member_remove(JObj) ->
+    publish_queue_member_remove(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_queue_member_remove(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?QUEUE_MEMBER_REMOVE_VALUES, fun queue_member_remove/1),
+    amqp_util:whapps_publish(queue_member_routing_key(API), Payload, ContentType).
+
+-spec publish_call_position_req(api_terms()) -> 'ok'.
+-spec publish_call_position_req(api_terms(), ne_binary()) -> 'ok'.
+publish_call_position_req(JObj) ->
+    publish_call_position_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_call_position_req(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?CALL_POSITION_REQ_VALUES, fun call_position_req/1),
+    amqp_util:whapps_publish(queue_member_routing_key(API), Payload, ContentType).
+
+-spec publish_call_position_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_call_position_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_call_position_resp(RespQ, JObj) ->
+    publish_call_position_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_call_position_resp(RespQ, API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?CALL_POSITION_RESP_VALUES, fun call_position_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
