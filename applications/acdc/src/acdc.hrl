@@ -13,6 +13,7 @@
 -define(ABANDON_TIMEOUT, 'member_timeout').
 -define(ABANDON_EXIT, 'member_exit').
 -define(ABANDON_HANGUP, 'member_hangup').
+-define(ABANDON_EMPTY, 'member_exit_empty').
 
 -define(PRESENCE_GREEN, <<"terminated">>).
 -define(PRESENCE_RED_FLASH, <<"early">>).
