@@ -520,9 +520,18 @@ build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
         {'error', _}=E -> E
     end;
 build(Endpoint, Properties, Call) ->
-    case should_create_endpoint(Endpoint, Properties, Call) of
-        'ok' -> create_endpoints(Endpoint, Properties, Call);
+    Call1 = maybe_rewrite_caller_id(Endpoint, Call),
+    case should_create_endpoint(Endpoint, Properties, Call1) of
+        'ok' -> create_endpoints(Endpoint, Properties, Call1);
         {'error', _}=E -> E
+    end.
+
+-spec maybe_rewrite_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+maybe_rewrite_caller_id(Endpoint, Call) ->
+    case wh_json:get_ne_value(<<"caller_id_options">>, Endpoint) of
+        'undefined' -> Call;
+        CidOptions  ->
+            whapps_call:maybe_format_caller_id(Call, wh_json:get_value(<<"format">>, CidOptions))
     end.
 
 -spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
