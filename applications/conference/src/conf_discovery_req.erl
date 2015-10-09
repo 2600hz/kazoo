@@ -172,6 +172,7 @@ handle_search_error(Conference, Call, Srv) ->
     try amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
         'ok' ->
             lager:debug("initial participant creating conference on switch nodename '~p'", [whapps_call:switch_hostname(Call)]),
+            maybe_play_participants_count(Conference, Call, 0),
             conf_participant:set_conference(Conference, Srv),
             conf_participant:join_local(Srv),
             wait_for_creation(Conference)
@@ -180,6 +181,29 @@ handle_search_error(Conference, Call, Srv) ->
             lager:debug("conference queue ~s is exclusive, waiting for conference creation by initial participant", [Queue]),
             handle_resource_locked(Conference, Call, Srv)
     end.
+
+-spec maybe_play_participants_count(whapps_conference:conference(), whapps_call:call(), non_neg_integer() | wh_json:object()) -> 'ok'.
+maybe_play_participants_count(Conference, Call, CountData) ->
+    case whapps_conference:play_participants_count(Conference) of
+        'true' -> play_participants_count(Call, CountData);
+        'false' -> 'ok'
+    end.
+
+-spec play_participants_count(whapps_call:call(), non_neg_integer() | wh_json:object()) -> 'ok'.
+play_participants_count(Call, 0) ->
+    whapps_call_command:prompt(<<"conf-alone">>, Call),
+    'ok';
+play_participants_count(Call, 1) ->
+    whapps_call_command:prompt(<<"conf-single">>, Call),
+    'ok';
+play_participants_count(Call, Count) when is_integer(Count) ->
+    whapps_call_command:audio_macro([{'prompt', <<"conf-there_are">>}
+                                     ,{'say', wh_util:to_binary(Count), <<"number">>}
+                                     ,{'prompt', <<"conf-other_participants">>}
+                                    ], Call),
+    'ok';
+play_participants_count(Call, JObj) ->
+    play_participants_count(Call, length(wh_json:get_value(<<"Participants">>, JObj, []))).
 
 -spec handle_resource_locked(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 handle_resource_locked(Conference, Call, Srv) ->
@@ -214,7 +238,9 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
     MaxParticipants =  whapps_conference:max_participants(Conference),
     Participants = length(wh_json:get_value(<<"Participants">>, JObj, [])),
     case MaxParticipants =/= 0 andalso Participants >= MaxParticipants of
-        'false' -> add_participant_to_conference(JObj, Conference, Call, Srv);
+        'false' ->
+            maybe_play_participants_count(Conference, Call, Participants),
+            add_participant_to_conference(JObj, Conference, Call, Srv);
         'true' ->
             _ = whapps_call_command:b_prompt(?DEFAULT_MAX_MEMBERS_MEDIA, Call),
             whapps_call_command:hangup(Call)
