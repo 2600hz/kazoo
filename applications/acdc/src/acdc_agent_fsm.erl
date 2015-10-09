@@ -920,10 +920,10 @@ answered({'channel_hungup', CallId, <<"ATTENDED_TRANSFER">> = _Cause}, #state{me
     {'next_state', 'answered', State};
 answered({'channel_hungup', CallId, _Cause}, #state{member_call_id=CallId}=State) ->
     lager:debug("caller's channel hung up: ~s", [_Cause]),
-    {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State)}};
+    {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'member')}};
 answered({'channel_hungup', CallId, _Cause}, #state{agent_call_id=CallId}=State) ->
     lager:debug("agent's channel has hung up: ~s", [_Cause]),
-    {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State)}};
+    {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'agent')}};
 answered({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("someone(~s) hungup, ignoring: ~s", [CallId, _Cause]),
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
@@ -936,10 +936,10 @@ answered({'sync_req', JObj}, #state{agent_listener=AgentListener
     {'next_state', 'answered', State};
 answered({'channel_unbridged', CallId}, #state{member_call_id=CallId}=State) ->
     lager:info("caller channel ~s unbridged", [CallId]),
-    {'next_state', 'wrapup', State#state{wrapup_ref=wrapup_timer(State)}};
+    {'next_state', 'answered', State};
 answered({'channel_unbridged', CallId}, #state{agent_call_id=CallId}=State) ->
     lager:info("agent channel unbridged"),
-    {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State)}};
+    {'next_state', 'answered', State};
 answered({'channel_answered', MemberCallId}, #state{member_call_id=MemberCallId}=State) ->
     lager:debug("member's channel has answered"),
     {'next_state', 'answered', State};
@@ -1458,15 +1458,15 @@ wrapup_timer(#state{agent_listener=AgentListener
     acdc_agent_stats:agent_wrapup(AccountId, AgentId, WrapupTimeout),
     start_wrapup_timer(WrapupTimeout).
 
--spec hangup_call(fsm_state()) -> reference().
+-spec hangup_call(fsm_state(), 'member' | 'agent') -> reference().
 hangup_call(#state{agent_listener=AgentListener
                    ,member_call_id=CallId
                    ,member_call_queue_id=QueueId
                    ,account_id=AccountId
                    ,agent_id=AgentId
                    ,queue_notifications=Ns
-                  }=State) ->
-    acdc_stats:call_processed(AccountId, QueueId, AgentId, CallId),
+                  }=State, Initiator) ->
+    acdc_stats:call_processed(AccountId, QueueId, AgentId, CallId, Initiator),
 
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
