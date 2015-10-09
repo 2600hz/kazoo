@@ -25,7 +25,7 @@
        ).
 
 -define(TEMPLATE_TEXT, <<"{{ port_request.comment.content }} \n">>).
--define(TEMPLATE_HTML, <<"<p> {{ port_request.comment.content }} <p>">>).
+-define(TEMPLATE_HTML, <<"<p> {{ port_request.comment.content }} </p>">>).
 -define(TEMPLATE_SUBJECT, <<"New comment for {{port_request.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Comment">>).
