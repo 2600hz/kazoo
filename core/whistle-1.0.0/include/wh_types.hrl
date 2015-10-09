@@ -274,7 +274,7 @@
        ).
 
 -define(MATCH_ACCOUNT_RAW(A, B, Rest),
-        <<(A):2/binary, (B):2/binary, (Rest)/binary>>
+        <<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add mising size
        ).
 -define(MATCH_ACCOUNT_UNENCODED(A, B, Rest),
         <<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary>>
@@ -320,10 +320,10 @@
        ).
 
 -define(MATCH_MODB_PREFIX(Year, Month, Account),
-        <<(Year):4/binary, (Month):2/binary, "-", (Account)/binary>>
+        <<(Year):4/binary, (Month):2/binary, "-", (Account)/binary>>  %% FIXME: add mising size
        ).
 -define(MATCH_MODB_PREFIX_M1(Year, Month, Account),
-        <<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>
+        <<(Year):4/binary, (Month):1/binary, "-", (Account)/binary>>  %% FIXME: add mising size
        ).
 
 

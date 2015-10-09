@@ -269,11 +269,8 @@ format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
     format_account_id(AccountId, Year, to_integer(Month));
 format_account_id(Account, Year, Month) when is_integer(Year),
                                              is_integer(Month) ->
-    AccountId = raw_account_id(Account),
-    ?MATCH_MODB_SUFFIX_ENCODED(format_account_id(AccountId, 'encoded')
-                               ,to_binary(Year)
-                               ,pad_month(Month)
-                              ).
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(Account),
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, to_binary(Year), pad_month(Month)).
 
 -spec format_account_mod_id(ne_binary()) -> ne_binary().
 -spec format_account_mod_id(ne_binary(), gregorian_seconds() | wh_now()) -> ne_binary().
