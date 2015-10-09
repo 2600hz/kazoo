@@ -136,19 +136,18 @@ fix_billing_fold(Key, Value, Acc) ->
 
 -spec fix_comments(wh_json:object()) -> wh_json:object().
 fix_comments(JObj) ->
-    Comments =
-        lists:foldl(
-          fun fix_comment_fold/2
-          ,[]
-          ,wh_json:get_value(<<"comments">>, JObj, [])
-         ),
-    wh_json:set_value(<<"comments">>, Comments, JObj).
+    Comments = wh_json:get_value(<<"comments">>, JObj, []),
+    [LastComment|_] = lists:reverse(Comments),
 
--spec fix_comment_fold(wh_json:object(), [wh_proplist(), ...]) -> [wh_proplist(), ...].
-fix_comment_fold(JObj, Acc) ->
-     Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj),
+    Timestamp = wh_json:get_integer_value(<<"timestamp">>, LastComment),
     {Date, _Time} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    [wh_json:to_proplist(wh_json:set_value(<<"timestamp">>, Date, JObj))|Acc].
+    Comment = wh_json:set_value(<<"timestamp">>, Date, LastComment),
+
+    wh_json:set_value(
+        <<"comment">>
+        ,wh_json:to_proplist(Comment)
+        ,wh_json:delete_key(<<"comments">>, JObj)
+    ).
 
 -spec fix_dates(wh_json:object()) -> wh_json:object().
 fix_dates(JObj) ->
