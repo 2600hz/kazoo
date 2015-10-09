@@ -616,11 +616,11 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 summary(Context) ->
     Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
     case cb_context:resp_error_code(Context1) of
-        404 -> crossbar_util:response(wh_json:new(), Context1);
+        404 -> Context1;
         _Code ->
             Context2 = cb_context:set_resp_data(Context1, clean_summary(Context1)),
             case cb_context:resp_status(Context2) of
-                'success' ->  maybe_update_locality(Context2);
+                'success' -> maybe_update_locality(Context2);
                 _Status -> Context2
             end
     end.
