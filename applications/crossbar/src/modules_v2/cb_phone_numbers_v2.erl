@@ -945,7 +945,7 @@ update_context_locality_fold(Key, Value, JObj) ->
 %%--------------------------------------------------------------------
 -spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
                                            {'ok', wh_json:object()} |
-                                           {'error', _}.
+                                           {'error', any()}.
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
     DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
