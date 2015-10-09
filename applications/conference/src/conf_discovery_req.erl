@@ -172,6 +172,7 @@ handle_search_error(Conference, Call, Srv) ->
     try amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
         'ok' ->
             lager:debug("initial participant creating conference on switch nodename '~p'", [whapps_call:switch_hostname(Call)]),
+            maybe_play_name(Conference, Call, Srv),
             conf_participant:set_conference(Conference, Srv),
             conf_participant:join_local(Srv),
             wait_for_creation(Conference)
@@ -255,7 +256,9 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
             conf_participant:join_local(Srv);
         _Else ->
             lager:debug("running conference is on a different switch, bridging to ~s: ~p", [_Else, JObj]),
-            conf_participant:set_conference(Conference, Srv),
+            ParticipantHostname = wh_json:get_value(<<"Switch-Hostname">>, hd(wh_json:get_value(<<"Participants">>, JObj))),
+            Conference2 = whapps_conference:set_focus(ParticipantHostname, Conference),
+            conf_participant:set_conference(Conference2, Srv),
             conf_participant:join_remote(Srv, JObj)
     end.
 

@@ -466,6 +466,16 @@ exec(Focus, ConferenceId, JObj) ->
                         freeswitch:api(Focus, 'expand', Command)
                 end,
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
+        {<<"play_macro">>, AppData} ->
+            Commands = wh_json:get_value(<<"Commands">>, AppData, []),
+            Result = lists:foldl(fun(Command, _Acc) ->
+                {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
+                Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
+                Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
+                lager:debug("api to ~s: conference ~s", [Focus, Command2]),
+                freeswitch:api(Focus, 'conference', Command2)
+            end, 'undefined', Commands),
+            send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
             Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
@@ -560,6 +570,8 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
                    end,
             {<<"play">>, Args}
     end;
+get_conf_command(<<"play_macro">>, _Focus, _ConferenceId, JObj) ->
+    {<<"play_macro">>, JObj};
 get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:stop_play_v(JObj) of
         'false' ->
