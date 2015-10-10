@@ -74,14 +74,19 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
+
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
 allowed_methods(?SMTP_LOG) ->
     [?HTTP_GET];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
 allowed_methods(_, ?PREVIEW) ->
-    [?HTTP_POST].
+    [?HTTP_POST];
+allowed_methods(?SMTP_LOG, _Id) ->
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -95,9 +100,14 @@ allowed_methods(_, ?PREVIEW) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
+
 resource_exists() -> 'true'.
+
+resource_exists(?SMTP_LOG) -> 'true';
 resource_exists(_Id) -> 'true'.
-resource_exists(_Id, ?PREVIEW) -> 'true'.
+
+resource_exists(_Id, ?PREVIEW) -> 'true';
+resource_exists(?SMTP_LOG, _Id) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,6 +200,7 @@ content_types_accepted_for_upload(Context, _Verb) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+
 validate(Context) ->
     ReqVerb = cb_context:req_verb(Context),
     validate_notifications(maybe_update_db(Context), ReqVerb).
@@ -203,7 +214,9 @@ validate(Context, Id) ->
 
 validate(Context, Id, ?PREVIEW) ->
     DbId = kz_notification:db_id(Id),
-    update_notification(maybe_update_db(Context), DbId).
+    update_notification(maybe_update_db(Context), DbId);
+validate(Context, ?SMTP_LOG, Id) ->
+    load_smtp_log_doc(Id, Context).
 
 -spec validate_notifications(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_notification(cb_context:context(), path_token(), http_method()) ->
@@ -237,10 +250,10 @@ validate_delete_notification(Context, Id, _AccountId) ->
 disallow_delete(Context, Id) ->
     lager:debug("deleting the system config template is disallowed"),
     Resp =
-        wh_json:from_list([{<<"target">>, Id}
-                           ,{<<"message">>, <<"Top-level notification template cannot be deleted">>}
-                          ]),
-    cb_context:add_validation_error(Id, <<"disallow">>, Resp, Context).
+        [{<<"target">>, Id}
+         ,{<<"message">>, <<"Top-level notification template cannot be deleted">>}
+        ],
+    cb_context:add_validation_error(Id, <<"disallow">>, wh_json:from_list(Resp), Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -527,9 +540,7 @@ maybe_read(Context, Id, _Acceptable, []) ->
 
 -spec is_acceptable_accept(wh_proplist(), ne_binary(), ne_binary()) -> boolean().
 is_acceptable_accept(Acceptable, Type, SubType) ->
-    lists:any(fun({T, S}) ->
-                      T =:= Type andalso S =:= SubType
-              end, Acceptable).
+    lists:member({Type,SubType}, Acceptable).
 
 -type load_from() :: 'system' | 'account' | 'system_migrate'.
 
@@ -731,7 +742,6 @@ read_template(Context, Id, Accept) ->
             crossbar_util:response_faulty_request(Context);
         _Meta ->
             lager:debug("found attachment ~s in ~s", [AttachmentName, Id]),
-
             cb_context:add_resp_headers(
               read_account_attachment(Context, Id, AttachmentName)
               ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
@@ -1082,6 +1092,12 @@ leak_attachments_fold(_Attachment, Props, Acc) ->
                       ,wh_json:from_list([{<<"length">>, wh_json:get_integer_value(<<"length">>, Props)}])
                       ,Acc
                      ).
+
+-spec load_smtp_log_doc(ne_binary(), cb_context:context()) -> cb_context:context().
+load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
+    Year  = wh_util:to_integer(YYYY),
+    Month = wh_util:to_integer(MM),
+    crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month)).
 
 -spec load_smtp_log(cb_context:context()) -> cb_context:context().
 load_smtp_log(Context) ->
