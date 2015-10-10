@@ -143,7 +143,8 @@ save_doc(Account, Doc, Year, Month) ->
                         {'ok', wh_json:object()} |
                         {'error', atom()}.
 couch_save(AccountMODb, _Doc, 0) ->
-    lager:error("failed to save doc in ~p", AccountMODb);
+    lager:error("failed to save doc in ~p", AccountMODb),
+    {'error', 'doc_save_failed'};
 couch_save(AccountMODb, Doc, Retry) ->
      EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     case couch_mgr:save_doc(EncodedMODb, Doc) of
