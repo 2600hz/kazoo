@@ -19,8 +19,7 @@
 is_comment_private('undefined') -> 'false';
 is_comment_private([]) -> 'false';
 is_comment_private([_|_]=Comments) ->
-    [LastComment|_] = lists:reverse(Comments),
-    is_comment_private(LastComment);
+    is_comment_private(lists:last(Comments));
 is_comment_private(Comment) ->
     wh_json:is_true(<<"superduper_comment">>, Comment, 'false').
 
@@ -136,18 +135,24 @@ fix_billing_fold(Key, Value, Acc) ->
 
 -spec fix_comments(wh_json:object()) -> wh_json:object().
 fix_comments(JObj) ->
-    Comments = wh_json:get_value(<<"comments">>, JObj, []),
-    [LastComment|_] = lists:reverse(Comments),
+    case wh_json:get_value(<<"comments">>, JObj) of
+        'undefined' ->
+            wh_json:delete_key(<<"comments">>, JObj);
+        [] ->
+            wh_json:delete_key(<<"comments">>, JObj);
+        Comments ->
+            LastComment = lists:last(Comments),
 
-    Timestamp = wh_json:get_integer_value(<<"timestamp">>, LastComment),
-    {Date, _Time} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    Comment = wh_json:set_value(<<"timestamp">>, Date, LastComment),
+            Timestamp = wh_json:get_integer_value(<<"timestamp">>, LastComment),
+            {Date, _Time} = calendar:gregorian_seconds_to_datetime(Timestamp),
+            Comment = wh_json:set_value(<<"timestamp">>, Date, LastComment),
 
-    wh_json:set_value(
-        <<"comment">>
-        ,wh_json:to_proplist(Comment)
-        ,wh_json:delete_key(<<"comments">>, JObj)
-    ).
+            wh_json:set_value(
+                <<"comment">>
+                ,wh_json:to_proplist(Comment)
+                ,wh_json:delete_key(<<"comments">>, JObj)
+            )
+    end.
 
 -spec fix_dates(wh_json:object()) -> wh_json:object().
 fix_dates(JObj) ->
