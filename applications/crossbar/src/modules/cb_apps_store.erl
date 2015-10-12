@@ -413,7 +413,7 @@ normalize_apps_result([App|Apps], Acc) ->
                         ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
                         ,{<<"users">>, wh_json:get_value(<<"users">>, App)}
                         ,{<<"allowed_users">>, wh_json:get_value(<<"allowed_users">>, App)}
-                        ,{<<"masqueradable">>, wh_json:get_value(<<"masqueradable">>, App, 'true')}
+                        ,{<<"masqueradable">>, wh_json:is_true(<<"masqueradable">>, App, 'true')}
                     ])
                  ),
             normalize_apps_result(Apps, [JObj|Acc])
