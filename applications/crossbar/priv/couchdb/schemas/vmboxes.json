@@ -140,30 +140,14 @@
             "required": false,
             "type": "boolean"
         },
-        "notify_callback_attempts": {
-            "description": "How many attempts without answer will system do",
+        "notify": {
+            "properties": {
+                "callback": {
+                    "$ref": "notify.callback"
+                }
+            },
             "required": false,
-            "type": "integer"
-        },
-        "notify_callback_disabled": {
-            "description": "Determines if the system will call to callback number",
-            "required": false,
-            "type": "boolean"
-        },
-        "notify_callback_interval": {
-            "description": "How long will system wait between call back notification attempts",
-            "required": false,
-            "type": "integer"
-        },
-        "notify_callback_number": {
-            "description": "Number for callback notifications about new messages",
-            "required": false,
-            "type": "string"
-        },
-        "notify_callback_timeout": {
-            "description": "How long will system wait for answer to callback",
-            "required": false,
-            "type": "integer"
+            "type": "object"
         },
         "notify_email_addresses": {
             "default": [],

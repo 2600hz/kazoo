@@ -474,37 +474,20 @@
             "required": false,
             "type": "boolean"
         },
-        "vm_notify_callback_attempts": {
-            "description": "How many attempts without answer will system do",
+        "voicemail": {
+            "properties": {
+                "notify": {
+                    "properties": {
+                        "callback": {
+                            "$ref": "notify.callback"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                }
+            },
             "required": false,
-            "type": "integer"
-        },
-        "vm_notify_callback_disabled": {
-            "description": "Determines if the system will call to callback number",
-            "required": false,
-            "type": "boolean"
-        },
-        "vm_notify_callback_interval": {
-            "description": "How long will system wait between call back notification attempts",
-            "required": false,
-            "type": "integer"
-        },
-        "vm_notify_callback_number": {
-            "description": "Number for callback notifications about new VM messages",
-            "required": false,
-            "type": "string"
-        },
-        "vm_notify_callback_timeout": {
-            "description": "How long will system wait for answer to callback",
-            "required": false,
-            "type": "integer"
-        },
-        "vm_to_email_enabled": {
-            "default": true,
-            "description": "Determines if the user would like voicemails emailed to them",
-            "name": "VM To Emain Enabled",
-            "required": false,
-            "type": "boolean"
+            "type": "object"
         }
     },
     "required": true,

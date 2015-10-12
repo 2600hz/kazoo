@@ -70,18 +70,23 @@ handle_req(JObj, Props) ->
             {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, UserId),
             {'ok', AccountJObj} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
 
+            OptionsPath = [<<"notify">>, <<"callback">>],
+            VMBoxNotifyJObj = wh_json:get_value(OptionsPath, VMBoxJObj),
+            UserNotifyJObj = wh_json:get_value([<<"voicemail">> | OptionsPath], UserJObj),
+            AccountNotifyJObj = wh_json:get_value([<<"voicemail">> | OptionsPath], AccountJObj),
+
             Realm = wh_json:get_value(<<"To-Realm">>, JObj),
 
             Mailbox = wh_json:get_value(<<"mailbox">>, VMBoxJObj),
             VMNumber = get_voicemail_number(AccountDb, Mailbox),
-            Number = get_first_defined([{<<"notify_callback_number">>, VMBoxJObj}
-                                        ,{<<"vm_notify_callback_number">>, UserJObj}]),
+            Number = get_first_defined([{<<"number">>, VMBoxNotifyJObj}
+                                        ,{<<"number">>, UserNotifyJObj}]),
             IsDisabled = wh_util:is_true(
-                              get_first_defined([{<<"notify_callback_disabled">>, VMBoxJObj}
-                                                 ,{<<"vm_notify_callback_disabled">>, UserJObj}])),
-            Interval = get_interval(VMBoxJObj, UserJObj, AccountJObj),
-            Attempts = get_attempts(VMBoxJObj, UserJObj, AccountJObj),
-            CallTimeout = get_callback_timeout(VMBoxJObj, UserJObj, AccountJObj),
+                              get_first_defined([{<<"disabled">>, VMBoxNotifyJObj}
+                                                 ,{<<"disabled">>, UserNotifyJObj}])),
+            Interval = get_interval(VMBoxNotifyJObj, UserNotifyJObj, AccountNotifyJObj),
+            Attempts = get_attempts(VMBoxNotifyJObj, UserNotifyJObj, AccountNotifyJObj),
+            CallTimeout = get_callback_timeout(VMBoxNotifyJObj, UserNotifyJObj, AccountNotifyJObj),
 
             StartArgs = #args{account_id = AccountId
                               ,user_id = UserId
@@ -229,35 +234,35 @@ get_first_defined([], Default) ->
 -spec get_interval(wh_json:object(), wh_json:object(), wh_json:object()) -> integer().
 get_interval(VMBoxJObj, UserJObj, AccountJObj) ->
     DefaultInterval = whapps_config:get_binary(?CONFIG_CAT
-                                               ,<<"vm_notify_callback_interval_s">>
+                                               ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"interval_s">>]
                                                ,5*60),
     wh_util:to_integer(
-      get_first_defined([{<<"notify_callback_interval_s">>, VMBoxJObj}
-                         ,{<<"vm_notify_callback_interval_s">>, UserJObj}
-                         ,{<<"vm_notify_callback_interval_s">>, AccountJObj}
+      get_first_defined([{<<"interval_s">>, VMBoxJObj}
+                         ,{<<"interval_s">>, UserJObj}
+                         ,{<<"interval_s">>, AccountJObj}
                         ]
                         ,DefaultInterval)).
 
 -spec get_attempts(wh_json:object(), wh_json:object(), wh_json:object()) -> integer().
 get_attempts(VMBoxJObj, UserJObj, AccountJObj) ->
     DefaultTries = whapps_config:get_binary(?CONFIG_CAT
-                                            ,<<"vm_notify_callback_tries">>
+                                            ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"attempts">>]
                                             ,5),
     wh_util:to_integer(
-      get_first_defined([{<<"notify_callback_attempts">>, VMBoxJObj}
-                         ,{<<"vm_notify_callback_attempts">>, UserJObj}
-                         ,{<<"vm_notify_callback_attempts">>, AccountJObj}
+      get_first_defined([{<<"attempts">>, VMBoxJObj}
+                         ,{<<"attempts">>, UserJObj}
+                         ,{<<"attempts">>, AccountJObj}
                         ]
                         ,DefaultTries)).
 
 -spec get_callback_timeout(wh_json:object(), wh_json:object(), wh_json:object()) -> integer().
 get_callback_timeout(VMBoxJObj, UserJObj, AccountJObj) ->
     DefaultCallTimeout = whapps_config:get_binary(?CONFIG_CAT
-                                                  ,<<"vm_notify_callback_timeout">>
+                                                  ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"timeout_s">>]
                                                   ,20),
     wh_util:to_integer(
-      get_first_defined([{<<"notify_callback_timeout_s">>, VMBoxJObj}
-                         ,{<<"vm_notify_callback_timeout_s">>, UserJObj}
-                         ,{<<"vm_notify_callback_timeout_s">>, AccountJObj}
+      get_first_defined([{<<"timeout_s">>, VMBoxJObj}
+                         ,{<<"timeout_s">>, UserJObj}
+                         ,{<<"timeout_s">>, AccountJObj}
                         ]
                         ,DefaultCallTimeout)).
