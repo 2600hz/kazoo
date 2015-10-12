@@ -286,7 +286,7 @@ put(Context, Num, ?ACTIVATE) ->
 delete(Context, Num) ->
     Options = [{<<"auth_by">>, cb_context:auth_account_id(Context)}],
 
-    case knm_number:change_state(Num, ?NUMBER_STATE_RELEASED, Options) of
+    case knm_number:delete(Num, Options) of
         {'error', Reason} -> error_return(Context, Reason);
         {'ok', _} ->
             cb_context:set_resp_status(Context, 'success')
