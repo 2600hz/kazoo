@@ -40,6 +40,9 @@
 -type reason() :: atom() | ne_binary().
 -type error() :: wh_json:object().
 
+-type kn() :: knm_number:knm_number().
+-type kpn() :: knm_phone_number:knm_number().
+
 -export_type([error/0]).
 
 -spec unauthorized() -> no_return().
@@ -50,7 +53,7 @@ unauthorized() ->
 number_exists(DID) ->
     throw({'error', 'number_exists', DID}).
 
--spec invalid_state_transition(knm_number:knm_number(), ne_binary(), ne_binary()) ->
+-spec invalid_state_transition(kn() | kpn(), ne_binary(), ne_binary()) ->
                                       no_return().
 invalid_state_transition(Number, FromState, ToState) ->
     throw({'error'
@@ -61,7 +64,7 @@ invalid_state_transition(Number, FromState, ToState) ->
                              ])
           }).
 
--spec no_change_required(knm_number:knm_number()) -> no_return().
+-spec no_change_required(kn()) -> no_return().
 no_change_required(Number) ->
     throw({'error', 'no_change_required', Number}).
 
@@ -69,26 +72,26 @@ no_change_required(Number) ->
 service_restriction(Message) ->
     throw({'error', 'service_restriction', Message}).
 
--spec carrier_not_specified(knm_number:knm_number()) -> no_return().
+-spec carrier_not_specified(kn()) -> no_return().
 carrier_not_specified(Number) ->
     throw({'error', 'carrier_not_specified', Number}).
 
--spec unspecified(any(), knm_number:knm_number() | ne_binary()) ->
+-spec unspecified(any(), kn() | ne_binary()) ->
                          no_return().
 unspecified(Error, Number) ->
     throw({'error', Error, Number}).
 
--spec not_enough_credit(knm_number:knm_number(), integer()) ->
+-spec not_enough_credit(kn(), integer()) ->
                                no_return().
 not_enough_credit(Number, Units) ->
     throw({'error', 'not_enough_credit', Number, Units}).
 
--spec invalid(knm_number:knm_number(), wh_json:object()) ->
+-spec invalid(kn(), wh_json:object()) ->
                      no_return().
 invalid(Number, Reason) ->
     throw({'error', 'invalid', Number, Reason}).
 
--spec multiple_choice(knm_number:knm_number(), wh_json:object()) ->
+-spec multiple_choice(kn(), wh_json:object()) ->
                              no_return().
 multiple_choice(Number, Update) ->
     throw({'error', 'multiple_choice', Number, Update}).
