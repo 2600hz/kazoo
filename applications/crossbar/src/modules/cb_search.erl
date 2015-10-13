@@ -126,7 +126,7 @@ validate(Context, ?MULTI) ->
 -spec validate_search(cb_context:context(), api_binary()) -> cb_context:context().
 -spec validate_search(cb_context:context(), ne_binary(), api_binary()) ->
                              cb_context:context().
--spec validate_search(cb_context:context(), ne_binary(), ne_binary(), binary() | 'undefined') ->
+-spec validate_search(cb_context:context(), ne_binary(), ne_binary(), api_binary()) ->
                              cb_context:context().
 validate_search(Context, 'undefined') ->
     cb_context:add_validation_error(
@@ -184,7 +184,7 @@ validate_search(Context, Type, Query, Value) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_multi(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_multi(cb_context:context(), api_binary()) -> cb_context:context().
 -spec validate_multi(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
 validate_multi(Context, 'undefined') ->
     cb_context:add_validation_error(
