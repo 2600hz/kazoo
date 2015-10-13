@@ -6,7 +6,15 @@ Language: en-US
 
 The Search API allows queries on databases.
 
+
+
 ## Crossbar
+
+You can search for accounts by:
+
+* name
+* realm
+* id
 
 ### _GET_ - Fetch search results
 

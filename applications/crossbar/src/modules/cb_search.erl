@@ -22,6 +22,7 @@
 -define(QUERY_TPL, <<"search/search_by_">>).
 -define(MULTI, <<"multi">>).
 
+-define(SEARCHABLE, [<<"account">>, <<"user">>, <<"callflow">>, <<"devices">>]).
 -define(ACCOUNT_QUERY_OPTIONS, [<<"name">>, <<"number">>, <<"name_and_number">>]).
 -define(ACCOUNTS_QUERY_OPTIONS, [<<"name">>, <<"realm">>, <<"id">>]).
 
@@ -200,36 +201,23 @@ validate_multi(Context, Type) ->
         _Other ->
             cb_context:add_validation_error(
                 <<"multi">>
-                ,<<"required">>
-                ,wh_json:from_list([{<<"message">>, <<"Multi Search needs something to search">>}])
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Multi Search needs something to search like a doc type">>}
+                    ,{<<"target">>, ?SEARCHABLE}
+                 ])
                 ,Context
             )
     end.
 
 validate_multi(Context, Type, Props) ->
     QueryOptions = query_options(cb_context:account_db(Context)),
-    case validate_multi_fold(QueryOptions, Props) of
-        'ok' -> multi_search(Context, Type, Props);
-        Invalid ->
-            cb_context:add_validation_error(
-                <<"multi">>
-                ,<<"enum">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Value not found in enumerated list of values">>}
-                    ,{<<"target">>, QueryOptions}
-                    ,{<<"cause">>, Invalid}
-                 ])
-                ,Context
-            )
-    end.
-
--spec validate_multi_fold(wh_proplist(), wh_proplist()) -> 'ok' | ne_binary().
-validate_multi_fold(_Options, []) -> 'ok';
-validate_multi_fold(Options, [{Query, _}|Props]) ->
-    case lists:member(Query, Options) of
-        'false' -> Query;
-        'true' ->
-            validate_multi_fold(Options, Props)
+    Context1 = validate_query(Context, QueryOptions, Props),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            multi_search(Context, Type, Props);
+        _Status ->
+            Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -241,21 +229,33 @@ validate_multi_fold(Options, [{Query, _}|Props]) ->
 -spec validate_query(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
 validate_query(Context, Query) ->
     QueryOptions = query_options(cb_context:account_db(Context)),
-    validate_query(Context, Query, QueryOptions).
+    validate_query(QueryOptions, Query).
 
-validate_query(Context, Query, Available) ->
+validate_query(Context, _Available, []) ->
+    cb_context:set_resp_status(Context, 'success');
+validate_query(Context, Available, [{Query, _}|Props]) ->
+    Context1 = validate_query(Context, Available, Query),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            validate_query(Context1, Available, Props);
+        _Status ->
+            Context1
+    end;
+validate_query(Context, Available, Query) when is_binary(Query) ->
     case lists:member(Query, Available) of
-        'true' -> cb_context:set_resp_status(Context, 'success');
+        'true' ->
+            cb_context:set_resp_status(Context, 'success');
         'false' ->
             cb_context:add_validation_error(
-              <<"q">>
-              ,<<"enum">>
-              ,wh_json:from_list(
-                 [{<<"message">>, <<"Value not found in enumerated list of values">>}
-                  ,{<<"target">>, Available}
+                <<"query">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Value not found in enumerated list of values">>}
+                    ,{<<"target">>, Available}
+                    ,{<<"cause">>, Available}
                  ])
-              ,Context
-             )
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -332,10 +332,10 @@ multi_search(Context, _Type, [], Acc) ->
     );
 multi_search(Context, Type, [{Query, Value}|More], Acc) ->
     ViewName = <<?QUERY_TPL/binary, Query/binary>>,
-    ViewOptions = [
-        {'startkey', get_start_key(Context, Type, Value)}
-        ,{'endkey', get_end_key(Context, Type, Value)}
-    ],
+    ViewOptions =
+        [{'startkey', get_start_key(Context, Type, Value)}
+         ,{'endkey', get_end_key(Context, Type, Value)}
+        ],
     Context1 =
         crossbar_doc:load_view(
             ViewName
