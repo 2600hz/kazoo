@@ -11,11 +11,13 @@
 -export([fetch/1, fetch/2
          ,save/1
          ,delete/1
+         ,release/1
         ]).
 
 -export([to_json/1
          ,to_public_json/1
          ,from_json/1
+         ,is_phone_number/1
         ]).
 
 -export([setters/2
@@ -29,7 +31,8 @@
          ,features/1 ,set_features/2
          ,feature/2 ,set_feature/3
          ,state/1 ,set_state/2
-         ,reserve_history/1 ,set_reserve_history/2, add_reserve_history/2
+         ,reserve_history/1 ,set_reserve_history/2
+         ,add_reserve_history/2, unwind_reserve_history/1
          ,ported_in/1 ,set_ported_in/2
          ,module_name/1 ,set_module_name/2
          ,carrier_data/1 ,set_carrier_data/2
@@ -131,13 +134,60 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_number()) -> number_return().
-delete(#knm_phone_number{dry_run='true'}=Number) -> {'ok', Number};
+delete(#knm_phone_number{dry_run='true'}=Number) ->
+    {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
     Routines = [fun knm_providers:delete/1
                 ,fun delete_number_doc/1
                 ,fun maybe_remove_number_from_account/1
                ],
     setters(Number, Routines).
+
+-spec release(knm_number()) -> knm_number().
+-spec release(knm_number(), ne_binary()) -> knm_number().
+release(PhoneNumber) ->
+    release(PhoneNumber, state(PhoneNumber)).
+
+release(PhoneNumber, ?NUMBER_STATE_RELEASED) ->
+    PhoneNumber;
+release(PhoneNumber, ?NUMBER_STATE_RESERVED) ->
+    Routines = [fun authorize_release/1],
+    apply_routines(PhoneNumber, Routines);
+release(PhoneNumber, ?NUMBER_STATE_PORT_IN) ->
+    Routines = [fun authorize_release/1],
+    apply_routines(PhoneNumber, Routines);
+release(PhoneNumber, ?NUMBER_STATE_IN_SERVICE) ->
+    Routines = [fun authorize_release/1],
+    apply_routines(PhoneNumber, Routines);
+release(PhoneNumber, FromState) ->
+    knm_errors:invalid_state_transition(PhoneNumber
+                                        ,FromState
+                                        ,?NUMBER_STATE_RELEASED
+                                       ).
+
+-spec authorize_release(knm_number()) -> knm_number().
+-spec authorize_release(knm_number(), ne_binary()) -> knm_number().
+authorize_release(PhoneNumber) ->
+    authorize_release(PhoneNumber, auth_by(PhoneNumber)).
+
+authorize_release(PhoneNumber, ?DEFAULT_AUTH_BY) ->
+    authorized_release(PhoneNumber);
+authorize_release(PhoneNumber, AuthBy) ->
+    AssignedTo = assigned_to(PhoneNumber),
+    case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
+        'false' -> knm_errors:unauthorized();
+        'true' -> authorized_release(PhoneNumber)
+    end.
+
+-spec authorized_release(knm_number()) -> knm_number().
+authorized_release(PhoneNumber) ->
+    Routines =
+        [{fun set_features/2, wh_json:new()}
+         ,{fun set_doc/2, wh_json:private_fields(doc(PhoneNumber))}
+         ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
+         ,{fun set_assigned_to/2, 'undefined'}
+        ],
+    setters(PhoneNumber, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -213,6 +263,10 @@ from_json(JObj) ->
 new() ->
     #knm_phone_number{}.
 
+-spec is_phone_number(knm_number() | any()) -> boolean().
+is_phone_number(#knm_phone_number{}) -> 'true';
+is_phone_number(_) -> 'false'.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -270,6 +324,20 @@ setters_fold(Fun, {'ok', Number}) when is_function(Fun) ->
 setters_fold(Fun, Number) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
     erlang:apply(Fun, [Number]).
+
+-type routine() :: fun((knm_number()) -> knm_number()) |
+                   fun((knm_number(), any()) -> knm_number()).
+-type routines() :: [routine()].
+
+-spec apply_routines(knm_number(), routines()) -> knm_number().
+apply_routines(PhoneNumber, Funs) ->
+    lists:foldl(fun apply_routine/2, PhoneNumber, Funs).
+
+-spec apply_routine(routine(), knm_number()) -> knm_number().
+apply_routine(Fun, PhoneNumber) when is_function(Fun, 1) ->
+    Fun(PhoneNumber);
+apply_routine({Fun, V}, PhoneNumber) when is_function(Fun, 2) ->
+    Fun(PhoneNumber, V).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -406,6 +474,12 @@ add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=PN
     PN;
 add_reserve_history(PN, AccountId) ->
     PN#knm_phone_number{reserve_history=[AccountId | reserve_history(PN)]}.
+
+-spec unwind_reserve_history(knm_number()) -> knm_number().
+unwind_reserve_history(PN) ->
+    H = reserve_history(PN),
+    Prev = prev_assigned_to(PN),
+    set_reserve_history(PN, lists:delete(Prev, H)).
 
 %%--------------------------------------------------------------------
 %% @public

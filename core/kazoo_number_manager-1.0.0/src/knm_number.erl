@@ -277,7 +277,7 @@ move(Num, MoveTo, Options) ->
                         ,{fun knm_phone_number:set_prev_assigned_to/2, AssignedTo}
                         ,fun knm_phone_number:save/1
                        ],
-            apply_phone_number_routines(Number, Routines)
+            wrap_phone_number_routines(Number, Routines)
     end.
 
 %%--------------------------------------------------------------------
@@ -410,12 +410,69 @@ delete(Num, Options) ->
     case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            PhoneNumber = phone_number(Number),
-            wrap_phone_number_return(
-              knm_phone_number:delete(PhoneNumber)
-              ,Number
-             )
+            delete_number(Number)
     end.
+
+-spec delete_number(knm_number()) ->
+                           knm_number_return().
+delete_number(Number) ->
+    Routines = [fun knm_phone_number:release/1],
+    unwind_or_disconnect(
+      set_phone_number(
+        Number
+        ,apply_phone_number_routines(Number, Routines)
+       )
+     ).
+
+-spec unwind_or_disconnect(knm_number()) ->
+                                  knm_number_return().
+-spec unwind_or_disconnect(knm_number(), knm_phone_number:knm_number()) ->
+                                  knm_number_return().
+unwind_or_disconnect(Number) ->
+    PhoneNumber = phone_number(Number),
+    unwind_or_disconnect(Number
+                         ,knm_phone_number:unwind_reserve_history(PhoneNumber)
+                        ).
+
+unwind_or_disconnect(Number, PhoneNumber) ->
+    case knm_phone_number:reserve_history(PhoneNumber) of
+        [] -> disconnect(set_phone_number(Number, PhoneNumber));
+        History -> unwind(Number, PhoneNumber, History)
+    end.
+
+-spec unwind(knm_number(), knm_phone_number:knm_number(), ne_binaries()) ->
+                    knm_number_return().
+unwind(Number, PhoneNumber, [NewAssignedTo|_]) ->
+    Routines = [{fun knm_phone_number:set_assigned_to/2, NewAssignedTo}
+                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}
+               ],
+    wrap_phone_number_routines(
+      set_phone_number(Number, PhoneNumber)
+      ,Routines
+     ).
+
+-spec disconnect(knm_number()) -> knm_number_return().
+-spec disconnect(knm_number(), boolean()) -> knm_number_return().
+disconnect(Number) ->
+    disconnect(Number, knm_config:should_permanently_delete('false')).
+
+disconnect(Number, ShouldDelete) ->
+    try knm_carriers:disconnect(Number) of
+        N1 -> maybe_delete_phone_number(N1, ShouldDelete)
+    catch
+        _E:_R when ShouldDelete ->
+            lager:debug("failed to disconnect number: ~s: ~p", [_E, _R]),
+            delete_phone_number(Number)
+    end.
+
+-spec maybe_delete_phone_number(knm_number(), boolean()) ->
+                                       knm_number_return().
+maybe_delete_phone_number(Number, 'false') -> {'ok', Number};
+maybe_delete_phone_number(Number, 'true') -> delete_number(Number).
+
+-spec delete_phone_number(knm_number()) -> {'ok', knm_number()}.
+delete_phone_number(Number) ->
+    {'ok', knm_number_states:to_deleted(Number)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -495,13 +552,18 @@ buy(Num, Account, Options) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec apply_phone_number_routines(knm_number(), knm_phone_number:set_functions()) ->
+-spec wrap_phone_number_routines(knm_number(), knm_phone_number:set_functions()) ->
                                          knm_number_return().
-apply_phone_number_routines(Number, Routines) ->
+wrap_phone_number_routines(Number, Routines) ->
     wrap_phone_number_return(
-      knm_phone_number:setters(phone_number(Number), Routines)
+      apply_phone_number_routines(Number, Routines)
       ,Number
      ).
+
+-spec apply_phone_number_routines(knm_number(), knm_phone_number:set_functions()) ->
+                                         knm_phone_number:knm_number().
+apply_phone_number_routines(Number, Routines) ->
+    knm_phone_number:setters(phone_number(Number), Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -726,7 +788,8 @@ wrap_phone_number_return(PhoneNumber, Number) ->
     {'ok', set_phone_number(Number, PhoneNumber)}.
 
 -spec phone_number(knm_number()) -> knm_phone_number:knm_number().
--spec set_phone_number(knm_number(), knm_phone_number:knm_number()) -> knm_number().
+-spec set_phone_number(knm_number(), knm_phone_number:knm_number()) ->
+                              knm_number().
 phone_number(#knm_number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
 set_phone_number(Number, PhoneNumber) ->
     Number#knm_number{knm_phone_number=PhoneNumber}.
