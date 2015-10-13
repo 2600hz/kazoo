@@ -24,8 +24,8 @@
           )
        ).
 
--define(TEMPLATE_TEXT, <<"{% for comment in port_request.comments %} {{ comment.content }} \n {% endfor %}">>).
--define(TEMPLATE_HTML, <<"{% for comment in port_request.comments %} <p> {{ comment.content }} </p> {% endfor %}">>).
+-define(TEMPLATE_TEXT, <<"{{ port_request.comment.content }} \n">>).
+-define(TEMPLATE_HTML, <<"<p> {{ port_request.comment.content }} </p>">>).
 -define(TEMPLATE_SUBJECT, <<"New comment for {{port_request.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Comment">>).
@@ -77,7 +77,14 @@ process_req(DataJObj) ->
                                ),
 
     case teletype_util:is_preview(DataJObj) of
-        'false' -> handle_port_request(teletype_port_utils:fix_email(ReqData));
+        'false' ->
+            Comments = wh_json:get_value(<<"comments">>, PortReqJObj),
+            handle_port_request(
+                teletype_port_utils:fix_email(
+                    ReqData
+                    ,teletype_port_utils:is_comment_private(Comments)
+                )
+            );
         'true' -> handle_port_request(wh_json:merge_jobjs(DataJObj, ReqData))
     end.
 
