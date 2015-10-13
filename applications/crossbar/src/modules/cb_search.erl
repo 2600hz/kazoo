@@ -226,10 +226,10 @@ validate_multi(Context, Type, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_query(cb_context:context(), ne_binary()) -> cb_context:context().
--spec validate_query(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+-spec validate_query(cb_context:context(), wh_proplist(), wh_proplist() | ne_binary()) -> cb_context:context().
 validate_query(Context, Query) ->
     QueryOptions = query_options(cb_context:account_db(Context)),
-    validate_query(QueryOptions, Query).
+    validate_query(Context, QueryOptions, Query).
 
 validate_query(Context, _Available, []) ->
     cb_context:set_resp_status(Context, 'success');
