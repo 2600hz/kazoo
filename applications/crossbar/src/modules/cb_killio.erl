@@ -12,8 +12,8 @@
 -module(cb_killio).
 
 -export([init/0
-         ,allowed_methods/1
-         ,resource_exists/1
+         ,allowed_methods/2
+         ,resource_exists/2
          ,validate/2
          ,put/2
          ,post/2
@@ -52,8 +52,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(?TOKEN_CALL) ->
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+allowed_methods(_Context, ?TOKEN_CALL) ->
     [?HTTP_PUT, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
@@ -65,8 +65,8 @@ allowed_methods(?TOKEN_CALL) ->
 %%    /killio/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists(path_token()) -> 'true'.
-resource_exists(?TOKEN_CALL) -> 'true'.
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+resource_exists(Context, ?TOKEN_CALL) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public

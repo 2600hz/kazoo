@@ -10,8 +10,8 @@
 -module(cb_call_inspector).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/1, allowed_methods/2
+         ,resource_exists/1, resource_exists/2
          ,validate/1, validate/2
          ,to_json/1
          ,to_csv/1
@@ -87,12 +87,12 @@ to_csv({Req, Context}, []) ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET].
 
--spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_) ->
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+allowed_methods(_Context, _) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -104,11 +104,11 @@ allowed_methods(_) ->
 %%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
--spec resource_exists(path_token()) -> 'true'.
-resource_exists(_) -> 'true'.
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+resource_exists(Context, _) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public

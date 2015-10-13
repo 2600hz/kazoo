@@ -13,9 +13,9 @@
 -module(cb_rate_limits).
 
 -export([init/0
-         ,allowed_methods/0
+         ,allowed_methods/1
          ,authorize/1
-         ,resource_exists/0
+         ,resource_exists/1
          ,validate/1
          ,post/1
          ,delete/1
@@ -51,8 +51,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 -spec authorize(cb_context:context()) -> boolean().
@@ -99,8 +99,8 @@ thing_id(Context) ->
 %%    /rate_limits/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -12,8 +12,8 @@
 -module(cb_braintree).
 
 -export([init/0
-         ,allowed_methods/1, allowed_methods/2
-         ,resource_exists/1, resource_exists/2
+         ,allowed_methods/2, allowed_methods/3
+         ,resource_exists/2, resource_exists/3
          ,validate/2, validate/3
          ,put/2
          ,post/2, post/3
@@ -53,24 +53,24 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods(?CUSTOMER_PATH_TOKEN) ->
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context, ?CUSTOMER_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_POST];
-allowed_methods(?CARDS_PATH_TOKEN) ->
+allowed_methods(_Context, ?CARDS_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_PUT];
-allowed_methods(?ADDRESSES_PATH_TOKEN) ->
+allowed_methods(_Context, ?ADDRESSES_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_PUT];
-allowed_methods(?TRANSACTIONS_PATH_TOKEN) ->
+allowed_methods(_Context, ?TRANSACTIONS_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_PUT];
-allowed_methods(?CREDITS_PATH_TOKEN) ->
+allowed_methods(_Context, ?CREDITS_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?CARDS_PATH_TOKEN, _) ->
+allowed_methods(_Context, ?CARDS_PATH_TOKEN, _) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(?ADDRESSES_PATH_TOKEN, _) ->
+allowed_methods(_Context, ?ADDRESSES_PATH_TOKEN, _) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(?TRANSACTIONS_PATH_TOKEN, _) ->
+allowed_methods(_Context, ?TRANSACTIONS_PATH_TOKEN, _) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -81,17 +81,17 @@ allowed_methods(?TRANSACTIONS_PATH_TOKEN, _) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists(?CUSTOMER_PATH_TOKEN) -> 'true';
-resource_exists(?CARDS_PATH_TOKEN) -> 'true';
-resource_exists(?ADDRESSES_PATH_TOKEN) -> 'true';
-resource_exists(?TRANSACTIONS_PATH_TOKEN) -> 'true';
-resource_exists(?CREDITS_PATH_TOKEN) -> 'true'.
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context, ?CUSTOMER_PATH_TOKEN) -> {'true', Context};
+resource_exists(Context, ?CARDS_PATH_TOKEN) -> {'true', Context};
+resource_exists(Context, ?ADDRESSES_PATH_TOKEN) -> {'true', Context};
+resource_exists(Context, ?TRANSACTIONS_PATH_TOKEN) -> {'true', Context};
+resource_exists(Context, ?CREDITS_PATH_TOKEN) -> {'true', Context}.
 
-resource_exists(?CARDS_PATH_TOKEN, _) -> 'true';
-resource_exists(?ADDRESSES_PATH_TOKEN, _) -> 'true';
-resource_exists(?TRANSACTIONS_PATH_TOKEN, _) -> 'true'.
+resource_exists(Context, ?CARDS_PATH_TOKEN, _) -> {'true', Context};
+resource_exists(Context, ?ADDRESSES_PATH_TOKEN, _) -> {'true', Context};
+resource_exists(Context, ?TRANSACTIONS_PATH_TOKEN, _) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public

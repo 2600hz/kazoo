@@ -10,8 +10,8 @@
 -module(cb_faxes).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
+         ,resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
          ,content_types_provided/4
          ,content_types_accepted/1, content_types_accepted/2
          ,validate/1, validate/2, validate/3, validate/4
@@ -81,29 +81,29 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token(), path_token()) -> http_methods().
 
-allowed_methods() ->
+allowed_methods(_Context) ->
     [?HTTP_PUT].
 
-allowed_methods(?SMTP_LOG) ->
+allowed_methods(_Context, ?SMTP_LOG) ->
     [?HTTP_GET];
-allowed_methods(?INCOMING) ->
+allowed_methods(_Context, ?INCOMING) ->
     [?HTTP_GET];
-allowed_methods(?OUTGOING) ->
+allowed_methods(_Context, ?OUTGOING) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?SMTP_LOG, _Id) ->
+allowed_methods(_Context, ?SMTP_LOG, _Id) ->
     [?HTTP_GET];
-allowed_methods(?INCOMING, _Id) ->
+allowed_methods(_Context, ?INCOMING, _Id) ->
     [?HTTP_GET, ?HTTP_DELETE];
-allowed_methods(?OUTGOING, _Id) ->
+allowed_methods(_Context, ?OUTGOING, _Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
-allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
+allowed_methods(_Context, ?INCOMING, _Id, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -115,22 +115,22 @@ allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
 %%    /faxes/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token(), path_token()) -> api_util:resource_existence().
 
-resource_exists() -> 'true'.
+resource_exists(Context) -> {'true', Context}.
 
-resource_exists(?SMTP_LOG) -> 'true';
-resource_exists(?INCOMING) -> 'true';
-resource_exists(?OUTGOING) -> 'true'.
+resource_exists(Context, ?SMTP_LOG) -> {'true', Context};
+resource_exists(Context, ?INCOMING) -> {'true', Context};
+resource_exists(Context, ?OUTGOING) -> {'true', Context}.
 
-resource_exists(?SMTP_LOG, _Id) -> 'true';
-resource_exists(?INCOMING, _Id) -> 'true';
-resource_exists(?OUTGOING, _Id) -> 'true'.
+resource_exists(Context, ?SMTP_LOG, _Id) -> {'true', Context};
+resource_exists(Context, ?INCOMING, _Id) -> {'true', Context};
+resource_exists(Context, ?OUTGOING, _Id) -> {'true', Context}.
 
-resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
+resource_exists(Context, ?INCOMING, _Id, ?ATTACHMENT) -> {'true', Context}.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->

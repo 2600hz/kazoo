@@ -11,8 +11,8 @@
 -module(cb_faxboxes).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/1, allowed_methods/2
+         ,resource_exists/1, resource_exists/2
          ,validate/1, validate/2
          ,put/1
          ,post/2
@@ -86,13 +86,13 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
 
-allowed_methods() ->
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(_BoxId) ->
+allowed_methods(_Context, _BoxId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -104,11 +104,11 @@ allowed_methods(_BoxId) ->
 %%    /faxes/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
 
-resource_exists() -> 'true'.
-resource_exists(_BoxId) -> 'true'.
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _BoxId) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public

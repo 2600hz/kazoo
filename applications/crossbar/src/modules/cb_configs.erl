@@ -12,8 +12,8 @@
 -module(cb_configs).
 
 -export([init/0
-         ,allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/2
+         ,resource_exists/1, resource_exists/2
          ,validate/2
          ,get/2
          ,put/2
@@ -52,8 +52,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_) ->
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+allowed_methods(_Context, _) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -65,10 +65,10 @@ allowed_methods(_) ->
 %%    /configs/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'false'.
--spec resource_exists(path_tokens()) -> 'true'.
-resource_exists() -> false.
-resource_exists(_) -> true.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_tokens()) -> api_util:resource_existence().
+resource_exists(Context) -> {false, Context}.
+resource_exists(Context, _) -> {true, Context}.
 
 %%--------------------------------------------------------------------
 %% @public

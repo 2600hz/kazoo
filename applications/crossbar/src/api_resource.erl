@@ -210,7 +210,7 @@ find_allowed_methods(Req0, Context) ->
     [{Mod, Params}|_] = cb_context:req_nouns(Context),
 
     Event = api_util:create_event_name(Context, <<"allowed_methods">>),
-    Responses = crossbar_bindings:map(<<Event/binary, ".", Mod/binary>>, Params),
+    Responses = crossbar_bindings:map(<<Event/binary, ".", Mod/binary>>, [Context | Params]),
 
     {Method, Req1} = cowboy_req:method(Req0),
     AllowMethods = api_util:allow_methods(Responses
@@ -504,17 +504,19 @@ encodings_provided(Req0, Context0) ->
 resource_exists(Req, Context) ->
     resource_exists(Req, Context, cb_context:req_nouns(Context)).
 
+-spec resource_exists(cowboy_req:req(), cb_context:context(), list()) ->
+                             {boolean(), cowboy_req:req(), cb_context:context()}.
 resource_exists(Req, Context, [{<<"404">>,_}|_]) ->
     lager:debug("failed to tokenize request, returning 404"),
     {'false', Req, Context};
 resource_exists(Req, Context, _Nouns) ->
     lager:debug("run: resource_exists"),
     case api_util:does_resource_exist(Context) of
-        'true' ->
-            does_request_validate(Req, Context);
-        'false' ->
+        {'true', Context1} ->
+            does_request_validate(Req, Context1);
+        {'false', Context1} ->
             lager:debug("requested resource does not exist"),
-            {'false', Req, Context}
+            {'false', Req, Context1}
     end.
 
 -spec does_request_validate(cowboy_req:req(), cb_context:context()) ->

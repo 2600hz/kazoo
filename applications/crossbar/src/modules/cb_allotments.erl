@@ -9,8 +9,8 @@
 -module(cb_allotments).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/1, allowed_methods/2
+         ,resource_exists/1, resource_exists/2
          ,validate/1, validate/2
          ,post/1
         ]).
@@ -41,11 +41,11 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_POST].
 
-allowed_methods(?CONSUMED) ->
+allowed_methods(_Context, ?CONSUMED) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -56,10 +56,10 @@ allowed_methods(?CONSUMED) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(?CONSUMED) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, ?CONSUMED) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @private

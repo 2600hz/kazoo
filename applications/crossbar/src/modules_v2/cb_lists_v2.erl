@@ -13,8 +13,8 @@
 
 -export([maybe_migrate/1]).
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4, allowed_methods/5
+         ,resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4, resource_exists/5
          ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4, content_types_provided/5
          ,validate/1, validate/2, validate/3, validate/4, validate/5
          ,delete/2, delete/3, delete/4
@@ -72,33 +72,33 @@ init() ->
                         ]
     ].
 
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_ListId) ->
+allowed_methods(_Context, _ListId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
-allowed_methods(_ListId, ?ENTRIES) ->
+allowed_methods(_Context, _ListId, ?ENTRIES) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_DELETE].
-allowed_methods(_List, ?ENTRIES, _EntryId) ->
+allowed_methods(_Context, _List, ?ENTRIES, _EntryId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
-allowed_methods(_List, ?ENTRIES, _EntryId, ?VCARD) ->
+allowed_methods(_Context, _List, ?ENTRIES, _EntryId, ?VCARD) ->
     [?HTTP_GET];
-allowed_methods(_List, ?ENTRIES, _EntryId, ?PHOTO) ->
+allowed_methods(_Context, _List, ?ENTRIES, _EntryId, ?PHOTO) ->
     [?HTTP_POST].
 
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_ListId) -> 'true'.
-resource_exists(_ListId, ?ENTRIES) -> 'true'.
-resource_exists(_ListId, ?ENTRIES, _EntryId) -> 'true'.
-resource_exists(_ListId, ?ENTRIES, _EntryId, ?VCARD) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _ListId) -> {'true', Context}.
+resource_exists(Context, _ListId, ?ENTRIES) -> {'true', Context}.
+resource_exists(Context, _ListId, ?ENTRIES, _EntryId) -> {'true', Context}.
+resource_exists(Context, _ListId, ?ENTRIES, _EntryId, ?VCARD) -> {'true', Context}.
 
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().

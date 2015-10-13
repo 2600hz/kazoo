@@ -26,8 +26,8 @@
 -module(cb_agents).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_provided/1, content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
          ,post/3
@@ -70,18 +70,18 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods() -> [?HTTP_GET].
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) -> [?HTTP_GET].
 
-allowed_methods(?STATUS_PATH_TOKEN) -> [?HTTP_GET];
-allowed_methods(?STATS_PATH_TOKEN) -> [?HTTP_GET];
-allowed_methods(_) -> [?HTTP_GET].
+allowed_methods(_Context, ?STATUS_PATH_TOKEN) -> [?HTTP_GET];
+allowed_methods(_Context, ?STATS_PATH_TOKEN) -> [?HTTP_GET];
+allowed_methods(_Context, _) -> [?HTTP_GET].
 
-allowed_methods(?STATUS_PATH_TOKEN, _) -> [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
+allowed_methods(_Context, ?STATUS_PATH_TOKEN, _) -> [?HTTP_GET, ?HTTP_POST];
+allowed_methods(_Context, _, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
+allowed_methods(_Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -92,14 +92,14 @@ allowed_methods(_, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 %%    /agents/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, ?STATUS_PATH_TOKEN) -> 'true';
-resource_exists(?STATUS_PATH_TOKEN, _) -> 'true';
-resource_exists(_, ?QUEUE_STATUS_PATH_TOKEN) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _) -> {'true', Context}.
+resource_exists(Context, _, ?STATUS_PATH_TOKEN) -> {'true', Context};
+resource_exists(Context, ?STATUS_PATH_TOKEN, _) -> {'true', Context};
+resource_exists(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @private

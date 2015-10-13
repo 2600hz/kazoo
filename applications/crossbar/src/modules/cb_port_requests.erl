@@ -12,8 +12,8 @@
 -module(cb_port_requests).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
+         ,resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
          ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
          ,content_types_accepted/3, content_types_accepted/4
          ,validate/1, validate/2, validate/3, validate/4
@@ -131,46 +131,46 @@ should_delete_port_request(_) ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?PORT_SUBMITTED) ->
+allowed_methods(_Context, ?PORT_SUBMITTED) ->
     [?HTTP_GET];
-allowed_methods(?PORT_PENDING) ->
+allowed_methods(_Context, ?PORT_PENDING) ->
     [?HTTP_GET];
-allowed_methods(?PORT_SCHEDULED) ->
+allowed_methods(_Context, ?PORT_SCHEDULED) ->
     [?HTTP_GET];
-allowed_methods(?PORT_COMPLETE) ->
+allowed_methods(_Context, ?PORT_COMPLETE) ->
     [?HTTP_GET];
-allowed_methods(?PORT_REJECT) ->
+allowed_methods(_Context, ?PORT_REJECT) ->
     [?HTTP_GET];
-allowed_methods(?PORT_CANCELED) ->
+allowed_methods(_Context, ?PORT_CANCELED) ->
     [?HTTP_GET];
-allowed_methods(_Id) ->
+allowed_methods(_Context, _Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(_Id, ?PORT_SUBMITTED) ->
+allowed_methods(_Context, _Id, ?PORT_SUBMITTED) ->
     [?HTTP_POST];
-allowed_methods(_Id, ?PORT_PENDING) ->
+allowed_methods(_Context, _Id, ?PORT_PENDING) ->
     [?HTTP_POST];
-allowed_methods(_Id, ?PORT_SCHEDULED) ->
+allowed_methods(_Context, _Id, ?PORT_SCHEDULED) ->
     [?HTTP_POST];
-allowed_methods(_Id, ?PORT_COMPLETE) ->
+allowed_methods(_Context, _Id, ?PORT_COMPLETE) ->
     [?HTTP_POST];
-allowed_methods(_Id, ?PORT_REJECT) ->
+allowed_methods(_Context, _Id, ?PORT_REJECT) ->
     [?HTTP_POST];
-allowed_methods(_Id, ?PORT_CANCELED) ->
+allowed_methods(_Context, _Id, ?PORT_CANCELED) ->
     [?HTTP_POST];
-allowed_methods(_Id, ?PORT_ATTACHMENT) ->
+allowed_methods(_Context, _Id, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
-allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
+allowed_methods(_Context, _Id, ?PATH_TOKEN_LOA) ->
     [?HTTP_GET].
 
-allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
+allowed_methods(_Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -182,25 +182,25 @@ allowed_methods(_Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 %%    /port_requests/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
 
-resource_exists(_Id) -> 'true'.
+resource_exists(Context, _Id) -> {'true', Context}.
 
-resource_exists(_Id, ?PORT_SUBMITTED) -> 'true';
-resource_exists(_Id, ?PORT_PENDING) -> 'true';
-resource_exists(_Id, ?PORT_SCHEDULED) -> 'true';
-resource_exists(_Id, ?PORT_COMPLETE) -> 'true';
-resource_exists(_Id, ?PORT_REJECT) -> 'true';
-resource_exists(_Id, ?PORT_CANCELED) -> 'true';
-resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
-resource_exists(_Id, ?PATH_TOKEN_LOA) -> 'true';
-resource_exists(_Id, _Unknown) -> 'false'.
+resource_exists(Context, _Id, ?PORT_SUBMITTED) -> {'true', Context};
+resource_exists(Context, _Id, ?PORT_PENDING) -> {'true', Context};
+resource_exists(Context, _Id, ?PORT_SCHEDULED) -> {'true', Context};
+resource_exists(Context, _Id, ?PORT_COMPLETE) -> {'true', Context};
+resource_exists(Context, _Id, ?PORT_REJECT) -> {'true', Context};
+resource_exists(Context, _Id, ?PORT_CANCELED) -> {'true', Context};
+resource_exists(Context, _Id, ?PORT_ATTACHMENT) -> {'true', Context};
+resource_exists(Context, _Id, ?PATH_TOKEN_LOA) -> {'true', Context};
+resource_exists(Context, _Id, _Unknown) -> {'false', Context}.
 
-resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
+resource_exists(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @public

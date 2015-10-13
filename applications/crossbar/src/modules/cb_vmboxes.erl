@@ -13,8 +13,8 @@
 -module(cb_vmboxes).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4, allowed_methods/5
+         ,resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4, resource_exists/5
          ,validate/1, validate/2, validate/3, validate/4, validate/5
          ,content_types_provided/5
          ,put/1
@@ -57,21 +57,21 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> http_methods().
 
-allowed_methods() ->
+allowed_methods(_Context) ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_VMBoxID) ->
+allowed_methods(_Context, _VMBoxID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
-allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
+allowed_methods(_Context, _VMBoxID, ?MESSAGES_RESOURCE) ->
     [?HTTP_GET].
-allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
+allowed_methods(_Context, _VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
+allowed_methods(_Context, _VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -82,14 +82,14 @@ allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, ?MESSAGES_RESOURCE) -> 'true'.
-resource_exists(_, ?MESSAGES_RESOURCE, _) -> 'true'.
-resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+resource_exists(Context) -> {'true', Context}.
+resource_exists(Context, _) -> {'true', Context}.
+resource_exists(Context, _, ?MESSAGES_RESOURCE) -> {'true', Context}.
+resource_exists(Context, _, ?MESSAGES_RESOURCE, _) -> {'true', Context}.
+resource_exists(Context, _, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> {'true', Context}.
 
 %%--------------------------------------------------------------------
 %% @private

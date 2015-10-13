@@ -13,8 +13,8 @@
 
 -export([init/0
          ,authorize/1
-         ,allowed_methods/1
-         ,resource_exists/1
+         ,allowed_methods/2
+         ,resource_exists/2
          ,validate/2
         ]).
 
@@ -63,8 +63,8 @@ authorize_nouns(_Nouns) -> 'false'.
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(?AUTHORIZE) ->
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+allowed_methods(_Context, ?AUTHORIZE) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -76,8 +76,8 @@ allowed_methods(?AUTHORIZE) ->
 %%    /apps_link/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists(path_token()) -> 'true'.
-resource_exists(?AUTHORIZE) -> 'true'.
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+resource_exists(Context, ?AUTHORIZE) -> {'true', Context}.
 
 
 %%--------------------------------------------------------------------

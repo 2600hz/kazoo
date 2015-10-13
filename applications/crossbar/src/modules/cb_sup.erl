@@ -23,8 +23,8 @@
 
 -export([init/0
          ,authorize/1, authorize/2, authorize/3, authorize/4
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,allowed_methods/1, allowed_methods/2, allowed_methods/3, allowed_methods/4
+         ,resource_exists/1, resource_exists/2, resource_exists/3, resource_exists/4
          ,validate/1, validate/2, validate/3, validate/4
 
          ,format_path_tokens/1
@@ -151,20 +151,20 @@ authorize(Context, _Module, _Function, _Args) ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
-allowed_methods() ->
+-spec allowed_methods(cb_context:context()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(cb_context:context(), path_token(), path_token(), path_token()) -> http_methods().
+allowed_methods(_Context) ->
     [].
 
-allowed_methods(_Module) ->
+allowed_methods(_Context, _Module) ->
     [?HTTP_GET].
 
-allowed_methods(_Module, _Function) ->
+allowed_methods(_Context, _Module, _Function) ->
     [?HTTP_GET].
 
-allowed_methods(_Module, _Function, _Args) ->
+allowed_methods(_Context, _Module, _Function, _Args) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -176,22 +176,22 @@ allowed_methods(_Module, _Function, _Args) ->
 %%    /sup/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'false'.
--spec resource_exists(path_token()) -> boolean().
--spec resource_exists(path_token(), path_token()) -> boolean().
--spec resource_exists(path_token(), path_token(), ne_binaries()) -> boolean().
-resource_exists() -> 'false'.
+-spec resource_exists(cb_context:context()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token()) -> api_util:resource_existence().
+-spec resource_exists(cb_context:context(), path_token(), path_token(), ne_binaries()) -> api_util:resource_existence().
+resource_exists(Context) -> {'false', Context}.
 
-resource_exists(ModuleBin) ->
-    does_resource_exist(ModuleBin, 'status', []).
+resource_exists(Context, ModuleBin) ->
+    does_resource_exist(Context, ModuleBin, 'status', []).
 
-resource_exists(ModuleBin, FunctionBin) ->
-    does_resource_exist(ModuleBin, FunctionBin, []).
+resource_exists(Context, ModuleBin, FunctionBin) ->
+    does_resource_exist(Context, ModuleBin, FunctionBin, []).
 
-resource_exists(ModuleBin, FunctionBin, Args) ->
-    does_resource_exist(ModuleBin, FunctionBin, Args).
+resource_exists(Context, ModuleBin, FunctionBin, Args) ->
+    does_resource_exist(Context, ModuleBin, FunctionBin, Args).
 
-does_resource_exist(ModuleBin, FunctionBin, Args) ->
+does_resource_exist(Context, ModuleBin, FunctionBin, Args) ->
     Arity = erlang:length(Args),
 
     try {module_name(ModuleBin)
@@ -200,11 +200,11 @@ does_resource_exist(ModuleBin, FunctionBin, Args) ->
     of
         {Module, Function} ->
             lager:debug("checking existence of ~s:~s/~p", [Module, Function, Arity]),
-            erlang:function_exported(Module, Function, Arity)
+            {erlang:function_exported(Module, Function, Arity), Context}
     catch
         'error':'badarg' ->
             lager:debug("failed to find ~s_maintenance:~s/~p", [ModuleBin, FunctionBin, Arity]),
-            'false'
+            {'false', Context}
     end.
 
 module_name(ModuleBin) ->
