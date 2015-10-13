@@ -208,36 +208,29 @@ validate_multi(Context, Type) ->
 
 validate_multi(Context, Type, Props) ->
     QueryOptions = query_options(cb_context:account_db(Context)),
-    IsValid =
-        lists:foldl(
-            fun({Query, _}, Acc) ->
-                validate_multi_foldl(Query, QueryOptions, Acc)
-            end
-            ,'true'
-            ,Props
-        ),
-    case IsValid of
-        'true' -> multi_search(Context, Type, Props);
-        IsValid ->
+    case validate_multi_fold(QueryOptions, Props) of
+        'ok' -> multi_search(Context, Type, Props);
+        Invalid ->
             cb_context:add_validation_error(
                 <<"multi">>
                 ,<<"enum">>
                 ,wh_json:from_list([
                     {<<"message">>, <<"Value not found in enumerated list of values">>}
                     ,{<<"target">>, QueryOptions}
-                    ,{<<"cause">>, IsValid}
+                    ,{<<"cause">>, Invalid}
                  ])
                 ,Context
             )
     end.
 
--spec validate_multi_foldl(ne_binary(), ne_binaries(), 'true' | ne_binary()) -> 'true' | ne_binary().
-validate_multi_foldl(Query, Options, 'true') ->
+-spec validate_multi_fold(wh_proplist(), wh_proplist()) -> 'ok' | ne_binary().
+validate_multi_fold(_Options, []) -> 'ok';
+validate_multi_fold(Options, [{Query, _}|Props]) ->
     case lists:member(Query, Options) of
-        'true' -> 'true';
-        'false' -> Query
-    end;
-validate_multi_foldl(_Query, _Options, InValid) -> InValid.
+        'false' -> Query;
+        'true' ->
+            validate_multi_fold(Options, Props)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
