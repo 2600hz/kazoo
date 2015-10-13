@@ -11,18 +11,19 @@
 -module(cb_search).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
-         ,authorize/1
+         ,allowed_methods/0 ,allowed_methods/1
+         ,resource_exists/0 ,resource_exists/1
+         ,validate/1 ,validate/2
+         ,authorize/1, authorize/2
         ]).
 
 -include("../crossbar.hrl").
 
 -define(QUERY_TPL, <<"search/search_by_">>).
+-define(MULTI, <<"multi">>).
 
 -define(ACCOUNT_QUERY_OPTIONS, [<<"name">>, <<"number">>, <<"name_and_number">>]).
--define(ACCOUNTS_QUERY_OPTIONS, [<<"name">>]).
+-define(ACCOUNTS_QUERY_OPTIONS, [<<"name">>, <<"realm">>, <<"id">>]).
 
 %%%===================================================================
 %%% API
@@ -49,7 +50,11 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
+    [?HTTP_GET].
+
+allowed_methods(?MULTI) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -62,10 +67,22 @@ allowed_methods() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
 
+resource_exists(?MULTI) -> 'true'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> 'true'.
+-spec authorize(cb_context:context(), path_token()) -> 'true'.
 authorize(Context) ->
+    cb_context:auth_account_id(Context) =/= 'undefined'.
+
+authorize(Context, ?MULTI) ->
     cb_context:auth_account_id(Context) =/= 'undefined'.
 
 %%--------------------------------------------------------------------
@@ -79,6 +96,7 @@ authorize(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     Type = cb_context:req_value(Context, <<"t">>),
     Ctx = case cb_context:account_id(Context) of
@@ -87,7 +105,29 @@ validate(Context) ->
           end,
     validate_search(Ctx, Type).
 
+
+validate(Context, ?MULTI) ->
+    Type = cb_context:req_value(Context, <<"t">>),
+    Ctx = case cb_context:account_id(Context) of
+              'undefined' -> cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB);
+              _AccountId -> Context
+          end,
+    validate_multi(Ctx, Type).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec validate_search(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_search(cb_context:context(), ne_binary(), api_binary()) ->
+                             cb_context:context().
+-spec validate_search(cb_context:context(), ne_binary(), ne_binary(), binary() | 'undefined') ->
+                             cb_context:context().
 validate_search(Context, 'undefined') ->
     cb_context:add_validation_error(
       <<"t">>
@@ -98,8 +138,7 @@ validate_search(Context, 'undefined') ->
 validate_search(Context, Type) ->
     validate_search(Context, Type, cb_context:req_value(Context, <<"q">>)).
 
--spec validate_search(cb_context:context(), ne_binary(), api_binary()) ->
-                             cb_context:context().
+
 validate_search(Context, _Type, 'undefined') ->
     Context1 = cb_context:add_validation_error(
                  <<"q">>
@@ -125,6 +164,86 @@ validate_search(Context, Type, Query) ->
             Context1
     end.
 
+validate_search(Context, _Type, _Query, 'undefined') ->
+    cb_context:add_validation_error(
+      <<"v">>
+      ,<<"required">>
+      ,wh_json:from_list([{<<"message">>, <<"Search needs a value to search with">>}])
+      ,Context
+     );
+validate_search(Context, Type, Query, <<_/binary>> = Value) ->
+    search(Context, Type, Query, Value);
+validate_search(Context, Type, Query, Value) ->
+    case wh_util:is_true(Value) of
+        'true' -> validate_search(Context, Type, Query, <<>>);
+        'false' -> validate_search(Context, Type, Query, 'undefined')
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_multi(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_multi(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
+validate_multi(Context, 'undefined') ->
+    cb_context:add_validation_error(
+        <<"t">>
+        ,<<"required">>
+        ,wh_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
+        ,Context
+    );
+validate_multi(Context, Type) ->
+    QS = cb_context:query_string(Context),
+    case wh_json:to_proplist(wh_json:delete_key(<<"t">>, QS)) of
+        [_|_]=Props -> validate_multi(Context, Type, Props);
+        _Other ->
+            cb_context:add_validation_error(
+                <<"multi">>
+                ,<<"required">>
+                ,wh_json:from_list([{<<"message">>, <<"Multi Search needs something to search">>}])
+                ,Context
+            )
+    end.
+
+validate_multi(Context, Type, Props) ->
+    QueryOptions = query_options(cb_context:account_db(Context)),
+    IsValid =
+        lists:foldl(
+            fun({Query, _}, Acc) ->
+                validate_multi_foldl(Query, QueryOptions, Acc)
+            end
+            ,'true'
+            ,Props
+        ),
+    case IsValid of
+        'true' -> multi_search(Context, Type, Props);
+        IsValid ->
+            cb_context:add_validation_error(
+                <<"multi">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Value not found in enumerated list of values">>}
+                    ,{<<"target">>, QueryOptions}
+                    ,{<<"cause">>, IsValid}
+                 ])
+                ,Context
+            )
+    end.
+
+-spec validate_multi_foldl(ne_binary(), ne_binaries(), 'true' | ne_binary()) -> 'true' | ne_binary().
+validate_multi_foldl(Query, Options, 'true') ->
+    case lists:member(Query, Options) of
+        'true' -> 'true';
+        'false' -> Query
+    end;
+validate_multi_foldl(_Query, _Options, InValid) -> InValid.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec validate_query(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec validate_query(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
 validate_query(Context, Query) ->
@@ -146,6 +265,11 @@ validate_query(Context, Query, Available) ->
              )
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec query_options(ne_binary()) -> ne_binaries().
 query_options(AccountDb) ->
     case couch_mgr:open_cache_doc(AccountDb, <<"_design/search">>) of
@@ -157,30 +281,19 @@ query_options(AccountDb) ->
             ?ACCOUNT_QUERY_OPTIONS
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec format_query_options(ne_binaries()) -> ne_binaries().
+-spec format_query_option(ne_binary()) -> ne_binary().
 format_query_options(Views) ->
     [format_query_option(View) || View <- Views].
 
--spec format_query_option(ne_binary()) -> ne_binary().
+
 format_query_option(<<"search_by_", Name/binary>>) -> Name;
 format_query_option(Name) -> Name.
-
--spec validate_search(cb_context:context(), ne_binary(), ne_binary(), binary() | 'undefined') ->
-                             cb_context:context().
-validate_search(Context, _Type, _Query, 'undefined') ->
-    cb_context:add_validation_error(
-      <<"v">>
-      ,<<"required">>
-      ,wh_json:from_list([{<<"message">>, <<"Search needs a value to search with">>}])
-      ,Context
-     );
-validate_search(Context, Type, Query, <<_/binary>> = Value) ->
-    search(Context, Type, Query, Value);
-validate_search(Context, Type, Query, Value) ->
-    case wh_util:is_true(Value) of
-        'true' -> validate_search(Context, Type, Query, <<>>);
-        'false' -> validate_search(Context, Type, Query, 'undefined')
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,6 +318,45 @@ search(Context, Type, Query, Value) ->
         ,fun normalize_view_results/2
        )
      ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec multi_search(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
+-spec multi_search(cb_context:context(), ne_binary(), wh_proplist(), wh_json:objects()) -> cb_context:context().
+multi_search(Context, Type, Props) ->
+    multi_search(Context, Type, Props , wh_json:new()).
+
+multi_search(Context, _Type, [], Acc) ->
+    Env = cb_context:resp_envelope(Context),
+    cb_context:set_resp_envelope(
+        cb_context:set_resp_data(Context, Acc)
+        ,wh_json:delete_keys([<<"start_key">>, <<"page_size">>], Env)
+    );
+multi_search(Context, Type, [{Query, Value}|More], Acc) ->
+    ViewName = <<?QUERY_TPL/binary, Query/binary>>,
+    ViewOptions = [
+        {'startkey', get_start_key(Context, Type, Value)}
+        ,{'endkey', get_end_key(Context, Type, Value)}
+    ],
+    Context1 =
+        crossbar_doc:load_view(
+            ViewName
+            ,ViewOptions
+            ,Context
+            ,fun normalize_view_results/2
+        ),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            RespData = cb_context:resp_data(Context1),
+            Acc1 = wh_json:set_value(Query, RespData, Acc),
+            multi_search(Context1, Type, More, Acc1);
+        _ -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
