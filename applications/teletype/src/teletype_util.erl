@@ -96,7 +96,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     Doc = props:filter_undefined(
             [{<<"rendered_templates">>, wh_json:from_list(RenderedTemplates)}
              ,{<<"subject">>, Subject}
-             ,{<<"emails">>, wh_json:from_list(Emails)}
+             ,{<<"emails">>, wh_json:from_list(props:filter_undefined(Emails))}
              ,{<<"receipt">>, Receipt}
              ,{<<"error">>, Error}
              ,{<<"pvt_type">>, <<"notify_smtp_log">>}
