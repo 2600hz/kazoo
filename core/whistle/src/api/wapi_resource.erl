@@ -82,6 +82,7 @@
                                          ,<<"Fax-Identity-Number">>
                                          ,<<"Fax-Timezone">>
                                          ,<<"Intercept-Unbridged-Only">>
+                                         ,<<"Loopback-Handler">>
                                          ,<<"Simplify-Loopback">> %% loopback_bowout flag
                                          ,<<"Loopback-Bowout">>
                                          ,<<"Start-Control-Process">>
@@ -94,6 +95,7 @@
                                ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
                                                           ,<<"fax">>, <<"eavesdrop">>
                                                          ]}
+                               ,{<<"Loopback-Handler">>, [<<"ecallmgr">>]}
                                %% Eavesdrop
                                ,?EAVESDROP_MODE
                               ]).

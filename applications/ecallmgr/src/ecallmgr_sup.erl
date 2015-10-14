@@ -20,6 +20,7 @@
                    ,?SUPER('ecallmgr_auxiliary_sup')
                    ,?SUPER('ecallmgr_call_sup')
                    ,?SUPER('ecallmgr_fs_sup')
+                   ,?CACHE(?ECALLMGR_CMDS_CACHE)
                   ]).
 
 %% ===================================================================

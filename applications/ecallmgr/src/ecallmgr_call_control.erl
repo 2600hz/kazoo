@@ -203,6 +203,7 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     wh_util:put_callid(CallId),
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
+    gen_listener:cast(self(), 'check_commands'),
     {'ok', #state{node=Node
                   ,call_id=CallId
                   ,command_q=queue:new()
@@ -253,6 +254,15 @@ handle_cast('init', #state{node=Node
     bind_to_events(Node, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
     {'noreply', State#state{sanity_check_tref=TRef}};
+handle_cast('check_commands', #state{call_id = CallId} = State) ->
+    case wh_cache:fetch_local(?ECALLMGR_CMDS_CACHE, CallId) of
+        {'ok', Commands} ->
+            wh_cache:erase_local(?ECALLMGR_CMDS_CACHE, CallId),
+            NewState = lists:foldl(fun handle_dialplan/2, State, Commands),
+            {'noreply', NewState};
+        _ ->
+            {'noreply', State}
+    end;
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
 handle_cast({'usurp_control', _}, State) ->
