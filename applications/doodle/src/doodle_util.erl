@@ -124,13 +124,13 @@ save_sms(JObj, 'undefined', Call) ->
     save_sms(JObj, SmsDocId, Doc, UpdatedCall);
 save_sms(JObj, DocId, Call) ->
     AccountId = whapps_call:account_id(Call),
-    <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
+    ?MATCH_MODB_PREFIX(Year,Month,_) = DocId,
     {'ok', Doc} = kazoo_modb:open_doc(AccountId, DocId, Year, Month),
     save_sms(JObj, DocId, Doc, Call).
 
--spec save_sms(wh_json:object(), api_binary(), wh_json:object(), whapps_call:call()) -> whapps_call:call().
-save_sms(JObj, DocId, Doc, Call) ->
-    <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
+-spec save_sms(wh_json:object(), api_binary(), wh_json:object(), whapps_call:call()) ->
+                      whapps_call:call().
+save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
     AccountId = whapps_call:account_id(Call),
     AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
     OwnerId = whapps_call:owner_id(Call),

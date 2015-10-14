@@ -135,12 +135,12 @@ db_classification(?KZ_WEBHOOKS_DB) -> 'aggregate';
 db_classification(<<?WNM_DB_PREFIX_L, _Prefix:5/binary>>) -> 'numbers';
 db_classification(<<"numbers%2F", _Prefix:5/binary>>) -> 'numbers';
 db_classification(<<"numbers%2f", _Prefix:5/binary>>) -> 'numbers';
-db_classification(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'modb';
-db_classification(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'modb';
-db_classification(<<"account%2f", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'modb';
-db_classification(<<"account/", _AccountId:34/binary>>) -> 'account';
-db_classification(<<"account%2f", _AccountId:38/binary>>) -> 'account';
-db_classification(<<"account%2F", _AccountId:38/binary>>) -> 'account';
+db_classification(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';% these only need to match
+db_classification(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   "account..." then the
+db_classification(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   right size.
+db_classification(?MATCH_ACCOUNT_UNENCODED(_AccountId)) -> 'account';
+db_classification(?MATCH_ACCOUNT_encoded(_AccountId)) -> 'account';
+db_classification(?MATCH_ACCOUNT_ENCODED(_AccountId)) -> 'account';
 db_classification(?WH_RATES_DB) -> 'system';
 db_classification(?WH_OFFNET_DB) -> 'system';
 db_classification(?WH_ANONYMOUS_CDR_DB) -> 'system';

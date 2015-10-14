@@ -72,7 +72,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.faxes">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -133,11 +133,10 @@ resource_exists(?OUTGOING, _Id) -> 'true'.
 resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
+-spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
 content_types_accepted(Context) ->
     maybe_add_types_accepted(Context, cb_context:req_verb(Context)).
 
--spec content_types_accepted(cb_context:context(), path_token()) ->
-                                    cb_context:context().
 content_types_accepted(Context, ?OUTGOING) ->
     maybe_add_types_accepted(Context, cb_context:req_verb(Context));
 content_types_accepted(Context, _) -> Context.
@@ -156,8 +155,10 @@ maybe_add_types_accepted(Context, _) -> Context.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(Context, ?INCOMING, <<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, ?ATTACHMENT) ->
-    Ctx = cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+content_types_provided(Context, ?INCOMING, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
+    Year  = wh_util:to_integer(YYYY),
+    Month = wh_util:to_integer(MM),
+    Ctx = cb_context:set_account_modb(Context, Year, Month),
     content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
     content_types_provided_for_fax(Context, FaxId, cb_context:req_verb(Context));
@@ -209,7 +210,7 @@ validate(Context, ?OUTGOING) ->
 validate(Context, ?INCOMING) ->
     incoming_summary(Context);
 validate(Context, ?SMTP_LOG) ->
-    smtp_summary(Context).
+    load_smtp_log(Context).
 
 validate_outgoing_fax(Context, ?HTTP_GET) ->
     outgoing_summary(cb_context:set_account_db(Context, ?WH_FAXES_DB));
@@ -320,8 +321,10 @@ create(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(<<Year:4/binary, Month:2/binary, "-", _/binary>> = Id, Context) ->
-    crossbar_doc:load(Id, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
+read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
+    Year  = wh_util:to_integer(YYYY),
+    Month = wh_util:to_integer(MM),
+    crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month));
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -486,8 +489,8 @@ get_incoming_view_and_filter(JObj) ->
         _Else -> {?CB_LIST_ALL, 'undefined', [wh_json:new()]}
     end.
 
--spec smtp_summary(cb_context:context()) -> cb_context:context().
-smtp_summary(Context) ->
+-spec load_smtp_log(cb_context:context()) -> cb_context:context().
+load_smtp_log(Context) ->
     case cb_modules_util:range_modb_view_options(Context) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(?CB_LIST_SMTP_LOG
@@ -505,7 +508,7 @@ smtp_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
-load_fax_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, Context) ->
+load_fax_binary(?MATCH_MODB_PREFIX(Year,Month,_) = FaxId, Context) ->
     do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
 load_fax_binary(FaxId, Context) ->
     do_load_fax_binary(FaxId, Context).

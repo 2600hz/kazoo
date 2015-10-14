@@ -31,17 +31,17 @@ prev_year_month_mod(AccountModb) ->
     wh_util:format_account_id(AccountId, PrevYear, PrevMonth).
 
 -spec split_account_mod(ne_binary()) -> {ne_binary(), wh_year(), wh_month()}.
-split_account_mod(<<Account:32/binary, "-", Year:4/binary, Month:2/binary>>) ->
+split_account_mod(?MATCH_MODB_SUFFIX_RAW(Account,Year,Month)) ->
     {wh_util:format_account_id(Account, 'raw')
      ,wh_util:to_integer(Year)
      ,wh_util:to_integer(Month)
     };
-split_account_mod(<<Account:42/binary, "-", Year:4/binary, Month:2/binary>>) ->
+split_account_mod(?MATCH_MODB_SUFFIX_UNENCODED(Account,Year,Month)) ->
     {wh_util:format_account_id(Account, 'raw')
      ,wh_util:to_integer(Year)
      ,wh_util:to_integer(Month)
     };
-split_account_mod(<<Account:48/binary, "-",  Year:4/binary, Month:2/binary>>) ->
+split_account_mod(?MATCH_MODB_SUFFIX_ENCODED(Account,Year,Month)) ->
     {wh_util:format_account_id(Account, 'raw')
      ,wh_util:to_integer(Year)
      ,wh_util:to_integer(Month)

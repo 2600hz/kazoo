@@ -99,9 +99,8 @@ replay_queue_sms(AccountId, JObjs) ->
 -spec spawn_handler(ne_binary(), wh_json:object()) -> 'ok'.
 spawn_handler(AccountId, JObj) ->
     DocId = wh_doc:id(JObj),
-    <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
+    ?MATCH_MODB_PREFIX(Year,Month,_) = DocId,
     AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
-
     _ = wh_util:spawn('doodle_api', 'handle_api_sms', [AccountDb, DocId]),
     timer:sleep(200).
 

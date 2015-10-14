@@ -559,7 +559,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                            ," " , wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)
                            ," UTC"
                           ]),
-    <<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxDocId,
+    ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
     CdrId = <<(wh_util:to_binary(Year))/binary
               ,(wh_util:pad_month(Month))/binary
               ,"-"

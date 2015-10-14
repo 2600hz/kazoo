@@ -98,7 +98,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     Doc = props:filter_undefined(
             [{<<"rendered_templates">>, wh_json:from_list(RenderedTemplates)}
              ,{<<"subject">>, Subject}
-             ,{<<"emails">>, wh_json:from_list(Emails)}
+             ,{<<"emails">>, wh_json:from_list(props:filter_undefined(Emails))}
              ,{<<"receipt">>, Receipt}
              ,{<<"error">>, Error}
              ,{<<"pvt_type">>, <<"notify_smtp_log">>}
@@ -107,9 +107,15 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
              ,{<<"pvt_created">>, wh_util:current_tstamp()}
              ,{<<"template_id">>, get('template_id')}
              ,{<<"template_account_id">>, get('template_account_id')}
+             ,{<<"_id">>, make_smtplog_id(AccountDb)}
             ]),
+    lager:debug("attempting to save notify smtp log"),
     _ = kazoo_modb:save_doc(AccountDb, wh_json:from_list(Doc)),
-    lager:debug("saved notify smtp log").
+    'ok'.
+
+-spec make_smtplog_id(ne_binary()) -> ne_binary().
+make_smtplog_id(?MATCH_MODB_SUFFIX_ENCODED(_Account, Year, Month)) ->
+    ?MATCH_MODB_PREFIX(Year, Month, wh_util:rand_hex_binary(16)).
 
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
 email_body(RenderedTemplates) ->

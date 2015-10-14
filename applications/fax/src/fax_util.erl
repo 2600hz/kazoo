@@ -144,12 +144,12 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
                                  {'ok', wh_json:object()} |
                                  {'error', ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->
-    save_fax_attachment(JObj, FileContents, CT, whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5)).
+    MaxStorageRetry = whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
+    save_fax_attachment(JObj, FileContents, CT, MaxStorageRetry).
 
 save_fax_attachment(JObj, _FileContents, _CT, 0) ->
     DocId = wh_doc:id(JObj),
-    Rev = wh_doc:revision(JObj),
-    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, Rev]),
+    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, wh_doc:revision(JObj)]),
     {'error', <<"max retry saving attachment">>};
 save_fax_attachment(JObj, FileContents, CT, Count) ->
     DocId = wh_doc:id(JObj),

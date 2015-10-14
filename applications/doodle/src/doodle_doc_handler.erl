@@ -25,8 +25,8 @@ handle_req(JObj, _Props) ->
 -spec handle_doc(api_binary(), api_binary(), api_binary(), api_binary()) -> 'ok'.
 handle_doc(?DOC_CREATED, <<"sms">>, Db, Id) ->
     doodle_api:handle_api_sms(Db, Id);
-handle_doc(_, <<"device">>, <<_:32/binary>>=AccountId, Id) ->
+handle_doc(_, <<"device">>, ?MATCH_ACCOUNT_RAW(AccountId), Id) ->
     doodle_maintenance:check_sms_by_device_id(AccountId, Id);
-handle_doc(_, <<"user">>, <<_:32/binary>>=AccountId, Id) ->
+handle_doc(_, <<"user">>, ?MATCH_ACCOUNT_RAW(AccountId), Id) ->
     doodle_maintenance:check_sms_by_owner_id(AccountId, Id);
 handle_doc(_, _, _, _) -> 'ok'.

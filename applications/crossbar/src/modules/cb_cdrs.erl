@@ -590,7 +590,7 @@ remove_qs_keys(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_cdr(ne_binary(), cb_context:context()) -> cb_context:context().
-load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
+load_cdr(?MATCH_MODB_PREFIX(Year,Month,_) = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
     AcctDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     Context1 = cb_context:set_account_db(Context, AcctDb),
