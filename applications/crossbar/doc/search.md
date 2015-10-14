@@ -53,7 +53,7 @@ You can search for accounts by:
     view_name = value
 
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/search?t=account&name=test&realm=test'
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/search/multi?t=account&name=test&realm=test'
 
 
 ```

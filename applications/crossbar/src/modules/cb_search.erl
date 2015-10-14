@@ -196,7 +196,7 @@ validate_multi(Context, 'undefined') ->
     );
 validate_multi(Context, Type) ->
     QS = cb_context:query_string(Context),
-    case wh_json:to_proplist(wh_json:delete_key(<<"t">>, QS)) of
+    case wh_json:to_proplist(wh_json:delete_keys([<<"t">>, <<"_">>], QS)) of
         [_|_]=Props -> validate_multi(Context, Type, Props);
         _Other ->
             cb_context:add_validation_error(
@@ -252,7 +252,7 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
                 ,wh_json:from_list([
                     {<<"message">>, <<"Value not found in enumerated list of values">>}
                     ,{<<"target">>, Available}
-                    ,{<<"cause">>, Available}
+                    ,{<<"cause">>, Query}
                  ])
                 ,Context
             )
