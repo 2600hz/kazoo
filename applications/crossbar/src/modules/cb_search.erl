@@ -78,8 +78,8 @@ resource_exists(?MULTI) -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> 'true'.
--spec authorize(cb_context:context(), path_token()) -> 'true'.
+-spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context(), path_token()) -> boolean().
 authorize(Context) ->
     cb_context:auth_account_id(Context) =/= 'undefined'.
 
