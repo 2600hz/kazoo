@@ -982,8 +982,9 @@ normalize_available_port(Value, Acc, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec system_config_notification_doc(ne_binary()) -> {'ok', wh_json:object()} |
-                                                     {'error', any()}.
+-spec system_config_notification_doc(ne_binary()) ->
+                                            {'ok', wh_json:object()} |
+                                            {'error', any()}.
 system_config_notification_doc(DocId) ->
     couch_mgr:open_cache_doc(?WH_CONFIG_DB, DocId).
 
@@ -1114,7 +1115,6 @@ load_smtp_log(Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"doc">>, JObj)|Acc].
-
 
 -spec maybe_update_db(cb_context:context()) -> cb_context:context().
 maybe_update_db(Context) ->
