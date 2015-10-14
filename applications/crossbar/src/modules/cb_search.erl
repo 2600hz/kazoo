@@ -247,7 +247,7 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
             cb_context:set_resp_status(Context, 'success');
         'false' ->
             cb_context:add_validation_error(
-                <<"query">>
+                <<"q">>
                 ,<<"enum">>
                 ,wh_json:from_list([
                     {<<"message">>, <<"Value not found in enumerated list of values">>}
