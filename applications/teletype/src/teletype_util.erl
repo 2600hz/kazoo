@@ -22,6 +22,8 @@
          ,is_notice_enabled/3, is_notice_enabled_default/1
          ,should_handle_notification/1
 
+         ,get_parent_account_id/1
+
          ,default_from_address/1
          ,default_reply_to/1
 
@@ -469,9 +471,10 @@ find_account_admin_email(AccountId, AccountId) ->
         [] -> 'undefined';
         Emails -> Emails
     end;
+
 find_account_admin_email(AccountId, ResellerId) ->
     case query_account_for_admin_emails(AccountId) of
-        [] -> find_account_admin_email(ResellerId, wh_services:find_reseller_id(ResellerId));
+        [] -> find_account_admin_email(get_parent_account_id(AccountId), ResellerId);
         Emails -> Emails
     end.
 
@@ -597,15 +600,15 @@ is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
     case wh_json:is_true(<<"Preview">>, ApiJObj, 'false') of
         'true' -> 'true';
         'false' ->
-            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-            is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId)
+            ResellerAccountId = wh_services:find_reseller_id(AccountId),
+            is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId)
     end.
 
 -spec is_account_notice_enabled(api_binary(), ne_binary(), ne_binary()) -> boolean().
-is_account_notice_enabled('undefined', TemplateKey, _MasterAccountId) ->
+is_account_notice_enabled('undefined', TemplateKey, _ResellerAccountId) ->
     lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
     is_notice_enabled_default(TemplateKey);
-is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId) ->
+is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     TemplateId = teletype_templates:doc_id(TemplateKey),
 
@@ -613,12 +616,12 @@ is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId) ->
         {'ok', TemplateJObj} ->
             lager:debug("account ~s has ~s, checking if enabled", [AccountId, TemplateId]),
             kz_notification:is_enabled(TemplateJObj);
-        _Otherwise when AccountId =/= MasterAccountId ->
-            lager:debug("account ~s is mute, checking reseller", [AccountId]),
+        _Otherwise when AccountId =/= ResellerAccountId ->
+            lager:debug("account ~s is mute, checking parent", [AccountId]),
             is_account_notice_enabled(
-              wh_services:find_reseller_id(AccountId)
+              get_parent_account_id(AccountId)
               ,TemplateId
-              ,MasterAccountId
+              ,ResellerAccountId
              );
         _Otherwise ->
             is_notice_enabled_default(TemplateKey)
@@ -634,6 +637,15 @@ is_notice_enabled_default(TemplateKey) ->
         _Otherwise ->
             lager:debug("system is mute, ~s not enabled", [TemplateId]),
             'false'
+    end.
+
+-spec get_parent_account_id(ne_binary()) -> api_binary().
+get_parent_account_id(AccountId) ->
+    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', JObj} -> kz_account:parent_account_id(JObj);
+        {'error', _E} ->
+            lager:error("failed to find parent account for ~s", [AccountId]),
+            'undefined'
     end.
 
 -spec find_addresses(wh_json:object(), wh_json:object(), ne_binary()) ->

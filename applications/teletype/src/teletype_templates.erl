@@ -121,7 +121,7 @@ fetch_meta(TemplateId, AccountId, ResellerId) ->
     case couch_mgr:open_cache_doc(AccountDb, doc_id(TemplateId)) of
         {'ok', _TemplateJObj}=OK -> OK;
         {'error', 'not_found'} ->
-            fetch_meta(TemplateId, get_parent_account_id(AccountId), ResellerId);
+            fetch_meta(TemplateId, teletype_util:get_parent_account_id(AccountId), ResellerId);
         {'error', _E} ->
             lager:debug("failed to fetch template ~s from ~s ~p", [TemplateId, AccountId, _E]),
             fetch_master_meta(TemplateId)
@@ -195,21 +195,12 @@ fetch_parent(TemplateId, AccountId, AccountId) ->
     fetch_master(TemplateId);
 fetch_parent(TemplateId, AccountId, ResellerId) ->
     lager:debug("trying to fetch parent template ~s for ~s", [TemplateId, AccountId]),
-    case get_parent_account_id(AccountId) of
+    case teletype_util:get_parent_account_id(AccountId) of
         'undefined' ->
             lager:debug("parent account_id for ~s is undefined", [AccountId]),
             [];
         ParentAccountId ->
             fetch(TemplateId, ParentAccountId, ResellerId)
-    end.
-
--spec get_parent_account_id(ne_binary()) -> api_binary().
-get_parent_account_id(AccountId) ->
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} -> kz_account:parent_account_id(JObj);
-        {'error', _E} ->
-            lager:error("failed to account ~s", [AccountId]),
-            'undefined'
     end.
 
 %%--------------------------------------------------------------------
