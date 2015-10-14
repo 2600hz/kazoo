@@ -36,7 +36,7 @@ deps/rabbitmq_server-*/plugins-src/rabbitmq-erlang-client/deps/
 deps/rabbitmq_server-*/plugins-src/rabbitmq-server
 deps/rabbitmq_server-*/plugins-src/rabbitmq-amqp1.0/include/rabbit_amqp1_0_framing.hrl
 deps/rabbitmq_server-*/plugins-src/rabbitmq-amqp1.0/src/rabbit_amqp1_0_framing0.erl
-deps/rabbitmq_server-*/plugins-src/sockjs-erlang-wrapper/hash.mk
+deps/rabbitmq_server-*/plugins-src/webmachine-wrapper/hash.mk
 deps/rabbitmq_server-*/plugins-src/mochiweb-wrapper/hash.mk
 deps/rabbitmq_server-*/plugins/
 deps/rabbitmq_server-*/src/rabbit_ctl_usage.erl
