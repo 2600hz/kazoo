@@ -243,7 +243,7 @@ POST /v2/accounts/{ACCOUNT_ID}/limits
 }
 ```
 
-Check the [limits schema](https://github.com/2600hz/kazoo/blob/rating_routing/applications/crossbar/priv/couchdb/schemas/limits.json) for various limits to be set here and read more about the [limits API](https://github.com/2600hz/kazoo/blob/rating_routing/applications/crossbar/doc/limits.md).
+Check the [limits schema](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/limits.json) for various limits to be set here and read more about the [limits API](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/doc/limits.md).
 
 ## How to set manual limits up
 
