@@ -58,24 +58,26 @@ You can search for accounts by:
 
 ```
 {
-  "data": {
-    "realm": [],
-    "name": [],
-    "id": [
-      {
-        "id": "8b77383bbdaebab09abc6372503335a5eab9a4f",
-        "descendants_count": 1,
-        "name": "macpie_test_test",
-        "realm": "9ceb00.sip.2600hz.com"
-      },
-      {
-        "id": "8977383bbdaebab09abc6372503335a5eab9a4f",
-        "descendants_count": 0,
-        "name": "macpie_test2",
-        "realm": "62b63f.sip.2600hz.com"
-      }
-    ]
-  },
-  "status": "success",
+    "data": {
+        "realm": [{
+            "id": "8b77383bbdaebab09abc6372503335a5eab9a4f",
+            "descendants_count": 1,
+            "name": "test_account",
+            "realm": "test.sip.2600hz.com"
+        }],
+        "name": [{
+            "id": "8b77383bbdaebab09abc6372503335a5eab9a4f",
+            "descendants_count": 1,
+            "name": "test_account",
+            "realm": "test.sip.2600hz.com"
+        }, {
+            "id": "3977383bbdaebab09abc6372503335a5eab9a4f",
+            "descendants_count": 0,
+            "name": "test_account_2",
+            "realm": "62b63f.sip.2600hz.com"
+        }],
+        "id": []
+    },
+    "status": "success",
 }
 ```
