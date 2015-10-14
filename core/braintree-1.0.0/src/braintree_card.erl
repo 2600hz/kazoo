@@ -239,7 +239,9 @@ record_to_xml(#bt_card{}=Card, ToString) ->
             ],
     Conditionals =
         [fun(#bt_card{billing_address=BA, billing_address_id=BAID}, P) ->
-                 case BA =:= (find(Card))#bt_card.billing_address of
+                 case BA == 'undefined' orelse
+                     BA =:= (find(Card))#bt_card.billing_address
+                 of
                      'true'  -> [{'billing-address-id', BAID} | P];
                      'false' -> [{'billing-address', braintree_address:record_to_xml(BA)} | P]
                  end
