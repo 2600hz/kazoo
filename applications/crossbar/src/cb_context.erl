@@ -378,7 +378,7 @@ set_encodings_provided(#cb_context{}=Context, EP) ->
 set_magic_pathed(#cb_context{}=Context, MP) ->
     Context#cb_context{magic_pathed=wh_util:is_true(MP)}.
 set_should_paginate(#cb_context{}=Context, SP) ->
-    Context#cb_context{magic_pathed=wh_util:is_true(SP)}.
+    Context#cb_context{should_paginate=wh_util:is_true(SP)}.
 
 set_resp_error_code(#cb_context{}=Context, Code) ->
     Context#cb_context{resp_error_code=Code}.

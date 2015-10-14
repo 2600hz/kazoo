@@ -215,7 +215,7 @@ validate_multi(Context, Type, Props) ->
     Context1 = validate_query(Context, QueryOptions, Props),
     case cb_context:resp_status(Context1) of
         'success' ->
-            multi_search(Context, Type, Props);
+            multi_search(Context1, Type, Props);
         _Status ->
             Context1
     end.
@@ -322,14 +322,11 @@ search(Context, Type, Query, Value) ->
 -spec multi_search(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
 -spec multi_search(cb_context:context(), ne_binary(), wh_proplist(), wh_json:objects()) -> cb_context:context().
 multi_search(Context, Type, Props) ->
-    multi_search(Context, Type, Props , wh_json:new()).
+    Context1 = cb_context:set_should_paginate(Context, 'false'),
+    multi_search(Context1, Type, Props , wh_json:new()).
 
 multi_search(Context, _Type, [], Acc) ->
-    Env = cb_context:resp_envelope(Context),
-    cb_context:set_resp_envelope(
-        cb_context:set_resp_data(Context, Acc)
-        ,wh_json:delete_keys([<<"start_key">>, <<"page_size">>], Env)
-    );
+    cb_context:set_resp_data(Context, Acc);
 multi_search(Context, Type, [{Query, Value}|More], Acc) ->
     ViewName = <<?QUERY_TPL/binary, Query/binary>>,
     ViewOptions =
