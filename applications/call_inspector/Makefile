@@ -8,7 +8,8 @@ PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 ERLC_OPTS += -Werror +debug_info +warn_export_all $(PA)
 ELIBS = $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/core))
 
-TEST_EBINS = $(shell find $(ROOT)/deps/mochiweb-* -maxdepth 2 -name ebin -print)
+TEST_EBINS = $(shell find $(ROOT)/deps/mochiweb-* -maxdepth 2 -name ebin -print) \
+             $(shell find $(ROOT)/deps/ejson-* -maxdepth 2 -name ebin -print)
 TEST_PA = $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
 .PHONY: all compile clean
