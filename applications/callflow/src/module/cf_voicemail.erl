@@ -38,6 +38,7 @@
 -define(KEY_EXTENSION, <<"extension">>).
 -define(KEY_MAX_PIN_LENGTH, <<"max_pin_length">>).
 -define(KEY_DELETE_AFTER_NOTIFY, <<"delete_after_notify">>).
+-define(KEY_SAVE_AFTER_NOTIFY, <<"save_after_notify">>).
 
 -define(MAILBOX_DEFAULT_SIZE
         ,whapps_config:get_integer(?CF_CONFIG_CAT
@@ -75,6 +76,13 @@
                                    ,[?KEY_VOICEMAIL, ?KEY_MAX_PIN_LENGTH]
                                    ,6
                                   )
+       ).
+
+-define(DEFAULT_SAVE_AFTER_NOTIFY
+        ,whapps_config:get(?CF_CONFIG_CAT
+                           ,[?KEY_VOICEMAIL, ?KEY_SAVE_AFTER_NOTIFY]
+                           ,'false'
+                          )
        ).
 
 -define(DEFAULT_DELETE_AFTER_NOTIFY
@@ -151,7 +159,7 @@
           ,keys = #keys{} :: vm_keys()
           ,transcribe_voicemail = 'false' :: boolean()
           ,notifications :: wh_json:object()
-          ,delete_after_notify = 'false' :: boolean()
+          ,after_notify_action = 'nothing' :: atom('nothing' | 'delete' | 'save')
           ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
           ,play_greeting_intro = 'false' :: boolean()
           ,use_person_not_available = 'false' :: boolean()
@@ -1390,17 +1398,25 @@ get_caller_id_number(Call) ->
 
 -spec maybe_save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary(), wh_json:object()) ->
                              'ok'.
-maybe_save_meta(Length, #mailbox{delete_after_notify='false'}=Box, Call, MediaId, _UpdateJObj) ->
+maybe_save_meta(Length, #mailbox{after_notify_action='nothing'}=Box, Call, MediaId, _UpdateJObj) ->
     save_meta(Length, Box, Call, MediaId);
-maybe_save_meta(Length, #mailbox{delete_after_notify='true'}=Box, Call, MediaId, UpdateJObj) ->
+
+maybe_save_meta(Length, #mailbox{after_notify_action=Action}=Box, Call, MediaId, UpdateJObj) ->
     case wh_json:get_value(<<"Status">>, UpdateJObj) of
         <<"completed">> ->
-            {'ok', _} = couch_mgr:del_doc(whapps_call:account_db(Call), MediaId),
-            lager:debug("attachment was sent out via notification, deleted media file");
+            case Action of
+                'delete' ->
+                    {'ok', _} = couch_mgr:del_doc(whapps_call:account_db(Call), MediaId),
+                    lager:debug("attachment was sent out via notification, deleted media file");
+                'save' ->
+                    update_folder(?FOLDER_SAVED, MediaId, Box, Call),
+                    lager:debug("attachment was sent out via notification, saved media file")
+            end;
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [wh_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
             save_meta(Length, Box, Call, MediaId)
     end.
+
 
 -spec save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary()) -> 'ok'.
 save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
@@ -1569,7 +1585,7 @@ get_mailbox_profile(Data, Call) ->
                        ,[MaxMessageCount, MsgCount]
                       ),
 
-            DeleteAfterNotify = should_delete_after_notify(MailboxJObj),
+            AfterNotifyAction = after_notify_action(MailboxJObj),
 
             #mailbox{mailbox_id = MailboxId
                      ,exists = 'true'
@@ -1608,7 +1624,7 @@ get_mailbox_profile(Data, Call) ->
                          wh_json:is_true(<<"transcribe">>, MailboxJObj, 'false')
                      ,notifications =
                          wh_json:get_value(<<"notifications">>, MailboxJObj)
-                     ,delete_after_notify = DeleteAfterNotify
+                     ,after_notify_action = AfterNotifyAction
                      ,interdigit_timeout =
                          wh_json:find(<<"interdigit_timeout">>, [MailboxJObj, Data], whapps_call_command:default_interdigit_timeout())
                      ,play_greeting_intro =
@@ -1623,12 +1639,16 @@ get_mailbox_profile(Data, Call) ->
             #mailbox{}
     end.
 
--spec should_delete_after_notify(wh_json:object()) -> boolean().
-should_delete_after_notify(MailboxJObj) ->
-    case ?DEFAULT_DELETE_AFTER_NOTIFY of
-        'true' -> 'true';
-        'false' ->
-            wh_json:is_true(?KEY_DELETE_AFTER_NOTIFY, MailboxJObj, 'false')
+-spec after_notify_action(wh_json:object()) -> atom().
+after_notify_action(MailboxJObj) ->
+    Delete = wh_json:is_true(?KEY_DELETE_AFTER_NOTIFY, MailboxJObj, ?DEFAULT_DELETE_AFTER_NOTIFY),
+    Save   = wh_json:is_true(?KEY_SAVE_AFTER_NOTIFY, MailboxJObj, ?DEFAULT_SAVE_AFTER_NOTIFY),
+
+    case {Delete, Save} of
+        {'false', 'false'} -> 'nothing';
+        {'false', 'true'}  -> 'save';
+        {'true', 'false'}  -> 'delete';
+        {'true', 'true'}   -> 'save'
     end.
 
 -spec max_message_count(whapps_call:call()) -> non_neg_integer().
