@@ -195,8 +195,7 @@ validate_multi(Context, 'undefined') ->
         ,Context
     );
 validate_multi(Context, Type) ->
-    QS = cb_context:query_string(Context),
-    case wh_json:to_proplist(wh_json:delete_keys([<<"t">>, <<"_">>], QS)) of
+    case wh_json:to_proplist(cb_context:query_string(Context)) of
         [_|_]=Props -> validate_multi(Context, Type, Props);
         _Other ->
             cb_context:add_validation_error(
@@ -233,7 +232,7 @@ validate_query(Context, Query) ->
 
 validate_query(Context, _Available, []) ->
     cb_context:set_resp_status(Context, 'success');
-validate_query(Context, Available, [{Query, _}|Props]) ->
+validate_query(Context, Available, [{<<"by_", Query/binary>>, _}|Props]) ->
     Context1 = validate_query(Context, Available, Query),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -241,6 +240,9 @@ validate_query(Context, Available, [{Query, _}|Props]) ->
         _Status ->
             Context1
     end;
+validate_query(Context, Available, [{Query, _}|Props]) ->
+    lager:debug("ignoring query string ~s", [Query]),
+    validate_query(Context, Available, Props);
 validate_query(Context, Available, Query) when is_binary(Query) ->
     case lists:member(Query, Available) of
         'true' ->
@@ -327,7 +329,7 @@ multi_search(Context, Type, Props) ->
 
 multi_search(Context, _Type, [], Acc) ->
     cb_context:set_resp_data(Context, Acc);
-multi_search(Context, Type, [{Query, Value}|More], Acc) ->
+multi_search(Context, Type, [{<<"by_", Query/binary>>, Value}|Props], Acc) ->
     ViewName = <<?QUERY_TPL/binary, Query/binary>>,
     ViewOptions =
         [{'startkey', get_start_key(Context, Type, Value)}
@@ -344,9 +346,11 @@ multi_search(Context, Type, [{Query, Value}|More], Acc) ->
         'success' ->
             RespData = cb_context:resp_data(Context1),
             Acc1 = wh_json:set_value(Query, RespData, Acc),
-            multi_search(Context1, Type, More, Acc1);
+            multi_search(Context1, Type, Props, Acc1);
         _ -> Context1
-    end.
+    end;
+multi_search(Context, Type, [_|Props], Acc) ->
+    multi_search(Context, Type, Props, Acc).
 
 %%--------------------------------------------------------------------
 %% @private

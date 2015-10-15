@@ -50,10 +50,10 @@ You can search for accounts by:
 ### _GET_ - Multi Search
 
     t = document type
-    view_name = value
+    by_{view_name} = value
 
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/search/multi?t=account&name=test&realm=test'
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/search/multi?t=account&by_name=test&by_realm=test&by_id=test'
 
 
 ```
