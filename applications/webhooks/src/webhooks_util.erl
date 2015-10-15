@@ -518,6 +518,7 @@ enable_hooks(Hooks) ->
         [] -> io:format("no hooks to re-enable~n", []);
         Reenable ->
             {'ok', Saved} = couch_mgr:save_docs(?KZ_WEBHOOKS_DB, Reenable),
+            _ = webhooks_disabler:flush_hooks(Reenable),
             io:format("re-enabled ~p hooks~nIDs: ", [length(Saved)]),
             Ids = wh_util:join_binary([wh_doc:id(D) || D <- Saved], <<", ">>),
             io:format("~s~n", [Ids])
