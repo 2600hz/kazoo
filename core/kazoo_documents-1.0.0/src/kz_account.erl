@@ -12,6 +12,7 @@
          ,realm/1, realm/2, set_realm/2
          ,language/1, set_language/2
          ,timezone/1, timezone/2, set_timezone/2
+         ,threshold/2 ,set_threshold/2
          ,id/1
          ,parent_account_id/1
          ,set_tree/2, tree/1, tree/2
@@ -35,6 +36,7 @@
 -define(REALM, <<"realm">>).
 -define(LANGUAGE, <<"language">>).
 -define(TIMEZONE, <<"timezone">>).
+-define(THRESHOLD, <<"threshold">>).
 -define(TREE, <<"pvt_tree">>).
 -define(IS_ENABLED, <<"pvt_enabled">>).
 -define(API_KEY, <<"pvt_api_key">>).
@@ -104,6 +106,14 @@ timezone(JObj, Default) ->
 -spec set_timezone(doc(), ne_binary()) -> doc().
 set_timezone(JObj, Timezone) ->
     wh_json:set_value(?TIMEZONE, Timezone, JObj).
+
+-spec threshold(doc(), Default) -> float() | Default.
+threshold(JObj, Default) ->
+    wh_json:get_float_value(<<"threshold">>, JObj, Default).
+
+-spec set_threshold(doc(), float()) -> doc().
+set_threshold(JObj, Threshold) ->
+    wh_json:set_value(?THRESHOLD, Threshold, JObj).
 
 -spec parent_account_id(doc()) -> api_binary().
 parent_account_id(JObj) ->
