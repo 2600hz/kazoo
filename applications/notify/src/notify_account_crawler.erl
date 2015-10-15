@@ -400,10 +400,13 @@ notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
 low_balance_threshold(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
+
     ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
     Default = whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', _R} -> Default;
         {'ok', JObj} ->
-            wh_json:get_float_value([<<"topup">>, <<"threshold">>], JObj, Default)
+            TopUp = wh_json:get_float_value([<<"topup">>, <<"threshold">>], JObj, Default),
+            wh_json:get_float_value(<<"threshold">>, JObj, TopUp)
     end.
