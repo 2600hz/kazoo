@@ -48,6 +48,7 @@ reorder_dialog(RefParser, Data1, Chunks) ->
     LabelsReordered = [ci_chunk:label(Chunk) || Chunk <- Reordered],
     [ ?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))
     , ?_assertEqual(Data1('count'), length(Reordered))
+    , ?_assertEqual(Data1('entities'), ci_chunk:get_dialog_entities(Reordered))
     , ?_assertEqual(Labels, LabelsReordered)
     ] ++
         lists:append(
@@ -74,6 +75,8 @@ reorder_dialog(RefParser, Data1, Chunks) ->
 
 
 chunks_3('count') -> 8;
+chunks_3('entities') ->
+    [<<"10.26.0.167:5060">>,<<"10.26.0.182:5060">>,<<"10.26.0.182:11000">>];
 
 chunks_3(1) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -371,6 +374,7 @@ chunks_3() ->
 
 chunks_2() -> [chunks_2(2), chunks_2(1)].
 chunks_2('count') -> 2;
+chunks_2('entities') -> [<<"10.26.0.182:5060">>, <<"10.26.0.182:11000">>];
 chunks_2(1) ->
     {[{<<"call-id">>,<<"5dca43e524c680cf-13867@10.26.0.182">>},
       {<<"timestamp">>,63601204677.8817},
@@ -415,6 +419,8 @@ chunks_2(2) ->
 
 
 chunks_1('count') -> 20;
+chunks_1('entities') ->
+    [<<"10.26.0.101:7653">>, <<"10.26.0.182:5060">>, <<"10.26.0.182:11000">>];
 
 chunks_1(1) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
