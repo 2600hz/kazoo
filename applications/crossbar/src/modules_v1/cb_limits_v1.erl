@@ -133,7 +133,7 @@ validate_limits(Context, ?HTTP_POST) ->
     cb_context:validate_request_data(<<"limits">>, Context, fun on_successful_validation/1).
 
 -spec post(cb_context:context()) -> cb_context:context().
-post(Context) -> 
+post(Context) ->
     Routines = [fun crossbar_doc:save/1
                 ,fun maybe_leak_pvt_fields/1
                 ,fun maybe_reseller_pvt_fields/1
@@ -207,7 +207,7 @@ maybe_leak_pvt_fields(Context) ->
 -spec maybe_reseller_pvt_fields(cb_context:context()) -> cb_context:context().
 maybe_reseller_pvt_fields(Context) ->
     case is_allowed(Context) of
-        'true' -> 
+        'true' ->
             ResellerFields = whapps_config:get_non_empty(?LIMITS_CONFIG_CAT, <<"reseller_pvt_fields">>, ?DEFAULT_RESELLER_PVT_FIELDS),
             leak_pvt_fields(Context, cb_context:doc(Context), ResellerFields);
         'false' -> Context
@@ -249,8 +249,8 @@ set_pvt_field(Field, Doc) when is_binary(Field)->
     NewDoc = wh_json:delete_key(<<"pvt_", Field/binary>>, Doc),
     case wh_json:get_value(Field, NewDoc) of
         'undefined' -> NewDoc;
-        Value -> 
-            wh_json:delete_key(Field, 
+        Value ->
+            wh_json:delete_key(Field,
                                wh_json:set_value(<<"pvt_", Field/binary>>, Value, NewDoc)
                               )
     end;
