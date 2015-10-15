@@ -42,7 +42,7 @@
                   ,dst_port :: pos_integer()
                   ,parser :: atom()
                   ,label :: ne_binary()
-                  ,c_seq :: api_binary()
+                  ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
                  }).
 -type chunk() :: #ci_chunk{}.
 
