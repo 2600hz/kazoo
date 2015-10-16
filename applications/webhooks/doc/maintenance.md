@@ -2,7 +2,7 @@
 Section: WebHooks
 Title: Maintenance
 Language: en-US
-Version: 3.20
+Version: 3.21
 */
 
 ## See what hooks are active
@@ -57,3 +57,10 @@ Similarly, enable all hooks for an account and its descendants:
     sup webhooks_maintenance enable_descendant_hooks {ACCOUNT_ID}
 
 Note: this will only enable those hooks which have been auto-disabled by the system, not manually disabled via API.
+
+## Flush failure counts
+
+Webhooks tracks the number of times a hook fails to be sent, auto-disabling the hook after a threshold is hit. You can reset those failure counts:
+
+    sup webhooks_maintenance flush_account_failures {ACCOUNT_ID}
+    sup webhooks_maintenance flush_hook_failures {ACCOUNT_ID} {HOOK_ID}
