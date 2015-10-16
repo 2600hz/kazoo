@@ -213,6 +213,7 @@ sort_by_timestamp(Chunks) ->
 reorder_dialog([]) -> [];
 reorder_dialog(Chunks) ->
     RefParser = pick_ref_parser(Chunks),
+    lager:debug("reordering '~s' using parser '~s'", [call_id(hd(Chunks)), RefParser]),
     do_reorder_dialog(RefParser, Chunks).
 
 -spec pick_ref_parser([chunk()]) -> atom().
@@ -239,7 +240,7 @@ sort_split_uniq(RefParser, Chunks) ->
     Grouper = fun (Chunk) -> RefParser =:= parser(Chunk) end,
     {InOrder, Others} = lists:partition(Grouper, sort_by_timestamp(Chunks)),
     Uniq = [Chunk || Chunk <- Others, not is_duplicate(InOrder, Chunk)],
-    {lists:reverse(InOrder), Uniq}.
+    {InOrder, Uniq}.
 
 -spec first_pass([chunk()], [chunk()]) -> {[chunk()], [chunk()]}.
 first_pass(InOrder, ToOrder) -> first_pass([], InOrder, ToOrder, []).
