@@ -40,7 +40,7 @@
                   ,src_port :: pos_integer()
                   ,dst_ip :: ne_binary()
                   ,dst_port :: pos_integer()
-                  ,parser :: atom()
+                  ,parser :: ne_binary()
                   ,label :: ne_binary()
                   ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
                  }).
@@ -115,8 +115,9 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 ?GETTER(dst_port).
 
 -spec parser(chunk(), atom()) -> chunk().
-?SETTER(parser).
--spec parser(chunk()) -> api_atom().
+parser(#ci_chunk{}=Chunk, Parser) ->
+    Chunk#ci_chunk{parser = wh_util:to_binary(Parser)}.
+-spec parser(chunk()) -> api_binary().
 ?GETTER(parser).
 
 -spec label(chunk(), ne_binary()) -> chunk().
@@ -216,14 +217,14 @@ reorder_dialog(Chunks) ->
     lager:debug("reordering '~s' using parser '~s'", [call_id(hd(Chunks)), RefParser]),
     do_reorder_dialog(RefParser, Chunks).
 
--spec pick_ref_parser([chunk()]) -> atom().
+-spec pick_ref_parser([chunk()]) -> ne_binary().
 pick_ref_parser(Chunks) ->
     GroupedByParser = group_by(fun parser/1, Chunks),
     Counted = lists:keymap(fun erlang:length/1, 2, GroupedByParser),
     {RefParser,_Max} = lists:last(lists:keysort(2, Counted)),
     RefParser.
 
--spec do_reorder_dialog(atom(), [chunk()]) -> [chunk()].
+-spec do_reorder_dialog(ne_binary(), [chunk()]) -> [chunk()].
 do_reorder_dialog(RefParser, Chunks) ->
     GroupedByCSeq = lists:keysort(1, group_by(fun c_seq_number/1, Chunks)),
     lists:flatmap(fun({_CSeq, ByCSeq}) ->
@@ -235,7 +236,7 @@ do_reorder_dialog(RefParser, Chunks) ->
                   ,GroupedByCSeq
                  ).
 
--spec sort_split_uniq(atom(), [chunk()]) -> {[chunk()], [chunk()]}.
+-spec sort_split_uniq(ne_binary(), [chunk()]) -> {[chunk()], [chunk()]}.
 sort_split_uniq(RefParser, Chunks) ->
     Grouper = fun (Chunk) -> RefParser =:= parser(Chunk) end,
     {InOrder, Others} = lists:partition(Grouper, sort_by_timestamp(Chunks)),
