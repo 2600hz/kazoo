@@ -71,16 +71,7 @@ gift_data() -> 'ok'.
 
 -spec from_json(wh_json:object()) -> webhook().
 from_json(Hook) ->
-    #webhook{id = hook_id(Hook)
-             ,uri = wh_json:get_value(<<"uri">>, Hook)
-             ,http_verb = http_verb(wh_json:get_value(<<"http_verb">>, Hook))
-             ,hook_event = hook_event(wh_json:get_value(<<"hook">>, Hook))
-             ,hook_id = wh_json:get_first_defined([<<"_id">>, <<"ID">>], Hook)
-             ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
-             ,account_id = wh_doc:account_id(Hook)
-             ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
-             ,modifiers = wh_json:get_ne_value(<<"modifiers">>, Hook)
-            }.
+    jobj_to_rec(Hook).
 
 -spec to_json(webhook()) -> wh_json:object().
 to_json(Hook) ->
@@ -351,17 +342,6 @@ hook_id(JObj) ->
 hook_id(AccountId, Id) ->
     <<AccountId/binary, ".", Id/binary>>.
 
--spec http_verb(atom() | binary()) -> http_verb().
-http_verb('get') -> 'get';
-http_verb('post') -> 'post';
-http_verb(Bin) when is_binary(Bin) ->
-    try wh_util:to_atom(wh_util:to_lower_binary(Bin)) of
-        Atom -> http_verb(Atom)
-    catch
-        'error':'badarg' -> 'get'
-    end;
-http_verb(_) -> 'get'.
-
 -spec hook_event(ne_binary()) -> ne_binary().
 -spec hook_event_lowered(ne_binary()) -> ne_binary().
 hook_event(Bin) -> hook_event_lowered(wh_util:to_lower_binary(Bin)).
@@ -370,12 +350,9 @@ hook_event_lowered(<<"channel_create">>) -> <<"CHANNEL_CREATE">>;
 hook_event_lowered(<<"channel_answer">>) -> <<"CHANNEL_ANSWER">>;
 hook_event_lowered(<<"channel_destroy">>) -> <<"CHANNEL_DESTROY">>;
 hook_event_lowered(<<"all">>) -> <<"all">>;
-hook_event_lowered(Bin) -> Bin.
-
--spec retries(integer()) -> hook_retries().
-retries(N) when N > 0, N < 5 -> N;
-retries(N) when N < 1 -> 1;
-retries(_) -> 5.
+hook_event_lowered(Event) ->
+    'true' = lists:member(Event, available_events()),
+    Event.
 
 -spec load_hooks(pid()) -> 'ok'.
 load_hooks(Srv) ->
@@ -426,14 +403,14 @@ load_hook(Srv, WebHook) ->
 -spec jobj_to_rec(wh_json:object()) -> webhook().
 jobj_to_rec(Hook) ->
     #webhook{id = hook_id(Hook)
-             ,uri = wh_json:get_value(<<"uri">>, Hook)
-             ,http_verb = http_verb(wh_json:get_value(<<"http_verb">>, Hook))
-             ,hook_event = hook_event(wh_json:get_value(<<"hook">>, Hook))
-             ,hook_id = wh_json:get_first_defined([<<"_id">>, <<"ID">>], Hook)
-             ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
+             ,uri = kzd_webhook:uri(Hook)
+             ,http_verb = kzd_webhook:verb(Hook)
+             ,hook_event = hook_event(kzd_webhook:event(Hook))
+             ,hook_id = wh_doc:id(Hook)
+             ,retries = kzd_webhook:retries(Hook)
              ,account_id = wh_doc:account_id(Hook)
-             ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
-             ,modifiers = wh_json:get_ne_value(<<"modifiers">>, Hook)
+             ,custom_data = kzd_webhook:custom_data(Hook)
+             ,modifiers = kzd_webhook:modifiers(Hook)
             }.
 
 -spec init_webhooks() -> 'ok'.
@@ -595,6 +572,29 @@ load_metadata(MasterAccountDb, JObj) ->
             lager:warning("failed to load metadata for ~s: ~p"
                           ,[wh_doc:id(JObj), _E]
                          )
+    end.
+
+-define(AVAILABLE_EVENT_KEY, 'available_events').
+-spec available_events() -> ne_binaries().
+available_events() ->
+    case wh_cache:fetch_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY) of
+        {'error', 'not_found'} ->
+            Events = fetch_available_events(),
+            Events =/= []
+                andalso wh_cache:store_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY, Events),
+            Events;
+        {'ok', Events} ->
+            Events
+    end.
+
+-spec fetch_available_events() -> ne_binaries().
+fetch_available_events() ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    View = <<"webhooks/webhook_meta_listing">>,
+    case couch_mgr:get_all_results(MasterAccountDb, View) of
+        {'ok', Available} ->
+            [wh_json:get_value(<<"key">>, A) || A <- Available];
+        {'error', _} -> []
     end.
 
 -spec update_metadata(ne_binary(), wh_json:object()) ->
