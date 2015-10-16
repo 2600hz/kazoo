@@ -88,13 +88,17 @@ handle_config(JObj, Srv, ?DOC_EDITED) ->
                     gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
                 'false' ->
                     gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
-            end
+            end,
+            webhooks_disabler:flush_failures(wapi_conf:get_account_id(JObj), HookId)
     end;
 handle_config(JObj, Srv, ?DOC_DELETED) ->
     case wapi_conf:get_doc(JObj) of
         'undefined' -> find_and_remove_hook(JObj, Srv);
         Hook ->
-            gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
+            gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)}),
+            webhooks_disabler:flush_failures(wapi_conf:get_account_id(JObj)
+                                             ,wh_doc:id(JObj)
+                                            )
     end.
 
 -spec find_and_add_hook(wh_json:object(), pid()) -> 'ok'.
@@ -182,6 +186,7 @@ handle_cast({'add_hook', #webhook{id=_Id}=Hook}, State) ->
 handle_cast({'update_hook', #webhook{id=_Id}=Hook}, State) ->
     lager:debug("updating hook ~s", [_Id]),
     _ = ets:insert(webhooks_util:table_id(), Hook),
+    maybe_add_shared_bindings(Hook),
     {'noreply', State};
 handle_cast({'remove_hook', #webhook{id=Id}}, State) ->
     handle_cast({'remove_hook', Id}, State);

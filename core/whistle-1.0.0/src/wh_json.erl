@@ -28,7 +28,9 @@
 -export([get_string_value/2, get_string_value/3
          ,get_list_value/2, get_list_value/3
         ]).
--export([get_json_value/2, get_json_value/3]).
+-export([get_json_value/2, get_json_value/3
+         ,get_ne_json_value/2, get_ne_json_value/3
+        ]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
 -export([filter/2, filter/3
@@ -307,6 +309,18 @@ get_json_value(Key, JObj) -> get_json_value(Key, JObj, 'undefined').
 get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
+        ?JSON_WRAPPER(_)=V -> V;
+        _ -> Default
+    end.
+
+-spec get_ne_json_value(key(), object()) -> api_object().
+-spec get_ne_json_value(key(), object(), Default) -> Default | object().
+get_ne_json_value(Key, JObj) ->
+    get_ne_json_value(Key, JObj, 'undefined').
+get_ne_json_value(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        'undefined' -> Default;
+        ?EMPTY_JSON_OBJECT -> Default;
         ?JSON_WRAPPER(_)=V -> V;
         _ -> Default
     end.

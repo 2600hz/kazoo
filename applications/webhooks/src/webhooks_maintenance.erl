@@ -15,6 +15,8 @@
          ,enable_account_hooks/1
          ,enable_descendant_hooks/1
          ,reset_webhooks_list/0
+         ,flush_account_failures/1
+         ,flush_hook_failures/2
         ]).
 
 -include("webhooks.hrl").
@@ -128,3 +130,15 @@ get_webhooks(MasterAccountDb) ->
         {'ok', JObjs} ->
             [wh_json:get_value(<<"id">>, J) || J <- JObjs]
     end.
+
+-spec flush_account_failures(ne_binary()) -> 'ok'.
+flush_account_failures(AccountId) ->
+    io:format("flushed ~p failure entries~n"
+              ,[webhooks_disabler:flush_failures(AccountId)]
+             ).
+
+-spec flush_hook_failures(ne_binary(), ne_binary()) -> 'ok'.
+flush_hook_failures(AccountId, HookId) ->
+    io:format("flushed ~p failure entries for ~s~n"
+              ,[webhooks_disabler:flush_failures(AccountId, HookId), HookId]
+             ).
