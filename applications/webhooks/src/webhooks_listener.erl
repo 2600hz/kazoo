@@ -14,7 +14,10 @@
          ,handle_config/2
          ,check_failed_attempts/0
          ,find_failures/0
+         ,flush_hooks/1
+         ,flush_failures/1, flush_failures/2
         ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -134,6 +137,45 @@ find_hook(JObj) ->
 check_failed_attempts() ->
     Failures = find_failures(),
     check_failures(Failures).
+
+-spec flush_hooks(wh_json:objects()) -> non_neg_integer().
+flush_hooks(HookJObjs) ->
+    lists:sum(
+      [flush_failures(
+         wh_doc:account_id(HookJObj)
+         ,wh_doc:id(HookJObj)
+        )
+       || HookJObj <- HookJObjs
+      ]
+     ).
+
+-spec flush_failures(ne_binary()) -> non_neg_integer().
+-spec flush_failures(ne_binary(), api_binary()) -> non_neg_integer().
+flush_failures(AccountId) ->
+    flush_failures(AccountId, 'undefined').
+flush_failures(AccountId, HookId) ->
+    FilterFun = fun(K, _V) ->
+                        maybe_remove_failure(K, AccountId, HookId)
+                end,
+    wh_cache:filter_erase_local(?CACHE_NAME
+                                ,FilterFun
+                               ).
+
+-spec maybe_remove_failure(tuple(), ne_binary(), api_binary()) -> boolean().
+maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
+                     ,AccountId
+                     ,HookId
+                    ) ->
+    'true';
+maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, _HookId, _Timestamp)
+                     ,AccountId
+                     ,'undefined'
+                    ) ->
+    'true';
+maybe_remove_failure(_K, _AccountId, _HookId) ->
+    'false'.
+
+
 
 -type failure() :: {{ne_binary(), ne_binary()}, integer()}.
 -type failures() :: [failure(),...] | [].
