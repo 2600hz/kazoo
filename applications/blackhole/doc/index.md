@@ -64,6 +64,7 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
 
 ```
 To remove unnecessary bindings use 'unsubscribe' event:
+
 For particular subscription:
 ```
 socket.emit('unsubscribe', { account_id: '4b8c6fec4b2597882c0390202d195419', auth_token: AuthToken, binding: 'call.CHANNEL_CREATE.*'});
