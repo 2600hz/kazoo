@@ -39,6 +39,12 @@ recv(_SessionPid, _SessionId, {'event', _Ignore, <<"subscribe">>, SubscriptionJO
     end,
     {'ok', Context1};
 
+recv(SessionPid, SessionId, {'event', _Ignore, <<"clear_subscriptions">>, _Data}, Context) ->
+    lager:debug("remove all bindings for session: ~p", [SessionId]),
+    Filter = fun (_1, _2, _3, _4) -> filter_bindings(SessionPid, _1, _2, _3, _4) end,
+    blackhole_bindings:filter(Filter),
+    {'ok', Context};
+
 recv(_SessionPid, _SessionId, {'event', _Ignore, _Event, _Data}, Context) ->
     lager:debug("received event: ~p on socket ~p with data payload", [_Event, _SessionId]),
     {'ok', Context};
