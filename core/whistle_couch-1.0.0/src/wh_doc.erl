@@ -268,7 +268,7 @@ id(JObj) ->
     id(JObj, 'undefined').
 
 id(JObj, Default) ->
-    wh_json:get_first_defined([?KEY_ID, <<"id">>], JObj, Default).
+    wh_json:get_first_defined([?KEY_ID, <<"id">>, <<"ID">>], JObj, Default).
 
 -spec set_id(wh_json:object(), ne_binary()) -> wh_json:object().
 set_id(JObj, Id) ->

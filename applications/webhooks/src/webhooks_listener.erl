@@ -103,7 +103,7 @@ handle_config(JObj, Srv, <<"doc_deleted">>) ->
         Hook ->
             gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)}),
             flush_failures(wapi_conf:get_account_id(JObj)
-                           ,wapi_conf:doc_id(JObj)
+                           ,wh_doc:id(JObj)
                           )
     end.
 
