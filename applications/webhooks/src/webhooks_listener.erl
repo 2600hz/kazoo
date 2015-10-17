@@ -94,13 +94,17 @@ handle_config(JObj, Srv, <<"doc_edited">>) ->
                     gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
                 'false' ->
                     gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
-            end
+            end,
+            flush_failures(wapi_conf:get_account_id(JObj), HookId)
     end;
 handle_config(JObj, Srv, <<"doc_deleted">>) ->
     case wapi_conf:get_doc(JObj) of
         'undefined' -> find_and_remove_hook(JObj, Srv);
         Hook ->
-            gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
+            gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)}),
+            flush_failures(wapi_conf:get_account_id(JObj)
+                           ,wapi_conf:doc_id(JObj)
+                          )
     end.
 
 -spec find_and_add_hook(wh_json:object(), pid()) -> 'ok'.
