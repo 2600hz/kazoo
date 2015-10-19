@@ -90,12 +90,21 @@ fetch(?TEST_EXISTING_NUM) ->
     {'ok', from_json(?EXISTING_NUMBER)};
 fetch(?BW_EXISTING_DID) ->
     {'ok', from_json(?BW_EXISTING_JSON)};
-fetch(_DID) -> {'error', 'not_found'}.
+fetch(_DID) ->
+    {'error', 'not_found'}.
+
+fetch(?TEST_CREATE_NUM, _Options) ->
+    {'error', 'not_found'};
+fetch(?TEST_EXISTING_NUM, _Options) ->
+    {'ok', from_json(?EXISTING_NUMBER)};
+fetch(?BW_EXISTING_DID, _Options) ->
+    {'ok', from_json(?BW_EXISTING_JSON)};
+fetch(_DID, _Options) ->
+    {'error', 'not_found'}.
 
 -else.
 fetch(Num) ->
     fetch(Num, ?MODULE:default_options()).
--endif.
 
 fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
@@ -113,6 +122,7 @@ fetch(Num, Options) ->
                 'false' -> knm_errors:unauthorized()
             end
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -597,6 +607,7 @@ default_options() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-ifndef(TEST).
 -spec set_options(knm_number(), wh_proplist()) -> knm_number().
 set_options(Number, Options) ->
     DryRun = props:get_is_true(<<"dry_run">>, Options, 'false'),
@@ -605,6 +616,7 @@ set_options(Number, Options) ->
              ,{fun set_auth_by/2, AuthBy}
             ],
     setters(Number, Props).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
