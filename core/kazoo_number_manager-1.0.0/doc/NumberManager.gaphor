@@ -10688,69 +10688,9 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 </item>
-<item type="ActionItem" id="200c8dec-687a-11e5-8ee5-0026c782d046">
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 16.5, 120.0)</val>
-</matrix>
-<width>
-<val>190.0</val>
-</width>
-<height>
-<val>30.0</val>
-</height>
-<subject>
-<ref refid="200c8deb-687a-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-</item>
-<item type="FlowItem" id="375d5ef2-687a-11e5-8ee5-0026c782d046">
-<subject>
-<ref refid="389d5ae2-687a-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 112.0, 62.0)</val>
-</matrix>
-<orthogonal>
-<val>0</val>
-</orthogonal>
-<horizontal>
-<val>0</val>
-</horizontal>
-<points>
-<val>[(0.0, 0.0), (2.053763440860209, 58.0)]</val>
-</points>
-<head-connection>
-<ref refid="f07f977c-6879-11e5-8ee5-0026c782d046"/>
-</head-connection>
-<tail-connection>
-<ref refid="200c8dec-687a-11e5-8ee5-0026c782d046"/>
-</tail-connection>
-</item>
-<item type="ActionItem" id="51077a2e-687a-11e5-8ee5-0026c782d046">
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 38.0, 198.0)</val>
-</matrix>
-<width>
-<val>146.0</val>
-</width>
-<height>
-<val>30.0</val>
-</height>
-<subject>
-<ref refid="51077a2d-687a-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-</item>
 <item type="ActivityFinalNodeItem" id="5ce71868-687a-11e5-8ee5-0026c782d046">
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 94.5, 293.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 99.0, 273.0)</val>
 </matrix>
 <width>
 <val>30.0</val>
@@ -10764,58 +10704,6 @@ activation_charge</val>
 <show_stereotypes_attrs>
 <val>0</val>
 </show_stereotypes_attrs>
-</item>
-<item type="FlowItem" id="64cc38ae-687a-11e5-8ee5-0026c782d046">
-<subject>
-<ref refid="66740876-687a-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 112.01075268817205, 150.0)</val>
-</matrix>
-<orthogonal>
-<val>0</val>
-</orthogonal>
-<horizontal>
-<val>0</val>
-</horizontal>
-<points>
-<val>[(0.0, 0.0), (-0.5002631776825268, 48.0)]</val>
-</points>
-<head-connection>
-<ref refid="200c8dec-687a-11e5-8ee5-0026c782d046"/>
-</head-connection>
-<tail-connection>
-<ref refid="51077a2e-687a-11e5-8ee5-0026c782d046"/>
-</tail-connection>
-</item>
-<item type="FlowItem" id="68e666b2-687a-11e5-8ee5-0026c782d046">
-<subject>
-<ref refid="6a162a7c-687a-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 109.46853146853147, 228.0)</val>
-</matrix>
-<orthogonal>
-<val>0</val>
-</orthogonal>
-<horizontal>
-<val>0</val>
-</horizontal>
-<points>
-<val>[(0.0, 0.0), (1.0314685314685335, 65.0)]</val>
-</points>
-<head-connection>
-<ref refid="51077a2e-687a-11e5-8ee5-0026c782d046"/>
-</head-connection>
-<tail-connection>
-<ref refid="5ce71868-687a-11e5-8ee5-0026c782d046"/>
-</tail-connection>
 </item>
 <item type="ActionItem" id="763ec1f0-687a-11e5-8ee5-0026c782d046">
 <matrix>
@@ -10839,7 +10727,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 206.5, 133.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 168.0, 102.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -10848,10 +10736,10 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (60.5, -1.0), (61.5, -72.0), (137.5, -71.0)]</val>
+<val>[(0.0, 0.0), (95.0, 1.0), (100.0, -41.0), (176.0, -40.0)]</val>
 </points>
 <head-connection>
-<ref refid="200c8dec-687a-11e5-8ee5-0026c782d046"/>
+<ref refid="8444b4fa-71e0-11e5-8ee5-0026c782d046"/>
 </head-connection>
 </item>
 <item type="DecisionNodeItem" id="ac9c4d06-687a-11e5-8ee5-0026c782d046">
@@ -10940,49 +10828,6 @@ activation_charge</val>
 <ref refid="117e6105-687c-11e5-8ee5-0026c782d046"/>
 </tail-connection>
 </item>
-<item type="ActionItem" id="2fcc3960-687c-11e5-8ee5-0026c782d046">
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 290.5, 308.0)</val>
-</matrix>
-<width>
-<val>238.0</val>
-</width>
-<height>
-<val>44.0</val>
-</height>
-<subject>
-<ref refid="2fcc395f-687c-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-</item>
-<item type="FlowItem" id="43d7d1e2-687c-11e5-8ee5-0026c782d046">
-<subject>
-<ref refid="45251eba-687c-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 405.0, 273.0)</val>
-</matrix>
-<orthogonal>
-<val>0</val>
-</orthogonal>
-<horizontal>
-<val>0</val>
-</horizontal>
-<points>
-<val>[(0.0, 0.0), (2.4570815450643977, 35.0)]</val>
-</points>
-<head-connection>
-<ref refid="117e6105-687c-11e5-8ee5-0026c782d046"/>
-</head-connection>
-<tail-connection>
-<ref refid="2fcc3960-687c-11e5-8ee5-0026c782d046"/>
-</tail-connection>
-</item>
 <item type="ActivityFinalNodeItem" id="5b9faf0e-687c-11e5-8ee5-0026c782d046">
 <matrix>
 <val>(1.0, 0.0, 0.0, 1.0, 386.0, 478.0)</val>
@@ -11002,13 +10847,13 @@ activation_charge</val>
 </item>
 <item type="FlowItem" id="66a47aae-687c-11e5-8ee5-0026c782d046">
 <subject>
-<ref refid="7b5ffc76-7127-11e5-8ee5-0026c782d046"/>
+<ref refid="9eec1ddc-71e0-11e5-8ee5-0026c782d046"/>
 </subject>
 <show_stereotypes_attrs>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 398.0, 352.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 403.0, 273.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11017,10 +10862,10 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (3.0, 126.0)]</val>
+<val>[(0.0, 0.0), (-2.0, 205.0)]</val>
 </points>
 <head-connection>
-<ref refid="2fcc3960-687c-11e5-8ee5-0026c782d046"/>
+<ref refid="117e6105-687c-11e5-8ee5-0026c782d046"/>
 </head-connection>
 <tail-connection>
 <ref refid="5b9faf0e-687c-11e5-8ee5-0026c782d046"/>
@@ -11131,7 +10976,7 @@ activation_charge</val>
 </item>
 <item type="ActionItem" id="c5c4100a-7123-11e5-8ee5-0026c782d046">
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 550.0, 301.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 705.0, 47.0)</val>
 </matrix>
 <width>
 <val>270.0</val>
@@ -11148,7 +10993,7 @@ activation_charge</val>
 </item>
 <item type="FlowItem" id="ca918048-7123-11e5-8ee5-0026c782d046">
 <subject>
-<ref refid="ca91804a-7123-11e5-8ee5-0026c782d046"/>
+<ref refid="c532bdfc-71e0-11e5-8ee5-0026c782d046"/>
 </subject>
 <show_stereotypes_attrs>
 <val>0</val>
@@ -11163,18 +11008,18 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-28.0, 0.0), (-26.448275862068954, 63.0)]</val>
+<val>[(0.0, 0.0), (-28.0, 0.0), (-306.0, 240.0)]</val>
 </points>
 <head-connection>
 <ref refid="b9008d26-7123-11e5-8ee5-0026c782d046"/>
 </head-connection>
 <tail-connection>
-<ref refid="c5c4100a-7123-11e5-8ee5-0026c782d046"/>
+<ref refid="5b9faf0e-687c-11e5-8ee5-0026c782d046"/>
 </tail-connection>
 </item>
 <item type="DecisionNodeItem" id="4b1f7956-7124-11e5-8ee5-0026c782d046">
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 837.0, 429.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 828.0, 317.0)</val>
 </matrix>
 <width>
 <val>20.0</val>
@@ -11206,7 +11051,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (113.0, 2.0), (113.0, 193.0)]</val>
+<val>[(0.0, 0.0), (44.0, 2.0), (104.0, 81.0)]</val>
 </points>
 <head-connection>
 <ref refid="b9008d26-7123-11e5-8ee5-0026c782d046"/>
@@ -11217,13 +11062,13 @@ activation_charge</val>
 </item>
 <item type="FlowItem" id="7a45cd78-7124-11e5-8ee5-0026c782d046">
 <subject>
-<ref refid="7b5d1054-7124-11e5-8ee5-0026c782d046"/>
+<ref refid="c9ad690e-71e0-11e5-8ee5-0026c782d046"/>
 </subject>
 <show_stereotypes_attrs>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 837.0, 444.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 828.0, 332.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11232,18 +11077,18 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-145.0, 0.0), (-146.32773109243703, -65.0)]</val>
+<val>[(0.0, 0.0), (-286.0, 165.0), (-412.0, 166.0)]</val>
 </points>
 <head-connection>
 <ref refid="4b1f7956-7124-11e5-8ee5-0026c782d046"/>
 </head-connection>
 <tail-connection>
-<ref refid="c5c4100a-7123-11e5-8ee5-0026c782d046"/>
+<ref refid="5b9faf0e-687c-11e5-8ee5-0026c782d046"/>
 </tail-connection>
 </item>
 <item type="FlowFinalNodeItem" id="8b1ee186-7124-11e5-8ee5-0026c782d046">
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 669.0, 483.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 774.0, 444.0)</val>
 </matrix>
 <width>
 <val>20.0</val>
@@ -11266,7 +11111,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 849.0, 459.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 840.0, 347.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11275,7 +11120,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (1.0, 34.0), (-160.0, 34.0)]</val>
+<val>[(0.0, 0.0), (-47.0, 60.0), (-46.0, 107.0)]</val>
 </points>
 <head-connection>
 <ref refid="4b1f7956-7124-11e5-8ee5-0026c782d046"/>
@@ -11330,43 +11175,6 @@ activation_charge</val>
 <ref refid="117e6105-687c-11e5-8ee5-0026c782d046"/>
 </head-connection>
 </item>
-<item type="ActionItem" id="6f9557a0-7125-11e5-8ee5-0026c782d046">
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 28.0, 385.0)</val>
-</matrix>
-<width>
-<val>235.0</val>
-</width>
-<height>
-<val>44.0</val>
-</height>
-<subject>
-<ref refid="6f95579f-7125-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-</item>
-<item type="CommentLineItem" id="7abe59d6-7125-11e5-8ee5-0026c782d046">
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 139.0, 385.0)</val>
-</matrix>
-<orthogonal>
-<val>0</val>
-</orthogonal>
-<horizontal>
-<val>0</val>
-</horizontal>
-<points>
-<val>[(0.0, 0.0), (151.5, -55.0)]</val>
-</points>
-<head-connection>
-<ref refid="6f9557a0-7125-11e5-8ee5-0026c782d046"/>
-</head-connection>
-</item>
 <item type="ActionItem" id="86744058-7125-11e5-8ee5-0026c782d046">
 <matrix>
 <val>(1.0, 0.0, 0.0, 1.0, 36.0, 464.0)</val>
@@ -11383,32 +11191,6 @@ activation_charge</val>
 <show_stereotypes_attrs>
 <val>0</val>
 </show_stereotypes_attrs>
-</item>
-<item type="FlowItem" id="929befdc-7125-11e5-8ee5-0026c782d046">
-<subject>
-<ref refid="948800d8-7125-11e5-8ee5-0026c782d046"/>
-</subject>
-<show_stereotypes_attrs>
-<val>0</val>
-</show_stereotypes_attrs>
-<matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 132.0, 429.0)</val>
-</matrix>
-<orthogonal>
-<val>0</val>
-</orthogonal>
-<horizontal>
-<val>0</val>
-</horizontal>
-<points>
-<val>[(0.0, 0.0), (0.0, 35.0)]</val>
-</points>
-<head-connection>
-<ref refid="6f9557a0-7125-11e5-8ee5-0026c782d046"/>
-</head-connection>
-<tail-connection>
-<ref refid="86744058-7125-11e5-8ee5-0026c782d046"/>
-</tail-connection>
 </item>
 <item type="DecisionNodeItem" id="969a1cfa-7125-11e5-8ee5-0026c782d046">
 <matrix>
@@ -11789,6 +11571,201 @@ activation_charge</val>
 <ref refid="20831380-7127-11e5-8ee5-0026c782d046"/>
 </tail-connection>
 </item>
+<item type="ActionItem" id="8444b4fa-71e0-11e5-8ee5-0026c782d046">
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 60.0, 85.0)</val>
+</matrix>
+<width>
+<val>108.0</val>
+</width>
+<height>
+<val>30.0</val>
+</height>
+<subject>
+<ref refid="8444b4f9-71e0-11e5-8ee5-0026c782d046"/>
+</subject>
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+</item>
+<item type="ActionItem" id="e3041896-71e0-11e5-8ee5-0026c782d046">
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 18.0, 141.0)</val>
+</matrix>
+<width>
+<val>192.0</val>
+</width>
+<height>
+<val>30.0</val>
+</height>
+<subject>
+<ref refid="e3041895-71e0-11e5-8ee5-0026c782d046"/>
+</subject>
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+</item>
+<item type="CommentLineItem" id="eef0e75e-71e0-11e5-8ee5-0026c782d046">
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 210.0, 157.0)</val>
+</matrix>
+<orthogonal>
+<val>0</val>
+</orthogonal>
+<horizontal>
+<val>0</val>
+</horizontal>
+<points>
+<val>[(0.0, 0.0), (89.0, -66.0), (256.0, -69.0), (495.0, -77.0)]</val>
+</points>
+<head-connection>
+<ref refid="e3041896-71e0-11e5-8ee5-0026c782d046"/>
+</head-connection>
+</item>
+<item type="ActionItem" id="13446420-71e1-11e5-8ee5-0026c782d046">
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 29.5, 204.0)</val>
+</matrix>
+<width>
+<val>160.0</val>
+</width>
+<height>
+<val>30.0</val>
+</height>
+<subject>
+<ref refid="1344641f-71e1-11e5-8ee5-0026c782d046"/>
+</subject>
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+</item>
+<item type="FlowItem" id="2ded0564-71e1-11e5-8ee5-0026c782d046">
+<subject>
+<ref refid="2ff8bd30-71e1-11e5-8ee5-0026c782d046"/>
+</subject>
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 112.0, 62.0)</val>
+</matrix>
+<orthogonal>
+<val>0</val>
+</orthogonal>
+<horizontal>
+<val>0</val>
+</horizontal>
+<points>
+<val>[(0.0, 0.0), (0.0, 23.0)]</val>
+</points>
+<head-connection>
+<ref refid="f07f977c-6879-11e5-8ee5-0026c782d046"/>
+</head-connection>
+<tail-connection>
+<ref refid="8444b4fa-71e0-11e5-8ee5-0026c782d046"/>
+</tail-connection>
+</item>
+<item type="FlowItem" id="329d07bc-71e1-11e5-8ee5-0026c782d046">
+<subject>
+<ref refid="3402e1bc-71e1-11e5-8ee5-0026c782d046"/>
+</subject>
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 112.0, 115.0)</val>
+</matrix>
+<orthogonal>
+<val>0</val>
+</orthogonal>
+<horizontal>
+<val>0</val>
+</horizontal>
+<points>
+<val>[(0.0, 0.0), (-1.0, 26.0)]</val>
+</points>
+<head-connection>
+<ref refid="8444b4fa-71e0-11e5-8ee5-0026c782d046"/>
+</head-connection>
+<tail-connection>
+<ref refid="e3041896-71e0-11e5-8ee5-0026c782d046"/>
+</tail-connection>
+</item>
+<item type="FlowItem" id="361f706e-71e1-11e5-8ee5-0026c782d046">
+<subject>
+<ref refid="3798a65e-71e1-11e5-8ee5-0026c782d046"/>
+</subject>
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 110.0, 171.0)</val>
+</matrix>
+<orthogonal>
+<val>0</val>
+</orthogonal>
+<horizontal>
+<val>0</val>
+</horizontal>
+<points>
+<val>[(0.0, 0.0), (0.0, 33.0)]</val>
+</points>
+<head-connection>
+<ref refid="e3041896-71e0-11e5-8ee5-0026c782d046"/>
+</head-connection>
+<tail-connection>
+<ref refid="13446420-71e1-11e5-8ee5-0026c782d046"/>
+</tail-connection>
+</item>
+<item type="FlowItem" id="399821fa-71e1-11e5-8ee5-0026c782d046">
+<subject>
+<ref refid="399821fc-71e1-11e5-8ee5-0026c782d046"/>
+</subject>
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 107.0, 234.0)</val>
+</matrix>
+<orthogonal>
+<val>0</val>
+</orthogonal>
+<horizontal>
+<val>0</val>
+</horizontal>
+<points>
+<val>[(0.0, 0.0), (2.5, 39.0)]</val>
+</points>
+<head-connection>
+<ref refid="13446420-71e1-11e5-8ee5-0026c782d046"/>
+</head-connection>
+<tail-connection>
+<ref refid="5ce71868-687a-11e5-8ee5-0026c782d046"/>
+</tail-connection>
+</item>
+<item type="CommentLineItem" id="48cf46ee-71e1-11e5-8ee5-0026c782d046">
+<show_stereotypes_attrs>
+<val>0</val>
+</show_stereotypes_attrs>
+<matrix>
+<val>(1.0, 0.0, 0.0, 1.0, 63.0, 234.0)</val>
+</matrix>
+<orthogonal>
+<val>0</val>
+</orthogonal>
+<horizontal>
+<val>0</val>
+</horizontal>
+<points>
+<val>[(0.0, 0.0), (-3.0, 230.0)]</val>
+</points>
+<head-connection>
+<ref refid="13446420-71e1-11e5-8ee5-0026c782d046"/>
+</head-connection>
+</item>
 </canvas>
 </Diagram>
 <Action id="f07f977b-6879-11e5-8ee5-0026c782d046">
@@ -11797,7 +11774,7 @@ activation_charge</val>
 </name>
 <outgoing>
 <reflist>
-<ref refid="389d5ae2-687a-11e5-8ee5-0026c782d046"/>
+<ref refid="2ff8bd30-71e1-11e5-8ee5-0026c782d046"/>
 </reflist>
 </outgoing>
 <presentation>
@@ -11806,63 +11783,10 @@ activation_charge</val>
 </reflist>
 </presentation>
 </Action>
-<Action id="200c8deb-687a-11e5-8ee5-0026c782d046">
-<incoming>
-<reflist>
-<ref refid="389d5ae2-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</incoming>
-<name>
-<val>Move number to Released</val>
-</name>
-<outgoing>
-<reflist>
-<ref refid="66740876-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</outgoing>
-<presentation>
-<reflist>
-<ref refid="200c8dec-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-</Action>
-<ControlFlow id="389d5ae2-687a-11e5-8ee5-0026c782d046">
-<presentation>
-<reflist>
-<ref refid="375d5ef2-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="f07f977b-6879-11e5-8ee5-0026c782d046"/>
-</source>
-<target>
-<ref refid="200c8deb-687a-11e5-8ee5-0026c782d046"/>
-</target>
-</ControlFlow>
-<Action id="51077a2d-687a-11e5-8ee5-0026c782d046">
-<incoming>
-<reflist>
-<ref refid="66740876-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</incoming>
-<name>
-<val>SaveOrDelete</val>
-</name>
-<outgoing>
-<reflist>
-<ref refid="6a162a7c-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</outgoing>
-<presentation>
-<reflist>
-<ref refid="51077a2e-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-</Action>
 <ActivityFinalNode id="5ce71867-687a-11e5-8ee5-0026c782d046">
 <incoming>
 <reflist>
-<ref refid="6a162a7c-687a-11e5-8ee5-0026c782d046"/>
+<ref refid="399821fc-71e1-11e5-8ee5-0026c782d046"/>
 </reflist>
 </incoming>
 <name>
@@ -11874,35 +11798,9 @@ activation_charge</val>
 </reflist>
 </presentation>
 </ActivityFinalNode>
-<ControlFlow id="66740876-687a-11e5-8ee5-0026c782d046">
-<presentation>
-<reflist>
-<ref refid="64cc38ae-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="200c8deb-687a-11e5-8ee5-0026c782d046"/>
-</source>
-<target>
-<ref refid="51077a2d-687a-11e5-8ee5-0026c782d046"/>
-</target>
-</ControlFlow>
-<ControlFlow id="6a162a7c-687a-11e5-8ee5-0026c782d046">
-<presentation>
-<reflist>
-<ref refid="68e666b2-687a-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="51077a2d-687a-11e5-8ee5-0026c782d046"/>
-</source>
-<target>
-<ref refid="5ce71867-687a-11e5-8ee5-0026c782d046"/>
-</target>
-</ControlFlow>
 <Action id="763ec1ef-687a-11e5-8ee5-0026c782d046">
 <name>
-<val>Move Number to Released</val>
+<val>Authz release</val>
 </name>
 <outgoing>
 <reflist>
@@ -11961,7 +11859,7 @@ activation_charge</val>
 </name>
 <outgoing>
 <reflist>
-<ref refid="45251eba-687c-11e5-8ee5-0026c782d046"/>
+<ref refid="9eec1ddc-71e0-11e5-8ee5-0026c782d046"/>
 </reflist>
 </outgoing>
 <presentation>
@@ -11988,45 +11886,13 @@ PORT IN</val>
 <ref refid="117e6104-687c-11e5-8ee5-0026c782d046"/>
 </target>
 </ControlFlow>
-<Action id="2fcc395f-687c-11e5-8ee5-0026c782d046">
-<incoming>
-<reflist>
-<ref refid="45251eba-687c-11e5-8ee5-0026c782d046"/>
-</reflist>
-</incoming>
-<name>
-<val>Move to sysconfig released_state
-based on reserve history</val>
-</name>
-<outgoing>
-<reflist>
-<ref refid="7b5ffc76-7127-11e5-8ee5-0026c782d046"/>
-</reflist>
-</outgoing>
-<presentation>
-<reflist>
-<ref refid="2fcc3960-687c-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-</Action>
-<ControlFlow id="45251eba-687c-11e5-8ee5-0026c782d046">
-<presentation>
-<reflist>
-<ref refid="43d7d1e2-687c-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="117e6104-687c-11e5-8ee5-0026c782d046"/>
-</source>
-<target>
-<ref refid="2fcc395f-687c-11e5-8ee5-0026c782d046"/>
-</target>
-</ControlFlow>
 <ActivityFinalNode id="5b9faf0d-687c-11e5-8ee5-0026c782d046">
 <incoming>
 <reflist>
-<ref refid="7b5ffc76-7127-11e5-8ee5-0026c782d046"/>
 <ref refid="1593ab7e-712a-11e5-8ee5-0026c782d046"/>
+<ref refid="9eec1ddc-71e0-11e5-8ee5-0026c782d046"/>
+<ref refid="c532bdfc-71e0-11e5-8ee5-0026c782d046"/>
+<ref refid="c9ad690e-71e0-11e5-8ee5-0026c782d046"/>
 </reflist>
 </incoming>
 <name>
@@ -12095,8 +11961,8 @@ based on reserve history</val>
 </name>
 <outgoing>
 <reflist>
-<ref refid="ca91804a-7123-11e5-8ee5-0026c782d046"/>
 <ref refid="56eb9d4e-7124-11e5-8ee5-0026c782d046"/>
+<ref refid="c532bdfc-71e0-11e5-8ee5-0026c782d046"/>
 </reflist>
 </outgoing>
 <presentation>
@@ -12106,12 +11972,6 @@ based on reserve history</val>
 </presentation>
 </DecisionNode>
 <Action id="c5c41009-7123-11e5-8ee5-0026c782d046">
-<incoming>
-<reflist>
-<ref refid="ca91804a-7123-11e5-8ee5-0026c782d046"/>
-<ref refid="7b5d1054-7124-11e5-8ee5-0026c782d046"/>
-</reflist>
-</incoming>
 <name>
 <val>remove public props from number
 remove features
@@ -12124,22 +11984,6 @@ unset assigned_to</val>
 </reflist>
 </presentation>
 </Action>
-<ControlFlow id="ca91804a-7123-11e5-8ee5-0026c782d046">
-<name>
-<val>system</val>
-</name>
-<presentation>
-<reflist>
-<ref refid="ca918048-7123-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="b9008d25-7123-11e5-8ee5-0026c782d046"/>
-</source>
-<target>
-<ref refid="c5c41009-7123-11e5-8ee5-0026c782d046"/>
-</target>
-</ControlFlow>
 <DecisionNode id="4b1f7955-7124-11e5-8ee5-0026c782d046">
 <incoming>
 <reflist>
@@ -12151,8 +11995,8 @@ unset assigned_to</val>
 </name>
 <outgoing>
 <reflist>
-<ref refid="7b5d1054-7124-11e5-8ee5-0026c782d046"/>
 <ref refid="96c713da-7124-11e5-8ee5-0026c782d046"/>
+<ref refid="c9ad690e-71e0-11e5-8ee5-0026c782d046"/>
 </reflist>
 </outgoing>
 <presentation>
@@ -12172,22 +12016,6 @@ unset assigned_to</val>
 </source>
 <target>
 <ref refid="4b1f7955-7124-11e5-8ee5-0026c782d046"/>
-</target>
-</ControlFlow>
-<ControlFlow id="7b5d1054-7124-11e5-8ee5-0026c782d046">
-<name>
-<val>true</val>
-</name>
-<presentation>
-<reflist>
-<ref refid="7a45cd78-7124-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="4b1f7955-7124-11e5-8ee5-0026c782d046"/>
-</source>
-<target>
-<ref refid="c5c41009-7123-11e5-8ee5-0026c782d046"/>
 </target>
 </ControlFlow>
 <FlowFinalNode id="8b1ee185-7124-11e5-8ee5-0026c782d046">
@@ -12234,28 +12062,7 @@ unset assigned_to</val>
 <ref refid="b9008d25-7123-11e5-8ee5-0026c782d046"/>
 </target>
 </ControlFlow>
-<Action id="6f95579f-7125-11e5-8ee5-0026c782d046">
-<name>
-<val>move to sysconfig released_state
-based on reserve history</val>
-</name>
-<outgoing>
-<reflist>
-<ref refid="948800d8-7125-11e5-8ee5-0026c782d046"/>
-</reflist>
-</outgoing>
-<presentation>
-<reflist>
-<ref refid="6f9557a0-7125-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-</Action>
 <Action id="86744057-7125-11e5-8ee5-0026c782d046">
-<incoming>
-<reflist>
-<ref refid="948800d8-7125-11e5-8ee5-0026c782d046"/>
-</reflist>
-</incoming>
 <name>
 <val>remove prev_assigned_to from
 reserve history</val>
@@ -12271,19 +12078,6 @@ reserve history</val>
 </reflist>
 </presentation>
 </Action>
-<ControlFlow id="948800d8-7125-11e5-8ee5-0026c782d046">
-<presentation>
-<reflist>
-<ref refid="929befdc-7125-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="6f95579f-7125-11e5-8ee5-0026c782d046"/>
-</source>
-<target>
-<ref refid="86744057-7125-11e5-8ee5-0026c782d046"/>
-</target>
-</ControlFlow>
 <DecisionNode id="969a1cf9-7125-11e5-8ee5-0026c782d046">
 <incoming>
 <reflist>
@@ -12569,19 +12363,6 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 </source>
 <target>
 <ref refid="2083137f-7127-11e5-8ee5-0026c782d046"/>
-</target>
-</ControlFlow>
-<ControlFlow id="7b5ffc76-7127-11e5-8ee5-0026c782d046">
-<presentation>
-<reflist>
-<ref refid="66a47aae-687c-11e5-8ee5-0026c782d046"/>
-</reflist>
-</presentation>
-<source>
-<ref refid="2fcc395f-687c-11e5-8ee5-0026c782d046"/>
-</source>
-<target>
-<ref refid="5b9faf0d-687c-11e5-8ee5-0026c782d046"/>
 </target>
 </ControlFlow>
 <Diagram id="5001a588-7128-11e5-8ee5-0026c782d046">
@@ -13550,6 +13331,157 @@ CreateNumber-&gt;Save-&gt;UpdateServicePlans</val>
 </source>
 <target>
 <ref refid="f3b25415-712a-11e5-8ee5-0026c782d046"/>
+</target>
+</ControlFlow>
+<Action id="8444b4f9-71e0-11e5-8ee5-0026c782d046">
+<incoming>
+<reflist>
+<ref refid="2ff8bd30-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</incoming>
+<name>
+<val>Authz release</val>
+</name>
+<outgoing>
+<reflist>
+<ref refid="3402e1bc-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</outgoing>
+<presentation>
+<reflist>
+<ref refid="8444b4fa-71e0-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+</Action>
+<ControlFlow id="9eec1ddc-71e0-11e5-8ee5-0026c782d046">
+<presentation>
+<reflist>
+<ref refid="66a47aae-687c-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="117e6104-687c-11e5-8ee5-0026c782d046"/>
+</source>
+<target>
+<ref refid="5b9faf0d-687c-11e5-8ee5-0026c782d046"/>
+</target>
+</ControlFlow>
+<ControlFlow id="c532bdfc-71e0-11e5-8ee5-0026c782d046">
+<presentation>
+<reflist>
+<ref refid="ca918048-7123-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="b9008d25-7123-11e5-8ee5-0026c782d046"/>
+</source>
+<target>
+<ref refid="5b9faf0d-687c-11e5-8ee5-0026c782d046"/>
+</target>
+</ControlFlow>
+<ControlFlow id="c9ad690e-71e0-11e5-8ee5-0026c782d046">
+<presentation>
+<reflist>
+<ref refid="7a45cd78-7124-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="4b1f7955-7124-11e5-8ee5-0026c782d046"/>
+</source>
+<target>
+<ref refid="5b9faf0d-687c-11e5-8ee5-0026c782d046"/>
+</target>
+</ControlFlow>
+<Action id="e3041895-71e0-11e5-8ee5-0026c782d046">
+<incoming>
+<reflist>
+<ref refid="3402e1bc-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</incoming>
+<name>
+<val>Update Number Properties</val>
+</name>
+<outgoing>
+<reflist>
+<ref refid="3798a65e-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</outgoing>
+<presentation>
+<reflist>
+<ref refid="e3041896-71e0-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+</Action>
+<Action id="1344641f-71e1-11e5-8ee5-0026c782d046">
+<incoming>
+<reflist>
+<ref refid="3798a65e-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</incoming>
+<name>
+<val>Unwind Or Disconnect</val>
+</name>
+<outgoing>
+<reflist>
+<ref refid="399821fc-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</outgoing>
+<presentation>
+<reflist>
+<ref refid="13446420-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+</Action>
+<ControlFlow id="2ff8bd30-71e1-11e5-8ee5-0026c782d046">
+<presentation>
+<reflist>
+<ref refid="2ded0564-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="f07f977b-6879-11e5-8ee5-0026c782d046"/>
+</source>
+<target>
+<ref refid="8444b4f9-71e0-11e5-8ee5-0026c782d046"/>
+</target>
+</ControlFlow>
+<ControlFlow id="3402e1bc-71e1-11e5-8ee5-0026c782d046">
+<presentation>
+<reflist>
+<ref refid="329d07bc-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="8444b4f9-71e0-11e5-8ee5-0026c782d046"/>
+</source>
+<target>
+<ref refid="e3041895-71e0-11e5-8ee5-0026c782d046"/>
+</target>
+</ControlFlow>
+<ControlFlow id="3798a65e-71e1-11e5-8ee5-0026c782d046">
+<presentation>
+<reflist>
+<ref refid="361f706e-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="e3041895-71e0-11e5-8ee5-0026c782d046"/>
+</source>
+<target>
+<ref refid="1344641f-71e1-11e5-8ee5-0026c782d046"/>
+</target>
+</ControlFlow>
+<ControlFlow id="399821fc-71e1-11e5-8ee5-0026c782d046">
+<presentation>
+<reflist>
+<ref refid="399821fa-71e1-11e5-8ee5-0026c782d046"/>
+</reflist>
+</presentation>
+<source>
+<ref refid="1344641f-71e1-11e5-8ee5-0026c782d046"/>
+</source>
+<target>
+<ref refid="5ce71867-687a-11e5-8ee5-0026c782d046"/>
 </target>
 </ControlFlow>
 </gaphor>
