@@ -534,9 +534,10 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) ->
     Req = wh_api:default_headers(?APP_NAME, ?APP_VERSION),
-    _ = case whapps_util:amqp_pool_collect(Req
-                                           ,fun wapi_call:publish_query_channels_req/1
-                                           ,{'ecallmgr', 'true'})
+    _ = case wh_amqp_worker:call_collect(Req
+                                         ,fun wapi_call:publish_query_channels_req/1
+                                         ,{'ecallmgr', 'true'}
+                                        )
         of
             {'error', _R} ->
                 lager:error("could not reach ecallmgr channels: ~p", [_R]);
