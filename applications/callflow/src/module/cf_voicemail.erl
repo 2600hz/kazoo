@@ -1406,11 +1406,11 @@ maybe_save_meta(Length, #mailbox{after_notify_action=Action}=Box, Call, MediaId,
         <<"completed">> ->
             case Action of
                 'delete' ->
-                    {'ok', _} = couch_mgr:del_doc(whapps_call:account_db(Call), MediaId),
-                    lager:debug("attachment was sent out via notification, deleted media file");
+                    lager:debug("attachment was sent out via notification, deleteing media file"),
+                    {'ok', _} = couch_mgr:del_doc(whapps_call:account_db(Call), MediaId);
                 'save' ->
-                    update_folder(?FOLDER_SAVED, MediaId, Box, Call),
-                    lager:debug("attachment was sent out via notification, saved media file")
+                    lager:debug("attachment was sent out via notification, saving media file"),
+                    update_folder(?FOLDER_SAVED, MediaId, Box, Call)
             end;
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [wh_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
