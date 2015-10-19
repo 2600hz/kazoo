@@ -25,8 +25,20 @@
 
 -ifdef(TEST).
 -define(CONVERTER_MOD, 'knm_converter_regex').
+
+-define(RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX).
+
 -else.
 -define(CONVERTER_MOD, wh_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
+
+-define(RECONCILE_REGEX
+        ,whapps_config:get_binary(
+           ?KNM_CONFIG_CAT
+           ,?KEY_RECONCILE_REGEX
+           ,?DEFAULT_RECONCILE_REGEX
+          )
+       ).
+
 -endif.
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
@@ -152,11 +164,7 @@ to_db(_) ->
 %%--------------------------------------------------------------------
 -spec is_reconcilable(ne_binary()) -> boolean().
 is_reconcilable(Number) ->
-    Regex = whapps_config:get_binary(
-              ?KNM_CONFIG_CAT
-              ,?KEY_RECONCILE_REGEX
-              ,?DEFAULT_RECONCILE_REGEX
-             ),
+    Regex = ?RECONCILE_REGEX,
     Num = normalize(Number),
     is_reconcilable_by_regex(Num, Regex).
 
