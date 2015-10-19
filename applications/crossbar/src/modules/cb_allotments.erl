@@ -127,14 +127,6 @@ load_consumed(Context) ->
 -spec foldl_consumed(api_binary(), wh_json:object(), CMA) -> CMA when
       CMA :: {cb_context:context(), mode(), wh_json:objects()}.
 foldl_consumed(Classification, Value, {Context, Mode, Acc}) ->
-    case cb_context:resp_status(Context) of
-        'success' -> consume_allotment(Classification, Value, {Context,Mode,Acc});
-        _Error -> {Context, Mode, Acc}
-    end.
-
--spec consume_allotment(api_binary(), wh_json:object(), CMA) -> CMA when
-      CMA :: {cb_context:context(), mode(), wh_json:objects()}.
-consume_allotment(Classification, Value, {Context,Mode,Acc}) ->
     case create_viewoptions(Context, Classification, Value, Mode) of
         {Cycle, ViewOptions} ->
             [_, From] = props:get_value('startkey', ViewOptions),
