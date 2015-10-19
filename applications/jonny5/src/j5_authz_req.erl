@@ -26,6 +26,28 @@ maybe_determine_account_id(Request) ->
 
 -spec determine_account_id(j5_request:request()) -> 'ok'.
 determine_account_id(Request) ->
+    case j5_request:caller_network_address(Request) of
+        'undefined' -> determine_account_id_from_number(Request);
+        IP -> determine_account_id_from_ip(Request, IP)
+    end.
+
+-spec determine_account_id_from_ip(j5_request:request(), ne_binary()) -> 'ok'.
+determine_account_id_from_ip(Request, IP) ->
+    case whapps_util:get_account_by_ip(IP) of
+        {'ok', AccountCCVs} ->
+            lager:debug("found account auth'd by IP ~s: ~s"
+                        ,[IP, props:get_value(<<"Account-ID">>, AccountCCVs)]
+                       ),
+            maybe_account_limited(
+              j5_request:from_ccvs(Request, AccountCCVs)
+             );
+        {'error', 'not_found'} ->
+            lager:debug("auth for IP ~s not found, trying number", [IP]),
+            determine_account_id_from_number(Request)
+    end.
+
+-spec determine_account_id_from_number(j5_request:request()) -> 'ok'.
+determine_account_id_from_number(Request) ->
     Number = j5_request:number(Request),
     case wh_number_manager:lookup_account_by_number(Number) of
         {'ok', AccountId, Props} ->
