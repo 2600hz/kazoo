@@ -94,3 +94,11 @@ Often you'll want to see what devices belong to a user, or devices that a user h
     }
 
 Notice that the first device, `{DEVICE_ID_1}` is owned by `{USER_ID}` but the second device, `{DEVICE_ID_2}`, is owned by `{OWNER_ID}` **and** is currently hotdesked to `{USER_ID}` (see the `"hotdesked":true` attribute).
+
+## Create an Authn-By-IP Device
+
+Here is a minimal API request that creates a device that will authenticate by IP address instead of username/password:
+
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices \
+    -d '{"data":{"enabled":true,"name":"mkbs","sip":{"invite_format":"e164", "ip":"{IP_ADDRESS}","method":"ip"}}}'
