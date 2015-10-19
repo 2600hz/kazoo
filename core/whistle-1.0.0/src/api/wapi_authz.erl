@@ -25,9 +25,15 @@
 -define(KEY_AUTHZ_BROADCAST, <<"authz.authorize.broadcast">>).
 
 %% Authorization Requests
--define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
-                            ,<<"Call-ID">>, <<"Call-Direction">>
-                            ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+-define(AUTHZ_REQ_HEADERS, [<<"Call-Direction">>
+                            ,<<"Call-ID">>
+                            ,<<"Caller-ID-Name">>
+                            ,<<"Caller-ID-Number">>
+                            ,<<"From">>
+                            ,<<"From-Network-Addr">>
+                            ,<<"From-Network-Port">>
+                            ,<<"Request">>
+                            ,<<"To">>
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>
                                      ,<<"Other-Leg-Call-ID">>

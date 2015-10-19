@@ -369,6 +369,8 @@ authz_req(Props) ->
        ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
        ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, wh_util:anonymous_caller_id_name())}
        ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, wh_util:anonymous_caller_id_number())}
+       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
+       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
