@@ -410,7 +410,7 @@ delete(Num, Options) ->
     case ?MODULE:get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            delete_number(Number)
+            attempt(fun delete_number/1, [Number])
     end.
 
 -spec delete_number(knm_number()) ->
