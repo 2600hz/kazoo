@@ -290,13 +290,30 @@ post(Context, Id) ->
 
 -spec do_post(cb_context:context()) -> cb_context:context().
 do_post(Context) ->
-    Context1 = crossbar_doc:save(Context),
+    Context1 = crossbar_doc:save(set_system_macros(Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
             maybe_note_notification_preference(Context1),
             leak_doc_id(Context1);
         _Status -> Context1
     end.
+
+-spec set_system_macros(cb_context:context()) -> cb_context:context().
+-spec set_system_macros(cb_context:context(), api_binary()) -> cb_context:context().
+set_system_macros(Context) ->
+    Id = wh_doc:id(cb_context:doc(Context)),
+    set_system_macros(Context, Id).
+
+set_system_macros(Context, 'undefined') -> Context;
+set_system_macros(Context, Id) ->
+    SysContext = read_system(Context, Id),
+    SysDoc = cb_context:doc(SysContext),
+    Macros = wh_json:get_value(?MACROS, SysDoc, wh_json:new()),
+    Updater =
+        fun(JObj) ->
+            wh_json:set_value(?MACROS, Macros, JObj)
+        end,
+    cb_context:update_doc(Context, Updater).
 
 post(Context, Id, ?PREVIEW) ->
     Notification = cb_context:doc(Context),
@@ -1031,7 +1048,7 @@ handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id, ?PR
     on_successful_validation(Id, Context);
 handle_missing_account_notification(Context, Id, _ReqNouns) ->
     _ = maybe_hard_delete(Context, Id),
-    _Context = read_system_for_account(Context, Id, 'system_migrate'),
+    _Context1 = read_system_for_account(Context, Id, 'system_migrate'),
     on_successful_validation(Id, Context).
 
 -spec handle_missing_system_config_notification(cb_context:context(), ne_binary(), wh_json:object()) ->
