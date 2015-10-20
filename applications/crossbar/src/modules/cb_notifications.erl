@@ -1048,7 +1048,7 @@ handle_missing_account_notification(Context, Id, [{<<"notifications">>, [Id, ?PR
     on_successful_validation(Id, Context);
 handle_missing_account_notification(Context, Id, _ReqNouns) ->
     _ = maybe_hard_delete(Context, Id),
-    _Context1 = read_system_for_account(Context, Id, 'system_migrate'),
+    _Context = read_system_for_account(Context, Id, 'system_migrate'),
     on_successful_validation(Id, Context).
 
 -spec handle_missing_system_config_notification(cb_context:context(), ne_binary(), wh_json:object()) ->
