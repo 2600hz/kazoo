@@ -21,7 +21,6 @@
 
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
--include_lib("whistle/src/wh_json.hrl").
 
 -record(state, {endpoints = [] :: wh_json:objects()
                 ,resource_req :: wh_json:object()
@@ -303,33 +302,34 @@ maybe_deny_emergency_bridge(#state{control_queue=ControlQ}=State, Number, Name) 
 
 -spec build_bridge(state(), api_binary(), api_binary()) -> wh_proplist().
 build_bridge(#state{endpoints=Endpoints
-                    ,resource_req=JObj
+                    ,resource_req=OffnetJObj
                     ,queue=Q
                    }
             ,Number
-            ,Name) ->
+            ,Name
+            ) ->
     lager:debug("set outbound caller id to ~s '~s'", [Number, Name]),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountId = wapi_offnet_resource:account_id(OffnetJObj),
     CCVs =
         wh_json:set_values(
           props:filter_undefined(
             [{<<"Ignore-Display-Updates">>, <<"true">>}
              ,{<<"Account-ID">>, AccountId}
-             ,{<<"From-URI">>, bridge_from_uri(Number, JObj)}
+             ,{<<"From-URI">>, bridge_from_uri(Number, OffnetJObj)}
              ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
             ])
-          ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
+          ,wh_json:get_value(<<"Custom-Channel-Vars">>, OffnetJObj, wh_json:new())
          ),
 
     EndpointFilter = fun(Element) ->
-        case Element of
-            {<<"Outbound-Caller-ID-Number">>, Number} -> false;
-            {<<"Outbound-Caller-ID-Name">>, Name}     -> false;
-            _OtherValues                              -> true
-        end
-    end,
+                             case Element of
+                                 {<<"Outbound-Caller-ID-Number">>, Number} -> false;
+                                 {<<"Outbound-Caller-ID-Name">>, Name}     -> false;
+                                 _OtherValues                              -> true
+                             end
+                     end,
 
-    FmtEndpoints = format_endpoints(Endpoints, Number, JObj, AccountId, EndpointFilter),
+    FmtEndpoints = format_endpoints(Endpoints, Number, OffnetJObj, EndpointFilter),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
@@ -339,69 +339,36 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Caller-ID-Number">>, Number}
        ,{<<"Caller-ID-Name">>, Name}
        ,{<<"Custom-Channel-Vars">>, CCVs}
-       ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
-       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj, <<"false">>)}
-       ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
-       ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
-       ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-       ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-       ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, Number)}
-       ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, Name)}
-       ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
-       ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
-       ,{<<"B-Leg-Events">>, wh_json:get_list_value(<<"B-Leg-Events">>, JObj, [])}
+       ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, OffnetJObj)}
+       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, OffnetJObj, <<"false">>)}
+       ,{<<"Media">>, wh_json:get_value(<<"Media">>, OffnetJObj)}
+       ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, OffnetJObj)}
+       ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, OffnetJObj)}
+       ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, OffnetJObj)}
+       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, OffnetJObj)}
+       ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, OffnetJObj, Number)}
+       ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, OffnetJObj, Name)}
+       ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, OffnetJObj)}
+       ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, OffnetJObj)}
+       ,{<<"B-Leg-Events">>, wh_json:get_list_value(<<"B-Leg-Events">>, OffnetJObj, [])}
        ,{<<"Endpoints">>, FmtEndpoints}
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec format_endpoints(wh_json:objects(), api_binary(), wh_json:object(), api_binary(), fun()) ->
+-spec format_endpoints(wh_json:objects(), api_binary(), wh_json:object(), fun()) ->
                               wh_json:objects().
-format_endpoints(Endpoints, Number, JObj, AccountId, Filter) ->
-    SIPHeaders = stepswitch_util:get_sip_headers(JObj),
-
+format_endpoints(Endpoints, Number, OffnetJObj, Filter) ->
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
-                                             ], JObj),
-    [format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm, Filter)
+                                             ], OffnetJObj),
+    [format_endpoint(Endpoint, Number, DefaultRealm, Filter)
      || Endpoint <- Endpoints
     ].
 
--spec format_endpoint(wh_json:object(), api_binary(), api_binary(), wh_json:object(), api_binary(), fun()) -> wh_json:object().
-format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm, Filter) ->
-    FormattedEndpoint =
-        stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
-                                    ,props:get_value(<<"Formatters">>
-                                                     ,endpoint_props(Endpoint, AccountId)
-                                                     ,wh_json:new()
-                                                    )
-                                    ,'outbound'
-                                   ),
-    FilteredEndpoint = wh_json:filter(Filter, FormattedEndpoint),
+-spec format_endpoint(wh_json:object(), api_binary(), api_binary(), fun()) -> wh_json:object().
+format_endpoint(Endpoint, Number, DefaultRealm, Filter) ->
+    FilteredEndpoint = wh_json:filter(Filter, Endpoint),
     maybe_endpoint_format_from(FilteredEndpoint, Number, DefaultRealm).
-
--spec maybe_add_sip_headers(wh_json:object(), wh_json:object()) -> wh_json:object().
-maybe_add_sip_headers(Endpoint, SIPHeaders) ->
-    LocalSIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, wh_json:new()),
-
-    case wh_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
-        ?EMPTY_JSON_OBJECT -> Endpoint;
-        MergedHeaders -> wh_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
-    end.
-
--spec endpoint_props(wh_json:object(), api_binary()) -> wh_proplist().
-endpoint_props(Endpoint, AccountId) ->
-    ResourceId = wh_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
-    case wh_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
-        'true' ->
-            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId));
-        'false' ->
-            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
-    end.
-
--spec empty_list_on_undefined(wh_proplist() | 'undefined') -> wh_proplist().
-empty_list_on_undefined('undefined') -> [];
-empty_list_on_undefined(L) -> L.
 
 -spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
                                         wh_json:object().
