@@ -97,7 +97,7 @@ maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
 
 -spec maybe_apply_formatters(wh_json:object(), ne_binary(), wh_json:objects()) ->
                                     wh_json:object().
--spec maybe_apply_formatters(wh_json:object(), ne_binary(), ne_binary(), wh_json:objects()) ->
+-spec maybe_apply_formatters(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:objects()) ->
                                     wh_json:object().
 -spec maybe_apply_formatters(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:objects()) ->
                                     wh_json:object().

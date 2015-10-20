@@ -106,13 +106,16 @@ add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow) ->
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings) ->
     add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, []).
 
+-type exchange() :: {ne_binary(), ne_binary(), wh_proplist()}.
+-type exchanges() :: [exchange()].
+
 -spec add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) -> sup_startchild_ret() when
     UUID :: atom() | binary(),
     Broker :: binary(),
     PoolSize :: integer(),
     PoolOverflow :: integer(),
     Bindings :: wh_proplist(),
-    Exchanges :: wh_proplist().
+    Exchanges :: exchanges().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
     add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, 'false').
 
@@ -122,7 +125,7 @@ add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
     PoolSize :: integer(),
     PoolOverflow :: integer(),
     Bindings :: wh_proplist(),
-    Exchanges :: wh_proplist(),
+    Exchanges :: exchanges(),
     ServerAck :: boolean().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) ->
     supervisor:start_child(?MODULE, ?POOL_SPEC(?ATOM(UUID), Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck)).

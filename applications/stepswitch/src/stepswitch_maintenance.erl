@@ -119,7 +119,7 @@ flush() -> wh_cache:flush_local(?STEPSWITCH_CACHE).
 
 -spec cnam_flush() -> 'ok'.
 cnam_flush() ->
-    stepswitch_cnam:flush().
+    io:format("flushed ~p entries from cnam cache~n", [stepswitch_cnam:flush()]).
 
 %%--------------------------------------------------------------------
 %% @public

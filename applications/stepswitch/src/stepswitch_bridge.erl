@@ -367,7 +367,7 @@ format_endpoints(Endpoints, Number, JObj, AccountId, Filter) ->
      || Endpoint <- Endpoints
     ].
 
--spec format_endpoint(wh_json:object(), api_binary(), api_binary(), api_object(), api_binary(), fun()) -> wh_json:object().
+-spec format_endpoint(wh_json:object(), api_binary(), api_binary(), wh_json:object(), api_binary(), fun()) -> wh_json:object().
 format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm, Filter) ->
     FormattedEndpoint =
         stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
@@ -380,8 +380,7 @@ format_endpoint(Endpoint, Number, AccountId, SIPHeaders, DefaultRealm, Filter) -
     FilteredEndpoint = wh_json:filter(Filter, FormattedEndpoint),
     maybe_endpoint_format_from(FilteredEndpoint, Number, DefaultRealm).
 
--spec maybe_add_sip_headers(wh_json:object(), api_object()) -> wh_json:object().
-maybe_add_sip_headers(Endpoint, 'undefined') -> Endpoint;
+-spec maybe_add_sip_headers(wh_json:object(), wh_json:object()) -> wh_json:object().
 maybe_add_sip_headers(Endpoint, SIPHeaders) ->
     LocalSIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, wh_json:new()),
 

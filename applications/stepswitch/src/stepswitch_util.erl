@@ -146,9 +146,9 @@ correct_shortdial(Number, JObj) ->
               ),
     correct_shortdial(Number, CIDNum).
 
--spec get_sip_headers(wh_json:object()) -> api_object().
+-spec get_sip_headers(wh_json:object()) -> wh_json:object().
 get_sip_headers(JObj) ->
-    SIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new()),
+    SIPHeaders = wh_json:get_json_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new()),
     case get_diversions(SIPHeaders) of
         'undefined' ->
             maybe_remove_diversions(SIPHeaders);
@@ -160,8 +160,7 @@ get_sip_headers(JObj) ->
                              )
     end.
 
--spec maybe_remove_diversions(api_object()) -> api_object().
-maybe_remove_diversions('undefined') -> 'undefined';
+-spec maybe_remove_diversions(wh_json:object()) -> wh_json:object().
 maybe_remove_diversions(JObj) ->
     wh_json:delete_key(<<"Diversions">>, JObj).
 

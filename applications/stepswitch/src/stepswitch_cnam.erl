@@ -109,7 +109,7 @@ update_request(JObj, CNAM, FromCache) ->
             ],
     wh_json:set_values(Props, JObj).
 
--spec flush() -> 'ok'.
+-spec flush() -> non_neg_integer().
 flush() ->
     wh_cache:filter_erase_local(?STEPSWITCH_CACHE, fun flush_entries/2).
 
