@@ -16,6 +16,7 @@
         ]).
 
 -include("stepswitch.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -define(CONFIG_CAT, <<"number_manager">>).
 
@@ -132,22 +133,22 @@ sort_resources(Resources) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
-endpoints(Number, JObj) ->
-    case maybe_get_endpoints(Number, JObj) of
+endpoints(Number, OffnetJObj) ->
+    case maybe_get_endpoints(Number, OffnetJObj) of
         [] -> [];
         Endpoints -> sort_endpoints(Endpoints)
     end.
 
 -spec maybe_get_endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
-maybe_get_endpoints(Number, JObj) ->
-    case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
-        'undefined' -> get_global_endpoints(Number, JObj);
-        HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, JObj)
+maybe_get_endpoints(Number, OffnetJObj) ->
+    case wapi_offnet_resource:hunt_account_id(OffnetJObj) of
+        'undefined' -> get_global_endpoints(Number, OffnetJObj);
+        HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj)
     end.
 
 -spec maybe_get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
-maybe_get_local_endpoints(HuntAccount, Number, JObj) ->
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
+    AccountId = wapi_offnet_resource:account_id(OffnetJObj),
     case wh_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' ->
             lager:info("account ~s attempted to use local resources of ~s, but it is not allowed"
@@ -156,22 +157,22 @@ maybe_get_local_endpoints(HuntAccount, Number, JObj) ->
             [];
         'true' ->
             lager:info("account ~s is using the local resources of ~s", [AccountId, HuntAccount]),
-            get_local_endpoints(HuntAccount, Number, JObj)
+            get_local_endpoints(HuntAccount, Number, OffnetJObj)
     end.
 
 -spec get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
-get_local_endpoints(AccountId, Number, JObj) ->
+get_local_endpoints(AccountId, Number, OffnetJObj) ->
     lager:debug("attempting to find local resources for ~s", [AccountId]),
-    Flags = wh_json:get_value(<<"Flags">>, JObj, []),
+    Flags = wapi_offnet_resource:flags(OffnetJObj, []),
     Resources = filter_resources(Flags, get(AccountId)),
-    resources_to_endpoints(Resources, Number, JObj).
+    resources_to_endpoints(Resources, Number, OffnetJObj).
 
 -spec get_global_endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
-get_global_endpoints(Number, JObj) ->
+get_global_endpoints(Number, OffnetJObj) ->
     lager:debug("attempting to find global resources"),
-    Flags = wh_json:get_value(<<"Flags">>, JObj, []),
+    Flags = wapi_offnet_resource:flags(OffnetJObj, []),
     Resources = filter_resources(Flags, get()),
-    resources_to_endpoints(Resources, Number, JObj).
+    resources_to_endpoints(Resources, Number, OffnetJObj).
 
 -spec sort_endpoints(wh_json:objects()) -> wh_json:objects().
 sort_endpoints(Endpoints) ->
@@ -372,14 +373,14 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
                                     wh_json:objects().
 -spec resources_to_endpoints(resources(), ne_binary(), wh_json:object(), wh_json:objects()) ->
                                     wh_json:objects().
-resources_to_endpoints(Resources, Number, JObj) ->
-    resources_to_endpoints(Resources, Number, JObj, []).
+resources_to_endpoints(Resources, Number, OffnetJObj) ->
+    resources_to_endpoints(Resources, Number, OffnetJObj, []).
 
-resources_to_endpoints([], _, _, Endpoints) ->
+resources_to_endpoints([], _Number, _OffnetJObj, Endpoints) ->
     lists:reverse(Endpoints);
-resources_to_endpoints([Resource|Resources], Number, JObj, Endpoints) ->
-    MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, JObj, Endpoints),
-    resources_to_endpoints(Resources, Number, JObj, MoreEndpoints).
+resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
+    MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints),
+    resources_to_endpoints(Resources, Number, OffnetJObj, MoreEndpoints).
 
 -spec maybe_resource_to_endpoints(resource(), ne_binary(), wh_json:object(), wh_json:objects()) ->
                                          wh_json:objects().
@@ -392,8 +393,11 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                    ,weight=Weight
                                    ,proxies=Proxies
                                   }
-                            ,Number, JObj, Endpoints) ->
-    CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
+                            ,Number
+                            ,OffnetJObj
+                            ,Endpoints
+                           ) ->
+    CallerIdNumber = wapi_offnet_resource:outbound_caller_id_number(OffnetJObj),
     case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
         {'error','no_match'} -> Endpoints;
         {'ok', NumberMatch} ->
@@ -405,15 +409,51 @@ maybe_resource_to_endpoints(#resrc{id=Id
             Updates = [{<<"Name">>, Name}
                        ,{<<"Weight">>, Weight}
                       ],
-            EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
-                            || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, JObj, [])
+            EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates, OffnetJObj)
+                            || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, OffnetJObj, [])
                            ],
             maybe_add_proxies(EndpointList, Proxies, Endpoints)
     end.
 
--spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist()) -> wh_json:object().
-update_endpoint(Endpoint, Updates, CCVUpdates) ->
-    wh_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates)).
+-spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist(), wh_json:object()) -> wh_json:object().
+update_endpoint(Endpoint, Updates, CCVUpdates, OffnetJObj) ->
+    Updated = wh_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates)),
+    maybe_apply_formatters(Updated, OffnetJObj).
+
+maybe_apply_formatters(Endpoint, OffnetJObj) ->
+    SIPHeaders = stepswitch_util:get_sip_headers(OffnetJObj),
+    AccountId = wapi_offnet_resource:account_id(OffnetJObj),
+
+    stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
+                                ,props:get_value(<<"Formatters">>
+                                                 ,endpoint_props(Endpoint, AccountId)
+                                                 ,wh_json:new()
+                                                )
+                                ,'outbound'
+                               ).
+
+-spec maybe_add_sip_headers(wh_json:object(), wh_json:object()) -> wh_json:object().
+maybe_add_sip_headers(Endpoint, SIPHeaders) ->
+    LocalSIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, wh_json:new()),
+
+    case wh_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
+        ?EMPTY_JSON_OBJECT -> Endpoint;
+        MergedHeaders -> wh_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
+    end.
+
+-spec endpoint_props(wh_json:object(), api_binary()) -> wh_proplist().
+endpoint_props(Endpoint, AccountId) ->
+    ResourceId = wh_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
+    case wh_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
+        'true' ->
+            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId));
+        'false' ->
+            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
+    end.
+
+-spec empty_list_on_undefined(wh_proplist() | 'undefined') -> wh_proplist().
+empty_list_on_undefined('undefined') -> [];
+empty_list_on_undefined(L) -> L.
 
 -spec maybe_add_proxies(wh_json:objects(), wh_proplist(), wh_json:objects()) -> wh_json:objects().
 maybe_add_proxies([], _, Acc) -> Acc;
