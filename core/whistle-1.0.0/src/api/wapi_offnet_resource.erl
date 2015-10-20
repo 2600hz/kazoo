@@ -17,23 +17,43 @@
 -export([unbind_q/2]).
 -export([declare_exchanges/0]).
 
+-export([force_outbound/1, force_outbound/2
+         ,resource_type/1, resource_type/2
+         ,account_id/1, account_id/2
+         ,outbound_call_id/1, outbound_call_id/2
+         ,call_id/1, call_id/2
+         ,to_did/1, to_did/2
+        ]).
+
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 
+-define(KEY_ACCOUNT_ID, <<"Account-ID">>).
+-define(KEY_CALL_ID, <<"Call-ID">>).
+-define(KEY_FORCE_OUTBOUND, <<"Force-Outbound">>).
+-define(KEY_OUTBOUND_CALL_ID, <<"Outbound-Call-ID">>).
+-define(KEY_RESOURCE_TYPE, <<"Resource-Type">>).
+-define(KEY_TO_DID, <<"To-DID">>).
+
+-define(RESOURCE_TYPE_AUDIO, <<"audio">>).
+-define(RESOURCE_TYPE_ORIGINATE, <<"originate">>).
+-define(RESOURCE_TYPE_SMS, <<"sms">>).
+-define(RESOURCE_TYPE_VIDEO, <<"video">>).
+
 %% Offnet Resource Request
 -define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Application-Name">>
-                                      ,<<"Resource-Type">>
-                                      ,<<"To-DID">>
+                                      ,?KEY_RESOURCE_TYPE
+                                      ,?KEY_TO_DID
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS
-        ,[<<"Account-ID">>
+        ,[?KEY_ACCOUNT_ID
           ,<<"Account-Realm">>
           ,<<"Application-Data">>
           ,<<"B-Leg-Events">>
           ,<<"Body">>
           ,<<"Bypass-E164">>
-          ,<<"Call-ID">>
-          ,<<"Call-ID">>
+          ,?KEY_CALL_ID
+          ,?KEY_CALL_ID
           ,<<"Control-Queue">>
           ,<<"Custom-Channel-Vars">>
           ,<<"Custom-SIP-Headers">>
@@ -48,7 +68,7 @@
           ,<<"Fax-Timezone">>
           ,<<"Flags">>
           ,<<"Force-Fax">>
-          ,<<"Force-Outbound">>
+          ,?KEY_FORCE_OUTBOUND
           ,<<"Format-From-URI">>
           ,<<"From-URI-Realm">>
           ,<<"Group-ID">>
@@ -60,7 +80,7 @@
           ,<<"Media">>
           ,<<"Message-ID">>
           ,<<"Mode">>
-          ,<<"Outbound-Call-ID">>
+          ,?KEY_OUTBOUND_CALL_ID
           ,<<"Outbound-Caller-ID-Name">>
           ,<<"Outbound-Caller-ID-Number">>
           ,<<"Presence-ID">>
@@ -70,9 +90,9 @@
 -define(OFFNET_RESOURCE_REQ_VALUES
         ,[{<<"Event-Category">>, <<"resource">>}
           ,{<<"Event-Name">>, <<"offnet_req">>}
-          ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"originate">>, <<"sms">>]}
+          ,{?KEY_RESOURCE_TYPE, [?RESOURCE_TYPE_AUDIO, ?RESOURCE_TYPE_VIDEO, ?RESOURCE_TYPE_ORIGINATE, ?RESOURCE_TYPE_SMS]}
           ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
-                                     ,<<"fax">>, <<"eavesdrop">>, <<"sms">>
+                                     ,<<"fax">>, <<"eavesdrop">>, ?RESOURCE_TYPE_SMS
                                     ]}
           ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
           %% Eavesdrop
@@ -82,23 +102,23 @@
                         ]}
          ]).
 -define(OFFNET_RESOURCE_REQ_TYPES
-        ,[{<<"Account-ID">>, fun is_binary/1}
+        ,[{?KEY_ACCOUNT_ID, fun is_binary/1}
           ,{<<"B-Leg-Events">>, fun wapi_dialplan:b_leg_events_v/1}
-          ,{<<"Call-ID">>, fun is_binary/1}
+          ,{?KEY_CALL_ID, fun is_binary/1}
           ,{<<"Control-Queue">>, fun is_binary/1}
           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
           ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
           ,{<<"Flags">>, fun is_list/1}
           ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
-          ,{<<"Force-Outbound">>, fun wh_util:is_boolean/1}
-          ,{<<"To-DID">>, fun is_binary/1}
+          ,{?KEY_FORCE_OUTBOUND, fun wh_util:is_boolean/1}
+          ,{?KEY_TO_DID, fun is_binary/1}
          ]).
 
 %% Offnet Resource Response
 -define(OFFNET_RESOURCE_RESP_HEADERS, [<<"Response-Message">>]).
 -define(OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS, [<<"Error-Message">>, <<"Response-Code">>
-                                                ,<<"Call-ID">>, <<"Resource-Response">>
+                                                ,?KEY_CALL_ID, <<"Resource-Response">>
                                                 ,<<"Control-Queue">>
                                                ]).
 -define(OFFNET_RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
@@ -177,3 +197,45 @@ publish_resp(TargetQ, JObj) -> publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE
 publish_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+
+-spec force_outbound(wh_json:object()) -> boolean().
+-spec force_outbound(wh_json:object(), Default) -> boolean() | Default.
+force_outbound(JObj) ->
+    force_outbound(JObj, 'false').
+force_outbound(JObj, Default) ->
+    wh_json:is_true(?KEY_FORCE_OUTBOUND, JObj, Default).
+
+-spec resource_type(wh_json:object()) -> ne_binary().
+-spec resource_type(wh_json:object(), Default) -> ne_binary() | Default.
+resource_type(JObj) ->
+    resource_type(JObj, ?RESOURCE_TYPE_AUDIO).
+resource_type(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_RESOURCE_TYPE, JObj, Default).
+
+-spec account_id(wh_json:object()) -> api_binary().
+-spec account_id(wh_json:object(), Default) -> ne_binary() | Default.
+account_id(JObj) ->
+    account_id(JObj, 'undefined').
+account_id(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_ACCOUNT_ID, JObj, Default).
+
+-spec outbound_call_id(wh_json:object()) -> api_binary().
+-spec outbound_call_id(wh_json:object(), Default) -> ne_binary() | Default.
+outbound_call_id(JObj) ->
+    outbound_call_id(JObj, 'undefined').
+outbound_call_id(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_OUTBOUND_CALL_ID, JObj, Default).
+
+-spec to_did(wh_json:object()) -> api_binary().
+-spec to_did(wh_json:object(), Default) -> ne_binary() | Default.
+to_did(JObj) ->
+    to_did(JObj, 'undefined').
+to_did(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_TO_DID, JObj, Default).
+
+-spec call_id(wh_json:object()) -> api_binary().
+-spec call_id(wh_json:object(), Default) -> ne_binary() | Default.
+call_id(JObj) ->
+    call_id(JObj, 'undefined').
+call_id(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_CALL_ID, JObj, Default).

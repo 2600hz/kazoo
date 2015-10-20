@@ -18,7 +18,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% process a Whistle offnet resource request (outbound) for a audio
+%% process an offnet resource request (outbound)
 %% route
 %% @end
 %%--------------------------------------------------------------------
@@ -26,7 +26,7 @@
 handle_req(OffnetJObj, _Props) ->
     'true' = wapi_offnet_resource:req_v(OffnetJObj),
     _ = wh_util:put_callid(OffnetJObj),
-    case wh_json:get_value(<<"Resource-Type">>, OffnetJObj) of
+    case wapi_offnet_resource:resource_type(OffnetJObj) of
         <<"audio">> -> handle_audio_req(OffnetJObj);
         <<"originate">> -> handle_originate_req(OffnetJObj);
         <<"sms">> -> handle_sms_req(OffnetJObj)
@@ -62,14 +62,11 @@ handle_audio_req(Number, OffnetJObj) ->
 handle_originate_req(OffnetJObj) ->
     Number = stepswitch_util:get_outbound_destination(OffnetJObj),
     lager:debug("received outbound audio resource request for ~s from account ~s"
-                ,[Number, wh_json:get_value(<<"Account-ID">>, OffnetJObj)]
+                ,[Number, wapi_offnet_resourece:account_id(OffnetJObj)]
                ),
-    case wh_json:get_value(<<"Outbound-Call-ID">>, OffnetJObj) of
-        'undefined' ->
-            J = wh_json:set_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), OffnetJObj),
-            maybe_originate(Number, J);
-        _Else -> maybe_originate(Number, OffnetJObj)
-    end.
+    maybe_originate(Number
+                    ,wh_json:insert_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), OffnetJObj)
+                   ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,7 +93,7 @@ handle_sms_req(OffnetJObj) ->
 -spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound(Props, OffnetJObj) ->
     case wh_number_properties:should_force_outbound(Props)
-        orelse wh_json:is_true(<<"Force-Outbound">>, OffnetJObj, 'false')
+        orelse wapi_offnet_resource:force_outbound(OffnetJObj, 'false')
     of
         'false' -> local_extension(Props, OffnetJObj);
         'true' ->
@@ -113,7 +110,7 @@ maybe_force_outbound(Props, OffnetJObj) ->
 -spec maybe_force_outbound_sms(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound_sms(Props, OffnetJObj) ->
     case props:get_is_true('force_outbound', Props)
-        orelse wh_json:is_true(<<"Force-Outbound">>, OffnetJObj, 'false')
+        orelse wapi_offnet_resource:force_outbound(OffnetJObj, 'false')
     of
         'false' -> local_sms(Props, OffnetJObj);
         'true' ->
@@ -200,7 +197,7 @@ maybe_originate(Number, OffnetJObj) ->
 %%--------------------------------------------------------------------
 -spec publish_no_resources(wh_json:object()) -> 'ok'.
 publish_no_resources(OffnetJObj) ->
-    case wh_api:service_id(OffnetJObj) of
+    case wh_api:server_id(OffnetJObj) of
         'undefined' -> 'ok';
         ResponseQ ->
             wapi_offnet_resource:publish_resp(ResponseQ, no_resources(OffnetJObj))
@@ -208,14 +205,14 @@ publish_no_resources(OffnetJObj) ->
 
 -spec no_resources(wh_json:object()) -> wh_proplist().
 no_resources(OffnetJObj) ->
-    ToDID = wh_json:get_value(<<"To-DID">>, OffnetJObj),
+    ToDID = wapi_offnet_resource:to_did(OffnetJObj),
     lager:info("no available resources for ~s", [ToDID]),
     props:filter_undefined(
       [{<<"To-DID">>, ToDID}
        ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
        ,{<<"Response-Code">>, <<"sip:404">>}
        ,{<<"Error-Message">>, <<"no available resources">>}
-       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, OffnetJObj)}
+       ,{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetJObj)}
        ,{<<"Msg-ID">>, wh_api:msg_id(OffnetJObj)}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
