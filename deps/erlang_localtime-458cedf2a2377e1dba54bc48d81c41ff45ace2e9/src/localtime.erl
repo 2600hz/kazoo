@@ -222,6 +222,8 @@ tr_char([H|T], From, To, Acc) ->
    end.
 
 -define(SPACE_CHAR, 32).
+get_timezone(<<_/binary>> = Timezone) ->
+    binary_to_list(Timezone);
 get_timezone(TimeZone) ->
    TimeZoneNoSpaces = tr_char(TimeZone, ?SPACE_CHAR, $_),
    case dict:find(TimeZoneNoSpaces, ?tz_index)  of
