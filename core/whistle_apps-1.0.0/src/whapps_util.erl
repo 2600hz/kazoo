@@ -303,6 +303,7 @@ get_account_by_ip(IP) ->
                                      {'error', 'not_found'}.
 get_ccvs_by_ip(IP) ->
     case wh_cache:peek_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP)) of
+        {'ok', {'error', 'not_found'}=E} -> E;
         {'error', 'not_found'} -> do_get_ccvs_by_ip(IP);
         {'ok', _AccountCCVs} = OK -> OK
     end.
@@ -322,6 +323,7 @@ do_get_ccvs_by_ip(IP) ->
             {'ok', AccountCCVs};
         {'error', _E} = Error ->
             lager:debug("error looking up by IP: ~s: ~p", [IP, _E]),
+            wh_cache:store_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), {'error', 'not_found'}),
             Error
     end.
 
