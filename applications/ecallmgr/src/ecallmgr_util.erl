@@ -912,6 +912,7 @@ media_path(MediaName, UUID, JObj) -> media_path(MediaName, 'new', UUID, JObj).
 
 -spec media_path(api_binary(), media_types(), ne_binary(), wh_json:object()) -> ne_binary().
 media_path('undefined', _Type, _UUID, _) -> <<"silence_stream://5">>;
+media_path(<<>>, _Type, _UUID, _) -> <<"silence_stream://5">>;
 media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
     media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
 media_path(<<"silence">> = Media, _Type, _UUID, _) -> Media;
