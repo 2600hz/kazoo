@@ -23,6 +23,7 @@
          ,hunt_account_id/1, hunt_account_id/2
          ,outbound_call_id/1, outbound_call_id/2
          ,outbound_caller_id_number/1, outbound_caller_id_number/2
+         ,outbound_caller_id_name/1, outbound_caller_id_name/2
          ,call_id/1, call_id/2
          ,to_did/1, to_did/2
          ,flags/1, flags/2
@@ -37,6 +38,7 @@
 -define(KEY_FORCE_OUTBOUND, <<"Force-Outbound">>).
 -define(KEY_HUNT_ACCOUNT_ID, <<"Hunt-Account-ID">>).
 -define(KEY_OUTBOUND_CALL_ID, <<"Outbound-Call-ID">>).
+-define(KEY_OUTBOUND_CALLER_ID_NAME, <<"Outbound-Caller-ID-Name">>).
 -define(KEY_OUTBOUND_CALLER_ID_NUMBER, <<"Outbound-Caller-ID-Number">>).
 -define(KEY_RESOURCE_TYPE, <<"Resource-Type">>).
 -define(KEY_TO_DID, <<"To-DID">>).
@@ -86,7 +88,7 @@
           ,<<"Message-ID">>
           ,<<"Mode">>
           ,?KEY_OUTBOUND_CALL_ID
-          ,<<"Outbound-Caller-ID-Name">>
+          ,?KEY_OUTBOUND_CALLER_ID_NAME
           ,?KEY_OUTBOUND_CALLER_ID_NUMBER
           ,<<"Presence-ID">>
           ,<<"Ringback">>
@@ -244,6 +246,13 @@ outbound_caller_id_number(JObj) ->
     outbound_caller_id_number(JObj, 'undefined').
 outbound_caller_id_number(JObj, Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, JObj, Default).
+
+-spec outbound_caller_id_name(wh_json:object()) -> api_binary().
+-spec outbound_caller_id_name(wh_json:object(), Default) -> ne_binary() | Default.
+outbound_caller_id_name(JObj) ->
+    outbound_caller_id_name(JObj, 'undefined').
+outbound_caller_id_name(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NAME, JObj, Default).
 
 -spec to_did(wh_json:object()) -> api_binary().
 -spec to_did(wh_json:object(), Default) -> ne_binary() | Default.

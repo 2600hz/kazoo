@@ -500,9 +500,9 @@ filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match) ->
     end.
 
 -spec update_ccvs(wh_json:object(), wh_proplist()) -> wh_json:object().
-update_ccvs(JObj, Updates) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    wh_json:set_value(<<"Custom-Channel-Vars">>, wh_json:set_values(Updates, CCVs), JObj).
+update_ccvs(Endpoint, Updates) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
+    wh_json:set_value(<<"Custom-Channel-Vars">>, wh_json:set_values(Updates, CCVs), Endpoint).
 
 -spec evaluate_rules(re:mp(), ne_binary()) ->
                             {'ok', ne_binary()} |
@@ -535,14 +535,16 @@ evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 %%--------------------------------------------------------------------
 -spec gateways_to_endpoints(ne_binary(), gateways(), wh_json:object(), wh_json:objects()) ->
                                    wh_json:objects().
-gateways_to_endpoints(_, [], _, Endpoints) -> Endpoints;
-gateways_to_endpoints(Number, [Gateway|Gateways], JObj, Endpoints) ->
-    gateways_to_endpoints(Number, Gateways, JObj
-                          ,[gateway_to_endpoint(Number, Gateway, JObj) | Endpoints]
+gateways_to_endpoints(_Number, [], _OffnetJObj, Endpoints) -> Endpoints;
+gateways_to_endpoints(Number, [Gateway|Gateways], OffnetJObj, Endpoints) ->
+    gateways_to_endpoints(Number
+                          ,Gateways
+                          ,OffnetJObj
+                          ,[gateway_to_endpoint(Number, Gateway, OffnetJObj) | Endpoints]
                          ).
 
 -spec gateway_to_endpoint(ne_binary(), gateway(), wh_json:object()) ->
-                                wh_json:object().
+                                 wh_json:object().
 gateway_to_endpoint(Number
                     ,#gateway{invite_format=InviteFormat
                               ,caller_id_type=CallerIdType
@@ -556,7 +558,7 @@ gateway_to_endpoint(Number
                               ,endpoint_options=EndpointOptions
                               ,progress_timeout=ProgressTimeout
                              }=Gateway
-                    ,JObj
+                    ,OffnetJObj
                    ) ->
     CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
@@ -581,9 +583,9 @@ gateway_to_endpoint(Number
          ,{<<"Endpoint-Options">>, EndpointOptions}
          ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(ProgressTimeout)}
          ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-         ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, JObj)}
-         ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, JObj)}
-         | maybe_get_t38(Gateway, JObj)
+         ,{<<"Outbound-Caller-ID-Number">>, wapi_offnet_resource:outbound_caller_id_number(OffnetJObj)}
+         ,{<<"Outbound-Caller-ID-Name">>, wapi_offnet_resource:outbound_caller_id_name(OffnetJObj)}
+         | maybe_get_t38(Gateway, OffnetJObj)
         ])).
 
 -spec gateway_from_uri_settings(gateway()) -> wh_proplist().
