@@ -315,6 +315,7 @@ do_get_ccvs_by_ip(IP) ->
     case couch_mgr:get_results(?WH_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}]) of
         {'ok', []} ->
             lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
+            wh_cache:store_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), {'error', 'not_found'}),
             {'error', 'not_found'};
         {'ok', [Doc|_]} ->
             lager:debug("found IP ~s in db ~s (~s)", [IP, ?WH_SIP_DB, wh_doc:id(Doc)]),
@@ -323,7 +324,6 @@ do_get_ccvs_by_ip(IP) ->
             {'ok', AccountCCVs};
         {'error', _E} = Error ->
             lager:debug("error looking up by IP: ~s: ~p", [IP, _E]),
-            wh_cache:store_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), {'error', 'not_found'}),
             Error
     end.
 
