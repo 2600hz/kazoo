@@ -33,7 +33,7 @@ determine_account_id(Request) ->
 
 -spec determine_account_id_from_ip(j5_request:request(), ne_binary()) -> 'ok'.
 determine_account_id_from_ip(Request, IP) ->
-    case whapps_util:get_account_by_ip(IP) of
+    case whapps_util:get_ccvs_by_ip(IP) of
         {'ok', AccountCCVs} ->
             lager:debug("found account auth'd by IP ~s: ~s"
                         ,[IP, props:get_value(<<"Account-ID">>, AccountCCVs)]

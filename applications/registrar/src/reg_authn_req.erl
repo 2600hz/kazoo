@@ -275,10 +275,10 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %%-----------------------------------------------------------------------------
 -spec lookup_account_by_ip(ne_binary()) ->
                                   {'ok', wh_proplist()} |
-                                  couch_mgr:couchbeam_error().
+                                  {'error', 'not_founnd'}.
 lookup_account_by_ip(IP) ->
     lager:debug("looking up IP: ~s in db ~s", [IP, ?WH_SIP_DB]),
-    whapps_util:get_account_by_ip(IP).
+    whapps_util:get_ccvs_by_ip(IP).
 
 %%-----------------------------------------------------------------------------
 %% @private
