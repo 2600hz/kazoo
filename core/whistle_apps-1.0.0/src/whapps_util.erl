@@ -25,7 +25,7 @@
         ,is_account_mod/1
         ]).
 -export([get_account_by_realm/1
-         ,get_account_by_ip/1
+         ,get_account_by_ip/1, get_ccvs_by_ip/1
          ,get_accounts_by_name/1
         ]).
 -export([get_master_account_id/0
@@ -291,19 +291,26 @@ get_account_by_realm(RawRealm) ->
     Realm = wh_util:to_lower_binary(RawRealm),
     get_accounts_by(Realm, ?ACCT_BY_REALM_CACHE(Realm), ?AGG_LIST_BY_REALM).
 
--spec get_account_by_ip(ne_binary()) ->
-                               {'ok', wh_proplist()} |
-                               {'error', 'not_found'}.
+-spec get_account_by_ip(ne_binary()) -> getby_return().
 get_account_by_ip(IP) ->
-    case wh_cache:peek_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP)) of
-        {'error', 'not_found'} -> do_get_account_by_ip(IP);
-        {'ok', _} = OK -> OK
+    case get_ccvs_by_ip(IP) of
+        {'error', 'not_found'}=E -> E;
+        {'ok', AccountCCVs} ->
+            {'ok', props:get_value(<<"Account-ID">>, AccountCCVs)}
     end.
 
--spec do_get_account_by_ip(ne_binary()) ->
-                                  {'ok', wh_proplist()} |
-                                  {'error', 'not_found'}.
-do_get_account_by_ip(IP) ->
+-spec get_ccvs_by_ip(ne_binary()) -> {'ok', wh_proplist()} |
+                                     {'error', 'not_found'}.
+get_ccvs_by_ip(IP) ->
+    case wh_cache:peek_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP)) of
+        {'error', 'not_found'} -> do_get_ccvs_by_ip(IP);
+        {'ok', _AccountCCVs} = OK -> OK
+    end.
+
+-spec do_get_ccvs_by_ip(ne_binary()) ->
+                               {'ok', wh_proplist()} |
+                               {'error', 'not_found'}.
+do_get_ccvs_by_ip(IP) ->
     case couch_mgr:get_results(?WH_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}]) of
         {'ok', []} ->
             lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
