@@ -20,9 +20,12 @@
 -export([force_outbound/1, force_outbound/2
          ,resource_type/1, resource_type/2
          ,account_id/1, account_id/2
+         ,hunt_account_id/1, hunt_account_id/2
          ,outbound_call_id/1, outbound_call_id/2
+         ,outbound_caller_id_number/1, outbound_caller_id_number/2
          ,call_id/1, call_id/2
          ,to_did/1, to_did/2
+         ,flags/1, flags/2
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -30,8 +33,11 @@
 
 -define(KEY_ACCOUNT_ID, <<"Account-ID">>).
 -define(KEY_CALL_ID, <<"Call-ID">>).
+-define(KEY_FLAGS, <<"Flags">>).
 -define(KEY_FORCE_OUTBOUND, <<"Force-Outbound">>).
+-define(KEY_HUNT_ACCOUNT_ID, <<"Hunt-Account-ID">>).
 -define(KEY_OUTBOUND_CALL_ID, <<"Outbound-Call-ID">>).
+-define(KEY_OUTBOUND_CALLER_ID_NUMBER, <<"Outbound-Caller-ID-Number">>).
 -define(KEY_RESOURCE_TYPE, <<"Resource-Type">>).
 -define(KEY_TO_DID, <<"To-DID">>).
 
@@ -66,15 +72,14 @@
           ,<<"Fax-Identity-Name">>
           ,<<"Fax-Identity-Number">>
           ,<<"Fax-Timezone">>
-          ,<<"Flags">>
+          ,?KEY_FLAGS
           ,<<"Force-Fax">>
           ,?KEY_FORCE_OUTBOUND
           ,<<"Format-From-URI">>
           ,<<"From-URI-Realm">>
           ,<<"Group-ID">>
           ,<<"Hold-Media">>
-          ,<<"Hunt-Account-ID">>
-          ,<<"Hunt-Account-ID">>
+          ,?KEY_HUNT_ACCOUNT_ID
           ,<<"Ignore-Early-Media">>
           ,<<"Inception">>
           ,<<"Media">>
@@ -82,7 +87,7 @@
           ,<<"Mode">>
           ,?KEY_OUTBOUND_CALL_ID
           ,<<"Outbound-Caller-ID-Name">>
-          ,<<"Outbound-Caller-ID-Number">>
+          ,?KEY_OUTBOUND_CALLER_ID_NUMBER
           ,<<"Presence-ID">>
           ,<<"Ringback">>
           ,<<"Timeout">>
@@ -109,7 +114,7 @@
           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
           ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
-          ,{<<"Flags">>, fun is_list/1}
+          ,{?KEY_FLAGS, fun is_list/1}
           ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
           ,{?KEY_FORCE_OUTBOUND, fun wh_util:is_boolean/1}
           ,{?KEY_TO_DID, fun is_binary/1}
@@ -219,12 +224,26 @@ account_id(JObj) ->
 account_id(JObj, Default) ->
     wh_json:get_ne_value(?KEY_ACCOUNT_ID, JObj, Default).
 
+-spec hunt_account_id(wh_json:object()) -> api_binary().
+-spec hunt_account_id(wh_json:object(), Default) -> ne_binary() | Default.
+hunt_account_id(JObj) ->
+    hunt_account_id(JObj, 'undefined').
+hunt_account_id(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_HUNT_ACCOUNT_ID, JObj, Default).
+
 -spec outbound_call_id(wh_json:object()) -> api_binary().
 -spec outbound_call_id(wh_json:object(), Default) -> ne_binary() | Default.
 outbound_call_id(JObj) ->
     outbound_call_id(JObj, 'undefined').
 outbound_call_id(JObj, Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALL_ID, JObj, Default).
+
+-spec outbound_caller_id_number(wh_json:object()) -> api_binary().
+-spec outbound_caller_id_number(wh_json:object(), Default) -> ne_binary() | Default.
+outbound_caller_id_number(JObj) ->
+    outbound_caller_id_number(JObj, 'undefined').
+outbound_caller_id_number(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, JObj, Default).
 
 -spec to_did(wh_json:object()) -> api_binary().
 -spec to_did(wh_json:object(), Default) -> ne_binary() | Default.
@@ -239,3 +258,10 @@ call_id(JObj) ->
     call_id(JObj, 'undefined').
 call_id(JObj, Default) ->
     wh_json:get_ne_value(?KEY_CALL_ID, JObj, Default).
+
+-spec flags(wh_json:object()) -> ne_binaries().
+-spec flags(wh_json:object(), Default) -> ne_binaries() | Default.
+flags(JObj) ->
+    flags(JObj, []).
+flags(JObj, Default) ->
+    wh_json:get_list_value(?KEY_FLAGS, JObj, Default).
