@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -11,6 +11,8 @@
 -export([is_ip_unique/2]).
 
 -include("./crossbar.hrl").
+
+-define(AUTHZ_ID, <<"authorizing_id">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -38,12 +40,10 @@ is_ip_acl_unique(IP, DeviceId) ->
 
 -spec is_ip_unique(wh_json:object(), ne_binary(), ne_binary()) -> boolean().
 is_ip_unique(JObj, IP, DeviceId) ->
-    CIDR = wh_json:get_value(<<"ip">>, JObj),
-    AuthorizingId = wh_json:get_value(<<"authorizing_id">>, JObj),
-    case AuthorizingId =:= DeviceId of
-        'true' -> 'true';
-        'false' ->
-            not (wh_network_utils:verify_cidr(IP, CIDR))
+    case wh_json:get_value(?AUTHZ_ID, JObj) of
+        DeviceId -> 'true';
+        _AuthorizingId ->
+            not (wh_network_utils:verify_cidr(IP, wh_json:get_value(<<"ip">>, JObj)))
     end.
 
 %%--------------------------------------------------------------------
@@ -54,12 +54,9 @@ is_ip_unique(JObj, IP, DeviceId) ->
 %%--------------------------------------------------------------------
 -spec is_ip_sip_auth_unique(ne_binary(), ne_binary()) -> boolean().
 is_ip_sip_auth_unique(IP, DeviceId) ->
-    ViewOptions = [{<<"key">>, IP}],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_doc:id(JObj) =:= DeviceId;
-        {'error', 'not_found'} -> 'true';
-        _ -> 'false'
+    case whapps_util:get_ccvs_by_ip(IP) of
+        {'ok', CCVs} -> props:get_value(<<"Authorizing-ID">>, CCVs) =:= DeviceId;
+        {'error', 'not_found'} -> 'true'
     end.
 
 %%--------------------------------------------------------------------
@@ -85,7 +82,7 @@ get_all_acl_ips() ->
     case Resp of
         {'error', _} -> [];
         {'ok', JObj} ->
-            extract_all_ips(wh_json:get_value(<<"Value">>, JObj, wh_json:new()))
+            extract_all_ips(wapi_sysconf:get_value(JObj, wh_json:new()))
     end.
 
 %%--------------------------------------------------------------------
@@ -105,7 +102,7 @@ extract_ip(_Key, Value, Acc) ->
         'undefined' -> Acc;
         CIDR ->
             [wh_json:from_list([{<<"ip">>, CIDR}
-                                ,{<<"authorizing_id">>, wh_json:get_value(<<"authorizing_id">>, Value)}
+                                ,{?AUTHZ_ID, wh_json:get_value(?AUTHZ_ID, Value)}
                                ])
              |Acc
             ]

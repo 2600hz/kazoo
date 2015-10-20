@@ -213,14 +213,13 @@ maybe_remove_aggregate(_ResourceId, _Context, _Status) -> 'false'.
 get_all_sip_auth_ips() ->
     ViewOptions = [],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
-        {'ok', JObjs} ->
-            lists:foldr(fun(JObj, IPs) ->
-                                IP = wh_json:get_value(<<"key">>, JObj),
-                                ID = wh_doc:id(JObj),
-                                [{IP, ID}|IPs]
-                        end, [], JObjs);
+        {'ok', JObjs} -> lists:foldr(fun get_sip_auth_ip/2, [], JObjs);
         {'error', _} -> []
     end.
+
+-spec get_sip_auth_ip(wh_json:object(), sip_auth_ips()) -> sip_auth_ips().
+get_sip_auth_ip(JObj, IPs) ->
+    [{wh_json:get_value(<<"key">>, JObj), wh_doc:id(JObj)} | IPs].
 
 -type acl_ips() :: ne_binaries().
 -spec get_all_acl_ips() -> acl_ips().
@@ -245,14 +244,16 @@ get_all_acl_ips() ->
 
 -spec extract_all_ips(wh_json:object()) -> acl_ips().
 extract_all_ips(JObj) ->
-    lists:foldr(fun(K, IPs) ->
-                        case wh_json:get_value([K, <<"cidr">>], JObj) of
-                            'undefined' -> IPs;
-                            CIDR ->
-                                AuthorizingId = wh_json:get_value([K, <<"authorizing_id">>], JObj),
-                                [{CIDR, AuthorizingId} | IPs]
-                        end
-                end, [], wh_json:get_keys(JObj)).
+    wh_json:foldl(fun extract_ips_fold/3, [], JObj).
+
+-spec extract_ips_fold(wh_json:key(), wh_json:object(), acl_ips()) -> acl_ips().
+extract_ips_fold(_K, JObj, IPs) ->
+    case wh_json:get_value(<<"cidr">>, JObj) of
+        'undefined' -> IPs;
+        CIDR ->
+            AuthorizingId = wh_json:get_value(<<"authorizing_id">>, JObj),
+            [{CIDR, AuthorizingId} | IPs]
+    end.
 
 -type gateway_ip() :: {non_neg_integer(), api_binary(), api_binary()}.
 -type gateway_ips() :: [gateway_ip()].
