@@ -13,7 +13,7 @@
 %% OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 {application, hep, [ {description, "hep - Homer Encapsulation Protocol"}
-                   , {vsn, "1.5.3"}
+                   , {vsn, "1.5.4"}
                    , {modules, [ hep
                                , hep_util
                                , hep_v1

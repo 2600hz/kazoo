@@ -209,6 +209,7 @@ make_and_store_chunk(ParserId, LogIP, LogPort, Counter, Data00) ->
                            ,{fun ci_chunk:timestamp/2, Timestamp}
                            ,{fun ci_chunk:parser/2, ParserId}
                            ,{fun ci_chunk:label/2, label(Data)}
+                           ,{fun ci_chunk:c_seq/2, ci_parsers_util:c_seq(Data)}
                           ]
                         ),
     lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),

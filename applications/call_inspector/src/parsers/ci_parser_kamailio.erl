@@ -215,6 +215,7 @@ make_and_store_chunk(ParserId, LogIP, LogPort, Callid, Counter, Data0) ->
                            ,{fun ci_chunk:dst_ip/2, to(ReversedData0,LogIP)}
                            ,{fun ci_chunk:src_port/2, from_port(ReversedData0,LogPort)}
                            ,{fun ci_chunk:dst_port/2, to_port(ReversedData0,LogPort)}
+                           ,{fun ci_chunk:c_seq/2, c_seq(Data)}
                           ]
                         ),
     lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),
@@ -385,3 +386,9 @@ to_port([<<"pass|",To/binary>>|_Data], Default) ->
     get_port(To, Default);
 to_port([_Datum|Data], Default) ->
     to(Data, Default).
+
+
+-spec c_seq(ne_binaries()) -> api_binary().
+c_seq([<<"cseq ", CSeq/binary>>|_Data]) -> CSeq;
+c_seq([]) -> 'undefined';
+c_seq([_Datum|Data]) -> c_seq(Data).

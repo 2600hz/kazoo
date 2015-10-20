@@ -66,7 +66,6 @@ ipv6_encode_decode_test () ->
 
 
 decode_test () ->
-    Hep = real_hep(),
     ?assertMatch({ok, #hep{ version = 'hep_v1'
                           , protocol_family = 'ipv4'
                           , protocol = 17

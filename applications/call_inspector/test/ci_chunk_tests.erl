@@ -5,6 +5,12 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-export([ chunks_1/1
+        , chunks_2/1
+        , chunks_3/1
+        , chunks_4/1
+        ]).
+
 %% API tests.
 
 json_test_() ->
@@ -17,24 +23,29 @@ json_test_() ->
       [ fun chunks_1/1
       , fun chunks_2/1
       , fun chunks_3/1
+      , fun chunks_4/1
       ]).
 
 reorder_dialog_1_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_1()),
-    reorder_dialog('10.26.0.182:9061', fun chunks_1/1, Chunks)
-        ++ reorder_dialog('10.26.0.182:9061', fun chunks_1/1, shuffle(Chunks))
-        ++ reorder_dialog('10.26.0.182:9061', fun chunks_1/1, shuffle(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, shuffle(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, shuffle(Chunks)).
 
 reorder_dialog_2_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_2()),
-    reorder_dialog('10.26.0.182:9060', fun chunks_2/1, Chunks)
-        ++ reorder_dialog('10.26.0.182:9060', fun chunks_2/1, shuffle(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, shuffle(Chunks)).
 
 reorder_dialog_3_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_3()),
-    reorder_dialog('10.26.0.182:9061', fun chunks_3/1, Chunks)
-        ++ reorder_dialog('10.26.0.182:9061', fun chunks_3/1, shuffle(Chunks))
-        ++ reorder_dialog('10.26.0.182:9061', fun chunks_3/1, shuffle(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, shuffle(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, shuffle(Chunks)).
+
+reorder_dialog_4_test_() ->
+    Chunks = lists:map(fun ci_chunk:from_json/1, chunks_4()),
+    reorder_dialog(<<"192.168.56.42:9061">>, fun chunks_4/1, Chunks).
 
 %% Internals
 
@@ -44,10 +55,17 @@ shuffle(List) ->
 
 reorder_dialog(RefParser, Data1, Chunks) ->
     Reordered = ci_chunk:do_reorder_dialog(RefParser, Chunks),
+
+    %% JObjs = wh_json:encode(lists:map(fun ci_chunk:to_json/1,Reordered)),
+    %% file:write_file("/tmp/ci__"++binary_to_list(ci_chunk:call_id(hd(Chunks)))++"__n.json",
+    %%                 io_lib:format("~s\n",[JObjs])
+    %%                ),
+
     Labels = [wh_json:get_value(<<"label">>, Data1(I)) || I <- lists:seq(1, Data1('count'))],
     LabelsReordered = [ci_chunk:label(Chunk) || Chunk <- Reordered],
     [ ?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))
     , ?_assertEqual(Data1('count'), length(Reordered))
+    , ?_assertEqual(Data1('entities'), ci_chunk:get_dialog_entities(Reordered))
     , ?_assertEqual(Labels, LabelsReordered)
     ] ++
         lists:append(
@@ -61,6 +79,7 @@ reorder_dialog(RefParser, Data1, Chunks) ->
             , ?_assertEqual(ci_chunk:label(C), ci_chunk:label(R))
             , ?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))
             , ?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))
+            , ?_assertEqual(ci_chunk:c_seq(C), ci_chunk:c_seq(R))
             ]
             || I <- lists:seq(1, Data1('count'))
                    , begin
@@ -73,6 +92,8 @@ reorder_dialog(RefParser, Data1, Chunks) ->
 
 
 chunks_3('count') -> 8;
+chunks_3('entities') ->
+    [<<"10.26.0.167:5060">>,<<"10.26.0.182:5060">>,<<"10.26.0.182:11000">>];
 
 chunks_3(1) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -101,7 +122,8 @@ chunks_3(1) ->
         <<"a=rtpmap:0 PCMU/8000">>]},
       {<<"src">>, <<"10.26.0.167:5060">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_3(2) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -118,7 +140,8 @@ chunks_3(2) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.167:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_3(3) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -151,7 +174,8 @@ chunks_3(3) ->
         <<"a=rtpmap:0 PCMU/8000">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.182:11000">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_3(4) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -171,7 +195,8 @@ chunks_3(4) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:11000">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_3(5) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -195,7 +220,8 @@ chunks_3(5) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:11000">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_3(6) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -213,7 +239,8 @@ chunks_3(6) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.182:11000">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 ACK">>}]};
 
 chunks_3(7) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -236,7 +263,8 @@ chunks_3(7) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.167:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_3(8) ->
     {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
@@ -256,7 +284,8 @@ chunks_3(8) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.167:5060">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]}.
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 ACK">>}]}.
 
 chunks_3() ->
     [chunks_3(1),
@@ -291,7 +320,8 @@ chunks_3() ->
          <<"a=rtpmap:0 PCMU/8000">>]},
        {<<"src">>, <<"10.26.0.182:5060">>},
        {<<"dst">>, <<"10.26.0.182:11000">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"1 INVITE">>}]},
      chunks_3(2),
      {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
        {<<"timestamp">>,63601207277.60654},
@@ -310,7 +340,8 @@ chunks_3() ->
          <<"Content-Length: 0">>]},
        {<<"src">>, <<"10.26.0.182:11000">>},
        {<<"dst">>, <<"10.26.0.182:5060">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"1 INVITE">>}]},
      chunks_3(4),
      chunks_3(5),
      chunks_3(6),
@@ -329,7 +360,8 @@ chunks_3() ->
          <<"Content-Length: 0">>]},
        {<<"src">>, <<"10.26.0.182:5060">>},
        {<<"dst">>, <<"10.26.0.182:11000">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"1 ACK">>}]},
      {[{<<"call-id">>,<<"36-52896@10.26.0.167">>},
        {<<"timestamp">>,63601207277.60928},
        {<<"ref_timestamp">>,<<"63601207277.60992">>},
@@ -351,13 +383,15 @@ chunks_3() ->
          <<"Content-Length: 0">>]},
        {<<"src">>, <<"10.26.0.182:11000">>},
        {<<"dst">>, <<"10.26.0.182:5060">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"1 INVITE">>}]},
      chunks_3(7),
      chunks_3(8)].
 
 
 chunks_2() -> [chunks_2(2), chunks_2(1)].
 chunks_2('count') -> 2;
+chunks_2('entities') -> [<<"10.26.0.182:5060">>, <<"10.26.0.182:11000">>];
 chunks_2(1) ->
     {[{<<"call-id">>,<<"5dca43e524c680cf-13867@10.26.0.182">>},
       {<<"timestamp">>,63601204677.8817},
@@ -374,7 +408,8 @@ chunks_2(1) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.182:11000">>},
-      {<<"parser">>,'10.26.0.182:9060'}]};
+      {<<"parser">>, <<"10.26.0.182:9060">>},
+      {<<"c_seq">>, <<"10 OPTIONS">>}]};
 chunks_2(2) ->
     {[{<<"call-id">>,<<"5dca43e524c680cf-13867@10.26.0.182">>},
       {<<"timestamp">>,63601204677.89242},
@@ -396,10 +431,13 @@ chunks_2(2) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:11000">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9060'}]}.
+      {<<"parser">>, <<"10.26.0.182:9060">>},
+      {<<"c_seq">>, <<"10 OPTIONS">>}]}.
 
 
 chunks_1('count') -> 20;
+chunks_1('entities') ->
+    [<<"10.26.0.101:7653">>, <<"10.26.0.182:5060">>, <<"10.26.0.182:11000">>];
 
 chunks_1(1) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -432,7 +470,8 @@ chunks_1(1) ->
         <<"a=fmtp:101 0-15">>]},
       {<<"src">>, <<"10.26.0.101:7653">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_1(2) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -449,7 +488,8 @@ chunks_1(2) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.101:7653">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_1(3) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -486,7 +526,8 @@ chunks_1(3) ->
         <<"a=fmtp:101 0-15">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.182:11000">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_1(4) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -506,7 +547,8 @@ chunks_1(4) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:11000">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_1(5) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -530,7 +572,8 @@ chunks_1(5) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:11000">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_1(6) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -548,7 +591,8 @@ chunks_1(6) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.182:11000">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 ACK">>}]};
 
 chunks_1(7) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -560,8 +604,10 @@ chunks_1(7) ->
         <<"Via: SIP/2.0/UDP 10.26.0.101:7653;rport=7653;branch=z9hG4bK63">>,
         <<"From: \"user_x2d24bd3dq\" <sip:user_x2d24bd3dq@wefwefwefwef.2600hz.com>;tag=63">>,
         <<"To: <sip:347@wefwefwefwef.2600hz.com>;tag=NpFcj556Bv9aK">>,
-        <<"Call-ID: 63-6680@10.26.0.101">>,<<"CSeq: 1 INVITE">>,
-        <<"User-Agent: 2600hz">>,<<"Accept: application/sdp">>,
+        <<"Call-ID: 63-6680@10.26.0.101">>,
+        <<"CSeq: 1 INVITE">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Accept: application/sdp">>,
         <<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE">>,
         <<"Supported: path, replaces">>,
         <<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>,
@@ -569,7 +615,8 @@ chunks_1(7) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.101:7653">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 INVITE">>}]};
 
 chunks_1(8) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -586,7 +633,8 @@ chunks_1(8) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.101:7653">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"1 ACK">>}]};
 
 chunks_1(9) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -619,7 +667,8 @@ chunks_1(9) ->
         <<"a=fmtp:101 0-15">>]},
       {<<"src">>, <<"10.26.0.101:7653">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"2 INVITE">>}]};
 
 chunks_1(10) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -636,7 +685,8 @@ chunks_1(10) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.101:7653">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"2 INVITE">>}]};
 
 chunks_1(11) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -673,7 +723,8 @@ chunks_1(11) ->
         <<"a=fmtp:101 0-15">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.182:11000">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"2 INVITE">>}]};
 
 chunks_1(12) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -693,7 +744,8 @@ chunks_1(12) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:11000">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"2 INVITE">>}]};
 
 chunks_1(13) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -731,7 +783,8 @@ chunks_1(13) ->
         <<"a=ptime:20">>]},
       {<<"src">>, <<"10.26.0.182:11000">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"2 INVITE">>}]};
 
 chunks_1(14) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -769,7 +822,8 @@ chunks_1(14) ->
         <<"a=ptime:20">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.101:7653">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"2 INVITE">>}]};
 
 chunks_1(15) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -790,7 +844,8 @@ chunks_1(15) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.101:7653">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"2 ACK">>}]};
 
 chunks_1(16) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -813,7 +868,8 @@ chunks_1(16) ->
         <<"X-AUTH-PORT: 7653">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.182:11000">>},
-      {<<"parser">>,'10.26.0.182:9060'}]};
+      {<<"parser">>, <<"10.26.0.182:9060">>},
+      {<<"c_seq">>, <<"2 ACK">>}]};
 
 chunks_1(17) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -834,7 +890,8 @@ chunks_1(17) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.101:7653">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"3 BYE">>}]};
 
 chunks_1(18) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -857,7 +914,8 @@ chunks_1(18) ->
         <<"X-AUTH-PORT: 7653">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.182:11000">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"3 BYE">>}]};
 
 chunks_1(19) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -878,7 +936,8 @@ chunks_1(19) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:11000">>},
       {<<"dst">>, <<"10.26.0.182:5060">>},
-      {<<"parser">>,'10.26.0.182:9061'}]};
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"3 BYE">>}]};
 
 chunks_1(20) ->
     {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
@@ -898,7 +957,8 @@ chunks_1(20) ->
         <<"Content-Length: 0">>]},
       {<<"src">>, <<"10.26.0.182:5060">>},
       {<<"dst">>, <<"10.26.0.101:7653">>},
-      {<<"parser">>,'10.26.0.182:9061'}]}.
+      {<<"parser">>, <<"10.26.0.182:9061">>},
+      {<<"c_seq">>, <<"3 BYE">>}]}.
 
 chunks_1() ->
     [chunks_1(1),
@@ -937,7 +997,8 @@ chunks_1() ->
          <<"a=fmtp:101 0-15">>]},
        {<<"src">>, <<"10.26.0.182:5060">>},
        {<<"dst">>, <<"10.26.0.182:11000">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"1 INVITE">>}]},
      chunks_1(2),
      {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
        {<<"timestamp">>,63601112379.25041},
@@ -956,7 +1017,8 @@ chunks_1() ->
          <<"Content-Length: 0">>]},
        {<<"src">>, <<"10.26.0.182:11000">>},
        {<<"dst">>, <<"10.26.0.182:5060">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"1 INVITE">>}]},
      chunks_1(4),
      {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
        {<<"timestamp">>,63601112379.259796},
@@ -979,7 +1041,8 @@ chunks_1() ->
          <<"Content-Length: 0">>]},
        {<<"src">>, <<"10.26.0.182:11000">>},
        {<<"dst">>, <<"10.26.0.182:5060">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"1 INVITE">>}]},
      {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
        {<<"timestamp">>,63601112379.26164},
        {<<"ref_timestamp">>,<<"63601112379.261696">>},
@@ -995,7 +1058,8 @@ chunks_1() ->
          <<"Content-Length: 0">>]},
        {<<"src">>, <<"10.26.0.182:5060">>},
        {<<"dst">>, <<"10.26.0.182:11000">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"1 ACK">>}]},
      chunks_1(6),
      chunks_1(7),
      chunks_1(9),
@@ -1035,7 +1099,8 @@ chunks_1() ->
          <<"a=fmtp:101 0-15">>]},
        {<<"src">>, <<"10.26.0.182:5060">>},
        {<<"dst">>, <<"10.26.0.182:11000">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"2 INVITE">>}]},
      chunks_1(5),
      chunks_1(8),
      chunks_1(10),
@@ -1056,7 +1121,8 @@ chunks_1() ->
          <<"Content-Length: 0">>]},
        {<<"src">>, <<"10.26.0.182:11000">>},
        {<<"dst">>, <<"10.26.0.182:5060">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"2 INVITE">>}]},
      chunks_1(12),
      {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
        {<<"timestamp">>,63601112380.084114},
@@ -1094,7 +1160,8 @@ chunks_1() ->
          <<"a=ptime:20">>]},
        {<<"src">>, <<"10.26.0.182:11000">>},
        {<<"dst">>, <<"10.26.0.182:5060">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"2 INVITE">>}]},
      chunks_1(13),
      chunks_1(14),
      chunks_1(15),
@@ -1120,7 +1187,8 @@ chunks_1() ->
          <<"X-AUTH-PORT: 7653">>]},
        {<<"src">>, <<"10.26.0.182:5060">>},
        {<<"dst">>, <<"10.26.0.182:11000">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"3 BYE">>}]},
      chunks_1(18),
      {[{<<"call-id">>,<<"63-6680@10.26.0.101">>},
        {<<"timestamp">>,63601112383.10524},
@@ -1140,8 +1208,697 @@ chunks_1() ->
          <<"Content-Length: 0">>]},
        {<<"src">>, <<"10.26.0.182:11000">>},
        {<<"dst">>, <<"10.26.0.182:5060">>},
-       {<<"parser">>,'10.26.0.182:9060'}]},
+       {<<"parser">>, <<"10.26.0.182:9060">>},
+       {<<"c_seq">>, <<"3 BYE">>}]},
      chunks_1(20),
      chunks_1(19)].
+
+
+chunks_4('count') -> 19;
+chunks_4('entities') ->
+    [<<"192.168.11.43:33278">>, <<"192.168.11.50:8080">>, <<"192.168.11.50:5060">>, <<"192.168.11.50:11000">>];
+
+chunks_4(1) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816927050},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"INVITE sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>},
+      {<<"raw">>,
+       [<<"INVITE sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;branch=z9hG4bK8189233">>,
+        <<"Max-Forwards: 70">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 278 INVITE">>,
+        <<"Contact: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com;gr=urn:uuid:627b0e14-daac-4793-ba5e-5af6685e7ffd>">>,
+        <<"Allow: ACK,CANCEL,BYE,OPTIONS,INFO,NOTIFY,INVITE,MESSAGE">>,
+        <<"Content-Type: application/sdp">>,
+        <<"Supported: gruu,100rel,outbound">>,
+        <<"User-Agent: SIP.js/0.6.4">>,
+        <<"Content-Length: 1899">>,
+        <<>>,
+        <<"v=0">>,
+        <<"o=- 1168335802169788694 2 IN IP4 127.0.0.1">>,
+        <<"s=-">>,
+        <<"t=0 0">>,
+        <<"a=group:BUNDLE audio">>,
+        <<"a=msid-semantic: WMS qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL">>,
+        <<"m=audio 51838 UDP/TLS/RTP/SAVPF 111 103 104 9 0 8 106 105 13 126">>,
+        <<"c=IN IP4 192.168.56.1">>,
+        <<"a=rtcp:56393 IN IP4 192.168.56.1">>,
+        <<"a=candidate:2999745851 1 udp 2122260223 192.168.56.1 51838 typ host generation 0">>,
+        <<"a=candidate:931536159 1 udp 2122194687 192.168.11.43 47626 typ host generation 0">>,
+        <<"a=candidate:2999745851 2 udp 2122260222 192.168.56.1 56393 typ host generation 0">>,
+        <<"a=candidate:931536159 2 udp 2122194686 192.168.11.43 60311 typ host generation 0">>,
+        <<"a=candidate:4233069003 1 tcp 1518280447 192.168.56.1 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:2030428655 1 tcp 1518214911 192.168.11.43 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:4233069003 2 tcp 1518280446 192.168.56.1 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:2030428655 2 tcp 1518214910 192.168.11.43 0 typ host tcptype active generation 0">>,
+        <<"a=ice-ufrag:iEfCDnWY2LHjTjrc">>,
+        <<"a=ice-pwd:qlDyYz5HIe+tYBMno9lxTNNE">>,
+        <<"a=fingerprint:sha-256 CE:AA:86:95:50:E8:37:53:F6:A7:B9:8D:3E:FD:1D:4F:B3:30:05:F5:02:9F:40:25:EC:50:F6:21:25:4B:48:41">>,
+        <<"a=setup:actpass">>,
+        <<"a=mid:audio">>,
+        <<"a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level">>,
+        <<"a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time">>,
+        <<"a=sendrecv">>,
+        <<"a=rtcp-mux">>,
+        <<"a=rtpmap:111 opus/48000/2">>,
+        <<"a=fmtp:111 minptime=10; useinbandfec=1">>,
+        <<"a=rtpmap:103 ISAC/16000">>,
+        <<"a=rtpmap:104 ISAC/32000">>,
+        <<"a=rtpmap:9 G722/8000">>,
+        <<"a=rtpmap:0 PCMU/8000">>,
+        <<"a=rtpmap:8 PCMA/8000">>,
+        <<"a=rtpmap:106 CN/32000">>,
+        <<"a=rtpmap:105 CN/16000">>,
+        <<"a=rtpmap:13 CN/8000">>,
+        <<"a=rtpmap:126 telephone-event/8000">>,
+        <<"a=maxptime:60">>,
+        <<"a=ssrc:3145715846 cname:BouOoxrW+CAt7smM">>,
+        <<"a=ssrc:3145715846 msid:qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL af933e3c-c4e8-4c05-b453-5ac0708c06b3">>,
+        <<"a=ssrc:3145715846 mslabel:qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL">>,
+        <<"a=ssrc:3145715846 label:af933e3c-c4e8-4c05-b453-5ac0708c06b3">>]},
+      {<<"src">>,<<"192.168.11.43:33278">>},
+      {<<"dst">>,<<"192.168.11.50:8080">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"278 INVITE">>}]};
+
+chunks_4(2) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816924064},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"SIP/2.0 100 Attempting to connect your call">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 100 Attempting to connect your call">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;branch=z9hG4bK8189233;rport=33278;received=192.168.11.43">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 278 INVITE">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:8080">>},
+      {<<"dst">>,<<"192.168.11.43:33278">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"278 INVITE">>}]};
+
+chunks_4(3) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816923544},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"INVITE sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>},
+      {<<"raw">>,
+       [<<"INVITE sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>,
+        <<"Record-Route: <sip:192.168.11.50;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Record-Route: <sip:192.168.11.50:8080;transport=ws;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bKc808.712f074b520713979dbd23cc4f839e61.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK8189233">>,
+        <<"Max-Forwards: 50">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 278 INVITE">>,
+        <<"Contact: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com;alias=192.168.11.43~33278~5;gr=urn:uuid:627b0e14-daac-4793-ba5e-5af6685e7ffd>">>,
+        <<"Allow: ACK,CANCEL,BYE,OPTIONS,INFO,NOTIFY,INVITE,MESSAGE">>,
+        <<"Content-Type: application/sdp">>,
+        <<"Supported: gruu,100rel,outbound">>,
+        <<"User-Agent: SIP.js/0.6.4">>,
+        <<"Content-Length: 1899">>,
+        <<"X-AUTH-IP: 192.168.11.43">>,
+        <<"X-AUTH-PORT: 33278">>,
+        <<>>,
+        <<"v=0">>,
+        <<"o=- 1168335802169788694 2 IN IP4 127.0.0.1">>,
+        <<"s=-">>,
+        <<"t=0 0">>,
+        <<"a=group:BUNDLE audio">>,
+        <<"a=msid-semantic: WMS qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL">>,
+        <<"m=audio 51838 UDP/TLS/RTP/SAVPF 111 103 104 9 0 8 106 105 13 126">>,
+        <<"c=IN IP4 192.168.56.1">>,
+        <<"a=rtcp:56393 IN IP4 192.168.56.1">>,
+        <<"a=candidate:2999745851 1 udp 2122260223 192.168.56.1 51838 typ host generation 0">>,
+        <<"a=candidate:931536159 1 udp 2122194687 192.168.11.43 47626 typ host generation 0">>,
+        <<"a=candidate:2999745851 2 udp 2122260222 192.168.56.1 56393 typ host generation 0">>,
+        <<"a=candidate:931536159 2 udp 2122194686 192.168.11.43 60311 typ host generation 0">>,
+        <<"a=candidate:4233069003 1 tcp 1518280447 192.168.56.1 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:2030428655 1 tcp 1518214911 192.168.11.43 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:4233069003 2 tcp 1518280446 192.168.56.1 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:2030428655 2 tcp 1518214910 192.168.11.43 0 typ host tcptype active generation 0">>,
+        <<"a=ice-ufrag:iEfCDnWY2LHjTjrc">>,
+        <<"a=ice-pwd:qlDyYz5HIe+tYBMno9lxTNNE">>,
+        <<"a=fingerprint:sha-256 CE:AA:86:95:50:E8:37:53:F6:A7:B9:8D:3E:FD:1D:4F:B3:30:05:F5:02:9F:40:25:EC:50:F6:21:25:4B:48:41">>,
+        <<"a=setup:actpass">>,
+        <<"a=mid:audio">>,
+        <<"a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level">>,
+        <<"a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time">>,
+        <<"a=sendrecv">>,
+        <<"a=rtcp-mux">>,
+        <<"a=rtpmap:111 opus/48000/2">>,
+        <<"a=fmtp:111 minptime=10; useinbandfec=1">>,
+        <<"a=rtpmap:103 ISAC/16000">>,
+        <<"a=rtpmap:104 ISAC/32000">>,
+        <<"a=rtpmap:9 G722/8000">>,
+        <<"a=rtpmap:0 PCMU/8000">>,
+        <<"a=rtpmap:8 PCMA/8000">>,
+        <<"a=rtpmap:106 CN/32000">>,
+        <<"a=rtpmap:105 CN/16000">>,
+        <<"a=rtpmap:13 CN/8000">>,
+        <<"a=rtpmap:126 telephone-event/8000">>,
+        <<"a=maxptime:60">>,
+        <<"a=ssrc:3145715846 cname:BouOoxrW+CAt7smM">>,
+        <<"a=ssrc:3145715846 msid:qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL af933e3c-c4e8-4c05-b453-5ac0708c06b3">>,
+        <<"a=ssrc:3145715846 mslabel:qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL">>,
+        <<"a=ssrc:3145715846 label:af933e3c-c4e8-4c05-b453-5ac0708c06b3">>]},
+      {<<"src">>,<<"192.168.11.50:5060">>},
+      {<<"dst">>,<<"192.168.11.50:11000">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"278 INVITE">>}]};
+
+chunks_4(4) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816925306},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"SIP/2.0 100 Trying">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 100 Trying">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bKc808.712f074b520713979dbd23cc4f839e61.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK8189233">>,
+        <<"Record-Route: <sip:192.168.11.50;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Record-Route: <sip:192.168.11.50:8080;transport=ws;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 278 INVITE">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:11000">>},
+      {<<"dst">>,<<"192.168.11.50:5060">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"278 INVITE">>}]};
+
+chunks_4(5) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816923897},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"SIP/2.0 407 Proxy Authentication Required">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 407 Proxy Authentication Required">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bKc808.712f074b520713979dbd23cc4f839e61.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK8189233">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=rN3NU5UcZF3Qm">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 278 INVITE">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Accept: application/sdp">>,
+        <<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, PRACK, NOTIFY, PUBLISH, SUBSCRIBE">>,
+        <<"Supported: precondition, 100rel, path, replaces">>,
+        <<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>,
+        <<"Proxy-Authenticate: Digest realm=\"wefwefwefwef.2600hz.com\", nonce=\"d483d6c2-6ad5-11e5-a5d9-4751ff59c40e\", algorithm=MD5, qop=\"auth\"">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:11000">>},
+      {<<"dst">>,<<"192.168.11.50:5060">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"278 INVITE">>}]};
+
+chunks_4(6) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816927203},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"ACK sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>},
+      {<<"raw">>,
+       [<<"ACK sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bKc808.712f074b520713979dbd23cc4f839e61.0">>,
+        <<"Max-Forwards: 50">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=rN3NU5UcZF3Qm">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 278 ACK">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:5060">>},
+      {<<"dst">>,<<"192.168.11.50:11000">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"278 ACK">>}]};
+
+chunks_4(7) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816925810},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"SIP/2.0 407 Proxy Authentication Required">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 407 Proxy Authentication Required">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK8189233">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=rN3NU5UcZF3Qm">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 278 INVITE">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Accept: application/sdp">>,
+        <<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, PRACK, NOTIFY, PUBLISH, SUBSCRIBE">>,
+        <<"Supported: precondition, 100rel, path, replaces">>,
+        <<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>,
+        <<"Proxy-Authenticate: Digest realm=\"wefwefwefwef.2600hz.com\", nonce=\"d483d6c2-6ad5-11e5-a5d9-4751ff59c40e\", algorithm=MD5, qop=\"auth\"">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:8080">>},
+      {<<"dst">>,<<"192.168.11.43:33278">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"278 INVITE">>}]};
+
+chunks_4(8) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816926139},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"ACK sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>},
+      {<<"raw">>,
+       [<<"ACK sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;branch=z9hG4bK8189233">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=rN3NU5UcZF3Qm">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 278 ACK">>]},
+      {<<"src">>,<<"192.168.11.43:33278">>},
+      {<<"dst">>,<<"192.168.11.50:8080">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"278 ACK">>}]};
+
+chunks_4(9) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816925100},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"INVITE sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>},
+      {<<"raw">>,
+       [<<"INVITE sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;branch=z9hG4bK3609238">>,
+        <<"Max-Forwards: 70">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 279 INVITE">>,
+        <<"Proxy-Authorization: Digest algorithm=MD5, username=\"user_wpxnx7am9w\", realm=\"wefwefwefwef.2600hz.com\", nonce=\"d483d6c2-6ad5-11e5-a5d9-4751ff59c40e\", uri=\"sip:*97@wefwefwefwef.2600hz.com\", response=\"7865876f7242c0e997dc1f4895e95c0c\", qop=auth, cnonce=\"1odio1no4lqc\", nc=00000001">>,
+        <<"Contact: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com;gr=urn:uuid:627b0e14-daac-4793-ba5e-5af6685e7ffd>">>,
+        <<"Allow: ACK,CANCEL,BYE,OPTIONS,INFO,NOTIFY,INVITE,MESSAGE">>,
+        <<"Content-Type: application/sdp">>,
+        <<"Supported: gruu,100rel,outbound">>,
+        <<"User-Agent: SIP.js/0.6.4">>,
+        <<"Content-Length: 1899">>,
+        <<>>,
+        <<"v=0">>,
+        <<"o=- 1168335802169788694 2 IN IP4 127.0.0.1">>,
+        <<"s=-">>,
+        <<"t=0 0">>,
+        <<"a=group:BUNDLE audio">>,
+        <<"a=msid-semantic: WMS qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL">>,
+        <<"m=audio 51838 UDP/TLS/RTP/SAVPF 111 103 104 9 0 8 106 105 13 126">>,
+        <<"c=IN IP4 192.168.56.1">>,
+        <<"a=rtcp:56393 IN IP4 192.168.56.1">>,
+        <<"a=candidate:2999745851 1 udp 2122260223 192.168.56.1 51838 typ host generation 0">>,
+        <<"a=candidate:931536159 1 udp 2122194687 192.168.11.43 47626 typ host generation 0">>,
+        <<"a=candidate:2999745851 2 udp 2122260222 192.168.56.1 56393 typ host generation 0">>,
+        <<"a=candidate:931536159 2 udp 2122194686 192.168.11.43 60311 typ host generation 0">>,
+        <<"a=candidate:4233069003 1 tcp 1518280447 192.168.56.1 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:2030428655 1 tcp 1518214911 192.168.11.43 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:4233069003 2 tcp 1518280446 192.168.56.1 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:2030428655 2 tcp 1518214910 192.168.11.43 0 typ host tcptype active generation 0">>,
+        <<"a=ice-ufrag:iEfCDnWY2LHjTjrc">>,
+        <<"a=ice-pwd:qlDyYz5HIe+tYBMno9lxTNNE">>,
+        <<"a=fingerprint:sha-256 CE:AA:86:95:50:E8:37:53:F6:A7:B9:8D:3E:FD:1D:4F:B3:30:05:F5:02:9F:40:25:EC:50:F6:21:25:4B:48:41">>,
+        <<"a=setup:actpass">>,
+        <<"a=mid:audio">>,
+        <<"a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level">>,
+        <<"a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time">>,
+        <<"a=sendrecv">>,
+        <<"a=rtcp-mux">>,
+        <<"a=rtpmap:111 opus/48000/2">>,
+        <<"a=fmtp:111 minptime=10; useinbandfec=1">>,
+        <<"a=rtpmap:103 ISAC/16000">>,
+        <<"a=rtpmap:104 ISAC/32000">>,
+        <<"a=rtpmap:9 G722/8000">>,
+        <<"a=rtpmap:0 PCMU/8000">>,
+        <<"a=rtpmap:8 PCMA/8000">>,
+        <<"a=rtpmap:106 CN/32000">>,
+        <<"a=rtpmap:105 CN/16000">>,
+        <<"a=rtpmap:13 CN/8000">>,
+        <<"a=rtpmap:126 telephone-event/8000">>,
+        <<"a=maxptime:60">>,
+        <<"a=ssrc:3145715846 cname:BouOoxrW+CAt7smM">>,
+        <<"a=ssrc:3145715846 msid:qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL af933e3c-c4e8-4c05-b453-5ac0708c06b3">>,
+        <<"a=ssrc:3145715846 mslabel:qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL">>,
+        <<"a=ssrc:3145715846 label:af933e3c-c4e8-4c05-b453-5ac0708c06b3">>]},
+      {<<"src">>,<<"192.168.11.43:33278">>},
+      {<<"dst">>,<<"192.168.11.50:8080">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"279 INVITE">>}]};
+
+chunks_4(10) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816927315},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"SIP/2.0 100 Attempting to connect your call">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 100 Attempting to connect your call">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;branch=z9hG4bK3609238;rport=33278;received=192.168.11.43">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 279 INVITE">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:8080">>},
+      {<<"dst">>,<<"192.168.11.43:33278">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"279 INVITE">>}]};
+
+chunks_4(11) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816925520},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"INVITE sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>},
+      {<<"raw">>,
+       [<<"INVITE sip:*97@wefwefwefwef.2600hz.com SIP/2.0">>,
+        <<"Record-Route: <sip:192.168.11.50;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Record-Route: <sip:192.168.11.50:8080;transport=ws;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bKb808.1c07aa9aaf5ea1d017be944c95dfc21d.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK3609238">>,
+        <<"Max-Forwards: 50">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 279 INVITE">>,
+        <<"Proxy-Authorization: Digest algorithm=MD5, username=\"user_wpxnx7am9w\", realm=\"wefwefwefwef.2600hz.com\", nonce=\"d483d6c2-6ad5-11e5-a5d9-4751ff59c40e\", uri=\"sip:*97@wefwefwefwef.2600hz.com\", response=\"7865876f7242c0e997dc1f4895e95c0c\", qop=auth, cnonce=\"1odio1no4lqc\", nc=00000001">>,
+        <<"Contact: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com;alias=192.168.11.43~33278~5;gr=urn:uuid:627b0e14-daac-4793-ba5e-5af6685e7ffd>">>,
+        <<"Allow: ACK,CANCEL,BYE,OPTIONS,INFO,NOTIFY,INVITE,MESSAGE">>,
+        <<"Content-Type: application/sdp">>,
+        <<"Supported: gruu,100rel,outbound">>,
+        <<"User-Agent: SIP.js/0.6.4">>,
+        <<"Content-Length: 1899">>,
+        <<"X-AUTH-IP: 192.168.11.43">>,
+        <<"X-AUTH-PORT: 33278">>,
+        <<>>,
+        <<"v=0">>,
+        <<"o=- 1168335802169788694 2 IN IP4 127.0.0.1">>,
+        <<"s=-">>,
+        <<"t=0 0">>,
+        <<"a=group:BUNDLE audio">>,
+        <<"a=msid-semantic: WMS qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL">>,
+        <<"m=audio 51838 UDP/TLS/RTP/SAVPF 111 103 104 9 0 8 106 105 13 126">>,
+        <<"c=IN IP4 192.168.56.1">>,
+        <<"a=rtcp:56393 IN IP4 192.168.56.1">>,
+        <<"a=candidate:2999745851 1 udp 2122260223 192.168.56.1 51838 typ host generation 0">>,
+        <<"a=candidate:931536159 1 udp 2122194687 192.168.11.43 47626 typ host generation 0">>,
+        <<"a=candidate:2999745851 2 udp 2122260222 192.168.56.1 56393 typ host generation 0">>,
+        <<"a=candidate:931536159 2 udp 2122194686 192.168.11.43 60311 typ host generation 0">>,
+        <<"a=candidate:4233069003 1 tcp 1518280447 192.168.56.1 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:2030428655 1 tcp 1518214911 192.168.11.43 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:4233069003 2 tcp 1518280446 192.168.56.1 0 typ host tcptype active generation 0">>,
+        <<"a=candidate:2030428655 2 tcp 1518214910 192.168.11.43 0 typ host tcptype active generation 0">>,
+        <<"a=ice-ufrag:iEfCDnWY2LHjTjrc">>,
+        <<"a=ice-pwd:qlDyYz5HIe+tYBMno9lxTNNE">>,
+        <<"a=fingerprint:sha-256 CE:AA:86:95:50:E8:37:53:F6:A7:B9:8D:3E:FD:1D:4F:B3:30:05:F5:02:9F:40:25:EC:50:F6:21:25:4B:48:41">>,
+        <<"a=setup:actpass">>,
+        <<"a=mid:audio">>,
+        <<"a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level">>,
+        <<"a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time">>,
+        <<"a=sendrecv">>,
+        <<"a=rtcp-mux">>,
+        <<"a=rtpmap:111 opus/48000/2">>,
+        <<"a=fmtp:111 minptime=10; useinbandfec=1">>,
+        <<"a=rtpmap:103 ISAC/16000">>,
+        <<"a=rtpmap:104 ISAC/32000">>,
+        <<"a=rtpmap:9 G722/8000">>,
+        <<"a=rtpmap:0 PCMU/8000">>,
+        <<"a=rtpmap:8 PCMA/8000">>,
+        <<"a=rtpmap:106 CN/32000">>,
+        <<"a=rtpmap:105 CN/16000">>,
+        <<"a=rtpmap:13 CN/8000">>,
+        <<"a=rtpmap:126 telephone-event/8000">>,
+        <<"a=maxptime:60">>,
+        <<"a=ssrc:3145715846 cname:BouOoxrW+CAt7smM">>,
+        <<"a=ssrc:3145715846 msid:qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL af933e3c-c4e8-4c05-b453-5ac0708c06b3">>,
+        <<"a=ssrc:3145715846 mslabel:qlA2uoiIZCM4ZEDDVXCKBStBUIWfvR8zM6EL">>,
+        <<"a=ssrc:3145715846 label:af933e3c-c4e8-4c05-b453-5ac0708c06b3">>]},
+      {<<"src">>,<<"192.168.11.50:5060">>},
+      {<<"dst">>,<<"192.168.11.50:11000">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"279 INVITE">>}]};
+
+chunks_4(12) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816924983},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"SIP/2.0 100 Trying">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 100 Trying">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bKb808.1c07aa9aaf5ea1d017be944c95dfc21d.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK3609238">>,
+        <<"Record-Route: <sip:192.168.11.50;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Record-Route: <sip:192.168.11.50:8080;transport=ws;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 279 INVITE">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:11000">>},
+      {<<"dst">>,<<"192.168.11.50:5060">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"279 INVITE">>}]};
+
+chunks_4(13) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816924475},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"SIP/2.0 200 OK">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 200 OK">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bKb808.1c07aa9aaf5ea1d017be944c95dfc21d.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK3609238">>,
+        <<"Record-Route: <sip:192.168.11.50;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Record-Route: <sip:192.168.11.50:8080;transport=ws;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=SyveX0cgvrSag">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 279 INVITE">>,
+        <<"Contact: <sip:*97@192.168.11.50:11000;transport=udp>">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Accept: application/sdp">>,
+        <<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, PRACK, NOTIFY, PUBLISH, SUBSCRIBE">>,
+        <<"Supported: precondition, 100rel, path, replaces">>,
+        <<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>,
+        <<"Content-Type: application/sdp">>,
+        <<"Content-Disposition: session">>,
+        <<"Content-Length: 872">>,
+        <<"Remote-Party-ID: \"*97\" <sip:*97@wefwefwefwef.2600hz.com>;party=calling;privacy=off;screen=no">>,
+        <<>>,
+        <<"v=0">>,
+        <<"o=FreeSWITCH 1443971853 1443971854 IN IP4 192.168.11.50">>,
+        <<"s=FreeSWITCH">>,
+        <<"c=IN IP4 192.168.11.50">>,
+        <<"t=0 0">>,
+        <<"a=msid-semantic: WMS KqmPBry0Vhq6gpRRKh2RFGdVAP5jZ7WA">>,
+        <<"m=audio 18380 UDP/TLS/RTP/SAVPF 111 126 106">>,
+        <<"a=rtpmap:111 opus/48000/2">>,
+        <<"a=fmtp:111 useinbandfec=1; minptime=10">>,
+        <<"a=rtpmap:126 telephone-event/8000">>,
+        <<"a=rtpmap:106 CN/8000">>,
+        <<"a=ptime:20">>,
+        <<"a=fingerprint:sha-256 C4:15:DB:DF:30:05:13:FF:50:C9:C2:C6:EF:E3:D1:19:58:39:7F:A0:4A:B8:83:5B:49:B9:6C:12:16:E2:D3:54">>,
+        <<"a=rtcp-mux">>,
+        <<"a=rtcp:18380 IN IP4 192.168.11.50">>,
+        <<"a=ssrc:639008697 cname:n8fOpEEbLV7RaPzL">>,
+        <<"a=ssrc:639008697 msid:KqmPBry0Vhq6gpRRKh2RFGdVAP5jZ7WA a0">>,
+        <<"a=ssrc:639008697 mslabel:KqmPBry0Vhq6gpRRKh2RFGdVAP5jZ7WA">>,
+        <<"a=ssrc:639008697 label:KqmPBry0Vhq6gpRRKh2RFGdVAP5jZ7WAa0">>,
+        <<"a=ice-ufrag:XstsZwepc9z27lsl">>,
+        <<"a=ice-pwd:jxZz2uBDgylgeKS13bkSyo8A">>,
+        <<"a=candidate:1855369570 1 udp 659136 192.168.11.50 18380 typ host generation 0">>]},
+      {<<"src">>,<<"192.168.11.50:11000">>},
+      {<<"dst">>,<<"192.168.11.50:5060">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"279 INVITE">>}]};
+
+chunks_4(14) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816925935},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"SIP/2.0 200 OK">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 200 OK">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK3609238">>,
+        <<"Record-Route: <sip:192.168.11.50;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Record-Route: <sip:192.168.11.50:8080;transport=ws;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=SyveX0cgvrSag">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 279 INVITE">>,
+        <<"Contact: <sip:*97@192.168.11.50:11000;transport=udp>">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Accept: application/sdp">>,
+        <<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, PRACK, NOTIFY, PUBLISH, SUBSCRIBE">>,
+        <<"Supported: precondition, 100rel, path, replaces">>,
+        <<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>,
+        <<"Content-Type: application/sdp">>,
+        <<"Content-Disposition: session">>,
+        <<"Content-Length: 872">>,
+        <<"Remote-Party-ID: \"*97\" <sip:*97@wefwefwefwef.2600hz.com>;party=calling;privacy=off;screen=no">>,
+        <<>>,
+        <<"v=0">>,
+        <<"o=FreeSWITCH 1443971853 1443971854 IN IP4 192.168.11.50">>,
+        <<"s=FreeSWITCH">>,
+        <<"c=IN IP4 192.168.11.50">>,
+        <<"t=0 0">>,
+        <<"a=msid-semantic: WMS KqmPBry0Vhq6gpRRKh2RFGdVAP5jZ7WA">>,
+        <<"m=audio 18380 UDP/TLS/RTP/SAVPF 111 126 106">>,
+        <<"a=rtpmap:111 opus/48000/2">>,
+        <<"a=fmtp:111 useinbandfec=1; minptime=10">>,
+        <<"a=rtpmap:126 telephone-event/8000">>,
+        <<"a=rtpmap:106 CN/8000">>,
+        <<"a=ptime:20">>,
+        <<"a=fingerprint:sha-256 C4:15:DB:DF:30:05:13:FF:50:C9:C2:C6:EF:E3:D1:19:58:39:7F:A0:4A:B8:83:5B:49:B9:6C:12:16:E2:D3:54">>,
+        <<"a=rtcp-mux">>,
+        <<"a=rtcp:18380 IN IP4 192.168.11.50">>,
+        <<"a=ssrc:639008697 cname:n8fOpEEbLV7RaPzL">>,
+        <<"a=ssrc:639008697 msid:KqmPBry0Vhq6gpRRKh2RFGdVAP5jZ7WA a0">>,
+        <<"a=ssrc:639008697 mslabel:KqmPBry0Vhq6gpRRKh2RFGdVAP5jZ7WA">>,
+        <<"a=ssrc:639008697 label:KqmPBry0Vhq6gpRRKh2RFGdVAP5jZ7WAa0">>,
+        <<"a=ice-ufrag:XstsZwepc9z27lsl">>,
+        <<"a=ice-pwd:jxZz2uBDgylgeKS13bkSyo8A">>,
+        <<"a=candidate:1855369570 1 udp 659136 192.168.11.50 18380 typ host generation 0">>]},
+      {<<"src">>,<<"192.168.11.50:8080">>},
+      {<<"dst">>,<<"192.168.11.43:33278">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"279 INVITE">>}]};
+
+chunks_4(15) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65816927302},
+      {<<"ref_timestamp">>,<<"63611209433.0">>},
+      {<<"label">>,<<"ACK sip:*97@192.168.11.50:11000;transport=udp SIP/2.0">>},
+      {<<"raw">>,
+       [<<"ACK sip:*97@192.168.11.50:11000;transport=udp SIP/2.0">>,
+        <<"Route: <sip:192.168.11.50:8080;transport=ws;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Route: <sip:192.168.11.50;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;branch=z9hG4bK4277958">>,
+        <<"Max-Forwards: 70">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=SyveX0cgvrSag">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 279 ACK">>,
+        <<"Supported: 100rel,outbound">>,<<"User-Agent: SIP.js/0.6.4">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.43:33278">>},
+      {<<"dst">>,<<"192.168.11.50:8080">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"279 ACK">>}]};
+
+chunks_4(16) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65850478173},
+      {<<"ref_timestamp">>,<<"63611209435.0">>},
+      {<<"label">>,<<"BYE sip:*97@192.168.11.50:11000;transport=udp SIP/2.0">>},
+      {<<"raw">>,
+       [<<"BYE sip:*97@192.168.11.50:11000;transport=udp SIP/2.0">>,
+        <<"Route: <sip:192.168.11.50:8080;transport=ws;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Route: <sip:192.168.11.50;r2=on;lr=on;ftag=j6mvjno40c>">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;branch=z9hG4bK2505364">>,
+        <<"Max-Forwards: 70">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=SyveX0cgvrSag">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 280 BYE">>,
+        <<"Supported: 100rel,outbound">>,
+        <<"User-Agent: SIP.js/0.6.4">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.43:33278">>},
+      {<<"dst">>,<<"192.168.11.50:8080">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"280 BYE">>}]};
+
+chunks_4(17) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65850481562},
+      {<<"ref_timestamp">>,<<"63611209435.0">>},
+      {<<"label">>,<<"BYE sip:*97@192.168.11.50:11000;transport=udp SIP/2.0">>},
+      {<<"raw">>,
+       [<<"BYE sip:*97@192.168.11.50:11000;transport=udp SIP/2.0">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bK4ed8.9b9866d701ca0e0ac1f33e28ac81577d.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK2505364">>,
+        <<"Max-Forwards: 50">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=SyveX0cgvrSag">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 280 BYE">>,
+        <<"Supported: 100rel,outbound">>,
+        <<"User-Agent: SIP.js/0.6.4">>,
+        <<"Content-Length: 0">>,
+        <<"X-AUTH-IP: 192.168.11.43">>,
+        <<"X-AUTH-PORT: 33278">>]},
+      {<<"src">>,<<"192.168.11.50:5060">>},
+      {<<"dst">>,<<"192.168.11.50:11000">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"280 BYE">>}]};
+
+chunks_4(18) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65850480323},
+      {<<"ref_timestamp">>,<<"63611209435.0">>},
+      {<<"label">>,<<"SIP/2.0 200 OK">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 200 OK">>,
+        <<"Via: SIP/2.0/UDP 192.168.11.50;branch=z9hG4bK4ed8.9b9866d701ca0e0ac1f33e28ac81577d.0">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK2505364">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=SyveX0cgvrSag">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 280 BYE">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, PRACK, NOTIFY, PUBLISH, SUBSCRIBE">>,
+        <<"Supported: precondition, 100rel, path, replaces">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:11000">>},
+      {<<"dst">>,<<"192.168.11.50:5060">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"280 BYE">>}]};
+
+chunks_4(19) ->
+    {[{<<"call-id">>,<<"sf34f93o1rpcbbujodu9">>},
+      {<<"timestamp">>,65850481497},
+      {<<"ref_timestamp">>,<<"63611209435.0">>},
+      {<<"label">>,<<"SIP/2.0 200 OK">>},
+      {<<"raw">>,
+       [<<"SIP/2.0 200 OK">>,
+        <<"Via: SIP/2.0/WS h6iuotu857tm.invalid;rport=33278;received=192.168.11.43;branch=z9hG4bK2505364">>,
+        <<"From: <sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com>;tag=j6mvjno40c">>,
+        <<"To: <sip:*97@wefwefwefwef.2600hz.com>;tag=SyveX0cgvrSag">>,
+        <<"Call-ID: sf34f93o1rpcbbujodu9">>,
+        <<"CSeq: 280 BYE">>,
+        <<"User-Agent: 2600hz">>,
+        <<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, PRACK, NOTIFY, PUBLISH, SUBSCRIBE">>,
+        <<"Supported: precondition, 100rel, path, replaces">>,
+        <<"Content-Length: 0">>]},
+      {<<"src">>,<<"192.168.11.50:8080">>},
+      {<<"dst">>,<<"192.168.11.43:33278">>},
+      {<<"parser">>, <<"192.168.56.42:9061">>},
+      {<<"c_seq">>, <<"280 BYE">>}]}.
+
+chunks_4() ->
+    [chunks_4(1),
+     chunks_4(2),
+     chunks_4(3),
+     chunks_4(4),
+     chunks_4(5),
+     chunks_4(6),
+     chunks_4(7),
+     chunks_4(8),
+     chunks_4(9),
+     chunks_4(10),
+     chunks_4(11),
+     chunks_4(12),
+     chunks_4(13),
+     chunks_4(14),
+     chunks_4(15),
+     chunks_4(16),
+     chunks_4(17),
+     chunks_4(18),
+     chunks_4(19)].
 
 %% End of Module.

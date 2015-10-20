@@ -20,6 +20,7 @@
 -export([decode/1]).
 
 -export([ new/0
+        , version/1
         , protocol_family/1, protocol_family/2
         , protocol/1, protocol/2
         , src_ip/1, src_ip/2
@@ -89,6 +90,12 @@ decode (Packet = <<?HEP_V3_ID, _Rest/binary>>) ->
 decode (Packet = <<_/binary>>) ->
     {error, invalid_packet, Packet}.
 
+
+-spec version (t()) -> version().
+version (#hep{version = Version}) ->
+    Version;
+version (Hep) ->
+    {error, {invalid_packet, Hep}}.
 
 
 %% Note: you can't have a dot inside a macro definition!

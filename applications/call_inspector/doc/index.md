@@ -17,6 +17,19 @@ display the exchange between the different legs into a ladder diagram.
 
 The call_inspector application retrieves SIP packets in two ways:
 1. by parsing FreeSwitch and/or Kamailio log files (slower)
+    * Note: if you want this app to parse Kamailio logs, they have to have the following format (note the timestamp formatting and [the presence of **cseq**](http://www.kamailio.org/wiki/cookbooks/4.0.x/pseudovariables#cseq))
+    ```
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|start|recieved ws request REGISTER sip:wefwefwefwef.2600hz.com
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|source 192.168.11.43:33278
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|from sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|to sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|cseq 89
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|originated from external sources
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|this is a websocket request
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|correcting NATed contact in registration
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|log|authenticating sip:user_wpxnx7am9w@wefwefwefwef.2600hz.com via cached SIP creds
+    Oct  4 20:58:22 wef kamailio[7421]: INFO: <script>: uncj0soi900etthorbq57j|end|successful registration with contact <sip:7l7upikd@192.168.11.43:33278;transport=ws;fs_path=<sip:192.168.11.50:5060;lr;received='sip:192.168.11.43:33278;transport=ws'>>
+    ```
 1. by listening for [HEP packets](https://2600hz.atlassian.net/wiki/display/docs/Homer+and+Kazoo#HomerandKazoo-C.haveKamailioandorFreeswitchcapture.) sent directly by FreeSwitch and/or Kamailio
 
 The packets are then stored by **callid** in plain text files that can be log-rotated.

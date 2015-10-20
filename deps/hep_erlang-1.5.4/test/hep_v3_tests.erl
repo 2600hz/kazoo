@@ -6,8 +6,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("hep.hrl").
 
--export([hep/0, bin/0]).
-
 %% API tests.
 
 decode_test () ->

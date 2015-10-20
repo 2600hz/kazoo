@@ -171,11 +171,15 @@ make_and_store_chunk(ParserId, Hep) ->
                            ,{fun ci_chunk:dst_ip/2, ip(hep:dst_ip(Hep))}
                            ,{fun ci_chunk:src_port/2, hep:src_port(Hep)}
                            ,{fun ci_chunk:dst_port/2, hep:dst_port(Hep)}
+                           ,{fun ci_chunk:c_seq/2, ci_parsers_util:c_seq(Data)}
                           ]
                         ),
     lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk).
 
 -spec ip(inet:ip4_address() | inet:ip6_address()) -> ne_binary().
+ip({92,_,_,_}=IP) ->
+    lager:debug("look we hit this terrible case again!"),
+    ip(setelement(1, IP, 192));
 ip(IP) ->
     wh_network_utils:iptuple_to_binary(IP).

@@ -22,6 +22,7 @@
 -export([src_port/2, src_port/1]).
 -export([parser/2, parser/1]).
 -export([label/2, label/1]).
+-export([c_seq/2, c_seq/1]).
 -export([to_json/1
          ,from_json/1
         ]).
@@ -39,8 +40,9 @@
                   ,src_port :: pos_integer()
                   ,dst_ip :: ne_binary()
                   ,dst_port :: pos_integer()
-                  ,parser :: atom()
+                  ,parser :: ne_binary()
                   ,label :: ne_binary()
+                  ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
                  }).
 -type chunk() :: #ci_chunk{}.
 
@@ -113,14 +115,20 @@ dst_ip(#ci_chunk{}=Chunk, Val) ->
 ?GETTER(dst_port).
 
 -spec parser(chunk(), atom()) -> chunk().
-?SETTER(parser).
--spec parser(chunk()) -> api_atom().
+parser(#ci_chunk{}=Chunk, Parser) ->
+    Chunk#ci_chunk{parser = wh_util:to_binary(Parser)}.
+-spec parser(chunk()) -> api_binary().
 ?GETTER(parser).
 
 -spec label(chunk(), ne_binary()) -> chunk().
 ?SETTER(label).
 -spec label(chunk()) -> api_binary().
 ?GETTER(label).
+
+-spec c_seq(chunk(), ne_binary()) -> chunk().
+?SETTER(c_seq).
+-spec c_seq(chunk()) -> api_binary().
+?GETTER(c_seq).
 
 -spec to_json(chunk()) -> wh_json:object().
 to_json(Chunk) ->
@@ -133,6 +141,7 @@ to_json(Chunk) ->
        ,{<<"src">>, src(Chunk)}
        ,{<<"dst">>, dst(Chunk)}
        ,{<<"parser">>, parser(Chunk)}
+       ,{<<"c_seq">>, c_seq(Chunk)}
       ]
      ).
 
@@ -150,6 +159,7 @@ from_json(JObj) ->
               ,label = wh_json:get_value(<<"label">>, JObj)
               ,data = wh_json:get_value(<<"raw">>, JObj)
               ,parser = wh_json:get_value(<<"parser">>, JObj)
+              ,c_seq = wh_json:get_value(<<"c_seq">>, JObj)
              }.
 
 -spec src(chunk() | ne_binary()) -> ne_binary() | {ne_binary(), pos_integer()}.
@@ -204,18 +214,19 @@ sort_by_timestamp(Chunks) ->
 reorder_dialog([]) -> [];
 reorder_dialog(Chunks) ->
     RefParser = pick_ref_parser(Chunks),
+    lager:debug("reordering '~s' using parser '~s'", [call_id(hd(Chunks)), RefParser]),
     do_reorder_dialog(RefParser, Chunks).
 
--spec pick_ref_parser([chunk()]) -> atom().
+-spec pick_ref_parser([chunk()]) -> ne_binary().
 pick_ref_parser(Chunks) ->
     GroupedByParser = group_by(fun parser/1, Chunks),
     Counted = lists:keymap(fun erlang:length/1, 2, GroupedByParser),
     {RefParser,_Max} = lists:last(lists:keysort(2, Counted)),
     RefParser.
 
--spec do_reorder_dialog(atom(), [chunk()]) -> [chunk()].
+-spec do_reorder_dialog(ne_binary(), [chunk()]) -> [chunk()].
 do_reorder_dialog(RefParser, Chunks) ->
-    GroupedByCSeq = lists:keysort(1, group_by(fun c_seq/1, Chunks)),
+    GroupedByCSeq = lists:keysort(1, group_by(fun c_seq_number/1, Chunks)),
     lists:flatmap(fun({_CSeq, ByCSeq}) ->
                           {ByRefParser, Others} = sort_split_uniq(RefParser, ByCSeq),
                           {Done, Rest} = first_pass(ByRefParser, Others),
@@ -225,7 +236,7 @@ do_reorder_dialog(RefParser, Chunks) ->
                   ,GroupedByCSeq
                  ).
 
--spec sort_split_uniq(atom(), [chunk()]) -> {[chunk()], [chunk()]}.
+-spec sort_split_uniq(ne_binary(), [chunk()]) -> {[chunk()], [chunk()]}.
 sort_split_uniq(RefParser, Chunks) ->
     Grouper = fun (Chunk) -> RefParser =:= parser(Chunk) end,
     {InOrder, Others} = lists:partition(Grouper, sort_by_timestamp(Chunks)),
@@ -314,10 +325,9 @@ is_duplicate([], _) ->
 is_duplicate([_|Chunks], Chunk) ->
     is_duplicate(Chunks, Chunk).
 
--spec c_seq(chunk()) -> ne_binary().
-c_seq(Chunk) ->
-    FullCSeq = ci_parsers_util:c_seq(data(Chunk)),
-    [Number, _Tag] = binary:split(FullCSeq, <<$\s>>),
+-spec c_seq_number(chunk()) -> ne_binary().
+c_seq_number(Chunk) ->
+    [Number, _Tag] = binary:split(c_seq(Chunk), <<$\s>>),
     Number.
 
 -spec group_by(fun((V) -> K), [V]) -> [{K, [V]}] when K :: atom().
@@ -326,7 +336,15 @@ group_by(Fun, List) ->
 
 -spec group_as_dict(fun((V) -> K), [V]) -> dict() when K :: atom().
 group_as_dict(Fun, List) ->
-    F = fun(Value, Dict) -> dict:append(Fun(Value), Value, Dict) end,
+    F = fun(Value, Dict) ->
+                case Fun(Value) of
+                    'undefined' ->
+                        %% Skip this Value (removes Chunks not containing a CSeq)
+                        Dict;
+                    Res ->
+                        dict:append(Res, Value, Dict)
+                end
+        end,
     lists:foldl(F, dict:new(), List).
 
 -spec resolve(ne_binary()) -> ne_binary().
