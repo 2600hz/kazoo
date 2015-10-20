@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -21,26 +21,51 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 
 %% Offnet Resource Request
--define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Resource-Type">>, <<"To-DID">>
-                                      ,<<"Application-Name">>
+-define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Application-Name">>
+                                      ,<<"Resource-Type">>
+                                      ,<<"To-DID">>
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS
-        ,[<<"Timeout">>
-          ,<<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
-          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-          ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
-          ,<<"Ringback">>, <<"Custom-SIP-Headers">>, <<"Custom-Channel-Vars">>
-          ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
-          ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
-          ,<<"Account-ID">>, <<"Outbound-Call-ID">>, <<"Hunt-Account-ID">>
-          ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
+        ,[<<"Account-ID">>
+          ,<<"Account-Realm">>
+          ,<<"Application-Data">>
+          ,<<"B-Leg-Events">>
+          ,<<"Body">>
+          ,<<"Bypass-E164">>
+          ,<<"Call-ID">>
+          ,<<"Call-ID">>
+          ,<<"Control-Queue">>
+          ,<<"Custom-Channel-Vars">>
+          ,<<"Custom-SIP-Headers">>
+          ,<<"Emergency-Caller-ID-Name">>
+          ,<<"Emergency-Caller-ID-Number">>
+          ,<<"Enable-T38-Fax">>
+          ,<<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Gateway">>
+          ,<<"Enable-T38-Passthrough">>
+          ,<<"Fax-Identity-Name">>
+          ,<<"Fax-Identity-Number">>
+          ,<<"Fax-Timezone">>
+          ,<<"Flags">>
+          ,<<"Force-Fax">>
           ,<<"Force-Outbound">>
-          ,<<"Fax-Identity-Number">>, <<"Fax-Identity-Name">>, <<"Fax-Timezone">>
-          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
-          ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>, <<"Enable-T38-Gateway">>
-          ,<<"Format-From-URI">>, <<"From-URI-Realm">>, <<"Bypass-E164">>
-          ,<<"Hunt-Account-ID">>, <<"Inception">>
-          ,<<"Message-ID">>, <<"Body">>, <<"B-Leg-Events">>
+          ,<<"Format-From-URI">>
+          ,<<"From-URI-Realm">>
+          ,<<"Group-ID">>
+          ,<<"Hold-Media">>
+          ,<<"Hunt-Account-ID">>
+          ,<<"Hunt-Account-ID">>
+          ,<<"Ignore-Early-Media">>
+          ,<<"Inception">>
+          ,<<"Media">>
+          ,<<"Message-ID">>
+          ,<<"Mode">>
+          ,<<"Outbound-Call-ID">>
+          ,<<"Outbound-Caller-ID-Name">>
+          ,<<"Outbound-Caller-ID-Number">>
+          ,<<"Presence-ID">>
+          ,<<"Ringback">>
+          ,<<"Timeout">>
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
         ,[{<<"Event-Category">>, <<"resource">>}
@@ -51,23 +76,23 @@
                                     ]}
           ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
           %% Eavesdrop
-          ,{<<"Mode">>, [<<"listen">>   % hear both sides - default
+          ,{<<"Mode">>, [<<"full">>     % talk to both sides
+                         ,<<"listen">>  % hear both sides - default
                          ,<<"whisper">> % talk to one side
-                         ,<<"full">>    % talk to both sides
                         ]}
          ]).
 -define(OFFNET_RESOURCE_REQ_TYPES
-        ,[{<<"Call-ID">>, fun is_binary/1}
-          ,{<<"Account-ID">>, fun is_binary/1}
+        ,[{<<"Account-ID">>, fun is_binary/1}
+          ,{<<"B-Leg-Events">>, fun wapi_dialplan:b_leg_events_v/1}
+          ,{<<"Call-ID">>, fun is_binary/1}
           ,{<<"Control-Queue">>, fun is_binary/1}
-          ,{<<"To-DID">>, fun is_binary/1}
-          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+          ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
           ,{<<"Flags">>, fun is_list/1}
           ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
-          ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
           ,{<<"Force-Outbound">>, fun wh_util:is_boolean/1}
-          ,{<<"B-Leg-Events">>, fun wapi_dialplan:b_leg_events_v/1}
+          ,{<<"To-DID">>, fun is_binary/1}
          ]).
 
 %% Offnet Resource Response
