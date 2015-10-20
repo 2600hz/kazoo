@@ -16,16 +16,26 @@
          ,set_req/1, set_req_v/1
          ,set_resp/1, set_resp_v/1
          ,flush_req/1, flush_req_v/1
+
          ,bind_q/2, unbind_q/2
          ,declare_exchanges/0
+
          ,publish_get_req/1, publish_get_req/2
          ,publish_get_resp/2, publish_get_resp/3
          ,publish_set_req/1, publish_set_req/2
          ,publish_set_resp/2, publish_set_resp/3
          ,publish_flush_req/1, publish_flush_req/2
+
+         ,get_category/1, get_category/2
+         ,get_key/1, get_key/2
+         ,get_value/1, get_value/2
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
+
+-define(CAT_KEY, <<"Category">>).
+-define(KEY_KEY, <<"Key">>).
+-define(VALUE_KEY, <<"Value">>).
 
 -define(SYSCONF_VALUES, [{<<"Event-Category">>, <<"sysconf">>}]).
 
@@ -36,31 +46,31 @@
 
 %% Configuration Document Update
 %% request to read
--define(SYSCONF_GET_REQ_HEADERS, [<<"Category">>, <<"Key">>]).
+-define(SYSCONF_GET_REQ_HEADERS, [?CAT_KEY, ?KEY_KEY]).
 -define(OPTIONAL_SYSCONF_GET_REQ_HEADERS, [<<"Default">>]).
 -define(SYSCONF_GET_REQ_VALUES, [{<<"Event-Name">>, <<"get_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a read request
--define(SYSCONF_GET_RESP_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
+-define(SYSCONF_GET_RESP_HEADERS, [?CAT_KEY, ?KEY_KEY, ?VALUE_KEY]).
 -define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, []).
 -define(SYSCONF_GET_RESP_VALUES, [{<<"Event-Name">>, <<"get_resp">>} | ?SYSCONF_VALUES]).
 
 %% request a write
--define(SYSCONF_SET_REQ_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
+-define(SYSCONF_SET_REQ_HEADERS, [?CAT_KEY, ?KEY_KEY, ?VALUE_KEY]).
 -define(OPTIONAL_SYSCONF_SET_REQ_HEADERS, [<<"Node-Specific">>]).
 -define(SYSCONF_SET_REQ_VALUES, [{<<"Event-Name">>, <<"set_req">>} | ?SYSCONF_VALUES]).
 
--define(SYSCONF_FLUSH_REQ_HEADERS, [<<"Category">>]).
--define(OPTIONAL_SYSCONF_FLUSH_REQ_HEADERS, [<<"Key">>]).
+-define(SYSCONF_FLUSH_REQ_HEADERS, [?CAT_KEY]).
+-define(OPTIONAL_SYSCONF_FLUSH_REQ_HEADERS, [?KEY_KEY]).
 -define(SYSCONF_FLUSH_REQ_VALUES, [{<<"Event-Name">>, <<"flush_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a write request
--define(SYSCONF_SET_RESP_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
+-define(SYSCONF_SET_RESP_HEADERS, [?CAT_KEY, ?KEY_KEY, ?VALUE_KEY]).
 -define(OPTIONAL_SYSCONF_SET_RESP_HEADERS, [<<"Status">>]).
 -define(SYSCONF_SET_RESP_VALUES, [{<<"Event-Name">>, <<"set_resp">>} | ?SYSCONF_VALUES]).
 
--define(SYSCONF_TYPES, [{<<"Category">>, fun is_binary/1}
-                        ,{<<"Key">>, fun is_binary/1}
+-define(SYSCONF_TYPES, [{?CAT_KEY, fun is_binary/1}
+                        ,{?KEY_KEY, fun is_binary/1}
                         ,{<<"Node">>, fun is_binary/1}
                        ]).
 
@@ -268,3 +278,25 @@ routing_key_set() ->
 
 routing_key_flush() ->
     ?KEY_SYSCONF_FLUSH_REQ.
+
+
+-spec get_category(wh_json:object()) -> api_binary().
+-spec get_category(wh_json:object(), Default) -> ne_binary() | Default.
+get_category(JObj) ->
+    get_category(JObj, 'undefined').
+get_category(JObj, Default) ->
+    wh_json:get_value(?CAT_KEY, JObj, Default).
+
+-spec get_key(wh_json:object()) -> api_binary().
+-spec get_key(wh_json:object(), Default) -> ne_binary() | Default.
+get_key(JObj) ->
+    get_key(JObj, 'undefined').
+get_key(JObj, Default) ->
+    wh_json:get_value(?KEY_KEY, JObj, Default).
+
+-spec get_value(wh_json:object()) -> api_object().
+-spec get_value(wh_json:object(), Default) -> wh_json:object() | Default.
+get_value(JObj) ->
+    get_value(JObj, 'undefined').
+get_value(JObj, Default) ->
+    wh_json:get_value(?VALUE_KEY, JObj, Default).
