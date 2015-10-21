@@ -290,7 +290,7 @@ unsolicited_endpoint_mwi_update('true', AccountDb, EndpointId) ->
 
 maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
     maybe_send_endpoint_mwi_update(kz_device:unsolicitated_mwi_updates(JObj), JObj, AccountDb).
-    
+
 maybe_send_endpoint_mwi_update('false', JObj, AccountDb) ->
     lager:debug("unsolicitated mwi updates disabled for ~s/~s", [AccountDb, wh_doc:id(JObj)]);
 maybe_send_endpoint_mwi_update('true', JObj, AccountDb) ->
