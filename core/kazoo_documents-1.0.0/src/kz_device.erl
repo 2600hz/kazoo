@@ -27,6 +27,7 @@
          ,owner_id/1, owner_id/2, set_owner_id/2
          ,enabled/1, enabled/2, set_enabled/2
          ,timezone/1, timezone/2
+         ,unsolicitated_mwi_updates/1, set_unsolicitated_mwi_updates/2
 
          ,new/0
          ,type/0
@@ -59,6 +60,7 @@
 -define(ENABLED, <<"enabled">>).
 -define(PVT_TYPE, <<"device">>).
 -define(KEY_TIMEZONE, <<"timezone">>).
+-define(KEY_UNSOLICITATED_MWI_UPDATES, <<"mwi_unsolicitated_updates">>).
 
 -spec new() -> doc().
 new() ->
@@ -309,3 +311,12 @@ owner_timezone(Box, Default, OwnerJObj) ->
 account_timezone(Box, Default) ->
     {'ok', AccountJObj} = kz_account:fetch(wh_doc:account_id(Box)),
     kz_account:timezone(AccountJObj, Default).
+
+-spec unsolicitated_mwi_updates(doc()) -> boolean().
+unsolicitated_mwi_updates(DeviceJObj) ->
+    wh_json:get_value(?KEY_UNSOLICITATED_MWI_UPDATES, DeviceJObj, 'true').
+
+-spec set_unsolicitated_mwi_updates(doc(), boolean()) -> doc().
+set_unsolicitated_mwi_updates(DeviceJObj, Enabled) ->
+    wh_json:set_value(?KEY_UNSOLICITATED_MWI_UPDATES, Enabled, DeviceJObj).
+
