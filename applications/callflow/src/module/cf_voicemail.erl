@@ -243,7 +243,7 @@ check_mailbox(#mailbox{pin = <<>>}=Box, 'true', Call, _) ->
     %% right to the main menu
     lager:info("caller is the owner of this mailbox, and it has no pin"),
     main_menu(Box, Call);
-check_mailbox(#mailbox{pin = <<>>, exists='true'}, 'false', Call, _) ->
+check_mailbox(#mailbox{pin = <<>>, require_pin='true'}, 'false', Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
     %% then terminate this call.
     lager:info("attempted to sign into a mailbox with no pin"),
