@@ -159,7 +159,7 @@
           ,keys = #keys{} :: vm_keys()
           ,transcribe_voicemail = 'false' :: boolean()
           ,notifications :: wh_json:object()
-          ,after_notify_action = 'nothing' :: atom('nothing' | 'delete' | 'save')
+          ,after_notify_action = 'nothing' :: 'nothing' | 'delete' | 'save'
           ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
           ,play_greeting_intro = 'false' :: boolean()
           ,use_person_not_available = 'false' :: boolean()
@@ -243,7 +243,7 @@ check_mailbox(#mailbox{pin = <<>>}=Box, 'true', Call, _) ->
     %% right to the main menu
     lager:info("caller is the owner of this mailbox, and it has no pin"),
     main_menu(Box, Call);
-check_mailbox(#mailbox{pin = <<>>, exists='true'}, 'false', Call, _) ->
+check_mailbox(#mailbox{pin = <<>>, require_pin='true'}, 'false', Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
     %% then terminate this call.
     lager:info("attempted to sign into a mailbox with no pin"),
