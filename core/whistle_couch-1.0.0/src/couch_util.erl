@@ -1095,8 +1095,10 @@ doc_change_event_name(Action, 'false') ->
 
 -spec doc_acct_id(ne_binary(), wh_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->
-    wh_doc:account_id(Doc, wh_util:format_account_id(Db, 'raw')).
-
+    case wh_doc:account_id(Doc) of
+        'undefined' -> wh_util:format_account_id(Db, 'raw');
+        AccountId -> AccountId
+    end.
 
 -spec default_copy_function(boolean()) -> copy_function().
 default_copy_function('true') -> fun ensure_saved/4;
