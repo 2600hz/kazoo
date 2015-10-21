@@ -218,7 +218,7 @@ mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
                                           couch_mgr:couchbeam_error().
--spec unsolicited_owner_mwi_update(boolean(), api_binary(), api_binary()) ->
+-spec unsolicited_owner_mwi_update(ne_binary(), ne_binary(), boolean()) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
                                           couch_mgr:couchbeam_error().
@@ -227,11 +227,11 @@ unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
     AccountId = wh_util:format_account_id(AccountDb),
     MWIUpdate = whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true'),
-    unsolicited_owner_mwi_update(MWIUpdate, AccountDb, OwnerId).
+    unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
 
-unsolicited_owner_mwi_update('false', AccountDb, _OwnerId) ->
-    lager:debug("unsolicitated mwi updated disabled : ~s", [AccountDb]);
-unsolicited_owner_mwi_update('true', AccountDb, OwnerId) ->
+unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
+    lager:debug("unsolicitated mwi updated disabled : ~s", [_AccountDb]);
+unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                    ,'include_docs'
                   ],
@@ -266,6 +266,8 @@ maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
 
 -spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
                                              'ok' | {'error', any()}.
+-spec unsolicited_endpoint_mwi_update(ne_binary(), ne_binary(), boolean()) ->
+                                             'ok' | {'error', any()}.
 unsolicited_endpoint_mwi_update('undefined', _) ->
     {'error', 'missing_account_db'};
 unsolicited_endpoint_mwi_update(_, 'undefined') ->
@@ -273,27 +275,27 @@ unsolicited_endpoint_mwi_update(_, 'undefined') ->
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
     AccountId = wh_util:format_account_id(AccountDb),
     MWIUpdate = whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true'),
-    unsolicited_endpoint_mwi_update(MWIUpdate, AccountDb, EndpointId).
+    unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
 
-unsolicited_endpoint_mwi_update('false', AccountDb, _EndpointId) ->
-    lager:debug("unsolicitated mwi updated disabled : ~s", [AccountDb]);
-unsolicited_endpoint_mwi_update('true', AccountDb, EndpointId) ->
+unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
+    lager:debug("unsolicitated mwi updated disabled : ~s", [_AccountDb]);
+unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
     case couch_mgr:open_cache_doc(AccountDb, EndpointId) of
         {'error', _}=E -> E;
-        {'ok', JObj} -> maybe_send_endpoint_mwi_update(JObj, AccountDb)
+        {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
     end.
 
--spec maybe_send_endpoint_mwi_update(wh_json:object(), ne_binary()) ->
+-spec maybe_send_endpoint_mwi_update(ne_binary(), wh_json:object()) ->
                                             'ok' | {'error', 'not_appropriate'}.
--spec maybe_send_endpoint_mwi_update(boolean(), wh_json:object(), ne_binary()) ->
+-spec maybe_send_endpoint_mwi_update(ne_binary(), wh_json:object(), boolean()) ->
                                             'ok' | {'error', 'not_appropriate'}.
 
-maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
-    maybe_send_endpoint_mwi_update(kz_device:unsolicitated_mwi_updates(JObj), JObj, AccountDb).
+maybe_send_endpoint_mwi_update(AccountDb, JObj) ->
+    maybe_send_endpoint_mwi_update(AccountDb, JObj, kz_device:unsolicitated_mwi_updates(JObj)).
 
-maybe_send_endpoint_mwi_update('false', JObj, AccountDb) ->
-    lager:debug("unsolicitated mwi updates disabled for ~s/~s", [AccountDb, wh_doc:id(JObj)]);
-maybe_send_endpoint_mwi_update('true', JObj, AccountDb) ->
+maybe_send_endpoint_mwi_update(_AccountDb, _JObj, 'false') ->
+    lager:debug("unsolicitated mwi updates disabled for ~s/~s", [_AccountDb, wh_doc:id(_JObj)]);
+maybe_send_endpoint_mwi_update(AccountDb, JObj, 'true') ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     Username = kz_device:sip_username(JObj),
     Realm = get_sip_realm(JObj, AccountId),
