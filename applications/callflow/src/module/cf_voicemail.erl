@@ -159,7 +159,7 @@
           ,keys = #keys{} :: vm_keys()
           ,transcribe_voicemail = 'false' :: boolean()
           ,notifications :: wh_json:object()
-          ,after_notify_action = 'nothing' :: atom('nothing' | 'delete' | 'save')
+          ,after_notify_action = 'nothing' :: 'nothing' | 'delete' | 'save'
           ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
           ,play_greeting_intro = 'false' :: boolean()
           ,use_person_not_available = 'false' :: boolean()
