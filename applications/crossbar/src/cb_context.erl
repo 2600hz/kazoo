@@ -1118,6 +1118,8 @@ add_validation_error(Property, <<"patternProperties">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 add_validation_error(Property, <<"disabled">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
+add_validation_error(Property, <<"expired">> = C, Message, Context) ->
+    add_depreciated_validation_error(Property, C, Message, Context);
 % Generic
 add_validation_error(Property, <<"invalid">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
@@ -1126,19 +1128,30 @@ add_validation_error(Property, Code, Message, Context) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
     add_depreciated_validation_error(Property, Code, Message, Context).
 
-add_depreciated_validation_error(Property, Code, Message, Context) when is_binary(Property) ->
-    add_depreciated_validation_error([Property], Code, Message, Context);
-add_depreciated_validation_error(Property, Code, Message, #cb_context{validation_errors=JObj}=Context) ->
+
+add_depreciated_validation_error(<<"account">>, <<"expired">>, Message, Context) ->
+    add_depreciated_validation_error(<<"account">>, <<"expired">>, Message, Context, 423, <<"locked">>);
+add_depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Context) ->
+    add_depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Context, 423, <<"locked">>);
+add_depreciated_validation_error(Property, Code, Message, Context) ->
+    add_depreciated_validation_error(Property, Code, Message, Context, 400, <<"invalid data">>).
+
+add_depreciated_validation_error(Property, Code, Message, Context, ErrCode, ErrMsg) when is_binary(Property) ->
+    add_depreciated_validation_error([Property], Code, Message, Context, ErrCode, ErrMsg);
+add_depreciated_validation_error(Property, Code, Message, Context, ErrCode, ErrMsg) ->
     %% Maintain the same error format we are currently using until we are ready to
     %% convert to something that makes sense....
     ApiVersion = ?MODULE:api_version(Context),
+
+    JObj = cb_context:validation_errors(Context),
     Error = build_error_message(ApiVersion, Message),
+
     Key = wh_util:join_binary(Property, <<".">>),
     Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Error, JObj)
                        ,resp_status='error'
-                       ,resp_error_code=400
+                       ,resp_error_code=ErrCode
                        ,resp_data=wh_json:new()
-                       ,resp_error_msg = <<"invalid data">>
+                       ,resp_error_msg=ErrMsg
                       }.
 
 -spec build_error_message('v1', ne_binary() | wh_json:object()) ->
