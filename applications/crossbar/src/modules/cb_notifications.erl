@@ -299,21 +299,19 @@ do_post(Context) ->
     end.
 
 -spec set_system_macros(cb_context:context()) -> cb_context:context().
--spec set_system_macros(cb_context:context(), api_binary()) -> cb_context:context().
 set_system_macros(Context) ->
     Id = wh_doc:id(cb_context:doc(Context)),
-    set_system_macros(Context, Id).
-
-set_system_macros(Context, 'undefined') -> Context;
-set_system_macros(Context, Id) ->
     SysContext = read_system(Context, Id),
-    SysDoc = cb_context:doc(SysContext),
-    Macros = wh_json:get_value(?MACROS, SysDoc, wh_json:new()),
-    Updater =
-        fun(JObj) ->
-            wh_json:set_value(?MACROS, Macros, JObj)
-        end,
-    cb_context:update_doc(Context, Updater).
+    case cb_context:resp_status(SysContext) of
+        'success' ->
+            SysDoc = cb_context:doc(SysContext),
+            Macros = wh_json:get_value(?MACROS, SysDoc, wh_json:new()),
+            JObj = cb_context:doc(Context),
+            cb_context:set_doc(Context, wh_json:set_value(?MACROS, Macros, JObj));
+        _Status ->
+            lager:warning("fail to update macros from system_config"),
+            Context
+    end.
 
 post(Context, Id, ?PREVIEW) ->
     Notification = cb_context:doc(Context),
