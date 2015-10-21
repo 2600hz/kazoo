@@ -290,12 +290,27 @@ post(Context, Id) ->
 
 -spec do_post(cb_context:context()) -> cb_context:context().
 do_post(Context) ->
-    Context1 = crossbar_doc:save(Context),
+    Context1 = crossbar_doc:save(set_system_macros(Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
             maybe_note_notification_preference(Context1),
             leak_doc_id(Context1);
         _Status -> Context1
+    end.
+
+-spec set_system_macros(cb_context:context()) -> cb_context:context().
+set_system_macros(Context) ->
+    Id = wh_doc:id(cb_context:doc(Context)),
+    SysContext = read_system(Context, Id),
+    case cb_context:resp_status(SysContext) of
+        'success' ->
+            SysDoc = cb_context:doc(SysContext),
+            Macros = wh_json:get_value(?MACROS, SysDoc, wh_json:new()),
+            JObj = cb_context:doc(Context),
+            cb_context:set_doc(Context, wh_json:set_value(?MACROS, Macros, JObj));
+        _Status ->
+            lager:warning("fail to update macros from system_config"),
+            Context
     end.
 
 post(Context, Id, ?PREVIEW) ->
