@@ -320,6 +320,13 @@
             "required": false,
             "type": "object"
         },
+        "mwi_unsolicitated_updates": {
+            "default": true,
+            "description": "When true enables unsolicitated mwi notifications",
+            "name": "Send unsolicitated MWI NOTIFY?",
+            "required": false,
+            "type": "boolean"
+        },
         "name": {
             "description": "A friendly name for the device",
             "maxLength": 128,
@@ -534,13 +541,6 @@
             "name": "Timezone",
             "required": false,
             "type": "string"
-        },
-        "mwi_unsolicitated_updates": {
-            "default": true,
-            "description": "When true enables unsolicitated mwi notifications",
-            "name": "Send unsolicitated MWI NOTIFY?",
-            "required": false,
-            "type": "boolean"
         }
     },
     "required": false,

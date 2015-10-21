@@ -21,6 +21,7 @@
 -define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
 -define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
 -define(OPERATOR_KEY, whapps_config:get(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
+-define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
 
 -define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
                         ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
@@ -217,9 +218,20 @@ mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
                                           couch_mgr:couchbeam_error().
+-spec unsolicited_owner_mwi_update(boolean(), api_binary(), api_binary()) ->
+                                          'ok' |
+                                          {'error', mwi_update_return()} |
+                                          couch_mgr:couchbeam_error().
 unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
 unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
+    AccountId = wh_util:format_account_id(AccountDb),
+    MWIUpdate = whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true'),
+    unsolicited_owner_mwi_update(MWIUpdate, AccountDb, OwnerId).
+
+unsolicited_owner_mwi_update('false', AccountDb, _OwnerId) ->
+    lager:debug("unsolicitated mwi updated disabled : ~s", [AccountDb]);
+unsolicited_owner_mwi_update('true', AccountDb, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                    ,'include_docs'
                   ],
@@ -246,6 +258,7 @@ maybe_send_mwi_update(JObj, AccountId, New, Saved) ->
         andalso Username =/= 'undefined'
         andalso Realm =/= 'undefined'
         andalso OwnerId =/= 'undefined'
+        andalso kz_device:unsolicitated_mwi_updates(J)
     of
         'true' -> send_mwi_update(New, Saved, Username, Realm);
         'false' -> 'ok'
@@ -258,15 +271,29 @@ unsolicited_endpoint_mwi_update('undefined', _) ->
 unsolicited_endpoint_mwi_update(_, 'undefined') ->
     {'error', 'missing_owner_id'};
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
+    AccountId = wh_util:format_account_id(AccountDb),
+    MWIUpdate = whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true'),
+    unsolicited_endpoint_mwi_update(MWIUpdate, AccountDb, EndpointId).
+
+unsolicited_endpoint_mwi_update('false', AccountDb, _EndpointId) ->
+    lager:debug("unsolicitated mwi updated disabled : ~s", [AccountDb]);
+unsolicited_endpoint_mwi_update('true', AccountDb, EndpointId) ->
     case couch_mgr:open_cache_doc(AccountDb, EndpointId) of
         {'error', _}=E -> E;
-        {'ok', JObj} ->
-            maybe_send_endpoint_mwi_update(JObj, AccountDb)
+        {'ok', JObj} -> maybe_send_endpoint_mwi_update(JObj, AccountDb)
     end.
 
 -spec maybe_send_endpoint_mwi_update(wh_json:object(), ne_binary()) ->
                                             'ok' | {'error', 'not_appropriate'}.
+-spec maybe_send_endpoint_mwi_update(boolean(), wh_json:object(), ne_binary()) ->
+                                            'ok' | {'error', 'not_appropriate'}.
+
 maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
+    maybe_send_endpoint_mwi_update(kz_device:unsolicitated_mwi_updates(JObj), JObj, AccountDb).
+    
+maybe_send_endpoint_mwi_update('false', JObj, AccountDb) ->
+    lager:debug("unsolicitated mwi updates disabled for ~s/~s", [AccountDb, wh_doc:id(JObj)]);
+maybe_send_endpoint_mwi_update('true', JObj, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     Username = kz_device:sip_username(JObj),
     Realm = get_sip_realm(JObj, AccountId),
