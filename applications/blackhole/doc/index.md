@@ -33,10 +33,10 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
   <body>
     <script>
       var socket = io.connect('http://{BLACKHOLE_IP_ADDRESS}:5555');
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: {AUTH_TOKEN}, binding: 'call.CHANNEL_CREATE.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: {AUTH_TOKEN}, binding: 'call.CHANNEL_ANSWER.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: {AUTH_TOKEN}, binding: 'call.CHANNEL_DESTROY.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: {AUTH_TOKEN}, binding: 'conference.event.*' });
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_ANSWER.*' });
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_DESTROY.*' });
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'conference.event.*' });
 
       socket.on('participants_event', function (data) {
         console.log(data);
