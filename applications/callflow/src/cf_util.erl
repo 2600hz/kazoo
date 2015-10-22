@@ -206,6 +206,11 @@ mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
     {New, Waiting} = vm_count_by_owner(AccountDb, OwnerId),
     send_mwi_update(New, Waiting, Username, Realm, JObj).
 
+-spec is_unsolicited_mwi_enabled(ne_binary()) -> boolean().
+is_unsolicited_mwi_enabled(AccountId) ->
+    whapps_config:get_is_true(?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true') andalso
+    wh_util:is_true(whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -226,7 +231,7 @@ unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
 unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
     AccountId = wh_util:format_account_id(AccountDb),
-    MWIUpdate = whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true'),
+    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
     unsolicited_owner_mwi_update(AccountDb, OwnerId, MWIUpdate).
 
 unsolicited_owner_mwi_update(_AccountDb, _OwnerId, 'false') ->
@@ -274,7 +279,7 @@ unsolicited_endpoint_mwi_update(_, 'undefined') ->
     {'error', 'missing_owner_id'};
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
     AccountId = wh_util:format_account_id(AccountDb),
-    MWIUpdate = whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true'),
+    MWIUpdate = is_unsolicited_mwi_enabled(AccountId),
     unsolicited_endpoint_mwi_update(AccountDb, EndpointId, MWIUpdate).
 
 unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
