@@ -36,7 +36,7 @@ start_link() ->
 start_proc([Node, CallId|_]=Args) ->
     case gproc:lookup_values(?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)) of
         [] ->
-            lager:debug("no registrations for ~s", [Node]),
+            lager:debug("starting event handler for ~s", [Node]),
             supervisor:start_child(?SERVER, Args);
         [{Pid, _V}] when is_pid(Pid) ->
             lager:debug("recycling existing call events worker ~p for ~s", [Pid, CallId]),
