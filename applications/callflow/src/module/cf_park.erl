@@ -616,22 +616,22 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
             cf_exe:transfer(Call)
     end.
 
--spec ringback_timeout(ne_binary(), integer()) -> integer().
+-spec ringback_timeout(ne_binary(), ne_binary()) -> integer().
 ringback_timeout(AccountId, SlotNumber) ->
     JObj = slot_configuration(AccountId, SlotNumber),
     wh_json:get_integer_value(<<"ringback_time">>, JObj, ?ACCOUNT_RINGBACK_TM(AccountId)).
 
--spec unanswered_action(integer(), wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec unanswered_action(ne_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
 unanswered_action(SlotNumber, Slot, Call) ->
     JObj = slot_configuration(whapps_call:account_id(Call), SlotNumber),
     unanswered_action(SlotNumber, Slot, Call, JObj).
 
--spec unanswered_action(integer(), wh_json:object(), whapps_call:call(), wh_json:object()) -> 'ok'.
+-spec unanswered_action(ne_binary(), wh_json:object(), whapps_call:call(), wh_json:object()) -> 'ok'.
 unanswered_action(SlotNumber, Slot, Call, JObj) ->
     Action = wh_json:get_string_value(<<"type">>, JObj, <<"repark">>),
     unanswered_action(Action, SlotNumber, Slot, Call, JObj).
 
--spec unanswered_action(ne_binary(), integer(), wh_json:object(), whapps_call:call(), wh_json:object()) -> 'ok'.
+-spec unanswered_action(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call(), wh_json:object()) -> 'ok'.
 unanswered_action(<<"repark">>, SlotNumber, Slot, Call, _JObj) ->
     lager:info("ringback was not answered, continuing to hold parked call"),
     wait_for_pickup(SlotNumber, Slot, Call);
@@ -642,6 +642,7 @@ unanswered_action(<<"callflow">>, SlotNumber, Slot, Call, JObj) ->
             wait_for_pickup(SlotNumber, Slot, Call);
         Flow ->
             lager:info("ringback was not answered. continuing to callflow id ~s", [wh_doc:id(JObj)]),
+            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:continue_with_flow(Flow, Call)
     end.
 
@@ -657,7 +658,7 @@ get_flow(Id, AccountId) ->
 slots_configuration(AccountId) ->
     whapps_account_config:get(AccountId, ?MOD_CONFIG_CAT, <<"slots">>, wh_json:new()).
 
--spec slot_configuration(ne_binary(), integer()) -> wh_json:object().
+-spec slot_configuration(ne_binary(), ne_binary()) -> wh_json:object().
 slot_configuration(AccountId, SlotNumber) ->
     wh_json:get_value(SlotNumber, slots_configuration(AccountId), wh_json:new()).
 
