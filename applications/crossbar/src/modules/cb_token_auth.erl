@@ -219,10 +219,11 @@ is_expired(Context, JObj) ->
         {'true', Expired} ->
             _ = wh_util:spawn(fun() -> maybe_disable_account(AccountId) end),
             Cause =
-                wh_json:from_list([
-                    {<<"message">>, <<"account expired">>}
-                    ,{<<"cause">>, Expired}
-                ]),
+                wh_json:from_list(
+                    [{<<"message">>, <<"account expired">>}
+                     ,{<<"cause">>, Expired}
+                    ]
+                ),
             Context1 = cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context),
             {'halt', Context1}
     end.
