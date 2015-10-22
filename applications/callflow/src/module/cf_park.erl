@@ -18,8 +18,14 @@
 
 -define(DB_DOC_NAME, whapps_config:get(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
 -define(DEFAULT_RINGBACK_TM, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_ringback_time">>, 120000)).
+-define(DEFAULT_CALLBACK_TM, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_callback_timeout">>, 30000)).
+-define(DEFAULT_UNANSWERED_ACTION_JOJB, wh_json:from_list([{<<"type">>, <<"repark">>}])).
 -define(PARKED_PRESENCE_TYPE, whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"parked_presence_type">>, <<"early">>)).
 -define(PARKED_CALLS_KEY(Db), {?MODULE, 'parked_calls', Db}).
+-define(ACCOUNT_RINGBACK_TM(A), whapps_account_config:get(A, ?MOD_CONFIG_CAT, <<"default_ringback_time">>, ?DEFAULT_RINGBACK_TM)).
+-define(ACCOUNT_CALLBACK_TM(A), whapps_account_config:get(A, ?MOD_CONFIG_CAT, <<"default_callback_timeout">>, ?DEFAULT_CALLBACK_TM)).
+-define(ACCOUNT_UNANSWERED_ACTION(A), whapps_account_config:get(A, ?MOD_CONFIG_CAT, <<"default_unanswered_action">>, ?DEFAULT_UNANSWERED_ACTION_JOJB)).
+-define(ACCOUNT_PARKED_PRESENCE_TYPE(A), whapps_account_config:get(A, ?MOD_CONFIG_CAT, <<"parked_presence_type">>, ?PARKED_PRESENCE_TYPE)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -569,7 +575,7 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
     HoldMedia = wh_json:get_value(<<"Hold-Media">>, Slot),
     Timeout = case wh_util:is_empty(RingbackId) of
                   'true' -> 'infinity';
-                  'false' -> ?DEFAULT_RINGBACK_TM
+                  'false' -> ringback_timeout(whapps_call:account_id(Call), SlotNumber)
               end,
     lager:info("waiting for parked caller to be picked up or hangup"),
     whapps_call_command:hold(HoldMedia, Call),
@@ -586,8 +592,7 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
                     _ = publish_retrieved(Call, SlotNumber),
                     cf_exe:continue(Call);
                 'failed' ->
-                    lager:info("ringback was not answered, continuing to hold parked call"),
-                    wait_for_pickup(SlotNumber, Slot, Call);
+                    unanswered_action(SlotNumber, Slot, Call);
                 _Else ->
                     lager:info("parked call doesnt exist anymore, hangup"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
@@ -610,6 +615,45 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
             _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call)
     end.
+
+ringback_timeout(AccountId, SlotNumber) ->
+    JObj = slot_configuration(AccountId, SlotNumber),
+    wh_json:get_value(<<"ringback_time">>, JObj, ?ACCOUNT_RINGBACK_TM(AccountId)).
+
+unanswered_action(SlotNumber, Slot, Call) ->
+    JObj = slot_configuration(whapps_call:account_id(Call), SlotNumber),
+    unanswered_action(SlotNumber, Slot, Call, JObj).
+
+unanswered_action(SlotNumber, Slot, Call, JObj) ->
+    Action = wh_json:get_string_value(<<"type">>, JObj, <<"repark">>),
+    unanswered_action(Action, SlotNumber, Slot, Call, JObj).
+
+unanswered_action(<<"repark">>, SlotNumber, Slot, Call, _JObj) ->
+    lager:info("ringback was not answered, continuing to hold parked call"),
+    wait_for_pickup(SlotNumber, Slot, Call);
+unanswered_action(<<"callflow">>, SlotNumber, Slot, Call, JObj) ->
+    case get_flow(wh_doc:id(JObj), whapps_call:account_id(Call)) of
+        'undefined' ->
+            lager:info("configured callflow ~s is not valid. continuing to hold parked call", [wh_doc:id(JObj)]),
+            wait_for_pickup(SlotNumber, Slot, Call);
+        Flow ->
+            lager:info("ringback was not answered. continuing to callflow id ~s", [wh_doc:id(JObj)]),
+            cf_exe:continue_with_flow(Flow, Call)
+    end.
+
+-spec get_flow(api_binary(), ne_binary()) -> api_object().
+get_flow('undefined', _) -> 'undefined';
+get_flow(Id, AccountId) ->
+    case couch_mgr:open_cache_doc(AccountId, Id) of
+        {'ok', JObj} -> wh_json:get_value(<<"flow">>, JObj);
+        _ -> 'undefined'
+    end.
+
+slots_configuration(AccountId) ->
+    whapps_account_config:get(AccountId, ?MOD_CONFIG_CAT, <<"slots">>, wh_json:new()).
+
+slot_configuration(AccountId, SlotNumber) ->
+    wh_json:get_value(SlotNumber, slots_configuration(AccountId), wh_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -654,7 +698,8 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
 -spec wait_for_ringback(function(), whapps_call:call()) ->
                              'answered' | 'failed' | 'channel_hungup'.
 wait_for_ringback(Fun, Call) ->
-     case whapps_call_command:wait_for_bridge(30000, Fun, Call) of
+    Timeout = ?ACCOUNT_CALLBACK_TM(whapps_call:account_id(Call)),
+     case whapps_call_command:wait_for_bridge(Timeout, Fun, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the ringback device"),
             'answered';
