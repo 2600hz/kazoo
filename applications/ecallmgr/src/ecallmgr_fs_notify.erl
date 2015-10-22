@@ -175,9 +175,9 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
     Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
                                      ,ToAccount
                                      ,NewMessages
-                                     ,wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0)
+                                     ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
                                      ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
-                                     ,wh_json:get_integer_value(<<"Messages-Urgent-Waiting">>, JObj, 0)
+                                     ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
                                     ]),
     RegistrationContact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
     case ensure_contact_user(RegistrationContact, Username, Realm) of

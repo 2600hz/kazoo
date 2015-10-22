@@ -179,9 +179,9 @@ handle_update(JObj) ->
 handle_update(JObj, To) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     MessagesNew = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
-    MessagesSaved = wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0),
+    MessagesSaved = wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0),
     MessagesUrgent = wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0),
-    MessagesUrgentSaved = wh_json:get_integer_value(<<"Messages-Urgent-Waiting">>, JObj, 0),
+    MessagesUrgentSaved = wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0),
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
     Update = props:filter_undefined(
                [{<<"To">>, <<"sip:", To/binary>>}
