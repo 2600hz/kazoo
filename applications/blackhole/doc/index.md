@@ -13,9 +13,9 @@ Language: en-US
 1. Find your Account ID (e.g. `4b31dd1d32ce6d249897c06332375d65`)
 1. [Obtain an Auth Token](https://2600hz.atlassian.net/wiki/display/APIs/Generating+an+Authentication+Token) (e.g. `7b70f69a2a4976d80bfa0382894d1553`)
 1. Copy the **Example Client** code into an HTML file (named e.g. `kazoo_example_ws_client.html`)
-    1. Replace `192.168.56.111` with your Kazoo server's IP address
+    1. Replace `{BLACKHOLE_IP_ADDRESS}` with your Kazoo server's IP address
     1. Replace default `5555` with the port number you can configure in **sysconfig > blackhole > port** (integer)
-    1. Replace the `account_id` and `auth_token` fields with your data
+    1. Replace the `{ACCOUNT_ID}` and `{AUTH_TOKEN}` fields with your data
 1. You're all set!
 
 Now access `kazoo_example_ws_client.html` with your favourite Web browser and open the Javascript console.
@@ -32,12 +32,11 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
   </head>
   <body>
     <script>
-      var socket = io.connect('http://192.168.25.216:5555');
-      var AuthToken = '53d0af4ae87bee5e5896ca3c98fd2497';
-      socket.emit('subscribe', { account_id: '4b8c6fec4b2597882c0390202d195419', auth_token: AuthToken, binding: 'call.CHANNEL_CREATE.*'});
-      socket.emit('subscribe', { account_id: '4b8c6fec4b2597882c0390202d195419', auth_token: Authtoken, binding: 'call.CHANNEL_ANSWER.*'});
-      socket.emit('subscribe', { account_id: '4b8c6fec4b2597882c0390202d195419', auth_token: Authtoken, binding: 'call.CHANNEL_DESTROY.*'});
-      socket.emit('subscribe', { account_id: '4b8c6fec4b2597882c0390202d195419', auth_token: Authtoken, binding: 'conference.event.*'});
+      var socket = io.connect('http://{BLACKHOLE_IP_ADDRESS}:5555');
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_ANSWER.*' });
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_DESTROY.*' });
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'conference.event.*' });
 
       socket.on('participants_event', function (data) {
         console.log(data);
@@ -60,7 +59,20 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
     </script>
   </body>
 </html>
+
+
 ```
+To remove unnecessary bindings use 'unsubscribe' event:
+
+For particular subscription:
+```
+socket.emit('unsubscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
+```
+For all previous subscriptions:
+```
+socket.emit('unsubscribe', { auth_token: '{AUTH_TOKEN}' });
+```
+
 
 ### The EventJObj data structure
 
