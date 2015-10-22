@@ -178,8 +178,13 @@ merge_attributes(Endpoint, Type) ->
 
 merge_attributes(Endpoint, <<"user">>, Keys) ->
     merge_attributes(Keys, 'undefined', 'undefined', Endpoint);
-merge_attributes(Endpoint, _Type, Keys) ->
-    merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
+merge_attributes(Endpoint, <<"device">>, Keys) ->
+    merge_attributes(Keys, 'undefined', Endpoint, 'undefined');
+merge_attributes(Endpoint, <<"account">>, Keys) ->
+    merge_attributes(Keys, Endpoint, 'undefined', 'undefined');
+merge_attributes(Endpoint, Type, _Keys) ->
+    lager:debug("unhandled endpoint type on merge attributes : ~p : ~p", [Type, Endpoint]),
+    wh_json:new().
 
 -spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
                               wh_json:object().
