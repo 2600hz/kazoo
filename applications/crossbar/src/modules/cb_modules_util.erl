@@ -33,6 +33,8 @@
 
 -include("../crossbar.hrl").
 
+-define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
+
 -spec range_view_options(cb_context:context()) ->
                                 {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
@@ -235,10 +237,31 @@ request_specific_extraction_funs_from_nouns(Context, ?USERS_QCALL_NOUNS(UserId, 
 request_specific_extraction_funs_from_nouns(_Context, _ReqNouns) ->
     [].
 
+-spec filter_number_regex(ne_binary(), ne_binary()) -> ne_binary().
+filter_number_regex(Number, Regex) ->
+    case re:run(Number, Regex, [{'capture', 'all_but_first', 'binary'}]) of
+        {'match', [Match|_]} ->
+            lager:info("filtered number using regex ~p, result: ~p", [Regex, Match]),
+            Match;
+
+        _NotMatching ->
+            lager:warning("tried to filter number ~p with regex ~p, but no match found", [Number, Regex]),
+            Number
+    end.
+
 -spec build_number_uri(cb_context:context(), ne_binary()) -> ne_binary().
 build_number_uri(Context, Number) ->
+    QueryStr  = cb_context:query_string(Context),
+    FilterVal = wh_json:get_value(<<"number_filter">>, QueryStr, <<"true">>),
+
+    UseNumber = case FilterVal of
+        <<"false">> -> Number;
+        <<"true">>  -> binary:replace(Number, ?QCALL_NUMBER_FILTER, <<"">>, [global]);
+        FilterRegex -> filter_number_regex(Number, FilterRegex)
+    end,
+
     Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
-    <<Number/binary, "@", Realm/binary>>.
+    <<UseNumber/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(whapps_call:call(), cb_context:context()) -> wh_json:objects().
 -spec get_endpoints(whapps_call:call(), cb_context:context(), req_nouns()) -> wh_json:objects().
