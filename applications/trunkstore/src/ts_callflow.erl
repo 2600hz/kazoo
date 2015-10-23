@@ -42,7 +42,7 @@
 
 -export_type([state/0]).
 
--spec init(wh_json:object(), api_binary()) ->
+-spec init(wh_json:object(), api_binary() | api_binaries()) ->
                   state() | {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
@@ -259,7 +259,13 @@ set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 -spec get_failover(state()) -> wh_json:object() | 'undefined'.
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
--spec is_trunkstore_acct(wh_json:object(), api_binary()) -> boolean().
+-spec is_trunkstore_acct(wh_json:object(), api_binary() | api_binaries()) -> boolean().
+is_trunkstore_acct(JObj, [Type|Types]) ->
+    case is_trunkstore_acct(JObj, Type) of
+        'true' -> 'true';
+        'false' -> is_trunkstore_acct(JObj, Types)
+    end;
+is_trunkstore_acct(_JObj, []) -> 'false';
 is_trunkstore_acct(JObj, Type) ->
     Type =:= wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj).
 

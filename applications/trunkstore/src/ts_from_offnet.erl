@@ -19,7 +19,7 @@ start_link(RouteReqJObj) ->
 
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
-    start_amqp(ts_callflow:init(RouteReqJObj, 'undefined')).
+    start_amqp(ts_callflow:init(RouteReqJObj, ['undefined', <<"resource">>])).
 
 start_amqp({'error', 'not_ts_account'}) -> 'ok';
 start_amqp(State) ->
