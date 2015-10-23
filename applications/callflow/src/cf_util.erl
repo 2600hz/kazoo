@@ -11,25 +11,6 @@
 %%%-------------------------------------------------------------------
 -module(cf_util).
 
--include("callflow.hrl").
--include_lib("whistle/src/wh_json.hrl").
-
--define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).
--define(CF_FLOW_CACHE_KEY(Number, Db), {'cf_flow', Number, Db}).
--define(SIP_USER_OWNERS_KEY(Db, User), {?MODULE, 'sip_user_owners', Db, User}).
--define(SIP_ENDPOINT_ID_KEY(Db, User), {?MODULE, 'sip_endpoint_id', Db, User}).
--define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
--define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
--define(OPERATOR_KEY, whapps_config:get(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
--define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
--define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
-
--define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
-                        ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
-                                       ,{<<"ZRTP-Enrollment">>, <<"true">>}
-                                      ]}
-                        ]).
-
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
 -export([notification_register/2]).
@@ -64,6 +45,25 @@
 
 -export([wait_for_noop/2]).
 -export([start_task/3]).
+
+-include("callflow.hrl").
+-include_lib("whistle/src/wh_json.hrl").
+
+-define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).
+-define(CF_FLOW_CACHE_KEY(Number, Db), {'cf_flow', Number, Db}).
+-define(SIP_USER_OWNERS_KEY(Db, User), {?MODULE, 'sip_user_owners', Db, User}).
+-define(SIP_ENDPOINT_ID_KEY(Db, User), {?MODULE, 'sip_endpoint_id', Db, User}).
+-define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
+-define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
+-define(OPERATOR_KEY, whapps_config:get(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
+-define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
+-define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
+
+-define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
+                        ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
+                                       ,{<<"ZRTP-Enrollment">>, <<"true">>}
+                                      ]}
+                        ]).
 
 %%--------------------------------------------------------------------
 %% @public
