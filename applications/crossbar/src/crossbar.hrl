@@ -96,6 +96,7 @@
           ,charsets_provided = [<<"iso-8859-1">>] :: ne_binaries() %% all charsets provided
           ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: ne_binaries() %% gzip and identity
           ,auth_token = <<>> :: binary() | 'undefined'
+          ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'oauth' | 'unknown'
           ,auth_account_id :: api_binary()
           ,auth_doc :: api_object()
           ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS

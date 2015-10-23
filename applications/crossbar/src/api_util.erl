@@ -715,23 +715,60 @@ prefer_new_context([{'halt', Context1}|_], Req, _) ->
     lager:debug("authn halted"),
     ?MODULE:halt(Req, Context1).
 
+
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
                             {cowboy_req:req(), cb_context:context()}.
 get_auth_token(Req0, Context) ->
     case cowboy_req:header(<<"x-auth-token">>, Req0) of
         {'undefined', Req1} ->
             case cb_context:req_value(Context, <<"auth_token">>) of
-                'undefined' ->
-                    lager:debug("no auth token found"),
-                    {Req1, Context};
+                'undefined' -> get_authorization_token(Req1, Context);
                 Token ->
                     lager:debug("using auth token found"),
-                    {Req1, cb_context:set_auth_token(Context, Token)}
+                    {Req1, cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
+                                                        ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
+                                                       ]
+                                             )}
             end;
         {Token, Req1} ->
             lager:debug("using auth token from header"),
-            {Req1, cb_context:set_auth_token(Context, Token)}
+            {Req1, cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
+                                                ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
+                                               ]
+                                     )}
     end.
+
+-spec get_authorization_token(cowboy_req:req(), cb_context:context()) ->
+                            {cowboy_req:req(), cb_context:context()}.
+get_authorization_token(Req0, Context) ->
+    case cowboy_req:header(<<"authorization">>, Req0) of
+        {'undefined', Req1} ->
+            case cb_context:req_value(Context, <<"authorization">>) of
+                'undefined' ->
+                    lager:debug("no auth token found"),
+                    {Req1, Context};
+                Authorization ->
+                    lager:debug("using token ~s from url", [Authorization]),
+                    {Req1, set_auth_context(Context, Authorization)}
+            end;
+        {Authorization, Req1} ->
+            lager:debug("using token ~s from header", [Authorization]),
+            {Req1, set_auth_context(Context, Authorization)}
+    end.
+
+-spec set_auth_context(cb_context:context(), ne_binary() | {ne_binary(), atom()}) -> cb_context:context().
+set_auth_context(Context, {Token, TokenType}) ->
+    cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
+                                 ,{fun cb_context:set_auth_token_type/2, TokenType}
+                                ]
+                      );
+set_auth_context(Context, Authorization) ->
+    set_auth_context(Context, get_authorization_token_type(Authorization)).
+
+-spec get_authorization_token_type(ne_binary()) -> {ne_binary(), atom()}.
+get_authorization_token_type(<<"Basic ", Token/binary>>) -> {Token, 'basic'};
+get_authorization_token_type(<<"Bearer ", Token/binary>>) -> {Token, 'oauth'};
+get_authorization_token_type(Token) -> {Token, 'unknown'}.
 
 %%--------------------------------------------------------------------
 %% @private

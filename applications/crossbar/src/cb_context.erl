@@ -38,6 +38,7 @@
          ,reseller_id/1, set_reseller_id/2
          ,account_realm/1
          ,account_doc/1
+         ,auth_token_type/1, set_auth_token_type/2
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
          ,auth_account_id/1, set_auth_account_id/2
@@ -176,6 +177,7 @@ account_doc(Context) ->
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
 
+auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
@@ -319,6 +321,8 @@ set_account_modb(#cb_context{}=Context, Year, Month) ->
     Context#cb_context{db_name=kazoo_modb:get_modb(account_id(Context), Year, Month)}.
 set_account_modb(#cb_context{}=Context, AcctId, Year, Month) ->
     Context#cb_context{db_name=kazoo_modb:get_modb(AcctId, Year, Month)}.
+set_auth_token_type(#cb_context{}=Context, AuthTokenType) ->
+    Context#cb_context{auth_token_type=AuthTokenType}.
 set_auth_token(#cb_context{}=Context, AuthToken) ->
     Context#cb_context{auth_token=AuthToken}.
 set_auth_doc(#cb_context{}=Context, AuthDoc) ->
