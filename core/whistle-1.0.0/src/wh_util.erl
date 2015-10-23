@@ -401,17 +401,20 @@ is_account_enabled(Account) ->
 
     end.
 
--spec is_account_expired(api_binary()) -> boolean().
+-spec is_account_expired(api_binary()) -> 'false' | {'true', integer()}.
 is_account_expired('undefined') -> 'false';
 is_account_expired(Account) ->
     case kz_account:fetch(Account) of
+        {'error', _R} ->
+            lager:debug("failed to check if expired token auth, ~p", [_R]),
+            'false';
         {'ok', Doc} ->
             Now = ?MODULE:current_tstamp(),
             Trial = kz_account:trial_expiration(Doc, Now+1),
-            Trial < Now;
-        {'error', _R} ->
-            lager:debug("failed to check if expired token auth, ~p", [_R]),
-            'false'
+            case Trial < Now of
+                'false' -> 'false';
+                'true' -> {'true', Trial}
+            end
     end.
 
 %%--------------------------------------------------------------------
