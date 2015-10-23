@@ -25,15 +25,11 @@
 -define(RESPONDERS, [{'reg_authn_req'
                       ,[{<<"directory">>, <<"authn_req">>}]
                      }
-                     ,{'reg_authz_req'
-                       ,[{<<"authz">>, <<"authz_req">>}]
-                      }
                      ,{{'reg_route_req', 'handle_route_req'}
                        ,[{<<"dialplan">>, <<"route_req">>}]
                       }
                     ]).
 -define(BINDINGS, [{'authn', []}
-                   ,{'authz', []}
                    ,{'route', []}
                    ,{'self', []}
                   ]).
