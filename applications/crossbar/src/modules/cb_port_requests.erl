@@ -918,7 +918,7 @@ build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
               fun(JObj, Acc) ->
                       build_descendant_key(JObj, Acc, E164)
               end
-              ,[[AccountId, E164]]
+              ,[]
               ,JObjs
              )
     end.
