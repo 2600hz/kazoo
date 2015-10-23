@@ -791,15 +791,11 @@ maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
 -spec load_system_dialplans(ne_binaries()) -> wh_json:object().
 load_system_dialplans(Names) ->
     LowerNames = [wh_util:to_lower_binary(Name) || Name <- Names],
-    case whapps_config:get_all_kvs(<<"dialplans">>) of
-        Plans when is_list(Plans) ->
-            lists:foldl(fold_system_dialplans(LowerNames), wh_json:new(), Plans);
-        Error ->
-            lager:notice("cannot get system dial plans ~p", [Error])
-    end.
+    Plans = whapps_config:get_all_kvs(<<"dialplans">>),
+    lists:foldl(fold_system_dialplans(LowerNames), wh_json:new(), Plans).
 
 -spec fold_system_dialplans(ne_binaries()) ->
-    fun(({ne_binary(), wh_json:object()}, wh_json:object()) -> wh_json:object()).
+                                   fun(({ne_binary(), wh_json:object()}, wh_json:object()) -> wh_json:object()).
 fold_system_dialplans(Names) ->
     fun({Key, Val}, Acc) ->
             Name = wh_util:to_lower_binary(wh_json:get_value(<<"name">>, Val)),
