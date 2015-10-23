@@ -119,7 +119,7 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
 -spec has_endpoint(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()}.
 has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
-    Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
+    Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(AccountDb, JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
     catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
     {'ok', Endpoint}.
@@ -154,9 +154,8 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
                         end, Props, OwnerIds)
     end.
 
--spec merge_attributes(wh_json:object(), ne_binary()) -> wh_json:object().
--spec merge_attributes(wh_json:object(), ne_binary(), ne_binaries()) -> wh_json:object().
-merge_attributes(Endpoint, Type) ->
+-spec merge_attributes(ne_binary(), wh_json:object(), ne_binary()) -> wh_json:object().
+merge_attributes(AccountDb, Endpoint, Type) ->
     Keys = [<<"name">>
             ,<<"call_restriction">>
             ,<<"music_on_hold">>
@@ -174,35 +173,29 @@ merge_attributes(Endpoint, Type) ->
             ,<<"call_waiting">>
             ,?CF_ATTR_LOWER_KEY
            ],
-    merge_attributes(Endpoint, Type, Keys).
+    {'ok', AccountDoc} = kz_account:fetch(AccountDb),
+    case Type of
+        <<"user">> ->
+            merge_attributes(Keys, AccountDoc, wh_json:new(), Endpoint);
+        <<"device">> ->
+            merge_attributes(Keys, AccountDoc, Endpoint, 'undefined');
+        <<"account">> ->
+            merge_attributes(Keys, AccountDoc, wh_json:new(), 'undefined');
+        _Else ->
+            lager:debug("unhandled endpoint type on merge attributes : ~p : ~p", [Type, Endpoint]),
+            wh_json:new()
+    end.
 
-merge_attributes(Endpoint, <<"user">>, Keys) ->
-    merge_attributes(Keys, 'undefined', 'undefined', Endpoint);
-merge_attributes(Endpoint, <<"device">>, Keys) ->
-    merge_attributes(Keys, 'undefined', Endpoint, 'undefined');
-merge_attributes(Endpoint, <<"account">>, Keys) ->
-    merge_attributes(Keys, Endpoint, 'undefined', 'undefined');
-merge_attributes(Endpoint, Type, _Keys) ->
-    lager:debug("unhandled endpoint type on merge attributes : ~p : ~p", [Type, Endpoint]),
-    wh_json:new().
-
--spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
+-spec merge_attributes(ne_binaries(), wh_json:object(), wh_json:object(), api_object()) ->
                               wh_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
 merge_attributes(Keys, Account, Endpoint, 'undefined') ->
-    AccountDb = wh_doc:account_db(Endpoint),
+    AccountDb = wh_util:format_account_db(kz_account:id(Account)),
     JObj = get_user(AccountDb, Endpoint),
     merge_attributes(Keys
                      ,Account
                      ,wh_json:set_value(<<"owner_id">>, wh_doc:id(JObj), Endpoint)
                      ,JObj);
-merge_attributes(Keys, Account, 'undefined', Owner) ->
-    merge_attributes(Keys, Account, wh_json:new(), Owner);
-merge_attributes(Keys, 'undefined', Endpoint, Owner) ->
-    case kz_account:fetch(wh_doc:account_id(Endpoint)) of
-        {'ok', JObj} -> merge_attributes(Keys, JObj, Endpoint, Owner);
-        {'error', _} -> merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
-    end;
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
     Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),
     Update = merge_call_restrictions(Classifiers, Account, Endpoint, Owner),
