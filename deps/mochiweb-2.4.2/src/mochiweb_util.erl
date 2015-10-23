@@ -195,9 +195,15 @@ quote_plus([C | Rest], Acc) ->
 urlencode(Props) ->
     Pairs = lists:foldr(
               fun ({K, V}, Acc) ->
-                      [quote_plus(K) ++ "=" ++ quote_plus(V) | Acc]
+                      [quote_plus(K) ++ "=" ++ fix_ufff0(quote_plus(V)) | Acc]
               end, [], Props),
     string:join(Pairs, "&").
+
+-spec fix_ufff0(iolist()) -> iolist().
+fix_ufff0(Url) ->
+    Bin = binary:list_to_bin(Url),
+    Bin1 = binary:replace(Bin, <<"ufff0">>, <<"%5Cufff0">>),
+    binary:bin_to_list(Bin1).
 
 %% @spec parse_qs(string() | binary()) -> [{Key, Value}]
 %% @doc Parse a query string or application/x-www-form-urlencoded.
