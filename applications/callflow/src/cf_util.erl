@@ -1037,9 +1037,11 @@ get_mailbox(AccountDb, VMNumber) ->
             E
     end.
 
--define(VM_COUNT(A,B), lists:sum([1 || M <- A, wh_json:get_value(?VM_KEY_FOLDER, M) =:= B])).
-
 -spec vm_count(wh_json:object()) -> {non_neg_integer(), non_neg_integer()}.
 vm_count(JObj) ->
     Messages = wh_json:get_value(?VM_KEY_MESSAGES, JObj, []),
-    {?VM_COUNT(Messages, ?VM_FOLDER_NEW), ?VM_COUNT(Messages, ?VM_FOLDER_SAVED)}.
+    {vc_sum(Messages, ?VM_FOLDER_NEW), vc_sum(Messages, ?VM_FOLDER_SAVED)}.
+
+-spec vc_sum(wh_json:objects(), ne_binary()) -> non_neg_integer().
+vc_sum(Ms, F) ->
+    lists:sum([1 || M <- Ms, wh_json:get_value(?VM_KEY_FOLDER, M) =:= F]).
