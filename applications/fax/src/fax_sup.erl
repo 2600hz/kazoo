@@ -32,7 +32,6 @@
                    ,?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
                    ,?WORKER('fax_jobs')
                    ,?SUPER('fax_requests_sup')
-                   ,?SUPER('fax_xmpp_sup')
                    ,?WORKER('fax_shared_listener')
                    ,?WORKER('fax_listener')
                    ,?WORKER_ARGS('gen_smtp_server',['fax_smtp'
@@ -91,6 +90,11 @@ init([]) ->
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
+    XmppStart = case whapps_config:get(?CONFIG_CAT, <<"enable_xmpp">>, 'false') of
+        'true'  -> [?SUPER('fax_xmpp_sup')];
+        'false' -> []
+    end,
+
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, ?CHILDREN++XmppStart}}.
