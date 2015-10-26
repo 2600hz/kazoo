@@ -942,8 +942,8 @@ to_upper_char(C) -> C.
 
 -spec strip_binary(binary()) -> binary().
 -spec strip_binary(binary(), 'both' | 'left' | 'right' | char() | [char()]) -> binary().
--spec strip_left_binary(binary(), char()) -> binary().
--spec strip_right_binary(binary(), char()) -> binary().
+-spec strip_left_binary(binary(), char() | binary()) -> binary().
+-spec strip_right_binary(binary(), char() | binary()) -> binary().
 strip_binary(B) -> strip_binary(B, 'both').
 
 strip_binary(B, 'left') -> strip_left_binary(B, $\s);
@@ -955,7 +955,6 @@ strip_binary(B, Cs) when is_list(Cs) ->
                 ,B
                 ,Cs
                ).
-
 
 strip_left_binary(<<C, B/binary>>, C) -> strip_left_binary(B, C);
 strip_left_binary(B, _) -> B.

@@ -88,13 +88,13 @@ subscribe(Realm, User) ->
     end.
 
 -spec send_mwi_update(ne_binary(), ne_binary() | integer(), ne_binary() | integer() ) -> 'ok'.
-send_mwi_update(User, New, Waiting) when is_binary(New) ->
-  send_mwi_update(User, wh_util:to_integer(New), Waiting);
-send_mwi_update(User, New, Waiting) when is_binary(Waiting) ->
-  send_mwi_update(User, New, wh_util:to_integer(Waiting));
-send_mwi_update(User, New, Waiting) ->
+send_mwi_update(User, New, Saved) when is_binary(New) ->
+  send_mwi_update(User, wh_util:to_integer(New), Saved);
+send_mwi_update(User, New, Saved) when is_binary(Saved) ->
+  send_mwi_update(User, New, wh_util:to_integer(Saved));
+send_mwi_update(User, New, Saved) ->
     Command = [{<<"Messages-New">>, New}
-               ,{<<"Messages-Waiting">>, Waiting}
+               ,{<<"Messages-Saved">>, Saved}
                ,{<<"Call-ID">>, wh_util:rand_hex_binary(16) }
                ,{<<"To">>, User}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
