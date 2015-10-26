@@ -75,15 +75,19 @@
                           ,{<<"Event-Queue">>, fun is_binary/1}
                           ,{<<"Caller-ID-Name">>, fun is_binary/1}
                           ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                          ,{<<"Cost-Parameters">>, fun(JObj) ->
-                                                           wh_json:is_json_object(JObj)
-                                                               andalso lists:all(fun({K, _V}) ->
-                                                                                         lists:member(K, ?ROUTE_REQ_COST_PARAMS)
-                                                                                 end, wh_json:to_proplist(JObj))
-                                                   end}
+                          ,{<<"Cost-Parameters">>, fun has_cost_parameters/1}
                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                          ]).
+
+-spec has_cost_parameters(wh_json:object()) -> boolean().
+has_cost_parameters(JObj) ->
+    wh_json:is_json_object(JObj)
+        andalso wh_json:all(fun({K, _V}) ->
+                                    lists:member(K, ?ROUTE_REQ_COST_PARAMS)
+                            end
+                            ,JObj
+                           ).
 
 %% Route Responses
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
