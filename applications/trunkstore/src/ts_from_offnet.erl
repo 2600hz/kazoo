@@ -89,7 +89,8 @@ wait_for_bridge(State) ->
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State)
-          ,ts_callflow:get_failover(State)}
+          ,ts_callflow:get_failover(State)
+         }
     of
         {<<>>, _} ->
             lager:info("no callctl for failover");
