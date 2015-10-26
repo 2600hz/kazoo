@@ -276,7 +276,7 @@ get_call_cost(#ts_callflow_state{call_cost=Cost}) -> Cost.
 -spec set_failover(state(), wh_json:object()) -> state().
 set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 
--spec get_failover(state()) -> wh_json:object() | 'undefined'.
+-spec get_failover(state()) -> api_object().
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
 -spec is_trunkstore_acct(wh_json:object(), api_binary() | api_binaries()) -> boolean().
