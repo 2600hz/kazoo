@@ -132,21 +132,21 @@ sort_resources(Resources) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec endpoints(ne_binary(), wapi_offnet_resource:req()) -> wh_json:objects().
 endpoints(Number, OffnetJObj) ->
     case maybe_get_endpoints(Number, OffnetJObj) of
         [] -> [];
         Endpoints -> sort_endpoints(Endpoints)
     end.
 
--spec maybe_get_endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec maybe_get_endpoints(ne_binary(), wapi_offnet_resource:req()) -> wh_json:objects().
 maybe_get_endpoints(Number, OffnetJObj) ->
     case wapi_offnet_resource:hunt_account_id(OffnetJObj) of
         'undefined' -> get_global_endpoints(Number, OffnetJObj);
         HuntAccount -> maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj)
     end.
 
--spec maybe_get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec maybe_get_local_endpoints(ne_binary(), ne_binary(), wapi_offnet_resource:req()) -> wh_json:objects().
 maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
     AccountId = wapi_offnet_resource:account_id(OffnetJObj),
     case wh_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
@@ -160,14 +160,14 @@ maybe_get_local_endpoints(HuntAccount, Number, OffnetJObj) ->
             get_local_endpoints(HuntAccount, Number, OffnetJObj)
     end.
 
--spec get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec get_local_endpoints(ne_binary(), ne_binary(), wapi_offnet_resource:req()) -> wh_json:objects().
 get_local_endpoints(AccountId, Number, OffnetJObj) ->
     lager:debug("attempting to find local resources for ~s", [AccountId]),
     Flags = wapi_offnet_resource:flags(OffnetJObj, []),
     Resources = filter_resources(Flags, get(AccountId)),
     resources_to_endpoints(Resources, Number, OffnetJObj).
 
--spec get_global_endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec get_global_endpoints(ne_binary(), wapi_offnet_resource:req()) -> wh_json:objects().
 get_global_endpoints(Number, OffnetJObj) ->
     lager:debug("attempting to find global resources"),
     Flags = wapi_offnet_resource:flags(OffnetJObj, []),
@@ -369,9 +369,9 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec resources_to_endpoints(resources(), ne_binary(), wh_json:object()) ->
+-spec resources_to_endpoints(resources(), ne_binary(), wapi_offnet_resource:req()) ->
                                     wh_json:objects().
--spec resources_to_endpoints(resources(), ne_binary(), wh_json:object(), wh_json:objects()) ->
+-spec resources_to_endpoints(resources(), ne_binary(), wapi_offnet_resource:req(), wh_json:objects()) ->
                                     wh_json:objects().
 resources_to_endpoints(Resources, Number, OffnetJObj) ->
     resources_to_endpoints(Resources, Number, OffnetJObj, []).
@@ -382,7 +382,7 @@ resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
     MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, OffnetJObj, Endpoints),
     resources_to_endpoints(Resources, Number, OffnetJObj, MoreEndpoints).
 
--spec maybe_resource_to_endpoints(resource(), ne_binary(), wh_json:object(), wh_json:objects()) ->
+-spec maybe_resource_to_endpoints(resource(), ne_binary(), wapi_offnet_resource:req(), wh_json:objects()) ->
                                          wh_json:objects().
 maybe_resource_to_endpoints(#resrc{id=Id
                                    ,name=Name
@@ -415,11 +415,12 @@ maybe_resource_to_endpoints(#resrc{id=Id
             maybe_add_proxies(EndpointList, Proxies, Endpoints)
     end.
 
--spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist(), wapi_offnet_resource:req()) -> wh_json:object().
 update_endpoint(Endpoint, Updates, CCVUpdates, OffnetJObj) ->
     Updated = wh_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates)),
     maybe_apply_formatters(Updated, OffnetJObj).
 
+-spec maybe_apply_formatters(wh_json:object(), wapi_offnet_resource:req()) -> wh_json:object().
 maybe_apply_formatters(Endpoint, OffnetJObj) ->
     SIPHeaders = stepswitch_util:get_sip_headers(OffnetJObj),
     AccountId = wapi_offnet_resource:account_id(OffnetJObj),
@@ -533,7 +534,7 @@ evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec gateways_to_endpoints(ne_binary(), gateways(), wh_json:object(), wh_json:objects()) ->
+-spec gateways_to_endpoints(ne_binary(), gateways(), wapi_offnet_resource:req(), wh_json:objects()) ->
                                    wh_json:objects().
 gateways_to_endpoints(_Number, [], _OffnetJObj, Endpoints) -> Endpoints;
 gateways_to_endpoints(Number, [Gateway|Gateways], OffnetJObj, Endpoints) ->
@@ -543,7 +544,7 @@ gateways_to_endpoints(Number, [Gateway|Gateways], OffnetJObj, Endpoints) ->
                           ,[gateway_to_endpoint(Number, Gateway, OffnetJObj) | Endpoints]
                          ).
 
--spec gateway_to_endpoint(ne_binary(), gateway(), wh_json:object()) ->
+-spec gateway_to_endpoint(ne_binary(), gateway(), wapi_offnet_resource:req()) ->
                                  wh_json:object().
 gateway_to_endpoint(Number
                     ,#gateway{invite_format=InviteFormat
@@ -608,15 +609,15 @@ gateway_from_uri_settings(#gateway{format_from_uri='false'
      ,{<<"From-URI-Realm">>, Realm}
     ].
 
--spec maybe_get_t38(gateway(), wh_json:object()) -> wh_proplist().
-maybe_get_t38(#gateway{fax_option=FaxOption}, JObj) ->
-    Flags = wh_json:get_value(<<"Flags">>, JObj, []),
+-spec maybe_get_t38(gateway(), wapi_offnet_resource:req()) -> wh_proplist().
+maybe_get_t38(#gateway{fax_option=FaxOption}, OffnetJObj) ->
+    Flags = wapi_offnet_resource:flags(OffnetJObj, []),
     case lists:member(<<"fax">>, Flags) of
         'false' -> [];
         'true' ->
             whapps_call_command:get_outbound_t38_settings(
               FaxOption
-              ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)
+              ,wh_json:get_value(<<"Fax-T38-Enabled">>, OffnetJObj)
              )
     end.
 

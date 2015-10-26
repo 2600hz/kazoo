@@ -25,6 +25,7 @@
          ,outbound_caller_id_number/1, outbound_caller_id_number/2
          ,outbound_caller_id_name/1, outbound_caller_id_name/2
          ,call_id/1, call_id/2
+         ,control_queue/1, control_queue/2
          ,to_did/1, to_did/2
          ,flags/1, flags/2
         ]).
@@ -32,8 +33,16 @@
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 
+-type req() :: wh_json:object().
+-type resp() :: wh_json:object().
+
+-export_type([req/0
+              ,resp/0
+             ]).
+
 -define(KEY_ACCOUNT_ID, <<"Account-ID">>).
 -define(KEY_CALL_ID, <<"Call-ID">>).
+-define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
 -define(KEY_FLAGS, <<"Flags">>).
 -define(KEY_FORCE_OUTBOUND, <<"Force-Outbound">>).
 -define(KEY_HUNT_ACCOUNT_ID, <<"Hunt-Account-ID">>).
@@ -62,7 +71,7 @@
           ,<<"Bypass-E164">>
           ,?KEY_CALL_ID
           ,?KEY_CALL_ID
-          ,<<"Control-Queue">>
+          ,?KEY_CONTROL_QUEUE
           ,<<"Custom-Channel-Vars">>
           ,<<"Custom-SIP-Headers">>
           ,<<"Emergency-Caller-ID-Name">>
@@ -112,7 +121,7 @@
         ,[{?KEY_ACCOUNT_ID, fun is_binary/1}
           ,{<<"B-Leg-Events">>, fun wapi_dialplan:b_leg_events_v/1}
           ,{?KEY_CALL_ID, fun is_binary/1}
-          ,{<<"Control-Queue">>, fun is_binary/1}
+          ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
           ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
@@ -126,7 +135,7 @@
 -define(OFFNET_RESOURCE_RESP_HEADERS, [<<"Response-Message">>]).
 -define(OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS, [<<"Error-Message">>, <<"Response-Code">>
                                                 ,?KEY_CALL_ID, <<"Resource-Response">>
-                                                ,<<"Control-Queue">>
+                                                ,?KEY_CONTROL_QUEUE
                                                ]).
 -define(OFFNET_RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                       ,{<<"Event-Name">>, <<"offnet_resp">>}
@@ -205,71 +214,78 @@ publish_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
--spec force_outbound(wh_json:object()) -> boolean().
--spec force_outbound(wh_json:object(), Default) -> boolean() | Default.
+-spec force_outbound(req()) -> boolean().
+-spec force_outbound(req(), Default) -> boolean() | Default.
 force_outbound(JObj) ->
     force_outbound(JObj, 'false').
 force_outbound(JObj, Default) ->
     wh_json:is_true(?KEY_FORCE_OUTBOUND, JObj, Default).
 
--spec resource_type(wh_json:object()) -> ne_binary().
--spec resource_type(wh_json:object(), Default) -> ne_binary() | Default.
+-spec resource_type(req()) -> ne_binary().
+-spec resource_type(req(), Default) -> ne_binary() | Default.
 resource_type(JObj) ->
     resource_type(JObj, ?RESOURCE_TYPE_AUDIO).
 resource_type(JObj, Default) ->
     wh_json:get_ne_value(?KEY_RESOURCE_TYPE, JObj, Default).
 
--spec account_id(wh_json:object()) -> api_binary().
--spec account_id(wh_json:object(), Default) -> ne_binary() | Default.
+-spec account_id(req()) -> api_binary().
+-spec account_id(req(), Default) -> ne_binary() | Default.
 account_id(JObj) ->
     account_id(JObj, 'undefined').
 account_id(JObj, Default) ->
     wh_json:get_ne_value(?KEY_ACCOUNT_ID, JObj, Default).
 
--spec hunt_account_id(wh_json:object()) -> api_binary().
--spec hunt_account_id(wh_json:object(), Default) -> ne_binary() | Default.
+-spec hunt_account_id(req()) -> api_binary().
+-spec hunt_account_id(req(), Default) -> ne_binary() | Default.
 hunt_account_id(JObj) ->
     hunt_account_id(JObj, 'undefined').
 hunt_account_id(JObj, Default) ->
     wh_json:get_ne_value(?KEY_HUNT_ACCOUNT_ID, JObj, Default).
 
--spec outbound_call_id(wh_json:object()) -> api_binary().
--spec outbound_call_id(wh_json:object(), Default) -> ne_binary() | Default.
+-spec outbound_call_id(req()) -> api_binary().
+-spec outbound_call_id(req(), Default) -> ne_binary() | Default.
 outbound_call_id(JObj) ->
     outbound_call_id(JObj, 'undefined').
 outbound_call_id(JObj, Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALL_ID, JObj, Default).
 
--spec outbound_caller_id_number(wh_json:object()) -> api_binary().
--spec outbound_caller_id_number(wh_json:object(), Default) -> ne_binary() | Default.
+-spec outbound_caller_id_number(req()) -> api_binary().
+-spec outbound_caller_id_number(req(), Default) -> ne_binary() | Default.
 outbound_caller_id_number(JObj) ->
     outbound_caller_id_number(JObj, 'undefined').
 outbound_caller_id_number(JObj, Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, JObj, Default).
 
--spec outbound_caller_id_name(wh_json:object()) -> api_binary().
--spec outbound_caller_id_name(wh_json:object(), Default) -> ne_binary() | Default.
+-spec outbound_caller_id_name(req()) -> api_binary().
+-spec outbound_caller_id_name(req(), Default) -> ne_binary() | Default.
 outbound_caller_id_name(JObj) ->
     outbound_caller_id_name(JObj, 'undefined').
 outbound_caller_id_name(JObj, Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NAME, JObj, Default).
 
--spec to_did(wh_json:object()) -> api_binary().
--spec to_did(wh_json:object(), Default) -> ne_binary() | Default.
+-spec to_did(req()) -> api_binary().
+-spec to_did(req(), Default) -> ne_binary() | Default.
 to_did(JObj) ->
     to_did(JObj, 'undefined').
 to_did(JObj, Default) ->
     wh_json:get_ne_value(?KEY_TO_DID, JObj, Default).
 
--spec call_id(wh_json:object()) -> api_binary().
--spec call_id(wh_json:object(), Default) -> ne_binary() | Default.
+-spec call_id(req()) -> api_binary().
+-spec call_id(req(), Default) -> ne_binary() | Default.
 call_id(JObj) ->
     call_id(JObj, 'undefined').
 call_id(JObj, Default) ->
     wh_json:get_ne_value(?KEY_CALL_ID, JObj, Default).
 
--spec flags(wh_json:object()) -> ne_binaries().
--spec flags(wh_json:object(), Default) -> ne_binaries() | Default.
+-spec control_queue(req()) -> api_binary().
+-spec control_queue(req(), Default) -> ne_binary() | Default.
+control_queue(JObj) ->
+    control_queue(JObj, 'undefined').
+control_queue(JObj, Default) ->
+    wh_json:get_ne_value(?KEY_CONTROL_QUEUE, JObj, Default).
+
+-spec flags(req()) -> ne_binaries().
+-spec flags(req(), Default) -> ne_binaries() | Default.
 flags(JObj) ->
     flags(JObj, []).
 flags(JObj, Default) ->

@@ -242,7 +242,7 @@ send(<<"sip">>, Endpoint, API) ->
     Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
     CallId = props:get_value(<<"Call-ID">>, Payload),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
-    whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
+    wh_amqp_worker:cast(Payload, fun wapi_sms:publish_message/1),
     erlang:send_after(60000, self(), 'sms_timeout');
 send(<<"amqp">>, Endpoint, API) ->
     CallId = props:get_value(<<"Call-ID">>, API),

@@ -34,41 +34,41 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec bridge(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
-bridge(Endpoints, JObj) ->
-    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary
-           >>,
+-spec child_name(wapi_offnet_resource:req()) -> ne_binary().
+child_name(OffnetJObj) ->
+    <<(wapi_offnet_resource:call_id(OffnetJObj))/binary
+      ,"-", (wh_util:rand_hex_binary(3))/binary
+    >>.
+
+-spec bridge(wh_json:objects(), wapi_offnet_resource:req()) -> sup_startchild_ret().
+bridge(Endpoints, OffnetJObj) ->
     supervisor:start_child(?MODULE
-                           ,?WORKER_NAME_ARGS_TYPE(Name
+                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetJObj)
                                                    ,'stepswitch_bridge'
-                                                   ,[Endpoints, JObj]
+                                                   ,[Endpoints, OffnetJObj]
                                                    ,'temporary'
                                                   )
                           ).
 
--spec local_extension(wh_proplist(), wh_json:object()) -> sup_startchild_ret().
-local_extension(Props, JObj) ->
-    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
-             ,"-", (wh_util:rand_hex_binary(3))/binary
-           >>,
+-spec local_extension(wh_proplist(), wapi_offnet_resource:req()) -> sup_startchild_ret().
+local_extension(Props, OffnetJObj) ->
     supervisor:start_child(?MODULE
-                           ,?WORKER_NAME_ARGS_TYPE(Name
+                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetJObj)
                                                    ,'stepswitch_local_extension'
-                                                   ,[Props, JObj]
+                                                   ,[Props, OffnetJObj]
                                                    ,'temporary'
                                                   )
                           ).
 
--spec originate(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
-originate(Endpoints, JObj) ->
-    Name = <<(wh_json:get_value(<<"Outbound-Call-ID">>, JObj))/binary
+-spec originate(wh_json:objects(), wapi_offnet_resource:req()) -> sup_startchild_ret().
+originate(Endpoints, OffnetJObj) ->
+    Name = <<(wh_json:get_value(<<"Outbound-Call-ID">>, OffnetJObj))/binary
              ,"-", (wh_util:rand_hex_binary(3))/binary
            >>,
     supervisor:start_child(?MODULE
                            ,?WORKER_NAME_ARGS_TYPE(Name
                                                    ,'stepswitch_originate'
-                                                   ,[Endpoints, JObj]
+                                                   ,[Endpoints, OffnetJObj]
                                                    ,'temporary'
                                                   )
                           ).

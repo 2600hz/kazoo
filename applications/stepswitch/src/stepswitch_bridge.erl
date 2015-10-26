@@ -81,16 +81,16 @@ start_link(Endpoints, JObj) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Endpoints, JObj]) ->
-    wh_util:put_callid(JObj),
-    case wh_json:get_ne_value(<<"Control-Queue">>, JObj) of
+init([Endpoints, OffnetJObj]) ->
+    wh_util:put_callid(OffnetJObj),
+    case wapi_offnet_resource:control_queue(OffnetJObj) of
         'undefined' -> {'stop', 'normal'};
         ControlQ ->
             {'ok', #state{endpoints=Endpoints
-                          ,resource_req=JObj
+                          ,resource_req=OffnetJObj
                           ,request_handler=self()
                           ,control_queue=ControlQ
-                          ,response_queue=wh_json:get_ne_value(<<"Server-ID">>, JObj)
+                          ,response_queue=wh_api:server_id(OffnetJObj)
                           ,timeout=erlang:send_after(30000, self(), 'bridge_timeout')
                          }}
     end.
@@ -595,7 +595,9 @@ bridge_not_configured(Request) ->
     ].
 
 -spec deny_emergency_bridge(state()) -> 'ok'.
-deny_emergency_bridge(#state{resource_req=JObj, control_queue=ControlQ}) ->
+deny_emergency_bridge(#state{resource_req=JObj
+                             ,control_queue=ControlQ
+                            }) ->
     lager:warning("terminating attempted emergency bridge from unconfigured device"),
     send_deny_emergency_response(JObj, ControlQ),
     send_deny_emergency_notification(JObj),
@@ -614,7 +616,9 @@ send_deny_emergency_notification(Request) ->
             ],
     wapi_notifications:publish_denied_emergency_bridge(Props).
 
--spec send_deny_emergency_response(wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_deny_emergency_response(wh_json:object(), ne_binary()) ->
+                                          {'ok', ne_binary()} |
+                                          {'error', 'no_response'}.
 send_deny_emergency_response(JObj, ControlQ) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Code = whapps_config:get_ne_binary(

@@ -22,7 +22,7 @@
 %% route
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), wh_proplist()) -> any().
+-spec handle_req(wapi_offnet_resource:req(), wh_proplist()) -> any().
 handle_req(OffnetJObj, _Props) ->
     'true' = wapi_offnet_resource:req_v(OffnetJObj),
     _ = wh_util:put_callid(OffnetJObj),
@@ -38,8 +38,8 @@ handle_req(OffnetJObj, _Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_audio_req(wh_json:object()) -> any().
--spec handle_audio_req(ne_binary(), wh_json:object()) -> any().
+-spec handle_audio_req(wapi_offnet_resource:req()) -> any().
+-spec handle_audio_req(ne_binary(), wapi_offnet_resource:req()) -> any().
 handle_audio_req(OffnetJObj) ->
     Number = stepswitch_util:get_outbound_destination(OffnetJObj),
     lager:debug("received outbound audio resource request for ~s: ~p", [Number, OffnetJObj]),
@@ -58,11 +58,11 @@ handle_audio_req(Number, OffnetJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_originate_req(wh_json:object()) -> any().
+-spec handle_originate_req(wapi_offnet_resource:req()) -> any().
 handle_originate_req(OffnetJObj) ->
     Number = stepswitch_util:get_outbound_destination(OffnetJObj),
     lager:debug("received outbound audio resource request for ~s from account ~s"
-                ,[Number, wapi_offnet_resourece:account_id(OffnetJObj)]
+                ,[Number, wapi_offnet_resource:account_id(OffnetJObj)]
                ),
     maybe_originate(Number
                     ,wh_json:insert_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), OffnetJObj)
@@ -74,7 +74,7 @@ handle_originate_req(OffnetJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_sms_req(wh_json:object()) -> any().
+-spec handle_sms_req(wapi_offnet_resource:req()) -> any().
 handle_sms_req(OffnetJObj) ->
     Number = stepswitch_util:get_outbound_destination(OffnetJObj),
     lager:debug("received outbound sms resource request for ~s", [Number]),
@@ -90,7 +90,7 @@ handle_sms_req(OffnetJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
+-spec maybe_force_outbound(wh_proplist(), wapi_offnet_resource:req()) -> any().
 maybe_force_outbound(Props, OffnetJObj) ->
     case wh_number_properties:should_force_outbound(Props)
         orelse wapi_offnet_resource:force_outbound(OffnetJObj, 'false')
@@ -107,7 +107,7 @@ maybe_force_outbound(Props, OffnetJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_force_outbound_sms(wh_proplist(), wh_json:object()) -> any().
+-spec maybe_force_outbound_sms(wh_proplist(), wapi_offnet_resource:req()) -> any().
 maybe_force_outbound_sms(Props, OffnetJObj) ->
     case props:get_is_true('force_outbound', Props)
         orelse wapi_offnet_resource:force_outbound(OffnetJObj, 'false')
@@ -124,14 +124,14 @@ maybe_force_outbound_sms(Props, OffnetJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_bridge(ne_binary(), wh_json:object()) -> any().
+-spec maybe_bridge(ne_binary(), wapi_offnet_resource:req()) -> any().
 maybe_bridge(Number, OffnetJObj) ->
     case stepswitch_resources:endpoints(Number, OffnetJObj) of
         [] -> maybe_correct_shortdial(Number, OffnetJObj);
         Endpoints -> stepswitch_request_sup:bridge(Endpoints, OffnetJObj)
     end.
 
--spec maybe_correct_shortdial(ne_binary(), wh_json:object()) -> any().
+-spec maybe_correct_shortdial(ne_binary(), wapi_offnet_resource:req()) -> any().
 maybe_correct_shortdial(Number, OffnetJObj) ->
     case stepswitch_util:correct_shortdial(Number, OffnetJObj) of
         'undefined' ->
@@ -151,7 +151,7 @@ maybe_correct_shortdial(Number, OffnetJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_sms(ne_binary(), wh_json:object()) -> any().
+-spec maybe_sms(ne_binary(), wapi_offnet_resource:req()) -> any().
 maybe_sms(Number, OffnetJObj) ->
     case stepswitch_resources:endpoints(Number, OffnetJObj) of
         [] -> publish_no_resources(OffnetJObj);
@@ -164,7 +164,7 @@ maybe_sms(Number, OffnetJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_extension(wh_proplist(), wh_json:object()) -> any().
+-spec local_extension(wh_proplist(), wapi_offnet_resource:req()) -> any().
 local_extension(Props, OffnetJObj) -> stepswitch_request_sup:local_extension(Props, OffnetJObj).
 
 %%--------------------------------------------------------------------
@@ -173,7 +173,7 @@ local_extension(Props, OffnetJObj) -> stepswitch_request_sup:local_extension(Pro
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_sms(wh_proplist(), wh_json:object()) -> any().
+-spec local_sms(wh_proplist(), wapi_offnet_resource:req()) -> any().
 local_sms(Props, OffnetJObj) -> stepswitch_local_sms:local_message_handling(Props, OffnetJObj).
 
 %%--------------------------------------------------------------------
@@ -182,7 +182,7 @@ local_sms(Props, OffnetJObj) -> stepswitch_local_sms:local_message_handling(Prop
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_originate(ne_binary(), wh_json:object()) -> any().
+-spec maybe_originate(ne_binary(), wapi_offnet_resource:req()) -> any().
 maybe_originate(Number, OffnetJObj) ->
     case stepswitch_resources:endpoints(Number, OffnetJObj) of
         [] -> publish_no_resources(OffnetJObj);
@@ -195,7 +195,7 @@ maybe_originate(Number, OffnetJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_no_resources(wh_json:object()) -> 'ok'.
+-spec publish_no_resources(wapi_offnet_resource:req()) -> 'ok'.
 publish_no_resources(OffnetJObj) ->
     case wh_api:server_id(OffnetJObj) of
         'undefined' -> 'ok';
@@ -203,7 +203,7 @@ publish_no_resources(OffnetJObj) ->
             wapi_offnet_resource:publish_resp(ResponseQ, no_resources(OffnetJObj))
     end.
 
--spec no_resources(wh_json:object()) -> wh_proplist().
+-spec no_resources(wapi_offnet_resource:req()) -> wh_proplist().
 no_resources(OffnetJObj) ->
     ToDID = wapi_offnet_resource:to_did(OffnetJObj),
     lager:info("no available resources for ~s", [ToDID]),
