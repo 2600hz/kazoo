@@ -21,10 +21,16 @@
          ,get_auth_user/1
          ,req_event_type/0
          ,is_actionable_resp/1
+
+         ,call_id/1
+         ,control_queue/1
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
 -include("wapi_dialplan.hrl").
+
+-define(KEY_CALL_ID, <<"Call-ID">>).
+-define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
 
 %% routing keys to use in the callmgr exchange
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
@@ -33,7 +39,7 @@
 -define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
 
 %% Route Requests
--define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
+-define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, ?KEY_CALL_ID
                             ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
@@ -65,7 +71,7 @@
 -define(ROUTE_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
                           ,{<<"Request">>, fun is_binary/1}
-                          ,{<<"Call-ID">>, fun is_binary/1}
+                          ,{?KEY_CALL_ID, fun is_binary/1}
                           ,{<<"Event-Queue">>, fun is_binary/1}
                           ,{<<"Caller-ID-Name">>, fun is_binary/1}
                           ,{<<"Caller-ID-Number">>, fun is_binary/1}
@@ -122,13 +128,13 @@
                           ]).
 
 %% Route Winner
--define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
+-define(ROUTE_WIN_HEADERS, [?KEY_CALL_ID, ?KEY_CONTROL_QUEUE]).
 -define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(ROUTE_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"route_win">>}
                           ]).
--define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
-                          ,{<<"Control-Queue">>, fun is_binary/1}
+-define(ROUTE_WIN_TYPES, [{?KEY_CALL_ID, fun is_binary/1}
+                          ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                          ]).
 
@@ -334,3 +340,11 @@ get_auth_user_realm(ApiProp) when is_list(ApiProp) ->
 get_auth_user_realm(ApiJObj) ->
     [ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     {ReqUser, ReqDomain}.
+
+-spec call_id(wh_json:object()) -> api_binary().
+call_id(JObj) ->
+    wh_json:get_value(?KEY_CALL_ID, JObj).
+
+-spec control_queue(wh_json:object()) -> api_binary().
+control_queue(JObj) ->
+    wh_json:get_value(?KEY_CONTROL_QUEUE, JObj).
