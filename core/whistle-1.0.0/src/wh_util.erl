@@ -401,7 +401,7 @@ is_account_enabled(Account) ->
 
     end.
 
--spec is_account_expired(api_binary()) -> 'false' | {'true', integer()}.
+-spec is_account_expired(api_binary()) -> 'false' | {'true', gregorian_seconds()}.
 is_account_expired('undefined') -> 'false';
 is_account_expired(Account) ->
     case kz_account:fetch(Account) of
