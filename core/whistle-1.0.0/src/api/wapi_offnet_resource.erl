@@ -48,6 +48,7 @@
          ,resource_type/1, resource_type/2
          ,ringback/1, ringback/2
          ,timeout/1, timeout/2
+         ,t38_enabled/1, t38_enabled/2
          ,to_did/1, to_did/2
 
          ,msg_id/1
@@ -67,6 +68,7 @@
 -include_lib("whistle/src/wh_json.hrl").
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
+-include_lib("whistle/include/wapi_offnet_resource.hrl").
 
 -define(REQ_TYPE(JObj), ?JSON_WRAPPER(_)=JObj).
 -define(RESP_TYPE(JObj), ?JSON_WRAPPER(_)=JObj).
@@ -78,53 +80,15 @@
               ,resp/0
              ]).
 
--define(KEY_ACCOUNT_ID, <<"Account-ID">>).
--define(KEY_CALL_ID, <<"Call-ID">>).
--define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
--define(KEY_FLAGS, <<"Flags">>).
--define(KEY_FORCE_OUTBOUND, <<"Force-Outbound">>).
--define(KEY_HUNT_ACCOUNT_ID, <<"Hunt-Account-ID">>).
--define(KEY_OUTBOUND_CALL_ID, <<"Outbound-Call-ID">>).
--define(KEY_OUTBOUND_CALLER_ID_NAME, <<"Outbound-Caller-ID-Name">>).
--define(KEY_OUTBOUND_CALLER_ID_NUMBER, <<"Outbound-Caller-ID-Number">>).
--define(KEY_E_CALLER_ID_NAME, <<"Emergency-Caller-ID-Name">>).
--define(KEY_E_CALLER_ID_NUMBER, <<"Emergency-Caller-ID-Number">>).
--define(KEY_OUTBOUND_CALLEE_ID_NAME, <<"Outbound-Callee-ID-Name">>).
--define(KEY_OUTBOUND_CALLEE_ID_NUMBER, <<"Outbound-Callee-ID-Number">>).
--define(KEY_RESOURCE_TYPE, <<"Resource-Type">>).
--define(KEY_TO_DID, <<"To-DID">>).
--define(KEY_CCVS, <<"Custom-Channel-Vars">>).
--define(KEY_CSHS, <<"Custom-SIP-Headers">>).
--define(KEY_TIMEOUT, <<"Timeout">>).
--define(KEY_IGNORE_EARLY_MEDIA, <<"Ignore-Early-Media">>).
--define(KEY_MEDIA, <<"Media">>).
--define(KEY_MESSAGE_ID, <<"Message-ID">>).
--define(KEY_HOLD_MEDIA, <<"Hold-Media">>).
--define(KEY_PRESENCE_ID, <<"Presence-ID">>).
--define(KEY_RINGBACK, <<"Ringback">>).
--define(KEY_FAX_IDENTITY_NUMBER, <<"Fax-Identity-Number">>).
--define(KEY_FAX_IDENTITY_NAME, <<"Fax-Identity-Name">>).
--define(KEY_B_LEG_EVENTS, <<"B-Leg-Events">>).
--define(KEY_FROM_URI_REALM, <<"From-URI-Realm">>).
--define(KEY_ACCOUNT_REALM, <<"Account-Realm">>).
--define(KEY_FORMAT_FROM_URI, <<"Format-From-URI">>).
--define(KEY_BODY, <<"Body">>).
--define(KEY_BYPASS_E164, <<"Bypass-E164">>).
-
--define(RESOURCE_TYPE_AUDIO, <<"audio">>).
--define(RESOURCE_TYPE_ORIGINATE, <<"originate">>).
--define(RESOURCE_TYPE_SMS, <<"sms">>).
--define(RESOURCE_TYPE_VIDEO, <<"video">>).
-
 %% Offnet Resource Request
--define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Application-Name">>
+-define(OFFNET_RESOURCE_REQ_HEADERS, [?KEY_APPLICATION_NAME
                                       ,?KEY_RESOURCE_TYPE
                                       ,?KEY_TO_DID
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS
         ,[?KEY_ACCOUNT_ID
           ,?KEY_ACCOUNT_REALM
-          ,<<"Application-Data">>
+          ,?KEY_APPLICATION_DATA
           ,?KEY_B_LEG_EVENTS
           ,?KEY_BODY
           ,?KEY_BYPASS_E164
@@ -135,26 +99,27 @@
           ,?KEY_CSHS
           ,?KEY_E_CALLER_ID_NAME
           ,?KEY_E_CALLER_ID_NUMBER
-          ,<<"Enable-T38-Fax">>
-          ,<<"Enable-T38-Fax-Request">>
-          ,<<"Enable-T38-Gateway">>
-          ,<<"Enable-T38-Passthrough">>
+          ,?KEY_ENABLE_T38
+          ,?KEY_ENABLE_T38_REQUEST
+          ,?KEY_ENABLE_T38_GATEWAY
+          ,?KEY_ENABLE_T38_PASSTHROUGH
           ,?KEY_FAX_IDENTITY_NAME
           ,?KEY_FAX_IDENTITY_NUMBER
-          ,<<"Fax-Timezone">>
+          ,?KEY_FAX_TIMEZONE
+          ,?KEY_T38_ENABLED
           ,?KEY_FLAGS
-          ,<<"Force-Fax">>
+          ,?KEY_FORCE_FAX
           ,?KEY_FORCE_OUTBOUND
           ,?KEY_FORMAT_FROM_URI
           ,?KEY_FROM_URI_REALM
-          ,<<"Group-ID">>
+          ,?KEY_GROUP_ID
           ,?KEY_HOLD_MEDIA
           ,?KEY_HUNT_ACCOUNT_ID
           ,?KEY_IGNORE_EARLY_MEDIA
-          ,<<"Inception">>
+          ,?KEY_INCEPTION
           ,?KEY_MEDIA
           ,?KEY_MESSAGE_ID
-          ,<<"Mode">>
+          ,?KEY_MODE
           ,?KEY_OUTBOUND_CALL_ID
           ,?KEY_OUTBOUND_CALLER_ID_NAME
           ,?KEY_OUTBOUND_CALLER_ID_NUMBER
@@ -163,18 +128,22 @@
           ,?KEY_TIMEOUT
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
-        ,[{<<"Event-Category">>, <<"resource">>}
-          ,{<<"Event-Name">>, <<"offnet_req">>}
+        ,[{?KEY_EVENT_CATEGORY, ?CATEGORY_REQ}
+          ,{?KEY_EVENT_NAME, ?EVENT_REQ}
           ,{?KEY_RESOURCE_TYPE, [?RESOURCE_TYPE_AUDIO, ?RESOURCE_TYPE_VIDEO, ?RESOURCE_TYPE_ORIGINATE, ?RESOURCE_TYPE_SMS]}
-          ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
-                                     ,<<"fax">>, <<"eavesdrop">>, ?RESOURCE_TYPE_SMS
-                                    ]}
-          ,{?KEY_MEDIA, [<<"process">>, <<"bypass">>, <<"auto">>]}
+          ,{?KEY_APPLICATION_NAME, [?APPLICATION_BRIDGE
+                                    ,?APPLICATION_EAVESDROP
+                                    ,?APPLICATION_FAX
+                                    ,?APPLICATION_PARK
+                                    ,?APPLICATION_SMS
+                                    ,?APPLICATION_TRANSFER
+                                   ]}
+          ,{?KEY_MEDIA, [?MEDIA_PROCESS, ?MEDIA_BYPASS, ?MEDIA_AUTO]}
           %% Eavesdrop
-          ,{<<"Mode">>, [<<"full">>     % talk to both sides
-                         ,<<"listen">>  % hear both sides - default
-                         ,<<"whisper">> % talk to one side
-                        ]}
+          ,{?KEY_MODE, [?MODE_FULL     % talk to both sides
+                        ,?MODE_LISTEN  % hear both sides - default
+                        ,?MODE_WHISPER % talk to one side
+                       ]}
          ]).
 -define(OFFNET_RESOURCE_REQ_TYPES
         ,[{?KEY_ACCOUNT_ID, fun is_binary/1}
@@ -183,9 +152,9 @@
           ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
           ,{?KEY_CCVS, fun wh_json:is_json_object/1}
           ,{?KEY_CSHS, fun wh_json:is_json_object/1}
-          ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
+          ,{?KEY_ENABLE_T38_GATEWAY, fun is_binary/1}
           ,{?KEY_FLAGS, fun is_list/1}
-          ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
+          ,{?KEY_FORCE_FAX, fun wh_util:is_boolean/1}
           ,{?KEY_FORCE_OUTBOUND, fun wh_util:is_boolean/1}
           ,{?KEY_TO_DID, fun is_binary/1}
           ,{?KEY_BYPASS_E164, fun wh_util:is_boolean/1}
@@ -265,25 +234,18 @@ declare_exchanges() ->
 
 -spec publish_req(req() | api_terms()) -> 'ok'.
 -spec publish_req(req() | api_terms(), ne_binary()) -> 'ok'.
-publish_req(?REQ_TYPE(JObj)) ->
-    publish_req(JObj, ?DEFAULT_CONTENT_TYPE);
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 
-publish_req(?REQ_TYPE(JObj), _ContentType) ->
-    publish_req(JObj, ?DEFAULT_CONTENT_TYPE);
 publish_req(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:offnet_resource_publish(Payload, ContentType).
 
 -spec publish_resp(ne_binary(), resp() | api_terms()) -> 'ok'.
 -spec publish_resp(ne_binary(), resp() | api_terms(), ne_binary()) -> 'ok'.
-
 publish_resp(TargetQ, JObj) ->
     publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 
-publish_resp(TargetQ, ?RESP_TYPE(JObj), ContentType) ->
-    publish_resp(TargetQ, JObj, ContentType);
 publish_resp(TargetQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?OFFNET_RESOURCE_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
@@ -527,6 +489,13 @@ bypass_e164(Req) ->
     bypass_e164(Req, 'false').
 bypass_e164(?REQ_TYPE(JObj), Default) ->
     wh_json:is_true(?KEY_BYPASS_E164, JObj, Default).
+
+-spec t38_enabled(req()) -> boolean().
+-spec t38_enabled(req(), Default) -> boolean() | Default.
+t38_enabled(Req) ->
+    t38_enabled(Req, 'false').
+t38_enabled(?REQ_TYPE(JObj), Default) ->
+     wh_json:is_true(?KEY_T38_ENABLED, JObj, Default).
 
 -spec msg_id(req()) -> api_binary().
 msg_id(?REQ_TYPE(JObj)) ->
