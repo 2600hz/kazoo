@@ -14,6 +14,7 @@
 
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle/include/wapi_offnet_resource.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -22,14 +23,15 @@
 %% route
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wapi_offnet_resource:req(), wh_proplist()) -> any().
-handle_req(OffnetReq, _Props) ->
-    'true' = wapi_offnet_resource:req_v(OffnetReq),
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
+handle_req(OffnetJObj, _Props) ->
+    'true' = wapi_offnet_resource:req_v(OffnetJObj),
+    OffnetReq = wapi_offnet_resource:jobj_to_req(OffnetJObj),
     _ = wapi_offnet_resource:put_callid(OffnetReq),
     case wapi_offnet_resource:resource_type(OffnetReq) of
-        <<"audio">> -> handle_audio_req(OffnetReq);
-        <<"originate">> -> handle_originate_req(OffnetReq);
-        <<"sms">> -> handle_sms_req(OffnetReq)
+        ?RESOURCE_TYPE_AUDIO -> handle_audio_req(OffnetReq);
+        ?RESOURCE_TYPE_ORIGINATE -> handle_originate_req(OffnetReq);
+        ?RESOURCE_TYPE_SMS -> handle_sms_req(OffnetReq)
     end.
 
 %%--------------------------------------------------------------------
@@ -208,11 +210,11 @@ no_resources(OffnetReq) ->
     ToDID = wapi_offnet_resource:to_did(OffnetReq),
     lager:info("no available resources for ~s", [ToDID]),
     props:filter_undefined(
-      [{<<"To-DID">>, ToDID}
+      [{?KEY_TO_DID, ToDID}
        ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
        ,{<<"Response-Code">>, <<"sip:404">>}
        ,{<<"Error-Message">>, <<"no available resources">>}
-       ,{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
-       ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
+       ,{?KEY_CALL_ID, wapi_offnet_resource:call_id(OffnetReq)}
+       ,{?KEY_MSG_ID, wapi_offnet_resource:msg_id(OffnetReq)}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

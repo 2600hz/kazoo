@@ -65,20 +65,19 @@
          ,put_callid/1
         ]).
 
--include_lib("whistle/src/wh_json.hrl").
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wapi_offnet_resource.hrl").
 
--define(REQ_TYPE(JObj), ?JSON_WRAPPER(_)=JObj).
--define(RESP_TYPE(JObj), ?JSON_WRAPPER(_)=JObj).
-
--opaque req()  :: wh_json:object().
--opaque resp() :: wh_json:object().
-
 -export_type([req/0
               ,resp/0
              ]).
+
+-define(REQ_TYPE(JObj), JObj).
+-define(RESP_TYPE(JObj), JObj).
+
+-type req()  :: wh_json:object().
+-type resp() :: wh_json:object().
 
 %% Offnet Resource Request
 -define(OFFNET_RESOURCE_REQ_HEADERS, [?KEY_APPLICATION_NAME
@@ -176,7 +175,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(req() | api_terms()) ->
+-spec req(api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 req(Prop) when is_list(Prop) ->
@@ -184,13 +183,11 @@ req(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for offnet_resource_req"}
     end;
-req(?REQ_TYPE(JObj)) -> req(wh_json:to_proplist(JObj));
 req(JObj) -> req(wh_json:to_proplist(JObj)).
 
--spec req_v(req() | api_terms()) -> boolean().
+-spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES);
-req_v(?REQ_TYPE(JObj)) -> req_v(wh_json:to_proplist(JObj));
 req_v(JObj) -> req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
@@ -198,7 +195,7 @@ req_v(JObj) -> req_v(wh_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(resp() | api_terms()) ->
+-spec resp(api_terms()) ->
                   {'ok', iolist()} |
                   {'error', string()}.
 resp(Prop) when is_list(Prop) ->
@@ -206,13 +203,11 @@ resp(Prop) when is_list(Prop) ->
         'true' -> wh_api:build_message(Prop, ?OFFNET_RESOURCE_RESP_HEADERS, ?OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS);
         'false' -> {'error', "Proplist failed validation for offnet_resource_resp"}
     end;
-resp(?RESP_TYPE(JObj)) -> resp(wh_json:to_proplist(JObj));
 resp(JObj) -> resp(wh_json:to_proplist(JObj)).
 
--spec resp_v(resp() | api_terms()) -> boolean().
+-spec resp_v(api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?OFFNET_RESOURCE_RESP_HEADERS, ?OFFNET_RESOURCE_RESP_VALUES, ?OFFNET_RESOURCE_RESP_TYPES);
-resp_v(?RESP_TYPE(JObj)) -> resp_v(wh_json:to_proplist(JObj));
 resp_v(JObj) -> resp_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), proplist()) -> 'ok'.
@@ -232,8 +227,8 @@ unbind_q(Queue, _Props) ->
 declare_exchanges() ->
     amqp_util:resource_exchange().
 
--spec publish_req(req() | api_terms()) -> 'ok'.
--spec publish_req(req() | api_terms(), ne_binary()) -> 'ok'.
+-spec publish_req(api_terms()) -> 'ok'.
+-spec publish_req(api_terms(), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 
@@ -241,8 +236,8 @@ publish_req(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:offnet_resource_publish(Payload, ContentType).
 
--spec publish_resp(ne_binary(), resp() | api_terms()) -> 'ok'.
--spec publish_resp(ne_binary(), resp() | api_terms(), ne_binary()) -> 'ok'.
+-spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_resp(TargetQ, JObj) ->
     publish_resp(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 
@@ -341,13 +336,11 @@ flags(Req) ->
 flags(?REQ_TYPE(JObj), Default) ->
     wh_json:get_list_value(?KEY_FLAGS, JObj, Default).
 
--spec jobj_to_req(wh_json:object()) -> ?MODULE:req().
-jobj_to_req(?JSON_WRAPPER(_)=JObj) ->
-    ?REQ_TYPE(JObj).
+-spec jobj_to_req(wh_json:object()) -> wapi_offnet_resource:req().
+jobj_to_req(JObj) -> ?REQ_TYPE(JObj).
 
--spec req_to_jobj(req()) -> wh_json:object().
-req_to_jobj(?REQ_TYPE(JObj)) ->
-    JObj.
+-spec req_to_jobj(wapi_offnet_resource:req()) -> wh_json:object().
+req_to_jobj(?REQ_TYPE(JObj)) -> JObj.
 
 -spec put_callid(req()) -> api_binary().
 put_callid(?REQ_TYPE(JObj)) ->
