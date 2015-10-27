@@ -74,8 +74,10 @@ send_route_win(_FetchId, CallId, JObj) ->
     lager:debug("sending route_win to ~s", [ServerQ]),
     wh_amqp_worker:cast(Win, fun(Payload)-> wapi_route:publish_win(ServerQ, Payload) end).
 
--spec delivery_from_req(wapi_offnet_resource:req(), binary(), api_binary(), api_boolean()) -> wh_json:object().
+-spec delivery_from_req(wapi_offnet_resource:req(), binary(), api_binary(), api_boolean()) ->
+                               wh_json:object().
 delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
+    OffnetJObj = wapi_offnet_resource:req_to_jobj(OffnetReq),
     Keys = [<<"Event-Category">>
             ,<<"Event-Name">>
             ,<<"App-Name">>
@@ -88,7 +90,11 @@ delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
                ,{<<"Status">>, Status}
                | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
               ]),
-    wh_json:set_values(Props, wapi_offnet_resource:delete_keys(OffnetReq, Keys)).
+
+    wh_json:set_values(
+      Props
+      ,wh_json:delete_keys(Keys, OffnetJObj)
+     ).
 
 -spec request_caller_id(wapi_offnet_resource:req()) -> {ne_binary(), ne_binary()}.
 request_caller_id(OffnetReq) ->

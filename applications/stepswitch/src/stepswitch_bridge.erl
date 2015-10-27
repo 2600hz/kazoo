@@ -98,7 +98,7 @@ init([Endpoints, OffnetReq]) ->
                           ,resource_req=OffnetReq
                           ,request_handler=self()
                           ,control_queue=ControlQ
-                          ,response_queue=wh_api:server_id(OffnetReq)
+                          ,response_queue=wapi_offnet_resource:server_id(OffnetReq)
                           ,timeout=erlang:send_after(30000, self(), 'bridge_timeout')
                          }}
     end.

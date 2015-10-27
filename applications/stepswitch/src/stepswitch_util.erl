@@ -63,13 +63,13 @@ assume_e164(Number) -> <<$+, Number/binary>>.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_outbound_destination(wh_json:object()) -> ne_binary().
-get_outbound_destination(JObj) ->
-    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
-     case wh_json:is_true(<<"Bypass-E164">>, JObj) of
-         'false' -> wnm_util:to_e164(Number);
-         'true' -> Number
-     end.
+-spec get_outbound_destination(wapi_offnet_resource:req()) -> ne_binary().
+get_outbound_destination(OffnetReq) ->
+    Number = wapi_offnet_resource:to_did(OffnetReq),
+    case wapi_offnet_resource:bypass_e164(OffnetReq) of
+        'false' -> wnm_util:to_e164(Number);
+        'true' -> Number
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -116,7 +116,7 @@ cache_key_number(Number) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial(ne_binary(), ne_binary() | wh_json:object()) -> api_binary().
+-spec correct_shortdial(ne_binary(), ne_binary() | wapi_offnet_resource:req()) -> api_binary().
 correct_shortdial(<<"+", Number/binary>>, CIDNum) ->
     correct_shortdial(Number, CIDNum);
 correct_shortdial(Number, <<"+", CIDNum/binary>>) ->
@@ -136,19 +136,16 @@ correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
                         ,[Number, CIDNum]),
             'undefined'
     end;
-correct_shortdial(Number, JObj) ->
-    CIDNum = wh_json:get_first_defined(
-               [<<"Outbound-Caller-ID-Number">>
-                ,<<"Emergency-Caller-ID-Number">>
-               ]
-               ,JObj
-               ,Number
-              ),
+correct_shortdial(Number, OffnetReq) ->
+    CIDNum = case stepswitch_bridge:bridge_outbound_cid_name(OffnetReq) of
+                 'undefined' -> Number;
+                 N -> N
+             end,
     correct_shortdial(Number, CIDNum).
 
--spec get_sip_headers(wh_json:object()) -> wh_json:object().
-get_sip_headers(JObj) ->
-    SIPHeaders = wh_json:get_json_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new()),
+-spec get_sip_headers(wapi_offnet_resource:req()) -> wh_json:object().
+get_sip_headers(OffnetReq) ->
+    SIPHeaders = wapi_offnet_resource:custom_sip_headers(OffnetReq, wh_json:new()),
     case get_diversions(SIPHeaders) of
         'undefined' ->
             maybe_remove_diversions(SIPHeaders);

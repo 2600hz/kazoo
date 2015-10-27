@@ -21,9 +21,11 @@
          ,account_realm/1, account_realm/2
          ,b_leg_events/1, b_leg_events/2
          ,body/1, body/2
+         ,bypass_e164/1, bypass_e164/2
          ,call_id/1, call_id/2
          ,control_queue/1, control_queue/2
          ,custom_channel_vars/1, custom_channel_vars/2
+         ,custom_sip_headers/1, custom_sip_headers/2
          ,emergency_caller_id_name/1, emergency_caller_id_name/2
          ,emergency_caller_id_number/1, emergency_caller_id_number/2
          ,fax_identity_name/1, fax_identity_name/2
@@ -53,6 +55,7 @@
 
          ,set_outbound_call_id/2
          ,delete_keys/2
+         ,set_values/2
         ]).
 
 %% helpers for working with opaque object
@@ -65,11 +68,11 @@
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 
--define(REQ_TYPE(JObj), {?MODULE, 'req', ?JSON_WRAPPER(_)=JObj}).
--define(RESP_TYPE(JObj), {?MODULE, 'resp', ?JSON_WRAPPER(_)=JObj}).
+-define(REQ_TYPE(JObj), ?JSON_WRAPPER(_)=JObj).
+-define(RESP_TYPE(JObj), ?JSON_WRAPPER(_)=JObj).
 
--opaque req()  :: {?MODULE, 'req', wh_json:object()}.
--opaque resp() :: {?MODULE, 'resp', wh_json:object()}.
+-opaque req()  :: wh_json:object().
+-opaque resp() :: wh_json:object().
 
 -export_type([req/0
               ,resp/0
@@ -91,6 +94,7 @@
 -define(KEY_RESOURCE_TYPE, <<"Resource-Type">>).
 -define(KEY_TO_DID, <<"To-DID">>).
 -define(KEY_CCVS, <<"Custom-Channel-Vars">>).
+-define(KEY_CSHS, <<"Custom-SIP-Headers">>).
 -define(KEY_TIMEOUT, <<"Timeout">>).
 -define(KEY_IGNORE_EARLY_MEDIA, <<"Ignore-Early-Media">>).
 -define(KEY_MEDIA, <<"Media">>).
@@ -105,6 +109,7 @@
 -define(KEY_ACCOUNT_REALM, <<"Account-Realm">>).
 -define(KEY_FORMAT_FROM_URI, <<"Format-From-URI">>).
 -define(KEY_BODY, <<"Body">>).
+-define(KEY_BYPASS_E164, <<"Bypass-E164">>).
 
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 -define(RESOURCE_TYPE_ORIGINATE, <<"originate">>).
@@ -122,12 +127,12 @@
           ,<<"Application-Data">>
           ,?KEY_B_LEG_EVENTS
           ,?KEY_BODY
-          ,<<"Bypass-E164">>
+          ,?KEY_BYPASS_E164
           ,?KEY_CALL_ID
           ,?KEY_CALL_ID
           ,?KEY_CONTROL_QUEUE
           ,?KEY_CCVS
-          ,<<"Custom-SIP-Headers">>
+          ,?KEY_CSHS
           ,?KEY_E_CALLER_ID_NAME
           ,?KEY_E_CALLER_ID_NUMBER
           ,<<"Enable-T38-Fax">>
@@ -177,12 +182,13 @@
           ,{?KEY_CALL_ID, fun is_binary/1}
           ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
           ,{?KEY_CCVS, fun wh_json:is_json_object/1}
-          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+          ,{?KEY_CSHS, fun wh_json:is_json_object/1}
           ,{<<"Enable-T38-Gateway">>, fun is_binary/1}
           ,{?KEY_FLAGS, fun is_list/1}
           ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
           ,{?KEY_FORCE_OUTBOUND, fun wh_util:is_boolean/1}
           ,{?KEY_TO_DID, fun is_binary/1}
+          ,{?KEY_BYPASS_E164, fun wh_util:is_boolean/1}
          ]).
 
 %% Offnet Resource Response
@@ -291,85 +297,85 @@ force_outbound(?REQ_TYPE(JObj), Default) ->
 
 -spec resource_type(req()) -> ne_binary().
 -spec resource_type(req(), Default) -> ne_binary() | Default.
-resource_type(?REQ_TYPE(JObj)) ->
-    resource_type(?REQ_TYPE(JObj), ?RESOURCE_TYPE_AUDIO).
+resource_type(Req) ->
+    resource_type(Req, ?RESOURCE_TYPE_AUDIO).
 resource_type(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_RESOURCE_TYPE, JObj, Default).
 
 -spec account_id(req()) -> api_binary().
 -spec account_id(req(), Default) -> ne_binary() | Default.
-account_id(?REQ_TYPE(JObj)) ->
-    account_id(?REQ_TYPE(JObj), 'undefined').
+account_id(Req) ->
+    account_id(Req, 'undefined').
 account_id(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_ACCOUNT_ID, JObj, Default).
 
 -spec hunt_account_id(req()) -> api_binary().
 -spec hunt_account_id(req(), Default) -> ne_binary() | Default.
-hunt_account_id(?REQ_TYPE(JObj)) ->
-    hunt_account_id(?REQ_TYPE(JObj), 'undefined').
+hunt_account_id(Req) ->
+    hunt_account_id(Req, 'undefined').
 hunt_account_id(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_HUNT_ACCOUNT_ID, JObj, Default).
 
 -spec outbound_call_id(req()) -> api_binary().
 -spec outbound_call_id(req(), Default) -> ne_binary() | Default.
-outbound_call_id(?REQ_TYPE(JObj)) ->
-    outbound_call_id(?REQ_TYPE(JObj), 'undefined').
+outbound_call_id(Req) ->
+    outbound_call_id(Req, 'undefined').
 outbound_call_id(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALL_ID, JObj, Default).
 
 -spec outbound_caller_id_number(req()) -> api_binary().
 -spec outbound_caller_id_number(req(), Default) -> ne_binary() | Default.
-outbound_caller_id_number(?REQ_TYPE(JObj)) ->
-    outbound_caller_id_number(?REQ_TYPE(JObj), 'undefined').
+outbound_caller_id_number(Req) ->
+    outbound_caller_id_number(Req, 'undefined').
 outbound_caller_id_number(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, JObj, Default).
 
 -spec outbound_caller_id_name(req()) -> api_binary().
 -spec outbound_caller_id_name(req(), Default) -> ne_binary() | Default.
-outbound_caller_id_name(?REQ_TYPE(JObj)) ->
-    outbound_caller_id_name(?REQ_TYPE(JObj), 'undefined').
+outbound_caller_id_name(Req) ->
+    outbound_caller_id_name(Req, 'undefined').
 outbound_caller_id_name(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NAME, JObj, Default).
 
 -spec emergency_caller_id_number(req()) -> api_binary().
 -spec emergency_caller_id_number(req(), Default) -> ne_binary() | Default.
-emergency_caller_id_number(?REQ_TYPE(JObj)) ->
-    emergency_caller_id_number(?REQ_TYPE(JObj), 'undefined').
+emergency_caller_id_number(Req) ->
+    emergency_caller_id_number(Req, 'undefined').
 emergency_caller_id_number(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_E_CALLER_ID_NUMBER, JObj, Default).
 
 -spec emergency_caller_id_name(req()) -> api_binary().
 -spec emergency_caller_id_name(req(), Default) -> ne_binary() | Default.
-emergency_caller_id_name(?REQ_TYPE(JObj)) ->
-    emergency_caller_id_name(?REQ_TYPE(JObj), 'undefined').
+emergency_caller_id_name(Req) ->
+    emergency_caller_id_name(Req, 'undefined').
 emergency_caller_id_name(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_E_CALLER_ID_NAME, JObj, Default).
 
 -spec to_did(req()) -> api_binary().
 -spec to_did(req(), Default) -> ne_binary() | Default.
-to_did(?REQ_TYPE(JObj)) ->
-    to_did(?REQ_TYPE(JObj), 'undefined').
+to_did(Req) ->
+    to_did(Req, 'undefined').
 to_did(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_TO_DID, JObj, Default).
 
 -spec call_id(req()) -> api_binary().
 -spec call_id(req(), Default) -> ne_binary() | Default.
-call_id(?REQ_TYPE(JObj)) ->
-    call_id(?REQ_TYPE(JObj), 'undefined').
+call_id(Req) ->
+    call_id(Req, 'undefined').
 call_id(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_CALL_ID, JObj, Default).
 
 -spec control_queue(req()) -> api_binary().
 -spec control_queue(req(), Default) -> ne_binary() | Default.
-control_queue(?REQ_TYPE(JObj)) ->
-    control_queue(?REQ_TYPE(JObj), 'undefined').
+control_queue(Req) ->
+    control_queue(Req, 'undefined').
 control_queue(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_CONTROL_QUEUE, JObj, Default).
 
 -spec flags(req()) -> ne_binaries().
 -spec flags(req(), Default) -> ne_binaries() | Default.
-flags(?REQ_TYPE(JObj)) ->
-    flags(?REQ_TYPE(JObj), []).
+flags(Req) ->
+    flags(Req, []).
 flags(?REQ_TYPE(JObj), Default) ->
     wh_json:get_list_value(?KEY_FLAGS, JObj, Default).
 
@@ -394,7 +400,14 @@ set_outbound_call_id(?REQ_TYPE(JObj), CallId) ->
 custom_channel_vars(Req) ->
     custom_channel_vars(Req, 'undefined').
 custom_channel_vars(?REQ_TYPE(JObj), Default) ->
-    wh_json:get_value(?KEY_CCVS, JObj, Default).
+    wh_json:get_json_value(?KEY_CCVS, JObj, Default).
+
+-spec custom_sip_headers(req()) -> api_object().
+-spec custom_sip_headers(req(), Default) -> wh_json:object() | Default.
+custom_sip_headers(Req) ->
+    custom_sip_headers(Req, 'undefined').
+custom_sip_headers(?REQ_TYPE(JObj), Default) ->
+    wh_json:get_json_value(?KEY_CSHS, JObj, Default).
 
 -spec timeout(req()) -> api_integer().
 -spec timeout(req(), Default) -> integer() | Default.
@@ -461,36 +474,36 @@ fax_identity_name(?REQ_TYPE(JObj), Default) ->
 
 -spec outbound_callee_id_number(req()) -> api_binary().
 -spec outbound_callee_id_number(req(), Default) -> ne_binary() | Default.
-outbound_callee_id_number(?REQ_TYPE(JObj)) ->
-    outbound_callee_id_number(?REQ_TYPE(JObj), 'undefined').
+outbound_callee_id_number(Req) ->
+    outbound_callee_id_number(Req, 'undefined').
 outbound_callee_id_number(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALLEE_ID_NUMBER, JObj, Default).
 
 -spec outbound_callee_id_name(req()) -> api_binary().
 -spec outbound_callee_id_name(req(), Default) -> ne_binary() | Default.
-outbound_callee_id_name(?REQ_TYPE(JObj)) ->
-    outbound_callee_id_name(?REQ_TYPE(JObj), 'undefined').
+outbound_callee_id_name(Req) ->
+    outbound_callee_id_name(Req, 'undefined').
 outbound_callee_id_name(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_OUTBOUND_CALLEE_ID_NAME, JObj, Default).
 
 -spec b_leg_events(req()) -> api_binaries().
 -spec b_leg_events(req(), Default) -> ne_binaries() | Default.
-b_leg_events(?REQ_TYPE(JObj)) ->
-    b_leg_events(?REQ_TYPE(JObj), 'undefined').
+b_leg_events(Req) ->
+    b_leg_events(Req, 'undefined').
 b_leg_events(?REQ_TYPE(JObj), Default) ->
     wh_json:get_list_value(?KEY_B_LEG_EVENTS, JObj, Default).
 
 -spec from_uri_realm(req()) -> api_binary().
 -spec from_uri_realm(req(), Default) -> ne_binary() | Default.
-from_uri_realm(?REQ_TYPE(JObj)) ->
-    from_uri_realm(?REQ_TYPE(JObj), 'undefined').
+from_uri_realm(Req) ->
+    from_uri_realm(Req, 'undefined').
 from_uri_realm(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_FROM_URI_REALM, JObj, Default).
 
 -spec account_realm(req()) -> api_binary().
 -spec account_realm(req(), Default) -> ne_binary() | Default.
-account_realm(?REQ_TYPE(JObj)) ->
-    account_realm(?REQ_TYPE(JObj), 'undefined').
+account_realm(Req) ->
+    account_realm(Req, 'undefined').
 account_realm(?REQ_TYPE(JObj), Default) ->
     wh_json:get_ne_value(?KEY_ACCOUNT_REALM, JObj, Default).
 
@@ -508,6 +521,13 @@ body(Req) ->
 body(?REQ_TYPE(JObj), Default) ->
     wh_json:get_value(?KEY_BODY, JObj, Default).
 
+-spec bypass_e164(req()) -> boolean().
+-spec bypass_e164(req(), Default) -> boolean() | Default.
+bypass_e164(Req) ->
+    bypass_e164(Req, 'false').
+bypass_e164(?REQ_TYPE(JObj), Default) ->
+    wh_json:is_true(?KEY_BYPASS_E164, JObj, Default).
+
 -spec msg_id(req()) -> api_binary().
 msg_id(?REQ_TYPE(JObj)) ->
     wh_api:msg_id(JObj).
@@ -519,3 +539,7 @@ server_id(?REQ_TYPE(JObj)) ->
 -spec delete_keys(req(), ne_binaries()) -> req().
 delete_keys(?REQ_TYPE(JObj), Keys) ->
     ?REQ_TYPE(wh_json:delete_keys(Keys, JObj)).
+
+-spec set_values(req(), wh_proplist()) -> req().
+set_values(?REQ_TYPE(JObj), Props) ->
+    ?REQ_TYPE(wh_json:set_values(Props, JObj)).
