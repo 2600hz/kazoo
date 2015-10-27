@@ -579,7 +579,7 @@ unbind_q(Q, AcctId, QID, AID, ['call_stat'|L]) ->
     amqp_util:unbind_q_from_whapps(Q, call_stat_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, ['status_stat'|L]) ->
-    amqp_util:unbind_q_from_whapps(Q, status_stat_routing_key(AcctId, QID)),
+    amqp_util:unbind_q_from_whapps(Q, status_stat_routing_key(AcctId, AID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, ['query_call_stat'|L]) ->
     amqp_util:unbind_q_from_whapps(Q, query_call_stat_routing_key(AcctId, QID)),
