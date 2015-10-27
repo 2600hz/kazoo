@@ -7,8 +7,10 @@
 %%%   Ben Wann
 %%%-------------------------------------------------------------------
 -module(bh_context).
+
 -export([new/0, new/2
         ,from_subscription/1, from_subscription/2
+        ,to_json/1
         ,is_context/1
         ,account_id/1, set_account_id/2
         ,binding/1, set_binding/2
@@ -19,16 +21,6 @@
         ]).
 
 -include("blackhole.hrl").
-
--record(bh_context, {
-           auth_token = <<>> :: api_binary()
-          ,auth_account_id :: api_binary()
-          ,account_id :: api_binary()
-          ,binding :: api_binary()
-          ,websocket_session_id :: api_binary()
-          ,websocket_pid :: api_pid()
-          ,req_id = <<(wh_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary()
-         }).
 
 -type context() :: #bh_context{}.
 -export_type([context/0]).
@@ -58,6 +50,17 @@ from_subscription(Context, Data) ->
                        ,auth_token = wh_json:get_value(<<"auth_token">>,Data)
                        ,binding = wh_json:get_value(<<"binding">>,Data)
                       }.
+
+-spec to_json(context()) -> wh_json:object().
+to_json(Context) ->
+    wh_json:from_list([
+        {<<"account_id">>, account_id(Context)}
+        ,{<<"auth_token">>, auth_token(Context)}
+        ,{<<"auth_account_id">>, auth_account_id(Context)}
+        ,{<<"binding">>, binding(Context)}
+        ,{<<"websocket_session_id">>, websocket_session_id(Context)}
+        ,{<<"websocket_pid">>, websocket_pid(Context)}
+    ]).
 
 -spec is_context(any()) -> boolean().
 is_context(#bh_context{}) -> 'true';

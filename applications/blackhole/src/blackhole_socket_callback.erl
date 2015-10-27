@@ -17,7 +17,9 @@
 
 open(SessionPid, SessionId, _Opts) ->
     lager:debug("opening socket ~p", [SessionId]),
-    {'ok', bh_context:new(SessionPid, SessionId)}.
+    Context = bh_context:new(SessionPid, SessionId),
+    _ = blackhole_tracking:add_socket(Context),
+    {'ok', Context}.
 
 recv(_SessionPid, SessionId, {'message', <<>>, Message}, State) ->
     lager:debug("received message ~p on socket ~p", [Message, SessionId]),
@@ -31,6 +33,7 @@ recv(_SessionPid, _SessionId, {'event', _Ignore, <<"subscribe">>, SubscriptionJO
             case blackhole_util:get_callback_module(Binding) of
                 'undefined' -> blackhole_util:respond_with_error(Context1);
                 Module ->
+                    _ = blackhole_tracking:update_binding(Context1),
                     blackhole_util:maybe_add_binding_to_listener(Module, Binding, Context1),
                     blackhole_bindings:bind(Binding, Module, 'handle_event', Context1)
             end;
@@ -47,6 +50,7 @@ recv(SessionPid, SessionId, {'event', _Ignore, <<"unsubscribe">>, SubscriptionJO
             case wh_json:get_value(<<"account_id">>, SubscriptionJObj) of
                 'undefined' ->
                     lager:debug("remove all bindings for session: ~p", [SessionId]),
+                    _ = blackhole_tracking:update_binding(Context1),
                     Filter = fun (A, B, C, D) -> filter_bindings(SessionPid, A, B, C, D) end,
                     blackhole_bindings:filter(Filter);
                 AccountId ->
@@ -55,6 +59,7 @@ recv(SessionPid, SessionId, {'event', _Ignore, <<"unsubscribe">>, SubscriptionJO
                         'undefined' -> blackhole_util:respond_with_error(Context1);
                         Module ->
                             lager:debug("remove binding for account_id: ~p", [AccountId]),
+                            _ = blackhole_tracking:update_binding(Context1),
                             blackhole_bindings:unbind(Binding, Module, 'handle_event', Context1),
                             blackhole_util:maybe_rm_binding_from_listener(Module, Binding, Context1)
                     end
@@ -71,8 +76,9 @@ recv(_SessionPid, SessionId, Message, Context) ->
     lager:info("receive unknown message ~p on socket ~p", [Message, SessionId]),
     {'ok', Context}.
 
-close(SessionPid, SessionId, _Context) ->
+close(SessionPid, SessionId, Context) ->
     lager:debug("closing socket ~p", [SessionId]),
+    _ = blackhole_tracking:remove_socket(Context),
     Filter = fun (A, B, C, D) -> filter_bindings(SessionPid, A, B, C, D) end,
     blackhole_bindings:filter(Filter),
     'ok'.

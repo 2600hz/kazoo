@@ -15,7 +15,15 @@
 
 -define(VERSION_SUPPORTED, [<<"v1">>]).
 
-
+-record(bh_context, {
+           auth_token = <<>> :: api_binary()
+          ,auth_account_id :: api_binary()
+          ,account_id :: api_binary()
+          ,binding :: api_binary()
+          ,websocket_session_id :: api_binary()
+          ,websocket_pid :: api_pid()
+          ,req_id = <<(wh_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary()
+         }).
 
 -define(BLACKHOLE_HRL, 'true').
 
