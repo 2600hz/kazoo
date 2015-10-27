@@ -56,12 +56,16 @@ maybe_set_invite_format(JObj, SubJObj) ->
 format_request(JObj, MetaFormatters, Direction) ->
     JObjKeys = request_keys(JObj),
     wh_json:foldl(fun(MetaKey, Formatters, AccJObj) ->
+                          lager:debug("processing ~s ~p", [MetaKey, Formatters]),
                           maybe_apply_formatters_fold(AccJObj
                                                       ,JObjKeys
                                                       ,MetaKey
                                                       ,filter_formatters_by_direction(Direction, Formatters)
                                                      )
-                  end, JObj, MetaFormatters).
+                  end
+                  ,JObj
+                  ,MetaFormatters
+                 ).
 
 -spec request_keys(wh_json:object()) -> wh_proplist().
 request_keys(JObj) ->
