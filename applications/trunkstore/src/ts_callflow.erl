@@ -120,6 +120,8 @@ wait_for_bridge(State) ->
                 {'error', _}=Error -> Error;
                 {'hangup', _}=Hangup -> Hangup
             end;
+        {'$gen_cast',{'wh_amqp_assignment',_}} ->
+            wait_for_bridge(State);
         _E ->
             lager:info("unexpected msg: ~p", [_E]),
             wait_for_bridge(State)
