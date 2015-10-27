@@ -19,10 +19,15 @@
            auth_token = <<>> :: api_binary()
           ,auth_account_id :: api_binary()
           ,account_id :: api_binary()
-          ,binding :: api_binary()
+          ,bindings = [] :: ne_binaries()
           ,websocket_session_id :: api_binary()
           ,websocket_pid :: api_pid()
           ,req_id = <<(wh_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary()
+          ,timestamp :: gregorian_seconds()
+          ,name :: api_binary()
+          ,metadata :: any()
+          ,destination :: api_binary()
+          ,source :: api_binary()
          }).
 
 -define(BLACKHOLE_HRL, 'true').

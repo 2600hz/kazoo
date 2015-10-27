@@ -13,7 +13,7 @@
 -export([start_link/0
          ,add_socket/1
          ,remove_socket/1
-         ,update_binding/1
+         ,update_socket/1
          ,get_sockets/1
          ,get_socket/1
         ]).
@@ -40,9 +40,9 @@ add_socket(Context) ->
 remove_socket(Context) ->
     gen_server:cast(?MODULE, {'remove_socket', Context}).
 
--spec update_binding(bh_context:context()) -> 'ok'.
-update_binding(Context) ->
-    gen_server:cast(?MODULE, {'update_binding', Context}).
+-spec update_socket(bh_context:context()) -> 'ok'.
+update_socket(Context) ->
+    gen_server:cast(?MODULE, {'update_socket', Context}).
 
 -spec get_sockets(ne_binary()) -> ne_binaries().
 get_sockets(AccountId) ->
@@ -139,11 +139,8 @@ handle_cast({'add_socket', Context}, State) ->
 handle_cast({'remove_socket', Context}, State) ->
     _ = ets:delete_object(State, Context),
     {noreply, State};
-handle_cast({'update_binding', Context}, State) ->
-    Id = bh_context:websocket_session_id(Context),
-    Binding = bh_context:binding(Context),
-    Props = [{#bh_context.binding, Binding}],
-    _ = ets:update_element(State, Id, Props),
+handle_cast({'update_socket', Context}, State) ->
+    _ = ets:insert(State, Context),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
