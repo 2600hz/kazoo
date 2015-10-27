@@ -628,18 +628,20 @@ get_destination(JObj, Cat, Key) ->
             end
     end.
 
+-spec try_split(api_binary()) ->
+                       {ne_binary(), ne_binary()} |
+                       'undefined'.
 -spec try_split(ne_binary(), wh_json:object()) ->
                        {ne_binary(), ne_binary()} |
                        'undefined'.
 try_split(Key, JObj) ->
-    case wh_json:get_value(Key, JObj) of
-        'undefined' -> 'undefined';
-        Bin when is_binary(Bin) ->
-            case binary:split(Bin, <<"@">>) of
-                [<<"nouser">>, _] -> 'undefined';
-                [_, _]=Dest -> list_to_tuple(Dest)
-            end
-    end.
+    try_split(wh_json:get_value(Key, JObj)).
+
+try_split('undefined') -> 'undefined';
+try_split(<<"nouser@", _/binary>>) -> 'undefined';
+try_split(<<_/binary>> = Bin) ->
+    [_, _] = Dest = binary:split(Bin, <<"@">>),
+    list_to_tuple(Dest).
 
 -spec write_tts_file(ne_binary(), ne_binary()) ->
                             'ok' |
