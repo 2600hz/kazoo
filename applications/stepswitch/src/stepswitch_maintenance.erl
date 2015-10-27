@@ -204,7 +204,7 @@ process_number(Number) -> process_number(Number, 'undefined').
 process_number(Number, 'undefined') ->
     Endpoints = stepswitch_resources:endpoints(
                   wh_util:to_binary(Number)
-                  ,wapi_offnet_req:jobj_to_req(wh_json:new())
+                  ,wapi_offnet_resource:jobj_to_req(wh_json:new())
                  ),
     pretty_print_endpoints(Endpoints);
 process_number(Number, AccountId) ->
