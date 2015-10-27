@@ -617,7 +617,7 @@ maybe_get_t38(#gateway{fax_option=FaxOption}, OffnetJObj) ->
         'true' ->
             whapps_call_command:get_outbound_t38_settings(
               FaxOption
-              ,wh_json:get_value(<<"Fax-T38-Enabled">>, OffnetJObj)
+              ,wapi_offnet_resource:t38_enabled(OffnetJObj)
              )
     end.
 
