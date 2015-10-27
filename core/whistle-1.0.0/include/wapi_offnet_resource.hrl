@@ -52,16 +52,16 @@
 -define(RESOURCE_TYPE_SMS, <<"sms">>).
 -define(RESOURCE_TYPE_VIDEO, <<"video">>).
 
--define(APPLICATION_PARK, <<"park">>).
 -define(APPLICATION_BRIDGE, <<"bridge">>).
--define(APPLICATION_TRANSFER, <<"transfer">>).
--define(APPLICATION_FAX, <<"fax">>).
 -define(APPLICATION_EAVESDROP, <<"eavesdrop">>).
+-define(APPLICATION_FAX, <<"fax">>).
+-define(APPLICATION_PARK, <<"park">>).
 -define(APPLICATION_SMS, <<"sms">>).
+-define(APPLICATION_TRANSFER, <<"transfer">>).
 
--define(MEDIA_PROCESS, <<"process">>).
--define(MEDIA_BYPASS, <<"bypass">>).
 -define(MEDIA_AUTO, <<"auto">>).
+-define(MEDIA_BYPASS, <<"bypass">>).
+-define(MEDIA_PROCESS, <<"process">>).
 
 -define(MODE_FULL, <<"full">>).
 -define(MODE_LISTEN, <<"listen">>).
