@@ -256,7 +256,7 @@ build_number_uri(Context, Number) ->
 
     UseNumber = case FilterVal of
         <<"false">> -> Number;
-        <<"true">>  -> binary:replace(Number, ?QCALL_NUMBER_FILTER, <<"">>, [global]);
+        <<"true">>  -> binary:replace(Number, ?QCALL_NUMBER_FILTER, <<>>, ['global']);
         FilterRegex -> filter_number_regex(Number, FilterRegex)
     end,
 
