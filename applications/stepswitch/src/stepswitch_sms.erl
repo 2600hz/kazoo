@@ -25,7 +25,7 @@
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -record(state, {endpoints = [] :: wh_json:objects()
-                ,resource_req :: wh_json:object()
+                ,resource_req :: wapi_offnet_resource:req()
                 ,request_handler :: pid()
                 ,control_queue :: api_binary()
                 ,response_queue :: api_binary()
@@ -58,15 +58,15 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(wh_json:objects(), wh_json:object()) -> startlink_ret().
-start_link(Endpoints, JObj) ->
+-spec start_link(wh_json:objects(), wapi_offnet_resource:req()) -> startlink_ret().
+start_link(Endpoints, OffnetReq) ->
     Bindings = [{'self', []}],
     gen_listener:start_link(?MODULE, [{'bindings', Bindings}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Endpoints, JObj]).
+                                     ], [Endpoints, OffnetReq]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -83,19 +83,19 @@ start_link(Endpoints, JObj) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Endpoints, JObj]) ->
-    wh_util:put_callid(JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    case wh_json:get_ne_value(<<"Control-Queue">>, JObj, <<>>) of
+init([Endpoints, OffnetReq]) ->
+    _ = wapi_offnet_resource:put_callid(OffnetReq),
+    CallId = wapi_offnet_resource:call_id(OffnetReq),
+    case wapi_offnet_resource:control_queue(OffnetReq) of
         'undefined' ->
             lager:debug("Control-Queue is undefined for Call-ID ~s, exiting.", [CallId]),
             {'stop', 'normal'};
         ControlQ ->
             {'ok', #state{endpoints=Endpoints
-                          ,resource_req=JObj
+                          ,resource_req=OffnetReq
                           ,request_handler=self()
                           ,control_queue=ControlQ
-                          ,response_queue=wh_json:get_ne_value(<<"Server-ID">>, JObj)
+                          ,response_queue=wapi_offnet_resource:server_id(OffnetReq)
                          }}
     end.
 
@@ -138,14 +138,14 @@ handle_cast({'sms_result', _Props}, #state{response_queue='undefined'}=State) ->
 handle_cast({'sms_result', Props}, #state{response_queue=ResponseQ}=State) ->
     wapi_offnet_resource:publish_resp(ResponseQ, Props),
     {'stop', 'normal', State};
-handle_cast({'sms_success', JObj}, #state{resource_req=Request}=State) ->
-    gen_listener:cast(self(), {'sms_result', sms_success(JObj, Request)}),
+handle_cast({'sms_success', JObj}, #state{resource_req=OffnetReq}=State) ->
+    gen_listener:cast(self(), {'sms_result', sms_success(JObj, OffnetReq)}),
     {'noreply', State};
-handle_cast({'sms_failure', JObj}, #state{resource_req=Request}=State) ->
-    gen_listener:cast(self(), {'sms_result', sms_failure(JObj, Request)}),
+handle_cast({'sms_failure', JObj}, #state{resource_req=OffnetReq}=State) ->
+    gen_listener:cast(self(), {'sms_result', sms_failure(JObj, OffnetReq)}),
     {'noreply', State};
-handle_cast({'sms_error', JObj}, #state{resource_req=Request}=State) ->
-    gen_listener:cast(self(), {'sms_result', sms_error(JObj, Request)}),
+handle_cast({'sms_error', JObj}, #state{resource_req=OffnetReq}=State) ->
+    gen_listener:cast(self(), {'sms_result', sms_error(JObj, OffnetReq)}),
     {'noreply', State};
 handle_cast('next_message', #state{message=API
                                    ,messages=Queue
@@ -342,26 +342,25 @@ maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, Broke
 
 -spec build_sms(state()) -> state().
 build_sms(#state{endpoints=Endpoints
-                 ,resource_req=JObj
+                 ,resource_req=OffnetReq
                  ,queue=Q
                 }=State) ->
-    {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
+    {CIDNum, CIDName} = bridge_caller_id(Endpoints, OffnetReq),
     gen_listener:cast(self(), 'next_message'),
-    State#state{messages=queue:from_list(maybe_endpoints_format_from(Endpoints, CIDNum, JObj))
-                ,message=build_sms_base({CIDNum, CIDName}, JObj, Q)
+    State#state{messages=queue:from_list(maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq))
+                ,message=build_sms_base({CIDNum, CIDName}, OffnetReq, Q)
                }.
 
--spec build_sms_base({binary(), binary()}, wh_json:object(), binary()) -> wh_proplist().
-build_sms_base({CIDNum, CIDName}, JObj, Q) ->
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountRealm = wh_json:get_value(<<"Account-Realm">>, JObj),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+-spec build_sms_base({binary(), binary()}, wapi_offnet_resource:req(), binary()) -> wh_proplist().
+build_sms_base({CIDNum, CIDName}, OffnetReq, Q) ->
+    AccountId = wapi_offnet_resource:account_id(OffnetReq),
+    AccountRealm = wapi_offnet_resource:account_realm(OffnetReq),
+    CCVs = wapi_offnet_resource:custom_channel_vars(OffnetReq, wh_json:new()),
     CCVUpdates = props:filter_undefined(
                    [{<<"Ignore-Display-Updates">>, <<"true">>}
                     ,{<<"Account-ID">>, AccountId}
-                    ,{<<"Bounce-Back">>, wh_json:get_value(<<"Bounce-Back">>, JObj)}
                     ,{<<"Account-Realm">>, AccountRealm}
-                    ,{<<"From-URI">>, bridge_from_uri(CIDNum, JObj)}
+                    ,{<<"From-URI">>, bridge_from_uri(CIDNum, OffnetReq)}
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                    ]),
     props:filter_undefined(
@@ -371,26 +370,23 @@ build_sms_base({CIDNum, CIDName}, JObj, Q) ->
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
        ,{<<"Caller-ID-Number">>, CIDNum}
        ,{<<"Caller-ID-Name">>, CIDName}
-       ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
+       ,{<<"Presence-ID">>, wapi_offnet_resource:presence_id(OffnetReq)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
-       ,{<<"Custom-SIP-Headers">>, stepswitch_util:get_sip_headers(JObj)}
-       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-       ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
-       ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
-       ,{<<"Message-ID">>, wh_json:get_value(<<"Message-ID">>, JObj)}
-       ,{<<"Body">>, wh_json:get_value(<<"Body">>, JObj)}
-       ,{<<"Route-ID">>, wh_json:get_value(<<"Route-ID">>, JObj)}
+       ,{<<"Custom-SIP-Headers">>, stepswitch_util:get_sip_headers(OffnetReq)}
+       ,{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
+       ,{<<"Outbound-Callee-ID-Number">>, wapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
+       ,{<<"Outbound-Callee-ID-Name">>, wapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
+       ,{<<"Message-ID">>, wapi_offnet_resource:message_id(OffnetReq)}
+       ,{<<"Body">>, wapi_offnet_resource:body(OffnetReq)}
        | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec maybe_endpoints_format_from(wh_json:objects(), api_binary(), wh_json:object()) ->
+-spec maybe_endpoints_format_from(wh_json:objects(), api_binary(), wapi_offnet_resource:req()) ->
                                          wh_json:objects().
 maybe_endpoints_format_from([], _ , _) -> [];
 maybe_endpoints_format_from(Endpoints, 'undefined', _) -> Endpoints;
-maybe_endpoints_format_from(Endpoints, CIDNum, JObj) ->
-    DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
-                                              ,<<"Account-Realm">>
-                                             ], JObj),
+maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq) ->
+    DefaultRealm = stepswitch_bridge:default_realm(OffnetReq),
     [maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm)
      || Endpoint <- Endpoints
     ].
@@ -405,7 +401,9 @@ maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
-                                                   ], CCVs)
+                                                   ]
+                                                   ,CCVs
+                                                  )
                               ,Endpoint
                              )
     end.
@@ -419,7 +417,9 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
-                                                   ], CCVs)
+                                                   ]
+                                                   ,CCVs
+                                                  )
                               ,Endpoint
                              );
         'true' ->
@@ -432,12 +432,14 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
-                                                   ], UpdatedCCVs)
+                                                   ]
+                                                   ,UpdatedCCVs
+                                                  )
                               ,Endpoint
                              )
     end.
 
--spec bridge_caller_id(wh_json:objects(), wh_json:object()) ->
+-spec bridge_caller_id(wh_json:objects(), wapi_offnet_resource:req()) ->
                               {api_binary(), api_binary()}.
 bridge_caller_id(Endpoints, JObj) ->
     case contains_emergency_endpoints(Endpoints) of
@@ -445,43 +447,27 @@ bridge_caller_id(Endpoints, JObj) ->
         'false' -> bridge_caller_id(JObj)
     end.
 
--spec bridge_emergency_caller_id(wh_json:object()) ->
+-spec bridge_emergency_caller_id(wapi_offnet_resource:req()) ->
                                         {api_binary(), api_binary()}.
-bridge_emergency_caller_id(JObj) ->
+bridge_emergency_caller_id(OffnetReq) ->
     lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
-    {maybe_emergency_cid_number(JObj)
-     ,wh_json:get_first_defined([<<"Emergency-Caller-ID-Name">>
-                                 ,<<"Outbound-Caller-ID-Name">>
-                                ]
-                                ,JObj
-                               )
+    {maybe_emergency_cid_number(OffnetReq)
+     ,stepswitch_bridge:bridge_emergency_cid_name(OffnetReq)
     }.
 
--spec bridge_caller_id(wh_json:object()) ->
-                              {api_binary(), api_binary()}.
-bridge_caller_id(JObj) ->
-    {wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
-                                ,<<"Emergency-Caller-ID-Number">>
-                               ]
-                               ,JObj
-                              )
-     ,wh_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
-                                 ,<<"Emergency-Caller-ID-Name">>
-                                ]
-                                ,JObj
-                               )
+-spec bridge_caller_id(wapi_offnet_resource:req()) ->
+                              {ne_binary(), ne_binary()}.
+bridge_caller_id(OffnetReq) ->
+    {stepswitch_bridge:bridge_outbound_cid_number(OffnetReq)
+     ,stepswitch_bridge:bridge_outbound_cid_name(OffnetReq)
     }.
 
--spec bridge_from_uri(api_binary(), wh_json:object()) ->
+-spec bridge_from_uri(api_binary(), wapi_offnet_resource:req()) ->
                              api_binary().
-bridge_from_uri(CIDNum, JObj) ->
-    Realm = wh_json:get_first_defined([<<"From-URI-Realm">>
-                                       ,<<"Account-Realm">>
-                                      ]
-                                      ,JObj
-                                     ),
+bridge_from_uri(CIDNum, OffnetReq) ->
+    Realm = stepswitch_bridge:default_realm(OffnetReq),
     case (whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
-          orelse wh_json:is_true(<<"Format-From-URI">>, JObj)
+          orelse wapi_offnet_resource:format_from_uri(OffnetReq)
          )
         andalso (is_binary(CIDNum) andalso is_binary(Realm))
     of
@@ -492,39 +478,35 @@ bridge_from_uri(CIDNum, JObj) ->
             FromURI
     end.
 
--spec maybe_emergency_cid_number(wh_json:object()) ->
+-spec maybe_emergency_cid_number(wapi_offnet_resource:req()) ->
                                         api_binary().
-maybe_emergency_cid_number(JObj) ->
+maybe_emergency_cid_number(OffnetReq) ->
     %% NOTE: if this request had a hunt-account-id then we
     %%   are assuming it was for a local resource (at the
     %%   time of this commit offnet DB is still in use)
-    case wh_json:get_value(<<"Hunt-Account-ID">>, JObj) of
-        'undefined' -> emergency_cid_number(JObj);
+    case wapi_offnet_resource:hunt_account_id(OffnetReq) of
+        'undefined' -> emergency_cid_number(OffnetReq);
         _Else ->
-            wh_json:get_first_defined([<<"Emergency-Caller-ID-Number">>
-                                       ,<<"Outbound-Caller-ID-Number">>
-                                      ], JObj)
+            stepswitch_bridge:bridge_emergency_cid_number(OffnetReq)
     end.
 
--spec emergency_cid_number(wh_json:object()) ->
+-spec emergency_cid_number(wapi_offnet_resource:req()) ->
                                   ne_binary().
-emergency_cid_number(JObj) ->
-    Account = wh_json:get_value(<<"Account-ID">>, JObj),
+emergency_cid_number(OffnetReq) ->
+    Account = wapi_offnet_resource:account_id(OffnetReq),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    Candidates = [wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)
-                  ,wh_json:get_ne_value(<<"Outbound-Caller-ID-Number">>, JObj)
+    Candidates = [wapi_offnet_resource:emergency_caller_id_number(OffnetReq)
+                  ,wapi_offnet_resource:outbound_caller_id_number(OffnetReq)
                  ],
-    Requested = wh_json:get_first_defined([<<"Emergency-Caller-ID-Number">>
-                                           ,<<"Outbound-Caller-ID-Number">>
-                                          ], JObj),
+    Requested = stepswitch_bridge:bridge_emergency_cid_number(OffnetReq),
     lager:debug("ensuring requested CID is emergency enabled: ~s", [Requested]),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', PhoneNumbers} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
             EmergencyEnabled = [Number
-                           || Number <- Numbers,
-                              wnm_util:emergency_services_configured(Number, PhoneNumbers)
-                          ],
+                                || Number <- Numbers,
+                                   wnm_util:emergency_services_configured(Number, PhoneNumbers)
+                               ],
             emergency_cid_number(Requested, Candidates, EmergencyEnabled);
         {'error', _R} ->
             lager:error("unable to fetch the ~s from account ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Account, _R]),
@@ -562,46 +544,48 @@ contains_emergency_endpoints([Endpoint|Endpoints]) ->
         'false' -> contains_emergency_endpoints(Endpoints)
     end.
 
--spec sms_timeout(wh_json:object()) -> wh_proplist().
-sms_timeout(Request) ->
+-spec sms_timeout(wapi_offnet_resource:req()) -> wh_proplist().
+sms_timeout(OffnetReq) ->
     lager:debug("attempt to connect to resources timed out"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, <<"bridge request timed out">>}
-     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, Request)}
+     ,{<<"To-DID">>, wapi_offnet_resource:to_did(OffnetReq)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec sms_error(wh_json:object(), wh_json:object()) -> wh_proplist().
-sms_error(JObj, Request) ->
+-spec sms_error(wh_json:object(), wapi_offnet_resource:req()) -> wh_proplist().
+sms_error(JObj, OffnetReq) ->
     lager:debug("error during outbound request: ~s", [wh_util:to_binary(wh_json:encode(JObj))]),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
-     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, Request)}
+     ,{<<"To-DID">>, wapi_offnet_resource:to_did(OffnetReq)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec sms_success(wh_json:object(), wh_json:object()) -> wh_proplist().
-sms_success(JObj, Request) ->
+-spec sms_success(wh_json:object(), wapi_offnet_resource:req()) -> wh_proplist().
+sms_success(JObj, OffnetReq) ->
     lager:debug("outbound request successfully completed"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"SUCCESS">>}
      ,{<<"Response-Code">>, <<"sip:200">>}
      ,{<<"Resource-Response">>, JObj}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec sms_failure(wh_json:object(), wh_json:object()) -> wh_proplist().
-sms_failure(JObj, Request) ->
-    lager:debug("resources for outbound request failed: ~s", [wh_json:get_value(<<"Disposition">>, JObj)]),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+-spec sms_failure(wh_json:object(), wapi_offnet_resource:req()) -> wh_proplist().
+sms_failure(JObj, OffnetReq) ->
+    lager:debug("resources for outbound request failed: ~s"
+                ,[wh_json:get_value(<<"Disposition">>, JObj)]
+               ),
+    [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
+     ,{<<"Msg-ID">>, wapi_offnet_resource:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, wh_json:get_first_defined([<<"Application-Response">>
                                                           ,<<"Hangup-Cause">>
                                                          ], JObj)}

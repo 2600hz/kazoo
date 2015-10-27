@@ -208,7 +208,9 @@ process_number(Number, AccountId) ->
     JObj = wh_json:from_list([{<<"Account-ID">>, wh_util:to_binary(AccountId)}
                               ,{<<"Hunt-Account-ID">>, wh_util:to_binary(AccountId)}
                              ]),
-    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), JObj),
+    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number)
+                                               ,wapi_offnet_resource:jobj_to_req(JObj)
+                                              ),
     pretty_print_endpoints(Endpoints).
 
 -spec pretty_print_endpoints(wh_json:objects()) -> any().
@@ -237,7 +239,6 @@ pretty_print_endpoint([{<<"Custom-Channel-Vars">>, JObj}|Props]) ->
 pretty_print_endpoint([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
     pretty_print_endpoint(Props).
-
 
 %%--------------------------------------------------------------------
 %% @private
