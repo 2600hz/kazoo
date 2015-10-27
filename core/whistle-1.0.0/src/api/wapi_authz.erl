@@ -30,13 +30,13 @@
                             ,<<"Caller-ID-Name">>
                             ,<<"Caller-ID-Number">>
                             ,<<"From">>
-                            ,<<"From-Network-Addr">>
-                            ,<<"From-Network-Port">>
                             ,<<"Request">>
                             ,<<"To">>
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>
                                      ,<<"Other-Leg-Call-ID">>
+                                     ,<<"From-Network-Addr">>
+                                     ,<<"From-Network-Port">>
                                     ]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"authz_req">>}
