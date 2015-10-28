@@ -202,7 +202,7 @@ get_hangup_delay(Props) ->
 
 -spec delayed_hangup(ne_binary(), integer()) -> 'ok'.
 delayed_hangup(CallId, HangupDelay) ->
-    timer:sleep(HangupDelay * 1000),
+    timer:sleep(HangupDelay * ?MILLISECONDS_IN_SECOND),
     send_hangup_req(CallId).
 
 -spec send_hangup_req(ne_binary()) -> 'ok'.
