@@ -44,13 +44,14 @@ recv(_SessionPid, _SessionId, {'event', _Ignore, <<"subscribe">>, SubscriptionJO
 
 recv(SessionPid, SessionId, {'event', _Ignore, <<"unsubscribe">>, SubscriptionJObj}, Context) ->
     lager:debug("maybe remove binding for session: ~p. Data: ~p", [SessionId, SubscriptionJObj]),
-    Context1 = bh_context:unsubscribe(Context, SubscriptionJObj),
+    Context1 = bh_context:from_json(Context, SubscriptionJObj),
     case blackhole_util:is_authorized(Context1) of
         'true' ->
+            Context2 = bh_context:unsubscribe(Context1, SubscriptionJObj),
             case wh_json:get_value(<<"account_id">>, SubscriptionJObj) of
                 'undefined' ->
                     lager:debug("remove all bindings for session: ~p", [SessionId]),
-                    _ = blackhole_tracking:update_socket(Context1),
+                    _ = blackhole_tracking:update_socket(Context2),
                     Filter = fun (A, B, C, D) -> filter_bindings(SessionPid, A, B, C, D) end,
                     blackhole_bindings:filter(Filter);
                 AccountId ->
@@ -59,7 +60,7 @@ recv(SessionPid, SessionId, {'event', _Ignore, <<"unsubscribe">>, SubscriptionJO
                         'undefined' -> blackhole_util:respond_with_error(Context1);
                         Module ->
                             lager:debug("remove binding for account_id: ~p", [AccountId]),
-                            _ = blackhole_tracking:update_socket(Context1),
+                            _ = blackhole_tracking:update_socket(Context2),
                             blackhole_bindings:unbind(Binding, Module, 'handle_event', Context1),
                             blackhole_util:maybe_rm_binding_from_listener(Module, Binding, Context1)
                     end
