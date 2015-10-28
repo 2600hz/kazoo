@@ -262,8 +262,8 @@ maybe_account_is_enabled(Context, Credentials, Method, Account) ->
             lager:debug("account ~p is disabled", [Account]),
             Cause =
                 wh_json:from_list(
-                    [{<<"message">>, <<"account disabled">>}]
-                ),
+                  [{<<"message">>, <<"account disabled">>}]
+                 ),
             cb_context:add_validation_error(<<"account">>, <<"disabled">>, Cause, Context)
     end.
 
