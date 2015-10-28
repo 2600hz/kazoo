@@ -92,7 +92,7 @@ check_credentials(Context, AccountId, Credentials) ->
     BasicType = whapps_account_config:get(AccountId, ?MOD_CONFIG_CAT, ?BASIC_AUTH_KEY, ?BASIC_AUTH_TYPE),
     check_credentials(Context, AccountId, Credentials, BasicType).
 
--spec check_credentials(cb_context:cb_context(), ne_binary(), ne_binary() | {ne_binary(), ne_binary()}, ne_binary()) ->
+-spec check_credentials(cb_context:context(), ne_binary(), ne_binary() | {ne_binary(), ne_binary()}, ne_binary()) ->
                               'false' |
                               {'true' | 'halt', cb_context:context()}.
 check_credentials(Context, AccountId, {Username, Password}, _BasicType) ->
