@@ -171,7 +171,13 @@ authorize(Context) ->
 -spec authenticate(cb_context:context()) ->
                           'false' |
                           {'true' | 'halt', cb_context:context()}.
+-spec authenticate(cb_context:context(), atom()) ->
+                          'false' |
+                          {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
+    authenticate(Context, cb_context:auth_token_type(Context)).
+
+authenticate(Context, 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
     case kz_buckets:consume_tokens(?APP_NAME
                                    ,cb_modules_util:bucket_name(Context)
@@ -186,7 +192,8 @@ authenticate(Context) ->
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
             {'halt', cb_context:add_system_error('too_many_requests', Context)}
-    end.
+    end;
+authenticate(_Context, _TokenType) -> 'false'.
 
 -spec check_auth_token(cb_context:context(), api_binary(), boolean()) ->
                               boolean() |
