@@ -1,8 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% File    : j5_balacne.erl
-%%% Description : Jonny5 module for disconnect calls when exceeding account balance
+%%% File    : j5_balacne_crawler.erl
+%%% Description : Jonny5 module for disconnect calls when account 
+%%% balance drops below zero
 %%%-------------------------------------------------------------------
--module(j5_balance).
+-module(j5_balance_crawler).
 
 -behaviour(gen_server).
 
@@ -49,8 +50,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     wh_util:put_callid(?MODULE),
-    %% TODO: system_config / jonny5 
-    %% option to enable/disable this check
     self() ! 'crawl_accounts',
     {'ok', #state{}}.
 
@@ -83,28 +82,34 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info('crawl_accounts', _State) ->
-    lager:debug("check all accounts for exceeding balance"),
+    IsEnabled = whapps_config:get_is_true(?APP_NAME, <<"crawl_for_zero_balance">>, true),
     case j5_channels:accounts() of
         [] ->
-            self() ! 'next_account',
+            self() ! 'next_cycle',
             {'noreply', []};
-        Accounts -> 
+        Accounts when IsEnabled -> 
+            lager:debug("check accounts for zero balance"),
             self() ! 'next_account',
-            {'noreply', Accounts}
+            {'noreply', Accounts};
+        _ ->
+            self() ! 'next_cycle',
+            {'noreply', []}
     end;
 
 handle_info('next_account', []) ->
-    %% TODO: system_config / jonny5
-    Cycle = 60000,
-    erlang:send_after(Cycle, self(), 'crawl_accounts'),
-    {'noreply', [], 'hibernate'};
+    self() ! 'next_cycle',
+    {'noreply', []};
 
 handle_info('next_account', [Account|Accounts]) ->
     maybe_disconnect_account(Account),
-    %% TODO: system_config / jonny5
-    Cycle = 100,
-    erlang:send_after(Cycle, self(), 'next_account'),
+    Delay = whapps_config:get_integer(?APP_NAME, <<"interaccount_delay">>, 10),
+    erlang:send_after(Delay, self(), 'next_account'),
     {'noreply', Accounts, 'hibernate'};
+
+handle_info('next_cycle', _State) ->
+    Cycle = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle">>, 60000),
+    erlang:send_after(Cycle, self(), 'crawl_accounts'),
+    {'noreply', [], 'hibernate'};
 
 handle_info(_Info, State) ->
     {'noreply', State}.
