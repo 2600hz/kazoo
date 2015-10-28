@@ -629,7 +629,7 @@ unanswered_action(SlotNumber, Slot, Data, Call) ->
         'undefined' -> wait_for_pickup(SlotNumber, Slot, Data, Call);
         _ ->
             _ = publish_abandoned(Call, SlotNumber),
-            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),            
+            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:continue(SlotNumber, Call)
     end.
 
@@ -666,7 +666,7 @@ get_endpoint_id(Username, Call) ->
                              'answered' | 'failed' | 'channel_hungup'.
 ringback_parker('undefined', _, _, _, _) -> 'failed';
 ringback_parker(EndpointId, SlotNumber, TmpCID, Data, Call) ->
-    Timeout = callback_timeout(Data, SlotNumber),    
+    Timeout = callback_timeout(Data, SlotNumber),
     case cf_endpoint:build(EndpointId, wh_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
         {'ok', Endpoints} ->
             lager:info("attempting to ringback endpoint ~s", [EndpointId]),
