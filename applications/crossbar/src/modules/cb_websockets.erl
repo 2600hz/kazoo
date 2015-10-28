@@ -19,6 +19,12 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).
+-define(
+    AVAILABLE
+    ,wh_json:from_list([
+        {<<"call">>, [<<"call.CHANNEL_CREATE.*">>, <<"call.CHANNEL_ANSWER.*">>, <<"call.CHANNEL_DESTROY.*">>]}
+    ])
+).
 
 %%%===================================================================
 %%% API
@@ -45,8 +51,9 @@ init() ->
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> 'false'.
-authenticate(_) -> 'false'.
+-spec authenticate(cb_context:context()) -> {'true', cb_context:context()} | 'false'.
+authenticate(Context) ->
+    authenticate_req(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -55,8 +62,9 @@ authenticate(_) -> 'false'.
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> 'false'.
-authorize(_) -> 'false'.
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize_req(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,12 +118,37 @@ validate(Context, Id) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec authenticate_req(cb_context:context(), http_method(), req_nouns()) -> {'true', cb_context:context()} |'false'.
+authenticate_req(Context, ?HTTP_GET, [{<<"websockets">>, []}]) ->
+    lager:debug("authenticating request"),
+    {'true', Context};
+authenticate_req(_Context, _Verb, _Nouns) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize_req(http_method(), req_nouns()) -> boolean().
+authorize_req(?HTTP_GET, [{<<"websockets">>, []}]) ->
+    lager:debug("authorizing request"),
+    'true';
+authorize_req(_Verb, _Nouns) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Load running web sockets
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_websockets(cb_context:context(), http_method()) -> cb_context:context().
 validate_websockets(Context, ?HTTP_GET) ->
-    summary(Context).
+    case cb_context:req_nouns(Context) of
+        [{<<"websockets">>, []}] -> summary_available(Context);
+        _Nouns -> summary(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,6 +159,20 @@ validate_websockets(Context, ?HTTP_GET) ->
 -spec validate_websocket(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_websocket(Context, Id, ?HTTP_GET) ->
     read(Id, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec summary_available(cb_context:context()) -> cb_context:context().
+summary_available(Context) ->
+    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_resp_data/2, ?AVAILABLE}
+                                ]).
+
 
 %%--------------------------------------------------------------------
 %% @private
