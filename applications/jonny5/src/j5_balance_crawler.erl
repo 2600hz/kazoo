@@ -82,7 +82,7 @@ handle_cast(_Msg, State) ->
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info('crawl_accounts', _State) ->
-    IsEnabled = whapps_config:get_is_true(?APP_NAME, <<"crawl_for_zero_balance">>, true),
+    IsEnabled = whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_enabled">>, true),
     case j5_channels:accounts() of
         [] ->
             self() ! 'next_cycle',
@@ -102,7 +102,7 @@ handle_info('next_account', []) ->
 
 handle_info('next_account', [Account|Accounts]) ->
     maybe_disconnect_account(Account),
-    Delay = whapps_config:get_integer(?APP_NAME, <<"interaccount_delay">>, 10),
+    Delay = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_interaccount_delay">>, 10),
     erlang:send_after(Delay, self(), 'next_account'),
     {'noreply', Accounts, 'hibernate'};
 
