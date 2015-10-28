@@ -561,7 +561,8 @@ bind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
     amqp_util:bind_q_to_whapps(Q, query_status_stat_routing_key(AcctId, AID)),
     bind_q(Q, AcctId, QID, AID, L);
 bind_q(Q, AcctId, QID, AID, [_|L]) ->
-    bind_q(Q, AcctId, QID, AID, L).
+    bind_q(Q, AcctId, QID, AID, L);
+bind_q(_Q, _AcctId, _QID, _AID, []) -> 'ok'.
 
 unbind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
@@ -588,7 +589,8 @@ unbind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
     amqp_util:unbind_q_from_whapps(Q, query_status_stat_routing_key(AcctId, AID)),
     unbind_q(Q, AcctId, QID, AID, L);
 unbind_q(Q, AcctId, QID, AID, [_|L]) ->
-    unbind_q(Q, AcctId, QID, AID, L).
+    unbind_q(Q, AcctId, QID, AID, L);
+unbind_q(_Q, _AcctId, _QID, _AID, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc
