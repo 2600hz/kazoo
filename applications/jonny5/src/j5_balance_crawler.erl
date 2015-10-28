@@ -26,6 +26,8 @@
 
 -record(state, {}).
 -define(SERVER, ?MODULE).
+-define(CRAWLER_CYCLE, 60000).
+-define(INTERACCOUNT_DELAY, 10).
 
 %%====================================================================
 %% API
@@ -102,12 +104,12 @@ handle_info('next_account', []) ->
 
 handle_info('next_account', [Account|Accounts]) ->
     maybe_disconnect_account(Account),
-    Delay = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_interaccount_delay">>, 10),
+    Delay = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_interaccount_delay">>, ?INTERACCOUNT_DELAY),
     erlang:send_after(Delay, self(), 'next_account'),
     {'noreply', Accounts, 'hibernate'};
 
 handle_info('next_cycle', _State) ->
-    Cycle = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle">>, 60000),
+    Cycle = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle">>, ?CRAWLER_CYCLE),
     erlang:send_after(Cycle, self(), 'crawl_accounts'),
     {'noreply', [], 'hibernate'};
 
