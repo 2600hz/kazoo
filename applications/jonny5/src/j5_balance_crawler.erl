@@ -182,7 +182,10 @@ maybe_disconnect_channels([Channel|Channels]) ->
 -spec disconnect_channel(wh_proplist()) -> 'ok'.
 disconnect_channel(Props) ->
     CallId =  props:get_ne_binary_value(<<"Call-ID">>, Props),
-    HangupDelay = get_hangup_delay(Props),
+    HangupDelay = case whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_delayed_hangup">>, true) of
+                      'true' -> get_hangup_delay(Props);
+                      'false' -> 0
+                  end,
     lager:debug("call id ~p, account billing ~p, reseller billing ~p",[CallId, props:get_binary_value(<<"Account-Billing">>, Props), props:get_binary_value(<<"Reseller-Billing">>, Props)]),
      try_disconnect_call(CallId, HangupDelay).
 
@@ -218,9 +221,9 @@ send_hangup_req(CallId) ->
     wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1).
 
 -spec try_disconnect_call(ne_binary(), integer()) -> 'ok'.
-try_disconnect_call(CallId, 0) -> send_hangup_req(CallId);
-try_disconnect_call(CallId, HangupDelay) ->
+try_disconnect_call(CallId, HangupDelay) when is_integer(HangupDelay) andalso HangupDelay > 0 ->
     lager:debug("disconnect call ~p delayed to ~p seconds",[CallId, HangupDelay]),
     _ = spawn(?MODULE, 'delayed_hangup', [CallId, HangupDelay]),
-    'ok'.
+    'ok';
+try_disconnect_call(CallId, _HangupDelay) -> send_hangup_req(CallId).
 
