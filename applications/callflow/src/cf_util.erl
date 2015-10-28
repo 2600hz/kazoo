@@ -1018,7 +1018,7 @@ mailbox(AccountDb, VMNumber) ->
 -spec get_mailbox(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
                                                {'error', any()}.
 get_mailbox(AccountDb, VMNumber) ->
-    ViewOptions = [{'key', wh_util:to_integer(VMNumber)}, 'include_docs'],
+    ViewOptions = [{'key', VMNumber}, 'include_docs'],
     case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
         {'ok', [JObj]} ->
             Doc = wh_json:get_value(<<"doc">>, JObj),
@@ -1030,10 +1030,9 @@ get_mailbox(AccountDb, VMNumber) ->
             lager:debug("multiple voicemail boxes with same number (~s)  in account db ~s", [VMNumber, AccountDb]),
             {'error', 'not_found'};
         {'ok', []} ->
-            lager:debug("voicemail box ~s not in account db ~s", [VMNumber, AccountDb]),
             {'error', 'not_found'};
         {'error', _R}=E ->
-            lager:warning("unable to lookup voicemail number ~s in account ~ss: ~p", [VMNumber, AccountDb, _R]),
+            lager:warning("unable to lookup voicemail number ~s in account ~s: ~p", [VMNumber, AccountDb, _R]),
             E
     end.
 
