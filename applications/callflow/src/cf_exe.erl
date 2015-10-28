@@ -32,6 +32,7 @@
 -export([wildcard_is_empty/1]).
 -export([callid_update/2]).
 -export([add_event_listener/2]).
+-export([next/1, next/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -333,6 +334,13 @@ handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
     case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
         'undefined' -> {'reply', 'true', State};
         ChildFlow -> {'reply', wh_json:is_empty(ChildFlow), State}
+    end;
+handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
+    case wh_json:get_first_defined([[<<"children">>, Key]
+                                    ,[<<"children">>, <<"_">>]
+                                   ], Flow) of
+        'undefined' -> {'reply', 'undefined', State};
+        Child -> {'reply', Child, State}
     end;
 handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
@@ -744,3 +752,13 @@ log_call_information(Call) ->
         _Else -> lager:info("inception ~s: using attributes for an external call", [_Else])
     end,
     lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]).
+
+-spec next(whapps_call:call() | pid()) -> api_object().
+-spec next(ne_binary(), whapps_call:call() | pid()) -> api_object().
+next(Srv) -> next(<<"_">>, Srv).
+
+next(Key, Srv) when is_pid(Srv) ->
+    gen_listener:call(Srv, {'next', Key});
+next(Key, Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    next(Key, Srv).
