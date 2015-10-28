@@ -16,5 +16,5 @@ Options:
 - `balance_crawler_delayed_hangup` - boolean, default `true`. When disconnect call, delay hangup for `Rate-Increment`.
 
 ## Per-account settings
-You can set boolean option `pvt_disconnect_active_calls` in per-account `limits` document.  
+You can set boolean option `pvt_disconnect_active_calls` in per-account `limits` document.
 If this options not set, then used options `default_disconnect_active_calls` from system-wide document `system_config/jonny5`.

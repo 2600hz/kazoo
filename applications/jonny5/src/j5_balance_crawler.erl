@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% File    : j5_balacne_crawler.erl
-%%% Description : Jonny5 module for disconnect calls when account 
+%%% Description : Jonny5 module for disconnect calls when account
 %%% balance drops below zero
 %%%-------------------------------------------------------------------
 -module(j5_balance_crawler).
@@ -89,7 +89,7 @@ handle_info('crawl_accounts', _State) ->
         [] ->
             self() ! 'next_cycle',
             {'noreply', []};
-        Accounts when IsEnabled -> 
+        Accounts when IsEnabled ->
             lager:debug("check accounts for zero balance"),
             self() ! 'next_account',
             {'noreply', Accounts};
@@ -139,18 +139,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 -spec maybe_disconnect_account(ne_binary()) -> 'ok'.
-maybe_disconnect_account(AccountId) -> 
+maybe_disconnect_account(AccountId) ->
     Limits = j5_limits:get(AccountId),
     DisconnectActiveCalls = j5_limits:disconnect_active_calls(Limits),
     case wh_util:is_true(DisconnectActiveCalls) of
-        'false' -> 
+        'false' ->
             'ok';
-        'true' -> 
+        'true' ->
             case j5_per_minute:maybe_credit_available(0, Limits, 'true') of
-                'true' -> 
+                'true' ->
                     lager:debug("account ~p balance is ok",[AccountId]),
                     'ok';
-                'false' -> 
+                'false' ->
                     disconnect_account(AccountId)
             end
     end.
@@ -158,23 +158,23 @@ maybe_disconnect_account(AccountId) ->
 -spec disconnect_account(ne_binary()) -> 'ok'.
 disconnect_account(AccountId) ->
     case j5_channels:per_minute(AccountId) of
-        Count when Count > 0 -> 
+        Count when Count > 0 ->
             lager:debug("account ~p have ~p per-minute calls, trying disconnect this calls",[AccountId, Count]),
             maybe_disconnect_channels(j5_channels:account(AccountId));
-        _ -> 
+        _ ->
             lager:debug("account ~p dont have any per-minute call",[AccountId]),
             'ok'
     end.
- 
+
 -spec maybe_disconnect_channels(j5_channels:channels()) -> 'ok'.
 maybe_disconnect_channels([]) -> 'ok';
 maybe_disconnect_channels([Channel|Channels]) ->
     Props = j5_channels:to_props(Channel),
-    case props:get_binary_value(<<"Account-Billing">>, Props) =:= <<"per_minute">> 
+    case props:get_binary_value(<<"Account-Billing">>, Props) =:= <<"per_minute">>
          orelse props:get_binary_value(<<"Reseller-Billing">>, Props) =:= <<"per_minute">>
     of
         'false' -> maybe_disconnect_channels(Channels);
-        'true' -> 
+        'true' ->
             disconnect_channel(Props),
             maybe_disconnect_channels(Channels)
     end.
