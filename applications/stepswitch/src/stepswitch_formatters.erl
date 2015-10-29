@@ -34,7 +34,7 @@ maybe_format_sip_headers(JObj, MetaFormatters, Direction) ->
       ,<<"Custom-SIP-Headers">>
      ).
 
--spec maybe_format_sub_object(wh_json:object(), wh_json:object(), direction(), wh_json:key()) ->
+-spec maybe_format_sub_object(wh_json:object(), wh_json:object(), direction(), ne_binary()) ->
                                      wh_json:object().
 maybe_format_sub_object(JObj, MetaFormatters, Direction, SubKey) ->
     case wh_json:get_value(SubKey, JObj) of
@@ -90,7 +90,7 @@ is_formatter_applicable(Formatter, Direction) ->
         _Direction -> 'false'
     end.
 
--spec maybe_apply_formatters_fold(wh_json:object(), wh_json:keys(), wh_json:key(), wh_json:objects()) ->
+-spec maybe_apply_formatters_fold(wh_json:object(), wh_json:keys(), ne_binary(), wh_json:objects()) ->
                                          wh_json:object().
 maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
 maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
@@ -114,7 +114,7 @@ maybe_apply_formatters(JObj, <<"To">> = ToKey, Formatters) ->
 maybe_apply_formatters(JObj, <<"From">> = FromKey, Formatters) ->
     [FromUser, FromRealm] = binary:split(wh_json:get_value(<<"From">>, JObj), <<"@">>),
     maybe_apply_formatters(JObj, FromKey, FromUser, FromRealm, Formatters);
-maybe_apply_formatters(JObj, Key, Formatters) ->
+maybe_apply_formatters(JObj, <<_/binary>> = Key, Formatters) ->
     maybe_apply_formatters(JObj, Key, wh_json:get_value(Key, JObj), Formatters).
 
 maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
@@ -126,11 +126,10 @@ maybe_apply_formatters(JObj, Key, Value, [_|_]=Formatters) ->
            ],
     apply_formatter_funs(JObj, Key, Value, Formatters, Funs).
 
--type formatter_funs_4() :: fun((wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:object()) ->
-                                       wh_json:object() | 'false'
-                                           ).
+-type ffun_return() :: wh_json:object() | 'false'.
+-type formatter_funs_4() :: fun((wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:object()) -> ffun_return()).
 
--spec apply_formatter_funs(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects(), formatter_funs_4()) ->
+-spec apply_formatter_funs(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:objects(), formatter_funs_4()) ->
                                   wh_json:object().
 apply_formatter_funs(JObj, Key, Value, [_|Formatters], []) ->
     maybe_apply_formatters(JObj, Key, Value, Formatters);
@@ -140,6 +139,8 @@ apply_formatter_funs(JObj, Key, Value, [Formatter|_]=Formatters, [F|Fs]) ->
         Modified -> Modified
     end.
 
+-spec maybe_strip(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:object()) ->
+                         ffun_return().
 maybe_strip(JObj, Key, _Value, Formatter) ->
     case should_strip_key(Formatter) of
         'false' -> 'false';
@@ -148,16 +149,16 @@ maybe_strip(JObj, Key, _Value, Formatter) ->
             wh_json:delete_key(Key, JObj)
     end.
 
--spec maybe_replace(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:object()) ->
-                           wh_json:object() | 'false'.
+-spec maybe_replace(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:object()) ->
+                           ffun_return().
 maybe_replace(JObj, Key, _Value, Formatter) ->
     case wh_json:get_value(<<"value">>, Formatter) of
         'undefined' -> 'false';
         Replace -> wh_json:set_value(Key, Replace, JObj)
     end.
 
--spec maybe_match_invite_format(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
-                                       wh_json:object().
+-spec maybe_match_invite_format(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:objects()) ->
+                                       ffun_return().
 maybe_match_invite_format(JObj, Key, Value, Formatter) ->
     case maybe_match_invite_format(JObj, Formatter) of
         'false' -> 'false';
@@ -166,7 +167,7 @@ maybe_match_invite_format(JObj, Key, Value, Formatter) ->
             match_invite_format(JObj, Key, Value)
     end.
 
--spec match_invite_format(wh_json:object(), wh_json:key(), wh_json:json_term()) ->
+-spec match_invite_format(wh_json:object(), ne_binary(), wh_json:json_term()) ->
                                  wh_json:object().
 match_invite_format(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_]) ->
     match_invite_format(JObj, Key, kzsip_diversion:from_binary(Value));
@@ -189,8 +190,8 @@ match_invite_format(JObj, Key, Value) ->
 should_strip_key(Formatter) ->
     wh_json:is_true(<<"strip">>, Formatter, 'false').
 
--spec maybe_match(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:object()) ->
-                         wh_json:object() | 'false'.
+-spec maybe_match(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:object()) ->
+                         ffun_return().
 maybe_match(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_], Formatter) ->
     maybe_match(JObj, Key, kzsip_diversion:from_binary(Value), Formatter);
 maybe_match(JObj, <<"Diversions">> = Key, Value, Formatter) ->
@@ -221,11 +222,9 @@ maybe_apply_formatters(JObj, Key, User, Realm, Formatters) ->
            ],
     apply_formatter_funs(JObj, Key, User, Realm, Formatters, Funs).
 
--type formatter_funs_5() :: fun((wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:object()) ->
-                                       wh_json:object() | 'false'
-                                           ).
+-type formatter_funs_5() :: fun((wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> ffun_return()).
 
--spec apply_formatter_funs(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:objects(), formatter_funs_5()) ->
+-spec apply_formatter_funs(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:objects(), formatter_funs_5()) ->
                                   wh_json:object().
 apply_formatter_funs(JObj, Key, User, Realm, [_|Formatters], []) ->
     maybe_apply_formatters(JObj, Key, User, Realm, Formatters);
@@ -235,6 +234,8 @@ apply_formatter_funs(JObj, Key, User, Realm, [Formatter|_]=Formatters, [F|Fs]) -
         Modified -> Modified
     end.
 
+-spec maybe_strip(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
+                         ffun_return().
 maybe_strip(JObj, Key, _User, _Realm, Formatter) ->
     case should_strip_key(Formatter) of
         'false' -> 'false';
@@ -243,16 +244,16 @@ maybe_strip(JObj, Key, _User, _Realm, Formatter) ->
             wh_json:delete_key(Key, JObj)
     end.
 
--spec maybe_replace(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:object()) ->
-                           wh_json:object() | 'false'.
+-spec maybe_replace(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
+                           ffun_return().
 maybe_replace(JObj, Key, _User, Realm, Formatter) ->
     case wh_json:get_value(<<"value">>, Formatter) of
         'undefined' -> 'false';
         Replace -> wh_json:set_value(Key, <<Replace/binary, "@", Realm/binary>>, JObj)
     end.
 
--spec maybe_match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:object()) ->
-                                       wh_json:object() | 'false'.
+-spec maybe_match_invite_format(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
+                                       ffun_return().
 maybe_match_invite_format(JObj, Key, User, Realm, Formatter) ->
     case maybe_match_invite_format(JObj, Formatter) of
         'false' -> 'false';
@@ -277,7 +278,7 @@ maybe_match_invite_format(JObj, Formatter) ->
         <<"1npan">> -> 'true'
     end.
 
--spec match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary()) ->
+-spec match_invite_format(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
                                  wh_json:object().
 match_invite_format(JObj, Key, User, Realm) ->
     FormatFun = invite_format_fun(JObj),
@@ -298,8 +299,8 @@ invite_format_fun(JObj) ->
         <<"npan">> -> fun wnm_util:to_npan/1
     end.
 
--spec maybe_match(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:object()) ->
-                         wh_json:object().
+-spec maybe_match(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
+                         ffun_return().
 maybe_match(JObj, Key, User, Realm, Formatter) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), User) of
         {'match', Captured} -> apply_formatter(JObj, Key, Captured, Realm, Formatter);
