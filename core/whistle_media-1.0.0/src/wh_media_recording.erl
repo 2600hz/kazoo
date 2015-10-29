@@ -69,6 +69,7 @@
                                      ,{'restrict_to', ['CHANNEL_ANSWER', 'CHANNEL_DESTROY'
                                                        ,'CHANNEL_BRIDGE', 'CHANNEL_EXECUTE_COMPLETE'
                                                        ,'RECORD_START', 'RECORD_STOP'
+                                                       ,'CHANNEL_REPLACED'
                                                       ]}
                                     ]}
                            ,{'self', []}
@@ -119,6 +120,8 @@ handle_call_event(JObj, Props) ->
         {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
             lager:debug("channel bridge maybe start recording on answer"),
             gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording_on_answer');
+        {<<"call_event">>, <<"CHANNEL_REPLACED">>} ->
+            gen_listener:cast(props:get_value('server', Props), {'channel_replaced', wh_json:get_value(<<"Replaced-By">>, JObj)});
         {<<"call_event">>, <<"RECORD_START">>} ->
             lager:debug("record_start event received"),
             gen_listener:cast(props:get_value('server', Props), {'record_start', get_response_media(JObj)});
@@ -273,6 +276,14 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                   ,time_limit_ref=start_time_limit_timer(TimeLimit)
                  }
     };
+handle_cast({'channel_replaced', ReplacedId}, #state{call=Call
+                                                     ,format=Format
+                                                    }=State) ->
+    lager:debug("recv channel_replaced event"),
+    {'noreply', State#state{call=whapps_call:set_call_id(ReplacedId, Call)
+                            ,media_name=get_media_name(ReplacedId, Format)
+                           }
+    };
 handle_cast('stop_call', #state{store_attempted='true'}=State) ->
     lager:debug("we've already sent a store attempt, waiting to hear back"),
     {'noreply', State};
@@ -355,7 +366,7 @@ handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='
                                                              }=State) ->
     start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>, SampleRate, RecordMinSec),
     lager:debug("started the recording"),
-    {'noreply', State};
+    {'noreply', State#state{is_recording='true'}};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -575,7 +586,7 @@ save_recording(Call, MediaName, _Format, {'true', 'other', Url}) ->
 
 -spec store_recording_to_third_party_bigcouch(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
-    BCPort = whapps_config:get(?CONFIG_CAT, <<"third_party_bigcouch_port">>, <<"5984">>),
+    BCPort = whapps_config:get_binary(?CONFIG_CAT, <<"third_party_bigcouch_port">>, <<"5984">>),
     lager:info("storing to third-party bigcouch ~s:~p", [BCHost, BCPort]),
     AcctMODb = wh_util:format_account_modb(kazoo_modb:get_modb(whapps_call:account_db(Call)),'encoded'),
     CallId = whapps_call:call_id(Call),
