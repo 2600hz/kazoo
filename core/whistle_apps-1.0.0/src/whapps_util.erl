@@ -234,7 +234,25 @@ get_all_accounts_and_mods() -> get_all_accounts_and_mods(?REPLICATE_ENCODING).
 
 get_all_accounts_and_mods(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
-    [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db) orelse is_account_mod(Db)].
+    [format_db(Db, Encoding)
+     || Db <- Databases,
+        is_account_db(Db)
+            orelse is_account_mod(Db)
+    ].
+
+-spec format_db(ne_binary(), 'unencoded' | 'encoded' | 'raw') -> ne_binary().
+format_db(Db, Encoding) ->
+    Fs =
+        [{fun is_account_db/1, fun wh_util:format_account_id/2}
+         ,{fun is_account_mod/1, fun wh_util:format_account_modb/2}
+        ],
+    format_db(Db, Encoding, Fs).
+
+format_db(Db, Encoding, [{Predicate, Formatter}|Fs]) ->
+    case Predicate(Db) of
+        'true' -> Formatter(Db, Encoding);
+        'false' -> format_db(Db, Encoding, Fs)
+    end.
 
 -spec get_all_account_mods() -> ne_binaries().
 -spec get_all_account_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().
