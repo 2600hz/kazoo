@@ -3,7 +3,6 @@
 %%%
 %%% @contributors
 %%%-------------------------------------------------------------------
-
 -module(webhooks_channel_util).
 
 -export([handle_event/2]).
@@ -48,12 +47,12 @@ format_event(JObj, AccountId, <<"CHANNEL_ANSWER">>) ->
                      );
 format_event(JObj, AccountId, <<"CHANNEL_BRIDGE">>) ->
     base_hook_event(JObj
-		     ,AccountId
-		     ,[{<<"hook_event">>, <<"channel_bridge">>}
-		       ,{<<"original_number">>, ccv(JObj, <<"Original-Number">>)}
-		       ,{<<"other_leg_destination_number">>, wh_json:get_value(<<"Other-Leg-Destination-Number">>, JObj)}
-		      ]
-		     );	
+                    ,AccountId
+                    ,[{<<"hook_event">>, <<"channel_bridge">>}
+                      ,{<<"original_number">>, ccv(JObj, <<"Original-Number">>)}
+                      ,{<<"other_leg_destination_number">>, kz_call_event:other_leg_destination_number(JObj)}
+                     ]
+                   );
 format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
     base_hook_event(JObj
                     ,AccountId
