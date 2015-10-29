@@ -1,4 +1,3 @@
-**[From all of us thank you for coming out to SF for KazooCon! We look forward to seeing you next year!](http://kazoocon.com/)**
 
 ````
     ... ........                                                
