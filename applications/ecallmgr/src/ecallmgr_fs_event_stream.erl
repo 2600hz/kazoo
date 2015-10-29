@@ -206,7 +206,8 @@ handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     {'noreply', State#state{socket='undefined'}};
 handle_info('timeout', #state{node=Node, idle_alert=Timeout}=State) ->
     lager:warning("event stream for ~p on node ~p is unexpectedly idle",
-                  [get_event_bindings(State), Node]),
+                  [get_event_bindings(State), Node]
+                 ),
     {'noreply', State, Timeout};
 handle_info(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
