@@ -117,14 +117,15 @@ from_json(Context, JObj) ->
 %%--------------------------------------------------------------------
 -spec to_json(context()) -> wh_json:object().
 to_json(Context) ->
-    wh_json:from_list([
-        {<<"account_id">>, account_id(Context)}
-        ,{<<"auth_token">>, auth_token(Context)}
-        ,{<<"auth_account_id">>, auth_account_id(Context)}
-        ,{<<"bindings">>, bindings(Context)}
-        ,{<<"websocket_session_id">>, websocket_session_id(Context)}
-        ,{<<"websocket_pid">>, websocket_pid(Context)}
-    ]).
+    wh_json:from_list(
+        props:filter_undefined([
+            {<<"account_id">>, account_id(Context)}
+            ,{<<"auth_token">>, auth_token(Context)}
+            ,{<<"auth_account_id">>, auth_account_id(Context)}
+            ,{<<"bindings">>, bindings(Context)}
+            ,{<<"websocket_session_id">>, websocket_session_id(Context)}
+        ])
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -189,8 +190,8 @@ set_account_id(#bh_context{}=Context, AcctId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bindings(context()) -> api_binary().
-bindings(#bh_context{bindings=[Binding|_]}) ->
-        Binding.
+bindings(#bh_context{bindings=Bindings}) ->
+    Bindings.
 
 -spec add_binding(context(), ne_binary()) -> context().
 add_binding(#bh_context{bindings=Bindings}=Context, Binding) ->
