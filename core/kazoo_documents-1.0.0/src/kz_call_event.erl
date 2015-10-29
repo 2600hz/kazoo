@@ -10,6 +10,7 @@
 
 -export([call_id/1
          ,other_leg_call_id/1
+         ,other_leg_destination_number/1, other_leg_destination_number/2
          ,replaced_by/1
          ,custom_channel_vars/1, custom_channel_var/2, custom_channel_var/3
          ,custom_sip_headers/1
@@ -35,6 +36,13 @@ call_id(JObj) ->
 -spec other_leg_call_id(wh_json:object()) -> api_binary().
 other_leg_call_id(JObj) ->
     wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj).
+
+-spec other_leg_destination_number(wh_json:object()) -> api_binary().
+-spec other_leg_destination_number(wh_json:object(), Default) -> ne_binary() | Default.
+other_leg_destination_number(JObj) ->
+    other_leg_destination_number(JObj, 'undefined').
+other_leg_destination_number(JObj, Default) ->
+    wh_json:get_ne_value(<<"Other-Leg-Destination-Number">>, JObj, Default).
 
 -spec replaced_by(wh_json:object()) -> api_binary().
 replaced_by(JObj) ->

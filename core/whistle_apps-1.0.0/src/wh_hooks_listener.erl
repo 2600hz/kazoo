@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%% Listens for a list of events and gproc-sends them out to folks who
 %%% want them
@@ -28,6 +28,7 @@
 -define(ALL_EVENTS, [<<"CHANNEL_CREATE">>
                      ,<<"CHANNEL_ANSWER">>
                      ,<<"CHANNEL_DESTROY">>
+                     ,<<"CHANNEL_BRIDGE">>
                     ]).
 -define(CALL_BINDING(Events), {'call', [{'restrict_to', Events}
                                         ,'federate'
