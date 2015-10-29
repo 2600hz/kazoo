@@ -118,19 +118,49 @@ maybe_apply_formatters(JObj, Key, Formatters) ->
     maybe_apply_formatters(JObj, Key, wh_json:get_value(Key, JObj), Formatters).
 
 maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
-maybe_apply_formatters(JObj, Key, Value, [Formatter|_]=Formatters) ->
+maybe_apply_formatters(JObj, Key, Value, [_|_]=Formatters) ->
+    Funs = [fun maybe_strip/4
+            ,fun maybe_replace/4
+            ,fun maybe_match_invite_format/4
+            ,fun maybe_match/4
+           ],
+    apply_formatter_funs(JObj, Key, Value, Formatters, Funs).
+
+-type formatter_funs_4() :: fun((wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                                       wh_json:object() | 'false'
+                                           ).
+
+-spec apply_formatter_funs(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects(), formatter_funs_4()) ->
+                                  wh_json:object().
+apply_formatter_funs(JObj, Key, Value, [_|Formatters], []) ->
+    maybe_apply_formatters(JObj, Key, Value, Formatters);
+apply_formatter_funs(JObj, Key, Value, [Formatter|_]=Formatters, [F|Fs]) ->
+    case F(JObj, Key, Value, Formatter) of
+        'false' -> apply_formatter_funs(JObj, Key, Value, Formatters, Fs);
+        Modified -> Modified
+    end.
+
+maybe_strip(JObj, Key, _Value, Formatter) ->
     case should_strip_key(Formatter) of
-        'false' -> maybe_match_invite_format(JObj, Key, Value, Formatters);
+        'false' -> 'false';
         'true' ->
             lager:debug("stripping ~s", [Key]),
             wh_json:delete_key(Key, JObj)
     end.
 
+-spec maybe_replace(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                           wh_json:object() | 'false'.
+maybe_replace(JObj, Key, _Value, Formatter) ->
+    case wh_json:get_value(<<"value">>, Formatter) of
+        'undefined' -> 'false';
+        Replace -> wh_json:set_value(Key, Replace, JObj)
+    end.
+
 -spec maybe_match_invite_format(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
                                        wh_json:object().
-maybe_match_invite_format(JObj, Key, Value, [Formatter|_]=Formatters) ->
+maybe_match_invite_format(JObj, Key, Value, Formatter) ->
     case maybe_match_invite_format(JObj, Formatter) of
-        'false' -> maybe_match(JObj, Key, Value, Formatters);
+        'false' -> 'false';
         'true' ->
             lager:debug("matching ~s value (~p) to invite format", [Key, Value]),
             match_invite_format(JObj, Key, Value)
@@ -159,11 +189,11 @@ match_invite_format(JObj, Key, Value) ->
 should_strip_key(Formatter) ->
     wh_json:is_true(<<"strip">>, Formatter, 'false').
 
--spec maybe_match(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
-                         wh_json:object().
-maybe_match(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_], Formatters) ->
-    maybe_match(JObj, Key, kzsip_diversion:from_binary(Value), Formatters);
-maybe_match(JObj, <<"Diversions">> = Key, Value, [Formatter|Formatters]) ->
+-spec maybe_match(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                         wh_json:object() | 'false'.
+maybe_match(JObj, <<"Diversions">> = Key, [<<_/binary>> = Value|_], Formatter) ->
+    maybe_match(JObj, Key, kzsip_diversion:from_binary(Value), Formatter);
+maybe_match(JObj, <<"Diversions">> = Key, Value, Formatter) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), kzsip_diversion:user(Value)) of
         {'match', Captured} ->
             User = apply_formatter(Captured, Formatter),
@@ -171,29 +201,61 @@ maybe_match(JObj, <<"Diversions">> = Key, Value, [Formatter|Formatters]) ->
 
             wh_json:set_value(Key, kzsip_diversion:set_user(Value, User), JObj);
         'nomatch' ->
-            lager:debug("diversion ~s didn't match ~s", [kzsip_diversion:user(Value), wh_json:get_value(<<"regex">>, Formatter)]),
-            maybe_apply_formatters(JObj, Key, Value, Formatters)
+            lager:debug("diversion ~s didn't match ~s"
+                        ,[kzsip_diversion:user(Value), wh_json:get_value(<<"regex">>, Formatter)]
+                       ),
+            'false'
     end;
-maybe_match(JObj, Key, Value, [Formatter|Formatters]) ->
+maybe_match(JObj, Key, Value, Formatter) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), Value) of
         {'match', Captured} -> apply_formatter(JObj, Key, Captured, Formatter);
-        'nomatch' -> maybe_apply_formatters(JObj, Key, Value, Formatters)
+        'nomatch' -> 'false'
     end.
 
 maybe_apply_formatters(JObj, _Key, _User, _Realm, []) -> JObj;
-maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
+maybe_apply_formatters(JObj, Key, User, Realm, Formatters) ->
+    Funs = [fun maybe_strip/5
+            ,fun maybe_replace/5
+            ,fun maybe_match_invite_format/5
+            ,fun maybe_match/5
+           ],
+    apply_formatter_funs(JObj, Key, User, Realm, Formatters, Funs).
+
+-type formatter_funs_5() :: fun((wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:object()) ->
+                                       wh_json:object() | 'false'
+                                           ).
+
+-spec apply_formatter_funs(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:objects(), formatter_funs_5()) ->
+                                  wh_json:object().
+apply_formatter_funs(JObj, Key, User, Realm, [_|Formatters], []) ->
+    maybe_apply_formatters(JObj, Key, User, Realm, Formatters);
+apply_formatter_funs(JObj, Key, User, Realm, [Formatter|_]=Formatters, [F|Fs]) ->
+    case F(JObj, Key, User, Realm, Formatter) of
+        'false' -> apply_formatter_funs(JObj, Key, User, Realm, Formatters, Fs);
+        Modified -> Modified
+    end.
+
+maybe_strip(JObj, Key, _User, _Realm, Formatter) ->
     case should_strip_key(Formatter) of
-        'false' -> maybe_match_invite_format(JObj, Key, User, Realm, Formatters);
+        'false' -> 'false';
         'true' ->
             lager:debug("stripping ~s", [Key]),
             wh_json:delete_key(Key, JObj)
     end.
 
--spec maybe_match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:objects()) ->
-                                       wh_json:object().
-maybe_match_invite_format(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
+-spec maybe_replace(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:object()) ->
+                           wh_json:object() | 'false'.
+maybe_replace(JObj, Key, _User, Realm, Formatter) ->
+    case wh_json:get_value(<<"value">>, Formatter) of
+        'undefined' -> 'false';
+        Replace -> wh_json:set_value(Key, <<Replace/binary, "@", Realm/binary>>, JObj)
+    end.
+
+-spec maybe_match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:object()) ->
+                                       wh_json:object() | 'false'.
+maybe_match_invite_format(JObj, Key, User, Realm, Formatter) ->
     case maybe_match_invite_format(JObj, Formatter) of
-        'false' -> maybe_match(JObj, Key, User, Realm, Formatters);
+        'false' -> 'false';
         'true' ->
             lager:debug("matching ~s value (~s) to invite format", [Key, User]),
             match_invite_format(JObj, Key, User, Realm)
@@ -236,12 +298,12 @@ invite_format_fun(JObj) ->
         <<"npan">> -> fun wnm_util:to_npan/1
     end.
 
--spec maybe_match(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:objects()) ->
+-spec maybe_match(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:object()) ->
                          wh_json:object().
-maybe_match(JObj, Key, User, Realm, [Formatter|Formatters]) ->
+maybe_match(JObj, Key, User, Realm, Formatter) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), User) of
         {'match', Captured} -> apply_formatter(JObj, Key, Captured, Realm, Formatter);
-        'nomatch' -> maybe_apply_formatters(JObj, Key, User, Realm, Formatters)
+        'nomatch' -> 'false'
     end.
 
 -spec maybe_match(api_binary(), ne_binary()) ->
