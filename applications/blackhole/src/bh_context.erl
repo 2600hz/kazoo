@@ -189,7 +189,7 @@ set_account_id(#bh_context{}=Context, AcctId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec bindings(context()) -> api_binary().
+-spec bindings(context()) -> ne_binaries().
 bindings(#bh_context{bindings=Bindings}) ->
     Bindings.
 
