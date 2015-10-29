@@ -349,6 +349,7 @@ hook_event(Bin) -> hook_event_lowered(wh_util:to_lower_binary(Bin)).
 hook_event_lowered(<<"channel_create">>) -> <<"CHANNEL_CREATE">>;
 hook_event_lowered(<<"channel_answer">>) -> <<"CHANNEL_ANSWER">>;
 hook_event_lowered(<<"channel_destroy">>) -> <<"CHANNEL_DESTROY">>;
+hook_event_lowered(<<"channel_bridge">>) -> <<"CHANNEL_BRIDGE">>;
 hook_event_lowered(<<"all">>) -> <<"all">>;
 hook_event_lowered(Event) ->
     'true' = lists:member(Event, available_events()),
