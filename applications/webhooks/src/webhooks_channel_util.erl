@@ -53,7 +53,7 @@ format_event(JObj, AccountId, <<"CHANNEL_BRIDGE">>) ->
 		       ,{<<"original_number">>, ccv(JObj, <<"Original-Number">>)}
 		       ,{<<"other_leg_destination_number">>, wh_json:get_value(<<"Other-Leg-Destination-Number">>, JObj)}
 		      ]
-		     );	
+		     );
 format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
     base_hook_event(JObj
                     ,AccountId
