@@ -169,17 +169,18 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
             handle_no_switch({'tcp', Socket, Data}, State)
     end;
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
-                                         ,node=Node
-                                         ,idle_alert=Timeout
-                                         ,switch_uri=SwitchURI
-                                         ,switch_url=SwitchURL
+                                          ,node=Node
+                                          ,idle_alert=Timeout
+                                          ,switch_uri=SwitchURI
+                                          ,switch_url=SwitchURL
                                          }=State) ->
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                                  ,{<<"Switch-URI">>, SwitchURI}
-                                                ]) ++ Props ,
+                                                ]
+                                               ) ++ Props ,
             _ = wh_util:spawn(fun() ->
                                       maybe_send_event(EventName, UUID, EventProps, Node),
                                       process_event(EventName, UUID, EventProps, Node)
