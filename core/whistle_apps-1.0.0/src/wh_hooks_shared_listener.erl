@@ -28,7 +28,7 @@
 -define(ALL_EVENTS, [<<"CHANNEL_CREATE">>
                      ,<<"CHANNEL_ANSWER">>
                      ,<<"CHANNEL_DESTROY">>
-		     ,<<"CHANNEL_BRIDGE">>
+                     ,<<"CHANNEL_BRIDGE">>
                     ]).
 -define(CALL_BINDING(Events), {'call', [{'restrict_to', Events}
                                         ,'federate'
