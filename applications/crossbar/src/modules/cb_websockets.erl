@@ -183,10 +183,7 @@ summary_available(Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Result = blackhole_tracking:get_sockets(cb_context:account_id(Context)),
-    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                 ,{fun cb_context:set_resp_data/2, Result}
-                                ]).
+    blackhole_req(Context, [{<<"Account-ID">>, cb_context:account_id(Context)}]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -196,13 +193,51 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    case blackhole_tracking:get_socket(Id) of
-        {'error', 'not_found'} ->
-            ErrJobj = wh_json:from_list([{<<"cause">>, Id}]),
-            cb_context:add_system_error('not_found', ErrJobj, Context);
-        {'ok', BHContext} ->
-            Result = bh_context:to_json(BHContext),
-            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
-                                         ,{fun cb_context:set_resp_data/2, Result}
-                                        ])
+    blackhole_req(Context, [{<<"Socket-ID">>, Id}]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec blackhole_req(cb_context:context(), wh_proplist()) -> cb_context:context().
+blackhole_req(Context, Props) ->
+    Req = [{<<"Msg-ID">>, cb_context:req_id(Context)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_collect(Req ++ Props
+                                       ,fun wapi_blackhole:publish_get_req/1
+                                       ,{'blackhole', 'true'}
+                                      )
+    of
+        {'error', _R} ->
+            lager:error("could not reach blackhole sockets tracking: ~p", [_R]),
+            crossbar_util:response('error', <<"could not reach blackhole sockets tracking">>, Context);
+        {_OK, JObjs} ->
+            blackhole_resp(Context, JObjs)
+
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec blackhole_resp(cb_context:context(), wh_json:objects()) -> cb_context:context().
+-spec blackhole_resp(cb_context:context(), wh_json:objects(), any()) -> cb_context:context().
+blackhole_resp(Context, JObjs) ->
+    blackhole_resp(Context, JObjs, []).
+
+blackhole_resp(Context, [], RespData) ->
+    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_resp_data/2, RespData}
+                                ]);
+blackhole_resp(Context, [JObj|JObjs], RespData) ->
+    case wh_json:get_value(<<"Data">>, JObj) of
+        'undefined' ->
+            blackhole_resp(Context, JObjs, RespData);
+        Data when is_list(Data) ->
+            blackhole_resp(Context, JObjs, RespData ++ Data);
+        Data ->
+            blackhole_resp(Context, JObjs, [Data|RespData])
     end.

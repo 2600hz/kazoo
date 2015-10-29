@@ -8,9 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(blackhole_tracking).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 -export([start_link/0
+         ,handle_req/2
          ,add_socket/1
          ,remove_socket/1
          ,update_socket/1
@@ -29,29 +30,17 @@
 
 -include("blackhole.hrl").
 
+-define(RESPONDERS, [{?MODULE, [{<<"blackhole">>, <<"get_req">>}]}]).
+-define(BINDINGS, [{'blackhole', []}]).
+
+-define(SERVER, ?MODULE).
+-define(BLACKHOLE_QUEUE_NAME, <<"blackhole_listener">>).
+-define(BLACKHOLE_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(BLACKHOLE_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec add_socket(bh_context:context()) -> 'ok'.
-add_socket(Context) ->
-    gen_server:cast(?MODULE, {'add_socket', Context}).
-
--spec remove_socket(bh_context:context()) -> 'ok'.
-remove_socket(Context) ->
-    gen_server:cast(?MODULE, {'remove_socket', Context}).
-
--spec update_socket(bh_context:context()) -> 'ok'.
-update_socket(Context) ->
-    gen_server:cast(?MODULE, {'update_socket', Context}).
-
--spec get_sockets(ne_binary()) -> ne_binaries().
-get_sockets(AccountId) ->
-    gen_server:call(?MODULE, {'get_sockets', AccountId}).
-
--spec get_socket(ne_binary()) -> {'ok', bh_context:context()} | {'error', 'not_found'}.
-get_socket(Id) ->
-    gen_server:call(?MODULE, {'get_socket', Id}).
-
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -61,10 +50,93 @@ get_socket(Id) ->
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
+                            ,[{'responders', ?RESPONDERS}
+                               ,{'bindings', ?BINDINGS}
+                               ,{'queue_name', ?BLACKHOLE_QUEUE_NAME}
+                               ,{'queue_options', ?BLACKHOLE_QUEUE_OPTIONS}
+                               ,{'consume_options', ?BLACKHOLE_CONSUME_OPTIONS}
+                            ]
+                            ,[]
+                           ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_req(ApiJObj, _Props) ->
+    'true' = wapi_blackhole:get_req_v(ApiJObj),
+    wh_util:put_callid(ApiJObj),
+
+    Node = wh_json:get_binary_value(<<"Node">>, ApiJObj),
+    RespData =
+        handle_get_req_data(
+            wh_json:get_value(<<"Account-ID">>, ApiJObj)
+            ,wh_json:get_value(<<"Socket-ID">>, ApiJObj)
+            ,Node
+        ),
+    case RespData of
+        'ok' -> 'ok';
+        RespData ->
+            RespQ = wh_json:get_value(<<"Server-ID">>, ApiJObj),
+            Resp = [{<<"Data">>, RespData}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            lager:debug("sending reply ~p to ~s",[RespData, Node]),
+            wapi_blackhole:publish_get_resp(RespQ, Resp)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec add_socket(bh_context:context()) -> 'ok'.
+add_socket(Context) ->
+    gen_server:cast(?MODULE, {'add_socket', Context}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_socket(bh_context:context()) -> 'ok'.
+remove_socket(Context) ->
+    gen_server:cast(?MODULE, {'remove_socket', Context}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec update_socket(bh_context:context()) -> 'ok'.
+update_socket(Context) ->
+    gen_server:cast(?MODULE, {'update_socket', Context}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_sockets(ne_binary()) -> ne_binaries() | {'error', 'not_found'}.
+get_sockets(AccountId) ->
+    gen_server:call(?MODULE, {'get_sockets', AccountId}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_socket(ne_binary()) -> {'ok', bh_context:context()} | {'error', 'not_found'}.
+get_socket(Id) ->
+    gen_server:call(?MODULE, {'get_socket', Id}).
 
 %%%===================================================================
-%%% gen_server callbacks
+%%% gen_listener callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -79,8 +151,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_util:put_callid(?MODULE),
-    lager:debug("started ~s", [?MODULE]),
+    process_flag('trap_exit', 'true'),
+    lager:debug("starting new ~s server", [?MODULE]),
     Tab = ets:new(?MODULE, ['set'
                             ,'protected'
                             ,'named_table'
@@ -197,3 +269,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_get_req_data(api_binary(), api_binary(), api_binary()) -> any().
+handle_get_req_data('undefined', 'undefined', Node) ->
+    lager:warning("received undefined blackhole get req", [Node]);
+handle_get_req_data(AccountId, 'undefined', Node) ->
+    lager:debug("received blackhole get for account:~s from ~s", [AccountId, Node]),
+    case ?MODULE:get_sockets(AccountId) of
+        {'error', 'not_found'} ->
+            lager:debug("no sockets found for ~s", [AccountId]),
+            [];
+        SocketIDs -> SocketIDs
+    end;
+handle_get_req_data('undefined', SocketId, Node) ->
+    lager:debug("received blackhole get for socket:~s from ~s", [SocketId, Node]),
+    case ?MODULE:get_socket(SocketId) of
+        {'error', 'not_found'} ->
+            lager:debug("socket ~s not found", [SocketId]);
+        {'ok', BHContext} ->
+            bh_context:to_json(BHContext)
+    end.

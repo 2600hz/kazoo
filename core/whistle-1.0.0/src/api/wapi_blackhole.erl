@@ -29,12 +29,12 @@
 %% Configuration Document Update
 %% request to read
 -define(BLACKHOLE_GET_REQ_HEADERS, []).
--define(OPTIONAL_BLACKHOLE_GET_REQ_HEADERS, []).
+-define(OPTIONAL_BLACKHOLE_GET_REQ_HEADERS, [<<"Account-ID">>, <<"Socket-ID">>]).
 -define(BLACKHOLE_GET_REQ_VALUES, [{<<"Event-Name">>, <<"get_req">>} | ?BLACKHOLE_VALUES]).
 
 %% answer to a read request
 -define(BLACKHOLE_GET_RESP_HEADERS, []).
--define(OPTIONAL_BLACKHOLE_GET_RESP_HEADERS, []).
+-define(OPTIONAL_BLACKHOLE_GET_RESP_HEADERS, [<<"Data">>]).
 -define(BLACKHOLE_GET_RESP_VALUES, [{<<"Event-Name">>, <<"get_resp">>} | ?BLACKHOLE_VALUES]).
 
 -define(BLACKHOLE_TYPES, []).
@@ -53,7 +53,7 @@
 get_req(Prop) when is_list(Prop) ->
     case get_req_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?BLACKHOLE_GET_REQ_HEADERS, ?OPTIONAL_BLACKHOLE_GET_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for sysconf get_req"}
+        'false' -> {'error', "Proplist failed validation for blackhole get_req"}
     end;
 get_req(JObj) ->
     get_req(wh_json:to_proplist(JObj)).
@@ -78,7 +78,7 @@ get_req_v(JObj) ->
 get_resp(Prop) when is_list(Prop) ->
     case get_resp_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?BLACKHOLE_GET_RESP_HEADERS, ?OPTIONAL_BLACKHOLE_GET_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for sysconf get_resp"}
+        'false' -> {'error', "Proplist failed validation for blackhole get_resp"}
     end;
 get_resp(JObj) ->
     get_resp(wh_json:to_proplist(JObj)).
