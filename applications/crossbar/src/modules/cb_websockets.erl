@@ -22,7 +22,8 @@
 -define(
     AVAILABLE
     ,wh_json:from_list([
-        {<<"call">>, [<<"call.CHANNEL_CREATE.*">>, <<"call.CHANNEL_ANSWER.*">>, <<"call.CHANNEL_DESTROY.*">>]}
+        {<<"call">>, [<<"call.CHANNEL_CREATE.*">>, <<"call.CHANNEL_ANSWER.*">>, <<"call.CHANNEL_DESTROY.*">>, <<"call.RECORD_STOP.*">>]}
+        ,{<<"fax">>, [<<"fax.status.*">>]}
     ])
 ).
 
