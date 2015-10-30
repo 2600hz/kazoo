@@ -22,7 +22,7 @@
 -define(OPTIONAL_METAFLOW_REQ_HEADERS, [<<"Data">>]).
 -define(METAFLOW_REQ_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
                               ,{<<"Event-Name">>, <<"req">>}
-                              ,{<<"Action">>, [<<"transfer">>, <<"hangup">>]}
+                              ,{<<"Action">>, [<<"transfer">>, <<"hangup">>, <<"callflow">>]}
                              ]).
 -define(METAFLOW_REQ_TYPES, []).
 

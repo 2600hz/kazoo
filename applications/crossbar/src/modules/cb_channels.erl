@@ -198,6 +198,8 @@ maybe_execute_command(Context, Transferor, <<"transfer">>) ->
     maybe_transfer(Context, Transferor);
 maybe_execute_command(Context, CallId, <<"hangup">>) ->
     maybe_hangup(Context, CallId);
+maybe_execute_command(Context, CallId, <<"callflow">>) ->
+    maybe_callflow(Context, CallId);
 maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
@@ -304,7 +306,10 @@ get_channels(Context, Devices, PublisherFun) ->
                     (Username = wh_json:get_first_defined(
                                   [[<<"doc">>, <<"sip">>, <<"username">>]
                                    ,[<<"sip">>, <<"username">>]
-                                  ], JObj))
+                                  ]
+                                  ,JObj
+                                 )
+                    )
                         =/= 'undefined'
                 ],
 
@@ -316,10 +321,10 @@ get_channels(Context, Devices, PublisherFun) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    case whapps_util:amqp_pool_collect(Req
-                                       ,PublisherFun
-                                       ,{'ecallmgr', 'true'}
-                                      )
+    case wh_amqp_worker:call_collect(Req
+                                     ,PublisherFun
+                                     ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
@@ -441,3 +446,21 @@ maybe_hangup(Context, CallId) ->
     lager:debug("attempting to hangup ~s", [CallId]),
     wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"hangup initiated">>, Context).
+
+-spec maybe_callflow(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_callflow(Context, CallId) ->
+    CallflowId = cb_context:req_value(Context, <<"id">>),
+    API = [{<<"Call-ID">>, CallId}
+           ,{<<"Action">>, <<"callflow">>}
+           ,{<<"Data">>, wh_json:from_list(
+                           [{<<"id">>, CallflowId}
+                            ,{<<"captures">>, cb_context:req_value(Context, <<"captures">>)}
+                            ,{<<"collected">>, cb_context:req_value(Context, <<"collected">>)}
+                           ])
+            }
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    lager:debug("attempting to running callflow ~s on ~s", [CallflowId, CallId]),
+    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"callflow initiated">>, Context).
