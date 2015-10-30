@@ -306,7 +306,10 @@ get_channels(Context, Devices, PublisherFun) ->
                     (Username = wh_json:get_first_defined(
                                   [[<<"doc">>, <<"sip">>, <<"username">>]
                                    ,[<<"sip">>, <<"username">>]
-                                  ], JObj))
+                                  ]
+                                  ,JObj
+                                 )
+                    )
                         =/= 'undefined'
                 ],
 
@@ -318,10 +321,10 @@ get_channels(Context, Devices, PublisherFun) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    case whapps_util:amqp_pool_collect(Req
-                                       ,PublisherFun
-                                       ,{'ecallmgr', 'true'}
-                                      )
+    case wh_amqp_worker:call_collect(Req
+                                     ,PublisherFun
+                                     ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
