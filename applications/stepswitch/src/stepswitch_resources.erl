@@ -406,7 +406,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
                        ,{<<"Weight">>, Weight}
                       ],
             EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
-                            || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, JObj, [])
+                            || Endpoint <- gateways_to_endpoints(Number, NumberMatch, Gateways, JObj, [])
                            ],
             maybe_add_proxies(EndpointList, Proxies, Endpoints)
     end.
@@ -493,17 +493,18 @@ evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec gateways_to_endpoints(ne_binary(), gateways(), wh_json:object(), wh_json:objects()) ->
+-spec gateways_to_endpoints(ne_binary(), ne_binary(), gateways(), wh_json:object(), wh_json:objects()) ->
                                    wh_json:objects().
-gateways_to_endpoints(_, [], _, Endpoints) -> Endpoints;
-gateways_to_endpoints(Number, [Gateway|Gateways], JObj, Endpoints) ->
-    gateways_to_endpoints(Number, Gateways, JObj
-                          ,[gateway_to_endpoint(Number, Gateway, JObj) | Endpoints]
+gateways_to_endpoints(_, _, [], _, Endpoints) -> Endpoints;
+gateways_to_endpoints(OriginalNum, Number, [Gateway|Gateways], JObj, Endpoints) ->
+    gateways_to_endpoints(OriginalNum, Number, Gateways, JObj
+                          ,[gateway_to_endpoint(OriginalNum, Number, Gateway, JObj) | Endpoints]
                          ).
 
--spec gateway_to_endpoint(ne_binary(), gateway(), wh_json:object()) ->
+-spec gateway_to_endpoint(ne_binary(), ne_binary(), gateway(), wh_json:object()) ->
                                 wh_json:object().
-gateway_to_endpoint(Number
+gateway_to_endpoint(OriginalNum
+                    ,Number
                     ,#gateway{invite_format=InviteFormat
                               ,caller_id_type=CallerIdType
                               ,bypass_media=BypassMedia
@@ -520,7 +521,7 @@ gateway_to_endpoint(Number
                    ) ->
     CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
-              ,{<<"Original-Number">>, Number}
+              ,{<<"Original-Number">>, OriginalNum}
               | gateway_from_uri_settings(Gateway)
              ]),
     wh_json:from_list(
