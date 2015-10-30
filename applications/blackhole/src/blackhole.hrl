@@ -16,18 +16,18 @@
 -define(VERSION_SUPPORTED, [<<"v1">>]).
 
 -record(bh_context, {
-           auth_token = <<>> :: api_binary()
-          ,auth_account_id :: api_binary()
-          ,account_id :: api_binary()
-          ,bindings = [] :: ne_binaries()
-          ,websocket_session_id :: api_binary()
-          ,websocket_pid :: api_pid()
-          ,req_id = <<(wh_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary()
-          ,timestamp :: gregorian_seconds()
-          ,name :: api_binary()
-          ,metadata :: any()
-          ,destination :: api_binary()
-          ,source :: api_binary()
+           auth_token = <<>> :: api_binary() | '_'
+          ,auth_account_id :: api_binary() | '_'
+          ,account_id :: api_binary() | '_'
+          ,bindings = [] :: ne_binaries() | '_'
+          ,websocket_session_id :: api_binary() | '_'
+          ,websocket_pid :: api_pid() | '_'
+          ,req_id = <<(wh_util:rand_hex_binary(16))/binary, "-bh">> :: ne_binary() | '_'
+          ,timestamp :: gregorian_seconds() | '_'
+          ,name :: api_binary() | '_'
+          ,metadata :: any() | '_'
+          ,destination :: api_binary() | '_'
+          ,source :: api_binary() | '_'
          }).
 
 -define(BLACKHOLE_HRL, 'true').
