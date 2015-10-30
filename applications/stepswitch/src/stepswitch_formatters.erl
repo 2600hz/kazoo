@@ -127,7 +127,8 @@ maybe_apply_formatters(JObj, Key, Value, [_|_]=Formatters) ->
     apply_formatter_funs(JObj, Key, Value, Formatters, Funs).
 
 -type ffun_return() :: wh_json:object() | 'false'.
--type formatter_funs_4() :: fun((wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:object()) -> ffun_return()).
+-type formatter_fun_4() :: fun((wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:object()) -> ffun_return()).
+-type formatter_funs_4() :: [formatter_fun_4()].
 
 -spec apply_formatter_funs(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:objects(), formatter_funs_4()) ->
                                   wh_json:object().
@@ -222,7 +223,8 @@ maybe_apply_formatters(JObj, Key, User, Realm, Formatters) ->
            ],
     apply_formatter_funs(JObj, Key, User, Realm, Formatters, Funs).
 
--type formatter_funs_5() :: fun((wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> ffun_return()).
+-type formatter_fun_5() :: fun((wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> ffun_return()).
+-type formatter_funs_5() :: [formatter_fun_5()].
 
 -spec apply_formatter_funs(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:objects(), formatter_funs_5()) ->
                                   wh_json:object().

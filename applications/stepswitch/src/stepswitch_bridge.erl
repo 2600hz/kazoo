@@ -619,7 +619,7 @@ deny_emergency_bridge(#state{resource_req=OffnetReq
                              ,control_queue=ControlQ
                             }) ->
     lager:warning("terminating attempted emergency bridge from unconfigured device"),
-    send_deny_emergency_response(OffnetReq, ControlQ),
+    _ = send_deny_emergency_response(OffnetReq, ControlQ),
     send_deny_emergency_notification(OffnetReq),
     Result = bridge_not_configured(OffnetReq),
     gen_listener:cast(self(), {'bridge_result', Result}).
