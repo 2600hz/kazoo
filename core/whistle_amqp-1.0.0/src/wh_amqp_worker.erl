@@ -364,8 +364,12 @@ call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
         checkin_worker(Worker)
     end.
 
--spec cast(api_terms(), publish_fun()) -> 'ok' | {'error', any()}.
--spec cast(api_terms(), publish_fun(), pid() | atom()) -> 'ok' | {'error', any()}.
+-type cast_return() :: 'ok' |
+                       {'error', any()} |
+                       {'returned', wh_json:object(), wh_json:object()}.
+
+-spec cast(api_terms(), publish_fun()) -> cast_return().
+-spec cast(api_terms(), publish_fun(), pid() | atom()) -> cast_return().
 cast(Req, PubFun) ->
     cast(Req, PubFun, wh_amqp_sup:pool_name()).
 

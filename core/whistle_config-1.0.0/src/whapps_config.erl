@@ -486,4 +486,4 @@ flush(Category, Keys, Node) ->
 %%-----------------------------------------------------------------------------
 -spec get_category(ne_binary()) -> fetch_ret().
 get_category(Category) ->
-    couch_mgr:open_cache_doc(?WH_CONFIG_DB, Category).
+    couch_mgr:open_cache_doc(?WH_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]).

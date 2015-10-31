@@ -408,7 +408,7 @@ get_limit_jobj(AccountDb) ->
             lager:debug("limits doc in account db ~s not found", [AccountDb]),
             create_limit_jobj(AccountDb);
         {'error', _R} ->
-            lager:debug("failed to open limits doc in account db ~s: ~p"
+            lager:debug("failed to open limits doc in account db '~s': ~p"
                         ,[AccountDb, _R]),
             wh_json:new()
     end.

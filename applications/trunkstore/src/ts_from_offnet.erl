@@ -19,7 +19,7 @@ start_link(RouteReqJObj) ->
 
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
-    start_amqp(ts_callflow:init(RouteReqJObj, 'undefined')).
+    start_amqp(ts_callflow:init(RouteReqJObj, ['undefined', <<"resource">>])).
 
 start_amqp({'error', 'not_ts_account'}) -> 'ok';
 start_amqp(State) ->
@@ -89,7 +89,8 @@ wait_for_bridge(State) ->
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State)
-          ,ts_callflow:get_failover(State)}
+          ,ts_callflow:get_failover(State)
+         }
     of
         {<<>>, _} ->
             lager:info("no callctl for failover");

@@ -119,7 +119,7 @@ flush() -> wh_cache:flush_local(?STEPSWITCH_CACHE).
 
 -spec cnam_flush() -> 'ok'.
 cnam_flush() ->
-    stepswitch_cnam:flush().
+    io:format("flushed ~p entries from cnam cache~n", [stepswitch_cnam:flush()]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -162,7 +162,12 @@ lookup_number(Number) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
             io:format("~-19s: ~s~n", [<<"Account-ID">>, AccountId]),
-            pretty_print_number_props(Props);
+            pretty_print_number_props(
+              props:insert_value(<<"classification">>
+                                 ,wnm_util:classify_number(Number, AccountId)
+                                 ,Props
+                                )
+             );
         {'error', 'not_found'} ->
             io:format("number not found~n")
     end.
@@ -202,13 +207,18 @@ process_number(Number) -> process_number(Number, 'undefined').
 
 -spec process_number(text(), text() | 'undefined') -> any().
 process_number(Number, 'undefined') ->
-    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), wh_json:new()),
+    Endpoints = stepswitch_resources:endpoints(
+                  wh_util:to_binary(Number)
+                  ,wapi_offnet_resource:jobj_to_req(wh_json:new())
+                 ),
     pretty_print_endpoints(Endpoints);
 process_number(Number, AccountId) ->
     JObj = wh_json:from_list([{<<"Account-ID">>, wh_util:to_binary(AccountId)}
                               ,{<<"Hunt-Account-ID">>, wh_util:to_binary(AccountId)}
                              ]),
-    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), JObj),
+    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number)
+                                               ,wapi_offnet_resource:jobj_to_req(JObj)
+                                              ),
     pretty_print_endpoints(Endpoints).
 
 -spec pretty_print_endpoints(wh_json:objects()) -> any().
@@ -237,7 +247,6 @@ pretty_print_endpoint([{<<"Custom-Channel-Vars">>, JObj}|Props]) ->
 pretty_print_endpoint([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
     pretty_print_endpoint(Props).
-
 
 %%--------------------------------------------------------------------
 %% @private

@@ -234,7 +234,25 @@ get_all_accounts_and_mods() -> get_all_accounts_and_mods(?REPLICATE_ENCODING).
 
 get_all_accounts_and_mods(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
-    [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db) orelse is_account_mod(Db)].
+    [format_db(Db, Encoding)
+     || Db <- Databases,
+        is_account_db(Db)
+            orelse is_account_mod(Db)
+    ].
+
+-spec format_db(ne_binary(), 'unencoded' | 'encoded' | 'raw') -> ne_binary().
+format_db(Db, Encoding) ->
+    Fs =
+        [{fun is_account_db/1, fun wh_util:format_account_id/2}
+         ,{fun is_account_mod/1, fun wh_util:format_account_modb/2}
+        ],
+    format_db(Db, Encoding, Fs).
+
+format_db(Db, Encoding, [{Predicate, Formatter}|Fs]) ->
+    case Predicate(Db) of
+        'true' -> Formatter(Db, Encoding);
+        'false' -> format_db(Db, Encoding, Fs)
+    end.
 
 -spec get_all_account_mods() -> ne_binaries().
 -spec get_all_account_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().
@@ -628,18 +646,20 @@ get_destination(JObj, Cat, Key) ->
             end
     end.
 
+-spec try_split(api_binary()) ->
+                       {ne_binary(), ne_binary()} |
+                       'undefined'.
 -spec try_split(ne_binary(), wh_json:object()) ->
                        {ne_binary(), ne_binary()} |
                        'undefined'.
 try_split(Key, JObj) ->
-    case wh_json:get_value(Key, JObj) of
-        'undefined' -> 'undefined';
-        Bin when is_binary(Bin) ->
-            case binary:split(Bin, <<"@">>) of
-                [<<"nouser">>, _] -> 'undefined';
-                [_, _]=Dest -> list_to_tuple(Dest)
-            end
-    end.
+    try_split(wh_json:get_value(Key, JObj)).
+
+try_split('undefined') -> 'undefined';
+try_split(<<"nouser@", _/binary>>) -> 'undefined';
+try_split(<<_/binary>> = Bin) ->
+    [_, _] = Dest = binary:split(Bin, <<"@">>),
+    list_to_tuple(Dest).
 
 -spec write_tts_file(ne_binary(), ne_binary()) ->
                             'ok' |

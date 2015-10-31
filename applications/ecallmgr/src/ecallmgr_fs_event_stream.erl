@@ -169,17 +169,18 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
             handle_no_switch({'tcp', Socket, Data}, State)
     end;
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
-                                         ,node=Node
-                                         ,idle_alert=Timeout
-                                         ,switch_uri=SwitchURI
-                                         ,switch_url=SwitchURL
+                                          ,node=Node
+                                          ,idle_alert=Timeout
+                                          ,switch_uri=SwitchURI
+                                          ,switch_url=SwitchURL
                                          }=State) ->
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                                  ,{<<"Switch-URI">>, SwitchURI}
-                                                ]) ++ Props ,
+                                                ]
+                                               ) ++ Props ,
             _ = wh_util:spawn(fun() ->
                                       maybe_send_event(EventName, UUID, EventProps, Node),
                                       process_event(EventName, UUID, EventProps, Node)
@@ -206,7 +207,8 @@ handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     {'noreply', State#state{socket='undefined'}};
 handle_info('timeout', #state{node=Node, idle_alert=Timeout}=State) ->
     lager:warning("event stream for ~p on node ~p is unexpectedly idle",
-                  [get_event_bindings(State), Node]),
+                  [get_event_bindings(State), Node]
+                 ),
     {'noreply', State, Timeout};
 handle_info(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),

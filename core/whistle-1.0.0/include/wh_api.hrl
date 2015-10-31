@@ -40,37 +40,47 @@
 %%%
 %%% All four macros must be defined; OPTIONAL, VALUES, and TYPES can be empty lists.
 
+-define(KEY_EVENT_CATEGORY, <<"Event-Category">>).
+-define(KEY_EVENT_NAME, <<"Event-Name">>).
+-define(KEY_APP_NAME, <<"App-Name">>).
+-define(KEY_APP_VERSION, <<"App-Version">>).
+-define(KEY_MSG_ID, <<"Msg-ID">>).
+-define(KEY_NODE, <<"Node">>).
+-define(KEY_SERVER_ID, <<"Server-ID">>).
+
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
--define(DEFAULT_HEADERS, [<<"Event-Category">>, <<"Event-Name">>
-                          ,<<"App-Name">>, <<"App-Version">>
-                          ,<<"Msg-ID">>
+-define(DEFAULT_HEADERS, [?KEY_APP_NAME
+                          ,?KEY_APP_VERSION
+                          ,?KEY_EVENT_CATEGORY
+                          ,?KEY_EVENT_NAME
+                          ,?KEY_MSG_ID
                          ]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
                                    ,<<"Geo-Location">>, <<"Access-Group">>
-                                   ,<<"Tenant-ID">>, <<"Node">>, <<"Server-ID">>
+                                   ,<<"Tenant-ID">>, ?KEY_NODE, ?KEY_SERVER_ID
                                    ,<<"Defer-Response">>
                                   ]).
--define(DEFAULT_VALUES, [{<<"Node">>, wh_util:to_binary(node())}
-                         ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
+-define(DEFAULT_VALUES, [{?KEY_NODE, wh_util:to_binary(node())}
+                         ,{?KEY_MSG_ID, wh_util:rand_hex_binary(16)}
                         ]).
--define(DEFAULT_TYPES, [{<<"Server-ID">>, fun is_binary/1}
-                        ,{<<"Event-Category">>, fun is_binary/1}
-                        ,{<<"Event-Name">>, fun is_binary/1}
-                        ,{<<"App-Name">>, fun is_binary/1}
-                        ,{<<"App-Version">>, fun is_binary/1}
+-define(DEFAULT_TYPES, [{?KEY_SERVER_ID, fun is_binary/1}
+                        ,{?KEY_EVENT_CATEGORY, fun is_binary/1}
+                        ,{?KEY_EVENT_NAME, fun is_binary/1}
+                        ,{?KEY_APP_NAME, fun is_binary/1}
+                        ,{?KEY_APP_VERSION, fun is_binary/1}
                         ,{<<"Raw-Headers">>, fun is_binary/1}
                         ,{<<"Destination-Server">>, fun is_binary/1}
                         ,{<<"Geo-Location">>, fun is_binary/1}
                         ,{<<"Access-Group">>, fun is_binary/1}
                         ,{<<"Tenant-ID">>, fun is_binary/1}
-                        ,{<<"Msg-ID">>, fun is_binary/1}
+                        ,{?KEY_MSG_ID, fun is_binary/1}
                        ]).
 
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Error-Message">>]).
 -define(OPTIONAL_ERROR_RESP_HEADERS, [<<"Request">>, <<"Call-ID">>]).
--define(ERROR_RESP_VALUES, [{<<"Event-Category">>, <<"error">>}]).
+-define(ERROR_RESP_VALUES, [{?KEY_EVENT_CATEGORY, <<"error">>}]).
 -define(ERROR_RESP_TYPES, []).
 
 -define(WH_API_HEADERS, 'true').

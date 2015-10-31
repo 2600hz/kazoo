@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -23,12 +23,12 @@
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -record(state, {msg_id=wh_util:rand_hex_binary(12)
-                ,endpoints
-                ,resource_req
-                ,request_handler
-                ,response_queue
-                ,queue
-                ,timeout
+                ,endpoints = [] :: wh_json:objects()
+                ,resource_req :: wh_json:object()
+                ,request_handler :: pid()
+                ,response_queue :: api_binary()
+                ,queue :: api_binary()
+                ,timeout :: api_reference()
                }).
 
 -define(RESPONDERS, []).
@@ -50,6 +50,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(wh_json:objects(), wh_json:object()) -> startlink_ret().
 start_link(Endpoints, JObj) ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
@@ -168,7 +169,8 @@ handle_cast(_Msg, State) ->
 handle_info('originate_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
 handle_info('originate_timeout', #state{response_queue=ResponseQ
-                                     ,resource_req=JObj}=State) ->
+                                        ,resource_req=JObj
+                                       }=State) ->
     wapi_offnet_resource:publish_resp(ResponseQ, originate_timeout(JObj)),
     {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
@@ -183,7 +185,10 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request, msg_id=MsgId}) ->
+handle_event(JObj, #state{request_handler=RequestHandler
+                          ,resource_req=Request
+                          ,msg_id=MsgId
+                         }) ->
     case whapps_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             lager:debug("channel was destroy while waiting for execute extension", []),
@@ -240,7 +245,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-build_originate(#state{endpoints=Endpoints, resource_req=JObj, queue=Q, msg_id=MsgId}) ->
+build_originate(#state{endpoints=Endpoints
+                       ,resource_req=JObj
+                       ,queue=Q
+                       ,msg_id=MsgId
+                      }) ->
     {CIDNum, CIDName} = originate_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),

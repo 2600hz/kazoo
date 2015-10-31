@@ -333,7 +333,7 @@ reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
 -spec maybe_start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
     case wh_json:get_value(<<"Method">>, JObj) of
-        <<"error">> -> 'ok';
+        <<"error">> -> lager:debug("sent error response to ~s, not starting call handling", [Node]);
         <<"sms">> -> start_message_handling(Node, FetchId, CallId, JObj);
         _Else -> start_call_handling(Node, FetchId, CallId, JObj)
     end.
@@ -343,13 +343,16 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     CCVs =
         wh_json:set_values(
-            [{<<"Application-Name">>, wh_json:get_value(<<"App-Name">>, JObj)}
-             ,{<<"Application-Node">>, wh_json:get_value(<<"Node">>, JObj)}
-            ]
-            ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
-        ),
-    _ = ecallmgr_call_sup:start_event_process(Node, CallId),
-    _ = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
+          [{<<"Application-Name">>, wh_json:get_value(<<"App-Name">>, JObj)}
+           ,{<<"Application-Node">>, wh_json:get_value(<<"Node">>, JObj)}
+          ]
+          ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
+         ),
+    _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
+    _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
+
+    lager:debug("started event ~p and control ~p processes", [_Evt, _Ctl]),
+
     ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)).
 
 -spec start_message_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.

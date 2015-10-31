@@ -19,8 +19,8 @@
 -define(WHITELIST, ?DEFAULT_WHITELIST).
 -define(BLACKLIST, ?DEFAULT_BLACKLIST).
 -else.
--define(WHITELIST, fun() ->  whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST) end()).
--define(BLACKLIST, fun() ->  whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST) end()).
+-define(WHITELIST, whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
+-define(BLACKLIST, whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
 -endif.
 
 %%--------------------------------------------------------------------

@@ -25,6 +25,7 @@
 -module(cf_resources).
 
 -include("../callflow.hrl").
+-include_lib("whistle/include/wapi_offnet_resource.hrl").
 
 -export([handle/2]).
 
@@ -68,33 +69,33 @@ build_offnet_request(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
     props:filter_undefined(
-      [{<<"Resource-Type">>, <<"audio">>}
-       ,{<<"Application-Name">>, <<"bridge">>}
-       ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
-       ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-       ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-       ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-       ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-       ,{<<"Call-ID">>, cf_exe:callid(Call)}
-       ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
-       ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
-       ,{<<"Account-ID">>, whapps_call:account_id(Call)}
-       ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-       ,{<<"Media">>, wh_json:get_first_defined([<<"media">>, <<"Media">>], Data)}
-       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
-       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
-       ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
-       ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
-       ,{<<"Flags">>, get_flags(Data, Call)}
-       ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
-       ,{<<"Fax-T38-Enabled">>, get_t38_enabled(Call)}
-       ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
-       ,{<<"To-DID">>, get_to_did(Data, Call)}
-       ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
-       ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
-       ,{<<"Inception">>, get_inception(Call)}
-       ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
-       ,{<<"Custom-Channel-Vars">>, get_channel_vars(Call)}
+      [{?KEY_ACCOUNT_ID, whapps_call:account_id(Call)}
+       ,{?KEY_ACCOUNT_REALM, whapps_call:from_realm(Call)}
+       ,{?KEY_APPLICATION_NAME, ?APPLICATION_BRIDGE}
+       ,{?KEY_BYPASS_E164, get_bypass_e164(Data)}
+       ,{?KEY_B_LEG_EVENTS, [<<"DTMF">>]}
+       ,{?KEY_CALL_ID, cf_exe:callid(Call)}
+       ,{?KEY_CCVS, get_channel_vars(Call)}
+       ,{?KEY_CONTROL_QUEUE, cf_exe:control_queue(Call)}
+       ,{?KEY_CSHS, get_sip_headers(Data, Call)}
+       ,{?KEY_E_CALLER_ID_NAME, ECIDName}
+       ,{?KEY_E_CALLER_ID_NUMBER, ECIDNum}
+       ,{?KEY_FLAGS, get_flags(Data, Call)}
+       ,{?KEY_FORMAT_FROM_URI, wh_json:is_true(<<"format_from_uri">>, Data)}
+       ,{?KEY_FROM_URI_REALM, get_from_uri_realm(Data, Call)}
+       ,{?KEY_HUNT_ACCOUNT_ID, get_hunt_account_id(Data, Call)}
+       ,{?KEY_IGNORE_EARLY_MEDIA, get_ignore_early_media(Data)}
+       ,{?KEY_INCEPTION, get_inception(Call)}
+       ,{?KEY_MEDIA, wh_json:get_first_defined([<<"media">>, <<"Media">>], Data)}
+       ,{?KEY_MSG_ID, wh_util:rand_hex_binary(6)}
+       ,{?KEY_OUTBOUND_CALLER_ID_NAME, CIDName}
+       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, CIDNumber}
+       ,{?KEY_PRESENCE_ID, cf_attributes:presence_id(Call)}
+       ,{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
+       ,{?KEY_RINGBACK, wh_json:get_value(<<"ringback">>, Data)}
+       ,{?KEY_T38_ENABLED, get_t38_enabled(Call)}
+       ,{?KEY_TIMEOUT, wh_json:get_value(<<"timeout">>, Data)}
+       ,{?KEY_TO_DID, get_to_did(Data, Call)}
        | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -126,7 +127,8 @@ maybe_get_call_from_realm(Call) ->
 -spec update_ccvs(whapps_call:call()) -> whapps_call:call().
 update_ccvs(Call) ->
     Props = props:filter_undefined(
-              [{<<"Bridge-Generate-Comfort-Noise">>, maybe_set_bridge_generate_comfort_noise(Call)}]),
+              [{<<"Bridge-Generate-Comfort-Noise">>, maybe_set_bridge_generate_comfort_noise(Call)}]
+             ),
     whapps_call:set_custom_channel_vars(Props, Call).
 
 -spec maybe_set_bridge_generate_comfort_noise(whapps_call:call()) -> api_binary().
@@ -141,13 +143,7 @@ maybe_set_bridge_generate_comfort_noise(Call) ->
 
 -spec maybe_has_comfort_noise_option_enabled(wh_json:object()) -> api_binary().
 maybe_has_comfort_noise_option_enabled(Endpoint) ->
-    Media = wh_json:get_value(<<"media">>, Endpoint),
-    case wh_json:get_ne_value(<<"bridge_generate_comfort_noise">>, Media) of
-        'undefined' ->
-            'undefined';
-        Value ->
-            wh_util:to_binary(Value)
-    end.
+    wh_json:get_ne_binary_value([<<"media">>, <<"bridge_generate_comfort_noise">>], Endpoint).
 
 -spec get_account_realm(whapps_call:call()) -> api_binary().
 get_account_realm(Call) ->

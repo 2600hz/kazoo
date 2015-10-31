@@ -11,10 +11,10 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(OFFNET_REQ, wh_json:from_list([{<<"Custom-SIP-Headers">>
-                                            ,wh_json:from_list([{<<"Diversions">>
-                                                                 ,[<<"sip:14158867900@1.2.3.4;counter=1">>]
-                                                                }
-                                                               ])
+                                        ,wh_json:from_list([{<<"Diversions">>
+                                                             ,[<<"sip:14158867900@1.2.3.4;counter=1">>]
+                                                            }
+                                                           ])
                                        }
                                        ,{<<"Invite-Format">>, <<"npan">>}
                                       ])).
@@ -29,7 +29,7 @@
                                        }
                                      ])).
 
-regex_inbound_test() ->
+regex_inbound_test_() ->
     Formatter = wh_json:from_list([{<<"to">>
                                     ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
                                                          ,{<<"prefix">>, <<"+1">>}
@@ -61,12 +61,13 @@ regex_inbound_test() ->
 
     Route = stepswitch_formatters:apply(?ROUTE_REQ, Formatter, 'inbound'),
 
-    ?assertEqual(<<"+12345556789@2600hz.com">>, wh_json:get_value(<<"To">>, Route)),
-    ?assertEqual(<<"+12345556789@2600hz.com">>, wh_json:get_value(<<"Request">>, Route)),
-    ?assertEqual(<<"+14158867900@2600hz.com">>, wh_json:get_value(<<"From">>, Route)),
-    ?assertEqual(<<"4158867900">>, wh_json:get_value(<<"Caller-ID-Number">>, Route)).
+    [?_assertEqual(<<"+12345556789@2600hz.com">>, wh_json:get_value(<<"To">>, Route))
+     ,?_assertEqual(<<"+12345556789@2600hz.com">>, wh_json:get_value(<<"Request">>, Route))
+     ,?_assertEqual(<<"+14158867900@2600hz.com">>, wh_json:get_value(<<"From">>, Route))
+     ,?_assertEqual(<<"4158867900">>, wh_json:get_value(<<"Caller-ID-Number">>, Route))
+    ].
 
-strip_inbound_test() ->
+strip_inbound_test_() ->
     Formatter = wh_json:from_list([{<<"to">>
                                     ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
                                                          ,{<<"prefix">>, <<"+1">>}
@@ -86,29 +87,50 @@ strip_inbound_test() ->
 
     Route = stepswitch_formatters:apply(?ROUTE_REQ, Formatter, 'inbound'),
 
-    ?assertEqual('undefined', wh_json:get_value(<<"To">>, Route)),
-    ?assertEqual('undefined', wh_json:get_value(<<"Caller-ID-Number">>, Route)).
+    [?_assertEqual('undefined', wh_json:get_value(<<"To">>, Route))
+     ,?_assertEqual('undefined', wh_json:get_value(<<"Caller-ID-Number">>, Route))
+    ].
 
-diversion_match_invite_test() ->
+diversion_match_invite_test_() ->
     Formatter = wh_json:from_list([{<<"diversions">>
                                     ,[wh_json:from_list([{<<"match_invite_format">>, 'true'}])]
                                    }
                                   ]),
     Bridge = stepswitch_formatters:apply(?OFFNET_REQ, Formatter, 'outbound'),
 
-    ?assertEqual(<<"sip:4158867900@1.2.3.4">>
-                 ,kzsip_diversion:address(
-                    wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversions">>], Bridge)
-                   )
-                ).
+    [?_assertEqual(<<"sip:4158867900@1.2.3.4">>
+                   ,kzsip_diversion:address(
+                      wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversions">>], Bridge)
+                     )
+                  )
+    ].
 
-diversion_strip_test() ->
+diversion_strip_test_() ->
     Formatter = wh_json:from_list([{<<"diversions">>
                                     ,[wh_json:from_list([{<<"strip">>, 'true'}])]
                                    }
                                   ]),
     Bridge = stepswitch_formatters:apply(?OFFNET_REQ, Formatter, 'outbound'),
 
-    ?assertEqual('undefined'
-                 ,wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversions">>], Bridge)
-                ).
+    [?_assertEqual('undefined'
+                   ,wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversions">>], Bridge)
+                  )
+    ].
+
+replace_value_test_() ->
+    Replace = wh_util:rand_hex_binary(10),
+
+    Formatter = wh_json:from_list([{<<"from">>
+                                    ,[wh_json:from_list([{<<"value">>, Replace}])]
+                                   }
+                                   ,{<<"caller_id_number">>
+                                    ,[wh_json:from_list([{<<"value">>, Replace}])]
+                                    }
+                                  ]),
+
+    Bridge = stepswitch_formatters:apply(?ROUTE_REQ, Formatter, 'outbound'),
+    [?_assertEqual(<<Replace/binary, "@2600hz.com">>
+                   ,wh_json:get_value(<<"From">>, Bridge)
+                  )
+     ,?_assertEqual(Replace, wh_json:get_value(<<"Caller-ID-Number">>, Bridge))
+    ].

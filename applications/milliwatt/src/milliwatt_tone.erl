@@ -18,7 +18,7 @@
 exec(Call) ->
     Tone = get_tone(),
     Duration = wh_json:get_integer_value(<<"Duration-ON">>, Tone, ?DURATION),
-    lager:info("milliwatt execute action tone", []),
+    lager:info("milliwatt execute action tone"),
     whapps_call_command:answer(Call),
     timer:sleep(500),
     whapps_call_command:tones([Tone], Call),
