@@ -15,7 +15,9 @@
 -include("whistle_services.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('wh_service_sync')]).
+-define(CHILDREN, [?WORKER('wh_service_sync')
+                   ,?WORKER('wh_services_modb')
+                  ]).
 
 %% ===================================================================
 %% API functions

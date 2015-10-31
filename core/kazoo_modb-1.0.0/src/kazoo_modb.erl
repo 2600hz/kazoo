@@ -16,7 +16,9 @@
 -export([get_modb/1, get_modb/2, get_modb/3]).
 -export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
--export([create/1]).
+-export([create/1
+         ,add_routine/1
+        ]).
 -export([maybe_delete/2]).
 -export([get_range/3]).
 -export([get_year_month_sequence/3, get_year_month_sequence/4]).
@@ -261,15 +263,24 @@ fetch_modb_views() ->
 -spec create_routines(ne_binary()) -> 'ok'.
 create_routines(AccountMODb) ->
     Routines = whapps_config:get(?CONFIG_CAT, <<"routines">>, []),
-    lists:foldl(
-        fun(Mod, _) ->
-            Module = wh_util:to_atom(Mod),
-            _ = Module:modb(AccountMODb),
+    _ = [run_routine(AccountMODb, Routine) || Routine <- Routines],
+    'ok'.
+
+-spec run_routine(ne_binary(), ne_binary()) -> any().
+run_routine(AccountMODb, Routine) ->
+    Module = wh_util:to_atom(Routine),
+    _ = Module:modb(AccountMODb).
+
+-spec add_routine(ne_binary() | atom()) -> 'ok'.
+add_routine(Module) ->
+    Routine = wh_util:to_binary(Module),
+    Routines = whapps_config:get(?CONFIG_CAT, <<"routines">>, []),
+    case lists:member(Routine, Routines) of
+        'true' -> 'ok';
+        'false' ->
+            whapps_config:set_default(?CONFIG_CAT, <<"routines">>, [Routine | Routines]),
             'ok'
-        end
-        ,'ok'
-        ,Routines
-    ).
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
