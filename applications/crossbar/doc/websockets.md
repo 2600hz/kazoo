@@ -2,6 +2,7 @@
 Section: Crossbar
 Title: Websockets
 Language: en-US
+Version: 3.23
 */
 
 
