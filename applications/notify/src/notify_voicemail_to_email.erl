@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
@@ -165,9 +165,8 @@ magic_hash(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist(), {api_binary(), ne_binary()}) -> 'ok'.
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Resp) when is_list(To) ->
-    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Resp) || T <- To];
+-type respond_to() :: {api_binary(), ne_binary()}.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binaries(), wh_proplist(), respond_to()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     Service = props:get_value(<<"service">>, Props),
@@ -192,40 +191,44 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>),
 
     %% Content Type, Subtype, Headers, Parameters, Body
-    Email = {<<"multipart">>, <<"mixed">>
-             ,[{<<"From">>, From}
-               ,{<<"To">>, To}
-               ,{<<"Subject">>, Subject}
-               ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
-              ]
-             ,ContentTypeParams
-             ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>
-                   ,props:filter_undefined(
-                      [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
-                       ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
-                      ])
-                   ,[], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>
-                    ,props:filter_undefined(
-                       [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
-                        ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
-                       ])
-                    ,[], iolist_to_binary(HTMLBody)}
-                 ]
-               }
-               ,{<<"audio">>, <<"mpeg">>
-                 ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
-                   ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
-                   ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+    Emails = [{T
+               ,{<<"multipart">>, <<"mixed">>
+                 ,[{<<"From">>, From}
+                   ,{<<"To">>, T}
+                   ,{<<"Subject">>, Subject}
+                   ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
                   ]
-                 ,[], AttachmentBin
+                 ,ContentTypeParams
+                 ,[{<<"multipart">>, <<"alternative">>, [], []
+                    ,[{<<"text">>, <<"plain">>
+                       ,props:filter_undefined(
+                          [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
+                           ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
+                          ])
+                       ,[], iolist_to_binary(TxtBody)}
+                      ,{<<"text">>, <<"html">>
+                        ,props:filter_undefined(
+                           [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
+                            ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
+                           ])
+                        ,[], iolist_to_binary(HTMLBody)}
+                     ]
+                   }
+                   ,{<<"audio">>, <<"mpeg">>
+                     ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+                       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
+                       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+                      ]
+                     ,[], AttachmentBin
+                    }
+                  ]
                 }
-              ]
-            },
-    case notify_util:send_email(From, To, Email) of
-        'ok' -> notify_util:send_update(RespQ, MsgId, <<"completed">>);
-        {'error', Reason} -> notify_util:send_update(RespQ, MsgId, <<"failed">>, Reason)
+              }
+              || T <- To
+             ],
+    case [notify_util:send_email(From, T, Email) || {T, Email} <- Emails] of
+        ['ok'|_] -> notify_util:send_update(RespQ, MsgId, <<"completed">>);
+        [{'error', Reason}|_] -> notify_util:send_update(RespQ, MsgId, <<"failed">>, Reason)
     end.
 
 %%--------------------------------------------------------------------
