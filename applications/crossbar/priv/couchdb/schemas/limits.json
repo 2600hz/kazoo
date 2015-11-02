@@ -6,7 +6,7 @@
     "properties": {
         "allow_prepay": {
             "default": true,
-            "description": "Determines if the account would like to all per-minute calls if they have credit",
+            "description": "Determines if the account would like to allow per-minute calls if they have credit",
             "name": "Allow Prepay",
             "required": false,
             "type": "boolean"
@@ -26,7 +26,7 @@
             "type": "integer"
         },
         "inbound_trunks": {
-            "description": "The number of indbound, flat-rate trunks",
+            "description": "The number of inbound, flat-rate trunks",
             "minimum": 0,
             "name": "Inbound Trunks",
             "required": false,
