@@ -9,7 +9,9 @@
 
 -export([flush/0]).
 -export([remove_callid/1]).
--export([authz_summary/0]).
+-export([authz_summary/0
+         ,authz_summary/1
+        ]).
 -export([authz_details/1]).
 -export([limits_summary/0
          ,limits_summary/1
