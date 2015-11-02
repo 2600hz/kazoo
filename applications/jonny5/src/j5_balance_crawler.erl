@@ -19,15 +19,16 @@
          ,code_change/3
         ]).
 
+-export([sleep_and_cast/3]).
 -export([maybe_disconnect_account/1]).
 -export([delayed_hangup/2]).
 
 -include("jonny5.hrl").
 
--record(state, {}).
 -define(SERVER, ?MODULE).
--define(CRAWLER_CYCLE, 60000).
--define(INTERACCOUNT_DELAY, 10).
+-define(DEFAULT_CRAWLER_CYCLE, 60000).
+-define(DEFAULT_INTERACCOUNT_DELAY, 10).
+-define(OVERLOAD_DELAY, 10000).
 
 %%====================================================================
 %% API
@@ -37,7 +38,10 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link() ->
-  gen_server:start_link(?MODULE, [], []).
+    case whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_enabled">>, false) of
+        'true' -> gen_server:start_link(?MODULE, [], []);
+        'false' -> 'ignore'
+    end.
 
 %%====================================================================
 %% gen_server callbacks
@@ -52,8 +56,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     wh_util:put_callid(?MODULE),
-    self() ! 'crawl_accounts',
-    {'ok', #state{}}.
+    sleep_and_cast(0,'crawl_accounts'),
+    {'ok', []}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -74,6 +78,35 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast('crawl_accounts', []) ->
+    Cycle = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle_ms">>, ?DEFAULT_CRAWLER_CYCLE),
+    spawn_sleep_and_cast(Cycle, 'crawl_accounts'),
+    case j5_channels:accounts() of
+        [] ->
+            {'noreply', [], 'hibernate'};
+        Accounts ->
+            lager:debug("check ~p account(s) for zero balance", [length(Accounts)]),
+            sleep_and_cast(0, 'next_account'),
+            {'noreply', Accounts}
+    end;
+
+%%--------------------------------------------------------------------------------------------
+%% If crawler still checking account from previous cycle, warn and try again after some delay
+%%--------------------------------------------------------------------------------------------
+handle_cast('crawl_accounts', [_|_] = Accounts) ->
+    lager:warning("delay next crawler cycle for ~p ms, ~p account(s) to go. Please tune crawler settings", [?OVERLOAD_DELAY, length(Accounts)]),
+    spawn_sleep_and_cast(?OVERLOAD_DELAY, 'crawl_accounts'),
+    {'noreply', Accounts};
+
+handle_cast('next_account', []) ->
+    {'noreply', [], 'hibernate'};
+
+handle_cast('next_account', [Account|Accounts]) ->
+    maybe_disconnect_account(Account),
+    Delay = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_interaccount_delay_ms">>, ?DEFAULT_INTERACCOUNT_DELAY),
+    sleep_and_cast(Delay, 'next_account'),
+    {'noreply', Accounts};
+
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -83,36 +116,6 @@ handle_cast(_Msg, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info('crawl_accounts', _State) ->
-    IsEnabled = whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_enabled">>, true),
-    case j5_channels:accounts() of
-        [] ->
-            self() ! 'next_cycle',
-            {'noreply', []};
-        Accounts when IsEnabled ->
-            lager:debug("check accounts for zero balance"),
-            self() ! 'next_account',
-            {'noreply', Accounts};
-        _ ->
-            self() ! 'next_cycle',
-            {'noreply', []}
-    end;
-
-handle_info('next_account', []) ->
-    self() ! 'next_cycle',
-    {'noreply', []};
-
-handle_info('next_account', [Account|Accounts]) ->
-    maybe_disconnect_account(Account),
-    Delay = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_interaccount_delay">>, ?INTERACCOUNT_DELAY),
-    erlang:send_after(Delay, self(), 'next_account'),
-    {'noreply', Accounts, 'hibernate'};
-
-handle_info('next_cycle', _State) ->
-    Cycle = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle">>, ?CRAWLER_CYCLE),
-    erlang:send_after(Cycle, self(), 'crawl_accounts'),
-    {'noreply', [], 'hibernate'};
-
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -137,21 +140,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%-------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+-spec sleep_and_cast(integer(), atom()) -> 'ok'.
+-spec sleep_and_cast(pid(), integer(), atom()) -> 'ok'.
+sleep_and_cast(Delay, Message) ->
+    sleep_and_cast(self(), Delay, Message).
+sleep_and_cast(Pid, Delay, Message) when is_integer(Delay) andalso Delay > 0 ->
+    timer:sleep(Delay),
+    gen_server:cast(Pid, Message);
+sleep_and_cast(Pid, _Delay, Message) ->
+    gen_server:cast(Pid, Message).
+
+-spec spawn_sleep_and_cast(integer(), atom()) -> 'ok'.
+spawn_sleep_and_cast(Delay, Message) ->
+    _ = spawn(?MODULE, sleep_and_cast, [self(), Delay, Message]),
+    'ok'.
 
 -spec maybe_disconnect_account(ne_binary()) -> 'ok'.
 maybe_disconnect_account(AccountId) ->
     Limits = j5_limits:get(AccountId),
     DisconnectActiveCalls = j5_limits:disconnect_active_calls(Limits),
     case wh_util:is_true(DisconnectActiveCalls) of
-        'false' ->
-            'ok';
+        'false' -> 'ok';
         'true' ->
             case j5_per_minute:maybe_credit_available(0, Limits, 'true') of
-                'true' ->
-                    lager:debug("account ~p balance is ok",[AccountId]),
-                    'ok';
-                'false' ->
-                    disconnect_account(AccountId)
+                'true' -> 'ok';
+                'false' -> disconnect_account(AccountId)
             end
     end.
 
@@ -159,10 +172,10 @@ maybe_disconnect_account(AccountId) ->
 disconnect_account(AccountId) ->
     case j5_channels:per_minute(AccountId) of
         Count when Count > 0 ->
-            lager:debug("account ~p have ~p per-minute calls, trying disconnect this calls",[AccountId, Count]),
+            lager:debug("account ~p has ~p per-minute calls, disconnect them",[AccountId, Count]),
             maybe_disconnect_channels(j5_channels:account(AccountId));
         _ ->
-            lager:debug("account ~p dont have any per-minute call",[AccountId]),
+            lager:debug("account ~p doesn't have any per-minute call",[AccountId]),
             'ok'
     end.
 
