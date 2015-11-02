@@ -32,11 +32,14 @@ authz_summary() ->
             io:format("no channels found~n", []),
             'no_return';
         Accounts ->
-            io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
-            io:format("| Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |~n"),
-            io:format("+==================================+=======+================+============+================+=================+============+~n"),
+            print_authz_summary_header(),
             authz_summary(Accounts)
     end.
+
+print_authz_summary_header() ->
+    io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
+    io:format("| Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |~n"),
+    io:format("+==================================+=======+================+============+================+=================+============+~n").
 
 -spec authz_summary(ne_binaries()) -> 'no_return'.
 authz_summary([]) -> 'no_return';
@@ -51,7 +54,10 @@ authz_summary([AccountId|AccountIds]) ->
                 ,j5_channels:per_minute(AccountId)
                ]),
     io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
-    authz_summary(AccountIds).
+    authz_summary(AccountIds);
+authz_summary(<<_/binary>> = AccountId) ->
+    print_authz_summary_header(),
+    authz_summary([AccountId]).
 
 -spec authz_details(j5_channels:channels() | ne_binary()) -> 'no_return'.
 authz_details([]) ->
