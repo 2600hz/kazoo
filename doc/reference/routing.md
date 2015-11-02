@@ -256,7 +256,7 @@ Admins can also disable limits entirely for the account (useful on the top-level
 ## How to check that limits are operating
 
 ```
-sup jonny5_maintenance authz_summary [{ACCOUNT_ID}]
+sup jonny5_maintenance authz_summary
 +----------------------------------+-------+----------------+------------+----------------+-----------------+------------+
 | Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |
 +==================================+=======+================+============+================+=================+============+
