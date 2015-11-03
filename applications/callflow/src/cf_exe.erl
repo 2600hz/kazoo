@@ -32,6 +32,7 @@
 -export([wildcard_is_empty/1]).
 -export([callid_update/2]).
 -export([add_event_listener/2]).
+-export([next/1, next/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -127,6 +128,16 @@ branch(Flow, Srv) when is_pid(Srv) ->
 branch(Flow, Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
+
+-spec next(whapps_call:call() | pid()) -> api_object().
+-spec next(ne_binary(), whapps_call:call() | pid()) -> api_object().
+next(Srv) -> next(<<"_">>, Srv).
+
+next(Key, Srv) when is_pid(Srv) ->
+    gen_listener:call(Srv, {'next', Key});
+next(Key, Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    next(Key, Srv).
 
 -spec add_event_listener(whapps_call:call() | pid(), {atom(), list()}) -> 'ok'.
 add_event_listener(Srv, {_,_}=SpawnInfo) when is_pid(Srv) ->
@@ -334,6 +345,15 @@ handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
         'undefined' -> {'reply', 'true', State};
         ChildFlow -> {'reply', wh_json:is_empty(ChildFlow), State}
     end;
+handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
+    {'reply'
+     ,wh_json:get_first_defined([[<<"children">>, Key]
+                                 ,[<<"children">>, <<"_">>]
+                                ]
+                                ,Flow
+                               )
+     ,State
+    };
 handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
     {'reply', Reply, State}.

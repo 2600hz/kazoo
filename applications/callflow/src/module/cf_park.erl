@@ -17,7 +17,8 @@
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".park">>).
 
 -define(DB_DOC_NAME, whapps_config:get(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
--define(DEFAULT_RINGBACK_TM, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_ringback_time">>, 120000)).
+-define(DEFAULT_RINGBACK_TM, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_ringback_timeout">>, 120000)).
+-define(DEFAULT_CALLBACK_TM, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_callback_timeout">>, 30000)).
 -define(PARKED_PRESENCE_TYPE, whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"parked_presence_type">>, <<"early">>)).
 -define(PARKED_CALLS_KEY(Db), {?MODULE, 'parked_calls', Db}).
 
@@ -69,7 +70,7 @@ handle(Data, Call) ->
                 <<"park">> ->
                     lager:info("action is to park the call"),
                     Slot = create_slot(ReferredTo, Call),
-                    park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call);
+                    park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
                 <<"retrieve">> ->
                     lager:info("action is to retrieve a parked call"),
                     case retrieve(SlotNumber, ParkedCalls, Call) of
@@ -77,24 +78,24 @@ handle(Data, Call) ->
                         _Else ->
                             _ = whapps_call_command:b_answer(Call),
                             _ = whapps_call_command:b_prompt(<<"park-no_caller">>, Call),
-                            cf_exe:continue(Call)
+                            cf_exe:stop(Call)
                     end;
                 <<"auto">> ->
                     lager:info("action is to automatically determine if we should retrieve or park"),
                     Slot = create_slot(cf_exe:callid(Call), Call),
                     case retrieve(SlotNumber, ParkedCalls, Call) of
-                        {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call);
-                        {'ok', _} -> cf_exe:continue(Call)
+                        {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Data, Call);
+                        {'ok', _} -> cf_exe:transfer(Call)
                     end
             end;
         'nomatch' ->
             lager:info("call was the result of a blind transfer, assuming intention was to park"),
             Slot = create_slot('undefined', Call),
-            park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call);
+            park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call);
         {'match', [Replaces]} ->
             lager:info("call was the result of an attended-transfer completion, updating call id"),
             {'ok', FoundInSlotNumber, Slot} = update_call_id(Replaces, ParkedCalls, Call),
-            wait_for_pickup(FoundInSlotNumber, Slot, Call)
+            wait_for_pickup(FoundInSlotNumber, Slot, Data, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -181,8 +182,8 @@ pickup_event(Call, _Type, _Evt) ->
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call(ne_binary(), wh_json:object(), wh_json:object(), api_binary(), whapps_call:call()) -> 'ok'.
-park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
+-spec park_call(ne_binary(), wh_json:object(), wh_json:object(), api_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
+park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
     lager:info("attempting to park call in slot ~s", [SlotNumber]),
     case {ReferredTo, save_slot(SlotNumber, Slot, ParkedCalls, Call)} of
         %% attended transfer but the provided slot number is occupied, we are still connected to the 'parker'
@@ -193,7 +194,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
             _ = whapps_call_command:b_answer(Call),
             %% playback message that caller will have to try a different slot
             _ = whapps_call_command:b_prompt(<<"park-already_in_use">>, Call),
-            cf_exe:continue(Call),
+            cf_exe:stop(Call),
             'ok';
         %% attended transfer and allowed to update the provided slot number, we are still connected to the 'parker'
         %% not the 'parkee'
@@ -209,8 +210,8 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
         {_, {'error', 'occupied'}} ->
             lager:info("blind transfer to a occupied slot, call the parker back.."),
             TmpCID = <<"Parking slot ", SlotNumber/binary, " occupied">>,
-            case ringback_parker(wh_json:get_value(<<"Ringback-ID">>, Slot), SlotNumber, TmpCID, Call) of
-                'answered' -> cf_exe:continue(Call);
+            case ringback_parker(wh_json:get_value(<<"Ringback-ID">>, Slot), SlotNumber, TmpCID, Data, Call) of
+                'answered' -> cf_exe:transfer(Call);
                 'channel_hungup' -> cf_exe:stop(Call);
                 'failed' ->
                     whapps_call_command:hangup(Call),
@@ -223,7 +224,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
             lager:info("call ~s parked in slot ~s", [ParkedCallId, SlotNumber]),
             _ = publish_parked(Call, SlotNumber),
             update_presence(?PARKED_PRESENCE_TYPE, Slot),
-            wait_for_pickup(SlotNumber, Slot, Call)
+            wait_for_pickup(SlotNumber, Slot, Data, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -563,15 +564,15 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_pickup(ne_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
-wait_for_pickup(SlotNumber, Slot, Call) ->
+-spec wait_for_pickup(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok'.
+wait_for_pickup(SlotNumber, Slot, Data, Call) ->
     RingbackId = wh_json:get_value(<<"Ringback-ID">>, Slot),
     HoldMedia = wh_json:get_value(<<"Hold-Media">>, Slot),
     Timeout = case wh_util:is_empty(RingbackId) of
                   'true' -> 'infinity';
-                  'false' -> ?DEFAULT_RINGBACK_TM
+                  'false' -> ringback_timeout(Data, SlotNumber)
               end,
-    lager:info("waiting for parked caller to be picked up or hangup"),
+    lager:info("waiting '~p' for parked caller to be picked up or hangup", [Timeout]),
     whapps_call_command:hold(HoldMedia, Call),
     case whapps_call_command:wait_for_unparked_call(Call, Timeout) of
         {'error', 'timeout'} ->
@@ -580,14 +581,13 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
                             {'ok', _} -> 'true';
                             {'error', _} -> 'false'
                         end,
-            case ChannelUp andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Call) of
+            case ChannelUp andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Data, Call) of
                 'answered' ->
                     lager:info("parked caller ringback was answered"),
                     _ = publish_retrieved(Call, SlotNumber),
-                    cf_exe:continue(Call);
+                    cf_exe:transfer(Call);
                 'failed' ->
-                    lager:info("ringback was not answered, continuing to hold parked call"),
-                    wait_for_pickup(SlotNumber, Slot, Call);
+                    unanswered_action(SlotNumber, Slot, Data, Call);
                 _Else ->
                     lager:info("parked call doesnt exist anymore, hangup"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
@@ -598,7 +598,7 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
             case whapps_call_command:b_channel_status(cf_exe:callid(Call)) of
                 {'ok', _} ->
                     lager:info("call '~s' is still active", [cf_exe:callid(Call)]),
-                    wait_for_pickup(SlotNumber, Slot, Call);
+                    wait_for_pickup(SlotNumber, Slot, Data, Call);
                 _Else ->
                     lager:info("call '~s' is no longer active, ", [cf_exe:callid(Call)]),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
@@ -610,6 +610,36 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
             _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call)
     end.
+
+-spec ringback_timeout(wh_json:object(), ne_binary()) -> integer().
+ringback_timeout(Data, SlotNumber) ->
+    JObj = slot_configuration(Data, SlotNumber),
+    DefaultRingbackTime = wh_json:get_integer_value(<<"default_ringback_timeout">>, Data, ?DEFAULT_RINGBACK_TM),
+    wh_json:get_integer_value(<<"ringback_timeout">>, JObj, DefaultRingbackTime).
+
+-spec callback_timeout(wh_json:object(), ne_binary()) -> integer().
+callback_timeout(Data, SlotNumber) ->
+    JObj = slot_configuration(Data, SlotNumber),
+    DefaultRingbackTime = wh_json:get_integer_value(<<"default_callback_timeout">>, Data, ?DEFAULT_CALLBACK_TM),
+    wh_json:get_integer_value(<<"callback_timeout">>, JObj, DefaultRingbackTime).
+
+-spec unanswered_action(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok'.
+unanswered_action(SlotNumber, Slot, Data, Call) ->
+    case cf_exe:next(SlotNumber, Call) of
+        'undefined' -> wait_for_pickup(SlotNumber, Slot, Data, Call);
+        _ ->
+            _ = publish_abandoned(Call, SlotNumber),
+            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
+            cf_exe:continue(SlotNumber, Call)
+    end.
+
+-spec slots_configuration(wh_json:object()) -> wh_json:object().
+slots_configuration(Data) ->
+    wh_json:get_value(<<"slots">>, Data, wh_json:new()).
+
+-spec slot_configuration(wh_json:object(), ne_binary()) -> wh_json:object().
+slot_configuration(Data, SlotNumber) ->
+    wh_json:get_value(SlotNumber, slots_configuration(Data), wh_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -632,10 +662,11 @@ get_endpoint_id(Username, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec ringback_parker(api_binary(), ne_binary(), ne_binary(), whapps_call:call()) ->
+-spec ringback_parker(api_binary(), ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) ->
                              'answered' | 'failed' | 'channel_hungup'.
-ringback_parker('undefined', _, _, _) -> 'failed';
-ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
+ringback_parker('undefined', _, _, _, _) -> 'failed';
+ringback_parker(EndpointId, SlotNumber, TmpCID, Data, Call) ->
+    Timeout = callback_timeout(Data, SlotNumber),
     case cf_endpoint:build(EndpointId, wh_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
         {'ok', Endpoints} ->
             lager:info("attempting to ringback endpoint ~s", [EndpointId]),
@@ -647,14 +678,14 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
                          end,
             Call1 = whapps_call:set_caller_id_name(TmpCID, Call),
             whapps_call_command:bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call1),
-            wait_for_ringback(CleanUpFun, Call1);
+            wait_for_ringback(CleanUpFun, Timeout, Call1);
         _ -> 'failed'
     end.
 
--spec wait_for_ringback(function(), whapps_call:call()) ->
+-spec wait_for_ringback(function(), wh_timeout(), whapps_call:call()) ->
                              'answered' | 'failed' | 'channel_hungup'.
-wait_for_ringback(Fun, Call) ->
-     case whapps_call_command:wait_for_bridge(30000, Fun, Call) of
+wait_for_ringback(Fun, Timeout, Call) ->
+     case whapps_call_command:wait_for_bridge(Timeout, Fun, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the ringback device"),
             'answered';
