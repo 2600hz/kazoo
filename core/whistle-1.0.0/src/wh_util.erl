@@ -21,8 +21,13 @@
          ,is_system_db/1
         ]).
 -export([get_account_realm/1, get_account_realm/2]).
--export([is_account_enabled/1, maybe_disable_account/1]).
--export([is_account_expired/1]).
+-export([is_account_enabled/1, is_account_expired/1]).
+-export([maybe_disable_account/1
+         ,disable_account/1
+         ,enable_account/1
+         ,set_superduper_admin/2
+         ,set_allow_number_additions/2
+        ]).
 
 -export([try_load_module/1]).
 -export([shuffle_list/1]).
@@ -415,32 +420,68 @@ is_account_expired(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_disable_account(ne_binary()) -> 'ok'.
+-spec maybe_disable_account(ne_binary()) ->'ok' | 'failed'.
 maybe_disable_account(Account) ->
     case is_account_enabled(Account) of
         'false' -> 'ok';
-        'true' -> disable_account(Account)
+        'true' ->
+            disable_account(Account)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec disable_account(ne_binary()) ->'ok' | 'failed'.
+disable_account(Account) ->
+    account_update(Account, fun kz_account:disable/1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec enable_account(ne_binary()) ->'ok' | 'failed'.
+enable_account(Account) ->
+    account_update(Account, fun kz_account:enable/1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_superduper_admin(ne_binary(), boolean()) ->'ok' | 'failed'.
+set_superduper_admin(Account, IsAdmin) ->
+    account_update(Account, fun(J) -> kz_account:set_superduper_admin(J, IsAdmin) end).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_allow_number_additions(ne_binary(), boolean()) ->'ok' | 'failed'.
+set_allow_number_additions(Account, IsAllowed) ->
+    account_update(Account, fun(J) -> kz_account:set_allow_number_additions(J, IsAllowed) end).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account(ne_binary()) -> 'ok'.
-disable_account(Account) ->
+-spec account_update(ne_binary(), function()) -> 'ok' | 'failed'.
+account_update(Account, Fun) ->
     Updaters = [
-        fun({'error', _R}) ->
-                lager:warning("failed to fetch account ~s: ~p", [Account, _R]);
-           ({'ok', J}) ->
-                {'ok', kz_account:disable(J)}
-        end
-        ,fun({'ok', J}) ->
+        fun({'error', _}=E) -> E;
+            ({'ok', J}) ->
+                {'ok', Fun(J)}
+         end
+        ,fun({'error', _}=E) -> E;
+            ({'ok', J}) ->
                 AccountDb = wh_util:format_account_id(Account, 'encoded'),
                 couch_mgr:save_doc(AccountDb, J)
         end
-        ,fun({'error', _R}) ->
-                lager:warning("failed to save account ~s: ~p", [Account, _R]);
+        ,fun({'error', _}=E) -> E;
             ({'ok', J}) ->
                 AccountId = kz_account:id(J),
                 case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
@@ -451,11 +492,16 @@ disable_account(Account) ->
                 end
          end
     ],
-    lists:foldl(
-        fun(F, J) -> F(J) end
-        ,kz_account:fetch(Account)
-        ,Updaters
-    ).
+    Result =
+        lists:foldl(
+            fun(F, J) -> F(J) end
+            ,kz_account:fetch(Account)
+            ,Updaters
+        ),
+    case Result of
+        {'ok', _} -> 'ok';
+        {'error', _} -> 'failed'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

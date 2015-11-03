@@ -23,8 +23,8 @@
          ,notification_preference/1, set_notification_preference/2
          ,is_enabled/1, enable/1, disable/1
          ,api_key/1, set_api_key/2
-         ,is_superduper_admin/1
-         ,allow_number_additions/1
+         ,is_superduper_admin/1, set_superduper_admin/2
+         ,allow_number_additions/1, set_allow_number_additions/2
          ,trial_expiration/1, trial_expiration/2, set_trial_expiration/2
          ,trial_time_left/1, trial_time_left/2
          ,trial_has_expired/1, is_expired/1
@@ -303,9 +303,27 @@ is_superduper_admin(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec set_superduper_admin(doc(), boolean()) -> doc().
+set_superduper_admin(JObj, IsAdmin) ->
+    wh_json:set_value(?IS_SUPERDUPER_ADMIN, IsAdmin, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec allow_number_additions(doc()) -> boolean().
 allow_number_additions(JObj) ->
     wh_json:is_true(?ALLOW_NUMBER_ADDITIONS, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_allow_number_additions(doc(), boolean()) -> doc().
+set_allow_number_additions(JObj, IsAllowed) ->
+    wh_json:set_value(?ALLOW_NUMBER_ADDITIONS, IsAllowed, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
