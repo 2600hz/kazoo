@@ -16,15 +16,13 @@
 -export([maybe_add_binding_to_listener/3
          ,maybe_rm_binding_from_listener/3
         ]).
--export([respond_with_error/1, respond_with_authn_failure/1]).
+-export([respond_with_error/1, respond_with_error/3, respond_with_authn_failure/1]).
 -export([get_callback_module/1]).
 -export([remove_binding/2]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% This function will use event bindings to determine if the client has
-%% provided a valid authentication token
 %% @end
 %%--------------------------------------------------------------------
 -spec is_authorized(bh_context:context()) -> boolean().
@@ -45,6 +43,11 @@ is_authorized(Context) ->
             'false'
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_add_binding_to_listener(atom(), ne_binary(), bh_context:context()) -> 'ok'.
 maybe_add_binding_to_listener(Module, Binding, Context) ->
     try Module:add_amqp_binding(Binding, Context) of
@@ -55,6 +58,11 @@ maybe_add_binding_to_listener(Module, Binding, Context) ->
             'ok'
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_rm_binding_from_listener(atom(), ne_binary(), bh_context:context()) -> 'ok'.
 maybe_rm_binding_from_listener(Module, Binding, Context) ->
     lager:debug("remove some amqp bindings for module: ~s ~s", [Module, Binding]),
@@ -66,6 +74,57 @@ maybe_rm_binding_from_listener(Module, Binding, Context) ->
             'ok'
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec respond_with_error(bh_context:context()) -> bh_context:context().
+-spec respond_with_error(bh_context:context(), api_binary(), wh_json:object()) -> bh_context:context().
+respond_with_error(Context) ->
+    respond_with_error(
+        Context
+        ,<<"error">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"unknown error">>}
+        ])
+    ).
+
+respond_with_error(Context, Error, JObj) ->
+    lager:debug(
+        "Error: ~p for socket: ~s"
+        ,[wh_json:get_value(<<"message">>, JObj), bh_context:websocket_session_id(Context)]
+    ),
+    blackhole_data_emitter:emit(
+        bh_context:websocket_pid(Context)
+        ,Error
+        ,JObj
+    ),
+    Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec respond_with_authn_failure(bh_context:context()) -> bh_context:context().
+respond_with_authn_failure(Context) ->
+    Token = bh_context:auth_token(Context),
+    lager:debug("authn failure: token ~s", [Token]),
+    respond_with_error(
+        Context
+        ,<<"auth_failure">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"invalid auth token">>}
+            ,{<<"cause">>, Token}
+        ])
+    ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_callback_module(ne_binary()) -> atom().
 get_callback_module(Binding) ->
     case binary:split(Binding, <<".">>) of
@@ -78,14 +137,11 @@ get_callback_module(Binding) ->
         _ -> 'undefined'
     end.
 
-respond_with_error(_Context) ->
-    lager:debug("error here").
-
--spec respond_with_authn_failure(bh_context:context()) -> 'ok'.
-respond_with_authn_failure(Context) ->
-    Token = bh_context:auth_token(Context),
-    lager:debug("authn failure: token ~s", [Token]).
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec remove_binding(ne_binary(), bh_context:context()) -> 'ok'.
 remove_binding(Binding, Context) ->
     case ?MODULE:get_callback_module(Binding) of
