@@ -206,7 +206,7 @@ maybe_authenticate_user(Context) ->
             lager:debug("failed to find account DB from realm ~s", [AccountRealm]),
             cb_context:add_system_error('invalid_credentials', Context);
         {'ok', <<_/binary>> = Account} ->
-            maybe_account_is_enabled(Context, Credentials, Method, Account);
+            maybe_account_is_expired(Context, Credentials, Method, Account);
         {'ok', Accounts} ->
             maybe_accounts_are_enabled(Context, Credentials, Method, Accounts)
     end.
@@ -246,10 +246,26 @@ maybe_accounts_are_enabled(Context, _, _, []) ->
     lager:debug("no account(s) specified"),
     cb_context:add_system_error('invalid_credentials', Context);
 maybe_accounts_are_enabled(Context, Credentials, Method, [Account|Accounts]) ->
-    Context1 = maybe_account_is_enabled(Context, Credentials, Method, Account),
+    Context1 = maybe_account_is_expired(Context, Credentials, Method, Account),
     case cb_context:resp_status(Context1) of
         'success' -> Context1;
         _Status -> maybe_accounts_are_enabled(Context, Credentials, Method, Accounts)
+    end.
+
+-spec maybe_account_is_expired(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
+                                      cb_context:context().
+maybe_account_is_expired(Context, Credentials, Method, Account) ->
+    case wh_util:is_account_expired(Account) of
+        'false' -> maybe_account_is_enabled(Context, Credentials, Method, Account);
+        {'true', Expired} ->
+            _ = wh_util:spawn(fun() -> wh_util:maybe_disable_account(Account) end),
+            Cause =
+                wh_json:from_list(
+                  [{<<"message">>, <<"account expired">>}
+                   ,{<<"cause">>, Expired}
+                  ]
+                 ),
+            cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context)
     end.
 
 -spec maybe_account_is_enabled(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->

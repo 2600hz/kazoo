@@ -136,29 +136,16 @@ is_expired(Context, JObj) ->
             AuthToken = cb_context:auth_token(Context),
             wh_cache:store_local(?CROSSBAR_CACHE, {'basic_auth', AuthToken}, JObj, CacheProps),
             {'true', set_auth_doc(Context, JObj)};
-        'true' ->
-            _ = wh_util:spawn(fun() -> maybe_disable_account(AccountId) end),
-            Cause = wh_json:from_list([{<<"cause">>, <<"account expired">>}]),
-            {'halt', cb_context:add_system_error('forbidden', Cause, Context)}
-    end.
-
--spec maybe_disable_account(ne_binary()) -> 'ok'.
-maybe_disable_account(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            case kz_account:is_enabled(JObj) of
-                'false' -> 'ok';
-                'true' -> disable_account(AccountId)
-            end;
-        {'error', _R} -> disable_account(AccountId)
-    end.
-
--spec disable_account(ne_binary()) -> 'ok'.
-disable_account(AccountId) ->
-    case crossbar_maintenance:disable_account(AccountId) of
-        'ok' -> lager:info("account ~s disabled because expired", [AccountId]);
-        'failed' -> lager:error("falied to disable account ~s", [AccountId])
+        {'true', Expired} ->
+            _ = wh_util:spawn(fun() -> wh_util:maybe_disable_account(AccountId) end),
+            Cause =
+                wh_json:from_list(
+                    [{<<"message">>, <<"account expired">>}
+                     ,{<<"cause">>, Expired}
+                    ]
+                ),
+            Context1 = cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context),
+            {'halt', Context1}
     end.
 
 -spec set_auth_doc(cb_context:context(), wh_json:object()) ->

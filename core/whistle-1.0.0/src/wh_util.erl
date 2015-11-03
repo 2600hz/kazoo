@@ -21,7 +21,7 @@
          ,is_system_db/1
         ]).
 -export([get_account_realm/1, get_account_realm/2]).
--export([is_account_enabled/1]).
+-export([is_account_enabled/1, maybe_disable_account/1]).
 -export([is_account_expired/1]).
 
 -export([try_load_module/1]).
@@ -415,6 +415,37 @@ is_account_expired(Account) ->
                 'false' -> 'false';
                 'true' -> {'true', Trial}
             end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_disable_account(ne_binary()) -> 'ok'.
+maybe_disable_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} ->
+            case kz_account:is_enabled(JObj) of
+                'false' -> 'ok';
+                'true' -> disable_account(AccountId)
+            end;
+        {'error', _R} -> disable_account(AccountId)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec disable_account(ne_binary()) -> 'ok'.
+disable_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case crossbar_maintenance:disable_account(AccountId) of
+        'ok' -> lager:info("account ~s disabled because expired", [AccountId]);
+        'failed' -> lager:error("failed to disable account ~s", [AccountId])
     end.
 
 %%--------------------------------------------------------------------
