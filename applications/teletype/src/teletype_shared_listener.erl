@@ -75,6 +75,9 @@
                      ,{'teletype_port_request'
                        ,[{<<"notification">>, <<"port_request">>}]
                       }
+                     ,{'teletype_port_request_admin'
+                       ,[{<<"notification">>, <<"port_request">>}]
+                      }
                      ,{'teletype_port_pending'
                        ,[{<<"notification">>, <<"port_pending">>}]
                       }
