@@ -129,6 +129,16 @@ branch(Flow, Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
 
+-spec next(whapps_call:call() | pid()) -> api_object().
+-spec next(ne_binary(), whapps_call:call() | pid()) -> api_object().
+next(Srv) -> next(<<"_">>, Srv).
+
+next(Key, Srv) when is_pid(Srv) ->
+    gen_listener:call(Srv, {'next', Key});
+next(Key, Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    next(Key, Srv).
+
 -spec add_event_listener(whapps_call:call() | pid(), {atom(), list()}) -> 'ok'.
 add_event_listener(Srv, {_,_}=SpawnInfo) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'add_event_listener', SpawnInfo});
@@ -336,12 +346,14 @@ handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
         ChildFlow -> {'reply', wh_json:is_empty(ChildFlow), State}
     end;
 handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
-    case wh_json:get_first_defined([[<<"children">>, Key]
-                                    ,[<<"children">>, <<"_">>]
-                                   ], Flow) of
-        'undefined' -> {'reply', 'undefined', State};
-        Child -> {'reply', Child, State}
-    end;
+    {'reply'
+     ,wh_json:get_first_defined([[<<"children">>, Key]
+                                 ,[<<"children">>, <<"_">>]
+                                ]
+                                ,Flow
+                               )
+     ,State
+    };
 handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
     {'reply', Reply, State}.
@@ -752,13 +764,3 @@ log_call_information(Call) ->
         _Else -> lager:info("inception ~s: using attributes for an external call", [_Else])
     end,
     lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]).
-
--spec next(whapps_call:call() | pid()) -> api_object().
--spec next(ne_binary(), whapps_call:call() | pid()) -> api_object().
-next(Srv) -> next(<<"_">>, Srv).
-
-next(Key, Srv) when is_pid(Srv) ->
-    gen_listener:call(Srv, {'next', Key});
-next(Key, Call) ->
-    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
-    next(Key, Srv).
