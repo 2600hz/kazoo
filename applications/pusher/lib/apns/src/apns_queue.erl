@@ -3,6 +3,8 @@
 %%% @copyright (C) 2014 Altenwald Solutions, S.L.
 %%% @doc apns4erl queue for recover in failure
 %%% @end
+%%% @contributors
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(apns_queue).
 -author('Manuel Rubio <manuel@altenwald.com>').
@@ -29,7 +31,7 @@
     code_change/3]).
 
 -record(state, {
-    queue = queue:new() :: queue(),
+    queue = queue:new() :: queue:queue(),
     max_entries = ?DEFAULT_MAX_ENTRIES :: pos_integer()
 }).
 
@@ -108,7 +110,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Server implementation, a.k.a.: callbacks
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec recover_fail(ID::binary(), Queue::queue()) -> {apns:msg(), [apns:msg()]}.
+-spec recover_fail(ID::binary(), Queue::queue:queue()) -> {apns:msg(), [apns:msg()]}.
 %@hidden
 recover_fail(ID, Queue) ->
     Now = apns:expiry(0),

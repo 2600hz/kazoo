@@ -4,6 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(stepswitch_sms).
 
@@ -31,7 +32,7 @@
                 ,response_queue :: api_binary()
                 ,queue :: api_binary()
                 ,message = [] :: wh_proplist()
-                ,messages = queue:new() :: queue()
+                ,messages = queue:new() :: queue:queue()
                }).
 -type state() :: #state{}.
 

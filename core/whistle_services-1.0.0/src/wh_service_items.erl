@@ -4,6 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(wh_service_items).
 
@@ -14,7 +15,7 @@
 -export([find/3]).
 -export([update/2]).
 
--type items() :: dict().
+-type items() :: dict:dict().
 -export_type([items/0]).
 
 -include("whistle_services.hrl").

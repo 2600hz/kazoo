@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(omnip_subscriptions).
 
@@ -584,7 +585,7 @@ get_subscriptions(Event, User, Version) ->
     end.
 
 -spec dedup(subscriptions()) -> subscriptions().
--spec dedup(subscriptions(), dict()) -> subscriptions().
+-spec dedup(subscriptions(), dict:dict()) -> subscriptions().
 dedup(Subscriptions) ->
     dedup(Subscriptions, dict:new()).
 

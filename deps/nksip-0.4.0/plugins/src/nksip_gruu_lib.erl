@@ -199,13 +199,13 @@ aor(#uri{scheme=Scheme, user=User, domain=Domain}) ->
 %% @private
 encrypt(Bin) ->
     <<Key:16/binary, _/binary>> = nksip_config_cache:global_id(),
-    base64:encode(crypto:aes_cfb_128_encrypt(Key, ?AES_IV, Bin)).
+    base64:encode(crypto:block_encrypt(Key, ?AES_IV, Bin)).
 
 
 %% @private
 decrypt(Bin) ->
     <<Key:16/binary, _/binary>> = nksip_config_cache:global_id(),
-    crypto:aes_cfb_128_decrypt(Key, ?AES_IV, base64:decode(Bin)).
+    crypto:block_decrypt(Key, ?AES_IV, base64:decode(Bin)).
 
 
 

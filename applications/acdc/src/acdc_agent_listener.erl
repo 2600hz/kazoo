@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(acdc_agent_listener).
 
@@ -86,7 +87,7 @@
          ,is_thief = 'false' :: boolean()
          ,agent :: agent()
          ,agent_call_ids = [] :: api_binaries() | wh_proplist()
-         ,cdr_urls = dict:new() :: dict() %% {CallId, Url}
+         ,cdr_urls = dict:new() :: dict:dict() %% {CallId, Url}
          ,agent_presence_id :: api_binary()
          }).
 

@@ -6,6 +6,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(wnm_cnam_notifier).
 
@@ -107,7 +108,7 @@ support_depreciated_cnam(#number{features=Features}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_all_cnam_features(set()) -> set().
+-spec remove_all_cnam_features(sets:set()) -> sets:set().
 remove_all_cnam_features(Features) ->
     Routines = [fun(F) -> sets:del_element(<<"inbound_cnam">>, F) end
                 ,fun(F) -> sets:del_element(<<"outbound_cnam">>, F) end

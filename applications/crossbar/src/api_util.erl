@@ -8,6 +8,7 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%   Jon Blanton
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(api_util).
 
@@ -625,7 +626,7 @@ allow_methods(Responses, ReqVerb, HttpVerb) ->
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
 
--spec allow_methods_fold(http_methods(), set()) -> set().
+-spec allow_methods_fold(http_methods(), sets:set()) -> sets:set().
 allow_methods_fold(Response, Acc) ->
     sets:union(Acc, sets:from_list(uppercase_all(Response))).
 
