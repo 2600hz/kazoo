@@ -368,6 +368,8 @@ handle_preview_response(Context, Resp) ->
 -spec headers(ne_binary()) -> wh_proplist().
 headers(<<"voicemail_to_email">>) ->
     wapi_notifications:headers(<<"voicemail">>);
+headers(<<"port_request_admin">>) ->
+    wapi_notifications:headers(<<"port_request">>);
 headers(Id) ->
     wapi_notifications:headers(Id).
 
@@ -403,6 +405,8 @@ publish_fun(<<"cnam_request">>) ->
 publish_fun(<<"topup">>) ->
     fun wapi_notifications:publish_topup/1;
 publish_fun(<<"port_request">>) ->
+    fun wapi_notifications:publish_port_request/1;
+publish_fun(<<"port_request_admin">>) ->
     fun wapi_notifications:publish_port_request/1;
 publish_fun(<<"port_scheduled">>) ->
     fun wapi_notifications:publish_port_scheduled/1;
