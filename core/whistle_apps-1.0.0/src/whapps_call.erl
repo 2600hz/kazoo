@@ -256,6 +256,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
         ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
         ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
         ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
+        ,callee_id_number = wh_json:get_value(<<"Callee-ID-Number">>, RouteReq, ToUser)
         ,ccvs = CCVs
         ,sip_headers = SHs
         ,resource_type = wh_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
