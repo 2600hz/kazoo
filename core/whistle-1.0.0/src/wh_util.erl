@@ -397,8 +397,6 @@ is_account_enabled(Account) ->
             'false';
         {'ok', JObj} ->
             kz_account:is_enabled(JObj)
-                andalso wh_json:is_true(<<"enabled">>, JObj, 'true')
-
     end.
 
 -spec is_account_expired(api_binary()) -> 'false' | {'true', gregorian_seconds()}.
@@ -408,13 +406,8 @@ is_account_expired(Account) ->
         {'error', _R} ->
             lager:debug("failed to check if expired token auth, ~p", [_R]),
             'false';
-        {'ok', Doc} ->
-            Now = ?MODULE:current_tstamp(),
-            Trial = kz_account:trial_expiration(Doc, Now+1),
-            case Trial < Now of
-                'false' -> 'false';
-                'true' -> {'true', Trial}
-            end
+        {'ok', JObj} ->
+             kz_account:is_expired(JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -424,15 +417,9 @@ is_account_expired(Account) ->
 %%--------------------------------------------------------------------
 -spec maybe_disable_account(ne_binary()) -> 'ok'.
 maybe_disable_account(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            case kz_account:is_enabled(JObj) of
-                'false' -> 'ok';
-                'true' -> disable_account(AccountId)
-            end;
-        {'error', _R} -> disable_account(AccountId)
+    case is_account_enabled(Account) of
+        'false' -> 'ok';
+        'true' -> disable_account(Account)
     end.
 
 %%--------------------------------------------------------------------
@@ -442,11 +429,33 @@ maybe_disable_account(Account) ->
 %%--------------------------------------------------------------------
 -spec disable_account(ne_binary()) -> 'ok'.
 disable_account(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    case crossbar_maintenance:disable_account(AccountId) of
-        'ok' -> lager:info("account ~s disabled because expired", [AccountId]);
-        'failed' -> lager:error("failed to disable account ~s", [AccountId])
-    end.
+    Updaters = [
+        fun({'error', _R}) ->
+                lager:warning("failed to fetch account ~s: ~p", [Account, _R]);
+           ({'ok', J}) ->
+                {'ok', kz_account:disable(J)}
+        end
+        ,fun({'ok', J}) ->
+                AccountDb = wh_util:format_account_id(Account, 'encoded'),
+                couch_mgr:save_doc(AccountDb, J)
+        end
+        ,fun({'error', _R}) ->
+                lager:warning("failed to save account ~s: ~p", [Account, _R]);
+            ({'ok', J}) ->
+                AccountId = kz_account:id(J),
+                case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+                    {'ok', Rev} ->
+                        couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(J, Rev));
+                    _Else ->
+                        couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(J))
+                end
+         end
+    ],
+    lists:foldl(
+        fun(F, J) -> F(J) end
+        ,kz_account:fetch(Account)
+        ,Updaters
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
