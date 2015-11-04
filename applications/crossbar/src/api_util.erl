@@ -236,7 +236,7 @@ handle_failed_multipart(Context, Req0, QS) ->
             try_json(ReqBody, QS, Context, Req1)
     end.
 
--spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), iolist(), wh_json:object()) ->
+-spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), binary(), wh_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
                                      halt_return().
 handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
