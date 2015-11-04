@@ -102,7 +102,9 @@ rest_init(Req0, Opts) ->
     Context0 = cb_context:setters(cb_context:new(), Setters),
 
     case api_util:get_req_data(Context0, Req7) of
-        {'halt', _Req7, _Context0}=Halt -> Halt;
+        {'halt', Req8, Context1} ->
+            lager:debug("getting request data failed, halting"),
+            {'ok', Req8, Context1};
         {Context1, Req8} ->
             {Req9, Context2} = api_util:get_auth_token(Req8, Context1),
 
@@ -111,7 +113,6 @@ rest_init(Req0, Opts) ->
             lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
             {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req9), Context3}
     end.
-
 
 find_version(Path, Req) ->
     case cowboy_req:binding('version', Req) of
@@ -165,14 +166,20 @@ rest_terminate(Req, Context, Verb) ->
 -spec known_methods(cowboy_req:req(), cb_context:context()) ->
                            {http_methods(), cowboy_req:req(), cb_context:context()}.
 known_methods(Req, Context) ->
-    lager:debug("run: known_methods"),
-    {?ALLOWED_METHODS
-     ,Req
-     ,cb_context:set_allowed_methods(
-        cb_context:set_allow_methods(Context, ?ALLOWED_METHODS)
-        ,?ALLOWED_METHODS
-       )
-    }.
+    case cb_context:resp_status(Context) of
+        'halt' ->
+            lager:debug("error during init, returning error response"),
+            {'halt', Req, Context};
+        _Status ->
+            lager:debug("run: known_methods"),
+            {?ALLOWED_METHODS
+             ,Req
+             ,cb_context:set_allowed_methods(
+                cb_context:set_allow_methods(Context, ?ALLOWED_METHODS)
+                ,?ALLOWED_METHODS
+               )
+            }
+    end.
 
 -spec path_tokens(cb_context:context()) -> ne_binaries().
 path_tokens(Context) ->
