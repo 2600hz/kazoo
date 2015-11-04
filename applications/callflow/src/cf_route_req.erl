@@ -18,6 +18,10 @@
         ,whapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, 'false')
        ).
 
+-define(DEFAULT_ROUTE_WIN_TIMEOUT, 3000).
+-define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
+-define(ROUTE_WIN_TIMEOUT, whapps_config:get_integer(?CF_CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
+
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
@@ -91,8 +95,8 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
             lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
         'true' ->
             ControllerQ = props:get_value('queue', Props),
-            cache_call(Flow, NoMatch, ControllerQ, Call),
-            send_route_response(Flow, JObj, ControllerQ, Call)
+            NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
+            send_route_response(Flow, JObj, NewCall)
     end.
 
 -spec bucket_info(whapps_call:call(), wh_json:object()) -> {ne_binary(), pos_integer()}.
@@ -146,6 +150,7 @@ allow_no_match_type(Call) ->
 -spec callflow_should_respond(whapps_call:call()) -> boolean().
 callflow_should_respond(Call) ->
     case whapps_call:authorizing_type(Call) of
+        <<"account">> -> 'true';
         <<"user">> -> 'true';
         <<"device">> -> 'true';
         <<"callforward">> -> 'true';
@@ -175,10 +180,12 @@ is_resource_allowed(ResourceType) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_route_response(wh_json:object(), wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
-send_route_response(Flow, JObj, Q, Call) ->
+-spec send_route_response(wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok'.
+send_route_response(Flow, JObj, Call) ->
+    lager:info("callflows knows how to route the call! sending park response"),
     AccountId = whapps_call:account_id(Call),
     Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                                   ,{<<"Msg-Reply-ID">>, whapps_call:call_id_direct(Call)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"park">>}
                                    ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
@@ -186,12 +193,17 @@ send_route_response(Flow, JObj, Q, Call) ->
                                    ,{<<"Pre-Park">>, pre_park_action(Call)}
                                    ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
                                    ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
-                                   | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
-    whapps_util:amqp_pool_send(Resp, Publisher),
-    lager:info("callflows knows how to route the call! sent park response").
+    case wh_amqp_worker:call(Resp, Publisher, fun wapi_route:win_v/1, ?ROUTE_WIN_TIMEOUT) of
+        {'ok', RouteWin} ->
+            lager:info("callflow has received a route win, taking control of the call"),
+            cf_route_win:maybe_restrict_call(RouteWin, whapps_call:from_route_win(RouteWin, Call));
+        {'error', _E} ->
+            lager:info("callflow didn't received a route win, exiting : ~p", [_E])
+    end.
 
 -spec get_transfer_media(wh_json:object(), wh_json:object()) -> api_binary().
 get_transfer_media(Flow, JObj) ->
@@ -232,8 +244,8 @@ pre_park_action(Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
-cache_call(Flow, NoMatch, ControllerQ, Call) ->
+-spec update_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
+update_call(Flow, NoMatch, ControllerQ, Call) ->
     Updaters = [fun(C) ->
                         Props = [{'cf_flow_id', wh_doc:id(Flow)}
                                  ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
@@ -247,7 +259,7 @@ cache_call(Flow, NoMatch, ControllerQ, Call) ->
                 ,fun(C) -> whapps_call:set_application_name(?APP_NAME, C) end
                 ,fun(C) -> whapps_call:set_application_version(?APP_VERSION, C) end
                ],
-    whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), ?APP_NAME).
+    lists:foldr(fun(F, C) -> F(C) end, Call, Updaters).
 
 %%-----------------------------------------------------------------------------
 %% @private
