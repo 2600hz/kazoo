@@ -65,6 +65,8 @@
 -type sms_route() :: {binary(), wh_proplist()}.
 -type sms_routes() :: [sms_route(), ...].
 
+-define(ENDPOINT_MAP, [{<<"clicktocall">>, <<"device">>}]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -107,13 +109,21 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
                                  {'error', 'not_device_nor_user'}.
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     EndpointTypes = [<<"device">>, <<"user">>, <<"account">>],
-    EndpointType = wh_doc:type(JObj),
+    EndpointType = maybe_map_endpoint_type(wh_doc:type(JObj)),
     case lists:member(EndpointType, EndpointTypes) of
         'false' ->
             lager:info("endpoint module does not manage document type ~s", [EndpointType]),
             {'error', 'not_device_nor_user'};
         'true' ->
             has_endpoint(JObj, EndpointId, AccountDb, EndpointType)
+    end.
+
+-spec maybe_map_endpoint_type(api_binary()) -> api_binary().
+maybe_map_endpoint_type('undefined') -> 'undefined';
+maybe_map_endpoint_type(EndpointType) ->
+    case props:get_value(EndpointType, ?ENDPOINT_MAP) of
+        'undefined' -> EndpointType;
+        Mapped -> Mapped
     end.
 
 -spec has_endpoint(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
