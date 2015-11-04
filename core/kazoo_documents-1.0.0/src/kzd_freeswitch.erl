@@ -152,7 +152,8 @@ reseller_billing(Props) ->
 
 -spec to_did(wh_proplist()) -> api_binary().
 to_did(Props) ->
-    props:get_first_defined([?CCV(<<"Original-Number">>)
+    props:get_first_defined([?CCV(<<"E164-Destination">>)
+                             ,?CCV(<<"Original-Number">>)
                              ,<<"Caller-Destination-Number">>
                             ]
                             ,Props
