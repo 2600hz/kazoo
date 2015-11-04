@@ -97,13 +97,13 @@ rest_init(Req0, Opts) ->
               ],
     Context0 = cb_context:setters(cb_context:new(), Setters),
 
-    case api_util:get_req_data(Context0, Req7) of
-        {'halt', Req8, Context1} ->
-            lager:debug("getting request data failed, halting"),
-            {'ok', Req8, Context1};
-        {Context1, Req8} ->
-            {Req9, Context2} = api_util:get_auth_token(Req8, Context1),
+    {Req8, Context1} = api_util:get_auth_token(Req7, Context0),
 
+    case api_util:get_req_data(Context1, Req8) of
+        {'halt', Req9, Context2} ->
+            lager:debug("getting request data failed, halting"),
+            {'ok', Req9, Context2};
+        {Context2, Req9} ->
             Event = api_util:create_event_name(Context2, <<"init">>),
             {Context3, _} = crossbar_bindings:fold(Event, {Context2, Opts}),
             lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
