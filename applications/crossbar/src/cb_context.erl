@@ -1138,9 +1138,15 @@ add_depreciated_validation_error(<<"account">>, <<"expired">>, Message, Context)
 add_depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Context) ->
     add_depreciated_validation_error(<<"account">>, <<"disabled">>, Message, Context, 423, <<"locked">>);
 add_depreciated_validation_error(Property, Code, Message, Context) ->
-    add_depreciated_validation_error(Property, Code, Message, Context, 400, <<"invalid data">>).
+    add_depreciated_validation_error(Property, Code, Message, Context, resp_error_code(Context), resp_error_msg(Context)).
 
-add_depreciated_validation_error(Property, Code, Message, Context, ErrCode, ErrMsg) when is_binary(Property) ->
+add_depreciated_validation_error(Property, Code, Message, Context, 'undefined', ErrMsg) ->
+    add_depreciated_validation_error(Property, Code, Message, Context, 400, ErrMsg);
+add_depreciated_validation_error(Property, Code, Message, Context, ErrorCode, 'undefined') ->
+    add_depreciated_validation_error(Property, Code, Message, Context, ErrorCode, <<"invalid request">>);
+add_depreciated_validation_error(Property, Code, Message, Context, ErrorCode, <<"init failed">>) ->
+    add_depreciated_validation_error(Property, Code, Message, Context, ErrorCode, <<"invalid request">>);
+add_depreciated_validation_error(<<_/binary>> = Property, Code, Message, Context, ErrCode, ErrMsg) ->
     add_depreciated_validation_error([Property], Code, Message, Context, ErrCode, ErrMsg);
 add_depreciated_validation_error(Property, Code, Message, Context, ErrCode, ErrMsg) ->
     %% Maintain the same error format we are currently using until we are ready to
