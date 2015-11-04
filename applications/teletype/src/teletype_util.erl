@@ -724,7 +724,12 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
 -spec find_default(ne_binary(), wh_json:key()) -> api_binaries().
 find_default(ConfigCat, Key) ->
     case whapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
-        'undefined' -> 'undefined';
+        'undefined' ->
+            lager:debug("no default in ~s for default_~s", [ConfigCat, Key]),
+            'undefined';
+        <<>> ->
+            lager:debug("empty default in ~s for default_~s", [ConfigCat, Key]),
+            'undefined';
         <<_/binary>> = Email -> [Email];
         Emails -> Emails
     end.
@@ -736,7 +741,7 @@ open_doc(Type, 'undefined', DataJObj) ->
     maybe_load_preview(Type, {'error', 'empty_doc_id'}, is_preview(DataJObj));
 open_doc(Type, DocId, DataJObj) ->
     AccountDb = find_account_db(Type, DataJObj),
-    case couch_mgr:open_doc(AccountDb, DocId) of
+    case couch_mgr:open_cache_doc(AccountDb, DocId) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E}=Error ->
             maybe_load_preview(Type, Error, is_preview(DataJObj))
