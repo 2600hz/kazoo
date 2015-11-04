@@ -171,7 +171,7 @@ get_req_data(Context, {<<"multipart/form-data">>, Req}, QS) ->
 %% cURL defaults to this content-type, so check it for JSON if parsing fails
 get_req_data(Context, {<<"application/x-www-form-urlencoded">>, Req1}, QS) ->
     lager:debug("application/x-www-form-urlencoded content type when getting req data"),
-    maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req1, QS);
+    handle_failed_multipart(cb_context:set_query_string(Context, QS), Req1, QS);
 
 get_req_data(Context, {<<"application/json">>, Req1}, QS) ->
     lager:debug("application/json content type when getting req data"),
@@ -204,7 +204,7 @@ get_req_data(Context, {<<"multipart/", C/binary>>, Req}, QS) ->
     lager:debug("multipart ~s content type when getting req data", [C]),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
 get_req_data(Context, {ContentType, Req1}, QS) ->
-    lager:debug("unknown content-type: ~p", [ContentType]),
+    lager:debug("file's content-type: ~p", [ContentType]),
     extract_file(cb_context:set_query_string(Context, QS), ContentType, Req1).
 
 -spec maybe_extract_multipart(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
@@ -215,7 +215,9 @@ maybe_extract_multipart(Context, Req0, QS) ->
         Resp -> Resp
     catch
         _E:_R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST),
             handle_failed_multipart(Context, Req0, QS)
     end.
 
@@ -227,21 +229,21 @@ handle_failed_multipart(Context, Req0, QS) ->
 
     try get_url_encoded_body(ReqBody) of
         JObj ->
-            handle_url_encoded_body(Context, Req1, QS, JObj)
+            handle_url_encoded_body(Context, Req1, QS, ReqBody, JObj)
     catch
         _E:_R ->
             lager:debug("failed to extract url-encoded request body: ~s: ~p", [_E, _R]),
             try_json(ReqBody, QS, Context, Req1)
     end.
 
--spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), wh_json:object()) ->
+-spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), iolist(), wh_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
                                      halt_return().
-handle_url_encoded_body(Context, Req, QS, JObj) ->
+handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
     case wh_json:get_values(JObj) of
-        {['true'], [JSON]} ->
-            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [JSON]),
-            try_json(JSON, QS, Context, Req);
+        {['true'], [_JSON]} ->
+            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [_JSON]),
+            try_json(ReqBody, QS, Context, Req);
         _Vs ->
             lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
             Setters = [{fun cb_context:set_req_json/2, JObj}
@@ -1201,9 +1203,11 @@ halt(Req0, Context) ->
     Req3 = ?MODULE:add_cors_headers(Req2, Context),
     lager:debug("ensured CORS headers are on the response"),
 
+    Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),
+
     lager:debug("setting status code: ~p", [StatusCode]),
-    {'ok', Req4} = cowboy_req:reply(StatusCode, Req3),
-    {'halt', Req4, Context}.
+    {'ok', Req5} = cowboy_req:reply(StatusCode, Req4),
+    {'halt', Req5, cb_context:set_resp_status(Context, 'halt')}.
 
 -spec create_event_name(cb_context:context(), ne_binary() | ne_binaries()) -> ne_binary().
 create_event_name(Context, Segments) when is_list(Segments) ->
