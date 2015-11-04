@@ -50,7 +50,7 @@ All requests are not paginated, with the exception of the `completed` state. Use
     curl -v -X PUT \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"numbers":{"+12025559000":{}}}}' \
+    -d '{"data":{"numbers":{"+12025559000":{}}, "name":"Porting 202.555.9000"}}' \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests
 
 ### List port request details
