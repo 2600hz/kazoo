@@ -990,7 +990,10 @@ on_successful_validation(Context, Id, 'true') ->
 
     Context1 = lists:foldl(fun(Number, ContextAcc) ->
                                    check_number_portability(Id, Number, ContextAcc)
-                           end, Context, Numbers),
+                           end
+                           ,Context
+                           ,Numbers
+                          ),
 
     case cb_context:resp_status(Context1) of
         'success' ->
