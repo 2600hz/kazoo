@@ -25,15 +25,11 @@
          ,content_types_accepted/2
          ,languages_provided/2
          ,charsets_provided/2
-         ,encodings_provided/2
          ,resource_exists/2
          ,moved_temporarily/2
          ,moved_permanently/2
          ,previously_existed/2
          ,allow_missing_post/2
-         ,post_is_create/2
-         ,create_path/2
-         ,process_post/2
          ,delete_resource/2
          ,delete_completed/2
          ,is_conflict/2
@@ -495,17 +491,6 @@ languages_provided(Req0, Context0) ->
 charsets_provided(_Req, _Context) ->
     'no_call'.
 
--spec encodings_provided(cowboy_req:req(), cb_context:context()) ->
-                                {ne_binaries(), cowboy_req:req(), cb_context:context()}.
-encodings_provided(Req0, Context0) ->
-    lager:debug("run: encodings_provided"),
-
-    [{Mod, Params} | _] = cb_context:req_nouns(Context0),
-    Event = api_util:create_event_name(Context0, <<"encodings_provided.", Mod/binary>>),
-    Payload = {Req0, Context0, Params},
-    {Req1, Context1, _} = crossbar_bindings:fold(Event, Payload),
-    {cb_context:encodings_provided(Context1), Req1, Context1}.
-
 -spec resource_exists(cowboy_req:req(), cb_context:context()) ->
                              {boolean(), cowboy_req:req(), cb_context:context()}.
 resource_exists(Req, Context) ->
@@ -582,42 +567,6 @@ delete_resource(Req, Context) ->
 delete_completed(Req, Context) ->
     lager:debug("run: delete_completed"),
     api_util:create_push_response(Req, Context).
-
-%% If allow_missing_post returned true (cause it was a POST) and PUT has been tunnelled,
-%% POST is a create
--spec post_is_create(cowboy_req:req(), cb_context:context()) ->
-                            {boolean(), cowboy_req:req(), cb_context:context()}.
-post_is_create(Req, Context) ->
-    post_is_create(Req, Context, cb_context:req_verb(Context)).
-
-post_is_create(Req, Context, ?HTTP_PUT) ->
-    lager:debug("treating post request as a create"),
-    {'true', Req, Context};
-post_is_create(Req, Context, _ReqVerb) ->
-    lager:debug("run: post_is_create: false"),
-    {'false', Req, Context}.
-
-%% set the location header
--spec create_path(cowboy_req:req(), cb_context:context()) ->
-                         {ne_binary(), cowboy_req:req(), cb_context:context()}.
-create_path(Req, Context) ->
-    lager:debug("run: create_path"),
-
-    Path = props:get_value(<<"Location">>, cb_context:resp_headers(Context), <<>>),
-    lager:debug("setting path to: ~s", [Path]),
-    {crossbar_util:get_path(Req, Path), Req, Context}.
-
--spec process_post(cowboy_req:req(), cb_context:context()) ->
-                          {boolean(), cowboy_req:req(), cb_context:context()}.
-process_post(Req0, Context0) ->
-    lager:debug("run: process_post"),
-    case api_util:execute_request(Req0, Context0) of
-        {'true', Req1, Context1} ->
-            Event = api_util:create_event_name(Context1, <<"process_post">>),
-            _ = crossbar_bindings:map(Event, {Req1, Context1}),
-            api_util:create_push_response(Req1, Context1);
-        Else -> Else
-    end.
 
 -spec is_conflict(cowboy_req:req(), cb_context:context()) ->
                          {boolean(), cowboy_req:req(), cb_context:context()}.
