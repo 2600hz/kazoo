@@ -322,7 +322,7 @@ search(Context, Type, Query, Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec multi_search(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
--spec multi_search(cb_context:context(), ne_binary(), wh_proplist(), wh_json:objects()) -> cb_context:context().
+-spec multi_search(cb_context:context(), ne_binary(), wh_proplist(), wh_json:object()) -> cb_context:context().
 multi_search(Context, Type, Props) ->
     Context1 = cb_context:set_should_paginate(Context, 'false'),
     multi_search(Context1, Type, Props , wh_json:new()).
@@ -337,11 +337,11 @@ multi_search(Context, Type, [{<<"by_", Query/binary>>, Value}|Props], Acc) ->
         ],
     Context1 =
         crossbar_doc:load_view(
-            ViewName
-            ,ViewOptions
-            ,Context
-            ,fun normalize_view_results/2
-        ),
+          ViewName
+          ,ViewOptions
+          ,Context
+          ,fun normalize_view_results/2
+         ),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = cb_context:resp_data(Context1),
