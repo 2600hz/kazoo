@@ -350,7 +350,7 @@ handle_max_filesize_exceeded(Context, Req1) ->
                                                      [{<<"message">>, <<"Files must not be more than ", MaxLen/binary, " bytes">>}
                                                       ,{<<"target">>, Maximum}
                                                      ])
-                                                  ,Context
+                                                  ,cb_context:set_resp_error_code(Context, 413) %% payload too large
                                                  )
                 ).
 
