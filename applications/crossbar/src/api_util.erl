@@ -282,21 +282,21 @@ try_json(ReqBody, QS, Context, Req) ->
 get_url_encoded_body(ReqBody) ->
     wh_json:from_list(cow_qs:parse_qs(ReqBody)).
 
--type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} | {'done', cowboy_req:req()} | cowboy_req:req().
-
+-type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} |
+                                     {'done', cowboy_req:req()} |
+                                     cowboy_req:req().
 
 -spec extract_multipart(cb_context:context(), cowboy_multipart_response(), wh_json:object()) ->
-                               {cb_context:context(), cowboy_req:req()} |
-                               halt_return().
+                               {cb_context:context(), cowboy_req:req()}.
 extract_multipart(Context, {'done', Req}, _QS) ->
     {Context, Req};
 extract_multipart(Context, {'ok', Headers, Req}, QS) ->
     {Ctx, R} = get_req_data(Context, {props:get_value(<<"content-type">>, Headers), Req}, QS),
     extract_multipart(
-        Ctx
-        ,cowboy_req:part(R)
-        ,QS
-    );
+      Ctx
+      ,cowboy_req:part(R)
+      ,QS
+     );
 extract_multipart(Context, Req, QS) ->
     extract_multipart(
       Context
@@ -387,6 +387,7 @@ uploaded_filename(Context) ->
             Filename
     end.
 
+-spec default_filename() -> ne_binary().
 default_filename() ->
     <<"uploaded_file_", (wh_util:to_binary(wh_util:current_tstamp()))/binary>>.
 
@@ -395,22 +396,26 @@ default_filename() ->
                            halt_return().
 decode_base64(Context, CT, Req0) ->
     decode_base64(Context, CT, Req0, []).
+
 decode_base64(Context, CT, Req0, Body) ->
     case cowboy_req:body(Req0) of
         {'error', 'badlength'} ->
             lager:debug("the request body was most likely too big"),
             ?MODULE:halt(Req0
-                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
+                         ,cb_context:add_validation_error(<<"file">>
+                                                          ,<<"maxLength">>
                                                           ,<<"File was larger than allowed">>
                                                           ,Context
-                                                          ));
+                                                         )
+                        );
         {'error', E} ->
             lager:debug("error getting request body: ~p", [E]),
             ?MODULE:halt(Req0
                          ,cb_context:set_resp_status(
                             cb_context:set_resp_data(Context, E)
                             ,'fatal'
-                           ));
+                           )
+                        );
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', Base64Data, Req1} ->
@@ -429,10 +434,7 @@ decode_base64(Context, CT, Req0, Body) ->
                                           ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
-            FileName = <<"uploaded_file_"
-                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
-                       >>,
-            {cb_context:set_req_files(Context, [{FileName, FileJObj}]), Req1}
+            {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req1}
     end.
 
 -spec get_request_body(cowboy_req:req()) ->
