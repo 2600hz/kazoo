@@ -420,7 +420,7 @@ is_account_expired(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_disable_account(ne_binary()) ->'ok' | 'failed'.
+-spec maybe_disable_account(ne_binary()) ->'ok' | {'error', any()}.
 maybe_disable_account(Account) ->
     case is_account_enabled(Account) of
         'false' -> 'ok';
@@ -433,7 +433,7 @@ maybe_disable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account(ne_binary()) ->'ok' | 'failed'.
+-spec disable_account(ne_binary()) ->'ok' | {'error', any()}.
 disable_account(Account) ->
     account_update(Account, fun kz_account:disable/1).
 
@@ -442,7 +442,7 @@ disable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account(ne_binary()) ->'ok' | 'failed'.
+-spec enable_account(ne_binary()) ->'ok' | {'error', any()}.
 enable_account(Account) ->
     account_update(Account, fun kz_account:enable/1).
 
@@ -451,7 +451,7 @@ enable_account(Account) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_superduper_admin(ne_binary(), boolean()) ->'ok' | 'failed'.
+-spec set_superduper_admin(ne_binary(), boolean()) ->'ok' | {'error', any()}.
 set_superduper_admin(Account, IsAdmin) ->
     account_update(Account, fun(J) -> kz_account:set_superduper_admin(J, IsAdmin) end).
 
@@ -460,7 +460,7 @@ set_superduper_admin(Account, IsAdmin) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_allow_number_additions(ne_binary(), boolean()) ->'ok' | 'failed'.
+-spec set_allow_number_additions(ne_binary(), boolean()) ->'ok' | {'error', any()}.
 set_allow_number_additions(Account, IsAllowed) ->
     account_update(Account, fun(J) -> kz_account:set_allow_number_additions(J, IsAllowed) end).
 
@@ -469,38 +469,24 @@ set_allow_number_additions(Account, IsAllowed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_update(ne_binary(), function()) -> 'ok' | 'failed'.
-account_update(Account, Fun) ->
-    Updaters = [
-        fun({'error', _}=E) -> E;
-            ({'ok', J}) ->
-                {'ok', Fun(J)}
-         end
-        ,fun({'error', _}=E) -> E;
-            ({'ok', J}) ->
-                AccountDb = wh_util:format_account_id(Account, 'encoded'),
-                couch_mgr:save_doc(AccountDb, J)
-        end
-        ,fun({'error', _}=E) -> E;
-            ({'ok', J}) ->
-                AccountId = kz_account:id(J),
-                case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
-                    {'ok', Rev} ->
-                        couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(J, Rev));
-                    _Else ->
-                        couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(J))
-                end
-         end
-    ],
-    Result =
-        lists:foldl(
-            fun(F, J) -> F(J) end
-            ,kz_account:fetch(Account)
-            ,Updaters
-        ),
-    case Result of
-        {'ok', _} -> 'ok';
-        {'error', _} -> 'failed'
+-spec account_update(wh_json:object()) -> 'ok' | {'error', any()}.
+-spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
+account_update(JObj) ->
+    AccountDb = wh_doc:account_db(JObj),
+    case couch_mgr:save_doc(AccountDb, JObj) of
+        {'error', _R}=E -> E;
+        {'ok', SavedJObj} ->
+            case couch_mgr:save_doc(?WH_ACCOUNTS_DB, SavedJObj) of
+                {'error', _R}=E -> E;
+                {'ok', _} -> 'ok'
+            end
+    end.
+
+account_update(Account, UpdateFun) ->
+    case kz_account:fetch(Account) of
+        {'error', _R}=E -> E;
+        {'ok', AccountJObj} ->
+            account_update(UpdateFun(AccountJObj))
     end.
 
 %%--------------------------------------------------------------------
