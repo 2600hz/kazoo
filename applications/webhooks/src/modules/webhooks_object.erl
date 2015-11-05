@@ -20,6 +20,15 @@
 -define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 
 -define(
+   OBJECT_TYPES
+   ,whapps_config:get(
+      ?APP_NAME
+      ,<<"object_types">>
+      ,?DOC_TYPES
+     )
+  ).
+
+-define(
    TYPE_MODIFIER
    ,wh_json:from_list(
       [{<<"type">>, <<"array">>}
@@ -33,7 +42,7 @@
    ,wh_json:from_list(
       [{<<"type">>, <<"array">>}
        ,{<<"description">>, <<"A list of object actions to handle">>}
-       ,{<<"items">>, [?DOC_CREATED, ?DOC_EDITED, ?DOC_DELETED]}
+       ,{<<"items">>, ?DOC_ACTIONS}
       ])
   ).
 
@@ -53,22 +62,6 @@
        ,{<<"description">>, ?DESC}
        ,{<<"modifiers">>, ?MODIFIERS}
       ])
-  ).
-
--define(
-   OBJECT_TYPES
-   ,whapps_config:get(
-      ?APP_NAME
-      ,<<"object_types">>
-      ,[kz_account:type()
-        ,kzd_callflow:type()
-        ,kz_device:type()
-        ,kzd_fax_box:type()
-        ,kzd_media:type()
-        ,kzd_user:type()
-        ,kzd_voicemail_box:type()
-       ]
-     )
   ).
 
 %%--------------------------------------------------------------------

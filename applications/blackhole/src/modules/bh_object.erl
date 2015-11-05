@@ -15,17 +15,6 @@
 -include("../blackhole.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
--define(ACTIONS, [?DOC_CREATED, ?DOC_EDITED, ?DOC_DELETED]).
--define(TYPES, [kz_account:type()
-                ,kzd_callflow:type()
-                ,kz_device:type()
-                ,kzd_fax_box:type()
-                ,kzd_media:type()
-                ,kzd_user:type()
-                ,kzd_voicemail_box:type()
-                ,<<"*">>
-               ]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -47,8 +36,8 @@ handle_event(Context, EventJObj) ->
 add_amqp_binding(Binding, Context) ->
     [Action, _, Type|_] = binary:split(Binding, <<".">>, ['global']),
     case
-        lists:member(Action, ?ACTIONS)
-        andalso lists:member(Type, ?TYPES)
+        lists:member(Action, ?DOC_ACTIONS)
+        andalso lists:member(Type, ?DOC_TYPES)
     of
         'false' -> lager:debug("unmatched binding ~s", [Binding]);
         'true' ->
