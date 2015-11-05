@@ -134,7 +134,10 @@ from_ccvs(#request{request_ccvs=ReqCCVs
 
 -spec request_number(ne_binary(), wh_json:object()) -> ne_binary().
 request_number(Number, CCVs) ->
-    case wh_json:get_value(<<"Original-Number">>, CCVs) of
+    case wh_json:get_first_defined([<<"E164-Destination">>
+                                    ,<<"Original-Number">>
+                                   ], CCVs
+                                  ) of
         'undefined' -> Number;
         Original ->
             lager:debug("using original number ~s instead of ~s", [Original, Number]),

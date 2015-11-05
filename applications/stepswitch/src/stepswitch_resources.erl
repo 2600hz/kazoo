@@ -405,6 +405,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
             CCVUpdates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
                           ,{<<"Resource-ID">>, Id}
                           ,{<<"E164-Destination">>, Number}
+                          ,{<<"Original-Number">>, wapi_offnet_resource:to_did(OffnetJObj)}
                          ],
             Updates = [{<<"Name">>, Name}
                        ,{<<"Weight">>, Weight}
@@ -563,7 +564,7 @@ gateway_to_endpoint(Number
                    ) ->
     CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
-              ,{<<"Original-Number">>, Number}
+              ,{<<"Matched-Number">>, Number}
               | gateway_from_uri_settings(Gateway)
              ]),
     wh_json:from_list(
