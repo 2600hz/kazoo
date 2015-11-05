@@ -24,8 +24,8 @@
           )
        ).
 
--define(TEMPLATE_TEXT, <<"Port request submitted for {{account.name}}.\n\nThe account's tree:\n\n{% for id, name in account_tree %} {{ name }} ({{ id }})\n{% endfor %}\n\n  Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.\n\nPort Details: {% for k,v in port %} {{ k }} : {{ v }}\n {% endfor %}\n">>).
--define(TEMPLATE_HTML, <<"<p>Port request submitted for {{account.name}}.</p>\n<p>The account's tree:</p>\n<ul>{% for id, name in accounts %}<li>{{ name }} ({{ id }})</li>\n{% endfor %}</ul>\n<p>Request to port numbers:</p>\n<ul>{% for number in port_request.numbers %}<li>{{ number }}</li>\n{% endfor %}</ul>\n<p>Port Details:</p>\n<ul>{% for k,v in port_request %}<li>{{ k }} : {{ v }}</li>\n{% endfor %}</ul>\n">>).
+-define(TEMPLATE_TEXT, <<"Port request submitted for {{account.name}} by {{from|default_if_none:\"somebody\"}}.\n\nThe account's tree:\n\n{% for id, name in account_tree %} {{ name }} ({{ id }})\n{% endfor %}\n\nRequest to port numbers: {{ port_request.numbers }}.\n\nPort Details:\n\n {% for k,v in port_request %} {{ k }} : {{ v }}\n {% endfor %}\n">>).
+-define(TEMPLATE_HTML, <<"<p>Port request submitted for {{account.name}} by {{from|default_if_none:\"somebody\"}}.</p>\n<p>The account's tree:</p>\n<ul>{% for id, name in accounts %}<li>{{ name }} ({{ id }})</li>\n{% endfor %}</ul>\n<p>Request to port numbers: {{ port_request.numbers }}</p>\n\n<p>Port Details:</p>\n\n<ul>{% for k,v in port_request %}<li>{{ k }} : {{ v }}</li>\n{% endfor %}</ul>\n">>).
 -define(TEMPLATE_SUBJECT, <<"Port request for {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Admin Port Request">>).
@@ -89,11 +89,15 @@ handle_port_request(DataJObj) ->
 handle_port_request(_DataJObj, []) ->
     lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
 handle_port_request(DataJObj, Templates) ->
-    Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
-              ,{<<"account_tree">>, account_tree(wh_json:get_value(<<"account_id">>, DataJObj))}
-             ],
+    Macros =
+        props:filter_undefined(
+          [{<<"system">>, teletype_util:system_params()}
+           ,{<<"account">>, teletype_util:account_params(DataJObj)}
+           ,{<<"port_request">>, port_request_data(wh_json:get_value(<<"port_request">>, DataJObj))}
+           ,{<<"account_tree">>, account_tree(wh_json:get_value(<<"account_id">>, DataJObj))}
+           ,{<<"from">>, wh_json:get_value(<<"from">>, maybe_set_from(DataJObj))}
+          ]),
+    lager:debug("macros: ~p", [Macros]),
 
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
                          || {ContentType, Template} <- Templates
@@ -113,8 +117,6 @@ handle_port_request(DataJObj, Templates) ->
     Emails = teletype_util:find_addresses(maybe_set_emails(DataJObj), TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
     EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
-
-    lager:debug("attaching ~p attachments", [length(EmailAttachements)]),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' ->
@@ -157,7 +159,12 @@ maybe_set_to(DataJObj) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     case find_port_authority(MasterAccountId, AccountId) of
         'undefined' -> DataJObj;
-        To -> wh_json:set_value(<<"to">>, To, DataJObj)
+        <<_/binary>> = To ->
+            lager:debug("found port authority: ~p", [To]),
+            wh_json:set_value(<<"to">>, [To], DataJObj);
+        [_|_] = To ->
+            lager:debug("found port authority: ~p", [To]),
+            wh_json:set_value(<<"to">>, To, DataJObj)
     end.
 
 -spec find_port_authority(ne_binary(), ne_binary()) -> api_binary().
@@ -174,8 +181,35 @@ find_port_authority(MasterAccountId, AccountId) ->
     case kz_whitelabel:fetch(AccountId) of
         {'error', _R} ->
             ResellerId = wh_services:get_reseller_id(AccountId),
+            lager:debug("failed to find whitelabel for ~s, checking ~s", [AccountId, ResellerId]),
             find_port_authority(MasterAccountId, ResellerId);
       {'ok', JObj} ->
             lager:debug("using account ~s for port authority", [AccountId]),
             kz_whitelabel:port_authority(JObj)
     end.
+
+-spec port_request_data(wh_json:object()) -> wh_proplist().
+port_request_data(PortRequestJObj) ->
+    PublicJObj = wh_json:public_fields(PortRequestJObj),
+    wh_json:to_proplist(
+      wh_json:foldl(fun port_request_data_fold/3, wh_json:new(), PublicJObj)
+     ).
+
+-spec port_request_data_fold(wh_json:key(), wh_json:json_term(), wh_json:object()) ->
+                                    wh_json:object().
+port_request_data_fold(<<"name">> = K, V, Acc) ->
+    wh_json:set_value(K, V, Acc);
+port_request_data_fold(<<"port_state">> = K, V, Acc) ->
+    wh_json:set_value(K, V, Acc);
+port_request_data_fold(<<"id">> = K, V, Acc) ->
+    wh_json:set_value(K, V, Acc);
+port_request_data_fold(<<"account_id">> = K, V, Acc) ->
+    wh_json:set_value(K, V, Acc);
+port_request_data_fold(<<"transfer_date">> = K, Date, Acc) ->
+    wh_json:set_value(K, wh_util:iso8601({Date, {0,0,0}}), Acc);
+port_request_data_fold(<<"bill_", _/binary>> = K, V, Acc) ->
+    wh_json:set_value(K, V, Acc);
+port_request_data_fold(<<"numbers">> = K, Numbers, Acc) ->
+    wh_json:set_value(K, wh_util:join_binary(Numbers, <<", ">>), Acc);
+port_request_data_fold(_K, _V, Acc) ->
+    Acc.
