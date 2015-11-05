@@ -209,7 +209,7 @@ send_route_response(Flow, JObj, Call) ->
     of
         {'ok', RouteWin} ->
             lager:info("callflow has received a route win, taking control of the call"),
-            cf_route_win:maybe_restrict_call(RouteWin, whapps_call:from_route_win(RouteWin, Call));
+            cf_route_win:execute_callflow(RouteWin, whapps_call:from_route_win(RouteWin, Call));
         {'error', _E} ->
             lager:info("callflow didn't received a route win, exiting : ~p", [_E])
     end.

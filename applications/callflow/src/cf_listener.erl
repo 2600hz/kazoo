@@ -25,7 +25,6 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{'cf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{'cf_route_win', [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
 -define(BINDINGS, [{'route', []}
                    ,{'self', []}
