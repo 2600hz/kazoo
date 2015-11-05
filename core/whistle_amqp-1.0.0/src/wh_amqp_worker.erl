@@ -22,7 +22,7 @@
 %% API
 -export([start_link/1
 
-         ,call/3, call/4
+         ,call/3, call/4, call/5
          ,call_collect/2, call_collect/3, call_collect/4
 
          ,call_custom/4, call_custom/5
@@ -181,7 +181,7 @@ default_timeout() -> 2 * ?MILLISECONDS_IN_SECOND.
                   request_return().
 -spec call(api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
                   request_return().
--spec call(api_terms(), publish_fun(), validate_fun(), wh_timeout(), pid()) ->
+-spec call(api_terms(), publish_fun(), validate_fun(), wh_timeout(), pid()  | atom()) ->
                   request_return().
 call(Req, PubFun, VFun) ->
     call(Req, PubFun, VFun, default_timeout()).
@@ -192,7 +192,12 @@ call(Req, PubFun, VFun, Timeout) ->
         Worker -> call(Req, PubFun, VFun, Timeout, Worker)
     end.
 
-call(Req, PubFun, VFun, Timeout, Worker) ->
+call(Req, PubFun, VFun, Timeout, Pool) when is_atom(Pool) ->
+    case next_worker(Pool) of
+        {'error', _}=E -> E;
+        Worker -> call(Req, PubFun, VFun, Timeout, Worker)
+    end;
+call(Req, PubFun, VFun, Timeout, Worker) when is_pid(Worker) ->
     Prop = maybe_convert_to_proplist(Req),
     try gen_listener:call(Worker
                           ,{'request', Prop, PubFun, VFun, Timeout}
@@ -526,7 +531,7 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
            ) ->
     _ = wh_util:put_callid(ReqProp),
     CallId = get('callid'),
-    MsgId = wh_api:msg_id(ReqProp),
+    MsgId = wh_api:msg_reply_id(ReqProp),
 
     case ?MODULE:send_request(CallId, Q, PublishFun, ReqProp) of
         'ok' ->
@@ -562,7 +567,7 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
            ) ->
     _ = wh_util:put_callid(ReqProp),
     CallId = get('callid'),
-    MsgId = wh_api:msg_id(ReqProp),
+    MsgId = wh_api:msg_reply_id(ReqProp),
 
     case ?MODULE:send_request(CallId, Q, PublishFun, ReqProp) of
         'ok' ->

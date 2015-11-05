@@ -28,6 +28,7 @@
 
          ,server_id/1
          ,msg_id/1
+         ,msg_reply_id/1
          ,event_category/1
          ,event_name/1
          ,app_name/1
@@ -89,6 +90,12 @@ msg_id(Props) when is_list(Props) ->
     props:get_value(?KEY_MSG_ID, Props);
 msg_id(JObj) ->
     wh_json:get_value(?KEY_MSG_ID, JObj).
+
+-spec msg_reply_id(api_terms()) -> api_binary().
+msg_reply_id(Props) when is_list(Props) ->
+    props:get_value(?KEY_MSG_REPLY_ID, Props, msg_id(Props));
+msg_reply_id(JObj) ->
+    wh_json:get_value(?KEY_MSG_REPLY_ID, JObj, msg_id(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Default Headers in all messages - see wiki

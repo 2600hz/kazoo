@@ -45,6 +45,7 @@
 -define(KEY_APP_NAME, <<"App-Name">>).
 -define(KEY_APP_VERSION, <<"App-Version">>).
 -define(KEY_MSG_ID, <<"Msg-ID">>).
+-define(KEY_MSG_REPLY_ID, <<"Msg-Reply-ID">>).
 -define(KEY_NODE, <<"Node">>).
 -define(KEY_SERVER_ID, <<"Server-ID">>).
 
