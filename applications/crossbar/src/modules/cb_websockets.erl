@@ -17,13 +17,30 @@
         ]).
 
 -include("../crossbar.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).
+
+
+-define(CALL, [<<"call.CHANNEL_CREATE.*">>
+               ,<<"call.CHANNEL_ANSWER.*">>
+               ,<<"call.CHANNEL_DESTROY.*">>
+               ,<<"call.CHANNEL_BRIDGE.*">>
+              ]).
+
+-define(
+    OBJECTS
+    ,[<<A/binary, ".*.", T/binary, ".*">>
+      || A <- ?DOC_ACTIONS, T <- ?DOC_TYPES
+     ]
+).
+
 -define(
     AVAILABLE
     ,wh_json:from_list([
-        {<<"call">>, [<<"call.CHANNEL_CREATE.*">>, <<"call.CHANNEL_ANSWER.*">>, <<"call.CHANNEL_DESTROY.*">>, <<"call.CHANNEL_BRIDGE.*">>]}
+        {<<"call">>, ?CALL}
         ,{<<"fax">>, [<<"fax.status.*">>]}
+        ,{<<"object">>, ?OBJECTS}
     ])
 ).
 
