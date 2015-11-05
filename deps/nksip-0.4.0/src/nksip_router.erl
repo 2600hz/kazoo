@@ -125,7 +125,7 @@ pending_msgs() ->
 -record(state, {
     pos :: integer(),
     name :: atom(),
-    pending :: dict()
+    pending :: dict:dict()
 }).
 
 

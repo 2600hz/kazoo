@@ -17,6 +17,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(kazoo_bindings).
 
@@ -73,7 +74,7 @@
 
 -record(kz_binding, {binding :: ne_binary() | '_'
                      ,binding_parts :: ne_binaries() | '_'
-                     ,binding_responders = queue:new() :: queue() | '_'
+                     ,binding_responders = queue:new() :: queue:queue() | '_'
                       %% queue -> [#kz_responder{}]
                      ,binding_prefix :: api_binary() | '$1' | '_'
                     }).
@@ -480,7 +481,7 @@ flush_mod(ClientMod, #kz_binding{binding=Binding
             end
     end.
 
--type filter_updates() :: [{ne_binary(), {pos_integer(), queue()}}] | [].
+-type filter_updates() :: [{ne_binary(), {pos_integer(), queue:queue()}}] | [].
 -spec filter_bindings(filter_fun()) -> 'ok'.
 -spec filter_bindings(filter_fun(), ne_binary() | '$end_of_table', filter_updates(), ne_binaries()) -> 'ok'.
 filter_bindings(Predicate) ->
@@ -718,7 +719,7 @@ map_processor_fold(#kz_binding{binding_parts=BParts
             map_responders(Acc, Map, Responders)
     end.
 
--spec map_responders(list(), map_responder_fun(), queue()) -> list().
+-spec map_responders(list(), map_responder_fun(), queue:queue()) -> list().
 map_responders(Acc, Map, Responders) ->
     [catch(Map(Responder))
      || Responder <- queue:to_list(Responders)

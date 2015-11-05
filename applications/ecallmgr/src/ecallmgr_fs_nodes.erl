@@ -10,6 +10,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_nodes).
 
@@ -84,7 +85,7 @@
 
 -define(CAPABILITY_TBL, 'ecallmgr_fs_node_capabilities').
 
--record(state, {nodes = dict:new() :: dict() %fs_nodes()
+-record(state, {nodes = dict:new() :: dict:dict() %fs_nodes()
                 ,self = self() :: pid()
                 ,init_pidref :: pid_ref() | 'undefined'
                }).

@@ -6,6 +6,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(wnm_vitelity_cnam).
 
@@ -243,7 +244,7 @@ process_xml_content_tag(N, #xmlElement{name='content'
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_all_cnam_features(set()) -> set().
+-spec remove_all_cnam_features(sets:set()) -> sets:set().
 remove_all_cnam_features(Features) ->
     Routines = [fun(F) -> sets:del_element(<<"inbound_cnam">>, F) end
                 ,fun(F) -> sets:del_element(<<"outbound_cnam">>, F) end

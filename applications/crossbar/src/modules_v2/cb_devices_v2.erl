@@ -9,6 +9,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(cb_devices_v2).
 
@@ -573,7 +574,7 @@ lookup_regs(AccountRealm) ->
 extract_device_registrations(JObjs) ->
     sets:to_list(extract_device_registrations(JObjs, sets:new())).
 
--spec extract_device_registrations(wh_json:objects(), set()) -> set().
+-spec extract_device_registrations(wh_json:objects(), sets:set()) -> sets:set().
 extract_device_registrations([], Set) -> Set;
 extract_device_registrations([JObj|JObjs], Set) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),

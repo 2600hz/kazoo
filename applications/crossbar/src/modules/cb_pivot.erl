@@ -7,6 +7,7 @@
 %%% @end
 %%% @contributors:
 %%%   James Aimonetti
+%%%   Emmanuel Schmidbauer <eschmidbauer@gmail.com>
 %%%-------------------------------------------------------------------
 -module(cb_pivot).
 
@@ -260,7 +261,7 @@ normalize_debug_results(Context, List) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_debug_results_fold(wh_json:object(), dict()) -> dict().
+-spec normalize_debug_results_fold(wh_json:object(), dict:dict()) -> dict:dict().
 normalize_debug_results_fold(JObj, Dict) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     case dict:find(CallId, Dict) of

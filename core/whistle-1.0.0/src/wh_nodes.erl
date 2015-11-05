@@ -63,8 +63,8 @@
 
 -record(state, {heartbeat_ref :: reference()
                 ,tab :: ets:tid()
-                ,notify_new = sets:new() :: set()
-                ,notify_expire = sets:new() :: set()
+                ,notify_new = sets:new() :: sets:set()
+                ,notify_expire = sets:new() :: sets:set()
                 ,node = node() :: atom()
                 ,zone = 'local' :: atom()
                 ,version :: ne_binary()
