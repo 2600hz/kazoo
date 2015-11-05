@@ -143,7 +143,7 @@ get_callback_module(Binding) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec special_bindings(ne_binaries()) -> ne_binary().
+-spec special_bindings(ne_binary()) -> ne_binary().
 special_bindings(<<"doc_edited">>) -> <<"object">>;
 special_bindings(<<"doc_created">>) -> <<"object">>;
 special_bindings(<<"doc_deleted">>) -> <<"object">>;
