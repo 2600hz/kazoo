@@ -64,12 +64,16 @@
                                           ,[<<"call_recording">>, <<"storage_retry_times">>]
                                           ,5
                                          )).
+
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}
-                                     ,{'restrict_to', ['CHANNEL_ANSWER', 'CHANNEL_DESTROY'
-                                                       ,'CHANNEL_BRIDGE', 'CHANNEL_EXECUTE_COMPLETE'
-                                                       ,'RECORD_START', 'RECORD_STOP'
+                                     ,{'restrict_to', ['CHANNEL_ANSWER'
+                                                       ,'CHANNEL_BRIDGE'
+                                                       ,'CHANNEL_DESTROY'
+                                                       ,'CHANNEL_EXECUTE_COMPLETE'
                                                        ,'CHANNEL_REPLACED'
+                                                       ,'RECORD_START'
+                                                       ,'RECORD_STOP'
                                                       ]}
                                     ]}
                            ,{'self', []}
@@ -113,42 +117,46 @@ strip_tmp(File) -> File.
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     wh_util:put_callid(JObj),
+    Pid = props:get_value('server', Props),
+
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
             lager:debug("channel bridge maybe start recording on bridge"),
-            gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording');
+            gen_listener:cast(Pid, 'maybe_start_recording');
         {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
             lager:debug("channel bridge maybe start recording on answer"),
-            gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording_on_answer');
+            gen_listener:cast(Pid, 'maybe_start_recording_on_answer');
         {<<"call_event">>, <<"CHANNEL_REPLACED">>} ->
-            gen_listener:cast(props:get_value('server', Props), {'channel_replaced', wh_json:get_value(<<"Replaced-By">>, JObj)});
+            gen_listener:cast(Pid, {'channel_replaced', kz_call_event:replaced_by(JObj)});
         {<<"call_event">>, <<"RECORD_START">>} ->
             lager:debug("record_start event received"),
-            gen_listener:cast(props:get_value('server', Props), {'record_start', get_response_media(JObj)});
+            gen_listener:cast(Pid, {'record_start', get_response_media(JObj)});
         {<<"call_event">>, <<"RECORD_STOP">>} ->
             lager:debug("record_stop event received"),
-            gen_listener:cast(props:get_value('server', Props), {'store_recording', get_response_media(JObj)});
+            gen_listener:cast(Pid, {'store_recording', get_response_media(JObj)});
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            gen_listener:cast(props:get_value('server', Props), 'stop_call');
+            gen_listener:cast(Pid, 'stop_call');
         {<<"call_event">>, <<"channel_status_resp">>} ->
-            gen_listener:cast(props:get_value('server', Props)
+            gen_listener:cast(Pid
                               ,{'channel_status', wh_json:get_value(<<"Status">>, JObj)}
                              );
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
-            App = wh_json:get_value(<<"Application-Name">>, JObj),
-            Res = wh_json:get_value(<<"Application-Response">>, JObj),
-            case {App, Res} of
+            case {kz_call_event:application_name(JObj)
+                  ,kz_call_event:application_response(JObj)
+                 }
+            of
                 {<<"store">>, <<"failure">>} ->
-                    gen_listener:cast(props:get_value('server', Props), 'store_failed');
+                    gen_listener:cast(Pid, 'store_failed');
                 {<<"store">>, <<"success">>} ->
-                    gen_listener:cast(props:get_value('server', Props), 'store_succeeded');
-                {_, _} -> lager:debug("ignore exec complete: ~s: ~s", [App, Res])
+                    gen_listener:cast(Pid, 'store_succeeded');
+                {_App, _Res} ->
+                    lager:debug("ignore exec complete: ~s: ~s", [_App, _Res])
             end;
         {<<"error">>, <<"dialplan">>} ->
             App = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
             case App of
                 <<"store">> ->
-                    gen_listener:cast(props:get_value('server', Props), 'store_failed');
+                    gen_listener:cast(Pid, 'store_failed');
                 _ ->
                     lager:debug("ignore dialplan error: ~s", [App])
             end;
@@ -207,7 +215,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'record_start', Media}, #state{media_name=Media, time_limit=TimeLimit}=State) ->
+handle_cast({'record_start', Media}, #state{media_name=Media
+                                            ,time_limit=TimeLimit
+                                           }=State) ->
     {'noreply', State#state{is_recording='true'
                             ,channel_status_ref=start_check_call_timer()
                             ,time_limit_ref=start_time_limit_timer(TimeLimit)
@@ -610,7 +620,7 @@ store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
                  ,AcctMODb
                 ),
     Options = [],
-    S = couchbeam:server_connection(BCHost, wh_util:to_list(BCPort)),
+    S = couchbeam:server_connection(wh_util:to_list(BCHost), wh_util:to_list(BCPort)),
     {'ok', Db} = couchbeam:open_or_create_db(S, AcctMODb, Options),
     {'ok', DocRes} = couchbeam:save_doc(Db, MediaDoc),
     DocRev = wh_doc:revision(DocRes),
