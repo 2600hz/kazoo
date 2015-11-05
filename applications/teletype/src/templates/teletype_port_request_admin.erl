@@ -97,7 +97,6 @@ handle_port_request(DataJObj, Templates) ->
            ,{<<"account_tree">>, account_tree(wh_json:get_value(<<"account_id">>, DataJObj))}
            ,{<<"from">>, wh_json:get_value(<<"from">>, maybe_set_from(DataJObj))}
           ]),
-    lager:debug("macros: ~p", [Macros]),
 
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
                          || {ContentType, Template} <- Templates
