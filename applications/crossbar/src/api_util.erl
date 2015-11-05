@@ -401,13 +401,7 @@ decode_base64(Context, CT, Req0, Body) ->
     case cowboy_req:body(Req0) of
         {'error', 'badlength'} ->
             lager:debug("the request body was most likely too big"),
-            ?MODULE:halt(Req0
-                         ,cb_context:add_validation_error(<<"file">>
-                                                          ,<<"maxLength">>
-                                                          ,<<"File was larger than allowed">>
-                                                          ,Context
-                                                         )
-                        );
+            handle_max_filesize_exceeded(Context, Req0);
         {'error', E} ->
             lager:debug("error getting request body: ~p", [E]),
             ?MODULE:halt(Req0
