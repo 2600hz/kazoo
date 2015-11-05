@@ -26,7 +26,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec open(ne_binary(), ne_binary(), any()) -> cb_return().
+-spec open(pid(), ne_binary(), any()) -> cb_return().
 open(SessionPid, SessionId, _Opts) ->
     lager:debug("opening socket ~p", [SessionId]),
     Context = bh_context:new(SessionPid, SessionId),
