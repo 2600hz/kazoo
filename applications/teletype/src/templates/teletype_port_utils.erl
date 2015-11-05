@@ -148,10 +148,10 @@ fix_comments(JObj) ->
             Comment = wh_json:set_value(<<"timestamp">>, Date, LastComment),
 
             wh_json:set_value(
-                <<"comment">>
-                ,wh_json:to_proplist(Comment)
-                ,wh_json:delete_key(<<"comments">>, JObj)
-            )
+              <<"comment">>
+              ,wh_json:to_proplist(Comment)
+              ,wh_json:delete_key(<<"comments">>, JObj)
+             )
     end.
 
 -spec fix_dates(wh_json:object()) -> wh_json:object().
