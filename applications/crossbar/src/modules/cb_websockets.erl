@@ -30,11 +30,9 @@
 
 -define(
     OBJECTS
-    ,lists:merge(
-        [[<<Action/binary, ".*.", Type/binary, ".*">>
-          || Type <- ?DOC_TYPES]
-         || Action <- ?DOC_ACTIONS]
-    )
+    ,[<<A/binary, ".*.", T/binary, ".*">>
+      || A <- ?DOC_ACTIONS, T <- ?DOC_TYPES
+     ]
 ).
 
 -define(

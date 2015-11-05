@@ -64,14 +64,20 @@ add_amqp_binding(_Binding, Context, Action, Type) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
-rm_amqp_binding(<<"call.", _/binary>>, Context) ->
-    lager:debug("removing amqp binding....."),
-    blackhole_listener:remove_binding('call', [{'restrict_to', ['PARK_PARKED', 'PARK_RETRIEVED', 'PARK_ABANDONED']}
-                                               ,{'account_id', bh_context:account_id(Context)}
-                                              ]);
-rm_amqp_binding(_Binding, _Context) ->
-    lager:debug("unmatched binding ~s", [_Binding]),
-    'ok'.
+rm_amqp_binding(Binding, Context) ->
+    lager:debug("removing amqp binding: ~s", [Binding]),
+    [Action, _, Type|_] = binary:split(Binding, <<".">>, ['global']),
+    AccountId = bh_context:account_id(Context),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Keys = [[{'action', Action}, {'db', AccountDb}, {'doc_type', Type}]],
+    blackhole_listener:remove_binding(
+        'conf'
+        ,[{'restrict_to', ['doc_updates']}
+          ,{'account_id', AccountId}
+          ,{'keys', Keys}
+          ,'federate'
+        ]
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
