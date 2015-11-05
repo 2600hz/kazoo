@@ -24,8 +24,8 @@
           )
        ).
 
--define(TEMPLATE_TEXT, <<"Port request submitted for {{account.name}} by {{from|default_if_none:\"somebody\"}}.\n\nThe account's tree:\n\n{% for id, name in account_tree %} {{ name }} ({{ id }})\n{% endfor %}\n\nRequest to port numbers: {{ port_request.numbers }}.\n\nPort Details:\n\n {% for k,v in port_request %} {{ k }} : {{ v }}\n {% endfor %}\n">>).
--define(TEMPLATE_HTML, <<"<p>Port request submitted for {{account.name}} by {{from|default_if_none:\"somebody\"}}.</p>\n<p>The account's tree:</p>\n<ul>{% for id, name in accounts %}<li>{{ name }} ({{ id }})</li>\n{% endfor %}</ul>\n<p>Request to port numbers: {{ port_request.numbers }}</p>\n\n<p>Port Details:</p>\n\n<ul>{% for k,v in port_request %}<li>{{ k }} : {{ v }}</li>\n{% endfor %}</ul>\n">>).
+-define(TEMPLATE_TEXT, <<"Port request submitted for {{account.name}} by {{port_request.customer_contact}}.\n\nThe account's tree:\n\n {{ account.name }} ({{ account.id }})\n{% for id, name in account_tree %} {{ name }} ({{ id }})\n{% endfor %}\n\nRequest to port numbers: {{ port_request.numbers }}.\n\nPort Details:\n\n {% for k,v in port_request %} {{ k }} : {{ v }}\n {% endfor %}\n">>).
+-define(TEMPLATE_HTML, <<"<p>Port request submitted for {{account.name}} by {{port_request.customer_contact}}.</p>\n<p>The account's tree:</p>\n<ul><li>{{ account.name }} ({{ account.id }})</li>\n{% for id, name in account_tree %}<li>{{ name }} ({{ id }})</li>\n{% endfor %}</ul>\n<p>Request to port numbers: {{ port_request.numbers }}</p>\n\n<p>Port Details:</p>\n\n<ul>{% for k,v in port_request %}<li>{{ k }} : {{ v }}</li>\n{% endfor %}</ul>\n">>).
 -define(TEMPLATE_SUBJECT, <<"Port request for {{account.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Admin Port Request">>).
@@ -95,7 +95,6 @@ handle_port_request(DataJObj, Templates) ->
            ,{<<"account">>, teletype_util:account_params(DataJObj)}
            ,{<<"port_request">>, port_request_data(wh_json:get_value(<<"port_request">>, DataJObj))}
            ,{<<"account_tree">>, account_tree(wh_json:get_value(<<"account_id">>, DataJObj))}
-           ,{<<"from">>, wh_json:get_value(<<"from">>, maybe_set_from(DataJObj))}
           ]),
 
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
@@ -146,8 +145,9 @@ maybe_set_emails(DataJObj) ->
 
 -spec maybe_set_from(wh_json:object()) -> wh_json:object().
 maybe_set_from(DataJObj) ->
+    SystemFrom = wh_util:to_binary(node()),
     PortRequest = wh_json:get_value(<<"port_request">>, DataJObj),
-    DefaultFrom = wh_json:get_value(<<"from">>, DataJObj),
+    DefaultFrom = wh_json:get_value(<<"from">>, DataJObj, SystemFrom),
 
     Initiator = wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortRequest, DefaultFrom),
     wh_json:set_value(<<"from">>, Initiator, DataJObj).
@@ -204,11 +204,16 @@ port_request_data_fold(<<"id">> = K, V, Acc) ->
     wh_json:set_value(K, V, Acc);
 port_request_data_fold(<<"account_id">> = K, V, Acc) ->
     wh_json:set_value(K, V, Acc);
-port_request_data_fold(<<"transfer_date">> = K, Date, Acc) ->
-    wh_json:set_value(K, wh_util:iso8601({Date, {0,0,0}}), Acc);
+port_request_data_fold(<<"transfer_date">>, Date, Acc) ->
+    wh_json:set_value(<<"requested_port_date">>, wh_util:iso8601({Date, {0,0,0}}), Acc);
 port_request_data_fold(<<"bill_", _/binary>> = K, V, Acc) ->
     wh_json:set_value(K, V, Acc);
 port_request_data_fold(<<"numbers">> = K, Numbers, Acc) ->
     wh_json:set_value(K, wh_util:join_binary(Numbers, <<", ">>), Acc);
+port_request_data_fold(<<"notifications">>, NJObj, Acc) ->
+    wh_json:set_value(<<"customer_contact">>, wh_json:get_value([<<"email">>, <<"send_to">>], NJObj), Acc);
+port_request_data_fold(<<"carrier">>, V, Acc) ->
+    wh_json:set_value(<<"service_provider">>, V, Acc);
 port_request_data_fold(_K, _V, Acc) ->
+    lager:debug("ignoring ~s", [_K]),
     Acc.
