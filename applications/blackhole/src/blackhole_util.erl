@@ -127,8 +127,9 @@ respond_with_authn_failure(Context) ->
 %%--------------------------------------------------------------------
 -spec get_callback_module(ne_binary()) -> atom().
 get_callback_module(Binding) ->
-    case binary:split(Binding, <<".">>) of
-        [M, _] ->
+    case binary:split(Binding, <<".">>, ['global']) of
+        [_|_]=RoutingKey ->
+            M = special_bindings(RoutingKey),
             try wh_util:to_atom(<<"bh_", M/binary>>, 'true') of
                 Module -> Module
             catch
@@ -136,6 +137,17 @@ get_callback_module(Binding) ->
             end;
         _ -> 'undefined'
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec special_bindings(ne_binaries()) -> ne_binary().
+special_bindings([<<"doc_edited">>|_]) -> <<"object">>;
+special_bindings([<<"doc_created">>|_]) -> <<"object">>;
+special_bindings([<<"doc_deleted">>|_]) -> <<"object">>;
+special_bindings([M|_]) -> M.
 
 %%--------------------------------------------------------------------
 %% @public
