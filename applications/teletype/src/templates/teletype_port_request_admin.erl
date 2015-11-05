@@ -166,7 +166,7 @@ maybe_set_to(DataJObj) ->
             wh_json:set_value(<<"to">>, To, DataJObj)
     end.
 
--spec find_port_authority(ne_binary(), ne_binary()) -> api_binary().
+-spec find_port_authority(ne_binary(), ne_binary()) -> api_binary() | ne_binaries().
 find_port_authority(MasterAccountId, MasterAccountId) ->
     case kz_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
