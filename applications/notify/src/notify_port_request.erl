@@ -105,7 +105,7 @@ create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
                   ,{<<"billing_postal_code">>, wh_json:get_value([<<"bill">>, <<"postal_code">>], PortDoc)}
                   ,{<<"billing_telephone_number">>, wh_json:get_value([<<"bill">>, <<"phone_number">>], PortDoc)}
                   ,{<<"requested_port_date">>, wh_json:get_value(<<"transfer_date">>, PortDoc)}
-                  ,{<<"requested_port_date">>, wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
+                  ,{<<"customer_contact">>, wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
                  ]
                }
                ,{<<"number">>, NumberString}
