@@ -116,7 +116,7 @@
           ,resp_etag :: 'automatic' | string() | api_binary()
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg :: wh_json:key()
-          ,resp_error_code :: pos_integer()
+          ,resp_error_code :: api_integer()
           ,resp_data :: resp_data()
           ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,resp_envelope = wh_json:new() :: wh_json:object()

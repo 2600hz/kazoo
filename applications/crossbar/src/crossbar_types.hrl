@@ -3,7 +3,7 @@
 
 -define(CATCH_ALL, <<"_">>).
 
--type crossbar_status() :: 'success' | 'error' | 'fatal'.
+-type crossbar_status() :: 'success' | 'error' | 'fatal' | 'halt'.
 -type crossbar_module_result() :: {crossbar_status(), wh_proplist()} |
                                   {crossbar_status(), wh_proplist(), string()} |
                                   {crossbar_status(), wh_proplist(), string(), integer()}.

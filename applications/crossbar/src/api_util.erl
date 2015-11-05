@@ -171,7 +171,7 @@ get_req_data(Context, {<<"multipart/form-data">>, Req}, QS) ->
 %% cURL defaults to this content-type, so check it for JSON if parsing fails
 get_req_data(Context, {<<"application/x-www-form-urlencoded">>, Req1}, QS) ->
     lager:debug("application/x-www-form-urlencoded content type when getting req data"),
-    maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req1, QS);
+    handle_failed_multipart(cb_context:set_query_string(Context, QS), Req1, QS);
 
 get_req_data(Context, {<<"application/json">>, Req1}, QS) ->
     lager:debug("application/json content type when getting req data"),
@@ -204,7 +204,7 @@ get_req_data(Context, {<<"multipart/", C/binary>>, Req}, QS) ->
     lager:debug("multipart ~s content type when getting req data", [C]),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
 get_req_data(Context, {ContentType, Req1}, QS) ->
-    lager:debug("unknown content-type: ~p", [ContentType]),
+    lager:debug("file's content-type: ~p", [ContentType]),
     extract_file(cb_context:set_query_string(Context, QS), ContentType, Req1).
 
 -spec maybe_extract_multipart(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
@@ -215,7 +215,9 @@ maybe_extract_multipart(Context, Req0, QS) ->
         Resp -> Resp
     catch
         _E:_R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST),
             handle_failed_multipart(Context, Req0, QS)
     end.
 
@@ -227,21 +229,21 @@ handle_failed_multipart(Context, Req0, QS) ->
 
     try get_url_encoded_body(ReqBody) of
         JObj ->
-            handle_url_encoded_body(Context, Req1, QS, JObj)
+            handle_url_encoded_body(Context, Req1, QS, ReqBody, JObj)
     catch
         _E:_R ->
             lager:debug("failed to extract url-encoded request body: ~s: ~p", [_E, _R]),
             try_json(ReqBody, QS, Context, Req1)
     end.
 
--spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), wh_json:object()) ->
+-spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), binary(), wh_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
                                      halt_return().
-handle_url_encoded_body(Context, Req, QS, JObj) ->
+handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
     case wh_json:get_values(JObj) of
-        {['true'], [JSON]} ->
-            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [JSON]),
-            try_json(JSON, QS, Context, Req);
+        {['true'], [_JSON]} ->
+            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [_JSON]),
+            try_json(ReqBody, QS, Context, Req);
         _Vs ->
             lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
             Setters = [{fun cb_context:set_req_json/2, JObj}
@@ -280,21 +282,21 @@ try_json(ReqBody, QS, Context, Req) ->
 get_url_encoded_body(ReqBody) ->
     wh_json:from_list(cow_qs:parse_qs(ReqBody)).
 
--type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} | {'done', cowboy_req:req()} | cowboy_req:req().
-
+-type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} |
+                                     {'done', cowboy_req:req()} |
+                                     cowboy_req:req().
 
 -spec extract_multipart(cb_context:context(), cowboy_multipart_response(), wh_json:object()) ->
-                               {cb_context:context(), cowboy_req:req()} |
-                               halt_return().
+                               {cb_context:context(), cowboy_req:req()}.
 extract_multipart(Context, {'done', Req}, _QS) ->
     {Context, Req};
 extract_multipart(Context, {'ok', Headers, Req}, QS) ->
     {Ctx, R} = get_req_data(Context, {props:get_value(<<"content-type">>, Headers), Req}, QS),
     extract_multipart(
-        Ctx
-        ,cowboy_req:part(R)
-        ,QS
-    );
+      Ctx
+      ,cowboy_req:part(R)
+      ,QS
+     );
 extract_multipart(Context, Req, QS) ->
     extract_multipart(
       Context
@@ -348,7 +350,7 @@ handle_max_filesize_exceeded(Context, Req1) ->
                                                      [{<<"message">>, <<"Files must not be more than ", MaxLen/binary, " bytes">>}
                                                       ,{<<"target">>, Maximum}
                                                      ])
-                                                  ,Context
+                                                  ,cb_context:set_resp_error_code(Context, 413) %% payload too large
                                                  )
                 ).
 
@@ -385,6 +387,7 @@ uploaded_filename(Context) ->
             Filename
     end.
 
+-spec default_filename() -> ne_binary().
 default_filename() ->
     <<"uploaded_file_", (wh_util:to_binary(wh_util:current_tstamp()))/binary>>.
 
@@ -393,22 +396,20 @@ default_filename() ->
                            halt_return().
 decode_base64(Context, CT, Req0) ->
     decode_base64(Context, CT, Req0, []).
+
 decode_base64(Context, CT, Req0, Body) ->
     case cowboy_req:body(Req0) of
         {'error', 'badlength'} ->
             lager:debug("the request body was most likely too big"),
-            ?MODULE:halt(Req0
-                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
-                                                          ,<<"File was larger than allowed">>
-                                                          ,Context
-                                                          ));
+            handle_max_filesize_exceeded(Context, Req0);
         {'error', E} ->
             lager:debug("error getting request body: ~p", [E]),
             ?MODULE:halt(Req0
                          ,cb_context:set_resp_status(
                             cb_context:set_resp_data(Context, E)
                             ,'fatal'
-                           ));
+                           )
+                        );
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', Base64Data, Req1} ->
@@ -427,10 +428,7 @@ decode_base64(Context, CT, Req0, Body) ->
                                           ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
-            FileName = <<"uploaded_file_"
-                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
-                       >>,
-            {cb_context:set_req_files(Context, [{FileName, FileJObj}]), Req1}
+            {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req1}
     end.
 
 -spec get_request_body(cowboy_req:req()) ->
@@ -1201,9 +1199,11 @@ halt(Req0, Context) ->
     Req3 = ?MODULE:add_cors_headers(Req2, Context),
     lager:debug("ensured CORS headers are on the response"),
 
+    Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),
+
     lager:debug("setting status code: ~p", [StatusCode]),
-    {'ok', Req4} = cowboy_req:reply(StatusCode, Req3),
-    {'halt', Req4, Context}.
+    {'ok', Req5} = cowboy_req:reply(StatusCode, Req4),
+    {'halt', Req5, cb_context:set_resp_status(Context, 'halt')}.
 
 -spec create_event_name(cb_context:context(), ne_binary() | ne_binaries()) -> ne_binary().
 create_event_name(Context, Segments) when is_list(Segments) ->

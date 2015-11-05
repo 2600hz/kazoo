@@ -774,8 +774,8 @@ load_summary_fold(Context, Type) ->
         _Else -> Context
     end.
 
-
--spec load_summary_by_range_fold(cb_context:context(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> cb_context:context().
+-spec load_summary_by_range_fold(cb_context:context(), ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                                        cb_context:context().
 load_summary_by_range_fold(Context, Type, From, To) ->
     Summary = cb_context:resp_data(Context),
     case cb_context:resp_data(
@@ -803,12 +803,12 @@ load_summary(Context, ViewOptions) ->
            end,
     maybe_normalize_summary_results(
       crossbar_doc:load_view(View
-                            ,['include_docs'
-                             ,'descending'
-                              | ViewOptions
-                             ]
-                            ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                            ,fun normalize_view_results/2
+                             ,['include_docs'
+                               ,'descending'
+                               | ViewOptions
+                              ]
+                             ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                             ,fun normalize_view_results/2
                             )
       ,props:get_value('normalize', ViewOptions, 'true')
      ).
@@ -833,8 +833,8 @@ normalize_summary_results(Context) ->
       Context,
       [wh_json:from_list(
          [{<<"account_id">>, AccountId}
-         ,{<<"account_name">>, props:get_value(AccountId, Names, <<"unknown">>)}
-         ,{<<"port_requests">>, JObjs}
+          ,{<<"account_name">>, props:get_value(AccountId, Names, <<"unknown">>)}
+          ,{<<"port_requests">>, JObjs}
          ]
         )
        || {AccountId, JObjs} <- dict:to_list(Dict)
@@ -874,7 +874,7 @@ summary_by_number(Context, Number) ->
      ).
 
 -spec summary_descendants_by_number(cb_context:context(), ne_binary()) ->
-                                        cb_context:context().
+                                           cb_context:context().
 summary_descendants_by_number(Context, Number) ->
     ViewOptions = [{'keys', build_keys(Context, Number)}
                    ,'include_docs'
@@ -954,7 +954,9 @@ leak_pvt_fields(Res, JObj) ->
                   'undefined' -> J;
                   Value -> wh_json:set_value(Key, Value, J)
               end
-      end, JObj, Fields
+      end
+      ,JObj
+      ,Fields
      ).
 
 %%--------------------------------------------------------------------
@@ -990,7 +992,10 @@ on_successful_validation(Context, Id, 'true') ->
 
     Context1 = lists:foldl(fun(Number, ContextAcc) ->
                                    check_number_portability(Id, Number, ContextAcc)
-                           end, Context, Numbers),
+                           end
+                           ,Context
+                           ,Numbers
+                          ),
 
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -1004,6 +1009,7 @@ on_successful_validation(Context, _Id, 'false') ->
       "port state ~s is not valid for updating a port request"
       ,[PortState]
      ),
+
     cb_context:add_validation_error(
       PortState
       ,<<"type">>

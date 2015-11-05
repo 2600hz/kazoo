@@ -108,6 +108,7 @@
             "type": "object"
         },
         "port_state": {
+            "default": "unconfirmed",
             "description": "What state the port request is currently in",
             "enum": [
                 "unconfirmed",
@@ -119,7 +120,7 @@
                 "canceled"
             ],
             "name": "Port State",
-            "required": true,
+            "required": false,
             "type": "string"
         },
         "scheduled_date": {
