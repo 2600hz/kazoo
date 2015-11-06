@@ -26,7 +26,7 @@
           ,timestamp :: gregorian_seconds() | '_'
           ,name :: api_binary() | '_'
           ,metadata :: any() | '_'
-          ,destination :: api_binary() | '_'
+          ,destination = wh_util:node_hostname() :: ne_binary() | '_'
           ,source :: api_binary() | '_'
          }).
 

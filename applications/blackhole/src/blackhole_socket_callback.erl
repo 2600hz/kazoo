@@ -13,10 +13,10 @@
 -export([open/3
         ,recv/4
         ,close/3
+        ,handle_info/4
         ]).
 
 -type cb_return() :: {'ok', bh_context:context()}.
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -67,6 +67,15 @@ close(SessionPid, SessionId, Context) ->
     Filter = fun (A, B, C, D) -> filter_bindings(SessionPid, A, B, C, D) end,
     blackhole_bindings:filter(Filter),
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_info(ne_binary(), ne_binary(), any(), bh_context:context()) -> {'ok', bh_context:context()}.
+handle_info(_SessionPid, _SessionId, _Msg, Context) ->
+    {'ok', Context}.
 
 %%%===================================================================
 %%% Internal functions
