@@ -9,7 +9,6 @@
 -module(acdc_handlers).
 
 -export([handle_route_req/2
-         ,handle_route_win/2
         ]).
 
 -include("acdc.hrl").
@@ -40,42 +39,43 @@ maybe_route_respond(ReqJObj, Call, AccountId, AgentId, <<"user">> = T) ->
 maybe_route_respond(_ReqJObj, _Call, _AccountId, _Id, _) -> 'ok'.
 
 send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
+    lager:debug("sendig route response to park the call for ~s(~s)", [Id, AccountId]),
     CCVs = [{<<"ACDc-ID">>, Id}
             ,{<<"ACDc-Type">>, Type}
            ],
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ReqJObj)}
+    Resp = [{?KEY_MSG_ID, wh_api:msg_id(ReqJObj)}
+            ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
             ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
-            | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, ReqJObj), Resp),
-    _ = whapps_call:cache(Call, ?APP_NAME),
-    lager:debug("sent route response to park the call for ~s(~s)", [Id, AccountId]).
+    ServerId = wh_api:server_id(ReqJObj),
+    Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
+    case wh_amqp_worker:call(Resp
+                             ,Publisher
+                             ,fun wapi_route:win_v/1
+                            )
+    of
+        {'ok', RouteWin} ->
+            lager:info("acdc has received a route win, updating agent"),
+            update_agent(whapps_call:from_route_win(RouteWin, Call));
+        {'error', _E} ->
+            lager:info("callflow didn't received a route win, exiting : ~p", [_E])
+    end.
 
--spec handle_route_win(wh_json:object(), wh_proplist()) -> any().
-handle_route_win(JObj, _Props) ->
-    'true' = wapi_route:win_v(JObj),
-    _ = wh_util:put_callid(JObj),
-
-    case whapps_call:retrieve(wh_json:get_value(<<"Call-ID">>, JObj), ?APP_NAME) of
-        {'ok', Call} ->
-            lager:debug("won the call, updating the agent"),
-            Call1 = whapps_call:from_route_win(JObj, Call),
-            whapps_call_command:answer(Call1),
-
-            try update_acdc_actor(Call1) of
-                {'ok', P} when is_pid(P) -> 'ok';
-                'ok' ->
-                    whapps_call_command:hangup(Call1)
-            catch
-                _E:_R ->
-                    lager:debug("crash starting agent: ~s: ~p", [_E, _R]),
-                    whapps_call_command:hangup(Call1)
-            end;
-        {'error', _R} ->
-            lager:debug("failed to retrieve cached call: ~p", [_R])
+-spec update_agent(whapps_call:call()) -> 'ok'.
+update_agent(Call) ->
+    whapps_call_command:answer(Call),
+    try update_acdc_actor(Call) of
+        {'ok', P} when is_pid(P) -> 'ok';
+        'ok' ->
+            whapps_call_command:hangup(Call)
+    catch
+        _E:_R ->
+            lager:debug("crash starting agent: ~s: ~p", [_E, _R]),
+            whapps_call_command:hangup(Call)
     end.
 
 -spec update_acdc_actor(whapps_call:call()) -> any().

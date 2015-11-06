@@ -25,36 +25,57 @@
                 ])
        ).
 
+-define(DEFAULT_ROUTE_WIN_TIMEOUT, 3000).
+-define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
+-define(ROUTE_WIN_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
 
-handle_req(JObj, Props) ->
+handle_req(JObj, _Props) ->
     'true' = wapi_route:req_v(JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     wh_util:put_callid(CallId),
     Call = whapps_call:from_route_req(JObj),
 
     %% do magic to determine if we should respond...
-    %% update the call kvs with which module to use (tone or echo)
     case tone_or_echo(Call) of
         'undefined' ->
             lager:debug("milliwatt does not know what to do with this!", []);
         Action ->
-            ControllerQ = props:get_value('queue', Props),
-            send_route_response(ControllerQ, JObj),
-            UpdatedCall = whapps_call:kvs_store(<<"milliwatt_action">>, Action, Call),
-            whapps_call:cache(UpdatedCall, ?APP_NAME)
+            send_route_response(Action, JObj, Call)
     end.
 
--spec send_route_response(ne_binary(), wh_json:json()) -> 'ok'.
-send_route_response(ControllerQ, JObj) ->
-    Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+-spec send_route_response(atom(), wh_json:object(), whapps_call:call()) -> 'ok'.
+send_route_response(Action, JObj, Call) ->
+    lager:info("milliwatt knows how to route the call! sending park response"),
+    Resp = props:filter_undefined([{?KEY_MSG_ID, wh_api:msg_id(JObj)}
+                                   ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"park">>}
-                                   | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
+                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId = wh_api:server_id(JObj),
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
-    whapps_util:amqp_pool_send(Resp, Publisher),
-    lager:info("milliwatt knows how to route the call! sent park response").
+    case wh_amqp_worker:call(Resp
+                             ,Publisher
+                             ,fun wapi_route:win_v/1
+                             ,?ROUTE_WIN_TIMEOUT
+                            )
+    of
+        {'ok', RouteWin} ->
+            lager:info("milliwatt has received a route win"),
+            execute_action(Action, whapps_call:from_route_win(RouteWin, Call));
+        {'error', _E} ->
+            lager:info("callflow didn't received a route win, exiting : ~p", [_E])
+    end.
+
+-spec execute_action(atom(), whapps_call:call()) -> 'ok'.
+execute_action('tone', Call) ->
+    lager:info("milliwatt will execute action tone", []),
+    milliwatt_tone:exec(Call);
+execute_action('echo', Call) ->
+    lager:info("milliwatt will execute action echo", []),
+    milliwatt_echo:exec(Call).
+
+
 
 -spec tone_or_echo(whapps_call:call()) -> 'echo' | 'tone' | 'undefined'.
 tone_or_echo(Call) ->
@@ -73,24 +94,29 @@ tone_or_echo(Call) ->
             maybe_echo_maybe_tone(Echo, Tone, To, From)
     end.
 
--spec maybe_echo(wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'echo'.
+-spec maybe_echo(wh_json:object(), ne_binary(), ne_binary()) ->
+                        'undefined' | 'echo'.
 maybe_echo(Echo, To, From) ->
     case rule_exist(Echo, To, From) of
         'true' -> 'echo';
         'false' -> 'undefined'
     end.
 
--spec maybe_tone(wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'tone'.
+-spec maybe_tone(wh_json:object(), ne_binary(), ne_binary()) ->
+                        'undefined' | 'tone'.
 maybe_tone(Tone, To, From) ->
     case rule_exist(Tone, To, From) of
         'true' -> 'tone';
         'false' -> 'undefined'
     end.
 
--spec maybe_echo_maybe_tone(wh_json:json(), wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'tone' | 'echo'.
+-spec maybe_echo_maybe_tone(wh_json:object(), wh_json:object(), ne_binary(), ne_binary()) ->
+                                   'undefined' | 'tone' | 'echo'.
 maybe_echo_maybe_tone(Echo, Tone, To, From) ->
     case {rule_exist(Echo, To, From)
-         ,rule_exist(Tone, To, From)} of
+          ,rule_exist(Tone, To, From)
+         }
+    of
         {'true', 'true'} ->
             lager:info("conflict on milliwatt actions switching back to default action: ~p", [?CONFLICT_ACTION]),
             ?CONFLICT_ACTION;
@@ -99,12 +125,12 @@ maybe_echo_maybe_tone(Echo, Tone, To, From) ->
         _ -> 'undefined'
     end.
 
--spec rule_exist(wh_json:json(), ne_binary(), ne_binary()) -> boolean().
+-spec rule_exist(wh_json:object(), ne_binary(), ne_binary()) -> boolean().
 rule_exist(JObj, To, From) ->
     CallerIds = wh_json:get_ne_value(<<"caller_id">>, JObj, []),
     Numbers = wh_json:get_ne_value(<<"number">>, JObj, []),
-    case {lists:member(To, Numbers)
-         ,lists:member(From, CallerIds)} of
-        {'false', 'false'} -> 'false';
-        _ -> 'true'
-    end.
+
+    (not
+      (not lists:member(To, Numbers))
+        andalso (not lists:member(From, CallerIds))
+    ).

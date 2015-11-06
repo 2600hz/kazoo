@@ -23,5 +23,5 @@ exec(Call) ->
 
 -spec get_duration() -> integer().
 get_duration() ->
-    JObj = whapps_config:get_non_empty(<<"milliwatt">>, <<"echo">>),
+    JObj = whapps_config:get_non_empty(?CONFIG_CAT, <<"echo">>),
     wh_json:get_integer_value(<<"duration">>, JObj, ?DURATION).

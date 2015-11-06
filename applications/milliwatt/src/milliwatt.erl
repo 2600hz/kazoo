@@ -9,6 +9,7 @@
 -module(milliwatt).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -export([start_link/0
          ,start/0

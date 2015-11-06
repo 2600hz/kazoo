@@ -37,11 +37,6 @@
                      {{'acdc_handlers', 'handle_route_req'}
                       ,[{<<"dialplan">>, <<"route_req">>}]
                      }
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{'acdc_handlers', 'handle_route_win'}
-                       ,[{<<"dialplan">>, <<"route_win">>}]
-                      }
                      ,{{'acdc_queue_handler', 'handle_config_change'}
                        ,[{<<"configuration">>, <<"*">>}]
                       }
