@@ -14,6 +14,10 @@
 
 -define(RESOURCE_TYPES_HANDLED,[<<"sms">>]).
 
+-define(DEFAULT_ROUTE_WIN_TIMEOUT, 3000).
+-define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
+-define(ROUTE_WIN_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
+
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
@@ -101,8 +105,8 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
             lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
         'true' ->
             ControllerQ = props:get_value('queue', Props),
-            UpdatedCall = cache_call(Flow, NoMatch, ControllerQ, Call, JObj),
-            send_route_response(Flow, JObj, ControllerQ, UpdatedCall)
+            UpdatedCall = update_call(Flow, NoMatch, ControllerQ, Call, JObj),
+            send_route_response(Flow, JObj, UpdatedCall)
     end.
 
 -spec bucket_info(whapps_call:call(), wh_json:object()) -> {ne_binary(), pos_integer()}.
@@ -125,20 +129,32 @@ bucket_cost(Flow) ->
         N -> N
     end.
 
--spec send_route_response(wh_json:object(), wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
-send_route_response(_Flow, JObj, Q, _Call) ->
-    Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+-spec send_route_response(wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok'.
+send_route_response(_Flow, JObj, Call) ->
+    lager:info("doodle knows how to route the message! sending sms response"),
+    Resp = props:filter_undefined([{?KEY_MSG_ID, wh_api:msg_id(JObj)}
+                                   ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"sms">>}
-                                   | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId = wh_api:server_id(JObj),
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
-    whapps_util:amqp_pool_send(Resp, Publisher),
-    lager:info("doodle knows how to route the message! sent sms response").
+    case wh_amqp_worker:call(Resp
+                             ,Publisher
+                             ,fun wapi_route:win_v/1
+                             ,?ROUTE_WIN_TIMEOUT
+                            )
+    of
+        {'ok', RouteWin} ->
+            lager:info("doodle has received a route win, taking control of the text"),
+            doodle_route_win:execute_text_flow(RouteWin, whapps_call:from_route_win(RouteWin, Call));
+        {'error', _E} ->
+            lager:info("doodle didn't received a route win, exiting : ~p", [_E])
+    end.
 
--spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call(), wh_json:object()) -> whapps_call:call().
-cache_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
+-spec update_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call(), wh_json:object()) -> whapps_call:call().
+update_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
     Updaters = [{fun whapps_call:kvs_store_proplist/2
                  ,[{'cf_flow_id', wh_doc:id(Flow)}
                    ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
@@ -153,9 +169,7 @@ cache_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
                 ,{fun whapps_call:set_application_version/2, ?APP_VERSION}
                 ,fun(C) -> cache_resource_types(Flow, C, JObj) end
                ],
-    UpdatedCall = whapps_call:exec(Updaters, Call),
-    whapps_call:cache(UpdatedCall),
-    UpdatedCall.
+    whapps_call:exec(Updaters, Call).
 
 -spec cache_resource_types(wh_json:object(), whapps_call:call(), wh_json:object()) -> whapps_call:call().
 cache_resource_types(Flow, Call, JObj) ->

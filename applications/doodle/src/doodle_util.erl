@@ -295,7 +295,7 @@ replay_sms_flow(AccountId, <<_:7/binary, CallId/binary>> = DocId, Rev, JObj, Sch
     Call = whapps_call:exec(Routines, whapps_call:from_json(JObj)),
     whapps_call:put_callid(Call),
     lager:info("doodle received sms resume for ~s of account ~s, taking control", [DocId, AccountId]),
-    doodle_route_win:maybe_replay_sms(JObj, Call).
+    doodle_route_win:execute_text_flow(JObj, Call).
 
 -spec sms_status(api_object()) -> ne_binary().
 sms_status('undefined') -> <<"pending">>;
