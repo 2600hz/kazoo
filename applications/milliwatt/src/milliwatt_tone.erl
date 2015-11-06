@@ -27,7 +27,7 @@ exec(Call) ->
 
 -spec get_tone() -> wh_json:json().
 get_tone() ->
-    JObj = whapps_config:get_non_empty(<<"milliwatt">>, <<"tone">>),
+    JObj = whapps_config:get_non_empty(?CONFIG_CAT, <<"tone">>),
     Hz = wh_json:get_list_value(<<"frequencies">>, JObj, ?FREQUENCIES),
     Duration = wh_json:get_value(<<"duration">>, JObj, ?DURATION),
 
