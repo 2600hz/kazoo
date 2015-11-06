@@ -67,7 +67,7 @@ send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
 
 -spec update_agent(whapps_call:call()) -> 'ok'.
 update_agent(Call) ->
-    whapps_call_command:answer(Call),    
+    whapps_call_command:answer(Call),
     try update_acdc_actor(Call) of
         {'ok', P} when is_pid(P) -> 'ok';
         'ok' ->
