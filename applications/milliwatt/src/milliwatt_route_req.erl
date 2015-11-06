@@ -43,7 +43,7 @@ handle_req(JObj, _Props) ->
             send_route_response(Action, JObj, Call)
     end.
 
--spec send_route_response(atom(), wh_json:json(), whapps_call:call()) -> 'ok'.
+-spec send_route_response(atom(), wh_json:object(), whapps_call:call()) -> 'ok'.
 send_route_response(Action, JObj, Call) ->
     lager:info("milliwatt knows how to route the call! sending park response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, wh_api:msg_id(JObj)}
@@ -94,24 +94,29 @@ tone_or_echo(Call) ->
             maybe_echo_maybe_tone(Echo, Tone, To, From)
     end.
 
--spec maybe_echo(wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'echo'.
+-spec maybe_echo(wh_json:object(), ne_binary(), ne_binary()) ->
+                        'undefined' | 'echo'.
 maybe_echo(Echo, To, From) ->
     case rule_exist(Echo, To, From) of
         'true' -> 'echo';
         'false' -> 'undefined'
     end.
 
--spec maybe_tone(wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'tone'.
+-spec maybe_tone(wh_json:object(), ne_binary(), ne_binary()) ->
+                        'undefined' | 'tone'.
 maybe_tone(Tone, To, From) ->
     case rule_exist(Tone, To, From) of
         'true' -> 'tone';
         'false' -> 'undefined'
     end.
 
--spec maybe_echo_maybe_tone(wh_json:json(), wh_json:json(), ne_binary(), ne_binary()) -> 'undefined' | 'tone' | 'echo'.
+-spec maybe_echo_maybe_tone(wh_json:object(), wh_json:object(), ne_binary(), ne_binary()) ->
+                                   'undefined' | 'tone' | 'echo'.
 maybe_echo_maybe_tone(Echo, Tone, To, From) ->
     case {rule_exist(Echo, To, From)
-         ,rule_exist(Tone, To, From)} of
+          ,rule_exist(Tone, To, From)
+         }
+    of
         {'true', 'true'} ->
             lager:info("conflict on milliwatt actions switching back to default action: ~p", [?CONFLICT_ACTION]),
             ?CONFLICT_ACTION;
@@ -120,12 +125,12 @@ maybe_echo_maybe_tone(Echo, Tone, To, From) ->
         _ -> 'undefined'
     end.
 
--spec rule_exist(wh_json:json(), ne_binary(), ne_binary()) -> boolean().
+-spec rule_exist(wh_json:object(), ne_binary(), ne_binary()) -> boolean().
 rule_exist(JObj, To, From) ->
     CallerIds = wh_json:get_ne_value(<<"caller_id">>, JObj, []),
     Numbers = wh_json:get_ne_value(<<"number">>, JObj, []),
-    case {lists:member(To, Numbers)
-         ,lists:member(From, CallerIds)} of
-        {'false', 'false'} -> 'false';
-        _ -> 'true'
-    end.
+
+    (not
+      (not lists:member(To, Numbers))
+        andalso (not lists:member(From, CallerIds))
+    ).
