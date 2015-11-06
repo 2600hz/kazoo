@@ -73,10 +73,7 @@ execute_action('tone', Call) ->
     milliwatt_tone:exec(Call);
 execute_action('echo', Call) ->
     lager:info("milliwatt will execute action echo", []),
-    milliwatt_echo:exec(Call);
-execute_action(Action, Call) ->
-    lager:warning("milliwatt doesnt know action: ~p", [Action]),
-    whapps_call_command:hangup(Call).
+    milliwatt_echo:exec(Call).
 
 
 
