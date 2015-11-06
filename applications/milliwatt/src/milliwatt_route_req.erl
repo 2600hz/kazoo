@@ -47,7 +47,7 @@ handle_req(JObj, _Props) ->
 send_route_response(Action, JObj, Call) ->
     lager:info("milliwatt knows how to route the call! sending park response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, wh_api:msg_id(JObj)}
-              ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
+                                   ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"park">>}
                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
