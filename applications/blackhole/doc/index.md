@@ -59,15 +59,29 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
     </script>
   </body>
 </html>
-
+```
+You can also add a friendly name and some metadata to any subscribe command.
 
 ```
+socket.emit('subscribe', {
+    account_id: '{ACCOUNT_ID}',
+    auth_token: '{AUTH_TOKEN}',
+    name: "My new socket",
+    metadata: {
+        test: "test"
+    },
+    binding: 'doc_edited.*.user.*'
+});
+```
+
+
 To remove unnecessary bindings use 'unsubscribe' event:
 
 For particular subscription:
 ```
 socket.emit('unsubscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
 ```
+
 For all previous subscriptions:
 ```
 socket.emit('unsubscribe', { auth_token: '{AUTH_TOKEN}' });

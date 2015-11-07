@@ -31,12 +31,12 @@
 -include("blackhole.hrl").
 
 -define(RESPONDERS, [{?MODULE, [{<<"blackhole">>, <<"get_req">>}]}]).
--define(BINDINGS, [{'blackhole', []}]).
+-define(BINDINGS, [{'blackhole', ['federate']}]).
 
 -define(SERVER, ?MODULE).
--define(BLACKHOLE_QUEUE_NAME, <<"blackhole_listener">>).
--define(BLACKHOLE_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(BLACKHOLE_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(BLACKHOLE_QUEUE_NAME, <<>>).
+-define(BLACKHOLE_QUEUE_OPTIONS, []).
+-define(BLACKHOLE_CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -179,8 +179,7 @@ handle_call({'get_sockets', AccountId}, _From, State) ->
     Result =
         case ets:match_object(State, Pattern) of
             [] -> {'error', 'not_found'};
-            Contexts ->
-                [bh_context:websocket_session_id(Context) || Context <- Contexts]
+            Contexts -> Contexts
         end,
     {'reply', Result, State};
 handle_call({'get_socket', Id}, _From, State) ->
@@ -284,13 +283,16 @@ handle_get_req_data(AccountId, 'undefined', Node) ->
         {'error', 'not_found'} ->
             lager:debug("no sockets found for ~s", [AccountId]),
             [];
-        SocketIDs -> SocketIDs
+        Contexts ->
+            ToDelete = [<<"account_id">>, <<"auth_token">>, <<"req_id">>, <<"auth_account_id">>],
+            [wh_json:delete_keys(ToDelete, bh_context:to_json(Context))
+             || Context <- Contexts]
     end;
 handle_get_req_data('undefined', SocketId, Node) ->
     lager:debug("received blackhole get for socket:~s from ~s", [SocketId, Node]),
     case ?MODULE:get_socket(SocketId) of
         {'error', 'not_found'} ->
             lager:debug("socket ~s not found", [SocketId]);
-        {'ok', BHContext} ->
-            bh_context:to_json(BHContext)
+        {'ok', Context} ->
+            bh_context:to_json(Context)
     end.

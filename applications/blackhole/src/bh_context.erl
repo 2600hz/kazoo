@@ -27,6 +27,7 @@
          ,metadata/1, set_metadata/2
          ,destination/1, set_destination/2
          ,source/1, set_source/2
+         ,req_id/1
         ]).
 
 -include("blackhole.hrl").
@@ -124,6 +125,12 @@ to_json(Context) ->
             ,{<<"auth_account_id">>, auth_account_id(Context)}
             ,{<<"bindings">>, bindings(Context)}
             ,{<<"websocket_session_id">>, websocket_session_id(Context)}
+            ,{<<"timestamp">>, timestamp(Context)}
+            ,{<<"name">>, name(Context)}
+            ,{<<"metadata">>, metadata(Context)}
+            ,{<<"destination">>, destination(Context)}
+            ,{<<"source">>, source(Context)}
+            ,{<<"req_id">>, req_id(Context)}
         ])
     ).
 
@@ -290,6 +297,15 @@ destination(#bh_context{destination=Destination}) ->
 -spec set_destination(context(), ne_binary()) -> context().
 set_destination(#bh_context{}=Context, Destination) ->
     Context#bh_context{destination=Destination}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec req_id(context()) -> ne_binary().
+req_id(#bh_context{req_id=Id}) ->
+    Id.
 
 %%%===================================================================
 %%% Internal functions
