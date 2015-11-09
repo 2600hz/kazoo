@@ -26,7 +26,7 @@
 -spec to_state(ne_binary() | kn(), ne_binary(), wh_proplist()) ->
                       kn().
 to_state(DID, ToState) ->
-    to_state(DID, ToState, knm_phone_number:default_options()).
+    to_state(DID, ToState, knm_number_options:default()).
 to_state(<<_/binary>> = DID, ToState, Options) ->
     case knm_number:get(DID, Options) of
         {'error', E} -> knm_errors:unspecified(E, DID);

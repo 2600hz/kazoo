@@ -43,8 +43,6 @@
          ,doc/1, set_doc/2
         ]).
 
--export([default_options/0]).
-
 -include("knm.hrl").
 
 -record(knm_phone_number, {number :: ne_binary()
@@ -81,13 +79,15 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch(ne_binary()) -> number_return().
--spec fetch(ne_binary(), wh_proplist()) -> number_return().
+-spec fetch(ne_binary(), knm_number_options:options()) -> number_return().
 
 -ifdef(TEST).
 fetch(?TEST_CREATE_NUM) ->
     {'error', 'not_found'};
-fetch(?TEST_EXISTING_NUM) ->
-    {'ok', from_json(?EXISTING_NUMBER)};
+fetch(?TEST_AVAILABLE_NUM) ->
+    {'ok', from_json(?AVAILABLE_NUMBER)};
+fetch(?TEST_IN_SERVICE_NUM) ->
+    {'ok', from_json(?IN_SERVICE_NUMBER)};
 fetch(?BW_EXISTING_DID) ->
     {'ok', from_json(?BW_EXISTING_JSON)};
 fetch(_DID) ->
@@ -95,8 +95,10 @@ fetch(_DID) ->
 
 fetch(?TEST_CREATE_NUM, _Options) ->
     {'error', 'not_found'};
-fetch(?TEST_EXISTING_NUM, _Options) ->
-    {'ok', from_json(?EXISTING_NUMBER)};
+fetch(?TEST_AVAILABLE_NUM, _Options) ->
+    {'ok', from_json(?AVAILABLE_NUMBER)};
+fetch(?TEST_IN_SERVICE_NUM, _Options) ->
+    {'ok', from_json(?IN_SERVICE_NUMBER)};
 fetch(?BW_EXISTING_DID, _Options) ->
     {'ok', from_json(?BW_EXISTING_JSON)};
 fetch(_DID, _Options) ->
@@ -104,7 +106,7 @@ fetch(_DID, _Options) ->
 
 -else.
 fetch(Num) ->
-    fetch(Num, ?MODULE:default_options()).
+    fetch(Num, knm_number_options:default()).
 
 fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
@@ -180,6 +182,15 @@ release(PhoneNumber, FromState) ->
 authorize_release(PhoneNumber) ->
     authorize_release(PhoneNumber, auth_by(PhoneNumber)).
 
+-ifdef(TEST).
+authorize_release(PhoneNumber, ?DEFAULT_AUTH_BY) ->
+    authorized_release(PhoneNumber);
+authorize_release(PhoneNumber, ?MASTER_ACCOUNT_ID) ->
+    authorized_release(PhoneNumber);
+authorize_release(_PhoneNumber, _AuthBy) ->
+    ?debugFmt("failed to authz ~s for ~s~n", [_PhoneNumber, _AuthBy]),
+    knm_errors:unauthorized().
+-else.
 authorize_release(PhoneNumber, ?DEFAULT_AUTH_BY) ->
     authorized_release(PhoneNumber);
 authorize_release(PhoneNumber, AuthBy) ->
@@ -188,6 +199,7 @@ authorize_release(PhoneNumber, AuthBy) ->
         'false' -> knm_errors:unauthorized();
         'true' -> authorized_release(PhoneNumber)
     end.
+-endif.
 
 -spec authorized_release(knm_number()) -> knm_number().
 authorized_release(PhoneNumber) ->
@@ -587,17 +599,6 @@ doc(#knm_phone_number{doc=Doc}) -> Doc.
 set_doc(N, JObj) ->
     N#knm_phone_number{doc=JObj}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec default_options() -> wh_proplist().
-default_options() ->
-    [{<<"auth_by">>, ?DEFAULT_AUTH_BY}
-     ,{<<"dry_run">>, 'false'}
-    ].
-
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -608,12 +609,14 @@ default_options() ->
 %% @end
 %%--------------------------------------------------------------------
 -ifndef(TEST).
--spec set_options(knm_number(), wh_proplist()) -> knm_number().
+-spec set_options(knm_number(), knm_number_options:options()) -> knm_number().
 set_options(Number, Options) ->
-    DryRun = props:get_is_true(<<"dry_run">>, Options, 'false'),
-    AuthBy = props:get_binary_value(<<"auth_by">>, Options, ?DEFAULT_AUTH_BY),
-    Props = [{fun set_dry_run/2, DryRun}
-             ,{fun set_auth_by/2, AuthBy}
+    Props = [{fun set_dry_run/2
+              ,knm_number_options:dry_run(Options, 'false')
+             }
+             ,{fun set_auth_by/2
+               ,knm_number_options:auth_by(Options, ?DEFAULT_AUTH_BY)
+              }
             ],
     setters(Number, Props).
 -endif.
