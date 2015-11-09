@@ -122,7 +122,7 @@ update_socket(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_sockets(ne_binary()) -> ne_binaries() | {'error', 'not_found'}.
+-spec get_sockets(ne_binary()) -> [bh_context:context(), ...] | {'error', 'not_found'}.
 get_sockets(AccountId) ->
     gen_server:call(?MODULE, {'get_sockets', AccountId}).
 
