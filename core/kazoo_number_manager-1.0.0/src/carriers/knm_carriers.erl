@@ -77,9 +77,7 @@ find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options) ->
     try Carrier:find_numbers(NormalizedNumber, Quantity, Options) of
         {'ok', Numbers} -> process_carrier_results(Acc, Numbers);
         {'bulk', Numbers} -> process_bulk_carrier_results(Acc, Numbers);
-        {'error', _E} ->
-            ?LOG_DEBUG("error in carrier ~s: ~p", [Carrier, _E]),
-            Acc
+        {'error', _E} -> Acc
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),

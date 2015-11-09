@@ -274,7 +274,6 @@ query_vitelity(Prefix, Quantity, URI) ->
             ?NUMBER_SEARCH_CMD -> ?NUMBER_SEARCH_RESP;
             ?TOLLFREE_SEARCH_CMD -> ?TOLLFREE_SEARCH_RESP
         end,
-    ?LOG_DEBUG("for ~s, use ~p", [URI, XML]),
     process_xml_resp(Prefix, Quantity, XML).
 -else.
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
@@ -331,7 +330,6 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
             {'error', knm_vitelity_util:xml_resp_error_msg(Els)};
         Status when Status =:= <<"ok">>;
                     Status =:= 'undefined' ->
-            ?LOG_DEBUG("response status: ~p", [Status]),
             process_xml_numbers(Prefix, Quantity, knm_vitelity_util:xml_resp_numbers(Els))
     end.
 
@@ -348,7 +346,6 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                  {'ok', wh_json:object()} |
                                  {'error', _}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
-    ?LOG_DEBUG("no numbers in xml response", []),
     {'error', 'no_numbers'};
 process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
                                                   ,content=Content
@@ -356,27 +353,22 @@ process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
     process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
-    ?LOG_DEBUG("reached quantity requested"),
     {'ok', wh_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
                                                      ,content=Reason
                                                     }
                                          |_], _Acc) ->
-    ?LOG_DEBUG("response tag found, error!"),
     {'error', kz_xml:texts_to_binary(Reason)};
 process_xml_numbers(_Prefix, _Quantity, [], Acc) ->
-    ?LOG_DEBUG("no more results: ~p", [_Quantity]),
     {'ok', wh_json:from_list(Acc)};
 process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
     JObj = xml_did_to_json(El),
-    ?LOG_DEBUG("el: ~p jobj: ~p", [El, JObj]),
+
     case number_matches_prefix(JObj, Prefix) of
         'true' ->
             N = wh_json:get_value(<<"number">>, JObj),
-            ?LOG_DEBUG("adding number ~s to accumulator", [N]),
             process_xml_numbers(Prefix, Quantity-1, Els, [{N, JObj}|Acc]);
         'false' ->
-            ?LOG_DEBUG("failed to match number ~p to prefix ~p", [JObj, Prefix]),
             process_xml_numbers(Prefix, Quantity, Els, Acc)
     end.
 
