@@ -345,14 +345,14 @@ originate_quickcall(Endpoints, Call, Context) ->
     JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
     crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec update_quickcall_endpoints(ne_binary(), boolean(), wh_json:objects()) -> wh_json:objects().
+-spec update_quickcall_endpoints(boolean(), wh_json:objects()) -> wh_json:objects().
 update_quickcall_endpoints(AutoAnswer, [Endpoint]) ->
     WithAA = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint),
-    [set_outbound_call_id(CallId, WithAA)];
+    [set_quickcall_outbound_call_id(WithAA)];
 update_quickcall_endpoints(_AutoAnswer, Endpoints) ->
-    [set_outbound_call_id(Endpoint) || Endpoint <- Endpoints].
+    [set_quickcall_outbound_call_id(Endpoint) || Endpoint <- Endpoints].
 
--spec set_quickcall_outbound_call_id(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec set_quickcall_outbound_call_id(wh_json:object()) -> wh_json:object().
 set_quickcall_outbound_call_id(Endpoint) ->
     CallId = <<(wh_util:rand_hex_binary(18))/binary, "-quickcall">>,
     wh_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
