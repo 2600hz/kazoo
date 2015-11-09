@@ -133,6 +133,11 @@
 -define(EXCHANGE_REGISTRAR, <<"registrar">>).
 -define(TYPE_REGISTRAR, <<"topic">>).
 
+%% Leader Exchange
+%% - Used for leader election
+-define(EXCHANGE_LEADER, <<"leader">>).
+-define(TYPE_LEADER, <<"topic">>).
+
 -type wh_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
                            #'queue.bind'{} | #'queue.unbind'{} |
                            #'basic.consume'{} | #'basic.cancel'{} |
