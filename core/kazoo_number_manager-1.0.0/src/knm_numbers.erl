@@ -34,7 +34,7 @@
 -spec get(ne_binaries(), wh_proplist()) -> numbers_return().
 -spec get(ne_binaries(), wh_proplist(), numbers_return()) -> numbers_return().
 get(Nums) ->
-    get(Nums, knm_phone_number:default_options()).
+    get(Nums, knm_number_options:default()).
 
 get(Nums, Options) ->
     get(Nums, Options, []).
@@ -68,7 +68,7 @@ create([{Num, Data}|Props], Acc) ->
 -spec move(wh_proplist(), wh_proplist()) -> numbers_return().
 -spec move(wh_proplist(), wh_proplist(), numbers_return()) -> numbers_return().
 move(Props) ->
-    move(Props, knm_phone_number:default_options()).
+    move(Props, knm_number_options:default()).
 
 move(Props, Options) ->
     move(Props, Options, []).
@@ -87,7 +87,7 @@ move([{Num, MoveTo}|Props], Options, Acc) ->
 -spec update(wh_proplist(), wh_proplist()) -> numbers_return().
 -spec update(wh_proplist(), wh_proplist(), numbers_return()) -> numbers_return().
 update(Props) ->
-    update(Props, knm_phone_number:default_options()).
+    update(Props, knm_number_options:default()).
 
 update(Props, Options) ->
     update(Props, Options, []).
@@ -107,7 +107,7 @@ update([{Num, Data}|Props], Options, Acc) ->
 -spec delete(ne_binaries(), wh_proplist()) -> numbers_return().
 -spec delete(ne_binaries(), wh_proplist(), numbers_return()) -> numbers_return().
 delete(Props) ->
-    delete(Props, knm_phone_number:default_options()).
+    delete(Props, knm_number_options:default()).
 
 delete(Props, Options) ->
     delete(Props, Options, []).
@@ -130,7 +130,7 @@ delete([Num|Nums], Options, Acc) ->
 -spec change_state(wh_proplist(), wh_proplist(), numbers_return()) ->
                           numbers_return().
 change_state(Props) ->
-    change_state(Props, knm_phone_number:default_options()).
+    change_state(Props, knm_number_options:default()).
 
 change_state(Props, Options) ->
     change_state(Props, Options, []).
@@ -153,7 +153,7 @@ change_state([{Num, State}|Props], Options, Acc) ->
 -spec assigned_to_app(wh_proplist(), wh_proplist()) -> numbers_return().
 -spec assigned_to_app(wh_proplist(), wh_proplist(), numbers_return()) -> numbers_return().
 assigned_to_app(Props) ->
-    assigned_to_app(Props, knm_phone_number:default_options()).
+    assigned_to_app(Props, knm_number_options:default()).
 
 assigned_to_app(Props, Options) ->
     assigned_to_app(Props, Options, []).

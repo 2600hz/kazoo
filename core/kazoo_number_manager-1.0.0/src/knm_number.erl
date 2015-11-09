@@ -86,10 +86,10 @@ new() -> #knm_number{}.
 
 -spec get(ne_binary()) ->
                  knm_number_return().
--spec get(ne_binary(), wh_proplist()) ->
+-spec get(ne_binary(), knm_number_options:options()) ->
                  knm_number_return().
 get(Num) ->
-    get(Num, knm_phone_number:default_options()).
+    get(Num, knm_number_options:default()).
 
 get(Num, Options) ->
     case knm_converters:is_reconcilable(Num) of
@@ -97,7 +97,7 @@ get(Num, Options) ->
         'true' -> get_number(Num, Options)
     end.
 
--spec get_number(ne_binary(), wh_proplist()) ->
+-spec get_number(ne_binary(), knm_number_options:options()) ->
                         knm_number_return().
 get_number(Num, Options) ->
     wrap_phone_number_return(
@@ -109,7 +109,8 @@ get_number(Num, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), wh_proplist()) -> knm_number_return().
+-spec create(ne_binary(), knm_number_options:options()) ->
+                    knm_number_return().
 create(Num, Props) ->
     attempt(fun create_or_load/2, [Num, Props]).
 
@@ -193,12 +194,12 @@ dry_run_response(Number) ->
      ,knm_services:phone_number_activation_charges(Number)
     }.
 
--spec ensure_can_create(ne_binary(), wh_proplist()) -> 'true'.
+-spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
 ensure_can_create(Num, Props) ->
     ensure_account_can_create(Props)
         andalso ensure_number_is_not_porting(Num).
 
--spec ensure_account_can_create(wh_proplist()) -> 'true'.
+-spec ensure_account_can_create(knm_number_options:options()) -> 'true'.
 ensure_account_can_create(Props) ->
     case props:get_value(<<"auth_by">>, Props) of
         'undefined' -> knm_errors:unauthorized();
@@ -226,7 +227,7 @@ ensure_account_is_allowed_to_create(_Props, _AccountId) ->
 -spec ensure_number_is_not_porting(ne_binary()) -> 'true'.
 -ifdef(TEST).
 ensure_number_is_not_porting(?TEST_CREATE_NUM) -> 'true';
-ensure_number_is_not_porting(?TEST_EXISTING_NUM = Num) ->
+ensure_number_is_not_porting(?TEST_AVAILABLE_NUM = Num) ->
     knm_errors:number_is_porting(Num).
 -else.
 ensure_number_is_not_porting(Num) ->
@@ -236,7 +237,7 @@ ensure_number_is_not_porting(Num) ->
     end.
 -endif.
 
--spec create_updaters(ne_binary(), wh_proplist()) ->
+-spec create_updaters(ne_binary(), knm_number_options:options()) ->
                              knm_phone_number:set_functions().
 create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
     NormalizedNum = knm_converters:normalize(Num),
@@ -245,13 +246,27 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
     props:filter_undefined(
       [{fun knm_phone_number:set_number/2, NormalizedNum}
        ,{fun knm_phone_number:set_number_db/2, NumberDb}
-       ,{fun knm_phone_number:set_state/2, props:get_binary_value(<<"state">>, Props, ?NUMBER_STATE_AVAILABLE)}
-       ,{fun knm_phone_number:set_ported_in/2, props:is_true(<<"ported_in">>, Props, 'false')}
-       ,{fun knm_phone_number:set_assign_to/2, props:get_binary_value(<<"assign_to">>, Props)}
-       ,{fun knm_phone_number:set_auth_by/2, props:get_binary_value(<<"auth_by">>, Props)}
-       ,{fun knm_phone_number:set_dry_run/2, props:is_true(<<"dry_run">>, Props, 'false')}
-       ,{fun knm_phone_number:set_module_name/2, props:get_binary_value(<<"module_name">>, Props, knm_carriers:default_carrier())}
-       ,{fun knm_phone_number:set_doc/2, props:get_value(<<"public_fields">>, Props)}
+       ,{fun knm_phone_number:set_state/2
+         ,knm_number_options:state(Props, ?NUMBER_STATE_AVAILABLE)
+        }
+       ,{fun knm_phone_number:set_ported_in/2
+         ,knm_number_options:ported_in(Props, 'false')
+        }
+       ,{fun knm_phone_number:set_assign_to/2
+         ,knm_number_options:assign_to(Props)
+        }
+       ,{fun knm_phone_number:set_auth_by/2
+         ,knm_number_options:auth_by(Props)
+        }
+       ,{fun knm_phone_number:set_dry_run/2
+         ,knm_number_options:dry_run(Props, 'false')
+        }
+       ,{fun knm_phone_number:set_module_name/2
+         ,knm_number_options:module_name(Props, knm_carriers:default_carrier())
+        }
+       ,{fun knm_phone_number:set_doc/2
+         ,knm_number_options:public_fields(Props)
+        }
       ]).
 
 %%--------------------------------------------------------------------
@@ -262,7 +277,7 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
 -spec move(ne_binary(), ne_binary()) -> number_return().
 -spec move(ne_binary(), ne_binary(), wh_proplist()) -> number_return().
 move(Num, MoveTo) ->
-    move(Num, MoveTo, knm_phone_number:default_options()).
+    move(Num, MoveTo, knm_number_options:default()).
 
 move(Num, MoveTo, Options) ->
     lager:debug("trying to move ~s to ~s", [Num, MoveTo]),
@@ -290,7 +305,7 @@ move(Num, MoveTo, Options) ->
 -spec update(ne_binary(), knm_phone_number:set_functions(), wh_proplist()) ->
                     knm_number_return().
 update(Num, Routines) ->
-    update(Num, Routines, knm_phone_number:default_options()).
+    update(Num, Routines, knm_number_options:default()).
 
 update(Num, Routines, Options) ->
     case ?MODULE:get(Num, Options) of
@@ -342,9 +357,9 @@ reconcile(DID, AssignTo, AuthBy) ->
         {'ok', Number} ->
             reconcile_number(Number, AssignTo, AuthBy);
         {'error', 'not_found'} ->
-            create(DID, [{<<"assigned_to">>, AssignTo}
-                         ,{<<"auth_by">>, AuthBy}
-                         ,{<<"state">>, ?NUMBER_STATE_IN_SERVICE}
+            create(DID, [{'assigned_to', AssignTo}
+                         ,{'auth_by', AuthBy}
+                         ,{'state', ?NUMBER_STATE_IN_SERVICE}
                         ]);
         {'error', _}=E -> E
     end.
@@ -404,7 +419,7 @@ update_requires_save({NewV, _OldV, SetFun}, {_, PhoneNumber}) ->
 -spec delete(ne_binary(), wh_proplist()) ->
                     knm_number_return().
 delete(Num) ->
-    delete(Num, knm_phone_number:default_options()).
+    delete(Num, knm_number_options:default()).
 
 delete(Num, Options) ->
     case ?MODULE:get(Num, Options) of
@@ -484,7 +499,7 @@ delete_phone_number(Number) ->
 -spec assign_to_app(ne_binary(), api_binary(), wh_proplist()) ->
                            knm_number_return().
 assign_to_app(Num, App) ->
-    assign_to_app(Num, App, knm_phone_number:default_options()).
+    assign_to_app(Num, App, knm_number_options:default()).
 
 assign_to_app(Num, App, Options) ->
     case ?MODULE:get(Num, Options) of
