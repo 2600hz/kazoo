@@ -50,7 +50,7 @@ create_existing_number_test_() ->
               }
             ],
 
-    {'ok', N} = knm_number:create(?TEST_EXISTING_NUM, Props),
+    {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
     PN = knm_number:phone_number(N),
 
     [{"Verify phone number is assigned to reseller account"
@@ -76,7 +76,7 @@ create_existing_number_test_() ->
 create_existing_in_service_test_() ->
     InServicePN =
         knm_phone_number:set_state(
-          knm_phone_number:from_json(?EXISTING_NUMBER)
+          knm_phone_number:from_json(?AVAILABLE_NUMBER)
           ,?NUMBER_STATE_IN_SERVICE
          ),
     Props = [{<<"auth_by">>, ?MASTER_ACCOUNT_ID}
@@ -88,13 +88,13 @@ create_existing_in_service_test_() ->
             ],
 
     Resp = knm_number:attempt(fun knm_number:create_or_load/3
-                              ,[?TEST_EXISTING_NUM, Props, {'ok', InServicePN}]
+                              ,[?TEST_AVAILABLE_NUM, Props, {'ok', InServicePN}]
                              ),
 
     [{"Verifying that IN SERVICE numbers can't be created"
       ,?_assertMatch({'error', _}, Resp)
      }
-     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_EXISTING_NUM)
+     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
     ].
 
 create_dry_run_test_() ->
@@ -122,7 +122,7 @@ create_checks_test_() ->
         ++ load_existing_checks().
 
 load_existing_checks() ->
-    PN = knm_phone_number:from_json(?EXISTING_NUMBER),
+    PN = knm_phone_number:from_json(?AVAILABLE_NUMBER),
     [existing_in_state(
        knm_phone_number:set_state(PN, State)
        ,IsAllowed
@@ -149,7 +149,7 @@ existing_in_state(PN, 'false') ->
     [{lists:flatten(["Ensure number in ", State, " cannot be 'created'"])
       ,?_assertMatch({'error', _}, Resp)
      }
-     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_EXISTING_NUM)
+     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
     ];
 existing_in_state(PN, 'true') ->
     State = wh_util:to_list(knm_phone_number:state(PN)),
@@ -194,7 +194,7 @@ create_with_disallowed_account() ->
 
 create_with_number_porting() ->
     Resp = knm_number:attempt(fun knm_number:ensure_can_create/2
-                              ,[?TEST_EXISTING_NUM %% pretend it is porting
+                              ,[?TEST_AVAILABLE_NUM %% pretend it is porting
                                 ,[{<<"auth_by">>, ?RESELLER_ACCOUNT_ID}
                                   ,{<<"auth_by_account">>
                                     ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
@@ -205,7 +205,7 @@ create_with_number_porting() ->
     [{"Ensure number_is_porting error when auth_by account isn't allowed to create numbers"
       ,?_assertMatch({'error', _}, Resp)
      }
-     | check_error_response(Resp, 400, <<"number_is_porting">>, ?TEST_EXISTING_NUM)
+     | check_error_response(Resp, 400, <<"number_is_porting">>, ?TEST_AVAILABLE_NUM)
     ].
 
 %% check_error_response(E, Code) ->
