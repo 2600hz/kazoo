@@ -21,6 +21,8 @@
 -module(meck).
 -behaviour(gen_server).
 
+-include_lib("whistle/include/wh_types.hrl").
+
 %% Interface exports
 -export([new/1]).
 -export([new/2]).
