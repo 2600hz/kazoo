@@ -250,10 +250,10 @@ post(Context, _Number) ->
 put(Context, Num) ->
     ReqJObj = cb_context:req_json(Context),
     DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
-    Options = [{<<"assigned_to">>, cb_context:account_id(Context)}
-               ,{<<"auth_by">>, cb_context:auth_account_id(Context)}
-               ,{<<"dry_run">>, DryRun}
-               ,{<<"public_fields">>, cb_context:doc(Context)}
+    Options = [{'assigned_to', cb_context:account_id(Context)}
+               ,{'auth_by', cb_context:auth_account_id(Context)}
+               ,{'dry_run', DryRun}
+               ,{'public_fields', cb_context:doc(Context)}
               ],
     case knm_number:create(Num, Options) of
         {'error', Reason} ->
@@ -267,8 +267,8 @@ put(Context, Num) ->
 put(Context, Num, ?ACTIVATE) ->
     ReqJObj = cb_context:req_json(Context),
     DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
-    Options = [{<<"auth_by">>, cb_context:auth_account_id(Context)}
-               ,{<<"dry_run">>, DryRun}
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+               ,{'dry_run', DryRun}
               ],
     case knm_number:buy(Num, cb_context:account_id(Context), Options) of
         {'error', Reason} ->
@@ -284,14 +284,13 @@ put(Context, Num, ?ACTIVATE) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Num) ->
-    Options = [{<<"auth_by">>, cb_context:auth_account_id(Context)}],
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
 
     case knm_number:delete(Num, Options) of
         {'error', Reason} -> error_return(Context, Reason);
         {'ok', _} ->
             cb_context:set_resp_status(Context, 'success')
     end.
-
 
 %%%===================================================================
 %%% Internal functions
