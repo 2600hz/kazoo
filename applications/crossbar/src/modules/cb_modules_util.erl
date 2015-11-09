@@ -324,11 +324,10 @@ originate_quickcall(Endpoints, Call, Context) ->
                 'true' -> wh_util:rand_hex_binary(16);
                 'false' -> cb_context:req_id(Context)
             end,
-    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-quickcall">>,
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, update_endpoints(CallId, AutoAnswer, Endpoints)}
+               ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
@@ -346,15 +345,16 @@ originate_quickcall(Endpoints, Call, Context) ->
     JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
     crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec update_endpoints(ne_binary(), boolean(), wh_json:objects()) -> wh_json:objects().
-update_endpoints(CallId, AutoAnswer, [Endpoint]) ->
+-spec update_quickcall_endpoints(ne_binary(), boolean(), wh_json:objects()) -> wh_json:objects().
+update_quickcall_endpoints(AutoAnswer, [Endpoint]) ->
     WithAA = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint),
     [set_outbound_call_id(CallId, WithAA)];
-update_endpoints(CallId, _AutoAnswer, Endpoints) ->
-    [set_outbound_call_id(CallId, Endpoint) || Endpoint <- Endpoints].
+update_quickcall_endpoints(_AutoAnswer, Endpoints) ->
+    [set_outbound_call_id(Endpoint) || Endpoint <- Endpoints].
 
--spec set_outbound_call_id(ne_binary(), wh_json:object()) -> wh_json:object().
-set_outbound_call_id(CallId, Endpoint) ->
+-spec set_quickcall_outbound_call_id(ne_binary(), wh_json:object()) -> wh_json:object().
+set_quickcall_outbound_call_id(Endpoint) ->
+    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-quickcall">>,
     wh_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
 
 -spec get_application_data(cb_context:context()) -> wh_json:object().
