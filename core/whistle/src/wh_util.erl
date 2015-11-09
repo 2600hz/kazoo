@@ -352,7 +352,9 @@ is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
     CheckId = ?MODULE:format_account_id(CheckFor, 'raw'),
     AccountId = ?MODULE:format_account_id(InAccount, 'raw'),
-    case (IncludeSelf andalso AccountId =:= CheckId) orelse kz_account:fetch(AccountId) of
+    case (IncludeSelf andalso AccountId =:= CheckId)
+        orelse kz_account:fetch(AccountId)
+    of
         'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
             'true';
