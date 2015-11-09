@@ -24,7 +24,8 @@
 -define(LOG_DEBUG(F),?debugFmt(F ++ "\n",[])).
 
 -define(TEST_CREATE_NUM, <<"+15559871234">>).
--define(TEST_EXISTING_NUM, <<"+15551239876">>).
+-define(TEST_AVAILABLE_NUM, <<"+15551239876">>).
+-define(TEST_IN_SERVICE_NUM, <<"+15551233322">>).
 -define(TEST_CREATE_TOLL, <<"+18887771111">>).
 -define(TEST_EXISTING_TOLL, <<"+18005551212">>).
 
@@ -41,9 +42,9 @@
           )
        ).
 
--define(EXISTING_NUMBER
+-define(AVAILABLE_NUMBER
         ,wh_json:from_list(
-           [{<<"_id">>, ?TEST_EXISTING_NUM}
+           [{<<"_id">>, ?TEST_AVAILABLE_NUM}
             ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
             ,{?PVT_MODIFIED, 63565934349}
             ,{?PVT_FEATURES, wh_json:new()}
@@ -51,6 +52,24 @@
             ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
             ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
             ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
+            ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
+            ,{?PVT_CREATED, 63565934344}
+            ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
+            ,{?PVT_USED_BY, <<"callflow">>}
+           ]
+          )
+       ).
+
+-define(IN_SERVICE_NUMBER
+        ,wh_json:from_list(
+           [{<<"_id">>, ?TEST_IN_SERVICE_NUM}
+            ,{<<"_rev">>, <<"3-7dd6a1523e81a4e3c2689140ed3a8e69">>}
+            ,{?PVT_MODIFIED, 63565934349}
+            ,{?PVT_FEATURES, wh_json:new()}
+            ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+            ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+            ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
+            ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
             ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
             ,{?PVT_CREATED, 63565934344}
             ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
