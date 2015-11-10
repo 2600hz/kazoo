@@ -8,6 +8,19 @@ Version: 3.20
 # Kazoo Devices
 Learn how to use the 2600hz mobile API set to activate and manage phones.
 
+## Ringtones
+
+You can setup internal and external ringtones by adding this:
+
+```json
+{
+    "name": "Device with custom ringtones",
+    "ringtones": {
+        "internal": "alert info SIP header",
+        "external": "alert info SIP header"
+    }
+}
+```
 
 ## Static Presence ID
 
