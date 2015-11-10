@@ -8,6 +8,7 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
+  - 18.1
   - 17.5
   - R15B03
 
@@ -36,5 +37,8 @@ after_success:
   - git fetch origin master:master
   - files="$(git diff --name-only master.. | grep -v deps/)" || true
   - ./scripts/check-dialyzer.escript $files
+  - OTP_VSN="$(erl -noshell -eval 'erlang:display(erlang:system_info(otp_release)).' -s init stop)"
+  - echo .$OTP_VSN.
+  - echo .$TRAVIS_OTP_RELEASE.
   - ERL_LIBS="$HOME/proper" ERLC_OPTS='+nowarn_deprecated_type +nowarn_deprecated_function' make eunit
   - ./scripts/check-whitespace.sh core/ applications/
