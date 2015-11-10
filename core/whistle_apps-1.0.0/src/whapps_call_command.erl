@@ -2395,11 +2395,14 @@ wait_for_bridge(Timeout, Fun, Call) ->
 wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
     Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+    AnswerState = wh_json:get_value(<<"Answer-State">>, JObj),
     Cause = wh_json:get_first_defined([<<"Application-Response">>
                                        ,<<"Hangup-Cause">>
                                       ], JObj, <<"UNSPECIFIED">>),
-    Result = case Disposition =:= <<"SUCCESS">>
-                 orelse Cause =:= <<"SUCCESS">>
+    Result = case AnswerState  =/= <<"early">>
+                  andalso (Disposition =:= <<"SUCCESS">>
+                           orelse Cause =:= <<"SUCCESS">>
+                          )
              of
                  'true' -> 'ok';
                  'false' -> 'fail'

@@ -606,6 +606,7 @@ generic_call_event_props(Props) ->
      ,{<<"Transfer-History">>, get_transfer_history(Props)}
      ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
      ,{<<"Hangup-Code">>, get_hangup_code(Props)}
+     ,{<<"Answer-State">>, props:get_value(<<"Answer-State">>, Props)}
      ,{<<"Disposition">>, get_disposition(Props)}
      ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
      ,{<<"Channel-Moving">>, get_channel_moving(Props)}
