@@ -6,6 +6,10 @@
 -module(jesse_json_path).
 -export([path/2, path/3, value/3, to_proplist/1, unwrap_value/1]).
 
+-ifdef(OTP_AT_LEAST_18).
+- define(namespaced_dicts, true).
+-endif.
+
 -ifdef(namespaced_dicts).
 -type kvc_dict() :: dict:dict().
 -type kvc_gb_tree() :: gb_trees:tree().
