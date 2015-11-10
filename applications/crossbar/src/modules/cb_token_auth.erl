@@ -217,7 +217,7 @@ is_expired(Context, JObj) ->
     case wh_util:is_account_expired(AccountId) of
         'false' -> check_as(Context, JObj);
         {'true', Expired} ->
-            _ = wh_util:spawn(fun() -> maybe_disable_account(AccountId) end),
+            _ = wh_util:spawn(fun() -> wh_util:maybe_disable_account(AccountId) end),
             Cause =
                 wh_json:from_list(
                   [{<<"message">>, <<"account expired">>}
@@ -226,25 +226,6 @@ is_expired(Context, JObj) ->
                  ),
             Context1 = cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context),
             {'halt', Context1}
-    end.
-
--spec maybe_disable_account(ne_binary()) -> 'ok'.
-maybe_disable_account(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            case kz_account:is_enabled(JObj) of
-                'false' -> 'ok';
-                'true' -> disable_account(AccountId)
-            end;
-        {'error', _R} -> disable_account(AccountId)
-    end.
-
--spec disable_account(ne_binary()) -> 'ok'.
-disable_account(AccountId) ->
-    case crossbar_maintenance:disable_account(AccountId) of
-        'ok' -> lager:info("account ~s disabled because expired", [AccountId]);
-        'failed' -> lager:error("falied to disable account ~s", [AccountId])
     end.
 
 -spec check_as(cb_context:context(), wh_json:object()) ->

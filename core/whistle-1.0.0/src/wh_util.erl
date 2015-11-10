@@ -21,8 +21,13 @@
          ,is_system_db/1
         ]).
 -export([get_account_realm/1, get_account_realm/2]).
--export([is_account_enabled/1]).
--export([is_account_expired/1]).
+-export([is_account_enabled/1, is_account_expired/1]).
+-export([maybe_disable_account/1
+         ,disable_account/1
+         ,enable_account/1
+         ,set_superduper_admin/2
+         ,set_allow_number_additions/2
+        ]).
 
 -export([try_load_module/1]).
 -export([shuffle_list/1]).
@@ -397,8 +402,6 @@ is_account_enabled(Account) ->
             'false';
         {'ok', JObj} ->
             kz_account:is_enabled(JObj)
-                andalso wh_json:is_true(<<"enabled">>, JObj, 'true')
-
     end.
 
 -spec is_account_expired(api_binary()) -> 'false' | {'true', gregorian_seconds()}.
@@ -408,13 +411,82 @@ is_account_expired(Account) ->
         {'error', _R} ->
             lager:debug("failed to check if expired token auth, ~p", [_R]),
             'false';
-        {'ok', Doc} ->
-            Now = ?MODULE:current_tstamp(),
-            Trial = kz_account:trial_expiration(Doc, Now+1),
-            case Trial < Now of
-                'false' -> 'false';
-                'true' -> {'true', Trial}
+        {'ok', JObj} ->
+             kz_account:is_expired(JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_disable_account(ne_binary()) ->'ok' | {'error', any()}.
+maybe_disable_account(Account) ->
+    case is_account_enabled(Account) of
+        'false' -> 'ok';
+        'true' ->
+            disable_account(Account)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec disable_account(ne_binary()) ->'ok' | {'error', any()}.
+disable_account(Account) ->
+    account_update(Account, fun kz_account:disable/1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec enable_account(ne_binary()) ->'ok' | {'error', any()}.
+enable_account(Account) ->
+    account_update(Account, fun kz_account:enable/1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_superduper_admin(ne_binary(), boolean()) ->'ok' | {'error', any()}.
+set_superduper_admin(Account, IsAdmin) ->
+    account_update(Account, fun(J) -> kz_account:set_superduper_admin(J, IsAdmin) end).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_allow_number_additions(ne_binary(), boolean()) ->'ok' | {'error', any()}.
+set_allow_number_additions(Account, IsAllowed) ->
+    account_update(Account, fun(J) -> kz_account:set_allow_number_additions(J, IsAllowed) end).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec account_update(wh_json:object()) -> 'ok' | {'error', any()}.
+-spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
+account_update(JObj) ->
+    AccountDb = wh_doc:account_db(JObj),
+    case couch_mgr:save_doc(AccountDb, JObj) of
+        {'error', _R}=E -> E;
+        {'ok', SavedJObj} ->
+            case couch_mgr:save_doc(?WH_ACCOUNTS_DB, SavedJObj) of
+                {'error', _R}=E -> E;
+                {'ok', _} -> 'ok'
             end
+    end.
+
+account_update(Account, UpdateFun) ->
+    case kz_account:fetch(Account) of
+        {'error', _R}=E -> E;
+        {'ok', AccountJObj} ->
+            account_update(UpdateFun(AccountJObj))
     end.
 
 %%--------------------------------------------------------------------

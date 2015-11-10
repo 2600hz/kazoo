@@ -290,14 +290,7 @@ find_account_by_id(Id) ->
 %%--------------------------------------------------------------------
 -spec allow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 allow_account_number_additions(AccountId) ->
-    case update_account(AccountId, <<"pvt_wnm_allow_additions">>, 'true') of
-        {'ok', _} ->
-            io:format("allowing account '~s' to add numbers~n", [AccountId]);
-        {'error', Reason} ->
-            io:format("failed to find account: ~p~n", [Reason]),
-            'failed'
-    end.
-
+    wh_util:set_allow_number_additions(AccountId, 'true').
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -306,13 +299,7 @@ allow_account_number_additions(AccountId) ->
 %%--------------------------------------------------------------------
 -spec disallow_account_number_additions(input_term()) -> 'ok' | 'failed'.
 disallow_account_number_additions(AccountId) ->
-    case update_account(AccountId, <<"pvt_wnm_allow_additions">>, 'false') of
-        {'ok', _} ->
-            io:format("disallowed account '~s' to added numbers~n", [AccountId]);
-        {'error', Reason} ->
-            io:format("failed to find account: ~p~n", [Reason]),
-            'failed'
-    end.
+    wh_util:set_allow_number_additions(AccountId, 'false').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -322,13 +309,7 @@ disallow_account_number_additions(AccountId) ->
 %%--------------------------------------------------------------------
 -spec enable_account(input_term()) -> 'ok' | 'failed'.
 enable_account(AccountId) ->
-    case update_account(AccountId, <<"pvt_enabled">>, 'true') of
-        {'ok', _} ->
-            io:format("enabled account '~s'~n", [AccountId]);
-        {'error', Reason} ->
-            io:format("failed to enable account: ~p~n", [Reason]),
-            'failed'
-    end.
+    wh_util:enable_account(AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -338,13 +319,7 @@ enable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec disable_account(input_term()) -> 'ok' | 'failed'.
 disable_account(AccountId) ->
-    case update_account(AccountId, <<"pvt_enabled">>, 'false') of
-        {'ok', _} ->
-            io:format("disabled account '~s'~n", [AccountId]);
-        {'error', Reason} ->
-            io:format("failed to disable account: ~p~n", [Reason]),
-            'failed'
-    end.
+    wh_util:disable_account(AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -354,13 +329,7 @@ disable_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec promote_account(input_term()) -> 'ok' | 'failed'.
 promote_account(AccountId) ->
-    case update_account(AccountId, <<"pvt_superduper_admin">>, 'true') of
-        {'ok', _} ->
-            io:format("promoted account '~s', this account now has permission to change system settings~n", [AccountId]);
-        {'error', Reason} ->
-            io:format("failed to promote account: ~p~n", [Reason]),
-            'failed'
-    end.
+    wh_util:set_superduper_admin(AccountId, 'true').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -370,13 +339,7 @@ promote_account(AccountId) ->
 %%--------------------------------------------------------------------
 -spec demote_account(input_term()) -> 'ok' | 'failed'.
 demote_account(AccountId) ->
-    case update_account(AccountId, <<"pvt_superduper_admin">>, 'false') of
-        {'ok', _} ->
-            io:format("promoted account '~s', this account can no longer change system settings~n", [AccountId]);
-        {'error', Reason} ->
-            io:format("failed to demote account: ~p~n", [Reason]),
-            'failed'
-    end.
+    wh_util:set_superduper_admin(AccountId, 'false').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -537,38 +500,6 @@ create_user(Context) ->
             io:format("failed to create account admin user: '~s'~n", [wh_json:encode(Errors)]),
             {'error', Errors}
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec update_account(input_term(), ne_binary(), any()) ->
-                            {'ok', wh_json:object()} |
-                            {'error', any()}.
-update_account(AccountId, Key, Value) when not is_binary(AccountId) ->
-    update_account(wh_util:to_binary(AccountId), Key, Value);
-update_account(AccountId, Key, Value) ->
-    Updaters = [fun({'error', _}=E) -> E;
-                   ({'ok', J}) ->
-                        AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-                        couch_mgr:save_doc(AccountDb, wh_json:set_value(Key, Value, J))
-                end
-                ,fun({'error', _}=E) -> E;
-                    ({'ok', J}) ->
-                         case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
-                             {'ok', Rev} ->
-                                 couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_doc:set_revision(J, Rev));
-                             {'error', 'not_found'} ->
-                                 couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_doc:delete_revision(J))
-                         end
-                 end
-               ],
-    lists:foldl(fun(F, J) -> F(J) end
-                ,kz_account:fetch(AccountId)
-                ,Updaters
-               ).
 
 -spec print_account_info(ne_binary()) -> {'ok', ne_binary()}.
 -spec print_account_info(ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
