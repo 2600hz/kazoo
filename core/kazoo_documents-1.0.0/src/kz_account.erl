@@ -369,7 +369,8 @@ trial_time_left(JObj, Now) ->
 %%--------------------------------------------------------------------
 -spec trial_has_expired(doc()) -> boolean().
 trial_has_expired(JObj) ->
-    trial_time_left(JObj) =< 0.
+    trial_expiration(JObj) =/= 'undefined' andalso
+        trial_time_left(JObj) =< 0.
 
 %%--------------------------------------------------------------------
 %% @public
