@@ -201,7 +201,7 @@ ensure_can_create(Num, Props) ->
 
 -spec ensure_account_can_create(knm_number_options:options()) -> 'true'.
 ensure_account_can_create(Props) ->
-    case props:get_value(<<"auth_by">>, Props) of
+    case knm_number_options:auth_by(Props) of
         'undefined' -> knm_errors:unauthorized();
         AccountId ->
             ensure_account_is_allowed_to_create(Props, AccountId)
@@ -458,6 +458,7 @@ unwind_or_disconnect(Number, PhoneNumber) ->
 -spec unwind(knm_number(), knm_phone_number:knm_number(), ne_binaries()) ->
                     knm_number_return().
 unwind(Number, PhoneNumber, [NewAssignedTo|_]) ->
+    ?LOG_DEBUG("number has a reserve history for ~s~n", [NewAssignedTo]),
     Routines = [{fun knm_phone_number:set_assigned_to/2, NewAssignedTo}
                 ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}
                ],
@@ -468,15 +469,20 @@ unwind(Number, PhoneNumber, [NewAssignedTo|_]) ->
 
 -spec disconnect(knm_number()) -> knm_number_return().
 -spec disconnect(knm_number(), boolean()) -> knm_number_return().
+-ifdef(TEST).
+disconnect(Number) -> disconnect(Number, 'false').
+-else.
 disconnect(Number) ->
     disconnect(Number, knm_config:should_permanently_delete('false')).
+-endif.
 
 disconnect(Number, ShouldDelete) ->
+    ?LOG_DEBUG("attempting disconnect (and delete: ~s)~n", [ShouldDelete]),
     try knm_carriers:disconnect(Number) of
         N1 -> maybe_delete_phone_number(N1, ShouldDelete)
     catch
         _E:_R when ShouldDelete ->
-            lager:debug("failed to disconnect number: ~s: ~p", [_E, _R]),
+            ?LOG_WARN("failed to disconnect number: ~s: ~p", [_E, _R]),
             delete_phone_number(Number)
     end.
 
