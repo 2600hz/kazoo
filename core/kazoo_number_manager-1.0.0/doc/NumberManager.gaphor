@@ -6120,7 +6120,7 @@ Set PN charges</val>
 <val>(1.0, 0.0, 0.0, 1.0, 672.0, 160.0)</val>
 </matrix>
 <width>
-<val>128.0</val>
+<val>131.0</val>
 </width>
 <height>
 <val>30.0</val>
@@ -6140,7 +6140,7 @@ Set PN charges</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 777.2203389830509, 190.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 779.6864406779661, 190.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -6149,7 +6149,7 @@ Set PN charges</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-8.220338983050851, 40.0), (43.77966101694915, 40.0), (44.77966101694915, -15.0), (22.77966101694915, -16.0)]</val>
+<val>[(0.0, 0.0), (-10.686440677966061, 40.0), (41.31355932203394, 40.0), (42.31355932203394, -15.0), (23.31355932203394, -16.0)]</val>
 </points>
 <head-connection>
 <ref refid="a850c392-4aa9-11e5-aaf9-f0def12b153d"/>
@@ -10727,7 +10727,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 168.0, 102.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 169.0, 102.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -10736,7 +10736,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (95.0, 1.0), (100.0, -41.0), (176.0, -40.0)]</val>
+<val>[(0.0, 0.0), (94.0, 1.0), (99.0, -41.0), (175.0, -40.0)]</val>
 </points>
 <head-connection>
 <ref refid="8444b4fa-71e0-11e5-8ee5-0026c782d046"/>
@@ -10979,10 +10979,10 @@ activation_charge</val>
 <val>(1.0, 0.0, 0.0, 1.0, 705.0, 47.0)</val>
 </matrix>
 <width>
-<val>270.0</val>
+<val>274.0</val>
 </width>
 <height>
-<val>78.0</val>
+<val>95.0</val>
 </height>
 <subject>
 <ref refid="c5c41009-7123-11e5-8ee5-0026c782d046"/>
@@ -11180,7 +11180,7 @@ activation_charge</val>
 <val>(1.0, 0.0, 0.0, 1.0, 36.0, 464.0)</val>
 </matrix>
 <width>
-<val>219.0</val>
+<val>223.0</val>
 </width>
 <height>
 <val>44.0</val>
@@ -11257,7 +11257,7 @@ activation_charge</val>
 <val>(1.0, 0.0, 0.0, 1.0, 421.0, 548.0)</val>
 </matrix>
 <width>
-<val>150.0</val>
+<val>152.0</val>
 </width>
 <height>
 <val>30.0</val>
@@ -11303,7 +11303,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 141.0, 508.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 142.91780821917808, 508.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11312,7 +11312,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (51.5, 34.0)]</val>
+<val>[(0.0, 0.0), (49.582191780821915, 34.0)]</val>
 </points>
 <head-connection>
 <ref refid="86744058-7125-11e5-8ee5-0026c782d046"/>
@@ -11346,7 +11346,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 546.0, 578.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 547.6666666666666, 578.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11355,7 +11355,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (1.0, 37.0)]</val>
+<val>[(0.0, 0.0), (-0.6666666666666288, 37.0)]</val>
 </points>
 <head-connection>
 <ref refid="12c960ba-7126-11e5-8ee5-0026c782d046"/>
@@ -11369,7 +11369,7 @@ activation_charge</val>
 <val>(1.0, 0.0, 0.0, 1.0, 327.5, 679.0)</val>
 </matrix>
 <width>
-<val>193.0</val>
+<val>195.0</val>
 </width>
 <height>
 <val>44.0</val>
@@ -11398,7 +11398,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-113.0, 0.0), (-111.0, 49.0)]</val>
+<val>[(0.0, 0.0), (-113.0, 0.0), (-109.97927461139898, 49.0)]</val>
 </points>
 <head-connection>
 <ref refid="43298d02-7126-11e5-8ee5-0026c782d046"/>
@@ -11424,7 +11424,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-39.0, 0.0), (-37.0, 34.0)]</val>
+<val>[(0.0, 0.0), (-39.0, 0.0), (-35.098445595854855, 34.0)]</val>
 </points>
 <head-connection>
 <ref refid="43298d02-7126-11e5-8ee5-0026c782d046"/>
@@ -11438,7 +11438,7 @@ activation_charge</val>
 <val>(1.0, 0.0, 0.0, 1.0, 600.0, 684.0)</val>
 </matrix>
 <width>
-<val>347.0</val>
+<val>353.0</val>
 </width>
 <height>
 <val>44.0</val>
@@ -11458,7 +11458,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 520.5, 694.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 522.5, 694.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11467,7 +11467,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (79.5, 7.600000000000023)]</val>
+<val>[(0.0, 0.0), (77.5, 7.600000000000023)]</val>
 </points>
 <head-connection>
 <ref refid="7b49b48c-7126-11e5-8ee5-0026c782d046"/>
@@ -11576,7 +11576,7 @@ activation_charge</val>
 <val>(1.0, 0.0, 0.0, 1.0, 60.0, 85.0)</val>
 </matrix>
 <width>
-<val>108.0</val>
+<val>109.0</val>
 </width>
 <height>
 <val>30.0</val>
@@ -11593,7 +11593,7 @@ activation_charge</val>
 <val>(1.0, 0.0, 0.0, 1.0, 18.0, 141.0)</val>
 </matrix>
 <width>
-<val>192.0</val>
+<val>193.0</val>
 </width>
 <height>
 <val>30.0</val>
@@ -11610,7 +11610,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 210.0, 157.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 211.0, 157.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11619,7 +11619,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (89.0, -66.0), (256.0, -69.0), (495.0, -77.0)]</val>
+<val>[(0.0, 0.0), (88.0, -66.0), (255.0, -69.0), (494.0, -77.0)]</val>
 </points>
 <head-connection>
 <ref refid="e3041896-71e0-11e5-8ee5-0026c782d046"/>
@@ -11630,7 +11630,7 @@ activation_charge</val>
 <val>(1.0, 0.0, 0.0, 1.0, 29.5, 204.0)</val>
 </matrix>
 <width>
-<val>160.0</val>
+<val>164.0</val>
 </width>
 <height>
 <val>30.0</val>
@@ -11659,7 +11659,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (0.0, 23.0)]</val>
+<val>[(0.0, 0.0), (0.48148148148148096, 23.0)]</val>
 </points>
 <head-connection>
 <ref refid="f07f977c-6879-11e5-8ee5-0026c782d046"/>
@@ -11676,7 +11676,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 112.0, 115.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 112.4814814814815, 115.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11685,7 +11685,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-1.0, 26.0)]</val>
+<val>[(0.0, 0.0), (-0.9971064814814952, 26.0)]</val>
 </points>
 <head-connection>
 <ref refid="8444b4fa-71e0-11e5-8ee5-0026c782d046"/>
@@ -11702,7 +11702,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 110.0, 171.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 110.47916666666666, 171.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11711,7 +11711,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (0.0, 33.0)]</val>
+<val>[(0.0, 0.0), (1.5333333333333456, 33.0)]</val>
 </points>
 <head-connection>
 <ref refid="e3041896-71e0-11e5-8ee5-0026c782d046"/>
@@ -11728,7 +11728,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 107.0, 234.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 108.9375, 234.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11737,7 +11737,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (2.5, 39.0)]</val>
+<val>[(0.0, 0.0), (0.5625, 39.0)]</val>
 </points>
 <head-connection>
 <ref refid="13446420-71e1-11e5-8ee5-0026c782d046"/>
@@ -11751,7 +11751,7 @@ activation_charge</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 63.0, 234.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 63.837500000000006, 234.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -11760,7 +11760,7 @@ activation_charge</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-3.0, 230.0)]</val>
+<val>[(0.0, 0.0), (-3.8375000000000057, 230.0)]</val>
 </points>
 <head-connection>
 <ref refid="13446420-71e1-11e5-8ee5-0026c782d046"/>
@@ -11976,7 +11976,8 @@ PORT IN</val>
 <val>remove public props from number
 remove features
 move assigned_to to prev_assigned_to
-unset assigned_to</val>
+unset assigned_to
+set set to config.released_state</val>
 </name>
 <presentation>
 <reflist>
@@ -12684,7 +12685,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 747.6271186440678, 200.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 753.0508474576271, 200.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -12693,7 +12694,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (26.372881355932236, 111.0)]</val>
+<val>[(0.0, 0.0), (20.94915254237287, 111.0)]</val>
 </points>
 <head-connection>
 <ref refid="5e5a9b6c-712a-11e5-8ee5-0026c782d046"/>
@@ -12773,7 +12774,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-0.0584970751461924, 51.0)]</val>
+<val>[(0.0, 0.0), (4.34828258587072, 51.0)]</val>
 </points>
 <head-connection>
 <ref refid="5e5a9b5c-712a-11e5-8ee5-0026c782d046"/>
@@ -12790,7 +12791,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 781.4661016949152, 200.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 789.6864406779661, 200.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -12799,7 +12800,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-2.46610169491521, 40.0), (49.53389830508479, 40.0), (50.53389830508479, -15.0), (21.53389830508479, -16.0)]</val>
+<val>[(0.0, 0.0), (-10.686440677966061, 40.0), (41.31355932203394, 40.0), (42.31355932203394, -15.0), (23.31355932203394, -16.0)]</val>
 </points>
 <head-connection>
 <ref refid="5e5a9b6c-712a-11e5-8ee5-0026c782d046"/>
@@ -12833,7 +12834,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 721.9915254237288, 200.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 725.2966101694915, 200.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -12842,7 +12843,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-1.991525423728831, 69.0), (-95.99152542372883, 101.0)]</val>
+<val>[(0.0, 0.0), (-5.296610169491487, 69.0), (-99.29661016949149, 101.0)]</val>
 </points>
 <head-connection>
 <ref refid="5e5a9b6c-712a-11e5-8ee5-0026c782d046"/>
@@ -12885,7 +12886,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 791.7203389830509, 170.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 800.7881355932203, 170.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -12894,7 +12895,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (69.27966101694915, -29.0)]</val>
+<val>[(0.0, 0.0), (60.21186440677968, -29.0)]</val>
 </points>
 <head-connection>
 <ref refid="5e5a9b6c-712a-11e5-8ee5-0026c782d046"/>
@@ -12908,7 +12909,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>(1.0, 0.0, 0.0, 1.0, 682.0, 170.0)</val>
 </matrix>
 <width>
-<val>121.0</val>
+<val>131.0</val>
 </width>
 <height>
 <val>30.0</val>
@@ -12945,7 +12946,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>(1.0, 0.0, 0.0, 1.0, 187.5, 130.0)</val>
 </matrix>
 <width>
-<val>113.0</val>
+<val>116.0</val>
 </width>
 <height>
 <val>30.0</val>
@@ -12979,7 +12980,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>(1.0, 0.0, 0.0, 1.0, 159.0, 263.0)</val>
 </matrix>
 <width>
-<val>170.0</val>
+<val>172.0</val>
 </width>
 <height>
 <val>30.0</val>
@@ -12996,7 +12997,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>(1.0, 0.0, 0.0, 1.0, 91.0, 331.0)</val>
 </matrix>
 <width>
-<val>306.0</val>
+<val>308.0</val>
 </width>
 <height>
 <val>44.0</val>
@@ -13025,7 +13026,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (0.0, 40.0)]</val>
+<val>[(0.0, 0.0), (1.4734513274336223, 40.0)]</val>
 </points>
 <head-connection>
 <ref refid="641009a2-712a-11e5-8ee5-0026c782d046"/>
@@ -13042,7 +13043,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 246.0, 160.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 247.55309734513276, 160.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -13051,7 +13052,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (0.0, 40.0)]</val>
+<val>[(0.0, 0.0), (-1.5530973451327554, 40.0)]</val>
 </points>
 <head-connection>
 <ref refid="684708a4-712a-11e5-8ee5-0026c782d046"/>
@@ -13077,7 +13078,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (0.0, 33.0)]</val>
+<val>[(0.0, 0.0), (1.058823529411768, 33.0)]</val>
 </points>
 <head-connection>
 <ref refid="89d3f0cc-712a-11e5-8ee5-0026c782d046"/>
@@ -13094,7 +13095,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 250.0, 293.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 251.0705882352941, 293.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -13103,7 +13104,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (0.0, 38.0)]</val>
+<val>[(0.0, 0.0), (-0.03137254901957931, 38.0)]</val>
 </points>
 <head-connection>
 <ref refid="8d768f3c-712a-11e5-8ee5-0026c782d046"/>
@@ -13137,7 +13138,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </show_stereotypes_attrs>
 <matrix>
-<val>(1.0, 0.0, 0.0, 1.0, 248.0, 375.0)</val>
+<val>(1.0, 0.0, 0.0, 1.0, 249.0261437908497, 375.0)</val>
 </matrix>
 <orthogonal>
 <val>0</val>
@@ -13146,7 +13147,7 @@ see CreateNumber-&gt;MoveToReserved-&gt;MoveState</val>
 <val>0</val>
 </horizontal>
 <points>
-<val>[(0.0, 0.0), (-3.0, 62.0)]</val>
+<val>[(0.0, 0.0), (-4.026143790849687, 62.0)]</val>
 </points>
 <head-connection>
 <ref refid="bf26b19c-712a-11e5-8ee5-0026c782d046"/>
