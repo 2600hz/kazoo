@@ -21,7 +21,7 @@
 -module(meck).
 -behaviour(gen_server).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/otp_compatibility.hrl").
 
 %% Interface exports
 -export([new/1]).

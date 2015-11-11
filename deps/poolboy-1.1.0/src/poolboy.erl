@@ -3,7 +3,7 @@
 -module(poolboy).
 -behaviour(gen_server).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/otp_compatibility.hrl").
 
 -export([checkout/1, checkout/2, checkout/3, checkin/2, transaction/2,
          transaction/3, child_spec/2, child_spec/3, start/1, start/2,
