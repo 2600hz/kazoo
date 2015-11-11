@@ -203,11 +203,14 @@ authorize_release(PhoneNumber, AuthBy) ->
 
 -spec authorized_release(knm_number()) -> knm_number().
 authorized_release(PhoneNumber) ->
+    ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
+    ?LOG_DEBUG("setting state to ~s~n", [ReleasedState]),
     Routines =
         [{fun set_features/2, wh_json:new()}
          ,{fun set_doc/2, wh_json:private_fields(doc(PhoneNumber))}
          ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
          ,{fun set_assigned_to/2, 'undefined'}
+         ,{fun set_state/2, ReleasedState}
         ],
     setters(PhoneNumber, Routines).
 
