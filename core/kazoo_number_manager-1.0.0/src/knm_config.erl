@@ -1,6 +1,7 @@
 -module(knm_config).
 
 -export([should_permanently_delete/0, should_permanently_delete/1
+         ,released_state/0, released_state/1
         ]).
 
 -include("knm.hrl").
@@ -14,3 +15,18 @@ should_permanently_delete(Default) ->
                               ,<<"should_permanently_delete">>
                               ,Default
                              ).
+
+-spec released_state() -> ne_binary().
+-spec released_state(ne_binary()) -> ne_binary().
+released_state() ->
+    released_state(?NUMBER_STATE_AVAILABLE).
+
+-ifdef(TEST).
+released_state(Default) -> Default.
+-else.
+released_state(Default) ->
+    whapps_config:get_binary(?KNM_CONFIG_CAT
+                             ,<<"released_state">>
+                             ,Default
+                            ).
+-endif.
