@@ -11,9 +11,9 @@
 -include("../src/knm.hrl").
 
 create_new_number_test_() ->
-    Props = [{<<"auth_by">>, ?MASTER_ACCOUNT_ID}
-             ,{<<"assign_to">>, ?RESELLER_ACCOUNT_ID}
-             ,{<<"dry_run">>, 'false'}
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+             ,{'dry_run', 'false'}
              ,{<<"auth_by_account">>
                ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
               }
@@ -42,9 +42,9 @@ create_new_number_test_() ->
     ].
 
 create_existing_number_test_() ->
-    Props = [{<<"auth_by">>, ?MASTER_ACCOUNT_ID}
-             ,{<<"assign_to">>, ?RESELLER_ACCOUNT_ID}
-             ,{<<"dry_run">>, 'false'}
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+             ,{'dry_run', 'false'}
              ,{<<"auth_by_account">>
                ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
               }
@@ -79,9 +79,9 @@ create_existing_in_service_test_() ->
           knm_phone_number:from_json(?AVAILABLE_NUMBER)
           ,?NUMBER_STATE_IN_SERVICE
          ),
-    Props = [{<<"auth_by">>, ?MASTER_ACCOUNT_ID}
-             ,{<<"assign_to">>, ?RESELLER_ACCOUNT_ID}
-             ,{<<"dry_run">>, 'false'}
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+             ,{'dry_run', 'false'}
              ,{<<"auth_by_account">>
                ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
               }
@@ -98,9 +98,9 @@ create_existing_in_service_test_() ->
     ].
 
 create_dry_run_test_() ->
-    Props = [{<<"auth_by">>, ?MASTER_ACCOUNT_ID}
-             ,{<<"assign_to">>, ?RESELLER_ACCOUNT_ID}
-             ,{<<"dry_run">>, 'true'}
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+             ,{'dry_run', 'true'}
              ,{<<"auth_by_account">>
                ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
               }
@@ -178,7 +178,7 @@ create_with_no_auth_by() ->
 create_with_disallowed_account() ->
     Resp = knm_number:attempt(fun knm_number:ensure_can_create/2
                               ,[?TEST_CREATE_NUM
-                                ,[{<<"auth_by">>, ?RESELLER_ACCOUNT_ID}
+                                ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
                                   ,{<<"auth_by_account">>
                                     ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
                                    }
@@ -195,7 +195,7 @@ create_with_disallowed_account() ->
 create_with_number_porting() ->
     Resp = knm_number:attempt(fun knm_number:ensure_can_create/2
                               ,[?TEST_AVAILABLE_NUM %% pretend it is porting
-                                ,[{<<"auth_by">>, ?RESELLER_ACCOUNT_ID}
+                                ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
                                   ,{<<"auth_by_account">>
                                     ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
                                    }
@@ -208,8 +208,6 @@ create_with_number_porting() ->
      | check_error_response(Resp, 400, <<"number_is_porting">>, ?TEST_AVAILABLE_NUM)
     ].
 
-%% check_error_response(E, Code) ->
-%%     check_error_response(E, Code, 'undefined').
 check_error_response(E, Code, Error) ->
     check_error_response(E, Code, Error, 'undefined').
 check_error_response(E, Code, Error, Cause) ->
@@ -239,7 +237,7 @@ create_new_number() ->
     {"Ensure success when auth_by account is allowed to create numbers"
      ,?_assert(knm_number:ensure_can_create(
                  ?TEST_CREATE_NUM
-                 ,[{<<"auth_by">>, ?RESELLER_ACCOUNT_ID}
+                 ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
                    ,{<<"auth_by_account">>
                      ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
                     }
