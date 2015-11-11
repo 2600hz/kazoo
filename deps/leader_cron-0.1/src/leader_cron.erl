@@ -103,7 +103,7 @@
 
 start_link(Nodes) ->
     Opts = [],
-    gen_leader:start_link(?SERVER, Nodes, Opts, ?MODULE, [], []).
+    amqp_leader:start_link(?SERVER, Nodes, Opts, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -116,7 +116,7 @@ start_link(Nodes) ->
       Status :: {[term()]}.
 
 status() ->
-    gen_leader:call(?SERVER, status).
+    amqp_leader_proc:call(?SERVER, status).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -131,7 +131,7 @@ status() ->
       Exec :: leader_cron_task:execargs().
 
 schedule_task(Schedule, Exec) ->
-    gen_leader:leader_call(?SERVER, {schedule, {undefined, Schedule, Exec}}).
+    amqp_leader_proc:leader_call(?SERVER, {schedule, {undefined, Schedule, Exec}}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -152,7 +152,7 @@ schedule_task(Schedule, Exec) ->
 
 schedule_task(Name, Schedule, Exec) when
       is_binary(Name); is_atom(Name), Name /= undefined ->
-    gen_leader:leader_call(?SERVER, {schedule, {Name, Schedule, Exec}}).
+    amqp_leader_proc:leader_call(?SERVER, {schedule, {Name, Schedule, Exec}}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -165,7 +165,7 @@ schedule_task(Name, Schedule, Exec) when
       Reason :: term().
 
 cancel_task(Ident) ->
-    gen_leader:leader_call(?SERVER, {cancel, Ident}).
+    amqp_leader_proc:leader_call(?SERVER, {cancel, Ident}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -180,7 +180,7 @@ cancel_task(Ident) ->
       TaskPid :: pid().
 
 task_status(Ident) ->
-    gen_leader:leader_call(?SERVER, {task_status, Ident}).
+    amqp_leader_proc:leader_call(?SERVER, {task_status, Ident}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -192,7 +192,7 @@ task_status(Ident) ->
 -spec task_list() -> [task()].
 
 task_list() ->
-    gen_leader:leader_call(?SERVER, task_list).
+    amqp_leader_proc:leader_call(?SERVER, task_list).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -204,7 +204,7 @@ task_list() ->
 -spec remove_done_tasks() -> ok.
 
 remove_done_tasks() ->
-    gen_leader:leader_call(?SERVER, remove_done_tasks).
+    amqp_leader_proc:leader_call(?SERVER, remove_done_tasks).
 
 %%%===================================================================
 %%% gen_leader callbacks
@@ -317,11 +317,11 @@ handle_DOWN(_Node, State, _Election) ->
 
 %% @private
 handle_call(status, _From, State, Election) ->
-    Reply = [{leader, gen_leader:leader_node(Election)},
-	     {alive, gen_leader:alive(Election)},
-	     {down, gen_leader:down(Election)},
-	     {candidates, gen_leader:candidates(Election)},
-	     {workers, gen_leader:workers(Election)},
+    Reply = [{leader, amqp_leader_proc:leader_node(Election)},
+	     {alive, amqp_leader_proc:alive(Election)},
+	     {down, amqp_leader_proc:down(Election)},
+	     {candidates, amqp_leader_proc:candidates(Election)},
+	     {workers, amqp_leader_proc:workers(Election)},
 	     {me, node()}
 	    ],
     {reply, Reply, State};
@@ -357,11 +357,11 @@ save_tasks(State, Tasks) ->
       Election :: term().
 
 send_tasks(Tasks, Election) ->
-    case gen_leader:alive(Election) -- [node()] of
+    case amqp_leader_proc:alive(Election) -- [node()] of
 	[] ->
 	    ok;
 	Alive ->
-	    Election = gen_leader:broadcast({from_leader, {tasks, Tasks}},
+	    Election = amqp_leader_proc:broadcast({from_leader, {tasks, Tasks}},
 					    Alive,
 					    Election),
 	    ok
