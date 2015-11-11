@@ -63,7 +63,7 @@ disconnect_number(Number) ->
       Number
       ,knm_phone_number:set_state(
          knm_number:phone_number(Number)
-         ,?NUMBER_STATE_RELEASED
+         ,knm_config:released_state()
         )
      ).
 
