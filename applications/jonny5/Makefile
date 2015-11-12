@@ -49,4 +49,3 @@ test: clean-test compile-test eunit
 
 eunit: compile-test
 	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
-
