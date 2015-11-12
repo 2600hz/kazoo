@@ -12,9 +12,12 @@
 -export([find_template/2
          ,find_template/3
         ]).
+
 -export([generate/2
          ,generate/3
         ]).
+
+-export([error_empty/0]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -22,6 +25,7 @@
 
 -define(CONFIG_CAT, <<"kazoo">>).
 -define(TEMPLATE_DOC_ID(Type), <<"pdf.", Type/binary>>).
+-define(ERROR_EMPTY, <<"error_empty.pdf">>).
 
 -define(PDF_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".pdf">>).
 -define(HTML_TO_PDF, <<"/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$">>).
@@ -97,6 +101,15 @@ generate(Account, Props, Template) ->
         _R ->
             lager:error("failed to exec ~s: ~s", [Cmd, _R]),
             {'error', _R}
+    end.
+
+-spec error_empty() -> binary().
+error_empty() ->
+    PrivDir = code:priv_dir('crossbar'),
+    FilePath = filename:join([PrivDir, <<"couchdb">>, <<"templates">>, ?ERROR_EMPTY]),
+    case file:read_file(FilePath) of
+        {'error', _R} -> <<>>;
+        {'ok', File} -> File
     end.
 
 %%%===================================================================
