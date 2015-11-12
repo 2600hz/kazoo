@@ -22,7 +22,7 @@ ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
-ERL_INSTALL := $(wildcard $(shell dirname `which erl`)/../usr)
+ERL_INSTALL := $(wildcard $(shell dirname `which erl`)/../erts-*)
 ifeq ($(ERL_INSTALL),)
 	ERL_INSTALL = /usr/local/lib/erlang
 else
