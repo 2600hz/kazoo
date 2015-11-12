@@ -336,23 +336,22 @@
 -type media_servers() :: [media_server()].
 
 -record(wh_node, {node = node() :: atom() | '$1' | '$2' | '_'
-               ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
-               ,whapps = [] :: whapps_info() | '$1' | '_'
-               ,media_servers = [] :: media_servers() | '_'
-               ,last_heartbeat = wh_util:now_ms(wh_util:now()) :: pos_integer() | 'undefined' | '$3' | '_'
-               ,zone :: atom() | 'undefined' | '$2' | '_'
-               ,broker :: api_binary() | '_'
-               ,used_memory = 0 :: non_neg_integer() | '_'
-               ,processes = 0 :: non_neg_integer() | '_'
-               ,ports = 0 :: non_neg_integer() | '_'
-               ,version :: api_binary() | '_'
-               ,channels = 0 :: non_neg_integer() | '_'
-               ,registrations = 0 :: non_neg_integer() | '_'
-              }).
+                  ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
+                  ,whapps = [] :: whapps_info() | '$1' | '_'
+                  ,media_servers = [] :: media_servers() | '_'
+                  ,last_heartbeat = wh_util:now_ms(wh_util:now()) :: pos_integer() | 'undefined' | '$3' | '_'
+                  ,zone :: atom() | 'undefined' | '$2' | '_'
+                  ,broker :: api_binary() | '_'
+                  ,used_memory = 0 :: non_neg_integer() | '_'
+                  ,processes = 0 :: non_neg_integer() | '_'
+                  ,ports = 0 :: non_neg_integer() | '_'
+                  ,version :: api_binary() | '_'
+                  ,channels = 0 :: non_neg_integer() | '_'
+                  ,registrations = 0 :: non_neg_integer() | '_'
+                 }).
 
 -type wh_node() :: #wh_node{}.
 -type wh_nodes() :: [wh_node()].
-
 
 -define(WHISTLE_TYPES_INCLUDED, 'true').
 -endif.

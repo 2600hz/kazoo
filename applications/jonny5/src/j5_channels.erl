@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -509,7 +509,9 @@ handle_cast({'rate_resp', JObj}, State) ->
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
     {'noreply', State};
-handle_cast({'wh_nodes', {'expire', #wh_node{node=NodeName, whapps=Whapps}}}, #state{sync_ref=SyncRef}=State) ->
+handle_cast({'wh_nodes', {'expire', #wh_node{node=NodeName, whapps=Whapps}}}
+            ,#state{sync_ref=SyncRef}=State
+           ) ->
     case props:get_value(<<"ecallmgr">>, Whapps) of
         'undefined' -> {'noreply', State};
         _WhappInfo ->
