@@ -75,15 +75,16 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 %% @doc
 %% Loop over the provided endpoints for the callflow and build the
 %% json object used in the bridge API
+%% Send to endpoint in determined order
 %% @end
 %%--------------------------------------------------------------------
-
 -spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) ->
                            {wh_json:objects(), non_neg_integer()}.
 get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
-    lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
+    EndpointIds = cf_attributes:owned_by(UserId, <<"device">>, Call),
+    {Endpoints, DndCount} = lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
                         case cf_endpoint:build(EndpointId, Params, Call) of
                             {'ok', Endpoint} -> {Endpoint ++ Acc, Dnd};
                             {'error', 'do_not_disturb'} -> {Acc, Dnd+1};
@@ -91,5 +92,22 @@ get_endpoints(UserId, Data, Call) ->
                         end
                 end
                 ,{[], 0}
-                ,cf_attributes:owned_by(UserId, <<"device">>, Call)
-               ).
+                ,EndpointIds
+               ),
+    SortedEndpoints = sort_endpoints_by_type(Endpoints),
+    {SortedEndpoints, DndCount}.
+
+-spec sort_endpoints_by_type(wh_json:objects()) -> wh_json:objects().
+sort_endpoints_by_type(Endpoints) ->
+    lists:sort(fun(EndpointA, EndpointB) ->
+            EndpointAValue = endpoint_type_sort_value(wh_json:get_value(<<"Endpoint-Type">>, EndpointA)),
+            EndpointBValue = endpoint_type_sort_value(wh_json:get_value(<<"Endpoint-Type">>, EndpointB)),
+            (EndpointAValue < EndpointBValue)
+        end,
+        Endpoints).
+
+-spec endpoint_type_sort_value(binary()) -> non_neg_integer().
+endpoint_type_sort_value(<<"amqp">>) ->
+    0;
+endpoint_type_sort_value(_Type) ->
+    1.
