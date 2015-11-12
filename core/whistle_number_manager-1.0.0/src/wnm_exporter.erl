@@ -18,11 +18,11 @@
                                             ,500
                                             )
        ).
--define(SLEEP_TIME, 1).%% , whapps_config:get_integer(?WNM_CONFIG_CAT
-       %%                                        ,[<<"csv_exporter">>, <<"wait_between_batches_ms">>]
-       %%                                        ,5 * ?MILLISECONDS_IN_SECOND
-       %%                                       )
-       %% ).
+-define(SLEEP_TIME, whapps_config:get_integer(?WNM_CONFIG_CAT
+                                              ,[<<"csv_exporter">>, <<"wait_between_batches_ms">>]
+                                              ,5 * ?MILLISECONDS_IN_SECOND
+                                             )
+       ).
 
 -spec to_csv() -> 'ok'.
 to_csv() ->
