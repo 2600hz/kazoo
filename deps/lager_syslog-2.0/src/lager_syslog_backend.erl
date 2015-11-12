@@ -40,9 +40,9 @@
 
 
 %% @private
-init([Ident, Facility, Level]) when is_atom(Level) ->
+init([Ident, Facility, Level]) ->
     init([Ident, Facility, Level, {lager_default_formatter, ?DEFAULT_FORMAT}]);
-init([Ident, Facility, Level, {Formatter, FormatterConfig}]) when is_atom(Level), is_atom(Formatter) ->
+init([Ident, Facility, Level, {Formatter, FormatterConfig}]) when is_atom(Formatter) ->
     case application:start(syslog) of
         ok ->
             init2([Ident, Facility, Level, {Formatter, FormatterConfig}]);

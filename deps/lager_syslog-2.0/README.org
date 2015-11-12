@@ -22,7 +22,15 @@
   would look something like this:
 
 #+BEGIN_EXAMPLE
-  {lager_syslog_backend, ["riak", local7, info]}
+  {handlers, [
+    {lager_syslog_backend, ["riak", local1, info]},
+  ] },
+#+END_EXAMPLE
+
+  Then in your syslog config remembering syslog likes tabs and not spaces:
+
+#+BEGIN_EXAMPLE
+  local1.info                     /var/log/riak_info.log
 #+END_EXAMPLE
 
   If you want to log to multiple facilities at once, you can do something like
