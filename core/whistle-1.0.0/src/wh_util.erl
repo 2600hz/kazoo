@@ -1126,8 +1126,9 @@ write_pid(FileName) ->
 
 -spec ensure_started(atom()) -> 'ok' | {'error', any()}.
 ensure_started(App) when is_atom(App) ->
-    case application:start(App) of
+    case application:ensure_all_started(App) of
         'ok' -> 'ok';
+        {'ok', _AppNames} -> 'ok';
         {'error', {'already_started', App}} -> 'ok';
         E -> E
     end.
