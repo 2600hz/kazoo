@@ -4,7 +4,7 @@ ROOT = ../..
 EBINS = $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = +debug_info +warn_export_all $(PA)
+ERLC_OPTS += +debug_info +warn_export_all $(PA)
 
 .PHONY: all compile clean
 

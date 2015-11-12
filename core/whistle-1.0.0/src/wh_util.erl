@@ -1272,15 +1272,25 @@ elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
 elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000000.
 
 -spec now() -> wh_now().
+
+-ifdef(OTP_AT_LEAST_18).
+now() -> erlang:timestamp().
+-spec now_s(any()) -> gregorian_seconds().
+-spec now_ms(any()) -> pos_integer().
+-spec now_us(any()) -> pos_integer().
+now_s(_) ->  erlang:system_time('seconds').
+now_ms(_) -> erlang:system_time('milli_seconds').
+now_us(_) -> erlang:system_time('micro_seconds').
+-else.
+now() -> erlang:now().
 -spec now_s(wh_now()) -> gregorian_seconds().
 -spec now_ms(wh_now()) -> pos_integer().
 -spec now_us(wh_now()) -> pos_integer().
-%% Replace now_ms/1 with erlang:system_time('milli_seconds')
-now() -> erlang:now().  %% FIXME: replace this erlang:timestamp/0 later on
+now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div 1000000).
+now_ms({_,_,_}=Now) -> now_us(Now) div ?MILLISECONDS_IN_SECOND.
 now_us({MegaSecs,Secs,MicroSecs}) ->
     (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
-now_ms({_,_,_}=Now) -> now_us(Now) div ?MILLISECONDS_IN_SECOND.
-now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div 1000000).
+-endif.
 
 -spec format_date() -> binary().
 -spec format_date(gregorian_seconds()) -> binary().

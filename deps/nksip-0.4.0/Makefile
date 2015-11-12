@@ -2,7 +2,8 @@ PROJECT = nksip
 ROOT = ../..
 
 EBINS = $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print) \
-	$(shell find $(ROOT)/deps/wsock-* -maxdepth 2 -name ebin -print)
+	$(shell find $(ROOT)/deps/wsock-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
 TEST_EBINS = $(shell find $(ROOT)/deps/goldrush-* -maxdepth 2 -name ebin -print) \
@@ -10,7 +11,7 @@ TEST_EBINS = $(shell find $(ROOT)/deps/goldrush-* -maxdepth 2 -name ebin -print)
 	$(shell find $(ROOT)/deps/erlang-syslog-* -maxdepth 2 -name ebin -print)
 TEST_PA = $(foreach TEST_EBIN,$(TEST_EBINS),-pa $(TEST_EBIN))
 
-ERLC_OPTS += +"{parse_transform, lager_transform}" -Werror +debug_info -Iinclude -Iplugins/include $(PA)
+ERLC_OPTS += +"{parse_transform, lager_transform}" +debug_info -Iinclude -Iplugins/include $(PA)
 
 .PHONY: all compile clean
 

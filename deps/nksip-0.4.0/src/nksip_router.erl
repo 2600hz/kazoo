@@ -24,6 +24,8 @@
 
 -behaviour(gen_server).
 
+-include_lib("whistle/include/otp_compatibility.hrl").
+
 -export([incoming_sync/1, incoming_sync/4]).
 -export([get_all_calls/0]).
 -export([pending_msgs/0, pending_work/0]).

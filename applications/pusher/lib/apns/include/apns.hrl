@@ -1,4 +1,6 @@
 
+-include_lib("whistle/include/wh_types.hrl").
+
 %% Connection Parameters
 
 -record(apns_connection, {apple_host        = "gateway.sandbox.push.apple.com"      :: string(),
