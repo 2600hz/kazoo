@@ -603,11 +603,11 @@ load_apps_store(Context) ->
     case {cb_context:resp_status(Context1), cb_context:resp_error_code(Context1)} of
         {'error', 404} ->
             cb_context:setters(
-                Context
-                ,[{fun cb_context:set_resp_status/2, 'success'}
-                  ,{fun cb_context:set_resp_data/2, wh_json:new()}
-                ]
-            );
+              Context
+              ,[{fun cb_context:set_resp_status/2, 'success'}
+                ,{fun cb_context:set_resp_data/2, wh_json:new()}
+               ]
+             );
         {'success', _} -> Context1;
         {'error', _} -> Context1
     end.
