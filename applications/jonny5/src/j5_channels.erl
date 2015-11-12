@@ -509,10 +509,14 @@ handle_cast({'rate_resp', JObj}, State) ->
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
     {'noreply', State};
-handle_cast({'wh_nodes', {'expire', _Node}}, #state{sync_ref=SyncRef}=State) ->
-    lager:debug("notifed that node ~s is no longer reachable, synchronizing channels", [_Node]),
-    self() ! {'synchronize_channels', SyncRef},
-    {'noreply', State};
+handle_cast({'wh_nodes', {'expire', #wh_node{node=NodeName, whapps=Whapps}}}, #state{sync_ref=SyncRef}=State) ->
+    case props:get_value(<<"ecallmgr">>, Whapps) of
+        'undefined' -> {'noreply', State};
+        _WhappInfo ->
+            lager:debug("ecallmgr node ~s is no longer reachable, synchronizing channels", [NodeName]),
+            self() ! {'synchronize_channels', SyncRef},
+            {'noreply', State}
+    end;
 handle_cast({'authorized', JObj}, State) ->
     _ = ets:insert(?TAB, from_jobj(JObj)),
     {'noreply', State};
