@@ -6,7 +6,7 @@ PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
 ERLC_OPTS += +debug_info +warn_export_all $(PA)
 
-.PHONY: all compile clean priv/syslog_drv.so
+.PHONY: all compile clean
 
 all: compile
 
