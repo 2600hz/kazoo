@@ -18,16 +18,17 @@
                                             ,500
                                             )
        ).
--define(SLEEP_TIME, whapps_config:get_integer(?WNM_CONFIG_CAT
-                                              ,[<<"csv_exporter">>, <<"wait_between_batches_ms">>]
-                                              ,5 * ?MILLISECONDS_IN_SECOND
-                                             )
-       ).
+-define(SLEEP_TIME, 1).%% , whapps_config:get_integer(?WNM_CONFIG_CAT
+       %%                                        ,[<<"csv_exporter">>, <<"wait_between_batches_ms">>]
+       %%                                        ,5 * ?MILLISECONDS_IN_SECOND
+       %%                                       )
+       %% ).
 
 -spec to_csv() -> 'ok'.
 to_csv() ->
     maybe_remove_csv(),
     Fields = number_doc_fields(),
+    io:format("ndfs: ~p~n", [Fields]),
     write_csv_header(Fields),
     NumberDbs = wnm_util:get_all_number_dbs(),
     to_csv(Fields, NumberDbs).
@@ -150,11 +151,26 @@ property_fields(Schema, Property, Fields) ->
                                     ,Schema
                                    ),
     lists:foldl(fun(Key, Acc) ->
-                        [[Property, Key] | Acc]
+                        property_key_paths(Key, Acc, Schema, Property)
                 end
                 ,Fields
                 ,PropertyKeys
                ).
+
+-spec property_key_paths(wh_json:key(), wh_json:keys(), wh_json:object(), wh_json:key()) -> wh_json:keys().
+property_key_paths(Key, Acc, Schema, Property) ->
+    KeyPath = [<<"properties">>, Property, <<"properties">>, Key],
+    case wh_json:get_value(KeyPath ++ [<<"type">>], Schema) of
+        <<"object">> ->
+            SubKeys = wh_json:get_keys(KeyPath ++ [<<"properties">>], Schema),
+            lists:foldl(fun(SubKey, Acc1) ->
+                                [[Property, Key, SubKey] | Acc1]
+                        end
+                        ,Acc
+                        ,SubKeys
+                       );
+        _Type -> [[Property, Key] | Acc]
+    end.
 
 -spec default_number_doc_fields() -> wh_json:keys().
 default_number_doc_fields() ->
