@@ -77,9 +77,9 @@ batch_process(Fields, NumberDb, {'ok', Numbers}) ->
     end.
 
 batch_process(Fields, ViewResults) ->
-    [process_number_doc(Fields, wh_json:get_value(<<"doc">>, Result))
-     || Result <- ViewResults
-    ],
+    _ = [process_number_doc(Fields, wh_json:get_value(<<"doc">>, Result))
+         || Result <- ViewResults
+        ],
     'ok'.
 
 -spec process_number_doc(ne_binaries(), wh_json:object()) -> 'ok'.
@@ -197,9 +197,7 @@ append_to_csv(Data) ->
     case file:write_file(?CSV_FILE, [Data, <<"\n">>], ['append']) of
         'ok' -> 'ok';
         {'error', E} ->
-            ST = erlang:get_stacktrace(),
-            io:format("failed to write data to ~s: ~p~n'~p'~n", [?CSV_FILE, E, Data]),
-            [io:format("~p~n", [S]) || S <- ST],
+            io:format("failed to write data to ~s: ~p~n", [?CSV_FILE, E]),
             exit(E)
     end.
 
