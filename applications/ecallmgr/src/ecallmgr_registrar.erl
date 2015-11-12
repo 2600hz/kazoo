@@ -1170,7 +1170,7 @@ oldest_registrar() ->
 get_fs_contact(Props) ->
     Contact = props:get_first_defined([<<"Contact">>, <<"contact">>], Props),
     [User, AfterAt] = binary:split(Contact, <<"@">>), % only one @ allowed
-    <<User/binary, "@", (wh_util:to_binary(mochiweb_util:unquote(AfterAt)))/binary>>.
+    <<User/binary, "@", (kz_http:urldecode(AfterAt))/binary>>.
 
 -type ets_continuation() :: '$end_of_table' |
                             {registrations(), any()}.

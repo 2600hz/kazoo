@@ -261,9 +261,9 @@ custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, 
 custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     [{Key, V} | Acc];
 custom_channel_vars_fold({<<"variable_sip_h_Referred-By">>, V}, Acc) ->
-    [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+    [{<<"Referred-By">>, kz_http:urldecode(V)} | Acc];
 custom_channel_vars_fold({<<"variable_sip_refer_to">>, V}, Acc) ->
-    [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+    [{<<"Referred-To">>, kz_http:urldecode(V)} | Acc];
 custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     case props:is_defined(Key, Acc) of
         'true' -> Acc;
