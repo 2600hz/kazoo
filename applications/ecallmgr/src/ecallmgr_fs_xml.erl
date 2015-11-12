@@ -49,13 +49,11 @@ sip_profiles_xml(JObj) ->
 
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
+-spec sip_channel_xml(wh_proplist()) -> {'ok', iolist()}.
 sip_channel_xml(Props) ->
     ParamsEl = params_el([param_el(K, V) || {K, V} <- Props]),
-
     ChannelEl = channel_el(props:get_value(<<"uuid">>, Props), ParamsEl),
-
     SectionEl = section_el(<<"channels">>, ChannelEl),
-
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 -spec authn_resp_xml(api_terms()) -> {'ok', iolist()}.
@@ -638,9 +636,12 @@ config_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
+-spec channel_el(api_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
+channel_el('undefined', Content) -> Content;
 channel_el(UUID, Content) ->
     channel_el(UUID, <<"channel ", (wh_util:to_binary(UUID))/binary, " tracked by kazoo">>, Content).
 
+-spec channel_el(ne_binary(), ne_binary(), xml_el() | xml_els()) -> xml_el().
 channel_el(UUID, Desc, #xmlElement{}=Content) ->
     channel_el(UUID, Desc, [Content]);
 channel_el(UUID, Desc, Content) ->
