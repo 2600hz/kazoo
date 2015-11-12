@@ -27,12 +27,10 @@
         ]).
 -export([to_json/1
          ,to_props/1
+         ,channel_ccvs/1
         ]).
 -export([to_api_json/1
          ,to_api_props/1
-        ]).
--export([handle_channel_req/3
-         ,handle_channel_req/4
         ]).
 -export([process_event/3
          ,process_event/4
@@ -49,6 +47,7 @@
 -compile([{'no_auto_import', [node/1]}]).
 
 -include("ecallmgr.hrl").
+-include_lib("nksip/include/nksip.hrl").
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: wh_proplist()
@@ -216,6 +215,7 @@ to_props(Channel) ->
        ,{<<"other_leg">>, Channel#channel.other_leg}
        ,{<<"handling_locally">>, Channel#channel.handling_locally}
        ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
+       ,{<<"switch_nodename">>, Channel#channel.node}
        ,{<<"to_tag">>, Channel#channel.to_tag}
        ,{<<"from_tag">>, Channel#channel.from_tag}
        ,{<<"elapsed_s">>, wh_util:elapsed_s(Channel#channel.timestamp)}
@@ -257,6 +257,44 @@ to_api_props(Channel) ->
        ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
        ,{<<"Elapsed-Seconds">>, wh_util:elapsed_s(Channel#channel.timestamp)}
       ]).
+
+-spec channel_ccvs(channel() | wh_json:object() | wh_proplist()) -> wh_proplist().
+channel_ccvs(#channel{}=Channel) ->
+    props:filter_undefined(
+      [{<<"Account-ID">>, Channel#channel.account_id}
+       ,{<<"Account-Billing">>, Channel#channel.account_billing}
+       ,{<<"Authorizing-ID">>, Channel#channel.authorizing_id}
+       ,{<<"Authorizing-Type">>, Channel#channel.authorizing_type}
+       ,{<<"Owner-ID">>, Channel#channel.owner_id}
+       ,{<<"Resource-ID">>, Channel#channel.resource_id}
+       ,{<<"Presence-ID">>, Channel#channel.presence_id}
+       ,{<<"Fetch-ID">>, Channel#channel.fetch_id}
+       ,{<<"Bridge-ID">>, Channel#channel.bridge_id}
+       ,{<<"Precedence">>, Channel#channel.precedence}
+       ,{<<"Reseller-ID">>, Channel#channel.reseller_id}
+       ,{<<"Reseller-Billing">>, Channel#channel.reseller_billing}
+       ,{<<"Realm">>, Channel#channel.realm}
+       ,{<<"Username">>, Channel#channel.username}
+      ]);
+channel_ccvs([_|_]=Props) ->
+    props:filter_undefined(
+      [{<<"Account-ID">>, props:get_value(<<"account_id">>, Props)}
+       ,{<<"Account-Billing">>, props:get_value(<<"account_billing">>, Props)}
+       ,{<<"Authorizing-ID">>, props:get_value(<<"authorizing_id">>, Props)}
+       ,{<<"Authorizing-Type">>, props:get_value(<<"authorizing_type">>, Props)}
+       ,{<<"Owner-ID">>, props:get_value(<<"owner_id">>, Props)}
+       ,{<<"Resource-ID">>, props:get_value(<<"resource_id">>, Props)}
+       ,{<<"Presence-ID">>, props:get_value(<<"presence_id">>, Props)}
+       ,{<<"Fetch-ID">>, props:get_value(<<"fetch_id">>, Props)}
+       ,{<<"Bridge-ID">>, props:get_value(<<"bridge_id">>, Props)}
+       ,{<<"Precedence">>, props:get_value(<<"precedence">>, Props)}
+       ,{<<"Reseller-ID">>, props:get_value(<<"reseller_id">>, Props)}
+       ,{<<"Reseller-Billing">>, props:get_value(<<"reseller_billing">>, Props)}
+       ,{<<"Realm">>, props:get_value(<<"realm">>, Props)}
+       ,{<<"Username">>, props:get_value(<<"username">>, Props)}
+      ]);
+channel_ccvs(JObj) ->
+    channel_ccvs(wh_json:to_proplist(JObj)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -337,7 +375,11 @@ handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
     _ = wh_util:spawn(?MODULE, 'process_event', [UUID, Props, Node, self()]),
     {'noreply', State};
 handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
-    _ = wh_util:spawn(?MODULE, 'handle_channel_req', [UUID, FetchId, Node, self()]),
+    _ = wh_util:spawn(fun handle_channel_req_legacy/4, [UUID, FetchId, Node, self()]),
+    {'noreply', State};
+handle_info({'fetch', 'channels', _, _, _, FetchId, Props}, #state{node=Node}=State) ->
+    UUID = props:get_value(<<"replaces-call-id">>, Props),
+    _ = wh_util:spawn(fun handle_channel_req/5, [UUID, FetchId, Props, Node, self()]),
     {'noreply', State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
@@ -387,22 +429,67 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_channel_req(ne_binary(), ne_binary(), atom()) -> 'ok'.
-handle_channel_req(UUID, FetchId, Node) ->
-    handle_channel_req(UUID, FetchId, Node, self()).
 
--spec handle_channel_req(ne_binary(), ne_binary(), atom(), pid()) -> 'ok'.
-handle_channel_req(UUID, FetchId, Node, Pid) ->
+-spec handle_channel_req_legacy(ne_binary(), ne_binary(), atom(), pid()) -> 'ok'.
+handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
     wh_amqp_channel:consumer_pid(Pid),
-    case ?MODULE:fetch(UUID, 'proplist') of
-        {'error', 'not_found'} -> fetch_channel(UUID, FetchId, Node);
-        {'ok', Props} ->
-            ChannelNode = props:get_value(<<"node">>, Props),
-            URL = ecallmgr_fs_nodes:sip_url(ChannelNode),
+    case fetch_channel(UUID) of
+        'undefined' -> channel_not_found(Node, FetchId);
+        Channel ->
+            URL = props:get_value(<<"switch_url">>, Channel),
             try_channel_resp(FetchId, Node, [{<<"sip-url">>, URL}
                                              ,{<<"uuid">>, UUID}
                                             ])
     end.
+
+-spec handle_channel_req(ne_binary(), ne_binary(), wh_proplist(), atom(), pid()) -> 'ok'.
+handle_channel_req(UUID, FetchId, Props, Node, Pid) ->
+    wh_amqp_channel:consumer_pid(Pid),
+    ForUUID = props:get_value(<<"refer-for-channel-id">>, Props),
+    {'ok', ForChannel} = fetch(ForUUID, 'proplist'),
+    case fetch_channel(UUID) of
+        'undefined' -> channel_not_found(Node, FetchId);
+        Channel ->
+            [Uri] = nksip_parse_uri:uris(props:get_value(<<"switch_url">>, Channel)),
+            URL = nksip_unparse:ruri(
+                    #uri{user= props:get_value(<<"refer-to-user">>, Props)
+                         ,domain= props:get_value(<<"realm">>, Channel)
+                         ,opts=[{<<"fs_path">>, nksip_unparse:ruri(Uri#uri{user= <<>>})}]
+                        }),
+            build_channel_resp(FetchId, Props, Node, URL, ForChannel, channel_ccvs(Channel))
+    end.
+
+-spec build_channel_resp(ne_binary(), wh_proplist(), atom(), ne_binary(), wh_proplist(), wh_proplist()) -> 'ok'.
+build_channel_resp(FetchId, Props, Node, URL, Channel, ChannelVars) ->
+%% NOTE
+%% valid properties to return are
+%% sip-url , dial-prefix, absolute-dial-string, sip-profile (defaulted to current channel profile)
+%% freeswitch formats the dial string with the following logic
+%% if absolute-dial-string => %s%s [dial-prefix, absolute-dial-string]
+%% else => %ssofia/%s/%s [dial-prefix, sip-profile, sip-url]
+    Resp = props:filter_undefined(
+             [{<<"sip-url">>, URL}
+              ,{<<"dial-prefix">>, channel_resp_dialprefix(Props, Channel, ChannelVars)}
+             ]),
+    try_channel_resp(FetchId, Node, Resp).
+
+-spec channel_resp_dialprefix(wh_proplist(), wh_proplist(), wh_proplist()) -> ne_binary().
+channel_resp_dialprefix(ReqProps, _Channel, ChannelVars) ->
+    Props = props:filter_undefined(
+              [{<<"sip_invite_domain">>, props:get_value(<<"Realm">>, ChannelVars)}
+               ,{<<"sip_h_X-Core-UUID">>, props:get_value(<<"Core-UUID">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_replaces-call-id">>, props:get_value(<<"replaces-call-id">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_refer-from-channel-id">>, props:get_value(<<"refer-from-channel-id">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_refer-for-channel-id">>, props:get_value(<<"refer-for-channel-id">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_Account-ID">>, props:get_value(<<"Account-ID">>, ChannelVars)}
+               ,{<<"sip_h_X-ecallmgr_Realm">>, props:get_value(<<"Realm">>, ChannelVars)}
+              ]),
+    fs_props_to_binary(Props).
+
+-spec fs_props_to_binary(wh_proplist()) -> ne_binary().
+fs_props_to_binary([{Hk,Hv}|T]) ->
+    Rest = << <<",", K/binary, "='", (wh_util:to_binary(V))/binary, "'">> || {K,V} <- T >>,
+    <<"[", Hk/binary, "='", (wh_util:to_binary(Hv))/binary, "'", Rest/binary, "]">>.
 
 -spec try_channel_resp(ne_binary(), atom(), wh_proplist()) -> 'ok'.
 try_channel_resp(FetchId, Node, Props) ->
@@ -416,8 +503,15 @@ try_channel_resp(FetchId, Node, Props) ->
             channel_not_found(Node, FetchId)
     end.
 
--spec fetch_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
-fetch_channel(UUID, FetchId, Node) ->
+-spec fetch_channel(ne_binary()) -> wh_proplist() | 'undefined'.
+fetch_channel(UUID) ->
+    case fetch(UUID, 'proplist') of
+        {'error', 'not_found'} -> fetch_remote(UUID);
+        {'ok', Channel} -> Channel
+    end.
+
+-spec fetch_remote(ne_binary()) -> api_object().
+fetch_remote(UUID) ->
     Command = [{<<"Call-ID">>, UUID}
                ,{<<"Active-Only">>, <<"true">>}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -427,13 +521,11 @@ fetch_channel(UUID, FetchId, Node) ->
                              ,fun wapi_call:channel_status_resp_v/1
                             )
     of
-        {'error', _} -> channel_not_found(Node, FetchId);
+        {'error', _} -> 'undefined';
         {'ok', JObj} ->
-            URL = wh_json:get_value(<<"Switch-URL">>, JObj),
-            Props = [{<<"sip-url">>, URL}
-                     ,{<<"uuid">>, UUID}
-                    ],
-            try_channel_resp(FetchId, Node, Props)
+            Props = wh_json:recursive_to_proplist(wh_json:normalize(JObj)),
+            CCVs = props:get_value(<<"custom_channel_vars">>, Props, []),
+            Props ++ CCVs
     end.
 
 -spec channel_not_found(atom(), ne_binary()) -> 'ok'.

@@ -298,6 +298,9 @@ handle_channel_status(JObj, _Props) ->
                    ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
                    ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
                    ,{<<"Other-Leg-Call-ID">>, wh_json:get_value(<<"other_leg">>, Channel)}
+                   ,{<<"Realm">>, wh_json:get_value(<<"realm">>, Channel)}
+                   ,{<<"Username">>, wh_json:get_value(<<"username">>, Channel)}
+                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel))}
                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ]
