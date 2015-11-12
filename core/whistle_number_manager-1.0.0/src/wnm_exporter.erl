@@ -28,7 +28,6 @@
 to_csv() ->
     maybe_remove_csv(),
     Fields = number_doc_fields(),
-    io:format("ndfs: ~p~n", [Fields]),
     write_csv_header(Fields),
     NumberDbs = wnm_util:get_all_number_dbs(),
     to_csv(Fields, NumberDbs).
