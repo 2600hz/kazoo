@@ -397,10 +397,10 @@ maybe_resource_to_endpoints(#resrc{id=Id
                             ,OffnetJObj
                             ,Endpoints
                            ) ->
-    CallerIdNumber = case whapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'true') of
-        'false' -> wapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
-        'true' -> check_diversion_fields(OffnetJObj)
-    end,
+    CallerIdNumber = case ?RULES_HONOR_DIVERSION of
+                         'false' -> wapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
+                         'true' -> check_diversion_fields(OffnetJObj)
+                     end,
     case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
         {'error','no_match'} -> Endpoints;
         {'ok', NumberMatch} ->
@@ -422,11 +422,11 @@ maybe_resource_to_endpoints(#resrc{id=Id
 -spec check_diversion_fields(wapi_offnet_resource:req()) -> ne_binary(). 
 check_diversion_fields(OffnetJObj) ->
     case wh_json:get_value([<<"Custom-SIP-Headers">>,<<"Diversions">>], OffnetJObj) of
-        'undefined' ->
-            wapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
         [Diversion|_] ->
-            [_,_,CallerIdNumber,_] = re:split(Diversion,"(:)(\\d*)(@.*)",[{return,binary},{parts,0}]),
-            CallerIdNumber
+            [_,CallerIdNumber,_] = binary:split(Diversion, [<<":">>,<<"@">>], ['global']),
+            CallerIdNumber;
+        _ ->
+            wapi_offnet_resource:outbound_caller_id_number(OffnetJObj)
     end.
 
 -spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist(), wapi_offnet_resource:req()) -> wh_json:object().
