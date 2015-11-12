@@ -419,7 +419,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
             maybe_add_proxies(EndpointList, Proxies, Endpoints)
     end.
 
--spec check_diversion_fields(wapi_offnet_resource:req()) -> ne_binary(). 
+-spec check_diversion_fields(wapi_offnet_resource:req()) -> ne_binary().
 check_diversion_fields(OffnetJObj) ->
     case wh_json:get_value([<<"Custom-SIP-Headers">>,<<"Diversions">>], OffnetJObj) of
         [Diversion|_] ->
