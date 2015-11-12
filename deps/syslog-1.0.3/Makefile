@@ -22,16 +22,22 @@ ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
-USR_INCLUDES := $(wildcard $(shell dirname `which erl`)/../usr/include)
-ifeq ($(USR_INCLUDES),)
-	USR_INCLUDES = /usr/local/lib/erlang/usr/include
+ERL_INSTALL := $(wildcard $(shell dirname `which erl`)/../usr)
+ifeq ($(ERL_INSTALL),)
+	ERL_INSTALL = /usr/local/lib/erlang
+else
+	ERL_INSTALL = $(dirname $ERL_INSTALL)
 endif
 
-ERL_INTERFACE := $(wildcard $(shell dirname `which erl`)/../erl_interface-*/)
+USR_INCLUDES = ${ERL_INSTALL}/usr/include
+
+ERL_INTERFACE := $(find $ERL_INSTALL -name "erl_interface-*")
 ifeq ($(ERL_INTERFACE),)
 # 3.7.9 is R15B03-1
 # Change to 3.7.20 for 17.5
-	ERL_INTERFACE = /usr/local/lib/erlang/lib/erl_interface-3.7.9
+	ERL_INTERFACE = $(ERL_INSTALL)/lib/erl_interface-3.7.20
+else
+	ERL_INTERFACE = $(ERL_INSTALL)/$ERL_INTERFACE
 endif
 
 priv/syslog_drv.so: c_src/syslog_drv.c
