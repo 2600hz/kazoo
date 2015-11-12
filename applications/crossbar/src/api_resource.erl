@@ -724,6 +724,8 @@ to_csv(Req, Context) ->
 
 -spec to_pdf(cowboy_req:req(), cb_context:context()) ->
                     {binary(), cowboy_req:req(), cb_context:context()}.
+-spec to_pdf(cowboy_req:req(), cb_context:context(), binary()) ->
+                    {binary(), cowboy_req:req(), cb_context:context()}.
 to_pdf(Req, Context) ->
     lager:debug("run: to_pdf"),
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
@@ -733,15 +735,19 @@ to_pdf(Req, Context) ->
                                                  ,Mod
                                                 ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
-    RespData = cb_context:resp_data(Context1),
+    to_pdf(Req1, Context1, cb_context:resp_data(Context1)).
+
+to_pdf(Req, Context, <<>>) ->
+    to_pdf(Req, Context, kz_pdf:error_empty());
+to_pdf(Req, Context, RespData) ->
     RespHeaders = [{<<"Content-Type">>, <<"application/pdf">>}
                     ,{<<"Content-Length">>, erlang:size(RespData)}
                     ,{<<"Content-Disposition">>, <<"attachment; filename=\"file.pdf\"">>}
-                    | cb_context:resp_headers(Context1)
+                    | cb_context:resp_headers(Context)
                    ],
     {RespData
-     ,api_util:set_resp_headers(Req1, cb_context:set_resp_headers(Context1, RespHeaders))
-     ,Context1
+     ,api_util:set_resp_headers(Req, cb_context:set_resp_headers(Context, RespHeaders))
+     ,Context
     }.
 
 -spec accept_override(cb_context:context()) -> api_binary().

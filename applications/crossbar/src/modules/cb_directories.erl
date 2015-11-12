@@ -207,8 +207,8 @@ get_pdf(Context) ->
     AccountId = cb_context:account_id(Context),
     Data = pdf_props(Context),
     case kz_pdf:generate(AccountId, Data) of
-        {'error', Reason} ->
-            cb_context:add_system_error(Reason, Context);
+        {'error', _} ->
+            cb_context:set_resp_data(Context, <<>>);
         {'ok', PDF} ->
             cb_context:set_resp_data(Context, PDF)
 
