@@ -248,7 +248,7 @@ normalize_proplist(Props) ->
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) when is_binary(V) ->
-    {normalize_value(K), mochiweb_html:escape(V)};
+    {normalize_value(K), kz_html:escape(V)};
 normalize_proplist_element({K, V}) ->
     {normalize_value(K), V};
 normalize_proplist_element(Else) ->
