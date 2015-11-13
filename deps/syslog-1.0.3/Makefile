@@ -26,18 +26,18 @@ ERL_INSTALL := $(wildcard $(shell dirname `which erl`)/../erts-*)
 ifeq ($(ERL_INSTALL),)
 	ERL_INSTALL = /usr/lib/erlang
 else
-	ERL_INSTALL = $(shell dirname $ERL_INSTALL)
+	ERL_INSTALL := $(shell dirname $ERL_INSTALL)
 endif
 
-USR_INCLUDES = ${ERL_INSTALL}/usr/include
+USR_INCLUDES := ${ERL_INSTALL}/usr/include
 
 ERL_INTERFACE := $(find $ERL_INSTALL -name "erl_interface-*")
 ifeq ($(ERL_INTERFACE),)
 # 3.7.9 is R15B03-1
 # Change to 3.7.20 for 17.5
-	ERL_INTERFACE = $(ERL_INSTALL)/lib/erl_interface-3.7.20
+	ERL_INTERFACE := $(ERL_INSTALL)/lib/erl_interface-3.7.20
 else
-	ERL_INTERFACE = $(ERL_INSTALL)/$ERL_INTERFACE
+	ERL_INTERFACE := $(ERL_INSTALL)/$ERL_INTERFACE
 endif
 
 priv/syslog_drv.so: c_src/syslog_drv.c
