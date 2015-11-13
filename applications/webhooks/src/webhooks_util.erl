@@ -398,7 +398,14 @@ load_hook(Srv, WebHook) ->
                           ,wh_doc:id(WebHook)
                           ,HookEvent
                          ]
-                       )
+                       );
+        _E:_R ->
+            lager:debug("failed to load hook ~s.~s: ~s: ~p"
+                       ,[wh_doc:account_id(WebHook)
+                         ,wh_doc:id(WebHook)
+                         ,_E
+                         ,_R
+                        ])
     end.
 
 -spec jobj_to_rec(wh_json:object()) -> webhook().
@@ -580,10 +587,7 @@ load_metadata(MasterAccountDb, JObj) ->
 available_events() ->
     case wh_cache:fetch_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY) of
         {'error', 'not_found'} ->
-            Events = fetch_available_events(),
-            Events =/= []
-                andalso wh_cache:store_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY, Events),
-            Events;
+            fetch_available_events();
         {'ok', Events} ->
             Events
     end.
@@ -593,9 +597,13 @@ fetch_available_events() ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     View = <<"webhooks/webhook_meta_listing">>,
     case couch_mgr:get_all_results(MasterAccountDb, View) of
+        {'ok', []} -> [];
+        {'error', _} -> [];
         {'ok', Available} ->
-            [wh_json:get_value(<<"key">>, A) || A <- Available];
-        {'error', _} -> []
+            Events = [wh_json:get_value(<<"key">>, A) || A <- Available],
+            CacheProps = [{'origin', [{'db', MasterAccountDb}, {'type', <<"webhook_meta">>}]}],
+            wh_cache:store_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY, Events, CacheProps),
+            Events
     end.
 
 -spec update_metadata(ne_binary(), wh_json:object()) ->
