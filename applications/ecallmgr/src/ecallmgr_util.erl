@@ -280,7 +280,7 @@ eventstr_to_proplist(EvtStr) ->
 -spec to_kv(nonempty_string(), nonempty_string()) -> {ne_binary(), ne_binary()}.
 to_kv(X, Separator) ->
     [K, V] = string:tokens(X, Separator),
-    [{V1,[]}] = mochiweb_util:parse_qs(V),
+    [{V1,[]}] = kz_http:parse_query_string(list_to_binary(V)),
     {wh_util:to_binary(K), wh_util:to_binary(fix_value(K, V1))}.
 
 fix_value("Event-Date-Timestamp", TStamp) ->
