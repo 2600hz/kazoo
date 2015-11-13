@@ -1125,24 +1125,21 @@ write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
 
 -spec ensure_started(atom()) -> 'ok' | {'error', any()}.
-ensure_started(App) when is_atom(App) ->
-    case erlang:function_exported(application, ensure_all_started, 1) of
-        'true' -> ensure_all_started(App);
-        'false' ->
-            case application:start(App) of
-                'ok' -> 'ok';
-                {'error', {'already_started', App}} -> 'ok';
-                E -> E
-            end
-    end.
-
--spec ensure_all_started(atom()) -> 'ok' | {'error', any()}.
-ensure_all_started(App) ->
+- ifdef(OTP_AT_LEAST_18).
+ensure_started(App) ->
     case application:ensure_all_started(App) of
         {'ok', _AppNames} -> 'ok';
         {'error', {'already_started', App}} -> 'ok';
         E -> E
     end.
+-else.
+ensure_started(App) when is_atom(App) ->
+    case application:start(App) of
+        'ok' -> 'ok';
+        {'error', {'already_started', App}} -> 'ok';
+        E -> E
+    end.
+-endif.
 
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
