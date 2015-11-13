@@ -485,8 +485,7 @@ is_resp(JObj) ->
 -spec get_c2c_contact(api_binary()) -> api_binary().
 get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
-    Encoded = mochiweb_util:quote_plus(wh_util:to_list(Contact)),
-    wnm_util:to_e164(wh_util:to_binary(Encoded)).
+    wnm_util:to_e164(kz_http:urlencode(Contact)).
 
 -spec create_c2c_history_item({'success', ne_binary()} | {'error', ne_binary()}, ne_binary()) -> wh_proplist().
 create_c2c_history_item({'success', CallId}, Contact) ->

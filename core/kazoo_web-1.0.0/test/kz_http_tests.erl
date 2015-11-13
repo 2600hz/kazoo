@@ -41,3 +41,16 @@ urlsplit_test() ->
 urlunsplit_test() ->
     ?assertEqual(<<"/foo#bar?baz">>, kz_http:urlunsplit({<<"">>, <<"">>, <<"/foo">>, <<"">>, <<"bar?baz">>})),
     ?assertEqual(<<"http://host:port/foo#bar?baz">>, kz_http:urlunsplit({<<"http">>, <<"host:port">>, <<"/foo">>, <<"">>, <<"bar?baz">>})).
+
+urlencode_test() ->
+    ?assertEqual(<<"1">> , kz_http:urlencode(1)),
+    %?assertEqual(<<"1.1">> , kz_http:urlencode(1.1)),
+    ?assertEqual(<<"1">> , kz_http:urlencode(<<"1">>)),
+    ?assertEqual(<<"1.1">> , kz_http:urlencode(<<"1.1">>)),
+    ?assertEqual(<<"foo">> , kz_http:urlencode(<<"foo">>)),
+    ?assertEqual(<<"foo">> , kz_http:urlencode("foo")),
+    ?assertEqual(<<"foo">> , kz_http:urlencode(foo)),
+    ?assertEqual(<<"foo+bar">> , kz_http:urlencode(<<"foo bar">>)),
+    ?assertEqual(<<"foo%0A">> , kz_http:urlencode(<<"foo\n">>)),
+    ?assertEqual(<<"foo%3B%26%3D">> , kz_http:urlencode(<<"foo;&=">>)).
+

@@ -9,6 +9,7 @@
 
 -export([
     urldecode/1,
+    urlencode/1,
     parse_query_string/1,
     urlsplit/1,
     urlunsplit/1
@@ -36,6 +37,62 @@ urldecode(<<$%, H, L, R/binary>>, Acc) ->
 
 urldecode(<<H, R/binary>>, Acc) ->
     urldecode(R, <<Acc/binary, H>>).
+
+%%--------------------------------------------------------------------
+%% @doc URL encodes a string
+%%--------------------------------------------------------------------
+-spec urlencode(binary() | atom() | integer() | float() | string()) -> binary().
+urlencode(Source) when is_atom(Source) ->
+    urlencode(list_to_binary(atom_to_list(Source)), <<>>);
+
+urlencode(Source) when is_list(Source) ->
+    urlencode(list_to_binary(Source), <<>>);
+
+urlencode(Source) when is_integer(Source) ->
+    urlencode(list_to_binary(integer_to_list(Source)), <<>>);
+
+%% @todo fix this when we move to > R15
+urlencode(Source) when is_float(Source) ->
+    List = float_to_list(Source),
+    Proper = string:substr(List, 1, string:chr(List, $.)+2),
+    urlencode(list_to_binary(Proper), <<>>);
+
+urlencode(Source) ->
+    urlencode(Source, <<>>).
+
+-spec urlencode(binary(), binary()) -> binary().
+urlencode(<<>>, Acc) ->
+    Acc;
+
+urlencode(<<$\s, R/binary>>, Acc) ->
+    urlencode(R, <<Acc/binary, $+>>);
+
+urlencode(<<C, R/binary>>, Acc) ->
+    case C of
+        $\. -> urlencode(R, <<Acc/binary, C>>);
+        $-  -> urlencode(R, <<Acc/binary, C>>);
+        $~  -> urlencode(R, <<Acc/binary, C>>);
+        $_  -> urlencode(R, <<Acc/binary, C>>);
+
+        C when C >= $0 andalso C=< $9 -> urlencode(R, <<Acc/binary, C>>);
+        C when C >= $a andalso C=< $z -> urlencode(R, <<Acc/binary, C>>);
+        C when C >= $A andalso C=< $Z -> urlencode(R, <<Acc/binary, C>>);
+
+        _NotSafe ->
+            SafeChar = encode_char(C),
+            urlencode(R, <<Acc/binary, "%", SafeChar/binary>>)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Converts a single character to its base-16 %-encoded form
+%%--------------------------------------------------------------------
+-spec encode_char(integer()) -> binary().
+encode_char(Char) ->
+    case integer_to_list(Char, 16) of
+        Val when length(Val) < 2 -> list_to_binary(["0", Val]);
+        ProperLen                -> list_to_binary(ProperLen)
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Parses a query string and returns a list of key->value pairs.
@@ -202,27 +259,4 @@ urlunsplit({S, N, P, Q, F}) ->
     Uf = case F of <<>> -> <<>>; _ -> <<$#, F/binary>> end,
 
     <<Us/binary, N/binary, P/binary, Uq/binary, Uf/binary>>.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
