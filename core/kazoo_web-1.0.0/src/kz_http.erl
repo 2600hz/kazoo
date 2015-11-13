@@ -10,7 +10,8 @@
 -export([
     urldecode/1,
     parse_query_string/1,
-    urlsplit/1
+    urlsplit/1,
+    urlunsplit/1
 ]).
 
 %%--------------------------------------------------------------------
@@ -95,6 +96,133 @@ parse_query_string('val', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
 %%--------------------------------------------------------------------
 -spec urlsplit(binary()) -> {binary(), binary(), binary(), binary(), binary()}.
 urlsplit(Source) ->
-    {<<>>,<<>>,<<>>,<<>>,<<>>}.
+    {Scheme, Url1}      = urlsplit_s(Source),
+    {Location, Url2}    = urlsplit_l(Url1),
+    {Path, Query, Frag} = urlsplit_p(Url2, <<>>),
+
+    {Scheme, Location, Path, Query, Frag}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Splits out the scheme portion of the URL (if present)
+%%--------------------------------------------------------------------
+-spec urlsplit_s(binary()) -> {binary(), binary()}.
+urlsplit_s(Source) ->
+    case urlsplit_s(Source, <<>>) of
+        'no_scheme' -> {<<>>, Source};
+        ValidScheme -> ValidScheme
+    end.
+
+-spec urlsplit_s(binary(), binary()) -> {binary(), binary()}.
+urlsplit_s(<<>>, _Acc) ->
+    'no_scheme';
+
+urlsplit_s(<<C, R/binary>>, Acc) ->
+    case C of
+        $: -> {Acc, R};
+
+        $+ -> urlsplit_s(R, <<Acc/binary, C>>);
+        $- -> urlsplit_s(R, <<Acc/binary, C>>);
+        $. -> urlsplit_s(R, <<Acc/binary, C>>);
+
+        C when C >= $a andalso C =< $z -> urlsplit_s(R, <<Acc/binary, C>>);
+        C when C >= $A andalso C =< $Z -> urlsplit_s(R, <<Acc/binary, C>>);
+        C when C >= $0 andalso C =< $9 -> urlsplit_s(R, <<Acc/binary, C>>);
+
+        _NoScheme -> 'no_scheme'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Splits out the location portion of the URL
+%%--------------------------------------------------------------------
+-spec urlsplit_l(binary()) -> {binary(), binary()}.
+urlsplit_l(<<"//", R/binary>>) ->
+    urlsplit_l(R, <<>>);
+
+urlsplit_l(Source) ->
+    {<<>>, Source}.
+
+-spec urlsplit_l(binary(), binary()) -> {binary(), binary()}.
+urlsplit_l(<<>>, Acc) ->
+    {Acc, <<>>};
+
+urlsplit_l(<<$/, _I/binary>> = R, Acc) ->
+    {Acc, R};
+
+urlsplit_l(<<$?, _I/binary>> = R, Acc) ->
+    {Acc, R};
+
+urlsplit_l(<<$#, _I/binary>> = R, Acc) ->
+    {Acc, R};
+
+urlsplit_l(<<C, R/binary>>, Acc) ->
+    urlsplit_l(R, <<Acc/binary, C>>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Splits and returns the path, query string, and fragment portions
+%% of the URL
+%%--------------------------------------------------------------------
+-spec urlsplit_p(binary(), binary()) -> {binary(), binary(), binary()}.
+urlsplit_p(<<>>, Acc) ->
+    {Acc, <<>>, <<>>};
+
+urlsplit_p(<<$?, R/binary>>, Acc) ->
+    {Query, Frag} = urlsplit_q(R, <<>>),
+    {Acc, Query, Frag};
+
+urlsplit_p(<<$#, R/binary>>, Acc) ->
+    {Acc, <<>>, R};
+
+urlsplit_p(<<C, R/binary>>, Acc) ->
+    urlsplit_p(R, <<Acc/binary, C>>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Splits the query string and fragment parts of the URL
+%%--------------------------------------------------------------------
+-spec urlsplit_q(binary(), binary()) -> {binary(), binary()}.
+urlsplit_q(<<>>, Acc) ->
+    {Acc, <<>>};
+
+urlsplit_q(<<$#, R/binary>>, Acc) ->
+    {Acc, R};
+
+urlsplit_q(<<C, R/binary>>, Acc) ->
+    urlsplit_q(R, <<Acc/binary, C>>).
+
+%%--------------------------------------------------------------------
+%% @doc Joins the elements of a URL together
+%%--------------------------------------------------------------------
+-spec urlunsplit({binary(), binary(), binary(), binary(), binary()}) -> binary().
+urlunsplit({S, N, P, Q, F}) ->
+    Us = case S of <<>> -> <<>>; _ -> <<S/binary, "://">> end,
+    Uq = case Q of <<>> -> <<>>; _ -> <<$?, Q/binary>> end,
+    Uf = case F of <<>> -> <<>>; _ -> <<$#, F/binary>> end,
+
+    <<Us/binary, N/binary, P/binary, Uq/binary, Uf/binary>>.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

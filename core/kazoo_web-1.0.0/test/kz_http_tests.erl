@@ -31,3 +31,13 @@ parse_query_string_test() ->
     ?assertEqual(
        [{<<"foo">>, <<"">>}, {<<"bar">>, <<"">>}, {<<"baz">>, <<"">>}],
        kz_http:parse_query_string(<<"foo;bar&baz">>)).
+
+urlsplit_test() ->
+    ?assertEqual({<<"">>, <<"">>, <<"/foo">>, <<"">>, <<"bar?baz">>}, kz_http:urlsplit(<<"/foo#bar?baz">>)),
+    ?assertEqual({<<"http">>, <<"host:port">>, <<"/foo">>, <<"">>, <<"bar?baz">>}, kz_http:urlsplit(<<"http://host:port/foo#bar?baz">>)),
+    ?assertEqual({<<"http">>, <<"host">>, <<"">>, <<"">>, <<"">>}, kz_http:urlsplit(<<"http://host">>)),
+    ?assertEqual({<<"">>, <<"">>, <<"/wiki/Category:Fruit">>, <<"">>, <<"">>}, kz_http:urlsplit(<<"/wiki/Category:Fruit">>)).
+
+urlunsplit_test() ->
+    ?assertEqual(<<"/foo#bar?baz">>, kz_http:urlunsplit({<<"">>, <<"">>, <<"/foo">>, <<"">>, <<"bar?baz">>})),
+    ?assertEqual(<<"http://host:port/foo#bar?baz">>, kz_http:urlunsplit({<<"http">>, <<"host:port">>, <<"/foo">>, <<"">>, <<"bar?baz">>})).

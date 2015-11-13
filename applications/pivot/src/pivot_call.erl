@@ -534,13 +534,12 @@ process_resp(RequesterQ, Call, CT, RespBody) ->
 
 -spec uri(ne_binary(), iolist()) -> ne_binary().
 uri(URI, QueryString) ->
-    Url = case mochiweb_util:urlsplit(wh_util:to_list(URI)) of
-              {Scheme, Host, Path, [], Fragment} ->
-                  mochiweb_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
-              {Scheme, Host, Path, QS, Fragment} ->
-                  mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
-          end,
-    wh_util:to_binary(Url).
+    case mochiweb_util:urlsplit(URI) of
+        {Scheme, Host, Path, <<>>, Fragment} ->
+            kz_http:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+        {Scheme, Host, Path, QS, Fragment} ->
+            kz_http:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", QueryString/binary>>, Fragment})
+    end.
 
 -spec req_params(ne_binary(), whapps_call:call()) -> wh_proplist().
 req_params(Format, Call) ->

@@ -1737,11 +1737,11 @@ recording_url(JObj) ->
 
 -spec uri(ne_binary(), iolist()) -> iolist().
 uri(URI, QueryString) ->
-    case mochiweb_util:urlsplit(wh_util:to_list(URI)) of
-        {Scheme, Host, Path, [], Fragment} ->
-            mochiweb_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+    case kz_http:urlsplit(URI) of
+        {Scheme, Host, Path, <<>>, Fragment} ->
+            kz_http:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
-            mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
+            kz_http:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", QueryString/binary>>, Fragment})
     end.
 
 -spec apply_state_updates(fsm_state()) -> {'next_state', atom(), fsm_state()}.
