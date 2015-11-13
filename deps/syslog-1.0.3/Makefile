@@ -24,9 +24,9 @@ ebin/$(PROJECT).app: src/*.erl
 
 ERL_INSTALL := $(wildcard $(shell dirname `which erl`)/../erts-*)
 ifeq ($(ERL_INSTALL),)
-	ERL_INSTALL = /usr/local/lib/erlang
+	ERL_INSTALL = /usr/lib/erlang
 else
-	ERL_INSTALL = $(dirname $ERL_INSTALL)
+	ERL_INSTALL = $(shell dirname $ERL_INSTALL)
 endif
 
 USR_INCLUDES = ${ERL_INSTALL}/usr/include
