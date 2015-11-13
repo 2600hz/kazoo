@@ -203,7 +203,7 @@ delete(Context, _) ->
 -spec delete_account(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_account(Context, AccountId) ->
     lager:debug("account ~s deleted, removing any webhooks", [AccountId]),
-    wh_util:spawn(fun() -> delete_account_webhooks(AccountId) end),
+    wh_util:spawn(fun delete_account_webhooks/1, [AccountId]),
     Context.
 
 -spec delete_account_webhooks(ne_binary()) -> 'ok'.
