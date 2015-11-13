@@ -1126,6 +1126,18 @@ write_pid(FileName) ->
 
 -spec ensure_started(atom()) -> 'ok' | {'error', any()}.
 ensure_started(App) when is_atom(App) ->
+    case erlang:function_exported(application, ensure_all_started, 1) of
+        'true' -> ensure_all_started(App);
+        'false' ->
+            case application:start(App) of
+                'ok' -> 'ok';
+                {'error', {'already_started', App}} -> 'ok';
+                E -> E
+            end
+    end.
+
+-spec ensure_all_started(atom()) -> 'ok' | {'error', any()}.
+ensure_all_started(App) ->
     case application:ensure_all_started(App) of
         'ok' -> 'ok';
         {'ok', _AppNames} -> 'ok';
