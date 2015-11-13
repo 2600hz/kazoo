@@ -22,26 +22,20 @@ ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
-ERL_INSTALL := $(wildcard $(shell dirname `which erl`)/../erts-*)
-ifeq ($(ERL_INSTALL),)
-	ERL_INSTALL = /usr/lib/erlang
-else
-	ERL_INSTALL := $(shell dirname $ERL_INSTALL)
+USR_INCLUDE := $(wildcard $(shell dirname `which erl`)/../erts-*/include)
+ifeq ($(USR_INCLUDE),)
+	USR_INCLUDE = /usr/lib/erlang/usr/include
 endif
 
-USR_INCLUDES := ${ERL_INSTALL}/usr/include
-
-ERL_INTERFACE := $(find $ERL_INSTALL -name "erl_interface-*")
+ERL_INTERFACE := $(find $USR_INCLUDE/../../ -type d -name "erl_interface-*" -print)
 ifeq ($(ERL_INTERFACE),)
 # 3.7.9 is R15B03-1
 # Change to 3.7.20 for 17.5
-	ERL_INTERFACE := $(ERL_INSTALL)/lib/erl_interface-3.7.20
-else
-	ERL_INTERFACE := $(ERL_INSTALL)/$ERL_INTERFACE
+	ERL_INTERFACE := $(USR_INCLUDE)/../../lib/erl_interface-3.7.20
 endif
 
 priv/syslog_drv.so: c_src/syslog_drv.c
-	gcc  -I$(USR_INCLUDES) -I$(ERL_INTERFACE)/include -L$(ERL_INTERFACE)/lib -fpic -shared c_src/syslog_drv.c -o priv/syslog_drv.so -lerl_interface -lei
+	gcc  -I$(USR_INCLUDE) -I$(ERL_INTERFACE)/include -L$(ERL_INTERFACE)/lib -fpic -shared c_src/syslog_drv.c -o priv/syslog_drv.so -lerl_interface -lei
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
