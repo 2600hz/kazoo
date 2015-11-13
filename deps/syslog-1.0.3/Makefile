@@ -35,6 +35,7 @@ ifeq ($(ERL_INTERFACE),)
 endif
 
 priv/syslog_drv.so: c_src/syslog_drv.c
+	@mkdir -p priv/
 	gcc  -I$(USR_INCLUDE) -I$(ERL_INTERFACE)/include -L$(ERL_INTERFACE)/lib -fpic -shared c_src/syslog_drv.c -o priv/syslog_drv.so -lerl_interface -lei
 
 compile-test: test/$(PROJECT).app
