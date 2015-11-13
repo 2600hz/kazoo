@@ -311,7 +311,7 @@ maybe_connect(#wh_amqp_connection{broker=_Broker
                                   ,available='false'
                                   ,params=Params}=Connection
                   ,Timeout) ->
-    case amqp_connection:start(Params) of
+    try amqp_connection:start(Params) of
         {'error', 'auth_failure'} ->
             lager:warning("amqp authentication failure with '~s', will retry"
                           ,[_Broker]),
@@ -323,7 +323,16 @@ maybe_connect(#wh_amqp_connection{broker=_Broker
         {'ok', Pid} ->
             Ref = erlang:monitor('process', Pid),
             connected(Connection#wh_amqp_connection{connection=Pid
-                                                    ,connection_ref=Ref})
+                                                    ,connection_ref=Ref});
+        _E ->
+            lager:critical("unhandled case on connect to '~s' will retry: ~p"
+                          ,[_Broker, _E]),
+            disconnected(Connection, Timeout)
+    catch
+        _Exc:_Err ->
+            lager:warning("exception connecting to '~s' will retry: ~p , ~p"
+                          ,[_Broker, _Exc, _Err]),
+            disconnected(Connection, Timeout)
     end.
 
 %%--------------------------------------------------------------------
@@ -410,10 +419,16 @@ open_channel(#wh_amqp_connection{connection=Pid}) ->
             {'error', 'closing'};
         {'error', _R}=E ->
             lager:critical("failed to open AMQP channel: ~p", [_R]),
-            E
+            E;
+        E ->
+            lager:critical("unhandled failure on open AMQP channel: ~p", [E]),
+            {'error', E}
     catch
         _:{'noproc', {'gen_server', 'call', [P|_]}} ->
             lager:warning("amqp connection ~p is no longer valid...", [P]),
+            {'error', 'not_connected'};
+        _Exc:_Err ->
+            lager:warning("amqp exception opening channel : ~p , ~p", [_Exc, _Err]),
             {'error', 'not_connected'}
     end.
 
