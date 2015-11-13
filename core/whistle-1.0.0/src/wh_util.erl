@@ -1139,7 +1139,6 @@ ensure_started(App) when is_atom(App) ->
 -spec ensure_all_started(atom()) -> 'ok' | {'error', any()}.
 ensure_all_started(App) ->
     case application:ensure_all_started(App) of
-        'ok' -> 'ok';
         {'ok', _AppNames} -> 'ok';
         {'error', {'already_started', App}} -> 'ok';
         E -> E
