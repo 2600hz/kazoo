@@ -94,7 +94,7 @@
         ]).
 
 -export([put_callid/1, get_callid/0
-         ,spawn/1, spawn/3
+         ,spawn/1, spawn/2, spawn/3
          ,set_startup/0, startup/0
         ]).
 -export([get_event_type/1]).
@@ -625,12 +625,19 @@ callid(JObj) ->
 
 %% @public
 -spec spawn(fun(() -> any())) -> pid().
+-spec spawn(fun(), list()) -> pid().
 -spec spawn(atom(), atom(), list()) -> pid().
 spawn(Module, Function, Arguments) ->
     CallId = get_callid(),
     erlang:spawn(fun () ->
                          _ = put_callid(CallId),
                          erlang:apply(Module, Function, Arguments)
+                 end).
+spawn(Fun, Arguments) ->
+    CallId = get_callid(),
+    erlang:spawn(fun() ->
+                         _ = put_callid(CallId),
+                         erlang:apply(Fun, Arguments)
                  end).
 spawn(Fun) ->
     CallId = get_callid(),
