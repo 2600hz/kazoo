@@ -103,6 +103,9 @@ static ErlDrvSSizeT syslogdrv_control(ErlDrvData handle, unsigned int command,
                                       char **rbuf, ErlDrvSizeT rlen)
 {
     syslogdrv_t* d = (syslogdrv_t*)handle;
+    if (d->open) {
+        return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
+    }
     int index = 0, version, arity, type, size;
 
     if (command != SYSLOGDRV_OPEN) {
@@ -112,108 +115,36 @@ static ErlDrvSSizeT syslogdrv_control(ErlDrvData handle, unsigned int command,
     if (ei_decode_version(buf, &index, &version)) {
         return encode_error(*rbuf, "badver");
     }
-    if (ei_decode_tuple_header(buf, &index, &arity) || arity != 4) {
+    if (ei_decode_tuple_header(buf, &index, &arity) || arity != 3) {
         return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
     }
     if (ei_get_type(buf, &index, &type, &size)) {
         return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
     }
     if (type == ERL_STRING_EXT) {
-        long logopt, facility, len;
-        ErlDrvBinary* ref = 0;
+        long logopt, facility;
 
-        syslogdrv_t* nd = (syslogdrv_t*)driver_alloc(sizeof(syslogdrv_t));
-        if (nd == NULL) {
+        if (d->ident) {
+            driver_free(d->ident);
+        }
+        d->ident = driver_alloc(size+1);
+        if (d->ident == NULL) {
             return encode_error(*rbuf, "enomem");
         }
-        nd->ident = driver_alloc(size+1);
-        if (nd->ident == NULL) {
-            return encode_error(*rbuf, "enomem");
-        }
-        if (ei_decode_string(buf, &index, nd->ident)) {
-            driver_free(nd->ident);
-            driver_free(nd);
+        if (ei_decode_string(buf, &index, d->ident)) {
             return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
         }
         if (ei_decode_long(buf, &index, &logopt) ||
             ei_decode_long(buf, &index, &facility)) {
-            driver_free(nd->ident);
-            driver_free(nd);
             return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
         }
-        if (ei_get_type(buf, &index, &type, &size)) {
-            driver_free(nd->ident);
-            driver_free(nd);
-            return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
-        }
-        if (type != ERL_BINARY_EXT) {
-            driver_free(nd->ident);
-            driver_free(nd);
-            return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
-        }
-        ref = driver_alloc_binary(size);
-        if (ref == NULL) {
-            return encode_error(*rbuf, "enomem");
-        }
-        if (ei_decode_binary(buf, &index, ref->orig_bytes, &len)) {
-            driver_free_binary(ref);
-            driver_free(nd->ident);
-            driver_free(nd);
-            return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
-        }
-        nd->logopt = (int)logopt;
-        nd->facility = (int)facility;
-        nd->open = 1;
-        {
-            ErlDrvTermData refdata = TERM_DATA(ref->orig_bytes);
-            ErlDrvPort port = d->port;
-            ErlDrvTermData pid = driver_caller(port);
-            ErlDrvData data = (ErlDrvData)nd;
-            nd->port = driver_create_port(port, pid, DRV_NAME, data);
-            if (nd->port == (ErlDrvPort)-1) {
-                driver_free_binary(ref);
-                driver_free(nd->ident);
-                driver_free(nd);
-                return (ErlDrvSSizeT)ERL_DRV_ERROR_GENERAL;
-            }
-            set_port_control_flags(nd->port, PORT_CONTROL_FLAG_BINARY);
-            ErlDrvTermData term[] = {
-                ERL_DRV_EXT2TERM, refdata, ref->orig_size,
-                ERL_DRV_ATOM, driver_mk_atom("ok"),
-                ERL_DRV_PORT, driver_mk_port(nd->port),
-                ERL_DRV_TUPLE, 2,
-                ERL_DRV_TUPLE, 2,
-            };
-            driver_output_term(port, term, sizeof term/sizeof *term);
-        }
-        driver_free_binary(ref);
+        d->logopt = (int)logopt;
+        d->facility = (int)facility;
+        d->open = 1;
         return 0;
     } else {
         return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
     }
-}
-
-static ErlDrvSSizeT syslogdrv_call(ErlDrvData handle, unsigned int command,
-                                   char *buf, ErlDrvSizeT len,
-                                   char **rbuf, ErlDrvSizeT rlen, unsigned int* flags)
-{
-    syslogdrv_t* d = (syslogdrv_t*)handle;
-    int index = 0;
-
-    if (command != SYSLOGDRV_CLOSE) {
-        return (ErlDrvSSizeT)ERL_DRV_ERROR_BADARG;
-    }
-
-    if (d->ident) {
-        driver_free(d->ident);
-    }
-    d->ident = NULL;
-    d->open = 0;
-    if (ei_encode_version(*rbuf, &index) ||
-        ei_encode_atom(*rbuf, &index, "ok")) {
-        return (ErlDrvSSizeT)ERL_DRV_ERROR_GENERAL;
-    }
-    return index+1;
 }
 
 /*
@@ -234,7 +165,7 @@ static ErlDrvEntry syslogdrv_driver_entry = {
     NULL,
     NULL,
     NULL,
-    syslogdrv_call,
+    NULL,
     NULL,
     ERL_DRV_EXTENDED_MARKER,
     ERL_DRV_EXTENDED_MAJOR_VERSION,
