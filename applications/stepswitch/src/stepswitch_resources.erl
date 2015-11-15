@@ -685,7 +685,7 @@ fetch_global_resources() ->
             lager:warning("unable to fetch global resources: ~p", [_R]),
             [];
         {'ok', JObjs} ->
-            CacheProps = [{'origin', fetch_cache_origin(JObjs, ?RESOURCES_DB)}],
+            CacheProps = [{'origin', [{'db', ?RESOURCES_DB, <<"resource">>}]}],
             Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
             Resources = resources_from_jobjs(Docs),
             wh_cache:store_local(?STEPSWITCH_CACHE, 'global_resources', Resources, CacheProps),
@@ -709,7 +709,7 @@ fetch_local_resources(AccountId) ->
             [];
         {'ok', JObjs} ->
             LocalResources = fetch_local_resources(AccountId, JObjs),
-            CacheProps = [{'origin', fetch_cache_origin(JObjs, AccountDb)}],
+            CacheProps = [{'origin', [{'db', AccountDb, <<"resource">>}]}],
             wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
@@ -739,21 +739,6 @@ build_account_dedicated_proxy(Proxy) ->
     Zone = wh_json:get_value(<<"zone">>, Proxy),
     ProxyIP = wh_json:get_value(<<"ip">>, Proxy),
     {Zone, ProxyIP}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--type cache_property() :: {'db', ne_binary(), ne_binary()}.
--type wh_cache_props() :: [cache_property()].
-
--spec fetch_cache_origin(wh_json:objects(), ne_binary()) -> wh_cache_props().
-fetch_cache_origin(JObjs, Database) ->
-    [{'db', Database, wh_doc:id(JObj)}
-     || JObj <- JObjs
-    ].
 
 %%--------------------------------------------------------------------
 %% @private
