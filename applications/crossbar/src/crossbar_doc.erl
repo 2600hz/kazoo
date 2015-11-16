@@ -246,7 +246,7 @@ patch_and_validate(Id, Context, ValidateFun) ->
     Context2 = case cb_context:resp_status(Context1) of
                    'success' ->
                        PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-                       PatchedJObj = wh_json:merge_jobjs(PubJObj, cb_context:doc(Context1)),
+                       PatchedJObj = wh_json:merge_recursive(cb_context:doc(Context1), PubJObj),
                        cb_context:set_req_data(Context, PatchedJObj);
                    _Status ->
                        Context1
