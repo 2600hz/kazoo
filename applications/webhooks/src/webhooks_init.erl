@@ -10,6 +10,7 @@
 -export([start_link/0
          ,init_modules/0
          ,existing_modules/0
+         ,maybe_init_account/2
         ]).
 
 -include("webhooks.hrl").
@@ -17,21 +18,41 @@
 -spec start_link() -> 'ignore'.
 start_link() ->
     wh_util:put_callid(?MODULE),
-    init_dbs(),
-    init_modules(),
+    spawn(fun do_init/0),
     'ignore'.
 
+do_init() ->
+    init_dbs(),
+    init_modules().
+
+do_init(MasterAccountDb) ->
+    init_master_account_db(MasterAccountDb),
+    init_modules().
+
 init_dbs() ->
-    init_master_account_db(),
+    _ = init_master_account_db(),
     webhooks_util:init_webhook_db().
 
+maybe_init_account(JObj, _Props) ->
+    Database = wapi_conf:get_database(JObj),
+    couch_util:db_classification(Database) =:= 'account'
+        andalso do_init(Database).
+
 init_master_account_db() ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    case whapps_util:get_master_account_db() of
+        {'ok', MasterAccountDb} ->
+            init_master_account_db(MasterAccountDb);
+        {'error', _} ->
+            lager:debug("master account hasn't been created yet"),
+            webhooks_shared_listener:add_account_bindings()
+    end.
+
+init_master_account_db(MasterAccountDb) ->
     _ = couch_mgr:revise_doc_from_file(MasterAccountDb
-                                       ,'webhooks'
-                                       ,<<"webhooks.json">>
+                                      ,'webhooks'
+                                      ,<<"webhooks.json">>
                                       ),
-    lager:debug("loaded view into master db").
+    lager:debug("loaded view into master db ~s", [MasterAccountDb]).
 
 -spec init_modules() -> 'ok'.
 init_modules() ->
@@ -64,7 +85,7 @@ existing_modules() ->
 -spec existing_modules(text()) -> atoms().
 existing_modules(ModulesDirectory) ->
     filelib:fold_files(ModulesDirectory
-                       ,"\\.erl"
+                       ,"\\.erl$"
                        ,'false'
                        ,fun fold_files/2
                        ,[]
