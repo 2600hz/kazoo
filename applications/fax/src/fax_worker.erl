@@ -442,32 +442,30 @@ code_change(_OldVsn, State, _Extra) ->
 -spec attempt_to_acquire_job(ne_binary(), ne_binary()) ->
                                     {'ok', wh_json:object()} |
                                     {'error', any()}.
--spec attempt_to_acquire_job(wh_json:object()) ->
+-spec attempt_to_acquire_job(wh_json:object(), ne_binary(), api_binary()) ->
                                     {'ok', wh_json:object()} |
                                     {'error', any()}.
 attempt_to_acquire_job(Id, Q) ->
     case couch_mgr:open_doc(?WH_FAXES_DB, Id) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
-            attempt_to_acquire_job(wh_json:set_value(<<"pvt_queue">>, Q, JObj))
+            attempt_to_acquire_job(JObj, Q, wh_json:get_value(<<"pvt_job_status">>, JObj))
     end.
 
-attempt_to_acquire_job(JObj) ->
-    case wh_json:get_value(<<"pvt_job_status">>, JObj) of
-        <<"pending">> ->
-            couch_mgr:save_doc(?WH_FAXES_DB
-                               ,wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
-                                                    ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
-                                                    ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                                   ]
-                                                   ,JObj
-                                                  )
-                               ,[{'rev', wh_doc:revision(JObj)}]
-                              );
-        _Else ->
-            lager:debug("job not in an available status: ~s", [_Else]),
-            {'error', 'job_not_available'}
-    end.
+attempt_to_acquire_job(JObj, Q, <<"pending">>) ->
+    couch_mgr:save_doc(?WH_FAXES_DB
+                       ,wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
+                                            ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
+                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                            ,{<<"pvt_queue">>, Q}
+                                           ]
+                                           ,JObj
+                                          )
+                       ,[{'rev', wh_doc:revision(JObj)}]
+                      );
+attempt_to_acquire_job(JObj, _Q, Status) ->
+    lager:debug("job not in an available status: ~s : ~p", [Status, JObj]),
+    {'error', 'job_not_available'}.
 
 -spec release_failed_job(atom(), any(), wh_json:object()) -> 'failure'.
 release_failed_job('fetch_failed', Status, JObj) ->
@@ -625,8 +623,8 @@ release_job(Result, JObj, Resp) ->
                  end
                ],
     Update = lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters),
-    couch_mgr:ensure_saved(?WH_FAXES_DB, Update),
-    maybe_notify(Result, JObj, Resp, wh_json:get_value(<<"pvt_job_status">>, Update)),
+    {'ok', Saved} = couch_mgr:ensure_saved(?WH_FAXES_DB, Update),
+    maybe_notify(Result, Saved, Resp, wh_json:get_value(<<"pvt_job_status">>, Saved)),
     case Success of 'true' -> 'ok'; 'false' -> 'failure' end.
 
 -spec apply_reschedule_logic(wh_json:object()) -> wh_json:object().
@@ -686,15 +684,27 @@ set_default_update_fields(JObj) ->
 
 -spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> any().
 maybe_notify(_Result, JObj, Resp, <<"completed">>) ->
-    Message = notify_fields(JObj, Resp),
+    Message = notify_fields(move_doc(JObj), Resp),
     wapi_notifications:publish_fax_outbound(Message);
 maybe_notify(_Result, JObj, Resp, <<"failed">>) ->
     Message = [{<<"Fax-Error">>, fax_error(Resp)}
-               | notify_fields(JObj, Resp)
+               | notify_fields(move_doc(JObj), Resp)
               ],
     wapi_notifications:publish_fax_outbound_error(props:filter_undefined(Message));
 maybe_notify(_Result, _JObj, _Resp, Status) ->
     lager:debug("notify Status ~p not handled",[Status]).
+
+move_doc(JObj) ->
+    FromId = wh_doc:id(JObj),
+    {Year, Month, _D} = wh_util:to_date(wh_doc:created(JObj)),
+    FromDB = wh_doc:account_db(JObj),
+    AccountId = wh_doc:account_id(JObj),
+    AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
+    kazoo_modb:create(AccountMODb),
+    ToDB = wh_util:format_account_modb(AccountMODb, 'encoded'),
+    ToId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), FromId),
+   {'ok', Doc} = couch_mgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']),
+    Doc.
 
 -spec fax_error(wh_json:object()) -> api_binary().
 fax_error(JObj) ->

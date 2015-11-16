@@ -14,6 +14,7 @@
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
+         ,validate_resource/1, validate_resource/2
          ,put/1
          ,post/2
          ,patch/2
@@ -74,6 +75,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.faxboxes">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.faxboxes">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.faxboxes">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.validate_resource.faxboxes">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxboxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.faxboxes">>, ?MODULE, 'patch'),
@@ -109,6 +111,15 @@ allowed_methods(_BoxId) ->
 
 resource_exists() -> 'true'.
 resource_exists(_BoxId) -> 'true'.
+
+-spec validate_resource(cb_context:context()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+validate_resource(Context) -> Context.
+validate_resource(Context, FaxboxId) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), FaxboxId) of
+        {'ok', JObj} -> cb_context:store(Context, <<"faxbox">>, JObj);
+        _ -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
