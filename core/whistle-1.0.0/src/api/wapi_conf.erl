@@ -20,6 +20,7 @@
 
          ,publish_db_update/3, publish_db_update/4
 
+         ,get_database/1
          ,get_account_id/1, get_account_db/1
          ,get_type/1, get_doc/1, get_id/1
          ,get_action/1, get_is_soft_deleted/1
@@ -42,12 +43,12 @@
                                            ,<<"Type">>
                                            ,<<"Version">>
                                           ]).
--define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
+-define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, ?WAPI_CONF_CATEGORY}
                                  ,{<<"Event-Name">>, [?DOC_EDITED
                                                       ,?DOC_CREATED
                                                       ,?DOC_DELETED
-                                                      ,<<"db_created">>
-                                                      ,<<"db_deleted">>
+                                                      ,?DB_CREATED
+                                                      ,?DB_DELETED
                                                      ]}
                                 ]).
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}
@@ -61,7 +62,7 @@
           ,<<"Account-ID">>
          ]
        ).
--define(DOC_TYPE_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
+-define(DOC_TYPE_UPDATE_VALUES, [{<<"Event-Category">>, ?WAPI_CONF_CATEGORY}
                                  ,{<<"Event-Name">>, <<"doc_type_update">>}
                                 ]).
 -define(DOC_TYPE_UPDATE_TYPES, []).
@@ -77,6 +78,10 @@ get_action(API) ->
 -spec get_account_db(api_terms()) -> api_binary().
 get_account_db(API) ->
     get_value(API, <<"Account-DB">>).
+
+-spec get_database(api_terms()) -> ne_binary().
+get_database(API) ->
+    get_value(API, <<"Database">>).
 
 %% returns the public fields of the document
 -spec get_doc(api_terms()) -> api_object().
