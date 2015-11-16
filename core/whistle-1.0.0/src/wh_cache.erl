@@ -70,6 +70,7 @@
 -type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
                         {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
                         {'db', ne_binary()} | %% {db, Database}
+                        {'database', ne_binary()} | %% {database, Database} added for notify db create/delete
                         {'type', ne_binary()}. %% {type, PvtType}
 -type origin_tuples() :: [origin_tuple()].
 -record(cache_obj, {key :: any()| '_' | '$1'
@@ -575,20 +576,24 @@ get_props_origin(Props) -> maybe_add_db_origin(props:get_value('origin', Props))
 
 -spec maybe_add_db_origin(wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 maybe_add_db_origin(Props) when is_list(Props) -> maybe_add_db_origin(Props, []);
+maybe_add_db_origin({'db', Db}) ->
+    [{'db',Db}, {'database', Db}];
 maybe_add_db_origin({'db', Db, Id}) ->
-    [{'db',Db,Id}, {'db', Db}];
+    [{'db',Db,Id}, {'database', Db}];
 maybe_add_db_origin(Props) -> Props.
 
 -spec maybe_add_db_origin(wh_proplist(), wh_proplist()) -> 'undefined' | origin_tuple() | origin_tuples().
 maybe_add_db_origin([], Acc) -> lists:reverse(props:unique(Acc));
+maybe_add_db_origin([{'db', Db} | Props], Acc) ->
+    maybe_add_db_origin(Props, [{'database',Db}, {'db',Db} |Acc]);
 maybe_add_db_origin([{'db', Db, Id} | Props], Acc) ->
-    maybe_add_db_origin(Props, [{'db',Db}, {'db',Db,Id} |Acc]);
+    maybe_add_db_origin(Props, [{'database',Db}, {'db',Db,Id} |Acc]);
 maybe_add_db_origin([P | Props], Acc) ->
     maybe_add_db_origin(Props, [P |Acc]).
 
 -spec maybe_erase_changed(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
 maybe_erase_changed(Db, 'database', _Id, Tab) ->
-    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
+    MatchSpec = [{#cache_obj{origin = {'database', Db}, _ = '_'}
                   ,[]
                   ,['$_']
                  }
