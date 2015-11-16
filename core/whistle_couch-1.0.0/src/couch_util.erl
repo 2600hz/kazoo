@@ -92,13 +92,13 @@
 
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
 
--type db_classifications() :: 'account' | 'modb' | 'acdc' |
+-type db_classification() :: 'account' | 'modb' | 'acdc' |
                               'numbers' | 'aggregate' | 'system' |
                               'deprecated' | 'undefined'.
 
 -export_type([db_create_options/0
               ,couchbeam_errors/0
-              ,db_classifications/0
+              ,db_classification/0
               ,view_options/0
              ]).
 
@@ -114,7 +114,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_classification(text()) -> db_classifications().
+-spec db_classification(text()) -> db_classification().
 db_classification(Db) when not is_binary(Db) ->
     db_classification(wh_util:to_binary(Db));
 db_classification(<<"ts">>) -> 'depreciated';
