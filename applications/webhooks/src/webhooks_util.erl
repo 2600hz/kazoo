@@ -601,7 +601,7 @@ fetch_available_events() ->
         {'error', _} -> [];
         {'ok', Available} ->
             Events = [wh_json:get_value(<<"key">>, A) || A <- Available],
-            CacheProps = [{'origin', [{'db', MasterAccountDb}, {'type', <<"webhook_meta">>}]}],
+            CacheProps = [{'origin', [{'db', MasterAccountDb, <<"webhook_meta">>}]}],
             wh_cache:store_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY, Events, CacheProps),
             Events
     end.
