@@ -78,7 +78,7 @@ maybe_init_responder({Responder, _Fun}, 'true') when is_atom(Responder) ->
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("responder ~s crashed: ~s: ~p", [_E, _R]),
+            lager:debug("responder ~s crashed: ~s: ~p", [Responder, _E, _R]),
             wh_util:log_stacktrace(ST)
     end;
 maybe_init_responder({_Responder, _Fun}, 'false') ->
