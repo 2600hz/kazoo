@@ -11,40 +11,73 @@
 
 -export([handle_req/2]).
 
+-define(DEFAULT_ROUTE_WIN_TIMEOUT, 3000).
+-define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
+-define(ROUTE_WIN_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
+
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, Props) ->
+handle_req(JObj, _Props) ->
     'true' = wapi_route:req_v(JObj),
     wh_util:put_callid(JObj),
     Call = whapps_call:from_route_req(JObj),
 
     case whapps_call:request_user(Call) of
         <<"conference">> ->
-            Q = props:get_value('queue', Props),
-            maybe_send_route_response(JObj, Q, Call);
+            maybe_send_route_response(JObj, Call);
         _Else -> 'ok'
     end.
 
--spec maybe_send_route_response(wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
-maybe_send_route_response(JObj, Q, Call) ->
+-spec maybe_send_route_response(wh_json:object(), whapps_call:call()) -> 'ok'.
+maybe_send_route_response(JObj, Call) ->
     case find_conference(Call) of
         {'ok', Conference} ->
-            send_route_response(JObj, Q, Call, bridged_conference(Conference));
+            send_route_response(JObj, Call, bridged_conference(Conference));
         {'error', _} -> 'ok'
     end.
 
--spec send_route_response(wh_json:object(), ne_binary(), whapps_call:call(), whapps_conference:conference()) ->
+-spec send_route_response(wh_json:object(), whapps_call:call(), whapps_conference:conference()) ->
                                  'ok'.
-send_route_response(JObj, Q, Call, Conference) ->
-    conf_util:cache(Call, Conference),
-    Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+send_route_response(JObj, Call, Conference) ->
+    lager:info("conference knows how to route the call! sending park response"),
+    Resp = props:filter_undefined([{?KEY_MSG_ID, wh_api:msg_id(JObj)}
+                                   ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"park">>}
-                                   | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId = wh_api:server_id(JObj),
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
-    whapps_util:amqp_pool_send(Resp, Publisher),
-    lager:info("conference knows how to route the call! sent park response").
+    case wh_amqp_worker:call(Resp
+                             ,Publisher
+                             ,fun wapi_route:win_v/1
+                             ,?ROUTE_WIN_TIMEOUT
+                            )
+    of
+        {'ok', RouteWin} ->
+            lager:info("conference has received a route win"),
+            start_participant(whapps_call:from_route_win(RouteWin, Call), Conference);
+        {'error', _E} ->
+            lager:info("conference didn't received a route win, exiting : ~p", [_E])
+    end.
+
+-spec start_participant(whapps_call:call(), whapps_conference:conference()) -> 'ok'.
+start_participant(Call, Conference) ->
+    case conf_participant_sup:start_participant(Call) of
+        {'ok', Participant} ->
+            join_local(Call, Conference, Participant);
+        _Else -> whapps_call_command:hangup(Call)
+    end.
+
+-spec join_local(whapps_call:call(), whapps_conference:conference(), server_ref()) -> 'ok'.
+join_local(Call, Conference, Participant) ->
+    Routines = [{fun whapps_conference:set_moderator/2, 'false'}
+                ,{fun whapps_conference:set_application_version/2, ?APP_VERSION}
+                ,{fun whapps_conference:set_application_name/2, ?APP_NAME}
+               ],
+    C = whapps_conference:update(Routines, Conference),
+    conf_participant:set_conference(C, Participant),
+    whapps_call_command:answer(Call),
+    conf_participant:join_local(Participant).
 
 -spec find_conference(whapps_call:call()) -> {'error', any()} |
                                              {'ok', whapps_conference:conference()}.
