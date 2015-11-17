@@ -792,7 +792,7 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                    ,consumer_key=ConsumerKey
                                                   }) ->
     Key = wh_util:get_event_type(JObj),
-    _ = [proc_lib:spawn(fun client_handle_event/6
+    _ = [proc_lib:spawn(?MODULE, 'client_handle_event'
                         ,[JObj, ConsumerKey, Module, Fun, Props, BasicDeliver]
                        )
          || {Evt, {Module, Fun}} <- Responders,
