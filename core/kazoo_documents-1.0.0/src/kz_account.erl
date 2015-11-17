@@ -28,6 +28,7 @@
          ,trial_expiration/1, trial_expiration/2, set_trial_expiration/2
          ,trial_time_left/1, trial_time_left/2
          ,trial_has_expired/1, is_expired/1
+         ,is_trial_account/1
         ]).
 
 -define(ID, <<"_id">>).
@@ -43,6 +44,7 @@
 -define(ALLOW_NUMBER_ADDITIONS, <<"pvt_wnm_allow_additions">>).
 -define(NOTIFY_PREF, <<"pvt_notification_preference">>).
 -define(KEY_TRIAL_EXPIRATION, <<"pvt_trial_expires">>).
+-define(KEY_TRIAL_ACCOUNT, <<"is_trial_account">>).
 
 -define(PVT_TYPE, <<"account">>).
 
@@ -345,7 +347,8 @@ trial_expiration(JObj, Default) ->
 %%--------------------------------------------------------------------
 -spec set_trial_expiration(doc(), gregorian_seconds()) -> doc().
 set_trial_expiration(JObj, Expiration) ->
-    wh_json:set_value(?KEY_TRIAL_EXPIRATION, Expiration, JObj).
+    JObj1 = wh_json:delete_key(?KEY_TRIAL_ACCOUNT, JObj),
+    wh_json:set_value(?KEY_TRIAL_EXPIRATION, Expiration, JObj1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -384,6 +387,15 @@ is_expired(JObj) ->
         'true' ->
             {'true', kz_account:trial_expiration(JObj)}
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_trial_account(doc()) -> boolean().
+is_trial_account(JObj) ->
+    wh_json:is_true(?KEY_TRIAL_ACCOUNT, JObj, 'false').
 
 %%%===================================================================
 %%% Internal functions

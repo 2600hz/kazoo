@@ -1301,7 +1301,10 @@ create_account_definition(Context) ->
              ,{<<"pvt_created">>, TStamp}
              ,{<<"pvt_vsn">>, <<"1">>}
             ],
-    case couch_mgr:save_doc(AccountDb, wh_json:set_values(Props, cb_context:doc(Context))) of
+
+    JObj = maybe_set_trial_expires(wh_json:set_values(Props, cb_context:doc(Context))),
+
+    case couch_mgr:save_doc(AccountDb, JObj) of
         {'ok', AccountDef}->
             _ = replicate_account_definition(AccountDef),
             cb_context:setters(Context
@@ -1313,6 +1316,20 @@ create_account_definition(Context) ->
             lager:debug("unable to create account definition: ~p", [_R]),
             throw(cb_context:add_system_error('datastore_fault', Context))
     end.
+
+-spec maybe_set_trial_expires(wh_json:object()) -> wh_json:object().
+maybe_set_trial_expires(JObj) ->
+    case kz_account:is_trial_account(JObj) of
+        'false' -> JObj;
+        'true' -> set_trial_expires(JObj)
+    end.
+
+-spec set_trial_expires(wh_json:object()) -> wh_json:object().
+set_trial_expires(JObj) ->
+    TrialTime = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
+    Expires = wh_util:now_s(wh_util:now()) + TrialTime,
+    kz_account:set_trial_expiration(JObj, Expires).
+
 
 -spec load_initial_views(cb_context:context()) -> 'ok'.
 load_initial_views(Context)->
