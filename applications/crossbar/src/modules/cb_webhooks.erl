@@ -89,7 +89,7 @@ maybe_revise_schema(SchemaJObj) ->
     case whapps_util:get_master_account_db() of
         {'ok', MasterDb} -> maybe_revise_schema(SchemaJObj, MasterDb);
         {'error', _E} ->
-            lager:warning("fmaster account not set yet, unable to revise schema: ~p", [_E])
+            lager:warning("master account not set yet, unable to revise schema: ~p", [_E])
     end.
 
 maybe_revise_schema(SchemaJObj, MasterDb) ->
