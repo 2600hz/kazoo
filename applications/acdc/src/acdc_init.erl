@@ -21,7 +21,7 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    _ = wh_util:spawn(?MODULE, 'init_acdc', []),
+    _ = wh_util:spawn(fun init_acdc/0, []),
     'ignore'.
 
 -spec init_acdc() -> any().

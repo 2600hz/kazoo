@@ -139,7 +139,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', Props}, #state{node=Node}=State) ->
-    _ = wh_util:spawn(?MODULE, 'process_fs_event', [Node, Props]),
+    _ = wh_util:spawn(fun process_fs_event/2, [Node, Props]),
     {'noreply', State, 'hibernate'};
 handle_info({'EXIT', _, _}, State) ->
     {'noreply', State};

@@ -209,7 +209,7 @@ armed(_Event, _From, State) ->
     {'reply', {'error', 'not_implemented'}, 'armed', State}.
 
 handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
-    _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+    _Pid = proc_lib:spawn(fun konami_code_exe:handle/2, [Metaflow, Call]),
     lager:debug("recv metaflow exe request for ~s, processing in ~p", [CallId, _Pid]),
     {'next_state', StateName, State};
 handle_event(?EVENT(_CallId, <<"CHANNEL_ANSWER">>, Evt)
@@ -451,14 +451,14 @@ maybe_handle_bleg_code(#state{numbers=Ns
 -spec handle_number_metaflow(whapps_call:call(), wh_json:object(), ne_binary()) -> 'ok'.
 handle_number_metaflow(Call, N, DTMFLeg) ->
     Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], DTMFLeg}], N),
-    _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+    _Pid = proc_lib:spawn(fun konami_code_exe:handle/2, [Metaflow, Call]),
     ?WSD_NOTE(DTMFLeg, 'right', <<"executing number metaflow">>),
     lager:debug("number exe in ~p: ~p", [_Pid, Metaflow]).
 
 -spec handle_pattern_metaflow(whapps_call:call(), wh_json:object(), ne_binary()) -> 'ok'.
 handle_pattern_metaflow(Call, P, DTMFLeg) ->
     Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], DTMFLeg}], P),
-    _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+    _Pid = proc_lib:spawn(fun konami_code_exe:handle/2, [Metaflow, Call]),
     ?WSD_NOTE(DTMFLeg, 'right', <<"executing pattern metaflow">>),
     lager:debug("pattern exe in ~p: ~p", [_Pid, Metaflow]).
 

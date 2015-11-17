@@ -56,7 +56,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _ = wh_util:spawn(?MODULE, 'cleanup_jobs', []),
+    _ = wh_util:spawn(fun cleanup_jobs/0),
     {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------

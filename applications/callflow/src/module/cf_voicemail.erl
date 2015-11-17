@@ -2291,7 +2291,7 @@ is_owner(Call, OwnerId) ->
 -spec send_mwi_update(mailbox(), whapps_call:call()) -> 'ok'.
 send_mwi_update(#mailbox{owner_id=OwnerId, mailbox_number=BoxNumber}=Box, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = wh_util:spawn('cf_util', 'unsolicited_owner_mwi_update', [AccountDb, OwnerId]),
+    _ = wh_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
     Messages = get_messages(Box, Call),
     New = count_messages(Messages, ?VM_FOLDER_NEW),
     Saved = count_messages(Messages, ?VM_FOLDER_SAVED),

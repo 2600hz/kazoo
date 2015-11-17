@@ -115,11 +115,11 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, []}, #state{node=Node}=State) ->
     lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
-    _ = wh_util:spawn(?MODULE, 'handle_config_req', [Node, ID, Conf, 'undefined']),
+    _ = wh_util:spawn(fun handle_config_req/4, [Node, ID, Conf, 'undefined']),
     {'noreply', State};
 handle_info({'fetch', 'configuration', <<"configuration">>, <<"name">>, Conf, ID, ['undefined' | Data]}, #state{node=Node}=State) ->
     lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
-    _ = wh_util:spawn(?MODULE, 'handle_config_req', [Node, ID, Conf, Data]),
+    _ = wh_util:spawn(fun handle_config_req/4, [Node, ID, Conf, Data]),
     {'noreply', State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),

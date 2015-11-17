@@ -353,7 +353,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             end
     end;
 handle_cast('stop', #state{call=Call}=State) ->
-    _ = wh_util:spawn('doodle_util', 'save_sms', [whapps_call:clear_helpers(Call)]),
+    _ = wh_util:spawn(fun doodle_util:save_sms/1, [whapps_call:clear_helpers(Call)]),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};

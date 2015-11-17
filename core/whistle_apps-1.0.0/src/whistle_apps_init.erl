@@ -15,7 +15,7 @@
 -include("whistle_apps.hrl").
 
 start_link() ->
-    _ = wh_util:spawn(?MODULE, 'init', []),
+    _ = wh_util:spawn(fun init/0),
     'ignore'.
 
 init() ->

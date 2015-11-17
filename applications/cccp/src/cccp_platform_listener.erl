@@ -202,7 +202,7 @@ dial(AccountId, OutboundCID, AuthDocId, Call) ->
     CallId = whapps_call:call_id(Call),
     put_auth_doc_id(AuthDocId, CallId),
     {'num_to_dial', ToDID} = cccp_util:get_number(Call),
-    _ = wh_util:spawn('cccp_util', 'store_last_dialed', [ToDID, AuthDocId]),
+    _ = wh_util:spawn(fun cccp_util:store_last_dialed/2, [ToDID, AuthDocId]),
     Req = cccp_util:build_bridge_request(CallId, ToDID, <<>>, whapps_call:control_queue(Call), AccountId, OutboundCID),
     wapi_offnet_resource:publish_req(Req).
 

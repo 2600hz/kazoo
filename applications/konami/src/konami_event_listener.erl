@@ -376,7 +376,7 @@ handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_ANSWER">> = EventName, Event), State
     _ = relay_to_fsms(AccountId, EventName, Event),
     {'noreply', State};
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _P = wh_util:spawn(?MODULE, 'cleanup_bindings', [self()]),
+    _P = wh_util:spawn(fun cleanup_bindings/1, [self()]),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Info, State) ->
     {'noreply', State}.

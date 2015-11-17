@@ -14,7 +14,7 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    wh_util:spawn(?MODULE, 'init', []),
+    wh_util:spawn(fun init/0),
     'ignore'.
 
 -spec init() -> any().

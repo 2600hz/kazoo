@@ -150,7 +150,7 @@ handle_cast(_Msg, State) ->
 -spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()), state()) ->
                          {'noreply', state()}.
 handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
-    _ = wh_util:spawn(?MODULE, 'handle_amqp_event', [JObj, [], call_routing(EventType, JObj)]),
+    _ = wh_util:spawn(fun handle_amqp_event/3, [JObj, [], call_routing(EventType, JObj)]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.

@@ -294,4 +294,4 @@ bridge_to_final_destination(CallId, ToDID, #state{queue=Q
                                                  }) ->
     Req = cccp_util:build_bridge_request(CallId, ToDID, Q, CtrlQ, AccountId, AccountCID),
     wapi_offnet_resource:publish_req(Req),
-    wh_util:spawn('cccp_util', 'store_last_dialed', [ToDID, AccountDocId]).
+    wh_util:spawn(fun cccp_util:store_last_dialed/2, [ToDID, AccountDocId]).

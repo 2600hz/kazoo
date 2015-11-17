@@ -502,7 +502,7 @@ save(Context, [_|_]=JObjs, Options) ->
             handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end;
 save(Context, JObj, Options) ->
@@ -513,7 +513,7 @@ save(Context, JObj, Options) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
 
@@ -547,7 +547,7 @@ ensure_saved(Context, JObj, Options) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
 
@@ -697,7 +697,7 @@ do_delete(Context, JObj, CouchFun) ->
                         ,[wh_doc:id(JObj), cb_context:account_db(Context)]
                        ),
             Context1 = handle_couch_mgr_success(JObj, Context),
-            _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
 

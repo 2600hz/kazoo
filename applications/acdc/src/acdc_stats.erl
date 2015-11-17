@@ -540,14 +540,14 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
 -spec archive_data() -> 'ok'.
 archive_data() ->
     Self = self(),
-    _ = wh_util:spawn(?MODULE, 'archive_call_data', [Self, 'false']),
-    _ = wh_util:spawn('acdc_agent_stats', 'archive_status_data', [Self, 'false']),
+    _ = wh_util:spawn(fun archive_call_data/2, [Self, 'false']),
+    _ = wh_util:spawn(fun acdc_agent_stats:archive_status_data/2, [Self, 'false']),
     'ok'.
 
 force_archive_data() ->
     Self = self(),
-    _ = wh_util:spawn(?MODULE, 'archive_call_data', [Self, 'true']),
-    _ = wh_util:spawn('acdc_agent_stats', 'archive_status_data', [Self, 'true']),
+    _ = wh_util:spawn(fun archive_call_data/2, [Self, 'true']),
+    _ = wh_util:spawn(fun acdc_agent_stats:archive_status_data/2, [Self, 'true']),
     'ok'.
 
 cleanup_data(Srv) ->

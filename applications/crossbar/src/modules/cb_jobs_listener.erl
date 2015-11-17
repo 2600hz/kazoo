@@ -347,7 +347,7 @@ handle_cast(_Msg, State) ->
 handle_info({'timeout', Ref, ?RECOVERY_MESSAGE}
             ,#state{recovery_ref=Ref}=State
            ) ->
-    _Pid = wh_util:spawn(?MODULE, 'start_recovery', []),
+    _Pid = wh_util:spawn(fun start_recovery/0),
     lager:debug("starting recovery walker in ~p", [_Pid]),
     {'noreply', State#state{recovery_ref=start_timer()}, 'hibernate'};
 handle_info(_Info, State) ->

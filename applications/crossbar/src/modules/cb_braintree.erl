@@ -517,5 +517,5 @@ add_credit_to_account(BraintreeData, Units, LedgerId, AccountId, OrderId) ->
 -spec sync(cb_context:context()) -> 'ok'.
 sync(Context) ->
     AccountId = cb_context:account_id(Context),
-    _P = wh_util:spawn('wh_service_sync', 'sync', [AccountId]),
+    _P = wh_util:spawn(fun wh_service_sync:sync/1, [AccountId]),
     'ok'.

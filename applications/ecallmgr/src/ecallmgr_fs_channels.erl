@@ -812,7 +812,7 @@ maybe_cleanup_old_channels() ->
     case max_channel_uptime() of
         N when N =< 0 -> 'ok';
         MaxAge ->
-            _P = wh_util:spawn(?MODULE, 'cleanup_old_channels', [MaxAge]),
+            _P = wh_util:spawn(fun cleanup_old_channels/1, [MaxAge]),
             'ok'
     end.
 

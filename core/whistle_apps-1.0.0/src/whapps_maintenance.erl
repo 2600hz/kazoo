@@ -236,7 +236,7 @@ refresh(?WH_FAXES_DB) ->
 refresh(?KZ_PORT_REQUESTS_DB) ->
     couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
     _ = couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
-    _ = wh_util:spawn('wh_port_request', 'migrate', []),
+    _ = wh_util:spawn(fun wh_port_request:migrate/0),
     'ok';
 refresh(?KZ_ACDC_DB) ->
     couch_mgr:db_create(?KZ_ACDC_DB),

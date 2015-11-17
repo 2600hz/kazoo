@@ -465,7 +465,7 @@ handle_info('expire', State) ->
     {'noreply', State};
 handle_info(?REGISTER_SUCCESS_MSG(Node, Props), State) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
-    _ = wh_util:spawn(?MODULE, 'handle_fs_reg', [Node, Props]),
+    _ = wh_util:spawn(fun handle_fs_reg/2, [Node, Props]),
     {'noreply', State};
 handle_info(_Info, State) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),

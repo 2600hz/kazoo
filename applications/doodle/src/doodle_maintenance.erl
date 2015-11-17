@@ -24,11 +24,11 @@ flush() ->
 
 -spec start_check_sms_by_device_id(ne_binary(), ne_binary()) -> pid().
 start_check_sms_by_device_id(AccountId, DeviceId) ->
-    wh_util:spawn(?MODULE, 'check_sms_by_device_id', [AccountId, DeviceId]).
+    wh_util:spawn(fun check_sms_by_device_id/2, [AccountId, DeviceId]).
 
 -spec start_check_sms_by_owner_id(ne_binary(), ne_binary()) -> pid().
 start_check_sms_by_owner_id(AccountId, OwnerId) ->
-    wh_util:spawn(?MODULE, 'check_sms_by_owner_id', [AccountId, OwnerId]).
+    wh_util:spawn(fun check_sms_by_owner_id/2, [AccountId, OwnerId]).
 
 -spec check_sms_by_device_id(ne_binary(), ne_binary()) -> 'ok'.
 check_sms_by_device_id(_AccountId, 'undefined') -> 'ok';
@@ -58,7 +58,7 @@ start_check_sms_by_account(AccountId, JObj) ->
          orelse wh_util:is_false(wh_json:get_value(<<"pvt_enabled">>, JObj, 'true'))
      of
          'true' -> 'ok';
-         'false' -> wh_util:spawn(?MODULE, 'check_pending_sms_for_delivery', [AccountId])
+         'false' -> wh_util:spawn(fun check_pending_sms_for_delivery/1, [AccountId])
      end.
 
 -spec check_pending_sms_for_outbound_delivery(ne_binary()) -> pid().
@@ -101,7 +101,7 @@ spawn_handler(AccountId, JObj) ->
     DocId = wh_doc:id(JObj),
     ?MATCH_MODB_PREFIX(Year,Month,_) = DocId,
     AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
-    _ = wh_util:spawn('doodle_api', 'handle_api_sms', [AccountDb, DocId]),
+    _ = wh_util:spawn(fun doodle_api:handle_api_sms/2, [AccountDb, DocId]),
     timer:sleep(200).
 
 -spec check_pending_sms_for_offnet_delivery(ne_binary()) -> 'ok'.
