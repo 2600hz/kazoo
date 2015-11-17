@@ -93,8 +93,8 @@
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
 
 -type db_classification() :: 'account' | 'modb' | 'acdc' |
-                              'numbers' | 'aggregate' | 'system' |
-                              'deprecated' | 'undefined'.
+                             'numbers' | 'aggregate' | 'system' |
+                             'deprecated' | 'undefined'.
 
 -export_type([db_create_options/0
               ,couchbeam_errors/0
