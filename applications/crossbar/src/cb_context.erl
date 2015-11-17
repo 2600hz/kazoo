@@ -613,12 +613,14 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
 -spec failed(context(), jesse_error:error_reasons()) -> context().
 -spec failed_error(jesse_error:error_reason(), context()) -> context().
 failed(Context, Errors) ->
+    Context1 = setters(Context
+                      ,[{fun set_resp_error_code/2, 400}
+                       ,{fun set_resp_status/2, 'error'}
+                       ]
+                      ),
     lists:foldl(fun failed_error/2
-               ,set_resp_error_code(
-                  set_resp_status(Context, 'error')
-                  ,400
-                 )
-               ,Errors
+                ,Context1
+                ,Errors
                ).
 
 failed_error({'data_invalid'
