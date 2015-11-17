@@ -244,19 +244,20 @@ expand_message_vars(Props) ->
 -spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 process_route_req(Section, Node, FetchId, CallId, Props) ->
     wh_util:put_callid(CallId),
+    RequireCOF = props:is_false(<<"variable_ecallmgr_Call-Forward">>, Props, 'true'),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
-        'false' -> search_for_route(Section, Node, FetchId, CallId, Props);
+        'false' -> search_for_route(Section, Node, FetchId, CallId, Props, RequireCOF);
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = wh_json:from_list([{<<"Routes">>, []}
                                       ,{<<"Method">>, <<"park">>}
                                       ,{<<"Context">>, hunt_context(Props)}
                                      ]),
-            reply_affirmative(Section, Node, FetchId, CallId, JObj)
+            reply_affirmative(Section, Node, FetchId, CallId, JObj, RequireCOF)
     end.
 
--spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
-search_for_route(Section, Node, FetchId, CallId, Props) ->
+-spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), wh_proplist(), boolean()) -> 'ok'.
+search_for_route(Section, Node, FetchId, CallId, Props, RequireCOF) ->
     _ = wh_util:spawn('ecallmgr_fs_authz', 'authorize', [props:set_value(<<"Call-Setup">>, <<"true">>, Props)
                                                          ,CallId
                                                          ,Node
@@ -272,24 +273,24 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
             J = wh_json:set_value(<<"Context">>, hunt_context(Props), JObj),
-            maybe_wait_for_authz(Section, Node, FetchId, CallId, J)
+            maybe_wait_for_authz(Section, Node, FetchId, CallId, J, RequireCOF)
     end.
 
 -spec hunt_context(wh_proplist()) -> api_binary().
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
--spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
+-spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), boolean()) -> 'ok'.
+maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, RequireCOF) ->
     case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false'))
         andalso wh_json:get_value(<<"Method">>, JObj) =/= <<"error">>
     of
-        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj);
-        'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj)
+        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj, RequireCOF);
+        'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj, RequireCOF)
     end.
 
--spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
+-spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), boolean()) -> 'ok'.
+wait_for_authz(Section, Node, FetchId, CallId, JObj, RequireCOF) ->
     case wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
         {'ok', {'true', AuthzCCVs}} ->
             _ = wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
@@ -298,7 +299,7 @@ wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
                                   ,wh_json:merge_jobjs(CCVs, AuthzCCVs)
                                   ,JObj
                                  ),
-            reply_affirmative(Section, Node, FetchId, CallId, J);
+            reply_affirmative(Section, Node, FetchId, CallId, J, RequireCOF);
         _Else -> reply_forbidden(Section, Node, FetchId)
     end.
 
@@ -310,17 +311,19 @@ reply_forbidden(Section, Node, FetchId) ->
                                                   ,{<<"Route-Error-Code">>, <<"403">>}
                                                   ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
                                                   ,{<<"Fetch-Section">>, wh_util:to_binary(Section)}
-                                                 ]),
+                                                 ]
+                                                 ,'false'
+                                                ),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         'ok' -> lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]);
         {'error', Reason} -> lager:debug("node ~s rejected our ~s route unauthz: ~p", [Node, Section, Reason])
     end.
 
--spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
+-spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), boolean()) -> 'ok'.
+reply_affirmative(Section, Node, FetchId, CallId, JObj, RequireCOF) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
-    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
+    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj, RequireCOF),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);

@@ -178,8 +178,7 @@ handle_ccvs(DP, _Node, _UUID, _Channel, JObj) ->
 
 -spec pre_exec(wh_proplist(), atom(), ne_binary(), channel(), wh_json:object()) -> wh_proplist().
 pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
-    [{"application", "set continue_on_fail=true"}
-     ,{"application", "export sip_redirect_context=context_2"}
+    [{"application", "export sip_redirect_context=context_2"}
      ,{"application", "set hangup_after_bridge=true"}
      ,{"application", lists:concat(["export "
                                     ,?CHANNEL_VAR_PREFIX, "Inception"

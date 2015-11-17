@@ -11,7 +11,7 @@
 -module(ecallmgr_fs_xml).
 
 -export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
-         ,route_resp_xml/1 ,authn_resp_xml/1, reverse_authn_resp_xml/1
+         ,route_resp_xml/2 ,authn_resp_xml/1, reverse_authn_resp_xml/1
          ,acl_xml/1, not_found/0, empty_response/0
          ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
          ,sip_channel_xml/1
@@ -214,12 +214,13 @@ conference_profile_xml(Name, Params) ->
     ParamEls = [param_el(K, V) || {K, V} <- wh_json:to_proplist(Params)],
     profile_el(Name, ParamEls).
 
--spec route_resp_xml(api_terms()) -> {'ok', iolist()}.
-route_resp_xml([_|_]=RespProp) -> route_resp_xml(wh_json:from_list(RespProp));
-route_resp_xml(RespJObj) ->
+-spec route_resp_xml(api_terms(), boolean()) -> {'ok', iolist()}.
+route_resp_xml([_|_]=RespProp, RequireCOF) -> route_resp_xml(wh_json:from_list(RespProp), RequireCOF);
+route_resp_xml(RespJObj, RequireCOF) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj)
                    ,wh_json:get_value(<<"Routes">>, RespJObj, [])
                    ,RespJObj
+                   ,RequireCOF
                   ).
 
 %% Prop = Route Response
@@ -264,24 +265,26 @@ should_bypass_media(RouteJObj) ->
         _ -> "false" %% default to not bypassing media
     end.
 
--spec route_resp_xml(ne_binary(), wh_json:objects(), wh_json:object()) -> {'ok', iolist()}.
-route_resp_xml(<<"bridge">>, Routes, JObj) ->
+-spec route_resp_xml(ne_binary(), wh_json:objects(), wh_json:object(), boolean()) -> {'ok', iolist()}.
+route_resp_xml(<<"bridge">>, Routes, JObj, RequireCOF) ->
     lager:debug("creating a bridge XML response"),
     LogEl = route_resp_log_winning_node(),
     RingbackEl = route_resp_ringback(JObj),
     TransferEl = route_resp_transfer_ringback(JObj),
+    SetCOF = route_resp_continue_on_fail(RequireCOF),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldr(fun route_resp_fold/2, {1, []}, Routes),
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
     Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
-    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ Extensions ++ [FailExtEl]),
+    ContextEl = context_el(Context, SetCOF ++ [LogEl, RingbackEl, TransferEl] ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"park">>, _Routes, JObj) ->
-    Exten = [route_resp_log_winning_node()
+route_resp_xml(<<"park">>, _Routes, JObj, RequireCOF) ->
+    Exten = route_resp_continue_on_fail(RequireCOF) ++
+            [route_resp_log_winning_node()
              ,route_resp_set_winning_node()
              ,route_resp_bridge_id()
              ,route_resp_ringback(JObj)
@@ -294,11 +297,11 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"error">>, _Routes, JObj) ->
+route_resp_xml(<<"error">>, _Routes, JObj, RequireCOF) ->
     Section = wh_json:get_value(<<"Fetch-Section">>, JObj, <<"dialplan">>),
-    route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj);
+    route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj, RequireCOF);
 
-route_resp_xml(<<"dialplan_error">>, _Routes, JObj) ->
+route_resp_xml(<<"dialplan_error">>, _Routes, JObj, _RequireCOF) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -313,7 +316,7 @@ route_resp_xml(<<"dialplan_error">>, _Routes, JObj) ->
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"chatplan_error">>, _Routes, JObj) ->
+route_resp_xml(<<"chatplan_error">>, _Routes, JObj, _RequireCOF) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [action_el(<<"reply">>, [ErrCode, ErrMsg])],
@@ -322,7 +325,7 @@ route_resp_xml(<<"chatplan_error">>, _Routes, JObj) ->
     SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"sms">>, _Routes, JObj) ->
+route_resp_xml(<<"sms">>, _Routes, JObj, _RequireCOF) ->
     lager:debug("creating a chatplan XML response"),
     StopActionEl = action_el(<<"stop">>, <<"stored">>),
     StopExtEl = extension_el(<<"chat plan">>, <<"false">>, [condition_el([StopActionEl])]),
@@ -331,7 +334,7 @@ route_resp_xml(<<"sms">>, _Routes, JObj) ->
     SectionEl = section_el(<<"chatplan">>, <<"Chat Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"sms_error">>, _Routes, JObj) ->
+route_resp_xml(<<"sms_error">>, _Routes, JObj, _RequireCOF) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -346,6 +349,11 @@ route_resp_xml(<<"sms_error">>, _Routes, JObj) ->
 route_resp_bridge_id() ->
     Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)]),
     condition_el(Action, ?GET_CCV(<<"Bridge-ID">>), <<"^$">>).
+
+route_resp_continue_on_fail('true') ->
+    [action_el(<<"set">>, <<"continue_on_fail=true">>)];
+route_resp_continue_on_fail('false') ->
+    [].
 
 -spec not_found() -> {'ok', iolist()}.
 not_found() ->
