@@ -6,7 +6,7 @@ HEADERS=$(wildcard include/*.hrl)
 OBJECTS=$(SOURCES:src/%.erl=ebin/%.beam)
 DOC_OPTS={def,{version,\"$(VSN)\"}}
 
-all: $(OBJECTS) test
+all: $(OBJECTS) #test
 ebin/%.beam: src/%.erl $(HEADERS) Makefile
 	erlc -pz ./priv -pa ./ebin $(ERLC_FLAGS) -o ebin/ $<
 
