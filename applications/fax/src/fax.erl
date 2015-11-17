@@ -56,7 +56,8 @@ start() ->
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
 stop() ->
-    exit(whereis('fax_sup'), 'shutdown'),
+    _ = exit(whereis('fax_sup'), 'shutdown'),
+    'ok' = cowboy:stop_listener('fax_file'),
     'ok'.
 
 %%--------------------------------------------------------------------
