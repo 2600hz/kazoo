@@ -998,7 +998,7 @@ maybe_publish_doc(#db{}=Db, Doc, JObj) ->
         andalso should_publish_doc(Doc)
     of
         'true' ->
-            _ = wh_util:spawn(fun() -> publish_doc(Db, Doc, JObj) end),
+            _ = wh_util:spawn(fun publish_doc/3, [Db, Doc, JObj]),
             'ok';
         'false' -> 'ok'
     end.
@@ -1007,7 +1007,7 @@ maybe_publish_doc(#db{}=Db, Doc, JObj) ->
 maybe_publish_db(DbName, Action) ->
     case couch_mgr:change_notice() of
         'true' ->
-            _ = wh_util:spawn(fun() -> publish_db(DbName, Action) end),
+            _ = wh_util:spawn(fun publish_db/2, [DbName, Action]),
             'ok';
         'false' -> 'ok'
     end.

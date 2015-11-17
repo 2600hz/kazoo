@@ -408,7 +408,7 @@ handle_cast({'notify_expire', Pid}, #state{notify_expire=Set}=State) ->
 handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
     #wh_node{}=Node = from_json(JObj, State),
     _ = case ets:insert_new(Tab, Node) of
-            'true' -> wh_util:spawn(fun() -> notify_new(Node, State) end);
+            'true' -> wh_util:spawn(fun notify_new/2, [Node, State]);
             'false' -> ets:insert(Tab, Node)
         end,
     {'noreply', maybe_add_zone(Node, State)};
@@ -454,7 +454,7 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
                ],
     Nodes = ets:select(Tab, FindSpec),
     _ = [ets:delete(Tab, Node) || #wh_node{node=Node} <- Nodes],
-    _ = wh_util:spawn(fun() -> notify_expire(Nodes, State) end),
+    _ = wh_util:spawn(fun notify_expire/2, [Nodes, State]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref

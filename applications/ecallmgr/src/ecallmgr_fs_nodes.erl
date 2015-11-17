@@ -445,7 +445,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'fs_nodeup', NodeName}, State) ->
-    _ = wh_util:spawn(fun() -> maybe_handle_nodeup(NodeName, State) end),
+    _ = wh_util:spawn(fun maybe_handle_nodeup/2, [NodeName, State]),
     {'noreply', State};
 handle_cast({'update_node', #node{node=NodeName, connected=Connected}=Node}
             ,#state{nodes=Nodes}=State) ->
@@ -460,9 +460,7 @@ handle_cast({'remove_capabilities', NodeName}, State) ->
     lager:debug("removed ~p capabilities from ~s", [_Rm, NodeName]),
     {'noreply', State};
 handle_cast({'rm_fs_node', NodeName}, State) ->
-    _ = wh_util:spawn(fun() ->
-                              maybe_rm_fs_node(NodeName, State)
-                      end),
+    _ = wh_util:spawn(fun maybe_rm_fs_node/2, [NodeName, State]),
     {'noreply', State};
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
@@ -488,7 +486,7 @@ handle_info('expire_sip_subscriptions', Cache) ->
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
     {'noreply', Cache};
 handle_info({'nodedown', NodeName}, State) ->
-    _ = wh_util:spawn(fun() -> maybe_handle_nodedown(NodeName, State) end),
+    _ = wh_util:spawn(fun maybe_handle_nodedown/2, [NodeName, State]),
     call_control_fs_nodedown(NodeName),
     {'noreply', State};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{init_pidref={Pid, Ref}}=State) ->
@@ -769,7 +767,7 @@ start_preconfigured_servers() ->
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
             lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
-            _ = [wh_util:spawn(fun() -> start_node_from_config(N) end) || N <- Nodes],
+            _ = [wh_util:spawn(fun start_node_from_config/1, [N]) || N <- Nodes],
             'ok';
         'undefined' ->
             lager:debug("failed to receive a response for node configs"),

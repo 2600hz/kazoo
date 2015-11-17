@@ -447,7 +447,7 @@ handle_cast({'flush_node', Node}, State) ->
         [] ->
             lager:debug("no locally handled channels");
         LocalChannels ->
-            _P = wh_util:spawn(fun() -> handle_channels_disconnected(LocalChannels) end),
+            _P = wh_util:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
             lager:debug("sending channel disconnecteds for local channels: ~p", [LocalChannels])
     end,
 

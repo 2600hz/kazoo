@@ -1649,12 +1649,12 @@ maybe_notify(Ns, Key, State) ->
                 'undefined' -> 'ok';
                 Url ->
                     lager:debug("send update for ~s to ~s", [?NOTIFY_ALL, Url]),
-                    _P = wh_util:spawn(fun() -> notify(Url, get_method(Ns), Key, State) end),
+                    _ = wh_util:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
                     'ok'
             end;
         Url ->
             lager:debug("send update for ~s to ~s", [Key, Url]),
-            _P = wh_util:spawn(fun() -> notify(Url, get_method(Ns), Key, State) end),
+            _ = wh_util:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
             'ok'
     end.
 

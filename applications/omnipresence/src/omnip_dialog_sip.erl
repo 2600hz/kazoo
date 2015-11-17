@@ -95,13 +95,13 @@ handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
-    _ = wh_util:spawn(fun() -> channel_event(EventType, JObj) end),
+    _ = wh_util:spawn(fun channel_event/2, [EventType, JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
-    _ = wh_util:spawn(fun() -> presence_event(JObj) end),
+    _ = wh_util:spawn(fun presence_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
-    _ = wh_util:spawn(fun() -> presence_reset(JObj) end),
+    _ = wh_util:spawn(fun presence_reset/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};

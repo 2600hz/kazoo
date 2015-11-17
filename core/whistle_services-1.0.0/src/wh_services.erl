@@ -666,7 +666,7 @@ default_maybe_allow_updates(AccountId) ->
 
 -spec spawn_move_to_good_standing(ne_binary()) -> 'true'.
 spawn_move_to_good_standing(<<_/binary>> = AccountId) ->
-    _ = wh_util:spawn(fun() -> move_to_good_standing(AccountId) end),
+    _ = wh_util:spawn(fun move_to_good_standing/1, [AccountId]),
     'true'.
 
 -spec move_to_good_standing(ne_binary()) -> services().

@@ -177,7 +177,7 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
-    _ = wh_util:spawn(fun() -> crossbar_util:flush_registration(Context) end),
+    _ = wh_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
     case changed_mac_address(Context) of
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),

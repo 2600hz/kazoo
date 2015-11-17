@@ -364,7 +364,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
                         lager:debug("wh_media_recording is handling call recording publishing record stop");
                     _ ->
                         lager:debug("no one is handling call recording, storing recording"),
-                        wh_util:spawn(fun() -> store_recording(Props, CallId, Node) end)
+                        wh_util:spawn(fun store_recording/3, [Props, CallId, Node])
                 end,
             process_channel_event(Props),
             {'noreply', State};

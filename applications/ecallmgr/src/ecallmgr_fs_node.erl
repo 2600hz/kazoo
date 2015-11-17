@@ -350,9 +350,7 @@ handle_cast('sync_interface', #state{node=Node
                                     }=State) ->
     {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
-    _Pid = wh_util:spawn(fun() ->
-                                 probe_capabilities(Node)
-                         end),
+    _Pid = wh_util:spawn(fun probe_capabilities/1, [Node]),
     lager:debug("syncing capabilities in ~p", [_Pid]),
     {'noreply', State};
 handle_cast('sync_channels', #state{node=Node}=State) ->
@@ -362,7 +360,7 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
 handle_cast('sync_registrations', #state{node=Node}=State) ->
-    _Pid = wh_util:spawn(fun() -> maybe_replay_registrations(Node) end),
+    _Pid = wh_util:spawn(fun maybe_replay_registrations/1, [Node]),
     lager:debug("syncing registrations in ~p", [_Pid]),
     {'noreply', State};
 handle_cast(_Req, State) ->

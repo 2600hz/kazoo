@@ -81,12 +81,12 @@ sip_authorize(_Method, Auth, Req, _Call) ->
 
 sip_subscribe(Req, _Call) ->
     {'ok', ReqId} = nksip_request:get_handle(Req),
-    _ = wh_util:spawn(fun() -> update_manager(ReqId) end),
+    _ = wh_util:spawn(fun update_manager/1, [ReqId]),
     'noreply'.
 
 sip_resubscribe(Req, _Call) ->
     {'ok', ReqId} = nksip_request:get_handle(Req),
-    _ = wh_util:spawn(fun() -> update_manager(ReqId) end),
+    _ = wh_util:spawn(fun update_manager/1, [ReqId]),
     'noreply'.
 
 sip_dialog_update({'subscription_status', State, _Subs}, _Dialog, _Call) ->
@@ -195,6 +195,6 @@ update_manager(Request) ->
              ,{<<"Expires">>, wh_util:to_integer(Expires)}
              ,{<<"AOR">>, AOR}
             ],
-    wh_util:spawn(fun() -> omnip_subscriptions:proxy_subscribe(Props) end).
+    wh_util:spawn(fun omnip_subscriptions:proxy_subscribe/1, [Props]).
 
 %%%%%%%%%%%%%%%%%%%%%%%  Utilities %%%%%%%%%%%%%%%%%%%%%%%%

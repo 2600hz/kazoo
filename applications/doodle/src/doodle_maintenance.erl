@@ -63,8 +63,8 @@ start_check_sms_by_account(AccountId, JObj) ->
 
 -spec check_pending_sms_for_outbound_delivery(ne_binary()) -> pid().
 check_pending_sms_for_outbound_delivery(AccountId) ->
-    wh_util:spawn(fun() -> check_pending_sms_for_offnet_delivery(AccountId) end),
-    wh_util:spawn(fun() -> check_queued_sms(AccountId) end).
+    wh_util:spawn(fun check_pending_sms_for_offnet_delivery/1, [AccountId]),
+    wh_util:spawn(fun check_queued_sms/1, [AccountId]).
 
 -spec check_pending_sms_for_delivery(ne_binary()) -> 'ok'.
 check_pending_sms_for_delivery(AccountId) ->
