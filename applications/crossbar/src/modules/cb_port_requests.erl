@@ -19,7 +19,8 @@
          ,validate/1, validate/2, validate/3, validate/4
          ,get/3
          ,put/1, put/3
-         ,post/2, post/3, post/4
+         ,patch/3
+         ,post/2, post/4
          ,delete/2, delete/4
          ,cleanup/1
          ,find_template/1, find_template/2
@@ -77,6 +78,7 @@ init() ->
                 ,{<<"*.validate.port_requests">>, 'validate'}
                 ,{<<"*.execute.get.port_requests">>, 'get'}
                 ,{<<"*.execute.put.port_requests">>, 'put'}
+                ,{<<"*.execute.patch.port_requests">>, 'patch'}
                 ,{<<"*.execute.post.port_requests">>, 'post'}
                 ,{<<"*.execute.delete.port_requests">>, 'delete'}
                ],
@@ -154,17 +156,17 @@ allowed_methods(_Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(_Id, ?PORT_SUBMITTED) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_PENDING) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_SCHEDULED) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_COMPLETE) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_REJECT) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_CANCELED) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
@@ -390,101 +392,86 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+patch(Context, Id, ?PORT_SUBMITTED) ->
+    Callback =
+        fun() ->
+            Context1 = do_patch(Context, Id),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    send_port_notification(Context1, Id, ?PORT_SUBMITTED);
+                _ -> Context1
+            end
+        end,
+    crossbar_services:maybe_dry_run(Context, Callback);
+patch(Context, Id, ?PORT_PENDING) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_PENDING);
+        _ -> Context1
+    end;
+patch(Context, Id, ?PORT_SCHEDULED) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_SCHEDULED);
+        _ -> Context1
+    end;
+patch(Context, Id, ?PORT_COMPLETE) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_COMPLETE);
+        _ -> Context1
+    end;
+patch(Context, Id, ?PORT_REJECT) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_REJECT);
+        _ -> Context1
+    end;
+patch(Context, Id, ?PORT_CANCELED) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_CANCELED);
+        _ -> Context1
+    end.
+
+-spec do_patch(cb_context:context(), path_token()) -> cb_context:context().
+do_patch(Context, _Id) ->
+    UpdatedDoc =
+        wh_json:merge_recursive(
+            cb_context:doc(Context)
+            ,wh_json:public_fields(cb_context:req_data(Context))
+        ),
+    Setters = [fun update_port_request_for_save/1
+              ,{fun cb_context:set_doc/2, UpdatedDoc}
+              ],
+    Context1 = crossbar_doc:save(cb_context:setters(Context, Setters)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_resp_data(
+                Context1
+                ,wh_port_request:public_fields(cb_context:doc(Context1))
+            );
+        _Status ->
+            Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% (after a merge perhaps).
+%% @end
+%%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     do_post(Context, Id).
-
-post(Context, Id, ?PORT_SUBMITTED) ->
-    Callback =
-        fun() ->
-            _  = add_to_phone_numbers_doc(Context),
-            try send_port_request_notification(Context, Id) of
-                _ ->
-                    lager:debug("port request notification sent"),
-                    do_post(Context, Id)
-            catch
-                _E:_R ->
-                    lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
-                    cb_context:add_system_error(
-                      'bad_gateway'
-                      ,<<"failed to send port request email">>
-                      ,Context
-                     )
-            end
-        end,
-    crossbar_services:maybe_dry_run(Context, Callback);
-post(Context, Id, ?PORT_PENDING) ->
-    try send_port_pending_notification(Context, Id) of
-        _ ->
-            lager:debug("port pending notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port pending notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port pending email">>
-              ,Context
-             )
-    end;
-post(Context, Id, ?PORT_SCHEDULED) ->
-    try send_port_scheduled_notification(Context, Id) of
-        _ ->
-            lager:debug("port scheduled notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port scheduled notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port scheduled email">>
-              ,Context
-             )
-    end;
-post(Context, Id, ?PORT_COMPLETE) ->
-    try send_ported_notification(Context, Id) of
-        _ ->
-            lager:debug("ported notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the ported notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send ported email">>
-              ,Context
-             )
-    end;
-post(Context, Id, ?PORT_REJECT) ->
-    try send_port_rejected_notification(Context, Id) of
-        _ ->
-            lager:debug("port rejected notification sent"),
-            post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port rejected notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port cancel email">>
-              ,Context
-             )
-    end;
-post(Context, Id, ?PORT_CANCELED) ->
-    _ = remove_from_phone_numbers_doc(Context),
-    try send_port_cancel_notification(Context, Id) of
-        _ ->
-            lager:debug("port cancel notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port cancel email">>
-              ,Context
-             )
-    end.
 
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
@@ -595,17 +582,17 @@ validate_port_request(Context, Id, ?HTTP_POST) ->
 validate_port_request(Context, Id, ?HTTP_DELETE) ->
     is_deletable(load_port_request(Context, Id)).
 
-validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_SUBMITTED);
-validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_PENDING);
-validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_SCHEDULED);
-validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_COMPLETE);
-validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_REJECT);
-validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_CANCELED).
 
 %%--------------------------------------------------------------------
@@ -1285,6 +1272,60 @@ has_new_comment(OldComments, NewComments) ->
     NewTime = wh_json:get_value(<<"timestamp">>, lists:last(NewComments)),
 
     OldTime < NewTime.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_port_notification(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec send_port_notification(cb_context:context(), path_token(), path_token(), function()) -> cb_context:context().
+send_port_notification(Context, Id, ?PORT_SUBMITTED=State) ->
+     _  = add_to_phone_numbers_doc(Context),
+    send_port_notification(Context, Id, State, fun send_port_request_notification/2);
+send_port_notification(Context, Id, ?PORT_PENDING=State) ->
+    send_port_notification(Context, Id, State, fun send_port_pending_notification/2);
+send_port_notification(Context, Id, ?PORT_SCHEDULED=State) ->
+    send_port_notification(Context, Id, State, fun send_port_scheduled_notification/2);
+send_port_notification(Context, Id, ?PORT_COMPLETE=State) ->
+    send_port_notification(Context, Id, State, fun send_ported_notification/2);
+send_port_notification(Context, Id, ?PORT_REJECT=State) ->
+    send_port_notification(Context, Id, State, fun send_port_rejected_notification/2);
+send_port_notification(Context, Id, ?PORT_CANCELED=State) ->
+    _ = remove_from_phone_numbers_doc(Context),
+    send_port_notification(Context, Id, State, fun send_port_cancel_notification/2).
+
+send_port_notification(Context, Id, State, Fun) ->
+    try Fun(Context, Id) of
+        _ ->
+            lager:debug("port ~s notification sent", [State]),
+            Context
+    catch
+        _E:_R ->
+            lager:debug("failed to send the  port ~s notification: ~s:~p", [State, _E, _R]),
+            _ = revert_patch(Context),
+            cb_context:add_system_error(
+              'bad_gateway'
+              ,wh_json:from_list([{<<"message">>, <<"failed to send port ", State/binary,  " email">>}])
+              ,Context
+             )
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec revert_patch(cb_context:context()) -> cb_context:context().
+revert_patch(Context) ->
+    Doc = cb_context:doc(Context),
+    DBDoc = cb_context:fetch(Context, 'db_doc'),
+
+    Rev = wh_json:get_value(<<"_rev">>, Doc),
+
+    RevertedDoc = wh_json:set_value(<<"_rev">>, Rev, DBDoc),
+
+    crossbar_doc:save(cb_context:set_doc(Context, RevertedDoc)).
 
 %%--------------------------------------------------------------------
 %% @private

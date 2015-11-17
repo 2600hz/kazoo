@@ -1040,8 +1040,7 @@ add_system_error('invalid_method'=Error, JObj, Context) ->
     J = wh_json:set_value(<<"message">>, <<"invalid method">>, JObj),
     build_system_error(405, Error, J, Context);
 add_system_error('bad_gateway'=Error, JObj, Context) ->
-    J = wh_json:set_value(<<"message">>, <<"bad gateway">>, JObj),
-    build_system_error(502, Error, J, Context);
+    build_system_error(502, Error, JObj, Context);
 add_system_error('multiple_choice'=Error, JObj, Context) ->
     build_system_error(400, Error, JObj, Context);
 add_system_error(Error, JObj, Context) ->
