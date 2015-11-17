@@ -82,7 +82,7 @@ maybe_revise_schema() ->
         {'ok', SchemaJObj} ->
             maybe_revise_schema(SchemaJObj);
         {'error', _E} ->
-            lager:warning("failed to find webhooks schema: ~o", [_E])
+            lager:warning("failed to find webhooks schema: ~p", [_E])
     end.
 
 maybe_revise_schema(SchemaJObj) ->
