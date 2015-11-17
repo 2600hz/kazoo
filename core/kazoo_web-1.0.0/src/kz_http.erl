@@ -96,7 +96,7 @@ encode_char(Char) ->
 
 %%--------------------------------------------------------------------
 %% @doc Parses a query string and returns a list of key->value pairs.
-%% If the input string contains a ? then everything after the ? will 
+%% If the input string contains a ? then everything after the ? will
 %% be treated as the query string, otherwise the entire input is treated
 %% as the query string. The return key->value pairs will be urldecoded.
 %%--------------------------------------------------------------------
