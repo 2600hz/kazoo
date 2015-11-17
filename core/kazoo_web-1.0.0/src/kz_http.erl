@@ -170,7 +170,7 @@ urlsplit_s(Source) ->
         ValidScheme -> ValidScheme
     end.
 
--spec urlsplit_s(binary(), binary()) -> {binary(), binary()}.
+-spec urlsplit_s(binary(), binary()) -> {binary(), binary()} | 'no_scheme'.
 urlsplit_s(<<>>, _Acc) ->
     'no_scheme';
 
