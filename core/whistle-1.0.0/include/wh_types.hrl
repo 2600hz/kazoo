@@ -1,8 +1,6 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 -include_lib("xmerl/include/xmerl.hrl").
 
--include("otp_compatibility.hrl").
-
 -define(MICROSECONDS_IN_SECOND, 1000000).
 
 -define(MILLISECONDS_IN_SECOND, 1000).
