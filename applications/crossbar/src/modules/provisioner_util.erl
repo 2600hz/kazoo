@@ -336,7 +336,7 @@ do_simple_provision(MACAddress, Context) ->
                     ,{"sip[password]", kz_device:sip_password(JObj)}
                     ,{"submit", "true"}
                    ],
-            Encoded = mochiweb_util:urlencode(Body),
+            Encoded = kz_http:urlencode(Body),
             lager:debug("posting to ~s with: ~-300p", [Url, Encoded]),
             Res = ibrowse:send_req(Url, Headers, 'post', Encoded, HTTPOptions),
             lager:debug("response from server: ~p", [Res]),

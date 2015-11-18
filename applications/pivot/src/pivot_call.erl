@@ -534,7 +534,7 @@ process_resp(RequesterQ, Call, CT, RespBody) ->
 
 -spec uri(ne_binary(), iolist()) -> ne_binary().
 uri(URI, QueryString) ->
-    case mochiweb_util:urlsplit(URI) of
+    case kz_http:urlsplit(URI) of
         {Scheme, Host, Path, <<>>, Fragment} ->
             kz_http:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
