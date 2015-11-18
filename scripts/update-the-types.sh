@@ -11,8 +11,13 @@ function SaR {
     REPLACE=$2
 
     for PREFIX in " " "("; do
-        for FILE in `grep -lr "$PREFIX$SEARCH" $ROOT/{core,applications}`; do
-            sed -i "s/$PREFIX$SEARCH/$PREFIX$REPLACE/g" $FILE
+        for FILE in `grep -lr "$PREFIX$SEARCH" $ROOT/{core,applications,deps}`; do
+            case ${FILE##*.} in
+                erl )
+                    sed -i "s/$PREFIX$SEARCH/$PREFIX$REPLACE/g" $FILE ;;
+                hrl )
+                    sed -i "s/$PREFIX$SEARCH/$PREFIX$REPLACE/g" $FILE ;;
+            esac
         done
     done
 }
@@ -22,9 +27,6 @@ SaR "array()" "array:array()"
 
 echo "replacing dict()"
 SaR "dict()" "dict:dict()"
-
-echo "replacing digraph()"
-SaR "digraph()" "digraph:digraph()"
 
 echo "replacing digraph()"
 SaR "digraph()" "digraph:digraph()"
