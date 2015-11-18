@@ -162,12 +162,12 @@ merge_responses(JObjs) ->
      || {_, JObj} <- dict:to_list(merge_responses(JObjs, dict:new()))
     ].
 
--spec merge_responses(wh_json:objects(), dict()) -> dict().
+-spec merge_responses(wh_json:objects(), dict:dict()) -> dict:dict().
 merge_responses([], Regs) -> Regs;
 merge_responses([JObj|JObjs], Regs) ->
     merge_responses(JObjs, merge_response(JObj, Regs)).
 
--spec merge_response(wh_json:object(), dict()) -> dict().
+-spec merge_response(wh_json:object(), dict:dict()) -> dict:dict().
 merge_response(JObj, Regs) ->
     lists:foldl(fun(J, R) ->
                         case wh_json:get_ne_value(<<"Contact">>, J) of
