@@ -473,14 +473,14 @@ handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}, #state{name=Name
     ets:delete_all_objects(Tab),
     lager:debug("reconnected channel, flush everything from ~s", [Name]),
     {'noreply', State};
-handle_cast({'wh_nodes', {'expire', Node}}, #state{name=Name
+handle_cast({'wh_nodes', {'expire', #wh_node{node=Node}}}, #state{name=Name
                                                    ,tab=Tab
                                                    ,expire_node_flush='true'
                                                   }=State) ->
     ets:delete_all_objects(Tab),
     lager:debug("node ~s has expired, flush everything from ~s", [Node, Name]),
     {'noreply', State};
-handle_cast({'wh_nodes', {'new', Node}}, #state{name=Name
+handle_cast({'wh_nodes', {'new', #wh_node{node=Node}}}, #state{name=Name
                                                 ,tab=Tab
                                                 ,new_node_flush='true'
                                                }=State) ->
