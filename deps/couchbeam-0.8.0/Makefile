@@ -3,9 +3,7 @@ ROOT = ../..
 REBAR = $(ROOT)/utils/rebar/rebar
 DIALYZER = dialyzer
 
-EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) \
-	$(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
-PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
+PA =
 
 ERLC_OPTS += +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps -I$(wildcard $(ROOT)/deps/couchbeam-*/include) $(PA)
      # +bin_opt_info

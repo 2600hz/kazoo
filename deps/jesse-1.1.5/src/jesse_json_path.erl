@@ -14,8 +14,8 @@
 -type kvc_dict() :: dict:dict().
 -type kvc_gb_tree() :: gb_trees:tree().
 -else.
--type kvc_dict() :: dict().
--type kvc_gb_tree() :: gb_tree().
+-type kvc_dict() :: dict:dict().
+-type kvc_gb_tree() :: gb_trees:tree().
 -endif.
 
 -type elem_key_type() :: atom | binary | string | undefined.
