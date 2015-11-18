@@ -35,7 +35,7 @@
 -record(state, {type :: diagram_type()
                 ,name :: ne_binary()
                 ,io_device :: 'undefined' | file:io_device()
-                ,who_registry :: dict()
+                ,who_registry :: dict:dict()
                }).
 -type state() :: #state{}.
 

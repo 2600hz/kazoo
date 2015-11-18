@@ -184,7 +184,7 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec charge_transactions(ne_binary(), wh_json:objects()) -> wh_json:objects().
--spec charge_transactions(ne_binary(), wh_json:objects(), dict()) -> wh_json:objects().
+-spec charge_transactions(ne_binary(), wh_json:objects(), dict:dict()) -> wh_json:objects().
 charge_transactions(BillingId, Transactions) ->
     charge_transactions(BillingId, Transactions, dict:new()).
 
