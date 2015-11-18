@@ -41,4 +41,7 @@ SaR "queue()" "queue:queue()"
 echo "replacing tree()"
 SaR "tree()" "trees:tree()"
 
+echo "replacing set()"
+SaR "set()" "sets:set()"
+
 popd > /dev/null
