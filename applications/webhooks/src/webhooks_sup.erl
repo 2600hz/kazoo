@@ -28,10 +28,10 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
                    ,?WORKER_ARGS('kazoo_etsmgr_srv', ?ETSMGR_ARGS)
-                   ,?WORKER('webhooks_init')
                    ,?WORKER('webhooks_disabler')
                    ,?WORKER('webhooks_listener')
                    ,?WORKER('webhooks_shared_listener')
+                   ,?WORKER('webhooks_init')
                   ]).
 
 %% ===================================================================
