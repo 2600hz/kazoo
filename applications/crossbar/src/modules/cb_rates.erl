@@ -153,7 +153,7 @@ validate_rate(Context, Id, ?HTTP_DELETE) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context) ->
     _ = init_db(),
-    _ = wh_util:spawn(fun() -> upload_csv(Context) end),
+    _ = wh_util:spawn(fun upload_csv/1, [Context]),
     crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
 post(Context, _RateId) ->
     crossbar_doc:save(Context).

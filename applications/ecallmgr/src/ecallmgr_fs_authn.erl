@@ -120,7 +120,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undefined' | Props]}
             ,#state{node=Node}=State) ->
-    _ = wh_util:spawn(?MODULE, 'handle_directory_lookup', [Id, Props, Node]),
+    _ = wh_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),
     {'noreply', State};
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Props]}, #state{node=Node}=State) ->
     wh_util:spawn(

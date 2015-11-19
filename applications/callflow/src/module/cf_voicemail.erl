@@ -2291,11 +2291,11 @@ is_owner(Call, OwnerId) ->
 -spec send_mwi_update(mailbox(), whapps_call:call()) -> 'ok'.
 send_mwi_update(#mailbox{owner_id=OwnerId, mailbox_number=BoxNumber}=Box, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = wh_util:spawn('cf_util', 'unsolicited_owner_mwi_update', [AccountDb, OwnerId]),
+    _ = wh_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
     Messages = get_messages(Box, Call),
     New = count_messages(Messages, ?VM_FOLDER_NEW),
     Saved = count_messages(Messages, ?VM_FOLDER_SAVED),
-    _ = wh_util:spawn(fun() -> send_mwi_update(New, Saved, BoxNumber, Call) end),
+    _ = wh_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, Call]),
     lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, whapps_call:account_id(Call), New, Saved]).
 
 -spec send_mwi_update(non_neg_integer(), non_neg_integer(), ne_binary(), whapps_call:call()) -> 'ok'.

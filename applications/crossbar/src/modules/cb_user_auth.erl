@@ -268,7 +268,7 @@ maybe_account_is_expired(Context, Account) ->
     case wh_util:is_account_expired(Account) of
         'false' -> maybe_account_is_enabled(Context, Account);
         {'true', Expired} ->
-            _ = wh_util:spawn(fun() -> wh_util:maybe_disable_account(Account) end),
+            _ = wh_util:spawn(fun wh_util:maybe_disable_account/1, [Account]),
             Cause =
                 wh_json:from_list(
                   [{<<"message">>, <<"account expired">>}

@@ -410,7 +410,7 @@ handle_cast({'delete_registration'
             }
             ,State) ->
     wh_util:put_callid(CallId),
-    _ = wh_util:spawn(fun() -> maybe_send_deregister_notice(Reg) end),
+    _ = wh_util:spawn(fun maybe_send_deregister_notice/1, [Reg]),
     ets:delete(?MODULE, Id),
     {'noreply', State};
 handle_cast('flush', State) ->
@@ -465,7 +465,7 @@ handle_info('expire', State) ->
     {'noreply', State};
 handle_info(?REGISTER_SUCCESS_MSG(Node, Props), State) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
-    _ = wh_util:spawn(?MODULE, 'handle_fs_reg', [Node, Props]),
+    _ = wh_util:spawn(fun handle_fs_reg/2, [Node, Props]),
     {'noreply', State};
 handle_info(_Info, State) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
@@ -664,7 +664,7 @@ expire_objects() ->
 -spec expire_object(any()) -> 'ok'.
 expire_object('$end_of_table') -> 'ok';
 expire_object({[#registration{id=Id}=Reg], Continuation}) ->
-    _ = wh_util:spawn(fun() -> maybe_send_deregister_notice(Reg) end),
+    _ = wh_util:spawn(fun maybe_send_deregister_notice/1, [Reg]),
     _ = ets:delete(?MODULE, Id),
     expire_object(ets:select(Continuation)).
 

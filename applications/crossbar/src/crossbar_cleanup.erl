@@ -186,19 +186,19 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('cleanup', #state{cleanup_timer_ref=Ref}=State) ->
-    _Pid = wh_util:spawn(?MODULE, 'start_cleanup_pass', [Ref]),
+    _Pid = wh_util:spawn(fun start_cleanup_pass/1, [Ref]),
     lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
     {'noreply', State};
 handle_info('minute_cleanup', #state{minute_timer_ref=Ref}=State) ->
-    _Pid = wh_util:spawn('crossbar_bindings', 'map', [binding_minute(), []]),
+    _Pid = wh_util:spawn(fun crossbar_bindings:map/2, [binding_minute(), []]),
     _ = stop_timer(Ref),
     {'noreply', State#state{minute_timer_ref=start_minute_timer()}};
 handle_info('hour_cleanup', #state{hour_timer_ref=Ref}=State) ->
-    _Pid = wh_util:spawn('crossbar_bindings', 'map', [binding_hour(), []]),
+    _Pid = wh_util:spawn(fun crossbar_bindings:map/2, [binding_hour(), []]),
     _ = stop_timer(Ref),
     {'noreply', State#state{hour_timer_ref=start_hour_timer()}};
 handle_info('day_cleanup', #state{day_timer_ref=Ref}=State) ->
-    _Pid = wh_util:spawn('crossbar_bindings', 'map', [binding_day(), []]),
+    _Pid = wh_util:spawn(fun crossbar_bindings:map/2, [binding_day(), []]),
     _ = stop_timer(Ref),
     {'noreply', State#state{day_timer_ref=start_day_timer()}};
 handle_info(_Msg, State) ->

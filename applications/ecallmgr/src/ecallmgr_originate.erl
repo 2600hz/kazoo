@@ -562,7 +562,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
         {'ok', <<"+OK ", ID/binary>>} ->
             UUID = wh_util:strip_binary(binary:replace(ID, <<"\n">>, <<>>)),
             Media = get('hold_media'),
-            _Pid = wh_util:spawn(fun() -> set_music_on_hold(Node, UUID, Media) end),
+            _Pid = wh_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
         {'ok', Other} ->
             lager:debug("recv other 'ok': ~s", [Other]),

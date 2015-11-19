@@ -503,9 +503,7 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
 
 %% TODO: can we depreciate this command? It was prior to ecallmgr_fs_query....dont think anything is using it.
 get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
-    _ = wh_util:spawn(fun() ->
-                              send_fetch_call_event(Node, UUID, JObj)
-                      end),
+    _ = wh_util:spawn(fun send_fetch_call_event/3, [Node, UUID, JObj]),
     {<<"fetch">>, 'noop'};
 
 get_fs_app(Node, UUID, JObj, <<"conference">>) ->

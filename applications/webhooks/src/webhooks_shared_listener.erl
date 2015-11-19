@@ -282,8 +282,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = wh_util:spawn(?MODULE
-                      ,'maybe_handle_channel_event'
+    _ = wh_util:spawn(fun webhooks_channel_util:maybe_handle_channel_event/3
                       ,[AccountId, EventType, JObj]
                      ),
     {'noreply', State};

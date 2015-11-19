@@ -43,7 +43,7 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 handle_info({'timeout', Ref, ?EXPIRY_MSG}, Ref) ->
-    _ = wh_util:spawn(?MODULE, 'check_failed_attempts', []),
+    _ = wh_util:spawn(fun check_failed_attempts/0),
     {'noreply', start_check_timer()};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

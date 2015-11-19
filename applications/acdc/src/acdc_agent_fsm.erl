@@ -333,11 +333,11 @@ start_link(Supervisor, _AgentJObj, AccountId, AgentId, _Queues) ->
 
 pvt_start_link('undefined', _AgentId, Supervisor, _, _) ->
     lager:debug("agent ~s trying to start with no account id", [_AgentId]),
-    _ = wh_util:spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     'ignore';
 pvt_start_link(_AccountId, 'undefined', Supervisor, _, _) ->
     lager:debug("undefined agent id trying to start in account ~s", [_AccountId]),
-    _ = wh_util:spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     'ignore';
 pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
     gen_fsm:start_link(?MODULE, [AccountId, AgentId, Supervisor, Props, IsThief], []).
@@ -372,7 +372,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     lager:debug("started acdc agent fsm"),
 
     Self = self(),
-    _P = wh_util:spawn(?MODULE, 'wait_for_listener', [Supervisor, Self, Props, IsThief]),
+    _P = wh_util:spawn(fun wait_for_listener/4, [Supervisor, Self, Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
 
     {'ok', 'wait', #state{account_id = AccountId
@@ -1649,12 +1649,12 @@ maybe_notify(Ns, Key, State) ->
                 'undefined' -> 'ok';
                 Url ->
                     lager:debug("send update for ~s to ~s", [?NOTIFY_ALL, Url]),
-                    _P = wh_util:spawn(fun() -> notify(Url, get_method(Ns), Key, State) end),
+                    _ = wh_util:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
                     'ok'
             end;
         Url ->
             lager:debug("send update for ~s to ~s", [Key, Url]),
-            _P = wh_util:spawn(fun() -> notify(Url, get_method(Ns), Key, State) end),
+            _ = wh_util:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
             'ok'
     end.
 

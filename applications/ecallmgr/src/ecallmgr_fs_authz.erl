@@ -225,7 +225,7 @@ authorize_reseller(JObj, Props, CallId, Node) ->
 
 -spec rate_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
-    _P = wh_util:spawn(?MODULE, 'rate_channel', [Props, Node]),
+    _P = wh_util:spawn(fun rate_channel/2, [Props, Node]),
     lager:debug("rating call in ~p", [_P]),
     allow_call(Props, CallId, Node).
 
@@ -256,7 +256,7 @@ maybe_deny_call(Props, CallId, Node) ->
         'true' -> rate_call(Props, CallId, Node);
         'false' ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), 'false'),
-            wh_util:spawn(?MODULE, 'kill_channel', [Props, Node]),
+            wh_util:spawn(fun kill_channel/2, [Props, Node]),
             'false'
     end.
 

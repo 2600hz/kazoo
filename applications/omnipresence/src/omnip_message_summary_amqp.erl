@@ -98,10 +98,10 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User, _S
     wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
     {'noreply', State};
 handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
-    _ = wh_util:spawn(fun() -> mwi_event(JObj) end),
+    _ = wh_util:spawn(fun mwi_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
-    _ = wh_util:spawn(fun() -> presence_reset(JObj) end),
+    _ = wh_util:spawn(fun presence_reset/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};

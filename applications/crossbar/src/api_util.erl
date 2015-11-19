@@ -1061,7 +1061,7 @@ finish_request(_Req, Context) ->
     [{Mod, _}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
-    _ = wh_util:spawn('crossbar_bindings', 'map', [Event, Context]),
+    _ = wh_util:spawn(fun crossbar_bindings:map/2, [Event, Context]),
     'ok'.
 
 %%--------------------------------------------------------------------

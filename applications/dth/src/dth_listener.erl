@@ -137,7 +137,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('blacklist_refresh', #state{wsdl_model=WSDL}=State) ->
     erlang:send_after(?BLACKLIST_REFRESH, self(), 'blacklist_refresh'),
-    _ = wh_util:spawn(fun() -> refresh_blacklist(WSDL) end),
+    _ = wh_util:spawn(fun refresh_blacklist/1, [WSDL]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.

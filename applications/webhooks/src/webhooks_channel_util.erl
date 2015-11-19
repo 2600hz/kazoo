@@ -6,6 +6,7 @@
 -module(webhooks_channel_util).
 
 -export([handle_event/2]).
+-export([maybe_handle_channel_event/3]).
 
 -include("webhooks.hrl").
 
@@ -23,6 +24,7 @@ handle_event(JObj, _Props) ->
             maybe_handle_channel_event(AccountId, HookEvent, J)
     end.
 
+%% @public
 -spec maybe_handle_channel_event(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),

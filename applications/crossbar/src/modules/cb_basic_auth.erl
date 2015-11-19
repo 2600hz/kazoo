@@ -137,7 +137,7 @@ is_expired(Context, JObj) ->
             wh_cache:store_local(?CROSSBAR_CACHE, {'basic_auth', AuthToken}, JObj, CacheProps),
             {'true', set_auth_doc(Context, JObj)};
         {'true', Expired} ->
-            _ = wh_util:spawn(fun() -> wh_util:maybe_disable_account(AccountId) end),
+            _ = wh_util:spawn(fun wh_util:maybe_disable_account/1, [AccountId]),
             Cause =
                 wh_json:from_list(
                     [{<<"message">>, <<"account expired">>}

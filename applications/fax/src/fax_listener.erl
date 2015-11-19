@@ -125,7 +125,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
-    _ = wh_util:spawn(?MODULE, 'start_all_printers', []),
+    _ = wh_util:spawn(fun start_all_printers/0),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),

@@ -110,7 +110,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(?STAT_CHECK_MSG, State) ->
-    _P = wh_util:spawn(?MODULE, 'check_stats', []),
+    _P = wh_util:spawn(fun check_stats/0),
     {'noreply', State#state{stat_timer_ref=start_timer()}, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

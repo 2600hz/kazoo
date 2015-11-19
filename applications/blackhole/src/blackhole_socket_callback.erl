@@ -179,7 +179,7 @@ filter_bindings(SessionPid, Binding, _Module, _Function, Context) ->
             case bh_context:websocket_pid(Context) =:= SessionPid of
                 'false' -> 'true';
                 'true' ->
-                    _ = wh_util:spawn('blackhole_util', 'remove_binding', [Binding, Context]),
+                    _ = wh_util:spawn(fun blackhole_util:remove_binding/2, [Binding, Context]),
                     'false'
             end
     end.

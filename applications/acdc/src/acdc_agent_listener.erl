@@ -180,13 +180,13 @@ start_link(Supervisor, AgentJObj) ->
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
 start_link(Supervisor, _, _AcctId, _AgentId, []) ->
     lager:debug("agent ~s has no queues, not starting", [_AgentId]),
-    _ = wh_util:spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     'ignore';
 start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
     case acdc_agent_util:most_recent_status(AcctId, AgentId) of
         {'ok', <<"logged_out">>} ->
             lager:debug("agent ~s in ~s is logged out, not starting", [AgentId, AcctId]),
-            _ = wh_util:spawn('acdc_agent_sup', 'stop', [Supervisor]),
+            _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
             'ignore';
         {'ok', _S} ->
             lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
@@ -416,7 +416,7 @@ handle_cast({'refresh_config', Qs}, #state{agent_queues=Queues}=State) ->
     {'noreply', State};
 handle_cast({'stop_agent', Req}, #state{supervisor=Supervisor}=State) ->
     lager:debug("stop agent requested by ~p", [Req]),
-    _ = wh_util:spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     {'noreply', State};
 
 handle_cast({'fsm_started', FSMPid}, State) ->

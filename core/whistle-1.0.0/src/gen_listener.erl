@@ -495,7 +495,7 @@ handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
 handle_cast({'wh_amqp_assignment', {'new_channel', 'false'}}, State) ->
     {'noreply', handle_amqp_channel_available(State)};
 handle_cast({'federated_event', JObj, BasicDeliver}, State) ->
-    _ = wh_util:spawn(?MODULE, 'distribute_event', [JObj, BasicDeliver, State]),
+    _ = wh_util:spawn(fun distribute_event/3, [JObj, BasicDeliver, State]),
     {'noreply', State};
 handle_cast({'$execute', Module, Function, Args}
             ,#state{federators=[]}=State) ->
@@ -590,7 +590,7 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                               ,payload=Payload
                                              }}, State) ->
-    _ = wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
+    _ = wh_util:spawn(fun handle_event/4, [Payload, CT, BD, State]),
     {'noreply', State, 'hibernate'};
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
                                              ,payload=Payload
@@ -792,12 +792,9 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                    ,consumer_key=ConsumerKey
                                                   }) ->
     Key = wh_util:get_event_type(JObj),
-    _ = [proc_lib:spawn(?MODULE, 'client_handle_event', [JObj
-                                                         ,ConsumerKey
-                                                         ,Module, Fun
-                                                         ,Props
-                                                         ,BasicDeliver
-                                                        ])
+    _ = [proc_lib:spawn(?MODULE, 'client_handle_event'
+                        ,[JObj, ConsumerKey, Module, Fun, Props, BasicDeliver]
+                       )
          || {Evt, {Module, Fun}} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],

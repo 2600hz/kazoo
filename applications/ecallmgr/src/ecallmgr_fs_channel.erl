@@ -372,7 +372,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
-    _ = wh_util:spawn(?MODULE, 'process_event', [UUID, Props, Node, self()]),
+    _ = wh_util:spawn(fun process_event/4, [UUID, Props, Node, self()]),
     {'noreply', State};
 handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
     _ = wh_util:spawn(fun handle_channel_req_legacy/4, [UUID, FetchId, Node, self()]),
