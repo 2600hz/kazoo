@@ -26,8 +26,6 @@ before_install:
   - set -e
   - if [[ ! -d $HOME/proper/.git/ ]]; then git clone --depth=50 --branch=master https://github.com/manopapad/proper.git $HOME/proper && cd $HOME/proper && make fast; fi
   - cd $TRAVIS_BUILD_DIR
-  - if [[ $TRAVIS_OTP_RELEASE =~ ^1  ]]; then ERLC_OPTS="$ERLC_OPTS +nowarn_deprecated_type +nowarn_deprecated_function"; fi
-  - if [[ $TRAVIS_OTP_RELEASE =~ ^18 ]]; then ERLC_OPTS="$ERLC_OPTS -DOTP_AT_LEAST_18"; fi
 
 script: ERLC_OPTS="$ERLC_OPTS" make compile
 
