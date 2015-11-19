@@ -1321,9 +1321,9 @@ revert_patch(Context) ->
     Doc = cb_context:doc(Context),
     DBDoc = cb_context:fetch(Context, 'db_doc'),
 
-    Rev = wh_json:get_value(<<"_rev">>, Doc),
+    Rev = wh_doc:revision(Doc),
 
-    RevertedDoc = wh_json:set_value(<<"_rev">>, Rev, DBDoc),
+    RevertedDoc = wh_doc:set_revision(DBDoc, Rev),
 
     crossbar_doc:save(cb_context:set_doc(Context, RevertedDoc)).
 
