@@ -74,8 +74,7 @@ close(SessionPid, SessionId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(ne_binary(), ne_binary(), any(), bh_context:context()) -> {'ok', bh_context:context()}.
-handle_info(_SessionPid, _SessionId, {'req', Req}, Context) ->
-    {{Ip, _}, _} = cowboy_req:peer(Req),
+handle_info(_SessionPid, _SessionId, {'peer_ip', Ip}, Context) ->
     IPBin = wh_util:to_binary(inet_parse:ntoa(Ip)),
     lager:debug("setting source ip to ~s for ~s", [IPBin, _SessionId]),
     {'ok', bh_context:set_source(Context, IPBin)};
