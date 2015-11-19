@@ -92,13 +92,13 @@
 
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
 
--type db_classification() :: 'account' | 'modb' | 'acdc' |
-                             'numbers' | 'aggregate' | 'system' |
-                             'deprecated' | 'undefined'.
+-type db_classifications() :: 'account' | 'modb' | 'acdc' |
+                              'numbers' | 'aggregate' | 'system' |
+                              'deprecated' | 'undefined'.
 
 -export_type([db_create_options/0
               ,couchbeam_errors/0
-              ,db_classification/0
+              ,db_classifications/0
               ,view_options/0
              ]).
 
@@ -114,7 +114,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec db_classification(text()) -> db_classification().
+-spec db_classification(text()) -> db_classifications().
 db_classification(Db) when not is_binary(Db) ->
     db_classification(wh_util:to_binary(Db));
 db_classification(<<"ts">>) -> 'depreciated';
@@ -1131,7 +1131,9 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
                 } = CopySpec,
     case open_doc(Conn, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
-            Props = [{<<"_id">>, DestDocId}],
+            Props = [{<<"_id">>, DestDocId}
+                     | maybe_set_account_db(wh_doc:account_db(SourceDoc), SourceDbName, DestDbName)
+                    ],
             DestinationDoc = wh_json:set_values(Props, wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
             case CopyFun(Conn, DestDbName, DestinationDoc, Options) of
                 {'ok', _JObj} ->
@@ -1167,6 +1169,11 @@ copy_attachments(#server{}=Conn, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
             end;
         Error -> Error
     end.
+
+-spec maybe_set_account_db(api_binary(), ne_binary(), ne_binary()) -> wh_proplist().
+maybe_set_account_db(DB, DB, DestDbName) ->
+    [{<<"pvt_account_db">>, DestDbName}];
+maybe_set_account_db(_1, _, _) -> [].
 
 -spec move_doc(server(), copy_doc(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
