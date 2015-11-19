@@ -154,7 +154,7 @@ auth_req(User, Realm) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec update_manager(nksip:request()|nksip:handle()) -> 'ok'.
+-spec update_manager(nksip:request()|nksip:handle()) -> pid().
 update_manager(Request) ->
     {'ok', [{'from', From}
             ,{'to_user', ToUser}
