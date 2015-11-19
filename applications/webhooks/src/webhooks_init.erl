@@ -21,6 +21,8 @@ start_link() ->
     spawn(fun do_init/0),
     'ignore'.
 
+-spec do_init() -> 'ok'.
+-spec do_init(ne_binary()) -> 'ok'.
 do_init() ->
     init_dbs(),
     init_modules().
@@ -29,15 +31,19 @@ do_init(MasterAccountDb) ->
     init_master_account_db(MasterAccountDb),
     init_modules().
 
+-spec init_dbs() -> 'ok'.
 init_dbs() ->
     _ = init_master_account_db(),
     webhooks_util:init_webhook_db().
 
+-spec maybe_init_account(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
 maybe_init_account(JObj, _Props) ->
     Database = wapi_conf:get_database(JObj),
     couch_util:db_classification(Database) =:= 'account'
         andalso do_init(Database).
 
+-spec init_master_account_db() -> 'ok'.
+-spec init_master_account_db(ne_binary()) -> 'ok'.
 init_master_account_db() ->
     case whapps_util:get_master_account_db() of
         {'ok', MasterAccountDb} ->
