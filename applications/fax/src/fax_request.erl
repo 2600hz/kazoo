@@ -572,6 +572,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                ,{<<"from_number">>, whapps_call:from_user(Call)}
                ,{<<"description">>, <<"fax document received">>}
                ,{<<"source_type">>, <<"incoming_fax">>}
+               ,{<<"folder">>, <<"inbox">>}
                ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
                ,{<<"owner_id">>, OwnerId}
                ,{<<"faxbox_id">>, FaxBoxId}

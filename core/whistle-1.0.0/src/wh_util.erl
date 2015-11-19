@@ -40,6 +40,8 @@
          ,from_hex_binary/1, from_hex_string/1
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
+         ,to_date/1
+         ,to_datetime/1
          ,error_to_binary/1
         ]).
 -export([to_boolean/1, is_boolean/1
@@ -910,6 +912,16 @@ to_boolean('true') -> 'true';
 to_boolean(<<"false">>) -> 'false';
 to_boolean("false") -> 'false';
 to_boolean('false') -> 'false'.
+
+-spec to_date(binary() | string() | integer()) -> wh_date().
+to_date(X) ->
+    {Date, _ } = to_datetime(X),
+    Date.
+
+-spec to_datetime(binary() | string() | integer()) -> wh_datetime().
+to_datetime(X) when is_integer(X) -> calendar:gregorian_seconds_to_datetime(X);
+to_datetime(X) when is_binary(X) -> to_datetime(to_integer(X));
+to_datetime(X) when is_list(X) -> to_datetime(to_integer(X)).
 
 -spec error_to_binary({'error', binary()} | binary()) -> binary().
 error_to_binary({'error', Reason}) ->
