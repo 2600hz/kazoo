@@ -28,11 +28,11 @@
 
 %% NOTE: this module may not include merl.hrl!
 
--type trees:tree() :: erl_syntax:syntaxTree().
+-type tree() :: erl_syntax:syntaxTree().
 
--type tree_or_trees() :: trees:tree() | [tree()].
+-type tree_or_trees() :: tree() | [tree()].
 
--type pattern() :: trees:tree() | template().
+-type pattern() :: tree() | template().
 
 -type pattern_or_patterns() :: pattern() | [pattern()].
 
@@ -90,7 +90,7 @@ compile_and_load(Code, Options) ->
 %% Utility functions
 
 
--spec var(atom()) -> trees:tree().
+-spec var(atom()) -> tree().
 
 %% @doc Create a variable.
 
@@ -98,7 +98,7 @@ var(Name) ->
     erl_syntax:variable(Name).
 
 
--spec term(term()) -> trees:tree().
+-spec term(term()) -> tree().
 
 %% @doc Create a syntax tree for a constant term.
 
@@ -311,11 +311,11 @@ parse_error(R) ->
 %% metavariables are tuples {'*',VarName}, and {'*','_'} and {'*',0} are
 %% anonymous globs.
 
-%% Note that although template() :: trees:tree() | ..., it is implied that these
-%% syntax trees are free from metavariables, so pattern() :: trees:tree() |
+%% Note that although template() :: tree() | ..., it is implied that these
+%% syntax trees are free from metavariables, so pattern() :: tree() |
 %% template() is in fact a wider type than template().
 
--type template() :: trees:tree()
+-type template() :: tree()
                   | {id()}
                   | {'*',id()}
                   | {template, atom(), term(), [[template()]]}.
@@ -791,7 +791,7 @@ flatten_text(Text) when is_binary(Text) ->
 flatten_text(Text) ->
     Text.
 
--spec metavar(trees:tree()) -> {string()} | false.
+-spec metavar(tree()) -> {string()} | false.
 
 %% Check if a syntax tree represents a metavariable. If not, 'false' is
 %% returned; otherwise, this returns a 1-tuple with a string containing the
