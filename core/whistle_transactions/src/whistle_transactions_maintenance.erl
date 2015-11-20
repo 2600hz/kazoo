@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600hz, INC
+%%% @copyright (C) 2014-2015, 2600hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -21,10 +21,8 @@
 %%--------------------------------------------------------------------
 -spec enable_top_up() -> 'ok'.
 enable_top_up() ->
-    case whapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'true') of
-        {'ok', _} -> io:format("top up enabled ~n", []);
-        {'error', _E} -> io:format("top up failed to enable : ~p~n", [_E])
-    end.
+    whapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'true'),
+    io:format("top up enabled ~n").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,7 +32,5 @@ enable_top_up() ->
 %%--------------------------------------------------------------------
 -spec disable_top_up() -> 'ok'.
 disable_top_up() ->
-    case whapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'false') of
-        {'ok', _} -> io:format("top up disabled ~n", []);
-        {'error', _E} -> io:format("top up failed to disable : ~p~n", [_E])
-    end.
+    whapps_config:set(?TOPUP_CONFIG, <<"enable">>, 'false'),
+    io:format("top up disabled ~n", []).
