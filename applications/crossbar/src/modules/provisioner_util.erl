@@ -255,11 +255,16 @@ should_build_contact_list(Context) ->
 -spec get_provision_defaults(cb_context:context()) -> cb_context:context().
 get_provision_defaults(Context) ->
     JObj = cb_context:doc(Context),
+
+    Brand   = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj)),
+    Model   = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"model">>], JObj)),
+    Product = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"product">>], JObj)),
+
     Url = [whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>)
            ,"?request=data"
-           ,"&brand=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj))
-           ,"&model=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"model">>], JObj))
-           ,"&product=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"product">>], JObj))
+           ,"&brand=", wh_util:to_list(Brand)
+           ,"&model=", wh_util:to_list(Model)
+           ,"&product=", wh_util:to_list(Product)
           ],
     UrlString = lists:flatten(Url),
     Headers = props:filter_undefined(
@@ -331,7 +336,7 @@ do_simple_provision(MACAddress, Context) ->
                     ,{"sip[password]", kz_device:sip_password(JObj)}
                     ,{"submit", "true"}
                    ],
-            Encoded = mochiweb_util:urlencode(Body),
+            Encoded = kz_http:urlencode(Body),
             lager:debug("posting to ~s with: ~-300p", [Url, Encoded]),
             Res = ibrowse:send_req(Url, Headers, 'post', Encoded, HTTPOptions),
             lager:debug("response from server: ~p", [Res]),

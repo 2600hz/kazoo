@@ -261,9 +261,9 @@ custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, 
 custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     [{Key, V} | Acc];
 custom_channel_vars_fold({<<"variable_sip_h_Referred-By">>, V}, Acc) ->
-    [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+    [{<<"Referred-By">>, kz_http:urldecode(V)} | Acc];
 custom_channel_vars_fold({<<"variable_sip_refer_to">>, V}, Acc) ->
-    [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+    [{<<"Referred-To">>, kz_http:urldecode(V)} | Acc];
 custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     case props:is_defined(Key, Acc) of
         'true' -> Acc;
@@ -280,7 +280,7 @@ eventstr_to_proplist(EvtStr) ->
 -spec to_kv(nonempty_string(), nonempty_string()) -> {ne_binary(), ne_binary()}.
 to_kv(X, Separator) ->
     [K, V] = string:tokens(X, Separator),
-    [{V1,[]}] = mochiweb_util:parse_qs(V),
+    [{V1,[]}] = kz_http:parse_query_string(list_to_binary(V)),
     {wh_util:to_binary(K), wh_util:to_binary(fix_value(K, V1))}.
 
 fix_value("Event-Date-Timestamp", TStamp) ->

@@ -248,7 +248,7 @@ normalize_proplist(Props) ->
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) when is_binary(V) ->
-    {normalize_value(K), mochiweb_html:escape(V)};
+    {normalize_value(K), kz_html:escape(V)};
 normalize_proplist_element({K, V}) ->
     {normalize_value(K), V};
 normalize_proplist_element(Else) ->
@@ -308,20 +308,17 @@ make_request(Number, JObj) ->
 -spec get_http_url(wh_json:object()) -> ne_binary().
 get_http_url(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
-    {'ok', Url} = render(JObj, Template),
+    {'ok', SrcUrl} = render(JObj, Template),
+    Url = iolist_to_binary(SrcUrl),
 
     case binary:match(Template, <<"opencnam">>) of
-        'nomatch' -> iolist_to_binary(Url);
+        'nomatch' -> Url;
         _Else ->
-            case mochiweb_util:urlsplit(wh_util:to_list(iolist_to_binary(Url))) of
-                {_Scheme, _Host, _Path, "", _Segment} ->
-                    iolist_to_binary([Url, "?ref=2600hz&format=pbx"]);
+            case kz_http:urlsplit(Url) of
+                {_Scheme, _Host, _Path, <<>>, _Segment} ->
+                    <<Url/binary, "?ref=2600hz&format=pbx">>;
                 {Scheme, Host, Path, QS, Segment} ->
-                    iolist_to_binary(
-                      mochiweb_util:urlunsplit({Scheme, Host, Path
-                                                ,[QS, "&ref=2600hz&format=pbx"]
-                                                ,Segment
-                                               }))
+                    kz_http:urlunsplit({Scheme, Host, Path, <<QS/binary, "&ref=2600hz&format=pbx">>, Segment})
             end
     end.
 
