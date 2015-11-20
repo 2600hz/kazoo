@@ -29,5 +29,9 @@
         ,wh_json:from_list([{'passive', 'true'}])
        ).
 
+-define(RULES_HONOR_DIVERSION
+        ,whapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'true')
+       ).
+
 -define(STEPSWITCH_HRL, 'true').
 -endif.
