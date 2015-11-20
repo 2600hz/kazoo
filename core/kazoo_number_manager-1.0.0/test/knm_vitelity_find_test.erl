@@ -21,11 +21,15 @@ tollfree_tests() ->
                ,{<<"carriers">>, [<<"knm_vitelity">>]}
               ],
     Limit = 1,
-    Results = knm_carriers:find(?TEST_CREATE_TOLL, Limit, Options),
+    [Result] = knm_carriers:find(?TEST_CREATE_TOLL, Limit, Options),
+    [Result] = knm_carriers:find(?TEST_CREATE_TOLL, Limit, [{<<"tollfree">>, 'true'} | Options]),
 
-    [{"Verify tollfree result size"
-      ,?_assertEqual(Limit, length(Results))
+    [{"Verify found number"
+      ,?_assertEqual(?TEST_CREATE_TOLL, wh_json:get_value(<<"number">>, Result))
      }
+     ,{"Verify activation charge found"
+       ,?_assertEqual(1.0, wh_json:get_value(<<"activation_charge">>, Result))
+      }
     ].
 
 local_number_tests() ->
