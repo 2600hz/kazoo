@@ -211,7 +211,7 @@ charge_for_port(JObj) ->
 charge_for_port(_JObj, AccountId) ->
     Services = wh_services:fetch(AccountId),
     Cost = wh_services:activation_charges(<<"number_services">>, <<"port">>, Services),
-    Transaction = wh_transaction:debit(AccountId, Cost),
+    Transaction = wh_transaction:debit(AccountId, wht_util:dollars_to_units(Cost)),
     wh_services:commit_transactions(Services, [Transaction]).
 
 %%--------------------------------------------------------------------
