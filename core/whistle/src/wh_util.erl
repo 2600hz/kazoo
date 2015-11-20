@@ -853,7 +853,7 @@ uri(BaseUrl, Tokens) ->
     <<Pro/binary, "://", Uri/binary>>.
 
 
--spec safe_urlencode(ne_binary() | number()) -> iolist().
+-spec safe_urlencode(binary() | number()) -> iolist().
 safe_urlencode(V) when is_binary(V)
                        orelse is_number(V) ->
     cow_qs:urlencode(wh_util:to_binary(V)).
