@@ -30,7 +30,7 @@
        ).
 
 -define(RULES_HONOR_DIVERSION
-        ,whapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'true')
+        ,whapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'false')
        ).
 
 -define(STEPSWITCH_HRL, 'true').
