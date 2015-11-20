@@ -566,7 +566,7 @@ buy(Num, Account) ->
 buy(Num, Account, Options) ->
     Updates = [{fun knm_phone_number:set_assigned_to/2, wh_util:format_account_id(Account, 'raw')}
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
-               ,fun knm_carriers:maybe_acquire/1
+               ,fun knm_carriers:acquire/1
               ],
     update(Num, Updates, Options).
 
