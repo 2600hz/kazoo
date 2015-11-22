@@ -639,7 +639,7 @@ get_unset_vars(JObj) ->
                                     ),
                    ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= 'undefined'
              ],
-    case [[$u,$n,$s,$e,$t,$: | K]
+    case ["unset:" ++ K
           || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
                  ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)]
     of

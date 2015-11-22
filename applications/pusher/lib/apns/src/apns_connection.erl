@@ -335,7 +335,7 @@ hexstr_to_bin(S) ->
   hexstr_to_bin(S, []).
 hexstr_to_bin([], Acc) ->
   list_to_binary(lists:reverse(Acc));
-hexstr_to_bin([$ |T], Acc) ->
+hexstr_to_bin([$\s|T], Acc) ->
     hexstr_to_bin(T, Acc);
 hexstr_to_bin([X, Y|T], Acc) ->
   {ok, [V], []} = io_lib:fread("~16u", [X, Y]),

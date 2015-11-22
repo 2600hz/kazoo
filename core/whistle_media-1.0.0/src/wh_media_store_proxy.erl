@@ -104,7 +104,7 @@ credentials(Req0) ->
 
 -spec credentials_from_header(ne_binary()) -> {api_binary(), api_binary()}.
 credentials_from_header(AuthorizationHeader) ->
-    case binary:split(AuthorizationHeader, <<$ >>) of
+    case binary:split(AuthorizationHeader, <<$\s>>) of
         [<<"Basic">>, EncodedCredentials] ->
             decoded_credentials(EncodedCredentials);
         _ ->
