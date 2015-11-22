@@ -281,7 +281,7 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
     Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
-                                     ,fun(_, V) -> wh_util:is_not_empty(V) end
+                                     ,fun(_, V) -> not wh_util:is_empty(V) end
                                     ),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
 
@@ -292,7 +292,7 @@ merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) -
             'true' -> [AccountJAttr, UserJAttr, EndpointJAttr];
             'false' -> [AccountJAttr, EndpointJAttr, UserJAttr]
         end,
-    wh_json:merge_recursive(Merging, fun(_, V) -> wh_util:is_not_empty(V) end).
+    wh_json:merge_recursive(Merging, fun(_, V) -> not wh_util:is_empty(V) end).
 
 -spec get_record_call_properties(wh_json:object()) -> wh_json:object().
 get_record_call_properties(JObj) ->

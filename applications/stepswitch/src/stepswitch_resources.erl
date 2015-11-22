@@ -20,6 +20,14 @@
 
 -define(CONFIG_CAT, <<"number_manager">>).
 
+-define(DEFAULT_ROUTE, whapps_config:get_binary(?SS_CONFIG_CAT, <<"default_route">>)).
+-define(DEFAULT_PREFIX, whapps_config:get_binary(?SS_CONFIG_CAT, <<"default_prefix">>, <<>>)).
+-define(DEFAULT_SUFFIX, whapps_config:get_binary(?SS_CONFIG_CAT, <<"default_suffix">>, <<>>)).
+-define(DEFAULT_CALLER_ID_TYPE,
+        whapps_config:get_binary(?SS_CONFIG_CAT, <<"default_caller_id_type">>, <<"external">>)).
+-define(DEFAULT_PROGRESS_TIMEOUT,
+        whapps_config:get_integer(?SS_CONFIG_CAT, <<"default_progress_timeout">>, 8)).
+
 -record(gateway, {
            server :: api_binary()
            ,port :: api_integer()
@@ -346,9 +354,8 @@ filter_resources(Flags, [Resource|Resources], Filtered) ->
 
 -spec resource_has_flags(ne_binaries(), resource()) -> boolean().
 resource_has_flags(Flags, Resource) ->
-    lists:all(fun(Flag) -> resource_has_flag(Flag, Resource) end
-              ,Flags
-             ).
+    HasFlag = fun(Flag) -> resource_has_flag(Flag, Resource) end,
+    lists:all(HasFlag, Flags).
 
 -spec resource_has_flag(ne_binary(), resource()) -> boolean().
 resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
@@ -974,54 +981,29 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                                ,bypass_media=BypassMedia
                               }) ->
     EndpointType = wh_json:get_ne_value(<<"endpoint_type">>, JObj, <<"sip">>),
-    #gateway{endpoint_type=EndpointType
-             ,server=wh_json:get_value(<<"server">>, JObj)
-             ,port=wh_json:get_integer_value(<<"port">>, JObj)
-             ,realm=wh_json:get_value(<<"realm">>, JObj)
-             ,username=wh_json:get_value(<<"username">>, JObj)
-             ,password=wh_json:get_value(<<"password">>, JObj)
-             ,sip_headers=wh_json:get_ne_value(<<"custom_sip_headers">>, JObj)
-             ,sip_interface=wh_json:get_ne_value(<<"custom_sip_interface">>, JObj)
-             ,invite_format=wh_json:get_value(<<"invite_format">>, JObj, <<"route">>)
-             ,format_from_uri=wh_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
-             ,from_uri_realm=wh_json:get_ne_value(<<"from_uri_realm">>, JObj, FromRealm)
-             ,is_emergency=wh_json:is_true(<<"emergency">>, JObj, IsEmergency)
-             ,fax_option=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
-             ,codecs=wh_json:get_value(<<"codecs">>, JObj, Codecs)
-             ,bypass_media=wh_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
-             ,force_port=wh_json:is_true(<<"force_port">>, JObj)
-             ,route=gateway_route(JObj)
-             ,prefix=gateway_prefix(JObj)
-             ,suffix=gateway_suffix(JObj)
-             ,caller_id_type=gateway_caller_id_type(JObj)
-             ,progress_timeout=gateway_progress_timeout(JObj)
-             ,endpoint_options=endpoint_options(JObj, EndpointType)
+    #gateway{endpoint_type = EndpointType
+             ,server = wh_json:get_ne_binary_value(<<"server">>, JObj)
+             ,port = wh_json:get_integer_value(<<"port">>, JObj)
+             ,realm = wh_json:get_value(<<"realm">>, JObj)
+             ,username = wh_json:get_value(<<"username">>, JObj)
+             ,password = wh_json:get_value(<<"password">>, JObj)
+             ,sip_headers = wh_json:get_ne_value(<<"custom_sip_headers">>, JObj)
+             ,sip_interface = wh_json:get_ne_value(<<"custom_sip_interface">>, JObj)
+             ,invite_format = wh_json:get_value(<<"invite_format">>, JObj, <<"route">>)
+             ,format_from_uri = wh_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
+             ,from_uri_realm = wh_json:get_ne_value(<<"from_uri_realm">>, JObj, FromRealm)
+             ,is_emergency = wh_json:is_true(<<"emergency">>, JObj, IsEmergency)
+             ,fax_option = wh_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
+             ,codecs = wh_json:get_value(<<"codecs">>, JObj, Codecs)
+             ,bypass_media = wh_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
+             ,force_port = wh_json:is_true(<<"force_port">>, JObj)
+             ,route = wh_json:get_ne_value(<<"route">>, JObj, ?DEFAULT_ROUTE)
+             ,prefix = wh_json:get_binary_value(<<"prefix">>, JObj, ?DEFAULT_PREFIX)
+             ,suffix = wh_json:get_binary_value(<<"suffix">>, JObj, ?DEFAULT_SUFFIX)
+             ,caller_id_type = wh_json:get_ne_value(<<"caller_id_type">>, JObj, ?DEFAULT_CALLER_ID_TYPE)
+             ,progress_timeout = wh_json:get_integer_value(<<"progress_timeout">>, JObj, ?DEFAULT_PROGRESS_TIMEOUT)
+             ,endpoint_options = endpoint_options(JObj, EndpointType)
             }.
-
--spec gateway_route(wh_json:object()) -> api_binary().
-gateway_route(JObj) ->
-    Default = whapps_config:get_binary(?SS_CONFIG_CAT, <<"default_route">>),
-    wh_json:get_ne_value(<<"route">>, JObj, Default).
-
--spec gateway_prefix(wh_json:object()) -> binary().
-gateway_prefix(JObj) ->
-    Default = whapps_config:get_binary(?SS_CONFIG_CAT, <<"default_prefix">>, <<>>),
-    wh_json:get_binary_value(<<"prefix">>, JObj, Default).
-
--spec gateway_suffix(wh_json:object()) -> binary().
-gateway_suffix(JObj) ->
-    Default = whapps_config:get_binary(?SS_CONFIG_CAT, <<"default_suffix">>, <<>>),
-    wh_json:get_binary_value(<<"suffix">>, JObj, Default).
-
--spec gateway_caller_id_type(wh_json:object()) -> ne_binary().
-gateway_caller_id_type(JObj) ->
-    Default = whapps_config:get_binary(?SS_CONFIG_CAT, <<"default_caller_id_type">>, <<"external">>),
-    wh_json:get_ne_value(<<"caller_id_type">>, JObj, Default).
-
--spec gateway_progress_timeout(wh_json:object()) -> integer().
-gateway_progress_timeout(JObj) ->
-    Default = whapps_config:get_integer(?SS_CONFIG_CAT, <<"default_progress_timeout">>, 8),
-    wh_json:get_integer_value(<<"progress_timeout">>, JObj, Default).
 
 -spec endpoint_options(wh_json:object(), api_binary()) -> wh_json:object().
 endpoint_options(JObj, <<"freetdm">>) ->
@@ -1072,24 +1054,18 @@ endpoint_options(_, _) -> wh_json:new().
 gateway_dialstring(#gateway{route='undefined'
                             ,prefix=Prefix
                             ,suffix=Suffix
-                           ,server=Server
+                            ,server=Server
                             ,port=Port
                            }, Number) ->
     DialStringPort =
-        case wh_util:is_not_empty(Port)
+        case not wh_util:is_empty(Port)
             andalso Port =/= 5060
         of
             'true' -> <<":", (wh_util:to_binary(Port))/binary>>;
             'false' -> <<>>
         end,
-    Route = list_to_binary(["sip:"
-                            ,wh_util:to_binary(Prefix)
-                            ,Number
-                            ,wh_util:to_binary(Suffix)
-                            ,"@"
-                            ,wh_util:to_binary(Server)
-                            ,wh_util:to_binary(DialStringPort)
-                           ]),
+    Route =
+        list_to_binary(["sip:", Prefix, Number, Suffix, "@", Server, DialStringPort]),
     lager:debug("created gateway route ~s", [Route]),
     Route;
 gateway_dialstring(#gateway{route=Route}, _) ->

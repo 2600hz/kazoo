@@ -1053,9 +1053,8 @@ publish_db(DbName, Action) ->
 -spec publish_fields(wh_json:object()) -> wh_proplist().
 -spec publish_fields(wh_json:object(), wh_json:object()) -> wh_json:object().
 publish_fields(Doc) ->
-    [{Key, V} ||
-        Key <- ?PUBLISH_FIELDS,
-        wh_util:is_not_empty(V = wh_json:get_value(Key, Doc))
+    [{Key, V} || Key <- ?PUBLISH_FIELDS,
+                 not wh_util:is_empty(V = wh_json:get_value(Key, Doc))
     ].
 
 publish_fields(Doc, JObj) ->

@@ -102,7 +102,7 @@ vcard_fields_acc([], Acc) ->
 
 -spec vcard_normalize_val(binary() | {char(), binaries()}) -> binary().
 vcard_normalize_val({Separator, Vals}) when is_list(Vals) ->
-    wh_util:join_binary([vcard_escape_chars(X) || X <- Vals, wh_util:is_not_empty(X)], Separator);
+    wh_util:join_binary([vcard_escape_chars(X) || X <- Vals, not wh_util:is_empty(X)], Separator);
 vcard_normalize_val(Val) when is_binary(Val) ->
     vcard_escape_chars(Val).
 
@@ -130,7 +130,7 @@ card_field(Key = <<"FN">>, JObj) ->
     MiddleName = wh_json:get_value(<<"middle_name">>, JObj),
     {Key
      ,wh_util:join_binary([X || X <- [FirstName, MiddleName, LastName],
-                                wh_util:is_not_empty(X)
+                                not wh_util:is_empty(X)
                           ]
                           ,<<" ">>
                          )
