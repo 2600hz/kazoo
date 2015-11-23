@@ -15,6 +15,7 @@
 -type knm_number_return() ::
         {'ok', knm_number:knm_number()} |
         dry_run_return() |
+        {'error', atom()} |
         {'error', knm_errors:error()}.
 
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
