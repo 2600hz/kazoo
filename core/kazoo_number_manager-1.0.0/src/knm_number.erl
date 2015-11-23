@@ -102,7 +102,7 @@ get(Num, Options) ->
                         knm_number_return().
 get_number(Num, Options) ->
     wrap_phone_number_return(
-      knm_phone_number:fetch(Num, Options)
+      attempt(fun knm_phone_number:fetch/2, [Num, Options])
      ).
 
 %%--------------------------------------------------------------------
@@ -459,7 +459,6 @@ unwind_or_disconnect(Number, PhoneNumber) ->
 -spec unwind(knm_number(), knm_phone_number:knm_phone_number(), ne_binaries()) ->
                     knm_number_return().
 unwind(Number, PhoneNumber, [NewAssignedTo|_]) ->
-    ?LOG_DEBUG("number has a reserve history for ~s~n", [NewAssignedTo]),
     Routines = [{fun knm_phone_number:set_assigned_to/2, NewAssignedTo}
                 ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}
                ],
@@ -478,7 +477,6 @@ disconnect(Number) ->
 -endif.
 
 disconnect(Number, ShouldDelete) ->
-    ?LOG_DEBUG("attempting disconnect (and delete: ~s)~n", [ShouldDelete]),
     try knm_carriers:disconnect(Number) of
         N1 -> maybe_delete_phone_number(N1, ShouldDelete)
     catch
