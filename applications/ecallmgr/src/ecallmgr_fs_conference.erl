@@ -553,7 +553,7 @@ get_conf_command(<<"tones">>, _Focus, _ConferenceId, JObj) ->
                            Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
                            wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
                        end || Tone <- Tones],
-            Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+            Arg = "tone_stream://" ++ string:join(FSTones, ";"),
             {<<"play">>, Arg}
     end;
 %% The following conference commands can optionally specify a participant

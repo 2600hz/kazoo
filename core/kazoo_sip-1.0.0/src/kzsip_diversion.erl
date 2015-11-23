@@ -253,7 +253,7 @@ parse_param_value(Param, []) ->
 -spec parse_token_param(ne_binary(), iolist()) -> binary().
 parse_token_param(Token) ->
     parse_token_param(Token, []).
-parse_token_param(<<$ , _/binary>>, Acc) ->
+parse_token_param(<<$\s, _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
 parse_token_param(<<$\n, _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
