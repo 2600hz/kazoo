@@ -6,7 +6,7 @@
 -define(DEFAULT_AUTH_BY, <<"system">>).
 
 -type number_return() ::
-        {'ok', knm_phone_number:knm_number()} |
+        {'ok', knm_phone_number:knm_phone_number()} |
         {'error', _}.
 
 -type dry_run_return() ::
