@@ -47,7 +47,7 @@ set_values([{K, V}|KVs], Props) ->
 -spec set_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
                        wh_proplist().
 set_value(K, V, Props) ->
-    [{K, V} | [KV || {Key, _}=KV <- Props, K =/= Key]].
+    lists:keyreplace(K, 1, Props, {K,V}).
 
 -spec insert_value({wh_proplist_key(), wh_proplist_value()} | wh_proplist_key(), wh_proplist()) ->
                           wh_proplist().
