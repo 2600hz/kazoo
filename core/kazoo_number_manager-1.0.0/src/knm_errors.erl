@@ -41,7 +41,7 @@
 -type error() :: wh_json:object().
 
 -type kn() :: knm_number:knm_number().
--type kpn() :: knm_phone_number:knm_number().
+-type kpn() :: knm_phone_number:knm_phone_number().
 
 -export_type([error/0]).
 
@@ -96,12 +96,12 @@ invalid(Number, Reason) ->
 multiple_choice(Number, Update) ->
     throw({'error', 'multiple_choice', Number, Update}).
 
--spec assign_failure(knm_phone_number:knm_number(), any()) ->
+-spec assign_failure(knm_phone_number:knm_phone_number(), any()) ->
                             no_return().
 assign_failure(PhoneNumber, E) ->
     throw({'error', 'assign_failure', PhoneNumber, E}).
 
--spec database_error(couch_mgr:couchbeam_errors(), knm_phone_number:knm_number() | ne_binary()) ->
+-spec database_error(couch_mgr:couchbeam_errors(), knm_phone_number:knm_phone_number() | ne_binary()) ->
                             no_return().
 database_error(E, PhoneNumber) ->
     throw({'error'
