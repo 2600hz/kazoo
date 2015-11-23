@@ -1,9 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% File    : j5_balacne_crawler.erl
-%%% Description : Jonny5 module for disconnect calls when account
+%%% @copyright (C) 2015, VoIP, INC
+%%% @doc
+%%% Jonny5 module (workrt) for disconnect calls when account
 %%% balance drops below zero
+%%% @end
+%%% @contributors
+%%%     Dinkor (Sergey Korobkov)
 %%%-------------------------------------------------------------------
--module(j5_balcraw_worker).
+-module(j5_balance_crawler_worker).
 
 -export([start/0]).
 
@@ -13,23 +17,23 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_INTERACCOUNT_DELAY, 10).
+-define(INTERACCOUNT_DELAY_MS, whapps_config:get_integer(?APP_NAME, <<"balance_crawler_interaccount_delay_ms">>, 10)).
+-define(DELAYED_HANGUP, whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_delayed_hangup">>, 'true')).
 
 -spec start() -> no_return().
 start() ->
     case j5_channels:accounts() of
-        [] -> exit("no accounts");
+        [] -> exit('no_accounts');
         Accounts ->
-            lager:debug("check ~p account(s) for zero balance", [length(Accounts)]),
+            lager:debug("check ~p account(s) for a balance of zero", [length(Accounts)]),
             crawler(Accounts)
     end.
 
 -spec crawler(api_binaries()) -> no_return().
-crawler([]) -> exit("work done");
+crawler([]) -> exit('work_done');
 crawler([Account|Accounts]) ->
     maybe_disconnect_account(Account),
-    Delay = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_interaccount_delay_ms">>, ?DEFAULT_INTERACCOUNT_DELAY),
-    timer:sleep(Delay),
+    timer:sleep(?INTERACCOUNT_DELAY_MS),
     crawler(Accounts).
 
 -spec maybe_disconnect_account(ne_binary()) -> 'ok'.
@@ -52,16 +56,15 @@ disconnect_account(AccountId) ->
             lager:debug("account ~p has ~p per-minute calls, disconnect them",[AccountId, Count]),
             maybe_disconnect_channels(j5_channels:account(AccountId));
         _ ->
-            lager:debug("account ~p doesn't have any per-minute call",[AccountId]),
-            'ok'
+            lager:debug("account ~p doesn't have any per-minute call",[AccountId])
     end.
 
 -spec maybe_disconnect_channels(j5_channels:channels()) -> 'ok'.
 maybe_disconnect_channels([]) -> 'ok';
 maybe_disconnect_channels([Channel|Channels]) ->
     Props = j5_channels:to_props(Channel),
-    case props:get_binary_value(<<"Account-Billing">>, Props) =:= <<"per_minute">>
-         orelse props:get_binary_value(<<"Reseller-Billing">>, Props) =:= <<"per_minute">>
+    case props:get_binary_value(<<"Account-Billing">>, Props) == <<"per_minute">>
+         orelse props:get_binary_value(<<"Reseller-Billing">>, Props) == <<"per_minute">>
     of
         'false' -> maybe_disconnect_channels(Channels);
         'true' ->
@@ -72,16 +75,19 @@ maybe_disconnect_channels([Channel|Channels]) ->
 -spec disconnect_channel(wh_proplist()) -> 'ok'.
 disconnect_channel(Props) ->
     CallId =  props:get_ne_binary_value(<<"Call-ID">>, Props),
-    HangupDelay = case whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_delayed_hangup">>, true) of
-                      'true' -> get_hangup_delay(Props);
-                      'false' -> 0
-                  end,
-    lager:debug("call id ~p, account billing ~p, reseller billing ~p",[CallId, props:get_binary_value(<<"Account-Billing">>, Props), props:get_binary_value(<<"Reseller-Billing">>, Props)]),
+    HangupDelay = get_hangup_delay(Props),
+    lager:debug("call id ~p, account billing ~p, reseller billing ~p (delayed hangup:~s seconds)",
+                [CallId
+                 ,props:get_binary_value(<<"Account-Billing">>, Props)
+                 ,props:get_binary_value(<<"Reseller-Billing">>, Props)
+                 ,HangupDelay
+                ]),
     try_disconnect_call(CallId, HangupDelay).
 
 -spec get_hangup_delay(wh_proplist()) -> integer().
 get_hangup_delay(Props) ->
-    case props:get_integer_value(<<"Answered-Timestamp">>, Props) of
+    case ?DELAYED_HANGUP andalso props:get_integer_value(<<"Answered-Timestamp">>, Props) of
+        'false' -> 0;
         'undefined' -> 0;
         AnsweredTimestamp ->
             CallTime = wh_util:current_tstamp() - AnsweredTimestamp,
@@ -95,24 +101,12 @@ get_hangup_delay(Props) ->
             end
     end.
 
--spec send_hangup_req(ne_binary()) -> 'ok'.
-send_hangup_req(CallId) ->
-    API = [{<<"Call-ID">>, CallId}
-           ,{<<"Action">>, <<"hangup">>}
-           ,{<<"Data">>, wh_json:new()}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    lager:debug("attempting to hangup ~s", [CallId]),
-    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1).
-
 -spec try_disconnect_call(ne_binary(), integer()) -> 'ok'.
 try_disconnect_call(CallId, HangupDelay) when is_integer(HangupDelay) andalso HangupDelay > 0 ->
-    lager:debug("disconnect call ~p delayed to ~p seconds",[CallId, HangupDelay]),
-    _ = spawn(fun() ->
+    _ = wh_util:spawn(fun() ->
                       timer:sleep(HangupDelay * ?MILLISECONDS_IN_SECOND),
-                      send_hangup_req(CallId)
+                      konami_util:send_hangup_req(CallId)
               end
              ),
     'ok';
-try_disconnect_call(CallId, _HangupDelay) -> send_hangup_req(CallId).
-
+try_disconnect_call(CallId, _HangupDelay) -> konami_util:send_hangup_req(CallId).

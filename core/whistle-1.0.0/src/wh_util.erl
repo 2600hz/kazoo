@@ -97,6 +97,7 @@
 
 -export([put_callid/1, get_callid/0
          ,spawn/1, spawn/2
+         ,spawn_link/1, spawn_link/2
          ,set_startup/0, startup/0
         ]).
 -export([get_event_type/1]).
@@ -625,7 +626,6 @@ callid(Prop) when is_list(Prop) ->
 callid(JObj) ->
     wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
 
-%% @public
 -spec spawn(fun(() -> any())) -> pid().
 -spec spawn(fun(), list()) -> pid().
 spawn(Fun, Arguments) ->
@@ -637,6 +637,21 @@ spawn(Fun, Arguments) ->
 spawn(Fun) ->
     CallId = get_callid(),
     erlang:spawn(fun() ->
+                         _ = put_callid(CallId),
+                         Fun()
+                 end).
+
+-spec spawn_link(fun(() -> any())) -> pid().
+-spec spawn_link(fun(), list()) -> pid().
+spawn_link(Fun, Arguments) ->
+    CallId = get_callid(),
+    erlang:spawn_link(fun () ->
+                         _ = put_callid(CallId),
+                         erlang:apply(Fun, Arguments)
+                 end).
+spawn_link(Fun) ->
+    CallId = get_callid(),
+    erlang:spawn_link(fun() ->
                          _ = put_callid(CallId),
                          Fun()
                  end).

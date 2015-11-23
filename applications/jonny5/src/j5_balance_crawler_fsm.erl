@@ -1,9 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% File    : j5_balacne_crawler.erl
-%%% Description : Jonny5 module for disconnect calls when account
+%%% @copyright (C) 2015, VoIP, INC
+%%% @doc
+%%% Jonny5 module (FSM) for disconnect calls when account
 %%% balance drops below zero
+%%% @end
+%%% @contributors
+%%%     Dinkor (Sergey Korobkov)
 %%%-------------------------------------------------------------------
--module(j5_balcraw_fsm).
+-module(j5_balance_crawler_fsm).
 
 -behaviour(gen_fsm).
 
@@ -26,7 +30,8 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
--define(DEFAULT_CRAWLER_CYCLE, 60000).
+-define(IS_ENABLED, whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_enabled">>, 'false')).
+-define(CRAWLER_CYCLE_MS, whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle_ms">>, ?MILLISECONDS_IN_MINUTE)).
 
 -type fsm_events() :: 'start_cycle' | 'worker_stop'.
 -type fsm_state() :: 'idle' | 'working' | 'worker_timeout'.
@@ -41,7 +46,7 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link() ->
-    case whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_enabled">>, false) of
+    case ?IS_ENABLED of
         'true' -> gen_fsm:start_link(?MODULE, [], []);
         'false' -> 'ignore'
     end.
@@ -53,10 +58,10 @@ init(_Args) ->
     process_flag('trap_exit', 'true'),
     wh_util:put_callid(?MODULE),
     gen_fsm:send_event(self(), 'start_cycle'),
-    {'ok', 'idle', undefined}.
+    {'ok', 'idle', 'undefined'}.
 
 handle_info({'EXIT', WorkerPid, Reason}, StateName, WorkerPid) ->
-    lager:debug("Worker: ~p exited with reason ~p", [WorkerPid, Reason]),
+    lager:debug("worker: ~p exited with reason ~p", [WorkerPid, Reason]),
     gen_fsm:send_event(self(), 'worker_stop'),
     {'next_state', StateName, WorkerPid};
 
@@ -73,8 +78,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
     {'reply', {'error', 'not_implemented'}, StateName, State}.
 
 terminate(_Reason, _StateName, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]),
-    'ok'.
+    lager:debug("listener terminating: ~p", [_Reason]).
 
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
@@ -88,7 +92,7 @@ idle('start_cycle', 'undefined') ->
 working('worker_stop', _OldWorkerPid) ->
     {'next_state', 'idle', 'undefined', 'hibernate'};
 working('start_cycle', WorkerPid) ->
-    lager:debug("Trying start new worker but old worker(~p) still alive, waiting...", [WorkerPid]),
+    lager:debug("trying start new worker but old worker(~p) still alive, waiting...", [WorkerPid]),
     {'next_state', 'worker_timeout', WorkerPid}.
 
 -spec worker_timeout(fsm_events(), api_pid()) -> fsm_reply().
@@ -100,6 +104,5 @@ worker_timeout('worker_stop', _OldWorkerPid) ->
 %% Internal functions
 %%====================================================================
 spawn_worker() ->
-    Cycle = whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle_ms">>, ?DEFAULT_CRAWLER_CYCLE),
-    gen_fsm:send_event_after(Cycle, 'start_cycle'),
-    spawn_link(j5_balcraw_worker, start, []).
+    gen_fsm:send_event_after(?CRAWLER_CYCLE_MS, 'start_cycle'),
+    wh_util:spawn_link(fun j5_balance_crawler_worker:start/0).
