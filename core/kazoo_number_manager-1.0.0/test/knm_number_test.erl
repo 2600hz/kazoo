@@ -31,17 +31,20 @@ available_as(AuthAccountId) ->
                        )
     of
         {'ok', Number} -> available_tests(Number);
-        {'error', 'unauthorized'} ->
-            [{io_lib:format("Account ~s not authorized", [AuthAccountId])
-             ,?_assert('true')
-             }
-            ]
+        {'error', Error} -> unavailable_tests(Error)
     end.
 
+unavailable_tests(ErrorJObj) ->
+    [{"verify unavailable number error code"
+      ,?_assertEqual(403, knm_errors:code(ErrorJObj))
+     }
+     ,{"verify unavailable number error"
+      ,?_assertEqual(<<"forbidden">>, knm_errors:error(ErrorJObj))
+     }
+    ].
+
 available_tests(Number) ->
-    ?debugFmt("n: ~p~n", [Number]),
     PhoneNumber = knm_number:phone_number(Number),
-    ?debugFmt("pn: ~p~n", [PhoneNumber]),
 
     [{"Verify available phone number"
       ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(PhoneNumber))
