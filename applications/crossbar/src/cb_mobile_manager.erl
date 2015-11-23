@@ -20,17 +20,22 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec delete_account(cb_context:context()) -> 'ok'.
 delete_account(Context) ->
     AccountId = cb_context:account_id(Context),
     AuthToken = cb_context:auth_token(Context),
 
-    UrlString = req_uri([<<"accounts">>, AccountId]),
-    Headers = req_headers(AuthToken),
+    case req_uri([<<"accounts">>, AccountId]) of
+        'undefined' ->
+            lager:debug("ignore request mobile_manger url is not set");
+        UrlString ->
+            lager:debug("mobile_manager delete via ~s", [UrlString]),
 
-    lager:debug("mobile_manager delete via ~s", [UrlString]),
+            Headers = req_headers(AuthToken),
 
-    Resp = ibrowse:send_req(UrlString, Headers, 'delete'),
-    handle_resp(Resp).
+            Resp = ibrowse:send_req(UrlString, Headers, 'delete'),
+            handle_resp(Resp)
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -45,27 +50,12 @@ delete_account(Context) ->
 %%--------------------------------------------------------------------
 -spec handle_resp(ibrowse_ret()) -> 'ok'.
 handle_resp({'ok', "200", _, Resp}) ->
-    lager:debug("mobile_manager success ~s", [decode(Resp)]);
+    lager:debug("mobile_manager success ~s", [Resp]);
 handle_resp({'ok', Code, _, Resp}) ->
-    lager:warning("mobile_manager error ~p. ~s", [Code, decode(Resp)]);
+    lager:warning("mobile_manager error ~p. ~s", [Code,Resp]);
 handle_resp(_Error) ->
     lager:error("mobile_manager fatal error ~p", [_Error]).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec decode(string()) -> ne_binary().
-decode(JSON) ->
-    try wh_json:encode(JSON) of
-        JObj -> wh_json:decode(JObj)
-    catch
-        'error':_R ->
-            io:format("~p~n", [_R]),
-            JSON
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -73,11 +63,14 @@ decode(JSON) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec req_uri(ne_binaries()) -> list().
+-spec req_uri(ne_binaries()) -> list() |  'undefined'.
 req_uri(ExplodedPath) ->
-    Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"url">>),
-    Uri = wh_util:uri(Url, ExplodedPath),
-    binary:bin_to_list(Uri).
+    case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"url">>) of
+        'undefined' -> 'undefined';
+        Url ->
+            Uri = wh_util:uri(Url, ExplodedPath),
+            wh_util:to_list(Uri)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
