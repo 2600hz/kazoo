@@ -157,7 +157,7 @@ collect_if_saved(DiscoveryNumber, Acc) ->
             Acc
     end.
 
--spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_number(), ne_binary()) ->
+-spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_phone_number(), ne_binary()) ->
                                               knm_number:knm_number().
 transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -172,7 +172,7 @@ transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier) ->
         )
      ).
 
--spec check_existing_phone_number(knm_number:knm_number(), wh_json:objects(), knm_phone_number:knm_number()) -> wh_json:objects().
+-spec check_existing_phone_number(knm_number:knm_number(), wh_json:objects(), knm_phone_number:knm_phone_number()) -> wh_json:objects().
 check_existing_phone_number(Number, Acc, PhoneNumber) ->
     case lists:member(knm_phone_number:state(PhoneNumber)
                       ,?KNM_AVAILABLE_STATES
@@ -191,7 +191,7 @@ found_number_to_jobj(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     found_number_to_jobj(PhoneNumber, knm_phone_number:module_name(PhoneNumber)).
 
--spec found_number_to_jobj(knm_phone_number:knm_number(), ne_binary()) ->
+-spec found_number_to_jobj(knm_phone_number:knm_phone_number(), ne_binary()) ->
                                   wh_json:object().
 found_number_to_jobj(PhoneNumber, ?CARRIER_MANAGED) ->
     CarrierData = knm_phone_number:carrier_data(PhoneNumber),

@@ -73,7 +73,7 @@ public_fields(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary() | knm_phone_number:knm_number()) ->
+-spec get(ne_binary() | knm_phone_number:knm_phone_number()) ->
                  {'ok', wh_json:object()} |
                  {'error', 'not_found'}.
 get(<<_/binary>> = DID) ->

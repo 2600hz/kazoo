@@ -29,6 +29,7 @@
          ,add_transaction/2
          ,errors/1
          ,charges/2, set_charges/3
+         ,to_public_json/1
         ]).
 
 -ifdef(TEST).
@@ -38,7 +39,7 @@
 
 -include("knm.hrl").
 
--record(knm_number, {knm_phone_number :: knm_phone_number:knm_number()
+-record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
                      ,services :: wh_services:services()
                      ,billing_id :: api_binary()
                      ,transactions = [] :: wh_transaction:transactions()
@@ -138,11 +139,11 @@ create_or_load(Num, Props, {'ok', PhoneNumber}) ->
                       )
      ).
 
--spec ensure_can_load_to_create(knm_phone_number:knm_number()) -> 'true'.
+-spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
     ensure_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE).
 
--spec ensure_state(knm_phone_number:knm_number(), ne_binary()) -> 'true'.
+-spec ensure_state(knm_phone_number:knm_phone_number(), ne_binary()) -> 'true'.
 ensure_state(PhoneNumber, ExpectedState) ->
     case knm_phone_number:state(PhoneNumber) of
         ExpectedState -> 'true';
@@ -389,7 +390,7 @@ reconcile_number(Number, AssignTo, AuthBy) ->
             {'ok', Number}
     end.
 
--spec updates_require_save(knm_phone_number:knm_number(), up_req_els()) ->
+-spec updates_require_save(knm_phone_number:knm_phone_number(), up_req_els()) ->
                                   up_req_acc().
 updates_require_save(PhoneNumber, Updaters) ->
     lists:foldl(fun update_requires_save/2
@@ -397,11 +398,11 @@ updates_require_save(PhoneNumber, Updaters) ->
                 ,Updaters
                ).
 
--type set_fun() :: fun((knm_phone_number:knm_number(), term()) -> knm_phone_number:knm_number()).
+-type set_fun() :: fun((knm_phone_number:knm_phone_number(), term()) -> knm_phone_number:knm_phone_number()).
 
 -type up_req_el() :: {ne_binary(), api_binary(), set_fun()}.
 -type up_req_els() :: [up_req_el()].
--type up_req_acc() :: {boolean(), knm_phone_number:knm_number()}.
+-type up_req_acc() :: {boolean(), knm_phone_number:knm_phone_number()}.
 
 -spec update_requires_save(up_req_el(), up_req_acc()) -> up_req_acc().
 update_requires_save({V, V, _Fun}, Acc) ->
@@ -441,7 +442,7 @@ delete_number(Number) ->
 
 -spec unwind_or_disconnect(knm_number()) ->
                                   knm_number_return().
--spec unwind_or_disconnect(knm_number(), knm_phone_number:knm_number()) ->
+-spec unwind_or_disconnect(knm_number(), knm_phone_number:knm_phone_number()) ->
                                   knm_number_return().
 unwind_or_disconnect(Number) ->
     PhoneNumber = phone_number(Number),
@@ -455,7 +456,7 @@ unwind_or_disconnect(Number, PhoneNumber) ->
         History -> unwind(Number, PhoneNumber, History)
     end.
 
--spec unwind(knm_number(), knm_phone_number:knm_number(), ne_binaries()) ->
+-spec unwind(knm_number(), knm_phone_number:knm_phone_number(), ne_binaries()) ->
                     knm_number_return().
 unwind(Number, PhoneNumber, [NewAssignedTo|_]) ->
     ?LOG_DEBUG("number has a reserve history for ~s~n", [NewAssignedTo]),
@@ -582,7 +583,7 @@ wrap_phone_number_routines(Number, Routines) ->
      ).
 
 -spec apply_phone_number_routines(knm_number(), knm_phone_number:set_functions()) ->
-                                         knm_phone_number:knm_number().
+                                         knm_phone_number:knm_phone_number().
 apply_phone_number_routines(Number, Routines) ->
     knm_phone_number:setters(phone_number(Number), Routines).
 
@@ -603,7 +604,7 @@ fetch_account_from_number(NormalizedNum) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_number(knm_phone_number:knm_number()) -> lookup_account_return().
+-spec check_number(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_number(PhoneNumber) ->
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     case wh_util:is_empty(AssignedTo) of
@@ -622,7 +623,7 @@ check_number(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_account(knm_phone_number:knm_number()) -> lookup_account_return().
+-spec check_account(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_account(PhoneNumber) ->
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     case wh_util:is_account_enabled(AssignedTo) of
@@ -649,7 +650,7 @@ check_account(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature_prepend(knm_phone_number:knm_number()) -> api_binary().
+-spec feature_prepend(knm_phone_number:knm_phone_number()) -> api_binary().
 feature_prepend(PhoneNumber) ->
     Prepend = knm_phone_number:feature(PhoneNumber, <<"prepend">>),
     case wh_json:is_true(<<"enabled">>, Prepend) of
@@ -662,7 +663,7 @@ feature_prepend(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec feature_inbound_cname(knm_phone_number:knm_number()) -> boolean().
+-spec feature_inbound_cname(knm_phone_number:knm_phone_number()) -> boolean().
 feature_inbound_cname(PhoneNumber) ->
     case knm_phone_number:feature(PhoneNumber, <<"inbound_cnam">>) of
         'undefined' -> 'false';
@@ -681,7 +682,7 @@ feature_inbound_cname(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_early_ringback(knm_phone_number:knm_number()) -> api_binary().
+-spec find_early_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
 find_early_ringback(PhoneNumber) ->
     RingBack = knm_phone_number:feature(PhoneNumber, <<"ringback">>),
     wh_json:get_ne_value(<<"early">>, RingBack).
@@ -691,7 +692,7 @@ find_early_ringback(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_transfer_ringback(knm_phone_number:knm_number()) -> api_binary().
+-spec find_transfer_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
 find_transfer_ringback(PhoneNumber) ->
     RingBack = knm_phone_number:feature(PhoneNumber, <<"ringback">>),
     wh_json:get_ne_value(<<"transfer">>, RingBack).
@@ -701,7 +702,7 @@ find_transfer_ringback(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_force_outbound(knm_phone_number:knm_number()) -> boolean().
+-spec should_force_outbound(knm_phone_number:knm_phone_number()) -> boolean().
 -spec should_force_outbound(ne_binary(), ne_binary(), boolean()) -> boolean().
 should_force_outbound(PhoneNumber) ->
     Module = knm_phone_number:module_name(PhoneNumber),
@@ -720,7 +721,7 @@ should_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
 should_force_outbound(_State, _Module, ForceOutbound) ->
     ForceOutbound.
 
--spec force_outbound_feature(knm_phone_number:knm_number()) -> boolean().
+-spec force_outbound_feature(knm_phone_number:knm_phone_number()) -> boolean().
 force_outbound_feature(PhoneNumber) ->
     case knm_phone_number:feature(PhoneNumber, <<"force_outbound">>) of
         'undefined' -> default_force_outbound();
@@ -795,9 +796,9 @@ fetch_account_from_ports(NormalizedNum, Error) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec wrap_phone_number_return(number_return() | knm_phone_number:knm_number()) ->
+-spec wrap_phone_number_return(number_return() | knm_phone_number:knm_phone_number()) ->
                                       knm_number_return().
--spec wrap_phone_number_return(number_return() | knm_phone_number:knm_number(), knm_number()) ->
+-spec wrap_phone_number_return(number_return() | knm_phone_number:knm_phone_number(), knm_number()) ->
                                       knm_number_return().
 wrap_phone_number_return(Result) ->
     wrap_phone_number_return(Result, new()).
@@ -808,8 +809,8 @@ wrap_phone_number_return({'ok', PhoneNumber}, Number) ->
 wrap_phone_number_return(PhoneNumber, Number) ->
     {'ok', set_phone_number(Number, PhoneNumber)}.
 
--spec phone_number(knm_number()) -> knm_phone_number:knm_number().
--spec set_phone_number(knm_number(), knm_phone_number:knm_number()) ->
+-spec phone_number(knm_number()) -> knm_phone_number:knm_phone_number().
+-spec set_phone_number(knm_number(), knm_phone_number:knm_phone_number()) ->
                               knm_number().
 phone_number(#knm_number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
 set_phone_number(Number, PhoneNumber) ->
@@ -848,6 +849,10 @@ charges(#knm_number{charges=Charges}, Key) ->
 set_charges(#knm_number{charges=Charges}=Number, Key, Amount) ->
     Number#knm_number{charges=props:set_value(Key, Amount, Charges)}.
 
+-spec to_public_json(knm_number()) -> wh_json:object().
+to_public_json(#knm_number{}=Number) ->
+    knm_phone_number:to_public_json(phone_number(Number)).
+
 -spec attempt(fun(), list()) -> knm_number_return().
 attempt(Fun, Args) ->
     try apply(Fun, Args) of
@@ -862,8 +867,9 @@ attempt(Fun, Args) ->
             {'error', knm_errors:to_json(Reason, num_to_did(Number), Cause)}
     end.
 
--spec num_to_did(ne_binary() | knm_number() | knm_phone_number:knm_number()) ->
-                        ne_binary().
+-spec num_to_did(api_binary() | knm_number() | knm_phone_number:knm_phone_number()) ->
+                        api_binary().
+num_to_did('undefined') -> 'undefined';
 num_to_did(<<_/binary>> = DID) -> DID;
 num_to_did(#knm_number{}=Number) ->
     num_to_did(phone_number(Number));

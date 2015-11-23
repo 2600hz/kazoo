@@ -156,8 +156,8 @@ move_phone_number_to_state(PhoneNumber, ToState) ->
                                ,knm_phone_number:assigned_to(PhoneNumber)
                               ).
 
--spec move_phone_number_to_state(knm_phone_number:knm_number(), ne_binary(), api_binary()) ->
-                                                 knm_phone_number:knm_number().
+-spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), api_binary()) ->
+                                                 knm_phone_number:knm_phone_number().
 move_phone_number_to_state(PhoneNumber, ToState, 'undefined') ->
     Setters = [{fun knm_phone_number:set_assigned_to/2
                 ,knm_phone_number:assign_to(PhoneNumber)

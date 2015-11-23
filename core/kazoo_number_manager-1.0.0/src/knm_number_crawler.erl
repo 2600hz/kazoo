@@ -193,7 +193,7 @@ is_number_doc(Doc) ->
         _Id -> 'true'
     end.
 
--spec crawl_number_doc(knm_phone_number:knm_number()) -> 'ok'.
+-spec crawl_number_doc(knm_phone_number:knm_phone_number()) -> 'ok'.
 crawl_number_doc(PhoneNumber) ->
     Fs = [fun maybe_remove_discovery/1
           ,fun maybe_remove_deleted/1
@@ -217,18 +217,18 @@ crawl_number_doc(PhoneNumber) ->
             wh_util:log_stacktrace(ST)
     end.
 
--spec run_crawler_funs(knm_phone_number:knm_number(), functions()) ->
-                              knm_phone_number:knm_number().
+-spec run_crawler_funs(knm_phone_number:knm_phone_number(), functions()) ->
+                              knm_phone_number:knm_phone_number().
 run_crawler_funs(PhoneNumber, Fs) ->
     lists:foldl(fun(F, PN) -> F(PN) end
                 ,PhoneNumber
                 ,Fs
                ).
 
--spec maybe_remove_discovery(knm_phone_number:knm_number()) ->
-                                    knm_phone_number:knm_number().
--spec maybe_remove_discovery(knm_phone_number:knm_number(), ne_binary()) ->
-                                    knm_phone_number:knm_number().
+-spec maybe_remove_discovery(knm_phone_number:knm_phone_number()) ->
+                                    knm_phone_number:knm_phone_number().
+-spec maybe_remove_discovery(knm_phone_number:knm_phone_number(), ne_binary()) ->
+                                    knm_phone_number:knm_phone_number().
 maybe_remove_discovery(PhoneNumber) ->
     maybe_remove_discovery(PhoneNumber, knm_phone_number:state(PhoneNumber)).
 
@@ -240,17 +240,17 @@ maybe_remove_discovery(PhoneNumber, _State) ->
 
 -type created() :: gregorian_seconds() | 'undefined'.
 
--spec maybe_discovery_number_expired(knm_phone_number:knm_number(), created()) ->
-                                            knm_phone_number:knm_number().
+-spec maybe_discovery_number_expired(knm_phone_number:knm_phone_number(), created()) ->
+                                            knm_phone_number:knm_phone_number().
 maybe_discovery_number_expired(PhoneNumber, 'undefined') ->
     PhoneNumber;
 maybe_discovery_number_expired(PhoneNumber, Created) ->
     maybe_remove(PhoneNumber, Created, ?DISCOVERY_EXPIRY * ?SECONDS_IN_DAY).
 
--spec maybe_remove_deleted(knm_phone_number:knm_number()) ->
-                                  knm_phone_number:knm_number().
--spec maybe_remove_deleted(knm_phone_number:knm_number(), ne_binary()) ->
-                                  knm_phone_number:knm_number().
+-spec maybe_remove_deleted(knm_phone_number:knm_phone_number()) ->
+                                  knm_phone_number:knm_phone_number().
+-spec maybe_remove_deleted(knm_phone_number:knm_phone_number(), ne_binary()) ->
+                                  knm_phone_number:knm_phone_number().
 maybe_remove_deleted(PhoneNumber) ->
     maybe_remove_deleted(PhoneNumber, knm_phone_number:state(PhoneNumber)).
 
@@ -260,15 +260,15 @@ maybe_remove_deleted(PhoneNumber, ?NUMBER_STATE_DELETED) ->
 maybe_remove_deleted(PhoneNumber, _State) ->
     PhoneNumber.
 
--spec maybe_deleted_number_expired(knm_phone_number:knm_number(), created()) ->
-                                          knm_phone_number:knm_number().
+-spec maybe_deleted_number_expired(knm_phone_number:knm_phone_number(), created()) ->
+                                          knm_phone_number:knm_phone_number().
 maybe_deleted_number_expired(PhoneNumber, 'undefined') ->
     PhoneNumber;
 maybe_deleted_number_expired(PhoneNumber, Created) ->
     maybe_remove(PhoneNumber, Created, ?DELETED_EXPIRY * ?SECONDS_IN_DAY).
 
--spec maybe_remove(knm_phone_number:knm_number(), gregorian_seconds(), pos_integer()) ->
-                          knm_phone_number:knm_number().
+-spec maybe_remove(knm_phone_number:knm_phone_number(), gregorian_seconds(), pos_integer()) ->
+                          knm_phone_number:knm_phone_number().
 maybe_remove(PhoneNumber, Created, Expiry) ->
     Now = wh_util:current_tstamp(),
     case (Now - Expiry) > Created of
