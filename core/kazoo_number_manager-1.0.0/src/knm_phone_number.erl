@@ -88,11 +88,11 @@ fetch(Num) ->
 fetch(?TEST_CREATE_NUM, _Options) ->
     {'error', 'not_found'};
 fetch(?TEST_AVAILABLE_NUM, Options) ->
-    handle_fetched_result(from_json(?AVAILABLE_NUMBER), Options);
+    handle_fetched_result(?AVAILABLE_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_NUM, Options) ->
-    handle_fetched_result(from_json(?IN_SERVICE_NUMBER), Options);
+    handle_fetched_result(?IN_SERVICE_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
-    handle_fetched_result(from_json(?BW_EXISTING_DID), Options);
+    handle_fetched_result(?BW_EXISTING_DID, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 
@@ -182,7 +182,6 @@ authorize_release(PhoneNumber, ?DEFAULT_AUTH_BY) ->
 authorize_release(PhoneNumber, ?MASTER_ACCOUNT_ID) ->
     authorized_release(PhoneNumber);
 authorize_release(_PhoneNumber, _AuthBy) ->
-    ?debugFmt("failed to authz ~s for ~s~n", [_PhoneNumber, _AuthBy]),
     knm_errors:unauthorized().
 -else.
 authorize_release(PhoneNumber, ?DEFAULT_AUTH_BY) ->
@@ -198,7 +197,6 @@ authorize_release(PhoneNumber, AuthBy) ->
 -spec authorized_release(knm_phone_number()) -> knm_phone_number().
 authorized_release(PhoneNumber) ->
     ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
-    ?LOG_DEBUG("setting state to ~s~n", [ReleasedState]),
     Routines =
         [{fun set_features/2, wh_json:new()}
          ,{fun set_doc/2, wh_json:private_fields(doc(PhoneNumber))}
@@ -622,12 +620,22 @@ set_options(Number, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_authorized(knm_phone_number()) -> boolean().
+-ifdef(TEST).
 is_authorized(#knm_phone_number{auth_by= ?DEFAULT_AUTH_BY}) -> 'true';
 is_authorized(#knm_phone_number{assigned_to=AssignedTo
                                 ,auth_by=AuthBy
                                }) ->
+    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
+    (AssignedTo =:= ?RESELLER_ACCOUNT_ID orelse AssignedTo =:= ?MASTER_ACCOUNT_ID)
+        andalso (AuthBy =:= ?RESELLER_ACCOUNT_ID orelse AuthBy =:= ?MASTER_ACCOUNT_ID).
+-else.
+is_authorized(#knm_phone_number{auth_by= ?DEFAULT_AUTH_BY}) -> 'true';
+is_authorized(#knm_phone_number{assigned_to=AssignedTo
+                                ,auth_by=AuthBy
+                               }) ->
+    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AssignedTo]),
     wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true').
-
+-endif.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
