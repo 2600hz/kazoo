@@ -5,9 +5,9 @@
 
 -define(DEFAULT_AUTH_BY, <<"system">>).
 
--type number_return() ::
+-type knm_phone_number_return() ::
         {'ok', knm_phone_number:knm_phone_number()} |
-        {'error', _}.
+        {'error', any()}.
 
 -type dry_run_return() ::
         {'dry_run', wh_services:services(), non_neg_integer()}.
