@@ -393,10 +393,21 @@ maybe_start_offnet_metaflow(Call, BridgedTo) ->
 
 -spec hack_call(whapps_call:call(), ne_binary()) -> whapps_call:call().
 hack_call(Call, BridgedTo) ->
-    AccountId = whapps_call:account_id(Call),
-    CallId = whapps_call:call_id(Call),
-    whapps_call:set_call_id(BridgedTo
-                            ,whapps_call:set_other_leg_call_id(CallId
-                                                               ,whapps_call:set_authorizing_id(AccountId, Call)
-                                                              )
-                           ).
+    {AuthorizingType, AuthorizingId} = hack_authz(Call),
+    Funs = [{fun whapps_call:set_call_id/2, BridgedTo}
+            ,{fun whapps_call:set_other_leg_call_id/2, whapps_call:call_id(Call)}
+            ,{fun whapps_call:set_authorizing_type/2, AuthorizingType}
+            ,{fun whapps_call:set_authorizing_id/2, AuthorizingId}
+           ],
+    whapps_call:exec(Funs, Call).
+
+-spec hack_authz(whapps_call:call()) -> {ne_binary(), ne_binary()}.
+-spec hack_authz(whapps_call:call(), api_binary()) -> {ne_binary(), ne_binary()}.
+
+hack_authz(Call) ->
+    hack_authz(Call, whapps_call:authorizing_id(Call)).
+
+hack_authz(Call, 'undefined') ->
+    {<<"account">>, whapps_call:account_id(Call)};
+hack_authz(Call, _) ->
+    {whapps_call:authorizing_type(Call), whapps_call:authorizing_id(Call)}.

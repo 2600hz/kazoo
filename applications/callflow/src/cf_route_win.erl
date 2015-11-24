@@ -263,8 +263,15 @@ update_ccvs(Call) ->
     whapps_call:set_custom_channel_vars(Props, Call).
 
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
+-spec maybe_start_metaflow(whapps_call:call(), api_binary()) -> whapps_call:call().
 maybe_start_metaflow(Call) ->
+    maybe_start_metaflow(Call, whapps_call:custom_channel_var(<<"Metaflow-App">>, Call)).
+
+maybe_start_metaflow(Call, 'undefined') ->
     maybe_start_endpoint_metaflow(Call, whapps_call:authorizing_id(Call)),
+    Call;
+maybe_start_metaflow(Call, App) ->
+    lager:debug("metaflow app ~s", [App]),
     Call.
 
 -spec maybe_start_endpoint_metaflow(whapps_call:call(), api_binary()) -> 'ok'.
