@@ -117,7 +117,7 @@ create(Num, Props) ->
 
 -spec create_or_load(ne_binary(), wh_proplist()) ->
                             knm_number() | dry_run_return().
--spec create_or_load(ne_binary(), wh_proplist(), number_return()) ->
+-spec create_or_load(ne_binary(), wh_proplist(), knm_phone_number_return()) ->
                             knm_number() | dry_run_return().
 create_or_load(Num, Props) ->
     create_or_load(Num, Props, knm_phone_number:fetch(Num)).
@@ -275,8 +275,8 @@ create_updaters(<<_/binary>> = Num, Props) when is_list(Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move(ne_binary(), ne_binary()) -> number_return().
--spec move(ne_binary(), ne_binary(), wh_proplist()) -> number_return().
+-spec move(ne_binary(), ne_binary()) -> knm_number_return().
+-spec move(ne_binary(), ne_binary(), wh_proplist()) -> knm_number_return().
 move(Num, MoveTo) ->
     move(Num, MoveTo, knm_number_options:default()).
 
@@ -794,9 +794,9 @@ fetch_account_from_ports(NormalizedNum, Error) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec wrap_phone_number_return(number_return() | knm_phone_number:knm_phone_number()) ->
+-spec wrap_phone_number_return(knm_phone_number_return() | knm_phone_number:knm_phone_number()) ->
                                       knm_number_return().
--spec wrap_phone_number_return(number_return() | knm_phone_number:knm_phone_number(), knm_number()) ->
+-spec wrap_phone_number_return(knm_phone_number_return() | knm_phone_number:knm_phone_number(), knm_number()) ->
                                       knm_number_return().
 wrap_phone_number_return(Result) ->
     wrap_phone_number_return(Result, new()).
@@ -851,7 +851,8 @@ set_charges(#knm_number{charges=Charges}=Number, Key, Amount) ->
 to_public_json(#knm_number{}=Number) ->
     knm_phone_number:to_public_json(phone_number(Number)).
 
--spec attempt(fun(), list()) -> knm_number_return().
+-spec attempt(fun(), list()) -> knm_number_return() |
+                                knm_phone_number_return().
 attempt(Fun, Args) ->
     try apply(Fun, Args) of
         #knm_number{}=N -> {'ok', N};

@@ -78,8 +78,8 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary()) -> number_return().
--spec fetch(ne_binary(), knm_number_options:options()) -> number_return().
+-spec fetch(ne_binary()) -> knm_phone_number_return().
+-spec fetch(ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
 
 fetch(Num) ->
     fetch(Num, knm_number_options:default()).
@@ -139,7 +139,7 @@ save(#knm_phone_number{dry_run='false'}=PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number()) -> number_return().
+-spec delete(knm_phone_number()) -> knm_phone_number_return().
 delete(#knm_phone_number{dry_run='true'}=Number) ->
     {'ok', Number};
 delete(#knm_phone_number{dry_run='false'}=Number) ->
@@ -290,7 +290,7 @@ is_phone_number(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec setters(knm_phone_number(), set_functions()) ->
-                     number_return() |
+                     knm_phone_number_return() |
                      knm_phone_number().
 setters(Number, Routines) ->
     try run_setters(Number, Routines) of
@@ -301,7 +301,7 @@ setters(Number, Routines) ->
     end.
 
 -spec run_setters(knm_phone_number(), set_functions()) ->
-                         number_return() |
+                         knm_phone_number_return() |
                          knm_phone_number().
 run_setters(Number, Routines) ->
     lists:foldl(
@@ -315,7 +315,7 @@ run_setters(Number, Routines) ->
                         {fun((knm_phone_number(), K, V) -> setter_acc()), [K | V,...]}.
 -type set_functions() :: [set_function()].
 
--type setter_acc() :: number_return() |
+-type setter_acc() :: knm_phone_number_return() |
                       knm_phone_number().
 
 -spec setters_fold(set_function(), setter_acc()) -> setter_acc().
@@ -768,7 +768,7 @@ get_number_in_account(AccountId, Num) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete_number_doc(knm_phone_number()) -> number_return().
+-spec delete_number_doc(knm_phone_number()) -> knm_phone_number_return().
 delete_number_doc(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
@@ -782,7 +782,7 @@ delete_number_doc(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_number_from_account(knm_phone_number()) -> number_return().
+-spec maybe_remove_number_from_account(knm_phone_number()) -> knm_phone_number_return().
 maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case wh_util:is_empty(AssignedTo) of
