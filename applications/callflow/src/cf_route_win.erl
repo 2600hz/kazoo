@@ -198,6 +198,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                 ,fun set_language/1
                 ,fun update_ccvs/1
+                ,fun maybe_start_recording/1
                 %% all funs above here return whapps_call:call()
                 ,fun execute_callflow/1
                 ,fun maybe_start_metaflow/1
@@ -287,6 +288,16 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
             cf_util:maybe_start_metaflow(Call, Endpoint);
         {'error', _E} -> 'ok'
     end.
+
+-spec maybe_start_recording(whapps_call:call()) -> whapps_call:call().
+maybe_start_recording(Call) ->
+    maybe_start_endpoint_recording(Call, cf_endpoint:get(Call)).
+
+-spec maybe_start_endpoint_recording(whapps_call:call(), cf_api_std_return()) -> 'ok'.
+maybe_start_endpoint_recording(Call, {'ok', Endpoint}) ->
+    Data = wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()),
+    cf_util:maybe_start_call_recording(Data, Call);
+maybe_start_endpoint_recording(Call, _) -> Call.
 
 -spec get_incoming_security(whapps_call:call()) -> wh_proplist().
  get_incoming_security(Call) ->

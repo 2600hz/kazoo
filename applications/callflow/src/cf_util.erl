@@ -45,6 +45,10 @@
 
 -export([wait_for_noop/2]).
 -export([start_task/3]).
+-export([maybe_start_call_recording/2
+         ,start_call_recording/2
+         ,start_event_listener/3
+        ]).
 
 -include("callflow.hrl").
 -include_lib("whistle/src/wh_json.hrl").
@@ -64,6 +68,7 @@
                                        ,{<<"ZRTP-Enrollment">>, <<"true">>}
                                       ]}
                         ]).
+-define(RECORDING_ARGS(Call, Data), [whapps_call:clear_helpers(Call) , Data]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -823,6 +828,37 @@ encryption_method_map(JObj, Endpoint) ->
                                              ,[]
                                             )
                          ).
+
+-spec maybe_start_call_recording(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+maybe_start_call_recording(RecordCall, Call) ->
+    case wh_util:is_empty(RecordCall) of
+        'true' -> Call;
+        'false' -> start_call_recording(RecordCall, Call)
+    end.
+
+-spec start_call_recording(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+start_call_recording(Data, Call) ->
+    cf_event_handler_sup:new('wh_media_recording', ?RECORDING_ARGS(Call, Data)),
+    Call.
+
+-spec start_event_listener(whapps_call:call(), atom(), list()) ->
+          {'ok', pid()} | {'error', any()}.
+start_event_listener(Call, Mod, Args) ->
+    lager:debug("starting evt listener ~s", [Mod]),
+    Name = event_listener_name(Call, Mod),
+    try cf_event_handler_sup:new(Name, Mod, [whapps_call:clear_helpers(Call) | Args]) of
+        {'ok', P} -> {'ok', P};
+        _E -> lager:debug("error starting event listener ~s: ~p", [Mod, _E]),
+              {'error', _E}
+    catch
+        _:_R ->
+            lager:info("failed to spawn ~s: ~p", [Mod, _R]),
+            {'error', _R}
+    end.
+
+-spec event_listener_name(whapps_call:call(), atom() | ne_binary()) -> ne_binary().
+event_listener_name(Call, Module) ->
+    <<(whapps_call:call_id_direct(Call))/binary, "-", (wh_util:to_binary(Module))/binary>>.
 
 -spec maybe_start_metaflows(whapps_call:call(), wh_json:objects()) -> 'ok'.
 -spec maybe_start_metaflows(whapps_call:call(), wh_json:object(), api_binary()) -> 'ok'.

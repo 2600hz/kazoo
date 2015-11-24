@@ -71,12 +71,9 @@
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get(whapps_call:call()) ->
-                 {'ok', wh_json:object()} |
-                 {'error', any()}.
--spec get(api_binary(), ne_binary() | whapps_call:call()) ->
-                 {'ok', wh_json:object()} |
-                 {'error', any()}.
+-spec get(whapps_call:call()) -> cf_api_std_return().
+-spec get(api_binary(), ne_binary() | whapps_call:call()) -> cf_api_std_return().
+
 get(Call) -> get(whapps_call:authorizing_id(Call), Call).
 
 get('undefined', _Call) ->
@@ -705,9 +702,16 @@ create_endpoints(Endpoint, Properties, Call) ->
     case lists:foldl(Fun, [], Routines) of
         [] -> {'error', 'no_endpoints'};
         Endpoints ->
-            cf_util:maybe_start_metaflows(Call, Endpoints),
+            maybe_start_metaflows(Call, Endpoints),
             {'ok', Endpoints}
     end.
+
+maybe_start_metaflows(Call, Endpoints) ->
+    maybe_start_metaflows(whapps_call:call_id_direct(Call), Call, Endpoints).
+
+maybe_start_metaflows('undefined', _Call, _Endpoints) -> 'ok';
+maybe_start_metaflows(_, Call, Endpoints) ->
+    cf_util:maybe_start_metaflows(Call, Endpoints).
 
 -type ep_routine() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  {'error', _} | wh_json:object()).
@@ -877,47 +881,20 @@ get_clid(Endpoint, Properties, Call, Type) ->
 
 -spec maybe_record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
 maybe_record_call(Endpoint, Call) ->
-    case is_call_recording(Call) orelse is_sms(Call) of
+    case is_sms(Call)
+        orelse whapps_call:call_id_direct(Call) =:= 'undefined'
+    of
         'true' -> 'ok';
-        'false' -> maybe_start_call_recording(wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()), Call)
+        'false' ->
+            Data = wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()),
+            _ = cf_util:maybe_start_call_recording(Data, Call),
+            'ok'
     end.
-
--spec is_call_recording(whapps_call:call()) -> boolean().
-is_call_recording(Call) ->
-    case wh_cache:peek_local(?CALLFLOW_CACHE, call_recording_cache_key(Call)) of
-        {'ok', _} -> 'true';
-        {'error', 'not_found'} -> 'false'
-    end.
-
--spec call_recording_cache_key(whapps_call:call()) ->
-                                      {?MODULE, 'recording', ne_binary()}.
-call_recording_cache_key(Call) ->
-    {?MODULE, 'recording', whapps_call:call_id(Call)}.
-
--spec maybe_start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
-maybe_start_call_recording(RecordCall, Call) ->
-    case wh_util:is_empty(RecordCall) of
-        'true' -> 'ok';
-        'false' -> start_call_recording(RecordCall, Call)
-    end.
-
--spec start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
-start_call_recording(RecordCall, Call) ->
-    wh_cache:store_local(
-      ?CALLFLOW_CACHE
-      ,call_recording_cache_key(Call)
-      ,'true'
-      ,[{'expires', 60}]
-     ),
-    Data = wh_json:set_value(<<"spawned">>, 'true', RecordCall),
-    _P = wh_util:spawn(fun cf_record_call:handle/2, [Data, Call]),
-    lager:debug("spawned record_call handler in ~p", [_P]).
 
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
     Clid = get_clid(Endpoint, Properties, Call),
-    _ = maybe_record_call(Endpoint, Call),
     create_sip_endpoint(Endpoint, Properties, Clid, Call).
 
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), clid(), whapps_call:call()) ->

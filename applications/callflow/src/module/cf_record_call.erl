@@ -15,6 +15,8 @@
 
 -include("../callflow.hrl").
 
+-define(RECORDINGS_KEY, <<"Recordings">>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -23,74 +25,50 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 -spec handle(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 handle(Data, Call) ->
-    handle(Data
-           ,set_recording_url(Data, Call)
-           ,get_action(wh_json:get_value(<<"action">>, Data))
-          ),
-    case wh_json:is_true(<<"spawned">>, Data) of
-        'true' -> 'ok';
-        'false' -> cf_exe:continue(Call)
-    end.
+    cf_exe:continue(handle(Data, Call, get_action(Data))).
 
 handle(Data, Call, <<"start">>) ->
-    case wh_json:is_true(<<"record_on_answer">>, Data, 'false') of
-        'true' ->
-            start_wh_media_recording(Data, Call);
-        'false' ->
-            handle_immediate_start(Data, Call)
-    end;
-handle(Data, Call, <<"stop">> = Action) ->
+    RecID = wh_util:rand_hex_binary(16),
     Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
-    MediaName = wh_media_recording:get_media_name(whapps_call:call_id(Call), Format),
-    _ = whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], Action, Call),
-    lager:debug("send command to stop recording").
+    MediaName = wh_media_recording:get_media_name(RecID, Format),
+    Args = wh_json:set_value(?CF_RECORDING_ID_KEY, RecID, Data),
+    cf_util:start_call_recording(Args, store_recording(MediaName, Call));
 
--spec handle_immediate_start(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle_immediate_start(Data, Call) ->
-    Url = wh_json:get_value(<<"url">>, Data),
-    case wh_media_recording:should_store_recording(Url) of
-        {'true', 'third_party'} ->
-            lager:debug("call will be stored to 3rd party CouchDB", []),
-            start_wh_media_recording(Data, Call);
-        {'true', 'other', Url} ->
-            lager:debug("call will be stored to 3rd party url '~s'", [Url]),
-            record_call(Data, Call);
-        'false' ->
-            lager:error("misconfigured call record (missing url and disabled store_recordings)"),
-            wh_notify:system_alert("misconfigured call record (missing url in ~p)", [Data]);
-        {'true', 'local'} ->
-            lager:debug("call will be store to account"),
-            start_wh_media_recording(Data, Call)
+handle(_Data, OriginalCall, <<"stop">> = Action) ->
+    case retrieve_recording(OriginalCall) of
+        {'ok', MediaId, Call} ->
+            _= whapps_call_command:record_call([{<<"Media-Name">>, MediaId}], Action, Call),
+            lager:debug("send command to stop recording"),
+            Call;
+        {'empty', Call} ->
+            lager:debug("no recording to stop"),
+            Call
     end.
 
--spec start_wh_media_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
-start_wh_media_recording(Data, Call) ->
-    'ok' = cf_exe:add_event_listener(Call, {'wh_media_recording', [Data]}),
-    lager:debug("started wh_media_recording to handle recording").
+-spec store_recording(ne_binary(), whapps_call:call()) -> whapps_call:call().
+store_recording(MediaId, Call) ->
+    Q = queue:in(MediaId, get_recordings(Call)),
+    whapps_call:kvs_store(?RECORDINGS_KEY, Q, Call).
 
--spec record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
-record_call(Data, Call) ->
-    Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
-    MediaName = wh_media_recording:get_media_name(whapps_call:call_id(Call), Format),
-    Props = [{<<"Media-Name">>, MediaName}
-             ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"method">>, Data, <<"put">>)}
-             ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"url">>, Data)}
-             ,{<<"Additional-Headers">>, wh_json:get_value(<<"additional_headers">>, Data)}
-             ,{<<"Time-Limit">>, wh_json:get_value(<<"time_limit">>, Data)}
-             ,{<<"Record-Sample-Rate">>, wh_json:get_integer_value(<<"record_sample_rate">>, Data)}
-             ,{<<"Record-Min-Sec">>, wh_json:get_integer_value(<<"record_min_sec">>, Data)}
-            ],
+-type store_return() :: {'ok', ne_binary(), whapps_call:call()} | {'empty', whapps_call:call()}.
 
-    _ = whapps_call_command:record_call(props:filter_undefined(Props), <<"start">>, Call),
-    lager:debug("auto handling call recording").
+-spec retrieve_recording(whapps_call:call()) -> store_return().
+retrieve_recording(Call) ->
+    case queue:out_r(get_recordings(Call)) of
+        {{'value', MediaId}, Q} ->
+            {'ok', MediaId, whapps_call:kvs_store(?RECORDINGS_KEY, Q, Call)};
+        {'empty', _} ->
+            {'empty', Call}
+    end.
+
+-spec get_recordings(whapps_call:call()) -> queue().
+get_recordings(Call) ->
+    case whapps_call:kvs_fetch(?RECORDINGS_KEY, Call) of
+        'undefined' -> queue:new();
+        Q -> Q
+    end.
 
 -spec get_action(api_binary()) -> ne_binary().
 get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.
-
--spec set_recording_url(wh_json:object(), whapps_call:call()) -> whapps_call:call().
-set_recording_url(Data, Call) ->
-    CallId = whapps_call:call_id(Call),
-    Media = wh_media_util:recording_url(CallId, Data),
-    whapps_call:set_custom_channel_var(<<"Recording-Url">>, Media, Call).
