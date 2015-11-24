@@ -12,37 +12,43 @@
 
 -include("knm.hrl").
 
--define(LOCALITY_CONFIG_CAT, <<"number_manager.locality">>).
-
--define(DEFAULT_URL, whapps_config:get(<<"number_manager.other">>, <<"phonebook_url">>)).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary() | ne_binaries()) -> {'ok', wh_json:object()} | {'error', 'lookup_failed' | 'missing_url'}.
+-spec fetch(ne_binary() | ne_binaries()) ->
+                   {'ok', wh_json:object()} |
+                   {'error', 'lookup_failed' | 'missing_url'}.
 fetch(Number) when is_binary(Number)->
     fetch([Number]);
 fetch(Numbers) when is_list(Numbers)->
-    case whapps_config:get(?LOCALITY_CONFIG_CAT, <<"url">>, ?DEFAULT_URL) of
+    case knm_config:locality_url() of
         'undefined' ->
             lager:error("could not get number locality url"),
             {'error', 'missing_url'};
         Url ->
-            ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
-            Uri = <<Url/binary, "/locality/metadata">>,
-            case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
-                {'error', Reason} ->
-                    lager:error("number locality lookup failed: ~p", [Reason]),
-                    {'error', 'lookup_failed'};
-                {'ok', "200", _Headers, Body} ->
-                    handle_resp(wh_json:decode(Body));
-                {'ok', _Status, _, _Body} ->
-                    lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
-                    {'error', 'lookup_failed'}
-            end
+            Resp = fetch_req(Numbers, Url),
+            handle_resp(Resp)
     end.
+
+-spec fetch_req(ne_binaries(), ne_binary()) -> ibrowse_ret().
+fetch_req(Numbers, Url) ->
+    ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
+    Uri = <<Url/binary, "/locality/metadata">>,
+    ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)).
+
+-spec handle_resp(ibrowse_ret()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', any()}.
+handle_resp({'error', Reason}) ->
+    lager:error("number locality lookup failed: ~p", [Reason]),
+    {'error', 'lookup_failed'};
+handle_resp({'ok', "200", _Headers, Body}) ->
+    handle_resp_body(wh_json:decode(Body));
+handle_resp({'ok', _Status, _, _Body}) ->
+    lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
+    {'error', 'lookup_failed'}.
 
 %%%===================================================================
 %%% Internal functions
@@ -54,8 +60,10 @@ fetch(Numbers) when is_list(Numbers)->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_resp(wh_json:object()) -> {'error', 'lookup_failed'} | {'ok', wh_json:object()}.
-handle_resp(Resp) ->
+-spec handle_resp_body(wh_json:object()) ->
+                              {'ok', wh_json:object()} |
+                              {'error', 'lookup_failed'}.
+handle_resp_body(Resp) ->
     case wh_json:get_value(<<"status">>, Resp, <<"error">>) of
         <<"success">> ->
             {'ok', wh_json:get_value(<<"data">>, Resp, wh_json:new())};
