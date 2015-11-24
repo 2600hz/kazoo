@@ -63,6 +63,7 @@ start_deps() ->
                                             ,'crypto'
                                             ,'gproc'
                                             ,'lager'
+                                            ,'whistle_config'
                                             ,'kazoo_caches'
                                             ,'kazoo_token_buckets'
                                             ,'whistle_amqp'
