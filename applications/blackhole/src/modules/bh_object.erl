@@ -24,7 +24,13 @@
 handle_event(Context, EventJObj) ->
     wh_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), wh_api:event_name(EventJObj), EventJObj).
+    EventName = wh_api:event_name(EventJObj),
+    DocType = wh_json:get_value(<<"Type">>, EventJObj),
+    blackhole_data_emitter:emit(
+        bh_context:websocket_pid(Context)
+        ,<<EventName/binary, "_", DocType/binary>>
+        ,EventJObj
+    ).
 
 %%--------------------------------------------------------------------
 %% @public
