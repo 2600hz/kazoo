@@ -572,7 +572,7 @@ parse_path_tokens(Context, [Mod|T], Events) ->
 
 -spec is_cb_module(cb_context:context(), ne_binary()) -> boolean().
 is_cb_module(Context, Elem) ->
-    try (wh_util:to_atom(<<"cb_", Elem/binary>>)):module_info('imports') of
+    try (wh_util:to_atom(<<"cb_", Elem/binary>>)):module_info('exports') of
         _ -> 'true'
     catch
         'error':'badarg' -> 'false'; %% atom didn't exist already
@@ -586,7 +586,7 @@ is_cb_module_version(Context, Elem) ->
         'true'  ->
             ApiVersion = cb_context:api_version(Context),
             ModuleName = <<"cb_", Elem/binary, "_", ApiVersion/binary>>,
-            try (wh_util:to_atom(ModuleName)):module_info('imports') of
+            try (wh_util:to_atom(ModuleName)):module_info('exports') of
                 _ -> 'true'
             catch
                 'error':'badarg' -> 'false'; %% atom didn't exist already

@@ -621,7 +621,7 @@ maybe_stop_caring({P, R}) ->
                                    {pid_ref() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = wh_util:to_atom(ModuleBin, 'true'),
-    try CFModule:module_info('imports') of
+    try CFModule:module_info('exports') of
         _ ->
             lager:info("moving to action '~s'", [CFModule]),
             spawn_cf_module(CFModule, Data, Call)
