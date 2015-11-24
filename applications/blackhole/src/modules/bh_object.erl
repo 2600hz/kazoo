@@ -24,11 +24,9 @@
 handle_event(Context, EventJObj) ->
     wh_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
-    EventName = wh_api:event_name(EventJObj),
-    DocType = wh_json:get_value(<<"Type">>, EventJObj),
     blackhole_data_emitter:emit(
         bh_context:websocket_pid(Context)
-        ,<<EventName/binary, "_", DocType/binary>>
+        ,event_name(EventJObj)
         ,EventJObj
     ).
 
@@ -84,3 +82,14 @@ rm_amqp_binding(Binding, Context) ->
           ,'federate'
         ]
     ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec event_name(wh_json:object()) -> ne_binary().
+event_name(EventJObj) ->
+    EventName = wh_api:event_name(EventJObj),
+    DocType = wh_json:get_value(<<"Type">>, EventJObj),
+    <<EventName/binary, "_", DocType/binary>>.
