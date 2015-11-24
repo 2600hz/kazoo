@@ -17,35 +17,7 @@
          ,get_node_section_name/0
         ]).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
-
--define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
--define(CONFIG_FILE, "/etc/kazoo/config.ini").
--define(DEFAULT_DEFAULTS, []).
--define(SECTION_DEFAULTS, [{'amqp', [{'uri', "amqp://guest:guest@localhost:5672"}
-                                     ,{'use_federation', 'false'}
-                                    ]
-                           }
-                           ,{'bigcouch', [{'ip', "localhost"}
-                                          ,{'port', 5984}
-                                          ,{'username', ""}
-                                          ,{'password', ""}
-                                          ,{'admin_port', 5986}
-                                          ,{'cookie', 'monster'}
-                                          ,{'compact_automatically', 'true'}
-                                         ]
-                            }
-                           ,{'ecallmgr', [{'cookie', 'change_me'}]}
-                           ,{'whistle_apps', [{'cookie', 'change_me'}]}
-                           ,{'log', [{'syslog', 'info'}
-                                     ,{'console', 'notice'}
-                                     ,{'file', 'error'}
-                                    ]}
-                          ]).
--type section() :: 'bigcouch' | 'amqp' |
-                   'whistle_apps' | 'ecallmgr' |
-                   'zone' | 'log'.
+-include("whistle_config.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -256,32 +228,10 @@ get_values([{_, Values} | T], Key, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
 -spec load() -> {'ok', wh_proplist()}.
 load() ->
-    case os:getenv(?CONFIG_FILE_ENV) of
-        'false' -> load_file(?CONFIG_FILE);
-        File -> load_file(File)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec load_file(string()) -> {'ok', wh_proplist()}.
-load_file(File) ->
-    case zucchini:parse_file(File) of
-        {'ok', Prop} ->
-            lager:info("loaded configs from file ~s", [File]),
-            {'ok', Prop};
-        {'error', 'enoent'} ->
-            lager:warning("file ~s does not exist or is not accessible", [File]),
-            lager:warning("please create ~s or set the environment variable ~s to the path of the config file", [File, ?CONFIG_FILE_ENV]),
-            lager:warning("trying defaults instead"),
-            {'ok', ?SECTION_DEFAULTS};
-        {'error', _}=Error ->
-            lager:warning("error loading file ~s: ~s", [File, Error]),
-            lager:warning("trying defaults instead"),
-            {'ok', ?SECTION_DEFAULTS}
+    case application:get_env('whistle_config', 'wh_config') of
+        'undefined' -> {'ok', ?SECTION_DEFAULTS};
+        {'ok', _}=X -> X
     end.

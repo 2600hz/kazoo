@@ -60,6 +60,7 @@ start_deps() ->
                                                 ,'lager'
                                                 ,'gproc'
                                                 ,'ibrowse'
+                                                ,'whistle_config'
                                                 ,'whistle_amqp'
                                                 ,'whistle_stats'
                                                ]],
