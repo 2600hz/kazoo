@@ -21,16 +21,23 @@
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).
 
+-define(
+    TO_JSON(Binding, Event)
+    ,wh_json:from_list([
+        {<<"binding">>, Binding}
+        ,{<<"event">>, Event}
+    ])
+).
 
--define(CALL, [<<"call.CHANNEL_CREATE.*">>
-               ,<<"call.CHANNEL_ANSWER.*">>
-               ,<<"call.CHANNEL_DESTROY.*">>
-               ,<<"call.CHANNEL_BRIDGE.*">>
+-define(CALL, [?TO_JSON(<<"call.CHANNEL_CREATE.*">>, <<"CHANNEL_CREATE">>)
+               ,?TO_JSON(<<"call.CHANNEL_ANSWER.*">>, <<"CHANNEL_ANSWER">>)
+               ,?TO_JSON(<<"call.CHANNEL_DESTROY.*">>, <<"CHANNEL_DESTROY">>)
+               ,?TO_JSON(<<"call.CHANNEL_BRIDGE.*">>, <<"CHANNEL_BRIDGE">>)
               ]).
 
 -define(
     OBJECTS
-    ,[<<A/binary, ".*.", T/binary, ".*">>
+    ,[?TO_JSON(<<A/binary, ".*.", T/binary, ".*">>, <<A/binary, "_", T/binary>>)
       || A <- ?DOC_ACTIONS, T <- ?DOC_TYPES
      ]
 ).
@@ -39,7 +46,7 @@
     AVAILABLE
     ,wh_json:from_list([
         {<<"call">>, ?CALL}
-        ,{<<"fax">>, [<<"fax.status.*">>]}
+        ,{<<"fax">>, [?TO_JSON(<<"fax.status.*">>, <<"fax">>)]}
         ,{<<"object">>, ?OBJECTS}
     ])
 ).
