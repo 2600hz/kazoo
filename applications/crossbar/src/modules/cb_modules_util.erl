@@ -324,7 +324,8 @@ originate_quickcall(Endpoints, Call, Context) ->
                 'true' -> wh_util:rand_hex_binary(16);
                 'false' -> cb_context:req_id(Context)
             end,
-    Request = [{<<"Application-Name">>, <<"transfer">>}
+    Request = props:filter_undefined(
+                [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
                ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
@@ -339,9 +340,10 @@ originate_quickcall(Endpoints, Call, Context) ->
                ,{<<"Continue-On-Fail">>, 'false'}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+               ,{<<"Simplify-Loopback">>, <<"true">>}
                | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_resource:publish_originate_req(props:filter_undefined(Request)),
+              ]),
+    wh_amqp_worker:cast(Request, fun wapi_resource:publish_originate_req/1),
     JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
     crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 

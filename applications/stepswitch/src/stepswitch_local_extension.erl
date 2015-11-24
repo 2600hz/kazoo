@@ -128,7 +128,8 @@ handle_cast({'wh_amqp_channel', _}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
-    'ok' = wapi_dialplan:publish_command(ControlQ, build_local_extension(State)),
+    Payload = build_local_extension(State),
+    'ok' = wapi_dialplan:publish_command(ControlQ, Payload),
     lager:debug("sent local extension command to ~s", [ControlQ]),
     {'noreply', State};
 handle_cast({'local_extension_result', _Props}, #state{response_queue='undefined'}=State) ->
@@ -190,7 +191,8 @@ handle_event(JObj, #state{request_handler=RequestHandler
             lager:debug("channel was destroy while waiting for execute extension", []),
             gen_listener:cast(RequestHandler, {'local_extension_result', local_extension_success(Request)});
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
-            <<"execute_extension">> = wh_json:get_value(<<"Application-Name">>, JObj),
+            <<"bridge">> = wh_json:get_value(<<"Application-Name">>, JObj),
+%%            <<"execute_extension">> = wh_json:get_value(<<"Application-Name">>, JObj),
             lager:debug("channel execute complete for execute extension", []),
             gen_listener:cast(RequestHandler, {'local_extension_result', local_extension_success(Request)});
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
@@ -228,6 +230,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec build_local_extension(state()) -> wh_proplist().
 build_local_extension(#state{number_props=Props
                              ,resource_req=JObj
@@ -237,37 +240,60 @@ build_local_extension(#state{number_props=Props
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = props:get_value('number', Props),
     AccountId = props:get_value('account_id', Props),
+    OriginalAccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    {CEDNum, CEDName} = local_extension_callee_id(JObj, Number),
+
     Realm = get_account_realm(AccountId),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    CCVsNoAuth = wh_json:delete_keys([<<"Authorizing-Type">>, <<"Authorizing-ID">>], CCVs),
+    CCVsOrig = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    CCVs = wh_json:set_values(
+             [{<<"Ignore-Display-Updates">>, <<"true">>}
+              ,{<<"From-URI">>, bridge_from_uri(Number, JObj)}
+              ,{<<"Account-ID">>, OriginalAccountId}
+              ,{<<"Reseller-ID">>, wh_services:find_reseller_id(OriginalAccountId)}
+              ,{<<"Simplify-Loopback">>, <<"false">>}
+              ,{<<"Loopback-Bowout">>, <<"false">>}
+             ],
+             CCVsOrig),
+
     CCVUpdates = props:filter_undefined(
-                   [{<<"Inception">>, <<Number/binary, "@", Realm/binary>>}
-                    ,{<<"Retain-CID">>, <<"true">>}
-                    ,{<<"Global-Resource">>, <<"false">>}
-                    ,{<<"Account-ID">>, AccountId}
-                    ,{<<"Caller-ID-Number">>, CIDNum}
-                    ,{<<"Caller-ID-Name">>, CIDName}
-                    ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
-                    ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
-                    ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
+                   [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
+                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
+                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, wh_json:get_value(<<"Retain-CID">>, CCVsOrig)}
+                    ,{<<"Resource-ID">>, AccountId}
+                    ,{<<"Simplify-Loopback">>, <<"false">>}
+                    ,{<<"Loopback-Bowout">>, <<"false">>}
                    ]),
-    [{<<"Application-Name">>, <<"execute_extension">>}
-     ,{<<"Reset">>, <<"true">>}
-     ,{<<"Extension">>, Number}
-     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVsNoAuth)}
-     ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
-     ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
-     | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-    ].
 
--spec get_account_name(ne_binary(), ne_binary()) -> ne_binary().
-get_account_name(Number, AccountId) when is_binary(Number) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:name(JObj, Number);
-        _ -> Number
-    end.
+    Endpoint = wh_json:from_list(
+                 props:filter_undefined(
+                   [{<<"Invite-Format">>, <<"loopback">>}
+                    ,{<<"Route">>,  Number}
+                    ,{<<"To-DID">>, Number}
+                    ,{<<"To-Realm">>, Realm}
+                    ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVUpdates)}
+                    ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                    ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+                    ,{<<"Outbound-Callee-ID-Name">>, CEDName}
+                    ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
+                    ,{<<"Caller-ID-Name">>, CIDName}
+                    ,{<<"Caller-ID-Number">>, CIDNum}
+                    ,{<<"Ignore-Early-Media">>, 'true'}
+                   ])),
 
+    props:filter_undefined(
+                [{<<"Application-Name">>, <<"bridge">>}
+                 ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                 ,{<<"Endpoints">>, [Endpoint]}
+                 ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+                 ,{<<"Custom-Channel-Vars">>, CCVs}
+                 ,{<<"Outbound-Callee-ID-Name">>, CEDName}
+                 ,{<<"Outbound-Callee-ID-Number">>, CEDNum}
+                 ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                 ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+                 ,{<<"Caller-ID-Name">>, CIDName}
+                 ,{<<"Caller-ID-Number">>, CIDNum}
+                 | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                ]).
 
 -spec get_account_realm(ne_binary()) -> ne_binary().
 get_account_realm(AccountId) ->
@@ -284,6 +310,12 @@ local_extension_caller_id(JObj) ->
      ,wh_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
                                  ,<<"Emergency-Caller-ID-Name">>
                                 ], JObj)
+    }.
+
+-spec local_extension_callee_id(wh_json:object(), ne_binary()) -> {api_binary(), api_binary()}.
+local_extension_callee_id(JObj, Number) ->
+    {wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj, Number)
+     ,wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj, Number)
     }.
 
 -spec local_extension_timeout(wh_json:object()) -> wh_proplist().
@@ -320,3 +352,27 @@ local_extension_success(Request) ->
      ,{<<"Resource-Response">>, wh_json:new()}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec bridge_from_uri(api_binary(), wapi_offnet_resource:req()) ->
+                             api_binary().
+bridge_from_uri(Number, OffnetReq) ->
+    Realm = default_realm(OffnetReq),
+
+    case (whapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
+          orelse wapi_offnet_resource:format_from_uri(OffnetReq)
+         )
+        andalso (is_binary(Number) andalso is_binary(Realm))
+    of
+        'false' -> 'undefined';
+        'true' ->
+            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
+            lager:debug("setting bridge from-uri to ~s", [FromURI]),
+            FromURI
+    end.
+
+-spec default_realm(wapi_offnet_resource:req()) -> api_binary().
+default_realm(OffnetReq) ->
+    case wapi_offnet_resource:from_uri_realm(OffnetReq) of
+        'undefined' -> wapi_offnet_resource:account_realm(OffnetReq);
+        Realm -> Realm
+    end.

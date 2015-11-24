@@ -465,6 +465,7 @@ build_originate_req(Contact, Context) ->
        ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
        ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+       ,{<<"Simplify-Loopback">>, <<"true">>}
        | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 

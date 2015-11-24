@@ -179,12 +179,10 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                                  ,{<<"Switch-URI">>, SwitchURI}
+                                                 ,{<<"Switch-Node">>, wh_util:to_binary(Node)}
                                                 ]
                                                ) ++ Props ,
-            _ = wh_util:spawn(fun() ->
-                                      maybe_send_event(EventName, UUID, EventProps, Node),
-                                      process_event(EventName, UUID, EventProps, Node)
-                              end),
+            _ = wh_util:spawn(fun process_stream/4, [EventName, UUID, EventProps, Node]),
             {'noreply', State, Timeout};
         _Else ->
             io:format("~p~n", [_Else]),
@@ -321,6 +319,15 @@ maybe_bind(Node, Bindings, Attempts) ->
             lager:debug("failed on attempt ~b to bind: ~p", [Attempts, _Reason]),
             maybe_bind(Node, Bindings, Attempts+1)
     end.
+
+-spec process_stream(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+process_stream(<<"CHANNEL_CREATE">> = EventName, UUID, EventProps, Node) ->
+    Props = ecallmgr_fs_loopback:filter(Node, UUID, EventProps, 'true'),
+    maybe_send_event(EventName, UUID, Props, Node),
+    process_event(EventName, UUID, Props, Node);
+process_stream(EventName, UUID, EventProps, Node) ->
+    maybe_send_event(EventName, UUID, EventProps, Node),
+    process_event(EventName, UUID, EventProps, Node).
 
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">>, UUID, _Props, Node) ->

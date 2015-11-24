@@ -33,5 +33,7 @@
         ,whapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'false')
        ).
 
+-define(CHANNEL_LOOPBACK_HEADER_PREFIX, "FSLoopBack-").
+
 -define(STEPSWITCH_HRL, 'true').
 -endif.

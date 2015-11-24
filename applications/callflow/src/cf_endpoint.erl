@@ -1367,8 +1367,18 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
      ,wh_json:set_values([{<<"Call-Forward">>, <<"true">>}
                           ,{<<"Authorizing-Type">>, <<"device">>}
+                          | bowout_settings(whapps_call:call_id_direct(Call) =:= 'undefined')
                          ], JObj)
     }.
+
+bowout_settings('true') ->
+    [{<<"Loopback-Bowout">>, <<"true">>}
+     ,{<<"Simplify-Loopback">>, <<"true">>}
+    ];
+bowout_settings('false') ->
+    [{<<"Loopback-Bowout">>, <<"false">>}
+     ,{<<"Simplify-Loopback">>, <<"true">>}
+    ].
 
 -spec maybe_set_confirm_properties(ccv_acc()) -> ccv_acc().
 maybe_set_confirm_properties({Endpoint, Call, CallFwd, JObj}=Acc) ->

@@ -206,17 +206,20 @@ reload_resources(Account) ->
 process_number(Number) -> process_number(Number, 'undefined').
 
 -spec process_number(text(), text() | 'undefined') -> any().
-process_number(Number, 'undefined') ->
-    Endpoints = stepswitch_resources:endpoints(
-                  wh_util:to_binary(Number)
-                  ,wapi_offnet_resource:jobj_to_req(wh_json:new())
-                 ),
+process_number(Num, 'undefined') ->
+    JObj = wh_json:from_list([{<<"To-DID">>, wh_util:to_binary(Num)}]),
+    Number = stepswitch_util:get_outbound_destination(JObj),
+    Endpoints = stepswitch_resources:endpoints(Number
+                                               ,wapi_offnet_resource:jobj_to_req(JObj)
+                                              ),
     pretty_print_endpoints(Endpoints);
-process_number(Number, AccountId) ->
+process_number(Num, AccountId) ->
     JObj = wh_json:from_list([{<<"Account-ID">>, wh_util:to_binary(AccountId)}
                               ,{<<"Hunt-Account-ID">>, wh_util:to_binary(AccountId)}
+                              ,{<<"To-DID">>, wh_util:to_binary(Num)}
                              ]),
-    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number)
+    Number = stepswitch_util:get_outbound_destination(JObj),
+    Endpoints = stepswitch_resources:endpoints(Number
                                                ,wapi_offnet_resource:jobj_to_req(JObj)
                                               ),
     pretty_print_endpoints(Endpoints).

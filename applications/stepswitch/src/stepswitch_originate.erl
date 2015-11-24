@@ -267,6 +267,9 @@ build_originate(#state{endpoints=Endpoints
        ,{<<"Msg-ID">>, MsgId}
        ,{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
        ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
+       ,{<<"Existing-Call-ID">>, wh_json:get_value(<<"Existing-Call-ID">>, JObj)}
+       ,{<<"Originate-Immediate">>, wh_json:get_value(<<"Originate-Immediate">>, JObj)}
+       ,{<<"Simplify-Loopback">>, wh_json:get_value(<<"Simplify-Loopback">>, JObj)}
        ,{<<"Endpoints">>, Endpoints}
        ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}

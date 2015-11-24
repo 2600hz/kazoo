@@ -71,7 +71,8 @@
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>
                                       ,<<"Application-Event">>, <<"Application-Data">>
-                                      ,<<"Custom-Channel-Vars">>, <<"Timestamp">>, <<"Channel-State">>
+                                      ,<<"Custom-Channel-Vars">>, <<"Timestamp">>
+                                      ,<<"Channel-State">>, <<"Channel-Call-State">>, <<"Channel-Name">>
                                       ,<<"Call-Direction">>, <<"Transfer-History">>
                                       ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
                                       ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
@@ -82,7 +83,7 @@
                                       ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
                                       ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
                                       ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
-                                      ,<<"Channel-Call-State">>, <<"User-Agent">>
+                                      ,<<"User-Agent">>
                                       ,<<"Switch-Hostname">>, <<"Group-ID">>
                                       ,<<"Control-Queue">>, <<"Channel-Moving">>
                                       ,<<"Conference-Name">>, <<"Conference-Config">>
@@ -96,7 +97,7 @@
                                       ,<<"From-Tag">>, <<"To-Tag">>
                                       ,<<"Intercepted-By">>
                                       ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                      ,<<"Switch-URL">>, <<"Switch-URI">>
+                                      ,<<"Switch-URL">>, <<"Switch-URI">>, <<"Switch-Node">>
                                       ,<<"Parking-Slot">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).

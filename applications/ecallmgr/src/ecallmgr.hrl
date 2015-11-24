@@ -178,6 +178,11 @@
                                ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
                                ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
                                ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
+                               ,{<<"effective_callee_id_number">>, <<"effective_callee_id_number">>}
+                               ,{<<"effective_callee_id_name">>, <<"effective_callee_id_name">>}
+                               ,{<<"effective_caller_id_number">>, <<"effective_caller_id_number">>}
+                               ,{<<"effective_caller_id_name">>, <<"effective_caller_id_name">>}
+
                                ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
                                ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
                                ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
@@ -200,7 +205,9 @@
                                ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
+
                                ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
+                               ,{<<"Simplify-Loopback">>, <<"loopback_bowout">>}
 
                                ,{<<"SIP-Invite-Domain">>, <<"sip_invite_domain">>}
                                ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
@@ -228,6 +235,8 @@
                                ,{<<"recording_follow_transfer">>, <<"recording_follow_transfer">>}
                                ,{<<"recording_follow_attxfer">>, <<"recording_follow_attxfer">>}
                                ,{<<"Record-Min-Sec">>, <<"record_min_sec">>}
+                               ,{<<"record_min_sec">>, <<"record_min_sec">>}
+
                                ,{<<"enable_file_write_buffering">>, <<"enable_file_write_buffering">>}
                                ,{<<"RECORD_APPEND">>, <<"RECORD_APPEND">>}
                                ,{<<"fax_enable_t38_request">>, <<"fax_enable_t38_request">>}
@@ -258,6 +267,8 @@
                                ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
                                ,{<<"default_language">>, <<"default_language">>}
                                ,{<<"Default-Language">>, <<"default_language">>}
+                               ,{<<"RECORD_STEREO">>, <<"RECORD_STEREO">>}
+                               ,{<<"RECORD_SOFTWARE">>, <<"RECORD_SOFTWARE">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
@@ -423,6 +434,7 @@
 -define(SEPARATOR_SINGLE, <<"|">>).
 
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
+-define(CHANNEL_LOOPBACK_HEADER_PREFIX, "FSLoopBack-").
 
 -define(ECALLMGR_HRL, 'true').
 -endif.
