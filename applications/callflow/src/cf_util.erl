@@ -825,10 +825,16 @@ encryption_method_map(JObj, Endpoint) ->
                          ).
 
 -spec maybe_start_metaflows(whapps_call:call(), wh_json:objects()) -> 'ok'.
+-spec maybe_start_metaflows(whapps_call:call(), wh_json:object(), api_binary()) -> 'ok'.
 -spec maybe_start_metaflow(whapps_call:call(), wh_json:object()) -> 'ok'.
+
 maybe_start_metaflows(Call, Endpoints) ->
+    maybe_start_metaflows(Call, Endpoints, whapps_call:custom_channel_var(<<"Metaflow-App">>, Call)).
+
+maybe_start_metaflows(Call, Endpoints, 'undefined') ->
     _ = [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
-    'ok'.
+    'ok';
+maybe_start_metaflows(_Call, _Endpoints, _) -> 'ok'.
 
 maybe_start_metaflow(Call, Endpoint) ->
     case wh_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint) of
