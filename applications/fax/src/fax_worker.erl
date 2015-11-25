@@ -723,8 +723,9 @@ notify_fields(JObj, Resp) ->
 
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
-    NotifyTmp = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], JObj, []),
-    Notify = lists:filter(fun wh_util:is_not_empty/1, NotifyTmp),
+    Notify = [E || E <- wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], JObj, [])
+                       ,not wh_util:is_empty(E)
+             ],
 
     props:filter_empty(
       [{<<"Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
