@@ -31,7 +31,13 @@
 -export([get_json_value/2, get_json_value/3
          ,get_ne_json_value/2, get_ne_json_value/3
         ]).
--export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
+
+-export([is_true/2, is_true/3, is_false/2, is_false/3]).
+-export([is_empty/1]).
+-export([is_json_object/1, is_json_object/2
+         ,is_valid_json_object/1
+         ,is_json_term/1
+        ]).
 
 -export([filter/2, filter/3
          ,map/2
@@ -69,9 +75,6 @@
          ,normalize_jobj/3
          ,normalize/1
          ,normalize_key/1
-         ,is_json_object/1, is_json_object/2
-         ,is_valid_json_object/1
-         ,is_json_term/1
         ]).
 -export([public_fields/1
          ,private_fields/1
@@ -168,7 +171,7 @@ is_valid_json_object(MaybeJObj) ->
     end.
 
 -spec is_json_term(json_term()) -> boolean().
-is_json_term('undefined') -> throw({'error', 'no_undefined_atom_in_jobj_please'});
+is_json_term('undefined') -> throw({'error', 'no_atom_undefined_in_jobj_please'});
 is_json_term(V) when is_atom(V) -> 'true';
 is_json_term(V) when is_binary(V) -> 'true';
 is_json_term(V) when is_bitstring(V) -> 'true';
@@ -466,7 +469,6 @@ get_float_value(Key, JObj, Default) ->
 -spec is_false(key(), object() | objects(), Default) -> boolean() | Default.
 is_false(Key, JObj) ->
     wh_util:is_false(get_value(Key, JObj)).
-
 is_false(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
