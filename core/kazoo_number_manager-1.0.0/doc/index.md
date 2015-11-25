@@ -19,6 +19,14 @@ The Kazoo number manager aims for the following:
 
 The main entry point for number management is the `knm_number` module and its underlying `#knm_number{}` record. From here, numbers can be fetched, created, moved, assigned, and more.
 
+#### Options
+
+The `knm_number` API functions often take a second arg of options. These are encapsulated in the `knm_number_options` module, including a handy `-type` for better dialyzing.
+
+#### Bulk operations
+
+When you want to perform operations on a list of numbers, `knm_numbers` provides a nice way to do that, versus iterating over the list yourself.
+
 ### Phone Numbers
 
 The `knm_phone_number` module (and `#knm_phone_number{}` record) represent the number document stored in the database and control logic for changing fields of the number document, as well as accessors for various fields. The module/record are not meant to be used outside of the knm library; instead it is wrapped in the `#knm_number{}` record and accessed via other modules.
@@ -36,6 +44,10 @@ The `knm_providers` module provides the interface to the enabled provider module
 ### Convertors
 
 The `knm_converters` module abstracts how numbers are normalized, classified, and reconciled. The primary implementation is the regex-based system, but there are plans to integrate [libphonenumber](https://github.com/googlei18n/libphonenumber) as another backend.
+
+### Services
+
+Activating features, numbers, calculating charges - anything involving an account's service plan and phone numbers - is processed through `knm_services`.
 
 ### Locality
 
