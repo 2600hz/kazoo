@@ -118,7 +118,7 @@ process_number_result(Number, Acc, Carrier) ->
 
     check_for_existing_did(Number, Acc, Carrier, knm_phone_number:fetch(DID)).
 
--spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), number_return()) ->
+-spec check_for_existing_did(knm_number:knm_number(), wh_json:objects(), ne_binary(), knm_phone_number_return()) ->
                                     wh_json:objects().
 check_for_existing_did(Number, Acc, _Carrier, {'error', 'not_found'}) ->
     create_discovery(Number, Acc);
