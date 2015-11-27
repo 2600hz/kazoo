@@ -520,11 +520,23 @@ col_account_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_
 col_rate(JObj, _Timestamp) -> wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))).
 col_rate_name(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>).
 col_bridge_id(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>).
-col_recording_url(JObj, _Timestamp) -> wh_json:get_value([<<"recording_url">>], JObj, <<>>).
+col_recording_url(JObj, _Timestamp) -> recording_url(wh_json:get_value([<<"custom_channel_vars">>, <<"media_transfer_destination">>], JObj, <<>>), wh_json:get_value([<<"custom_channel_vars">>, <<"media_name">>], JObj, <<>>)).
 col_call_priority(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"call_priority">>], JObj, <<>>).
 
 col_reseller_cost(JObj, _Timestamp) -> wh_util:to_binary(reseller_cost(JObj)).
 col_reseller_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% generates a recording_url entry from media_transfer_destination and media_file
+%% @end
+%%--------------------------------------------------------------------
+-spec recording_url(api_binary(), api_binary()) -> api_binary().
+recording_url(_Mediahost, <<>>) -> 'undefined';
+recording_url(<<>>, _Mediafile) -> 'undefined';
+recording_url(Mediahost, Mediafile) ->
+  <<Mediahost/binary, "/", Mediafile/binary>>.
 
 -spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
