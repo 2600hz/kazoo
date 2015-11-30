@@ -20,14 +20,6 @@
             "required": false,
             "type": "integer"
         },
-        "queue_timeout": {
-            "default": 3600,
-            "description": "The maximum amount of time in seconds that a call will wait in queue.",
-            "minimum": 10,
-            "name": "Queue Timeout",
-            "required": false,
-            "type": "integer"
-        },
         "moh": {
             "description": "Media ID (or appropriate media URI) of media to play while caller is on hold.",
             "name": "Moh",
@@ -41,6 +33,14 @@
             "name": "Name",
             "required": true,
             "type": "string"
+        },
+        "queue_timeout": {
+            "default": 3600,
+            "description": "The maximum amount of time in seconds that a call will wait in queue.",
+            "minimum": 10,
+            "name": "Queue Timeout",
+            "required": false,
+            "type": "integer"
         },
         "strategy": {
             "default": "round_robin",
