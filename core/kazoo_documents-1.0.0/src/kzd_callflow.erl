@@ -49,7 +49,7 @@ type() -> ?PVT_TYPE.
 %%--------------------------------------------------------------------
 -spec is_feature_code(wh_json:object()) -> boolean().
 is_feature_code(JObj) ->
-    case wh_json:get_value(?FEATURE_CODE, JObj) of
+    case wh_json:get_value(?FEATURE_CODE, JObj, 'false') of
         'false' -> 'false';
         _ -> 'true'
     end.
