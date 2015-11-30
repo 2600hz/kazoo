@@ -1,0 +1,59 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "qubicle_queues",
+    "description": "Qubicle queues",
+    "name": "Qubicle Call Queue",
+    "properties": {
+        "agent_connect_timeout": {
+            "default": 15,
+            "description": "Amount of time in seconds that qubicle will wait for the agent to successfully answer a call.",
+            "minimum": 1,
+            "name": "Agent Connect Timeout",
+            "required": false,
+            "type": "integer"
+        },
+        "agent_wrapup_time": {
+            "default": 2,
+            "description": "Pre-defined wait period applied after an agent handles a customer call",
+            "minimum": 0,
+            "name": "Agent Wrapup Time",
+            "required": false,
+            "type": "integer"
+        },
+        "queue_timeout": {
+            "default": 3600,
+            "description": "The maximum amount of time in seconds that a call will wait in queue.",
+            "minimum": 10,
+            "name": "Queue Timeout",
+            "required": false,
+            "type": "integer"
+        },
+        "moh": {
+            "description": "Media ID (or appropriate media URI) of media to play while caller is on hold.",
+            "name": "Moh",
+            "required": false,
+            "type": "string"
+        },
+        "queue_name": {
+            "description": "A friendly name for the queue",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Name",
+            "required": true,
+            "type": "string"
+        },
+        "strategy": {
+            "default": "round_robin",
+            "description": "The queue strategy for connecting agents to callers",
+            "enum": [
+                "round_robin",
+                "most_idle"
+            ],
+            "name": "Stategy",
+            "required": false,
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
