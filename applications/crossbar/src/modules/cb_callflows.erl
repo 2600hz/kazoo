@@ -249,7 +249,6 @@ validate_unique_numbers(CallflowId, Numbers, Context, AccountDb) ->
             check_callflow_schema(CallflowId, Context);
         {'ok', JObjs} ->
             FilteredJObjs = filter_callflow_list(CallflowId, JObjs),
-            io:format("MARKER:cb_callflows.erl:252 ~p~n", [[wh_json:get_value([<<"value">>, <<"featurecode">>], J) || J <- FilteredJObjs ]]),
             C = check_uniqueness(Numbers, FilteredJObjs, Context),
             check_callflow_schema(CallflowId, C)
     end.
@@ -443,14 +442,12 @@ check_uniqueness(Numbers, JObjs, Context) ->
                                       cb_context:context().
 check_numbers_uniqueness([], _, Context) -> Context;
 check_numbers_uniqueness([Number|Numbers], JObjs, Context) ->
-    io:format("MARKER:cb_callflows.erl:445 ~p~n", [Number]),
     case lists:dropwhile(fun(J) -> is_number_unique(J, Number) end
                          ,JObjs
                         )
     of
         [] -> check_numbers_uniqueness(Numbers, JObjs, Context);
         [JObj|_] ->
-            io:format("MARKER:cb_callflows.erl:451 ~p~n", [JObj]),
             C = add_number_conflict(Number, JObj, Context),
             check_numbers_uniqueness(Numbers, JObjs, C)
     end.
