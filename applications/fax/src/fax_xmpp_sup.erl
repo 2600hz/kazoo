@@ -22,7 +22,7 @@
 
 -define(XMPP_PRINTER(PrinterId) ,?WORKER_NAME_ARGS('fax_xmpp',wh_util:to_atom(PrinterId, 'true'),[PrinterId])).
 
--define(CHILDREN, [?SUPER('exmpp_sup')]).
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions

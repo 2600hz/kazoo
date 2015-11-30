@@ -59,5 +59,10 @@
                                         ,<<"application/vnd.ms-powerpoint">>
                                        ]).
 
+-define(SMTP_MSG_MAX_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_max_msg_size">>, 10485670)).
+-define(SMTP_EXTENSIONS, [{"SIZE", wh_util:to_list(?SMTP_MSG_MAX_SIZE)}]).
+-define(SMTP_CALLBACK_OPTIONS, {'callbackoptions', ['extensions', ?SMTP_EXTENSIONS]}).
+-define(SMTP_PORT, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)).
+
 -define(FAX_HRL, 'true').
 -endif.

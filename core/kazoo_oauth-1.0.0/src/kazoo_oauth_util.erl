@@ -12,6 +12,7 @@
         ]).
 -export([token/2
          ,verify_token/2
+         ,refresh_token/1
          ,refresh_token/4
          ,refresh_token/5
         ]).
@@ -203,6 +204,10 @@ verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
             lager:info("unable to verify oauth token: ~p", [Else]),
             {'error', Else}
     end.
+
+-spec refresh_token(ne_binary()) -> oauth_refresh_token().
+refresh_token(Token) ->
+    #oauth_refresh_token{token=Token}.
 
 -spec refresh_token(oauth_app(), api_binary(), api_binary(), wh_proplist() ) ->
                            {'ok', api_object()} |

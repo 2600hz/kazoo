@@ -176,7 +176,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("fax listener terminating: ~p", [_Reason]).
+    lager:debug("fax shared listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
