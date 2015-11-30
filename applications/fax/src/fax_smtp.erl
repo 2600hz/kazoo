@@ -81,8 +81,8 @@ init(Hostname, SessionCount, Address, Options) ->
                          {'ok', state()} |
                          error_message().
 handle_HELO(Hostname, State) ->
-    lager:debug("HELO from ~s", [Hostname]),
-    {'ok', State}.
+   lager:debug("HELO from ~s, max message size is ~B", [Hostname, ?SMTP_MSG_MAX_SIZE]),
+   {'ok', ?SMTP_MSG_MAX_SIZE, State}.
 
 -spec handle_EHLO(binary(), list(), state()) ->
                          {'ok', list(), state()} |
@@ -99,10 +99,16 @@ handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
                             | Extensions
                            ]
                    end,
-    {'ok', MyExtensions, State}.
+    {'ok', filter_extensions(MyExtensions, Options), State}.
+
+-spec filter_extensions(wh_proplist(), wh_proplist()) -> wh_proplist().
+filter_extensions(BuilIn, Options) ->
+   Extensions = props:get_value('extensions', Options, ?SMTP_EXTENSIONS),
+   lists:filter(fun({N,_}) -> not props:is_defined(N, Extensions) end, BuilIn) ++ Extensions.
 
 -spec handle_MAIL(binary(), state()) -> {'ok', state()}.
-handle_MAIL(From, State) ->
+handle_MAIL(FromHeader, State) ->
+    From = wh_util:to_lower_binary(FromHeader),
     lager:debug("Checking Mail from ~s", [From]),
     {'ok', State#state{from=From}}.
 
@@ -116,7 +122,8 @@ handle_MAIL_extension(Extension, _State) ->
 -spec handle_RCPT(binary(), state()) ->
                          {'ok', state()} |
                          {'error', string(), state()}.
-handle_RCPT(To, State) ->
+handle_RCPT(ToHeader, State) ->
+    To = wh_util:to_lower_binary(ToHeader),
     lager:debug("Checking Mail to ~s", [To]),
     check_faxbox((reset(State))#state{to=To}).
 

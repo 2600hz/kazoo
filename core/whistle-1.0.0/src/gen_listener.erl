@@ -382,7 +382,7 @@ init_state([Module, Params, ModuleState]) ->
 init([Module, Params, InitArgs]) ->
     process_flag('trap_exit', 'true'),
     wh_util:put_callid(Module),
-    lager:debug("starting new gen_listener proc"),
+    lager:debug("starting new gen_listener proc: ~s", [Module]),
     case erlang:function_exported(Module, 'init', 1)
         andalso Module:init(InitArgs)
     of

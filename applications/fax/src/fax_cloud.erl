@@ -37,8 +37,9 @@ handle_job_notify(JObj, _Props) ->
     end,
 
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
-    {'ok', FaxJObj} = couch_mgr:open_doc(?WH_FAXES_DB, JobId),
-    lager:debug("Checking if JobId ~s is a cloud printer job",[JobId]),
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+    lager:debug("Checking if JobId ~s in db ~s is a cloud printer job",[JobId, AccountDb]),
+    {'ok', FaxJObj} = couch_mgr:open_doc(AccountDb, JobId),
     case wh_json:get_value(<<"cloud_job_id">>, FaxJObj) of
         'undefined' ->
             lager:debug("JobId ~s is not a cloud printer job",[JobId]);
@@ -75,7 +76,7 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
                 {'ok', "200", _RespHeaders, RespBody} ->
                     JObj = wh_json:decode(RespBody),
                     JObjs = wh_json:get_value(<<"jobs">>, JObj, []),
-                    _P = wh_util:spawn(?MODULE, 'maybe_process_job', [JObjs, Authorization]),
+                    _P = wh_util:spawn(fun maybe_process_job/2, [JObjs, Authorization]),
                     lager:debug("maybe processing job in ~p", [_P]);
                 {'ok', "403", _RespHeaders, _RespBody} ->
                     lager:debug("something wrong with oauth credentials"),
@@ -388,7 +389,7 @@ handle_faxbox_created(JObj, _Props) ->
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
     ResellerId = kzd_services:reseller_id(Doc),
     AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
-    wh_util:spawn(?MODULE, 'check_registration', [AppId, State, Doc]).
+    wh_util:spawn(fun check_registration/3, [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
 check_registration('undefined', _, _JObj) -> 'ok';

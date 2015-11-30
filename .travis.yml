@@ -30,7 +30,7 @@ before_install:
 script: ERLC_OPTS='+nowarn_deprecated_type +nowarn_deprecated_function' make compile
 
 after_success:
-  - if [[ 0 -ne `git status --porcelain -- applications/ core/ deps/ | wc -l` ]]; then echo Unstaged changes! && git status --porcelain && exit 1; fi
+  - if [[ 0 -ne `git status --porcelain -- applications/ core/ | wc -l` ]]; then echo Unstaged changes! && git status --porcelain && exit 1; fi
   - make xref
   - make build-plt
   - git fetch origin master:master

@@ -75,6 +75,7 @@ start_deps() ->
                                                 ,'whistle_couch'
                                                 ,'ranch'
                                                 ,'cowboy'
+                                                ,'escalus'
                                                ]],
     'ok'.
 
