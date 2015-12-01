@@ -1,0 +1,5 @@
+### meck:code_cover.erl has to call this unexported functions to do its
+### cover passthrough magic:
+Call to missing or unexported function cover:compile_beam/2
+Call to missing or unexported function cover:get_term/1
+Call to missing or unexported function cover:write/2
