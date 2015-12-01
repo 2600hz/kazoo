@@ -1,3 +1,4 @@
+## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo)
 
 ````
     ... ........                                                
@@ -55,10 +56,6 @@
                                         . ..   ............  .  
                                                  ....           
 ````
-
-[![Build Status](https://secure.travis-ci.org/2600hz/kazoo.png)](http://travis-ci.org/2600hz/kazoo)
-
-## Kazoo
 
 ### Cloud-Based Telecommunications For Everyone
 
