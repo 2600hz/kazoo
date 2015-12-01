@@ -1,2 +1,0 @@
-- The return value from passthrough/1 can now be used in expect
-  functions before returning
