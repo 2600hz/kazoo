@@ -602,7 +602,11 @@ maybe_erase_changed(Db, 'database', _Id, Tab) ->
     erase_changed(Objects, [], Tab);
 
 maybe_erase_changed(Db, Type, Id, Tab) ->
-    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
+    MatchSpec = [{#cache_obj{origin = {'database', Db}, _ = '_'}
+                  ,[]
+                  ,['$_']
+                 }
+                 ,{#cache_obj{origin = {'db', Db}, _ = '_'}
                   ,[]
                   ,['$_']
                  }
