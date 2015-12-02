@@ -1359,7 +1359,7 @@ get_caller_id_name(Call) ->
     case whapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> CallerIdName;
         Prepend -> Pre = <<(wh_util:to_binary(Prepend))/binary, CallerIdName/binary>>,
-                   truncate_caller_id(Pre)
+                   wh_util:truncate_right_binary(Pre, 35)
     end.
 
 -spec get_caller_id_number(whapps_call:call()) -> ne_binary().
@@ -1368,12 +1368,8 @@ get_caller_id_number(Call) ->
     case whapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> CallerIdNumber;
         Prepend -> Pre = <<(wh_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
-                   truncate_caller_id(Pre)
+                   wh_util:truncate_right_binary(Pre, 35)
     end.
-
--spec truncate_caller_id(ne_binary()) -> ne_binary().
-truncate_caller_id(Prepend) ->
-    <<Prepend:35/binary>>.
 
 -spec maybe_save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary(), wh_json:object()) ->
                              'ok'.
