@@ -22,12 +22,12 @@ migrate(Account) when is_binary(Account) ->
     case kz_account:fetch(Account) of
         {'error', _R}=Error -> Error;
         {'ok', JObj} ->
-            CurrentApps = kz_apps_store:apps(JObj),
+            CurrentApps = kzd_apps_store:apps(JObj),
             case wh_util:is_empty(CurrentApps) of
                 'true' -> {'error', 'migrated'};
                 'false' ->
-                    Doc = kz_apps_store:new(Account),
-                    save(Account, kz_apps_store:set_apps(Doc, CurrentApps), JObj)
+                    Doc = kzd_apps_store:new(Account),
+                    save(Account, kzd_apps_store:set_apps(Doc, CurrentApps), JObj)
             end
     end.
 

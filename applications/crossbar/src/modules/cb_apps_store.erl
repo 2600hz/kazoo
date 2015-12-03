@@ -214,7 +214,7 @@ post(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            RespData = wh_json:get_value(Id, kz_apps_store:apps(JObj)),
+            RespData = wh_json:get_value(Id, kzd_apps_store:apps(JObj)),
             cb_context:set_resp_data(Context, RespData);
         _Status -> Context1
     end.
@@ -230,7 +230,7 @@ put(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            RespData = wh_json:get_value(Id, kz_apps_store:apps(JObj)),
+            RespData = wh_json:get_value(Id, kzd_apps_store:apps(JObj)),
             cb_context:set_resp_data(Context, RespData);
         _Status -> Context1
     end.
@@ -399,18 +399,19 @@ normalize_apps_result(Apps) ->
 
 normalize_apps_result([], Acc) -> Acc;
 normalize_apps_result([App|Apps], Acc) ->
-    case wh_json:is_true(<<"published">>, App, 'true') of
+    case kzd_app:published(App) of
         'false' -> normalize_apps_result(Apps, Acc);
         'true' ->
             JObj =
                 wh_json:from_list(
                     props:filter_undefined([
-                        {<<"id">>, wh_doc:id(App)}
-                        ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
-                        ,{<<"i18n">>, wh_json:get_value(<<"i18n">>, App)}
-                        ,{<<"tags">>, wh_json:get_value(<<"tags">>, App)}
-                        ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
-                        ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
+                        {<<"id">>, kzd_app:id(App)}
+                        ,{<<"name">>, kzd_app:name(App)}
+                        ,{<<"i18n">>, kzd_app:i18n(App)}
+                        ,{<<"tags">>, kzd_app:tags(App)}
+                        ,{<<"api_url">>, kzd_app:api_url(App)}
+                        ,{<<"source_url">>, kzd_app:source_url(App)}
+                        ,{<<"account_id">>, kzd_app:account_id(App)}
                         ,{<<"users">>, wh_json:get_value(<<"users">>, App)}
                         ,{<<"allowed_users">>, wh_json:get_value(<<"allowed_users">>, App)}
                         ,{<<"masqueradable">>, wh_json:is_true(<<"masqueradable">>, App, 'true')}
@@ -432,7 +433,8 @@ load_app(Context, AppId) ->
         App ->
             cb_context:setters(
               Context
-              ,[{fun cb_context:set_doc/2, App}
+              ,[{fun cb_context:set_doc/2
+                 ,wh_json:set_value(<<"account_id">>, kzd_app:account_id(App), App)}
                 ,{fun cb_context:set_resp_status/2, 'success'}
                ]
              )
@@ -479,7 +481,7 @@ bad_app_error(Context, AppId) ->
 -spec install(cb_context:context(), ne_binary()) -> cb_context:context().
 install(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Apps = kz_apps_store:apps(Doc),
+    Apps = kzd_apps_store:apps(Doc),
     case wh_json:get_value(Id, Apps) of
         'undefined' ->
             Data = cb_context:req_data(Context),
@@ -490,7 +492,7 @@ install(Context, Id) ->
                   ,wh_json:set_value(<<"name">>, AppName, Data)
                   ,Apps
                  ),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc);
         _ ->
             crossbar_util:response('error', <<"Application already installed">>, 400, Context)
@@ -506,13 +508,13 @@ install(Context, Id) ->
 -spec uninstall(cb_context:context(), ne_binary()) -> cb_context:context().
 uninstall(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Apps = kz_apps_store:apps(Doc),
+    Apps = kzd_apps_store:apps(Doc),
     case wh_json:get_value(Id, Apps) of
         'undefined' ->
             crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
         _ ->
             UpdatedApps = wh_json:delete_key(Id, Apps),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc)
     end.
 
@@ -524,7 +526,7 @@ uninstall(Context, Id) ->
 -spec update(cb_context:context(), ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
-   Apps = kz_apps_store:apps(Doc),
+   Apps = kzd_apps_store:apps(Doc),
     case wh_json:get_value(Id, Apps) of
         'undefined' ->
             crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
@@ -537,7 +539,7 @@ update(Context, Id) ->
                   ,wh_json:set_value(<<"name">>, AppName, Data)
                   ,Apps
                  ),
-            UpdatedDoc = kz_apps_store:set_apps(Doc, UpdatedApps),
+            UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc)
     end.
 
@@ -599,7 +601,7 @@ get_screenshot(Context, Number) ->
 %%--------------------------------------------------------------------
 -spec load_apps_store(cb_context:context()) -> cb_context:context().
 load_apps_store(Context) ->
-    Context1 = crossbar_doc:load(kz_apps_store:id(), Context),
+    Context1 = crossbar_doc:load(kzd_apps_store:id(), Context),
     case {cb_context:resp_status(Context1), cb_context:resp_error_code(Context1)} of
         {'error', 404} ->
             cb_context:setters(

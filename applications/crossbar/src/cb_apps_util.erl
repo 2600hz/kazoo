@@ -62,7 +62,7 @@ is_authorized(AccountId, UserId, AppId) ->
             lager:error("failed to fetch apps store doc in ~s : ~p", [AccountId, _R]),
             'false';
         {'ok', Doc} ->
-            AppJObj = wh_json:get_value(AppId, kz_apps_store:apps(Doc)),
+            AppJObj = wh_json:get_value(AppId, kzd_apps_store:apps(Doc)),
             Allowed = wh_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
             Users = wh_json:get_value(<<"users">>, AppJObj, []),
             case {Allowed, Users} of
@@ -101,7 +101,7 @@ load_default_apps() ->
 %%--------------------------------------------------------------------
 -spec create_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 create_apps_store_doc(Account) ->
-    Doc = kz_apps_store:new(Account),
+    Doc = kzd_apps_store:new(Account),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     couch_mgr:save_doc(AccountDb, Doc).
 
@@ -116,7 +116,7 @@ create_apps_store_doc(Account) ->
 %%--------------------------------------------------------------------
 -spec get_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 get_apps_store_doc(Account) ->
-    case kz_apps_store:fetch(Account) of
+    case kzd_apps_store:fetch(Account) of
         {'error', 'not_found'} ->
             cb_apps_maintenance:migrate(Account);
         Result -> Result
@@ -188,7 +188,7 @@ filter_apps(AccountId, Apps, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_permissions(wh_json:object(), wh_json:object()) -> wh_json:object().
 add_permissions(App, JObj) ->
-    AppsPerm = kz_apps_store:apps(JObj),
+    AppsPerm = kzd_apps_store:apps(JObj),
     AppPerm = wh_json:get_value(wh_doc:id(App), AppsPerm, wh_json:new()),
     wh_json:merge_recursive([App, AppPerm]).
 
@@ -199,7 +199,7 @@ add_permissions(App, JObj) ->
 %%--------------------------------------------------------------------
 -spec is_blacklisted(wh_json:object(), wh_json:object()) -> boolean().
 is_blacklisted(App, JObj) ->
-    Blacklist = kz_apps_store:blacklist(JObj),
+    Blacklist = kzd_apps_store:blacklist(JObj),
     lists:member(wh_doc:id(App), Blacklist).
 
 %%--------------------------------------------------------------------
