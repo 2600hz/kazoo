@@ -192,7 +192,7 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 				link(Pid),
                 case socket:controlling_process(ClientSocket, Pid) of
                     'ok' ->
-                        io:format("new smtp session on ~s : current sessions ~p~n", [Module , length(CurSessions) + 1]),
+%%                        io:format("new smtp session on ~s : current sessions ~p~n", [Module , length(CurSessions) + 1]),
                         CurSessions ++[Pid];
                     {'error', closed} ->
                         Pid ! {tcp_closed, ClientSocket},
