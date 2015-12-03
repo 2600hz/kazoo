@@ -14,6 +14,7 @@
 -export([handle_tx_resp/2
          ,handle_fax_event/2
          ,handle_channel_destroy/2
+         ,handle_channel_replaced/2
          ,handle_job_status_query/2
         ]).
 -export([init/1
@@ -54,6 +55,9 @@
                      ,{{?MODULE, 'handle_channel_destroy'}
                        ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                       }
+                     ,{{?MODULE, 'handle_channel_replaced'}
+                       ,[{<<"call_event">>, <<"CHANNEL_REPLACED">>}]
+                      }
                      ,{{?MODULE, 'handle_job_status_query'}
                        ,[{<<"fax">>, <<"query_status">>}]
                       }
@@ -92,6 +96,8 @@
                             "&& echo -n success">>).
 
 -define(CALLFLOW_LIST, <<"callflow/listing_by_number">>).
+-define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
+-define(DEFAULT_ENSURE_CID, whapps_config:get_is_true(?CONFIG_CAT, ?ENSURE_CID_KEY, 'true')).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -127,6 +133,12 @@ handle_channel_destroy(JObj, Props) ->
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
     gen_server:cast(Srv, {'channel_destroy', JobId, JObj}).
+
+-spec handle_channel_replaced(wh_json:object(), wh_proplist()) -> any().
+handle_channel_replaced(JObj, Props) ->
+    Srv = props:get_value('server', Props),
+    JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
+    gen_server:cast(Srv, {'channel_replaced', JobId, JObj}).
 
 -spec handle_job_status_query(wh_json:object(), wh_proplist()) -> any().
 handle_job_status_query(JObj, Props) ->
@@ -206,7 +218,7 @@ handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
                                                      ,pool=Pid
                                                      ,fax_status='undefined'
                                                     }=State) ->
-    lager:debug("received channel destroy for ~s",[JobId]),
+    lager:debug("received channel destroy for ~s : ~p",[JobId, JObj]),
     send_error_status(State, wh_json:get_value(<<"Hangup-Cause">>, JObj)),
     _ = release_failed_job('channel_destroy', JObj, Job),
     gen_server:cast(Pid, {'job_complete', self()}),
@@ -371,9 +383,10 @@ handle_cast({'error', 'invalid_cid', Number}, #state{job=JObj
     gen_server:cast(Pid, {'job_complete', self()}),
      {'noreply', reset(State)};
 handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
-    lager:debug("worker discovered queue name ~s", [QueueName]),
+    lager:debug("fax worker discovered queue name ~s", [QueueName]),
     {'noreply', State#state{queue_name=QueueName}};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    lager:debug("fax worker is consuming : ~p", [_IsConsuming]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -392,10 +405,10 @@ handle_cast(_Msg, State) ->
 handle_info('job_timeout', #state{job=JObj}=State) ->
     release_failed_job('job_timeout', 'undefined', JObj),
     {'noreply', reset(State)};
-handle_info({'EXIT', _, 'normal'}, State) ->
-    {'noreply', State};
-handle_info({'EXIT', _, 'shutdown'}, State) ->
-    {'noreply', State};
+%% handle_info({'EXIT', _, 'normal'}, State) ->
+%%     {stop, normal, State};
+%% handle_info({'EXIT', _, 'shutdown'}, State) ->
+%%     {stop, 'shutdown', State};
 handle_info(_Info, State) ->
     lager:debug("fax worker unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -423,7 +436,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
+    lager:debug("fax worker ~p terminating: ~p", [self(), _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -532,7 +545,7 @@ release_failed_job('tx_resp', Resp, JObj) ->
 release_failed_job('invalid_number', Number, JObj) ->
     Msg = wh_util:to_binary(io_lib:format("invalid fax number: ~s", [Number])),
     Result = [{<<"success">>, 'false'}
-              ,{<<"result_code">>, 500}
+              ,{<<"result_code">>, 400}
               ,{<<"result_text">>, Msg}
               ,{<<"pages_sent">>, 0}
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
@@ -886,10 +899,9 @@ send_fax(JobId, JObj, Q) ->
 
 -spec maybe_ensure_valid_caller_id(wh_json:object(), function()) -> 'ok'.
 maybe_ensure_valid_caller_id(JObj, SendFax) ->
-    case wh_json:is_true(<<"ensure_valid_caller_id">>, JObj, 'true') of
+    case wh_json:is_true(?ENSURE_CID_KEY, JObj, ?DEFAULT_ENSURE_CID) of
         'false' -> SendFax();
-        'true' ->
-            ensure_valid_caller_id(JObj, SendFax)
+        'true' -> ensure_valid_caller_id(JObj, SendFax)
     end.
 
 -spec ensure_valid_caller_id(wh_json:object(), function()) -> 'ok'.
@@ -898,6 +910,7 @@ ensure_valid_caller_id(JObj, SendFax) ->
     case fax_util:is_valid_caller_id(CIDNum, wh_doc:account_id(JObj)) of
         'true' -> SendFax();
         'false' ->
+            lager:debug("CIDNum ~s invalid in sending fax", [CIDNum]),
             gen_server:cast(self(), {'error', 'invalid_cid', CIDNum})
     end.
 
@@ -943,6 +956,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
                                               ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>
                                                                 ,<<"CHANNEL_DESTROY">>
+                                                                ,<<"CHANNEL_REPLACED">>
                                                                ]}
                                              ]),
     lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),

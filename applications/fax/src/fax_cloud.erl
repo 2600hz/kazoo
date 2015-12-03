@@ -37,9 +37,9 @@ handle_job_notify(JObj, _Props) ->
     end,
 
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
-    AccountDb = wh_doc:account_db(JObj),
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+    lager:debug("Checking if JobId ~s in db ~s is a cloud printer job",[JobId, AccountDb]),
     {'ok', FaxJObj} = couch_mgr:open_doc(AccountDb, JobId),
-    lager:debug("Checking if JobId ~s is a cloud printer job",[JobId]),
     case wh_json:get_value(<<"cloud_job_id">>, FaxJObj) of
         'undefined' ->
             lager:debug("JobId ~s is not a cloud printer job",[JobId]);

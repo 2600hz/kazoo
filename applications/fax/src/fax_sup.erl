@@ -22,21 +22,26 @@
                                                   ,{'worker_module', 'fax_worker'}
                                                   ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
                                                   ,{'max_overflow', 0}
-                                                 ]]}
-                   ,'permanent', 5000, 'worker', ['poolboy']}).
+                                                 ], []
+                                                ]}
+                   ,'permanent', 'infinity', 'worker', ['poolboy']}).
 
 -define(ORIGIN_BINDINGS, [[{'db', ?WH_FAXES_DB}, {'type', <<"faxbox">>}]]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
--define(CHILDREN, [?POOL('fax_worker_pool')
-                   ,?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
-                   ,?WORKER('fax_jobs')
+-define(SMTP_ARGS, ['fax_smtp' ,[[{'port', ?SMTP_PORT}
+%% in case we want to make the settings constant per execution
+%%                                  ,{'sessionoptions', [?SMTP_CALLBACK_OPTIONS]}
+                                ]]]).
+
+-define(CHILDREN, [?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
+                   ,?POOL('fax_worker_pool')
                    ,?SUPER('fax_requests_sup')
+                   ,?SUPER('fax_xmpp_sup')
+                   ,?WORKER('fax_jobs')
                    ,?WORKER('fax_shared_listener')
                    ,?WORKER('fax_listener')
-                   ,?WORKER_ARGS('gen_smtp_server',['fax_smtp'
-                                                    ,[[{'port', whapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)}]]
-                                                   ])
+                   ,?WORKER_ARGS('gen_smtp_server', ?SMTP_ARGS)
                   ]).
 
 %% ===================================================================
@@ -89,12 +94,5 @@ init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
-
-    XmppStart = case whapps_config:get(?CONFIG_CAT, <<"enable_xmpp">>, 'false') of
-        'true'  -> [?SUPER('fax_xmpp_sup')];
-        'false' -> []
-    end,
-
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
-    {'ok', {SupFlags, ?CHILDREN++XmppStart}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
