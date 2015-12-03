@@ -12,7 +12,7 @@
 
 -export([
     id/1
-    ,published/1
+    ,is_published/1
     ,name/1
     ,i18n/1
     ,tags/1
@@ -72,8 +72,8 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec published(wh_json:object()) -> ne_binary().
-published(JObj) ->
+-spec is_published(wh_json:object()) -> ne_binary().
+is_published(JObj) ->
     wh_json:is_true(?PUBLISHED, JObj, 'true').
 
 %%--------------------------------------------------------------------
@@ -83,7 +83,7 @@ published(JObj) ->
 %%--------------------------------------------------------------------
 -spec name(wh_json:object()) -> ne_binary().
 name(JObj) ->
-    wh_json:get_binary_value(?NAME, JObj).
+    wh_json:get_ne_binary_value(?NAME, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,7 +110,7 @@ tags(JObj) ->
 %%--------------------------------------------------------------------
 -spec icon(wh_json:object()) -> ne_binary().
 icon(JObj) ->
-    wh_json:get_binary_value(?ICON, JObj).
+    wh_json:get_ne_binary_value(?ICON, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -119,7 +119,7 @@ icon(JObj) ->
 %%--------------------------------------------------------------------
 -spec api_url(wh_json:object()) -> ne_binary().
 api_url(JObj) ->
-    wh_json:get_binary_value(?API_URL, JObj).
+    wh_json:get_ne_binary_value(?API_URL, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -128,7 +128,7 @@ api_url(JObj) ->
 %%--------------------------------------------------------------------
 -spec source_url(wh_json:object()) -> ne_binary().
 source_url(JObj) ->
-    wh_json:get_binary_value(?API_URL, JObj).
+    wh_json:get_ne_binary_value(?API_URL, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -137,7 +137,7 @@ source_url(JObj) ->
 %%--------------------------------------------------------------------
 -spec author(wh_json:object()) -> ne_binary().
 author(JObj) ->
-    wh_json:get_binary_value(?AUTHOR, JObj).
+    wh_json:get_ne_binary_value(?AUTHOR, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,7 +146,7 @@ author(JObj) ->
 %%--------------------------------------------------------------------
 -spec version(wh_json:object()) -> ne_binary().
 version(JObj) ->
-    wh_json:get_binary_value(?VERSION, JObj).
+    wh_json:get_ne_binary_value(?VERSION, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -155,7 +155,7 @@ version(JObj) ->
 %%--------------------------------------------------------------------
 -spec license(wh_json:object()) -> ne_binary().
 license(JObj) ->
-    wh_json:get_binary_value(?LICENSE, JObj).
+    wh_json:get_ne_binary_value(?LICENSE, JObj).
 
 %%--------------------------------------------------------------------
 %% @public

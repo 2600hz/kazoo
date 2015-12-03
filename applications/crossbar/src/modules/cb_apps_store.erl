@@ -399,7 +399,7 @@ normalize_apps_result(Apps) ->
 
 normalize_apps_result([], Acc) -> Acc;
 normalize_apps_result([App|Apps], Acc) ->
-    case kzd_app:published(App) of
+    case kzd_app:is_published(App) of
         'false' -> normalize_apps_result(Apps, Acc);
         'true' ->
             JObj =
