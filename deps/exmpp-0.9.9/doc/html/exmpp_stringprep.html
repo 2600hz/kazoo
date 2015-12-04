@@ -1,0 +1,91 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_stringprep</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_stringprep</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_stringprep</strong> provides functions to use  
+NODEPREP, NAMEPREP and RESOURCEPREP stringprep profiles.
+
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2><p>
+  The module <strong>exmpp_stringprep</strong> provides functions to use  
+NODEPREP, NAMEPREP and RESOURCEPREP stringprep profiles.</p>
+ 
+  <p>
+  It's not intended to be used directly.
+  </p>
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#is_name-1">is_name/1</a></td><td>Tell if <code>String</code> conforms the NAMEPREP stringprep profile.</td></tr>
+<tr><td valign="top"><a href="#is_node-1">is_node/1</a></td><td>Tell if <code>String</code> conforms the NODEPREP stringprep profile.</td></tr>
+<tr><td valign="top"><a href="#is_resource-1">is_resource/1</a></td><td>Tell if <code>String</code> conforms the RESOURCEPREP stringprep profile.</td></tr>
+<tr><td valign="top"><a href="#nameprep-1">nameprep/1</a></td><td>Apply the NAMEPREP stringprep profile to <code>String</code>.</td></tr>
+<tr><td valign="top"><a href="#nodeprep-1">nodeprep/1</a></td><td>Apply the NODEPREP stringprep profile to <code>String</code>.</td></tr>
+<tr><td valign="top"><a href="#resourceprep-1">resourceprep/1</a></td><td>Apply the RESOURCEPREP stringprep profile to <code>String</code>.</td></tr>
+<tr><td valign="top"><a href="#to_lower-1">to_lower/1</a></td><td>Convert <code>String</code> to lowercase.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="is_name-1">is_name/1</a></h3>
+<div class="spec">
+<p><tt>is_name(String) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>String = binary() | string()</tt></li></ul></p>
+</div><p>throws <tt>{stringprep, nameprep, exmpp_not_started, String}</tt></p>
+<p>Tell if <code>String</code> conforms the NAMEPREP stringprep profile.</p>
+
+<h3 class="function"><a name="is_node-1">is_node/1</a></h3>
+<div class="spec">
+<p><tt>is_node(String) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>String = binary() | string()</tt></li></ul></p>
+</div><p>throws <tt>{stringprep, nodeprep, exmpp_not_started, String}</tt></p>
+<p>Tell if <code>String</code> conforms the NODEPREP stringprep profile.</p>
+
+<h3 class="function"><a name="is_resource-1">is_resource/1</a></h3>
+<div class="spec">
+<p><tt>is_resource(String) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>String = binary() | string()</tt></li></ul></p>
+</div><p>throws <tt>{stringprep, resourceprep, exmpp_not_started, String}</tt></p>
+<p>Tell if <code>String</code> conforms the RESOURCEPREP stringprep profile.</p>
+
+<h3 class="function"><a name="nameprep-1">nameprep/1</a></h3>
+<div class="spec">
+<p><tt>nameprep(String) -&gt; Prepd_String</tt>
+<ul class="definitions"><li><tt>String = binary() | string()</tt></li><li><tt>Prepd_String = binary() | string()</tt></li></ul></p>
+</div><p>throws <tt>{stringprep, nameprep, exmpp_not_started, String} | {stringprep, nameprep, invalid_string, String}</tt></p>
+<p>Apply the NAMEPREP stringprep profile to <code>String</code>.</p>
+
+<h3 class="function"><a name="nodeprep-1">nodeprep/1</a></h3>
+<div class="spec">
+<p><tt>nodeprep(String) -&gt; Prepd_String</tt>
+<ul class="definitions"><li><tt>String = binary() | string()</tt></li><li><tt>Prepd_String = binary() | string()</tt></li></ul></p>
+</div><p>throws <tt>{stringprep, nodeprep, exmpp_not_started, String} | {stringprep, nodeprep, invalid_string, String}</tt></p>
+<p>Apply the NODEPREP stringprep profile to <code>String</code>.</p>
+
+<h3 class="function"><a name="resourceprep-1">resourceprep/1</a></h3>
+<div class="spec">
+<p><tt>resourceprep(String) -&gt; Prepd_String</tt>
+<ul class="definitions"><li><tt>String = binary() | string()</tt></li><li><tt>Prepd_String = binary() | string()</tt></li></ul></p>
+</div><p>throws <tt>{stringprep, resourceprep, exmpp_not_started, String} | {stringprep, resourceprep, invalid_string, String}</tt></p>
+<p>Apply the RESOURCEPREP stringprep profile to <code>String</code>.</p>
+
+<h3 class="function"><a name="to_lower-1">to_lower/1</a></h3>
+<div class="spec">
+<p><tt>to_lower(String) -&gt; Lowered_String</tt>
+<ul class="definitions"><li><tt>String = binary() | string()</tt></li><li><tt>Lowered_String = binary() | string()</tt></li></ul></p>
+</div><p>throws <tt>{stringprep, lowercase, exmpp_not_started, String} | {stringprep, lowercase, invalid_string, String}</tt></p>
+<p>Convert <code>String</code> to lowercase.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>

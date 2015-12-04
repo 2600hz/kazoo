@@ -1,0 +1,418 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_client_pubsub</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_client_pubsub</h1>
+<ul class="index"><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>), Karim Gemayel (<a href="mailto:kgemayel@process-one.net"><tt>kgemayel@process-one.net</tt></a>).</p>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#create_and_configure_node-3">create_and_configure_node/3</a></td><td>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service with configuration.</td></tr>
+<tr><td valign="top"><a href="#create_and_configure_node-4">create_and_configure_node/4</a></td><td>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service with configuration.</td></tr>
+<tr><td valign="top"><a href="#create_instant_node-1">create_instant_node/1</a></td><td>Make an <code>&lt;iq&gt;</code> for creating an instant node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#create_instant_node-2">create_instant_node/2</a></td><td>Make an <code>&lt;iq&gt;</code> for creating an instant node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#create_node-2">create_node/2</a></td><td>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#create_node-3">create_node/3</a></td><td>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#delete_node-2">delete_node/2</a></td><td>Make an <code>&lt;iq&gt;</code> for deleting a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#delete_node-3">delete_node/3</a></td><td>Make an <code>&lt;iq&gt;</code> for deleting a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#get_affiliations-1">get_affiliations/1</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving user affiliations.</td></tr>
+<tr><td valign="top"><a href="#get_affiliations-2">get_affiliations/2</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving user affiliations.</td></tr>
+<tr><td valign="top"><a href="#get_default_configuration-1">get_default_configuration/1</a></td><td>Make an <code>&lt;iq&gt;</code> for getting default configuration options.</td></tr>
+<tr><td valign="top"><a href="#get_default_configuration-2">get_default_configuration/2</a></td><td>Make an <code>&lt;iq&gt;</code> for getting default configuration options.</td></tr>
+<tr><td valign="top"><a href="#get_items-2">get_items/2</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving pubsub items.</td></tr>
+<tr><td valign="top"><a href="#get_items-3">get_items/3</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving pubsub items.</td></tr>
+<tr><td valign="top"><a href="#get_items_by_id-3">get_items_by_id/3</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving pubsub items by id.</td></tr>
+<tr><td valign="top"><a href="#get_items_by_id-4">get_items_by_id/4</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving pubsub items by id.</td></tr>
+<tr><td valign="top"><a href="#get_items_max-3">get_items_max/3</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving pubsub 'n' items.</td></tr>
+<tr><td valign="top"><a href="#get_items_max-4">get_items_max/4</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving pubsub 'n' items.</td></tr>
+<tr><td valign="top"><a href="#get_node_configuration-2">get_node_configuration/2</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving default configuration options.</td></tr>
+<tr><td valign="top"><a href="#get_node_configuration-3">get_node_configuration/3</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving default configuration options.</td></tr>
+<tr><td valign="top"><a href="#get_owner_affiliations-2">get_owner_affiliations/2</a></td><td>Make an <code>&lt;iq&gt;</code> for getting list of affiliations.</td></tr>
+<tr><td valign="top"><a href="#get_owner_affiliations-3">get_owner_affiliations/3</a></td><td>Make an <code>&lt;iq&gt;</code> for getting list of affiliations.</td></tr>
+<tr><td valign="top"><a href="#get_owner_subscriptions-2">get_owner_subscriptions/2</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving list of subscriptions.</td></tr>
+<tr><td valign="top"><a href="#get_owner_subscriptions-3">get_owner_subscriptions/3</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving list of subscriptions.</td></tr>
+<tr><td valign="top"><a href="#get_subscriptions-1">get_subscriptions/1</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving user subscriptions.</td></tr>
+<tr><td valign="top"><a href="#get_subscriptions-2">get_subscriptions/2</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving user subscriptions.</td></tr>
+<tr><td valign="top"><a href="#get_subscriptions_options-3">get_subscriptions_options/3</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</td></tr>
+<tr><td valign="top"><a href="#get_subscriptions_options-4">get_subscriptions_options/4</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</td></tr>
+<tr><td valign="top"><a href="#publish-2">publish/2</a></td><td>Make an <code>&lt;iq&gt;</code> for publishing an item to a node on a pubsub service as PEP (i.e.</td></tr>
+<tr><td valign="top"><a href="#publish-3">publish/3</a></td><td>Make an <code>&lt;iq&gt;</code> for publishing an item to a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#publish-4">publish/4</a></td><td>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#purge_items-2">purge_items/2</a></td><td>Make an <code>&lt;iq&gt;</code> for purging all items from a pubsub node.</td></tr>
+<tr><td valign="top"><a href="#purge_items-3">purge_items/3</a></td><td>Make an <code>&lt;iq&gt;</code> for purging all items from a pubsub node.</td></tr>
+<tr><td valign="top"><a href="#retract-3">retract/3</a></td><td>Make an <code>&lt;iq&gt;</code> for deleting a pubsub item.</td></tr>
+<tr><td valign="top"><a href="#retract-4">retract/4</a></td><td>Make an <code>&lt;iq&gt;</code> for deleting a pubsub item.</td></tr>
+<tr><td valign="top"><a href="#set_node_configuration-3">set_node_configuration/3</a></td><td>Make an <code>&lt;iq&gt;</code> for setting configuration options.</td></tr>
+<tr><td valign="top"><a href="#set_node_configuration-4">set_node_configuration/4</a></td><td>Make an <code>&lt;iq&gt;</code> for setting configuration options.</td></tr>
+<tr><td valign="top"><a href="#set_owner_affiliations-3">set_owner_affiliations/3</a></td><td>Make an <code>&lt;iq&gt;</code> for setting list of affiliations.</td></tr>
+<tr><td valign="top"><a href="#set_owner_affiliations-4">set_owner_affiliations/4</a></td><td>Make an <code>&lt;iq&gt;</code> for setting list of affiliations.</td></tr>
+<tr><td valign="top"><a href="#set_owner_subscriptions-3">set_owner_subscriptions/3</a></td><td>Make an <code>&lt;iq&gt;</code> for setting list of subscriptions.</td></tr>
+<tr><td valign="top"><a href="#set_owner_subscriptions-4">set_owner_subscriptions/4</a></td><td>Make an <code>&lt;iq&gt;</code> for setting list of subscriptions.</td></tr>
+<tr><td valign="top"><a href="#set_subscriptions_options-4">set_subscriptions_options/4</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</td></tr>
+<tr><td valign="top"><a href="#set_subscriptions_options-5">set_subscriptions_options/5</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</td></tr>
+<tr><td valign="top"><a href="#subscribe-3">subscribe/3</a></td><td>Make an <code>&lt;iq&gt;</code> for subscribing to a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#subscribe-4">subscribe/4</a></td><td>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#subscribe_and_configure-4">subscribe_and_configure/4</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</td></tr>
+<tr><td valign="top"><a href="#subscribe_and_configure-5">subscribe_and_configure/5</a></td><td>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</td></tr>
+<tr><td valign="top"><a href="#unsubscribe-3">unsubscribe/3</a></td><td>Make an <code>&lt;iq&gt;</code> for unsubscribing from a node on a pubsub service.</td></tr>
+<tr><td valign="top"><a href="#unsubscribe-4">unsubscribe/4</a></td><td>Make an <code>&lt;iq&gt;</code> for unsubscribing from a node on a pubsub service.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="create_and_configure_node-3">create_and_configure_node/3</a></h3>
+<div class="spec">
+<p><tt>create_and_configure_node(Service, Node, Options) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Options = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service with configuration.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="create_and_configure_node-4">create_and_configure_node/4</a></h3>
+<div class="spec">
+<p><tt>create_and_configure_node(Id, Service, Node, Options) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Options = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service with configuration.</p>
+
+<h3 class="function"><a name="create_instant_node-1">create_instant_node/1</a></h3>
+<div class="spec">
+<p><tt>create_instant_node(Service) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for creating an instant node on a pubsub service.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="create_instant_node-2">create_instant_node/2</a></h3>
+<div class="spec">
+<p><tt>create_instant_node(Id, Service) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for creating an instant node on a pubsub service.</p>
+
+<h3 class="function"><a name="create_node-2">create_node/2</a></h3>
+<div class="spec">
+<p><tt>create_node(Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="create_node-3">create_node/3</a></h3>
+<div class="spec">
+<p><tt>create_node(Id, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service.</p>
+
+<h3 class="function"><a name="delete_node-2">delete_node/2</a></h3>
+<div class="spec">
+<p><tt>delete_node(Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for deleting a node on a pubsub service.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="delete_node-3">delete_node/3</a></h3>
+<div class="spec">
+<p><tt>delete_node(Id, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for deleting a node on a pubsub service.</p>
+
+<h3 class="function"><a name="get_affiliations-1">get_affiliations/1</a></h3>
+<div class="spec">
+<p><tt>get_affiliations(Service) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving user affiliations.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_affiliations-2">get_affiliations/2</a></h3>
+<div class="spec">
+<p><tt>get_affiliations(Id, Service) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving user affiliations.</p>
+
+<h3 class="function"><a name="get_default_configuration-1">get_default_configuration/1</a></h3>
+<div class="spec">
+<p><tt>get_default_configuration(Service) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for getting default configuration options.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_default_configuration-2">get_default_configuration/2</a></h3>
+<div class="spec">
+<p><tt>get_default_configuration(Id, Service) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for getting default configuration options.</p>
+
+<h3 class="function"><a name="get_items-2">get_items/2</a></h3>
+<div class="spec">
+<p><tt>get_items(Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving pubsub items.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_items-3">get_items/3</a></h3>
+<div class="spec">
+<p><tt>get_items(Id, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving pubsub items.</p>
+
+<h3 class="function"><a name="get_items_by_id-3">get_items_by_id/3</a></h3>
+<div class="spec">
+<p><tt>get_items_by_id(Service, Node, ItemsID) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>ItemsID = [ItemID]</tt></li><li><tt>ItemID = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving pubsub items by id.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_items_by_id-4">get_items_by_id/4</a></h3>
+<div class="spec">
+<p><tt>get_items_by_id(Id, Service, Node, ItemsID) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>ItemsID = [ItemID]</tt></li><li><tt>ItemID = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving pubsub items by id.</p>
+
+<h3 class="function"><a name="get_items_max-3">get_items_max/3</a></h3>
+<div class="spec">
+<p><tt>get_items_max(Service, Node, Max) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Max = integer()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving pubsub 'n' items.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_items_max-4">get_items_max/4</a></h3>
+<div class="spec">
+<p><tt>get_items_max(Id, Service, Node, Max) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Max = integer()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving pubsub 'n' items.</p>
+
+<h3 class="function"><a name="get_node_configuration-2">get_node_configuration/2</a></h3>
+<div class="spec">
+<p><tt>get_node_configuration(Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving default configuration options.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_node_configuration-3">get_node_configuration/3</a></h3>
+<div class="spec">
+<p><tt>get_node_configuration(Id, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving default configuration options.</p>
+
+<h3 class="function"><a name="get_owner_affiliations-2">get_owner_affiliations/2</a></h3>
+<div class="spec">
+<p><tt>get_owner_affiliations(Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for getting list of affiliations.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_owner_affiliations-3">get_owner_affiliations/3</a></h3>
+<div class="spec">
+<p><tt>get_owner_affiliations(Id, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for getting list of affiliations.</p>
+
+<h3 class="function"><a name="get_owner_subscriptions-2">get_owner_subscriptions/2</a></h3>
+<div class="spec">
+<p><tt>get_owner_subscriptions(Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving list of subscriptions.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_owner_subscriptions-3">get_owner_subscriptions/3</a></h3>
+<div class="spec">
+<p><tt>get_owner_subscriptions(Id, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving list of subscriptions.</p>
+
+<h3 class="function"><a name="get_subscriptions-1">get_subscriptions/1</a></h3>
+<div class="spec">
+<p><tt>get_subscriptions(Service) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving user subscriptions.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_subscriptions-2">get_subscriptions/2</a></h3>
+<div class="spec">
+<p><tt>get_subscriptions(Id, Service) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving user subscriptions.</p>
+
+<h3 class="function"><a name="get_subscriptions_options-3">get_subscriptions_options/3</a></h3>
+<div class="spec">
+<p><tt>get_subscriptions_options(From, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="get_subscriptions_options-4">get_subscriptions_options/4</a></h3>
+<div class="spec">
+<p><tt>get_subscriptions_options(Id, From, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</p>
+
+<h3 class="function"><a name="publish-2">publish/2</a></h3>
+<div class="spec">
+<p><tt>publish(Node, Item_Children::Items) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Node = string()</tt></li><li><tt>Items = [<a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_xml.html#type-xmlcdata">exmpp_xml:xmlcdata()</a>]</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for publishing an item to a node on a pubsub service as PEP (i.e. without 'to' and 'from').</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="publish-3">publish/3</a></h3>
+<div class="spec">
+<p><tt>publish(Service, Node, Item_Child::Items) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Items = [<a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_xml.html#type-xmlcdata">exmpp_xml:xmlcdata()</a>]</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for publishing an item to a node on a pubsub service.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="publish-4">publish/4</a></h3>
+<div class="spec">
+<p><tt>publish(Id, Service, Node, Item_Child::Items) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Items = [<a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_xml.html#type-xmlcdata">exmpp_xml:xmlcdata()</a>]</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service.</p>
+
+<h3 class="function"><a name="purge_items-2">purge_items/2</a></h3>
+<div class="spec">
+<p><tt>purge_items(Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for purging all items from a pubsub node.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="purge_items-3">purge_items/3</a></h3>
+<div class="spec">
+<p><tt>purge_items(Id, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for purging all items from a pubsub node.</p>
+
+<h3 class="function"><a name="retract-3">retract/3</a></h3>
+<div class="spec">
+<p><tt>retract(Service, Node, ItemID) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>ItemID = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for deleting a pubsub item.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="retract-4">retract/4</a></h3>
+<div class="spec">
+<p><tt>retract(Id, Service, Node, ItemID) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>ItemID = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for deleting a pubsub item.</p>
+
+<h3 class="function"><a name="set_node_configuration-3">set_node_configuration/3</a></h3>
+<div class="spec">
+<p><tt>set_node_configuration(Service, Node, Options) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Options = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for setting configuration options.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="set_node_configuration-4">set_node_configuration/4</a></h3>
+<div class="spec">
+<p><tt>set_node_configuration(Id, Service, Node, Options) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Options = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for setting configuration options.</p>
+
+<h3 class="function"><a name="set_owner_affiliations-3">set_owner_affiliations/3</a></h3>
+<div class="spec">
+<p><tt>set_owner_affiliations(Service, Node, Affiliates) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Affiliates = [{Jid, Affiliation}]</tt></li><li><tt>Jid = string()</tt></li><li><tt>Affiliation = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for setting list of affiliations.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="set_owner_affiliations-4">set_owner_affiliations/4</a></h3>
+<div class="spec">
+<p><tt>set_owner_affiliations(Id, Service, Node, Affiliates) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Affiliates = [{Jid, Affiliation}]</tt></li><li><tt>Jid = string()</tt></li><li><tt>Affiliation = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for setting list of affiliations.</p>
+
+<h3 class="function"><a name="set_owner_subscriptions-3">set_owner_subscriptions/3</a></h3>
+<div class="spec">
+<p><tt>set_owner_subscriptions(Service, Node, Subscribers) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Subscribers = [{Jid, State}]</tt></li><li><tt>Jid = string()</tt></li><li><tt>State = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for setting list of subscriptions.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="set_owner_subscriptions-4">set_owner_subscriptions/4</a></h3>
+<div class="spec">
+<p><tt>set_owner_subscriptions(Id, Service, Node, Subscribers) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Subscribers = [{Jid, State}]</tt></li><li><tt>Jid = string()</tt></li><li><tt>State = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for setting list of subscriptions.</p>
+
+<h3 class="function"><a name="set_subscriptions_options-4">set_subscriptions_options/4</a></h3>
+<div class="spec">
+<p><tt>set_subscriptions_options(From, Service, Node, DataForm) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>DataForm = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="set_subscriptions_options-5">set_subscriptions_options/5</a></h3>
+<div class="spec">
+<p><tt>set_subscriptions_options(Id, From, Service, Node, DataForm) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>DataForm = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</p>
+
+<h3 class="function"><a name="subscribe-3">subscribe/3</a></h3>
+<div class="spec">
+<p><tt>subscribe(From, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for subscribing to a node on a pubsub service.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="subscribe-4">subscribe/4</a></h3>
+<div class="spec">
+<p><tt>subscribe(Id, From, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for creating a node on a pubsub service.</p>
+
+<h3 class="function"><a name="subscribe_and_configure-4">subscribe_and_configure/4</a></h3>
+<div class="spec">
+<p><tt>subscribe_and_configure(From, Service, Node, DataForm) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>DataForm = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="subscribe_and_configure-5">subscribe_and_configure/5</a></h3>
+<div class="spec">
+<p><tt>subscribe_and_configure(Id, From, Service, Node, DataForm) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>DataForm = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for retrieving subscriptions options.</p>
+
+<h3 class="function"><a name="unsubscribe-3">unsubscribe/3</a></h3>
+<div class="spec">
+<p><tt>unsubscribe(From, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for unsubscribing from a node on a pubsub service.</p>
+ 
+  The stanza <code>id</code> is generated automatically.</p>
+
+<h3 class="function"><a name="unsubscribe-4">unsubscribe/4</a></h3>
+<div class="spec">
+<p><tt>unsubscribe(Id, From, Service, Node) -&gt; Pubsub_Iq</tt>
+<ul class="definitions"><li><tt>Id = string()</tt></li><li><tt>From = string()</tt></li><li><tt>Service = string()</tt></li><li><tt>Node = string()</tt></li><li><tt>Pubsub_Iq = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for unsubscribing from a node on a pubsub service.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:40.</i></p>
+</body>
+</html>

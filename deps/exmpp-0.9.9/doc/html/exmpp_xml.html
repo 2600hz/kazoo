@@ -1,0 +1,1411 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_xml</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_xml</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_xml</strong> is an XML parser based on Expat.
+
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2><p>
+  The module <strong>exmpp_xml</strong> is an XML parser based on Expat.</p>
+ 
+  <p>
+  It provides a set of functions to prepare a tree of the elements from
+  an XML stream or an XML document. To ease the handling of the tree
+  produced by the parsing, it also export functions to access each
+  parts of an element.
+  </p>
+ 
+  <p>
+  Namespace support is fully tested and is now ready for production use.
+  </p>
+ 
+  <p>
+  A backward compatible layer, built on top of this module, is provided
+  by <a href="xml.html"><code>xml</code></a>.
+  </p>
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-pathcomponent">pathcomponent()</a></h3>
+<p><tt>pathcomponent() = {element, Elem_Name} | {element, NS, Elem_Name} | {attribute, Attr_Name} | {attribute, NS, Attr_Name} | cdata | cdata_as_list</tt>
+<ul class="definitions"><li><tt>NS = atom() | string()</tt></li><li><tt>Elem_Name = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li></ul></p>
+<p>Represents a path component. The <code>elem</code> tuple points to an XML
+  element named <code>Elem_Name</code>. The <code>attr</code> tuple points to the value of
+  the <code>Attr_Name</code> attribute. cdata asks for the character data of a
+  node.</p>
+
+<h3 class="typedecl"><a name="type-xmlattr">xmlattr()</a></h3>
+<p><tt>xmlattr() = {xmlattr, NS, Name, Value}</tt>
+<ul class="definitions"><li><tt>NS = atom() | string()</tt></li><li><tt>Name = binary()</tt></li><li><tt>Value = binary()</tt></li></ul></p>
+<p>Represents an tag attribute.</p>
+
+<h3 class="typedecl"><a name="type-xmlattr_old">xmlattr_old()</a></h3>
+<p><tt>xmlattr_old() = {Name, Value}</tt>
+<ul class="definitions"><li><tt>Name = atom() | string()</tt></li><li><tt>Value = string()</tt></li></ul></p>
+<p>Represents an tag attribute.</p>
+
+<h3 class="typedecl"><a name="type-xmlcdata">xmlcdata()</a></h3>
+<p><tt>xmlcdata() = {xmlcdata, CData}</tt>
+<ul class="definitions"><li><tt>CData = binary()</tt></li></ul></p>
+<p>Record representing characters data inside an XML element.</p>
+
+<h3 class="typedecl"><a name="type-xmlel">xmlel()</a></h3>
+<p><tt>xmlel() = {xmlel, NS, Declared_NS, Name, Attrs, Children}</tt>
+<ul class="definitions"><li><tt>NS = atom() | string() | undefined</tt></li><li><tt>Declared_NS = [{NS, Prefix} | {NS, none}]</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li></ul></p>
+<p><p>Record representing an XML element (or only the opening tag).</p>
+ 
+  <br><br>
+  Declared_NS lists all the namespaces declared in this element, even
+  if they're not used by it.</p>
+
+<h3 class="typedecl"><a name="type-xmlel_any">xmlel_any()</a></h3>
+<p><tt>xmlel_any() = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></p>
+
+
+<h3 class="typedecl"><a name="type-xmlel_old">xmlel_old()</a></h3>
+<p><tt>xmlel_old() = {xmlelement, Name, Attrs, Children}</tt>
+<ul class="definitions"><li><tt>Name = string()</tt></li><li><tt>Attrs = [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Children = [<a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li></ul></p>
+<p>Record representing an XML tag.</p>
+
+<h3 class="typedecl"><a name="type-xmlendtag">xmlendtag()</a></h3>
+<p><tt>xmlendtag() = {xmlendtag, NS, Name}</tt>
+<ul class="definitions"><li><tt>NS = atom() | string()</tt></li><li><tt>Name = atom() | string()</tt></li></ul></p>
+<p>Record representing an XML end tag, for nodes above the configured
+  <code>root_depth</code> (see <a href="#type-xmlparseroption"><code>xmlparseroption()</code></a>).</p>
+
+<h3 class="typedecl"><a name="type-xmlnode">xmlnode()</a></h3>
+<p><tt>xmlnode() = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></p>
+
+
+<h3 class="typedecl"><a name="type-xmlparser">xmlparser()</a></h3>
+<p><b>abstract datatype</b>: <tt>xmlparser()</tt></p>
+<p>Handler for the Expat parser, initialized with a call to <a href="#start_parser-0"><code>start_parser/0</code></a>.</p>
+
+<h3 class="typedecl"><a name="type-xmlparseroption">xmlparseroption()</a></h3>
+<p><tt>xmlparseroption() = Engine | Namespace_Option | Names_Format | Checks | Stanza_Max_Size | Root_Depth | Send_End_Element | Autoload_Known</tt>
+<ul class="definitions"><li><tt>Engine = {engine, atom()}</tt></li><li><tt>Stanza_Max_Size = {max_size, infinity} | {max_size, Size}</tt></li><li><tt>Root_Depth = {root_depth, none} | {root_depth, Depth}</tt></li><li><tt>Name_Format = {names_as_atom, bool()}</tt></li><li><tt>Checks = NS_Check | Elems_Check | Attrs_Check</tt></li><li><tt>NS_Check = {check_nss, Known_List_Name | bool()}</tt></li><li><tt>Elems_Check = {check_elems, Known_List_Name | bool()}</tt></li><li><tt>Known_List_Name = atom()</tt></li><li><tt>Send_End_Element = {emit_endtag, bool()}</tt></li></ul></p>
+<p><p>Options of the form <code>{Key, bool()}</code> can be specified as <code>Key</code>. See
+  <a href="proplists.html"><code>proplists</code></a>.</p>
+ 
+  <p><br><br>
+  The <code>engine</code> option allows one to choose the engine to use. Available
+  engines list can be retrived with <a href="#get_engine_names-0"><code>get_engine_names/0</code></a>.</p>
+ 
+  <br><br>
+  The <code>max_size</code> option limits the size in bytes of a stanza to avoid
+  deny of service at the parser level. Actually, this limit is only
+  verified against the length of the data provided and the counter is
+  reset to zero when an element is found. The caveats is that if the
+  limits is, eg., 15 and the data is <code>&lt;foo&gt;&lt;/foo&gt;&lt;bar&gt;&lt;/bar&gt;</code>, the
+  parser will return an error because the whole chunk is 22 bytes,
+  despite each stanza contains 11 bytes.</p>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_known_elems-2">add_known_elems/2</a></td><td>Tell parsers that <code>Names_List</code> are known element names.</td></tr>
+<tr><td valign="top"><a href="#add_known_nss-2">add_known_nss/2</a></td><td>Tell parsers that <code>NS_List</code> are known namespaces.</td></tr>
+<tr><td valign="top"><a href="#append_cdata-2">append_cdata/2</a></td><td>Append <code>Child</code> to <code>XML_Element</code>'s children list.</td></tr>
+<tr><td valign="top"><a href="#append_cdata_to_list-2">append_cdata_to_list/2</a></td><td>Append <code>CData</code> to <code>Children</code> list.</td></tr>
+<tr><td valign="top"><a href="#append_child-2">append_child/2</a></td><td>Append <code>Child</code> to <code>XML_Element</code>'s children list.</td></tr>
+<tr><td valign="top"><a href="#append_children-2">append_children/2</a></td><td>Append every <code>Children</code> to <code>XML_Element</code>'s children list.</td></tr>
+<tr><td valign="top"><a href="#attribute-2">attribute/2</a></td><td>Create an XML attribute with the name <code>Name</code>.</td></tr>
+<tr><td valign="top"><a href="#attribute-3">attribute/3</a></td><td>Create an XML attribute with the name <code>Name</code> in the namespace <code>NS</code>.</td></tr>
+<tr><td valign="top"><a href="#attribute_matches-2">attribute_matches/2</a></td><td>Tell if <code>Attr</code> is named <code>Name</code>.</td></tr>
+<tr><td valign="top"><a href="#attribute_matches-3">attribute_matches/3</a></td><td>Tell if <code>Attr</code> has the namespace <code>NS</code> and is named <code>Name</code>.</td></tr>
+<tr><td valign="top"><a href="#cdata-1">cdata/1</a></td><td>Create a CData node from a value.</td></tr>
+<tr><td valign="top"><a href="#clear_endtag_tuples-1">clear_endtag_tuples/1</a></td><td>Remove any <a href="#type-xmlendtag"><code>xmlendtag()</code></a>  
+from the list of XML elements.</td></tr>
+<tr><td valign="top"><a href="#declare_ns_here-3">declare_ns_here/3</a></td><td>Declare the given namespace in this element.</td></tr>
+<tr><td valign="top"><a href="#deindent_document-1">deindent_document/1</a></td><td>Recursively remove text nodes containing only whitespaces.</td></tr>
+<tr><td valign="top"><a href="#document_to_binary-1">document_to_binary/1</a></td><td>Serialize an XML document to text.</td></tr>
+<tr><td valign="top"><a href="#document_to_iolist-1">document_to_iolist/1</a></td><td>Serialize an XML document to text.</td></tr>
+<tr><td valign="top"><a href="#document_to_list-1">document_to_list/1</a></td><td>Serialize an XML document to text.</td></tr>
+<tr><td valign="top"><a href="#element-1">element/1</a></td><td>Create an XML element with the name <code>Name</code> but no namespace.</td></tr>
+<tr><td valign="top"><a href="#element-2">element/2</a></td><td>Create an XML element with the name <code>Name</code> in the namespace <code>NS</code>.</td></tr>
+<tr><td valign="top"><a href="#element-4">element/4</a></td><td>Create an XML element with the name <code>Name</code> in the namespace <code>NS</code>.</td></tr>
+<tr><td valign="top"><a href="#element_matches-2">element_matches/2</a></td><td>Tell if <code>XML_Element</code> is named <code>Name</code>.</td></tr>
+<tr><td valign="top"><a href="#element_matches-3">element_matches/3</a></td><td>Tell if <code>XML_Element</code> has the namespace <code>NS</code> and is named <code>Name</code>.</td></tr>
+<tr><td valign="top"><a href="#element_matches_by_ns-2">element_matches_by_ns/2</a></td><td>Tell if <code>XML_Element</code> has the namespace <code>NS</code>.</td></tr>
+<tr><td valign="top"><a href="#escape_using_cdata-1">escape_using_cdata/1</a></td><td>Escape text using CDATA sections.</td></tr>
+<tr><td valign="top"><a href="#escape_using_entities-1">escape_using_entities/1</a></td><td>Replace sensible characters with entities.</td></tr>
+<tr><td valign="top"><a href="#filter-2">filter/2</a></td><td>Remove any children for which <code>Pred(Child)</code> doesn't return <code>true</code>.</td></tr>
+<tr><td valign="top"><a href="#fold-3">fold/3</a></td><td>Call <code>Fun</code> for each <code>XML_Element</code>'s children and return the last  
+accumulator.</td></tr>
+<tr><td valign="top"><a href="#foreach-2">foreach/2</a></td><td>Call <code>Fun</code> for each <code>XML_Element</code>'s children.</td></tr>
+<tr><td valign="top"><a href="#get_attribute-3">get_attribute/3</a></td><td>Return the value of the attribute named <code>Attr_Name</code>.</td></tr>
+<tr><td valign="top"><a href="#get_attribute-4">get_attribute/4</a></td><td>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#get_attribute_as_binary-3">get_attribute_as_binary/3</a></td><td>Return the value of the attribute named <code>Attr_Name</code>, as a  
+binary().</td></tr>
+<tr><td valign="top"><a href="#get_attribute_as_binary-4">get_attribute_as_binary/4</a></td><td>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI, as a binary().</td></tr>
+<tr><td valign="top"><a href="#get_attribute_as_list-3">get_attribute_as_list/3</a></td><td>Return the value of the attribute named <code>Attr_Name</code>, as a  
+list().</td></tr>
+<tr><td valign="top"><a href="#get_attribute_as_list-4">get_attribute_as_list/4</a></td><td>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI, as a list().</td></tr>
+<tr><td valign="top"><a href="#get_attribute_from_list-3">get_attribute_from_list/3</a></td><td>Return the value of the attribute named <code>Attr_Name</code> from the list.</td></tr>
+<tr><td valign="top"><a href="#get_attribute_from_list-4">get_attribute_from_list/4</a></td><td>Return the value of the attribute named <code>Attr_Name</code> from the
+  list with the <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#get_attribute_from_list_as_binary-3">get_attribute_from_list_as_binary/3</a></td><td>Return the value of the attribute named <code>Attr_Name</code> from the  
+list, as a binary().</td></tr>
+<tr><td valign="top"><a href="#get_attribute_from_list_as_binary-4">get_attribute_from_list_as_binary/4</a></td><td>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI from the list, as a binary().</td></tr>
+<tr><td valign="top"><a href="#get_attribute_from_list_as_list-3">get_attribute_from_list_as_list/3</a></td><td>Return the value of the attribute named <code>Attr_Name</code> from the  
+list, as a list().</td></tr>
+<tr><td valign="top"><a href="#get_attribute_from_list_as_list-4">get_attribute_from_list_as_list/4</a></td><td>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI from the list, as a list().</td></tr>
+<tr><td valign="top"><a href="#get_attribute_node-2">get_attribute_node/2</a></td><td>Return the attribute named <code>Attr_Name</code>.</td></tr>
+<tr><td valign="top"><a href="#get_attribute_node-3">get_attribute_node/3</a></td><td>Return the attribute named <code>Attr_Name</code> with the <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#get_attribute_node_from_list-2">get_attribute_node_from_list/2</a></td><td>Return the attribute named <code>Attr_Name</code> from the list.</td></tr>
+<tr><td valign="top"><a href="#get_attribute_node_from_list-3">get_attribute_node_from_list/3</a></td><td>Return the attribute named <code>Attr_Name</code> from the list with the
+  <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#get_cdata-1">get_cdata/1</a></td><td>Concatenate and return any character data of the given XML  
+element.</td></tr>
+<tr><td valign="top"><a href="#get_cdata_as_list-1">get_cdata_as_list/1</a></td><td>Concatenate and return any character data of the given XML
+  element.</td></tr>
+<tr><td valign="top"><a href="#get_cdata_from_list-1">get_cdata_from_list/1</a></td><td>Concatenate and return any character data from the given
+  children list.</td></tr>
+<tr><td valign="top"><a href="#get_cdata_from_list_as_list-1">get_cdata_from_list_as_list/1</a></td><td>Concatenate and return any character data from the given
+  children list.</td></tr>
+<tr><td valign="top"><a href="#get_child_elements-1">get_child_elements/1</a></td><td>Get all the element children of the given element, skipping
+  non-element nodes likes cdata.</td></tr>
+<tr><td valign="top"><a href="#get_element-2">get_element/2</a></td><td>Search in the children of <code>XML_Element</code> an element named <code>Name</code>.</td></tr>
+<tr><td valign="top"><a href="#get_element-3">get_element/3</a></td><td>Search in the children of <code>XML_Element</code> an element named <code>Name</code>
+  with <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#get_element_by_ns-2">get_element_by_ns/2</a></td><td>Search in the children of <code>XML_Element</code> the first element with
+  <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#get_elements-2">get_elements/2</a></td><td>Search in the children of <code>XML_Element</code> for all the elements
+  named <code>Name</code></td></tr>
+<tr><td valign="top"><a href="#get_elements-3">get_elements/3</a></td><td>Search in the children of <code>XML_Element</code> for all the elements
+  named <code>Name</code> with <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#get_engine_driver-1">get_engine_driver/1</a></td><td>Return the port driver name associated to the given engine.</td></tr>
+<tr><td valign="top"><a href="#get_engine_names-0">get_engine_names/0</a></td><td>Return the list of XML engines.</td></tr>
+<tr><td valign="top"><a href="#get_name_as_atom-1">get_name_as_atom/1</a></td><td>Return the name of an element as atom, regardless of the
+  original encoding.</td></tr>
+<tr><td valign="top"><a href="#get_name_as_list-1">get_name_as_list/1</a></td><td>Return the name of an element as list, regardless of the
+  original encoding.</td></tr>
+<tr><td valign="top"><a href="#get_ns_as_atom-1">get_ns_as_atom/1</a></td><td>Return the namespace as an atom, regardless of the original
+  encoding.</td></tr>
+<tr><td valign="top"><a href="#get_ns_as_list-1">get_ns_as_list/1</a></td><td>Return the namespace as a string, regardless of the original
+  encoding.</td></tr>
+<tr><td valign="top"><a href="#get_path-2">get_path/2</a></td><td>Follow the given path and return what's pointed by the last  
+component of it.</td></tr>
+<tr><td valign="top"><a href="#has_attribute-2">has_attribute/2</a></td><td>Check the presence for attribute <code>Attr_Name</code> in the XML element.</td></tr>
+<tr><td valign="top"><a href="#has_attribute-3">has_attribute/3</a></td><td>Check the presence for attribute <code>Attr_Name</code> with namespace <code>NS</code>
+  in the XML element.</td></tr>
+<tr><td valign="top"><a href="#has_attribute_in_list-2">has_attribute_in_list/2</a></td><td>Check the presence for attribute <code>Attr_Name</code> in the list.</td></tr>
+<tr><td valign="top"><a href="#has_attribute_in_list-3">has_attribute_in_list/3</a></td><td>Check the presence for attribute <code>Attr_Name</code> with namespace <code>NS</code>
+  in the list.</td></tr>
+<tr><td valign="top"><a href="#has_element-2">has_element/2</a></td><td>Check the presence for element <code>Name</code> in the children.</td></tr>
+<tr><td valign="top"><a href="#has_element-3">has_element/3</a></td><td>Check the presence for element <code>Name</code> with <code>NS</code> namespace URI in
+  the children.</td></tr>
+<tr><td valign="top"><a href="#has_element_by_ns-2">has_element_by_ns/2</a></td><td>Check the presence for any elements with <code>NS</code> namespace URI in
+  the children.</td></tr>
+<tr><td valign="top"><a href="#indent_document-2">indent_document/2</a></td><td>Add whitespaces text nodes to indent the document.</td></tr>
+<tr><td valign="top"><a href="#indent_document-3">indent_document/3</a></td><td>Add whitespaces text nodes to indent the document.</td></tr>
+<tr><td valign="top"><a href="#internal_escaping_function_name-0">internal_escaping_function_name/0</a></td><td>Tell what escaping function will be used internally.</td></tr>
+<tr><td valign="top"><a href="#is_engine_available-1">is_engine_available/1</a></td><td>Tell if <code>Engine_Name</code> is available.</td></tr>
+<tr><td valign="top"><a href="#is_ns_declared_here-2">is_ns_declared_here/2</a></td><td>Tell if <code>NS</code> was declared within this element.</td></tr>
+<tr><td valign="top"><a href="#is_whitespace-1">is_whitespace/1</a></td><td>Tell if a text node contains only whitespaces.</td></tr>
+<tr><td valign="top"><a href="#map-2">map/2</a></td><td>Apply <code>Fun</code> on each child and replace the original one with the  
+function return value.</td></tr>
+<tr><td valign="top"><a href="#node_to_binary-3">node_to_binary/3</a></td><td>Serialize an XML node to text.</td></tr>
+<tr><td valign="top"><a href="#node_to_iolist-3">node_to_iolist/3</a></td><td>Serialize an XML node to text.</td></tr>
+<tr><td valign="top"><a href="#node_to_list-3">node_to_list/3</a></td><td>Serialize an XML node to text.</td></tr>
+<tr><td valign="top"><a href="#normalize_cdata-1">normalize_cdata/1</a></td><td>Regroup all splitted <a href="#type-xmlcdata"><code>xmlcdata()</code></a> in a unique one  
+and remove empty ones.</td></tr>
+<tr><td valign="top"><a href="#normalize_cdata_in_list-1">normalize_cdata_in_list/1</a></td><td>Regroup all splitted <a href="#type-xmlcdata"><code>xmlcdata()</code></a> in a unique one.</td></tr>
+<tr><td valign="top"><a href="#parse-2">parse/2</a></td><td>Parse a chunk from an XML stream.</td></tr>
+<tr><td valign="top"><a href="#parse_document-1">parse_document/1</a></td><td>Parse an entire XML document at once.</td></tr>
+<tr><td valign="top"><a href="#parse_document-2">parse_document/2</a></td><td>Parse an entire XML document at once.</td></tr>
+<tr><td valign="top"><a href="#parse_document_fragment-1">parse_document_fragment/1</a></td><td>Parse a fragment of an XML document at once.</td></tr>
+<tr><td valign="top"><a href="#parse_document_fragment-2">parse_document_fragment/2</a></td><td>Parse a fragment of an XML document at once.</td></tr>
+<tr><td valign="top"><a href="#parse_final-2">parse_final/2</a></td><td>Parse the last chunk from an XML stream.</td></tr>
+<tr><td valign="top"><a href="#prepend_child-2">prepend_child/2</a></td><td>Prepend <code>Child</code> to <code>XML_Element</code>'s children list.</td></tr>
+<tr><td valign="top"><a href="#prepend_children-2">prepend_children/2</a></td><td>Prepend every <code>Children</code> to <code>XML_Element</code>'s children list.</td></tr>
+<tr><td valign="top"><a href="#register_engine-2">register_engine/2</a></td><td>Add a new XML engine.</td></tr>
+<tr><td valign="top"><a href="#register_engine-3">register_engine/3</a></td><td>Add a new XML engine.</td></tr>
+<tr><td valign="top"><a href="#remove_attribute-2">remove_attribute/2</a></td><td>Remove attribute named <code>Attr_Name</code> and return the new element.</td></tr>
+<tr><td valign="top"><a href="#remove_attribute-3">remove_attribute/3</a></td><td>Remove attribute named <code>Attr_Name</code> with the <code>NS</code> namespace URI  
+and return the new element.</td></tr>
+<tr><td valign="top"><a href="#remove_attribute_from_list-2">remove_attribute_from_list/2</a></td><td>Remove attribute named <code>Attr_Name</code> and return the new list.</td></tr>
+<tr><td valign="top"><a href="#remove_attribute_from_list-3">remove_attribute_from_list/3</a></td><td>Remove attribute named <code>Attr_Name</code> with the <code>NS</code> namespace URI  
+and return the new list.</td></tr>
+<tr><td valign="top"><a href="#remove_cdata-1">remove_cdata/1</a></td><td>Remove any character data from the given XML element.</td></tr>
+<tr><td valign="top"><a href="#remove_cdata_from_list-1">remove_cdata_from_list/1</a></td><td>Remove any character data from the given XML element children
+  list.</td></tr>
+<tr><td valign="top"><a href="#remove_element-2">remove_element/2</a></td><td>Remove the first child with the name <code>Name</code>.</td></tr>
+<tr><td valign="top"><a href="#remove_element-3">remove_element/3</a></td><td>Remove the first child with the name <code>Name</code> in the namespace <code>NS</code>.</td></tr>
+<tr><td valign="top"><a href="#remove_element_by_ns-2">remove_element_by_ns/2</a></td><td>Remove the first child in the namespace <code>NS</code>.</td></tr>
+<tr><td valign="top"><a href="#remove_elements-2">remove_elements/2</a></td><td>Remove all children with the name <code>Name</code>.</td></tr>
+<tr><td valign="top"><a href="#remove_elements-3">remove_elements/3</a></td><td>Remove all children with the name <code>Name</code> in the namespace <code>NS</code>.</td></tr>
+<tr><td valign="top"><a href="#remove_elements_by_ns-2">remove_elements_by_ns/2</a></td><td>Remove all children in the namespace <code>NS</code>.</td></tr>
+<tr><td valign="top"><a href="#remove_whitespaces-1">remove_whitespaces/1</a></td><td>Remove text nodes containing only whitespaces.</td></tr>
+<tr><td valign="top"><a href="#remove_whitespaces_deeply-1">remove_whitespaces_deeply/1</a></td><td>Remove text nodes containing only whitespaces in every elements
+  in the given tree.</td></tr>
+<tr><td valign="top"><a href="#remove_whitespaces_from_list-1">remove_whitespaces_from_list/1</a></td><td>Remove text nodes containing only whitespaces.</td></tr>
+<tr><td valign="top"><a href="#replace_child-3">replace_child/3</a></td><td>Replace <code>Old_Child</code> by <code>New_Child</code> in <code>XML_Element</code> children
+  list.</td></tr>
+<tr><td valign="top"><a href="#reset_parser-1">reset_parser/1</a></td><td>Reset the parser with the same previous options.</td></tr>
+<tr><td valign="top"><a href="#reset_parser-2">reset_parser/2</a></td><td>Reset the parser and update its options.</td></tr>
+<tr><td valign="top"><a href="#set_attribute-2">set_attribute/2</a></td><td>Add a new attribute or change the value of an existing attribute  
+with the same name.</td></tr>
+<tr><td valign="top"><a href="#set_attribute-3">set_attribute/3</a></td><td>Add a new attribute or change the value of an existing attribute.</td></tr>
+<tr><td valign="top"><a href="#set_attribute-4">set_attribute/4</a></td><td>Add a new attribute or change the value of an existing attribute
+  with the same name and the <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#set_attribute_in_list-2">set_attribute_in_list/2</a></td><td>Add a new attribute or change the value of an existing attribute  
+with the same name.</td></tr>
+<tr><td valign="top"><a href="#set_attribute_in_list-3">set_attribute_in_list/3</a></td><td>Add a new attribute or change the value of an existing attribute  
+with the same name.</td></tr>
+<tr><td valign="top"><a href="#set_attribute_in_list-4">set_attribute_in_list/4</a></td><td>Add a new attribute or change the value of an existing attribute
+  with the same name and the <code>NS</code> namespace URI.</td></tr>
+<tr><td valign="top"><a href="#set_attributes-2">set_attributes/2</a></td><td>Set multiple attributes at a time.</td></tr>
+<tr><td valign="top"><a href="#set_cdata-2">set_cdata/2</a></td><td>Replace any character data by <code>CData</code>.</td></tr>
+<tr><td valign="top"><a href="#set_cdata_in_list-2">set_cdata_in_list/2</a></td><td>Replace any character data by <code>CData</code> in the list.</td></tr>
+<tr><td valign="top"><a href="#set_children-2">set_children/2</a></td><td>Set <code>XML_Element</code>'s children list to <code>Children</code>.</td></tr>
+<tr><td valign="top"><a href="#start_parser-0">start_parser/0</a></td><td>Initialize the Expat port driver with default options.</td></tr>
+<tr><td valign="top"><a href="#start_parser-1">start_parser/1</a></td><td>Initialize the Expat port driver with given <code>Options</code>.</td></tr>
+<tr><td valign="top"><a href="#stop_parser-1">stop_parser/1</a></td><td>Stop the Expat port driver.</td></tr>
+<tr><td valign="top"><a href="#xmlel_to_xmlelement-1">xmlel_to_xmlelement/1</a></td><td>Convert an <a href="#type-xmlel"><code>xmlel()</code></a> to an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> tuple.</td></tr>
+<tr><td valign="top"><a href="#xmlel_to_xmlelement-3">xmlel_to_xmlelement/3</a></td><td>Convert an <a href="#type-xmlel"><code>xmlel()</code></a> to an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> tuple.</td></tr>
+<tr><td valign="top"><a href="#xmlelement_to_xmlel-1">xmlelement_to_xmlel/1</a></td><td>Convert an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> to an <a href="#type-xmlel"><code>xmlel()</code></a>  
+tuple.</td></tr>
+<tr><td valign="top"><a href="#xmlelement_to_xmlel-3">xmlelement_to_xmlel/3</a></td><td>Convert an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> to an <a href="#type-xmlel"><code>xmlel()</code></a>  
+tuple.</td></tr>
+<tr><td valign="top"><a href="#xmlelement_to_xmlel_and_nss_tables-3">xmlelement_to_xmlel_and_nss_tables/3</a></td><td>Convert an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> to an <a href="#type-xmlel"><code>xmlel()</code></a>  
+tuple.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="add_known_elems-2">add_known_elems/2</a></h3>
+<div class="spec">
+<p><tt>add_known_elems(List_Name, List) -&gt; ok</tt>
+<ul class="definitions"><li><tt>List_Name = atom()</tt></li><li><tt>List = [Name]</tt></li><li><tt>Name = atom()</tt></li></ul></p>
+</div><p><p>Tell parsers that <code>Names_List</code> are known element names.</p>
+ 
+  If <code>check_elems</code> is enabled, all occurences of these names will be
+  represented as an atom().</p>
+
+<h3 class="function"><a name="add_known_nss-2">add_known_nss/2</a></h3>
+<div class="spec">
+<p><tt>add_known_nss(List_Name, List) -&gt; ok</tt>
+<ul class="definitions"><li><tt>List_Name = atom()</tt></li><li><tt>List = [NS]</tt></li><li><tt>NS = atom()</tt></li></ul></p>
+</div><p><p>Tell parsers that <code>NS_List</code> are known namespaces.</p>
+ 
+  If <code>check_nss</code> is enabled, all occurences of these namespaces will be
+  represented as an atom().</p>
+
+<h3 class="function"><a name="append_cdata-2">append_cdata/2</a></h3>
+<div class="spec">
+<p><tt>append_cdata(Xmlel::XML_Element, CData) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>CData = binary() | string() | atom() | integer()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Append <code>Child</code> to <code>XML_Element</code>'s children list.</p>
+
+<h3 class="function"><a name="append_cdata_to_list-2">append_cdata_to_list/2</a></h3>
+<div class="spec">
+<p><tt>append_cdata_to_list(Children, CData) -&gt; New_Children</tt>
+<ul class="definitions"><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li><li><tt>CData = binary() | string() | atom() | integer()</tt></li><li><tt>New_Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>]</tt></li></ul></p>
+</div><p>Append <code>CData</code> to <code>Children</code> list.</p>
+
+<h3 class="function"><a name="append_child-2">append_child/2</a></h3>
+<div class="spec">
+<p><tt>append_child(Xmlel::XML_Element, Child) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Child = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Append <code>Child</code> to <code>XML_Element</code>'s children list.</p>
+
+<h3 class="function"><a name="append_children-2">append_children/2</a></h3>
+<div class="spec">
+<p><tt>append_children(Xmlel::XML_Element, New_Children::Children) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>]</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Append every <code>Children</code> to <code>XML_Element</code>'s children list.</p>
+
+<h3 class="function"><a name="attribute-2">attribute/2</a></h3>
+<div class="spec">
+<p><tt>attribute(Name, Value) -&gt; Attr</tt>
+<ul class="definitions"><li><tt>Name = binary()</tt></li><li><tt>Value = binary() | string() | atom() | integer()</tt></li><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a></tt></li></ul></p>
+</div><p><p>Create an XML attribute with the name <code>Name</code>.</p>
+ 
+  This is almost the same as:
+  <pre>  Attr = #xmlattr{name = Name, value = Value}.</pre></p>
+
+<h3 class="function"><a name="attribute-3">attribute/3</a></h3>
+<div class="spec">
+<p><tt>attribute(NS, Name, Value) -&gt; Attr</tt>
+<ul class="definitions"><li><tt>NS = atom() | string() | undefined</tt></li><li><tt>Name = binary()</tt></li><li><tt>Value = binary() | string() | atom() | integer()</tt></li><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a></tt></li></ul></p>
+</div><p><p>Create an XML attribute with the name <code>Name</code> in the namespace <code>NS</code>.</p>
+ 
+  This is almost the same as:
+  <pre>  Attr = #xmlattr{ns = NS, name = Name, value = Value}.</pre></p>
+
+<h3 class="function"><a name="attribute_matches-2">attribute_matches/2</a></h3>
+<div class="spec">
+<p><tt>attribute_matches(Xmlattr::Attr, Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a> | <a href="#type-xmlattr_old">xmlattr_old()</a></tt></li><li><tt>Name = string() | binary()</tt></li></ul></p>
+</div><p><p>Tell if <code>Attr</code> is named <code>Name</code>.</p>
+ 
+  It takes care of comparison between string and atom.</p>
+
+<h3 class="function"><a name="attribute_matches-3">attribute_matches/3</a></h3>
+<div class="spec">
+<p><tt>attribute_matches(Attr, NS, Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a></tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Name = string() | binary()</tt></li></ul></p>
+</div><p><p>Tell if <code>Attr</code> has the namespace <code>NS</code> and is named <code>Name</code>.</p>
+ 
+  It takes care of comparison between string and atom.</p>
+
+<h3 class="function"><a name="cdata-1">cdata/1</a></h3>
+<div class="spec">
+<p><tt>cdata(CData::Value) -&gt; CData</tt>
+<ul class="definitions"><li><tt>Value = binary() | string() | atom() | integer()</tt></li><li><tt>CData = <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p>Create a CData node from a value.</p>
+
+<h3 class="function"><a name="clear_endtag_tuples-1">clear_endtag_tuples/1</a></h3>
+<div class="spec">
+<p><tt>clear_endtag_tuples(XML_Elements) -&gt; Cleaned_XML_Elements</tt>
+<ul class="definitions"><li><tt>XML_Elements = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a> | <a href="#type-xmlendtag">xmlendtag()</a>]</tt></li><li><tt>Cleaned_XML_Elements = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>]</tt></li></ul></p>
+</div><p><p>Remove any <a href="#type-xmlendtag"><code>xmlendtag()</code></a>  
+from the list of XML elements.</p>
+ 
+  This is primarily designed to work on returned value of <a href="#parse-2"><code>parse/2</code></a> and <a href="#parse_final-2"><code>parse_final/2</code></a> when the <code>no_endtag</code> parser
+  option (see <a href="#type-xmlparseroption"><code>xmlparseroption()</code></a>) wasn't specified at <a href="#start_parser-1"><code>start_parser/1</code></a> time.</p>
+
+<h3 class="function"><a name="declare_ns_here-3">declare_ns_here/3</a></h3>
+<div class="spec">
+<p><tt>declare_ns_here(Xmlel::XML_Element, NS, Prefix) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Prefix = string() | none</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p>Declare the given namespace in this element.
+ </p>
+
+<h3 class="function"><a name="deindent_document-1">deindent_document/1</a></h3>
+<div class="spec">
+<p><tt>deindent_document(Xmlel::XML_Element) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Recursively remove text nodes containing only whitespaces.
+ </p>
+<p><b>See also:</b> <a href="#is_whitespace-1">is_whitespace/1</a>.</p>
+
+<h3 class="function"><a name="document_to_binary-1">document_to_binary/1</a></h3>
+<div class="spec">
+<p><tt>document_to_binary(El::XML_Element) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | list()</tt></li><li><tt>XML_Text = binary()</tt></li></ul></p>
+</div><p><p>Serialize an XML document to text.</p>
+ 
+  Converting to binary is about 15% to 20% faster than converting to a
+  list.</p>
+
+<h3 class="function"><a name="document_to_iolist-1">document_to_iolist/1</a></h3>
+<div class="spec">
+<p><tt>document_to_iolist(El::XML_Element) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | list()</tt></li><li><tt>XML_Text = iolist()</tt></li></ul></p>
+</div><p>Serialize an XML document to text.</p>
+
+<h3 class="function"><a name="document_to_list-1">document_to_list/1</a></h3>
+<div class="spec">
+<p><tt>document_to_list(El::XML_Element) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | list()</tt></li><li><tt>XML_Text = string()</tt></li></ul></p>
+</div><p>Serialize an XML document to text.</p>
+
+<h3 class="function"><a name="element-1">element/1</a></h3>
+<div class="spec">
+<p><tt>element(Name) -&gt; XML_Element</tt>
+<ul class="definitions"><li><tt>Name = atom() | string()</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p><p>Create an XML element with the name <code>Name</code> but no namespace.</p>
+ 
+  <p>Caution: be sure you do not want to set a namespace: it won't be  
+inherited from the parent node!</p>
+ 
+  This is the same as:
+  <pre>  XML_Element = #xmlel{name = Name}.</pre></p>
+
+<h3 class="function"><a name="element-2">element/2</a></h3>
+<div class="spec">
+<p><tt>element(NS, Name) -&gt; XML_Element</tt>
+<ul class="definitions"><li><tt>NS = atom() | string() | undefined</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p><p>Create an XML element with the name <code>Name</code> in the namespace <code>NS</code>.</p>
+ 
+  This is the same as:
+  <pre>  XML_Element = #xmlel{ns = NS, name = Name}.</pre></p>
+
+<h3 class="function"><a name="element-4">element/4</a></h3>
+<div class="spec">
+<p><tt>element(NS, Name, Attrs, Children) -&gt; XML_Element</tt>
+<ul class="definitions"><li><tt>NS = atom() | string() | undefined</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>Children = [<a href="#type-xmlcdata">xmlcdata()</a>]</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p><p>Create an XML element with the name <code>Name</code> in the namespace <code>NS</code>.</p>
+ 
+  This is the same as:
+  <pre>  XML_Element = #xmlel{ns = NS, name = Name}.</pre></p>
+
+<h3 class="function"><a name="element_matches-2">element_matches/2</a></h3>
+<div class="spec">
+<p><tt>element_matches(Xmlel::XML_Element, Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Name = atom() | string()</tt></li></ul></p>
+</div><p><p>Tell if <code>XML_Element</code> is named <code>Name</code>.</p>
+ 
+  It takes care of comparison between string and atom.</p>
+
+<h3 class="function"><a name="element_matches-3">element_matches/3</a></h3>
+<div class="spec">
+<p><tt>element_matches(Xmlel::XML_Element, NS, Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Name = atom() | string()</tt></li></ul></p>
+</div><p><p>Tell if <code>XML_Element</code> has the namespace <code>NS</code> and is named <code>Name</code>.</p>
+ 
+  It takes care of comparison between string and atom.</p>
+
+<h3 class="function"><a name="element_matches_by_ns-2">element_matches_by_ns/2</a></h3>
+<div class="spec">
+<p><tt>element_matches_by_ns(Xmlel::XML_Element, NS) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li></ul></p>
+</div><p><p>Tell if <code>XML_Element</code> has the namespace <code>NS</code>.</p>
+ 
+  It takes care of comparison between string and atom.</p>
+
+<h3 class="function"><a name="escape_using_cdata-1">escape_using_cdata/1</a></h3>
+<div class="spec">
+<p><tt>escape_using_cdata(CData) -&gt; Escaped_CData</tt>
+<ul class="definitions"><li><tt>CData = string() | binary()</tt></li><li><tt>Escaped_CData = string() | binary()</tt></li></ul></p>
+</div><p>Escape text using CDATA sections.</p>
+
+<h3 class="function"><a name="escape_using_entities-1">escape_using_entities/1</a></h3>
+<div class="spec">
+<p><tt>escape_using_entities(CData) -&gt; Escaped_CData</tt>
+<ul class="definitions"><li><tt>CData = string() | binary()</tt></li><li><tt>Escaped_CData = string() | binary()</tt></li></ul></p>
+</div><p><p>Replace sensible characters with entities.</p>
+ 
+  Processed characters are <tt>&amp;</tt>, <tt>&lt;</tt>,
+  <tt>&gt;</tt>, <tt>"</tt>, <tt>'</tt>.</p>
+
+<h3 class="function"><a name="filter-2">filter/2</a></h3>
+<div class="spec">
+<p><tt>filter(Pred, Xmlel::XML_Element) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>Pred = function()</tt></li><li><tt>Child = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Remove any children for which <code>Pred(Child)</code> doesn't return <code>true</code>.</p>
+ 
+  <code>Pred</code> has the following prototype:
+  <pre>  fun(XML_Element, Child) -&gt; bool()</pre>
+ 
+  If <code>children</code> is <code>undefined</code>, the function isn't called.</p>
+
+<h3 class="function"><a name="fold-3">fold/3</a></h3>
+<div class="spec">
+<p><tt>fold(Fun, Acc0, Xmlel::XML_Element) -&gt; Acc1</tt>
+<ul class="definitions"><li><tt>Fun = function()</tt></li><li><tt>Acc_In = term()</tt></li><li><tt>Child = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Acc_Out = term()</tt></li><li><tt>Acc0 = term()</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Acc1 = term()</tt></li></ul></p>
+</div><p><p>Call <code>Fun</code> for each <code>XML_Element</code>'s children and return the last  
+accumulator.</p>
+ 
+  <code>Fun</code> has the following prototype:
+  <pre>  fun(Acc_In, XML_Element, Child) -&gt; Acc_Out</pre></p>
+
+<h3 class="function"><a name="foreach-2">foreach/2</a></h3>
+<div class="spec">
+<p><tt>foreach(Fun, Xmlel::XML_Element) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Fun = function()</tt></li><li><tt>Child = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Call <code>Fun</code> for each <code>XML_Element</code>'s children.</p>
+ 
+  <p><code>Fun</code> return value is ignored.</p>
+ 
+  <code>Fun</code> has the following prototype:
+  <pre>  fun(XML_Element, Child) -&gt; Ignored</pre></p>
+
+<h3 class="function"><a name="get_attribute-3">get_attribute/3</a></h3>
+<div class="spec">
+<p><tt>get_attribute(Xmlel::XML_Element, Name::Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = binary() | string()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code>.</p>
+ 
+  The return type depends on attributes type in <code>XML_Element</code>:
+  <ul>
+  <li><code>binary()</code> with <a href="#type-xmlattr"><code>xmlattr()</code></a></li>
+  <li><code>list()</code> with <a href="#type-xmlattr_old"><code>xmlattr_old()</code></a></li>
+  </ul>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute-4">get_attribute/4</a></h3>
+<div class="spec">
+<p><tt>get_attribute(Xmlel::XML_Element, NS, Name::Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = binary()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI.</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_as_binary-3">get_attribute_as_binary/3</a></h3>
+<div class="spec">
+<p><tt>get_attribute_as_binary(Xmlel::XML_Element, Name::Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = binary()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code>, as a  
+binary().</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_as_binary-4">get_attribute_as_binary/4</a></h3>
+<div class="spec">
+<p><tt>get_attribute_as_binary(Xmlel::XML_Element, NS, Name::Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = binary()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI, as a binary().</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_as_list-3">get_attribute_as_list/3</a></h3>
+<div class="spec">
+<p><tt>get_attribute_as_list(Xmlel::XML_Element, Name::Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = list()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code>, as a  
+list().</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_as_list-4">get_attribute_as_list/4</a></h3>
+<div class="spec">
+<p><tt>get_attribute_as_list(Xmlel::XML_Element, NS, Name::Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = list()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI, as a list().</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_from_list-3">get_attribute_from_list/3</a></h3>
+<div class="spec">
+<p><tt>get_attribute_from_list(Attrs, Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = binary() | string()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> from the list.</p>
+ 
+  The return type depends on <code>Attrs</code> type:
+  <ul>
+  <li><code>binary()</code> with <a href="#type-xmlattr"><code>xmlattr()</code></a></li>
+  <li><code>list()</code> with <a href="#type-xmlattr_old"><code>xmlattr_old()</code></a></li>
+  </ul>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_from_list-4">get_attribute_from_list/4</a></h3>
+<div class="spec">
+<p><tt>get_attribute_from_list(Attrs, NS, Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = binary()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> from the
+  list with the <code>NS</code> namespace URI.</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_from_list_as_binary-3">get_attribute_from_list_as_binary/3</a></h3>
+<div class="spec">
+<p><tt>get_attribute_from_list_as_binary(Attrs, Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = binary()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> from the  
+list, as a binary().</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_from_list_as_binary-4">get_attribute_from_list_as_binary/4</a></h3>
+<div class="spec">
+<p><tt>get_attribute_from_list_as_binary(Attrs, NS, Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = binary()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI from the list, as a binary().</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_from_list_as_list-3">get_attribute_from_list_as_list/3</a></h3>
+<div class="spec">
+<p><tt>get_attribute_from_list_as_list(Attrs, Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = list()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> from the  
+list, as a list().</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_from_list_as_list-4">get_attribute_from_list_as_list/4</a></h3>
+<div class="spec">
+<p><tt>get_attribute_from_list_as_list(Attrs, NS, Attr_Name, Default) -&gt; Attr_Value | Default</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Default = term()</tt></li><li><tt>Attr_Value = list()</tt></li></ul></p>
+</div><p><p>Return the value of the attribute named <code>Attr_Name</code> with the
+  <code>NS</code> namespace URI from the list, as a list().</p>
+ 
+  Return <code>Default</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_node-2">get_attribute_node/2</a></h3>
+<div class="spec">
+<p><tt>get_attribute_node(Xmlel::XML_Element, Name::Attr_Name) -&gt; Attr | undefined</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a> | <a href="#type-xmlattr_old">xmlattr_old()</a></tt></li></ul></p>
+</div><p><p>Return the attribute named <code>Attr_Name</code>.</p>
+ 
+  Return <code>undefined</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_node-3">get_attribute_node/3</a></h3>
+<div class="spec">
+<p><tt>get_attribute_node(Xmlel::XML_Element, NS, Name::Attr_Name) -&gt; Attr | undefined</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a></tt></li></ul></p>
+</div><p><p>Return the attribute named <code>Attr_Name</code> with the <code>NS</code> namespace URI.</p>
+ 
+  Return <code>undefined</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_node_from_list-2">get_attribute_node_from_list/2</a></h3>
+<div class="spec">
+<p><tt>get_attribute_node_from_list(Rest::Attrs, Name::Attr_Name) -&gt; Attr | undefined</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a> | <a href="#type-xmlattr_old">xmlattr_old()</a></tt></li></ul></p>
+</div><p><p>Return the attribute named <code>Attr_Name</code> from the list.</p>
+ 
+  Return <code>undefined</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_attribute_node_from_list-3">get_attribute_node_from_list/3</a></h3>
+<div class="spec">
+<p><tt>get_attribute_node_from_list(Rest::Attrs, NS, Name::Attr_Name) -&gt; Attr | undefined</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a></tt></li></ul></p>
+</div><p><p>Return the attribute named <code>Attr_Name</code> from the list with the
+  <code>NS</code> namespace URI.</p>
+ 
+  Return <code>undefined</code> if the attribute isn't found.</p>
+
+<h3 class="function"><a name="get_cdata-1">get_cdata/1</a></h3>
+<div class="spec">
+<p><tt>get_cdata(Xmlel::XML_Element) -&gt; CData</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>CData = binary()</tt></li></ul></p>
+</div><p><p>Concatenate and return any character data of the given XML  
+element.</p>
+ 
+  This function is <code>get_tag_cdata/1</code> renamed in <code>get_cdata/1</code>. It
+  doesn't take a list of children like the old <code>get_cdata/1</code>, use
+  <a href="#get_cdata_from_list-1"><code>get_cdata_from_list/1</code></a> for this purpose!</p>
+
+<h3 class="function"><a name="get_cdata_as_list-1">get_cdata_as_list/1</a></h3>
+<div class="spec">
+<p><tt>get_cdata_as_list(XML_Element) -&gt; CData</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>CData = string()</tt></li></ul></p>
+</div><p>Concatenate and return any character data of the given XML
+  element.</p>
+
+<h3 class="function"><a name="get_cdata_from_list-1">get_cdata_from_list/1</a></h3>
+<div class="spec">
+<p><tt>get_cdata_from_list(Children) -&gt; CData</tt>
+<ul class="definitions"><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li><li><tt>CData = binary()</tt></li></ul></p>
+</div><p>Concatenate and return any character data from the given
+  children list.</p>
+
+<h3 class="function"><a name="get_cdata_from_list_as_list-1">get_cdata_from_list_as_list/1</a></h3>
+<div class="spec">
+<p><tt>get_cdata_from_list_as_list(Children) -&gt; CData</tt>
+<ul class="definitions"><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li><li><tt>CData = string()</tt></li></ul></p>
+</div><p>Concatenate and return any character data from the given
+  children list.</p>
+
+<h3 class="function"><a name="get_child_elements-1">get_child_elements/1</a></h3>
+<div class="spec">
+<p><tt>get_child_elements(Xmlel::XML_Element) -&gt; [XML_Subelement]</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>XML_Subelement = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Get all the element children of the given element, skipping
+  non-element nodes likes cdata.</p>
+
+<h3 class="function"><a name="get_element-2">get_element/2</a></h3>
+<div class="spec">
+<p><tt>get_element(Xmlel::XML_Element, Name) -&gt; XML_Subelement | undefined</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>XML_Subelement = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Search in the children of <code>XML_Element</code> an element named <code>Name</code>.</p>
+ 
+  If no element with the given name is found, it returns <code>undefined</code>.
+  This will only search among direct children.</p>
+
+<h3 class="function"><a name="get_element-3">get_element/3</a></h3>
+<div class="spec">
+<p><tt>get_element(Xmlel::XML_Element, NS, Name) -&gt; XML_Subelement | undefined</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>XML_Subelement = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p><p>Search in the children of <code>XML_Element</code> an element named <code>Name</code>
+  with <code>NS</code> namespace URI.</p>
+ 
+  If no element with the given name is found, it returns <code>undefined</code>.
+  This will only search among direct children.</p>
+
+<h3 class="function"><a name="get_element_by_ns-2">get_element_by_ns/2</a></h3>
+<div class="spec">
+<p><tt>get_element_by_ns(Xmlel::XML_Element, NS) -&gt; XML_Subelement | undefined</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>XML_Subelement = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p><p>Search in the children of <code>XML_Element</code> the first element with
+  <code>NS</code> namespace URI.</p>
+ 
+  <p>If no element with the given namespace is found, it returns
+  <code>undefined</code>. This will only search among direct children.</p>
+ 
+  This function is particularly usefull to extract XMPP error codes.</p>
+
+<h3 class="function"><a name="get_elements-2">get_elements/2</a></h3>
+<div class="spec">
+<p><tt>get_elements(Xmlel::XML_Element, Name) -&gt; [XML_Subelement]</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>XML_Subelement = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Search in the children of <code>XML_Element</code> for all the elements
+  named <code>Name</code></p>
+ 
+  This will only search among direct children.</p>
+
+<h3 class="function"><a name="get_elements-3">get_elements/3</a></h3>
+<div class="spec">
+<p><tt>get_elements(Xmlel::XML_Element, NS, Name) -&gt; [XML_Subelement]</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>XML_Subelement = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p><p>Search in the children of <code>XML_Element</code> for all the elements
+  named <code>Name</code> with <code>NS</code> namespace URI.</p>
+ 
+  This will only search among direct children.</p>
+
+<h3 class="function"><a name="get_engine_driver-1">get_engine_driver/1</a></h3>
+<div class="spec">
+<p><tt>get_engine_driver(Engine_Name) -&gt; Driver_Name</tt>
+<ul class="definitions"><li><tt>Engine_Name = atom()</tt></li><li><tt>Driver_Name = atom() | undefined</tt></li></ul></p>
+</div><p>Return the port driver name associated to the given engine.</p>
+
+<h3 class="function"><a name="get_engine_names-0">get_engine_names/0</a></h3>
+<div class="spec">
+<p><tt>get_engine_names() -&gt; [Engine_Name]</tt>
+<ul class="definitions"><li><tt>Engine_Name = atom()</tt></li></ul></p>
+</div><p>Return the list of XML engines.</p>
+
+<h3 class="function"><a name="get_name_as_atom-1">get_name_as_atom/1</a></h3>
+<div class="spec">
+<p><tt>get_name_as_atom(Xmlel::XML_Element) -&gt; Name</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Name = atom()</tt></li></ul></p>
+</div><p>Return the name of an element as atom, regardless of the
+  original encoding.</p>
+
+<h3 class="function"><a name="get_name_as_list-1">get_name_as_list/1</a></h3>
+<div class="spec">
+<p><tt>get_name_as_list(Xmlel::XML_Element) -&gt; Name</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Name = list()</tt></li></ul></p>
+</div><p>Return the name of an element as list, regardless of the
+  original encoding.</p>
+
+<h3 class="function"><a name="get_ns_as_atom-1">get_ns_as_atom/1</a></h3>
+<div class="spec">
+<p><tt>get_ns_as_atom(Xmlel::XML_Element) -&gt; NS | undefined</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li><li><tt>NS = atom()</tt></li></ul></p>
+</div><p>Return the namespace as an atom, regardless of the original
+  encoding.</p>
+
+<h3 class="function"><a name="get_ns_as_list-1">get_ns_as_list/1</a></h3>
+<div class="spec">
+<p><tt>get_ns_as_list(Xmlel::XML_Element) -&gt; NS | undefined</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li><li><tt>NS = string()</tt></li></ul></p>
+</div><p>Return the namespace as a string, regardless of the original
+  encoding.</p>
+
+<h3 class="function"><a name="get_path-2">get_path/2</a></h3>
+<div class="spec">
+<p><tt>get_path(XML_Element, Path) -&gt; XML_Subelement | Attr_Value | CData | Not_Found</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Path = [<a href="#type-pathcomponent">pathcomponent()</a>]</tt></li><li><tt>XML_Subelement = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Attr_Value = string()</tt></li><li><tt>CData = binary()</tt></li><li><tt>Not_Found = [] | binary() | undefined</tt></li></ul></p>
+</div><p>throws <tt>{xml, path, ending_component_not_at_the_end, Path} | {xml, path, invalid_component, Path}</tt></p>
+<p><p>Follow the given path and return what's pointed by the last  
+component of it.</p>
+ 
+  <code>Path</code> is a list of path components. If a component points to an
+  <a href="#type-xmlel"><code>xmlel()</code></a> or <a href="#type-xmlel_old"><code>xmlel_old()</code></a>, the function will
+  look for this element and will use it as a base for the next path
+  component. If a component points to an attribute, the function will
+  look for this attribute in the current element and return its value
+  (see <a href="#get_attribute-2"><code>get_attribute/2</code></a> for the possible return values).
+  If a component asks for character data, the function will return
+  character data for the current element (see <a href="#get_cdata-1"><code>get_cdata/1</code></a>
+  for possible return values). A path will not be followed further
+  after an attribute or a character data component. If an XML element
+  isn't found while walking through the path, an empty string is
+  returned.</p>
+
+<h3 class="function"><a name="has_attribute-2">has_attribute/2</a></h3>
+<div class="spec">
+<p><tt>has_attribute(Xmlel::XML_Element, Name::Attr_Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Attr_Name = binary()</tt></li></ul></p>
+</div><p>Check the presence for attribute <code>Attr_Name</code> in the XML element.</p>
+
+<h3 class="function"><a name="has_attribute-3">has_attribute/3</a></h3>
+<div class="spec">
+<p><tt>has_attribute(Xmlel::XML_Element, NS, Name::Attr_Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li></ul></p>
+</div><p>Check the presence for attribute <code>Attr_Name</code> with namespace <code>NS</code>
+  in the XML element.</p>
+
+<h3 class="function"><a name="has_attribute_in_list-2">has_attribute_in_list/2</a></h3>
+<div class="spec">
+<p><tt>has_attribute_in_list(Attrs, Name::Attr_Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Attr_Name = binary()</tt></li></ul></p>
+</div><p>Check the presence for attribute <code>Attr_Name</code> in the list.</p>
+
+<h3 class="function"><a name="has_attribute_in_list-3">has_attribute_in_list/3</a></h3>
+<div class="spec">
+<p><tt>has_attribute_in_list(Attrs, NS, Name::Attr_Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li></ul></p>
+</div><p>Check the presence for attribute <code>Attr_Name</code> with namespace <code>NS</code>
+  in the list.</p>
+
+<h3 class="function"><a name="has_element-2">has_element/2</a></h3>
+<div class="spec">
+<p><tt>has_element(XML_Element, Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Name = atom() | string()</tt></li></ul></p>
+</div><p>Check the presence for element <code>Name</code> in the children.</p>
+
+<h3 class="function"><a name="has_element-3">has_element/3</a></h3>
+<div class="spec">
+<p><tt>has_element(XML_Element, NS, Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Name = atom() | string()</tt></li></ul></p>
+</div><p>Check the presence for element <code>Name</code> with <code>NS</code> namespace URI in
+  the children.</p>
+
+<h3 class="function"><a name="has_element_by_ns-2">has_element_by_ns/2</a></h3>
+<div class="spec">
+<p><tt>has_element_by_ns(XML_Element, NS) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li></ul></p>
+</div><p>Check the presence for any elements with <code>NS</code> namespace URI in
+  the children.</p>
+
+<h3 class="function"><a name="indent_document-2">indent_document/2</a></h3>
+<div class="spec">
+<p><tt>indent_document(El::XML_Element, Indent) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Indent = binary()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Add whitespaces text nodes to indent the document.</p>
+ 
+  Indentation of <a href="#type-xmlendtag"><code>xmlendtag()</code></a> isn't supported yet.</p>
+
+<h3 class="function"><a name="indent_document-3">indent_document/3</a></h3>
+<div class="spec">
+<p><tt>indent_document(El::XML_Element, Indent, Previous_Total) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Indent = binary()</tt></li><li><tt>Previous_Total = binary()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Add whitespaces text nodes to indent the document.</p>
+ 
+  Indentation of <a href="#type-xmlendtag"><code>xmlendtag()</code></a> isn't supported yet.</p>
+
+<h3 class="function"><a name="internal_escaping_function_name-0">internal_escaping_function_name/0</a></h3>
+<div class="spec">
+<p><tt>internal_escaping_function_name() -&gt; escape_using_entities | escape_using_cdata</tt><br></p>
+</div><p>Tell what escaping function will be used internally.</p>
+
+<h3 class="function"><a name="is_engine_available-1">is_engine_available/1</a></h3>
+<div class="spec">
+<p><tt>is_engine_available(Engine_Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Engine_Name = atom()</tt></li></ul></p>
+</div><p>Tell if <code>Engine_Name</code> is available.</p>
+
+<h3 class="function"><a name="is_ns_declared_here-2">is_ns_declared_here/2</a></h3>
+<div class="spec">
+<p><tt>is_ns_declared_here(Xmlel::XML_Element, NS) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li><li><tt>NS = atom() | string()</tt></li></ul></p>
+</div><p>Tell if <code>NS</code> was declared within this element.
+ </p>
+
+<h3 class="function"><a name="is_whitespace-1">is_whitespace/1</a></h3>
+<div class="spec">
+<p><tt>is_whitespace(Xmlcdata::CData) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>CData = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Tell if a text node contains only whitespaces.</p>
+ 
+  <p>Of course, if an XML element is given in argument, it will return
+ <code>false</code>.</p>
+ 
+  Whitespaces are <code>\s</code>, <code>\t</code>, <code>\n</code> and <code>\r</code>.</p>
+
+<h3 class="function"><a name="map-2">map/2</a></h3>
+<div class="spec">
+<p><tt>map(Fun::fun((<a href="#type-xmlel_any">xmlel_any()</a>, <a href="#type-xmlnode">xmlnode()</a>) -&gt; <a href="#type-xmlnode">xmlnode()</a>), Xmlel::<a href="#type-xmlel_any">xmlel_any()</a>) -&gt; <a href="#type-xmlel_any">xmlel_any()</a></tt><br></p>
+</div><p><p>Apply <code>Fun</code> on each child and replace the original one with the  
+function return value.</p>
+ 
+  <code>Fun</code> has the following prototype:
+  <pre>  fun(XML_Element, Child) -&gt; New_Child</pre>
+ 
+  If <code>children</code> is <code>undefined</code>, the function isn't called.</p>
+
+<h3 class="function"><a name="node_to_binary-3">node_to_binary/3</a></h3>
+<div class="spec">
+<p><tt>node_to_binary(El, Default_NS, Prefixed_NS) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a> | list()</tt></li><li><tt>Default_NS = [NS | Equivalent_NSs]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom()</tt></li><li><tt>Equivalent_NSs = [NS]</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_Text = binary()</tt></li></ul></p>
+</div><p><p>Serialize an XML node to text.</p>
+ 
+  Converting to binary is about 15% to 20% faster than converting to a
+  list.</p>
+
+<h3 class="function"><a name="node_to_iolist-3">node_to_iolist/3</a></h3>
+<div class="spec">
+<p><tt>node_to_iolist(El::XML_Element, Default_NS, Prefixed_NS) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a> | list()</tt></li><li><tt>Default_NS = [NS | Equivalent_NSs]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom()</tt></li><li><tt>Equivalent_NSs = [NS]</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_Text = iolist()</tt></li></ul></p>
+</div><p><p>Serialize an XML node to text.</p>
+ 
+  Converting to iolist is about 40% to 50% faster than converting to a
+  list.
+ </p>
+
+<h3 class="function"><a name="node_to_list-3">node_to_list/3</a></h3>
+<div class="spec">
+<p><tt>node_to_list(El::XML_Element, Default_NS, Prefixed_NS) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a> | list()</tt></li><li><tt>Default_NS = [NS | Equivalent_NSs]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom()</tt></li><li><tt>Equivalent_NSs = [NS]</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_Text = string()</tt></li></ul></p>
+</div><p><p>Serialize an XML node to text.</p>
+ 
+  <code>Default_NS</code> and <code>Prefixed_NS</code> contain namespace declaration which
+  occured above this node in the tree. The order in the first list is
+  important: declarations are sorted from the most recent one to the
+  oldest one.</p>
+
+<h3 class="function"><a name="normalize_cdata-1">normalize_cdata/1</a></h3>
+<div class="spec">
+<p><tt>normalize_cdata(Xmlel::XML_Element) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Regroup all splitted <a href="#type-xmlcdata"><code>xmlcdata()</code></a> in a unique one  
+and remove empty ones.</p>
+ 
+  One caveats is the reconstructed <a href="#type-xmlcdata"><code>xmlcdata()</code></a> is appended at
+  the end of the children list.</p>
+
+<h3 class="function"><a name="normalize_cdata_in_list-1">normalize_cdata_in_list/1</a></h3>
+<div class="spec">
+<p><tt>normalize_cdata_in_list(Children) -&gt; New_Children</tt>
+<ul class="definitions"><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li><li><tt>New_Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li></ul></p>
+</div><p>Regroup all splitted <a href="#type-xmlcdata"><code>xmlcdata()</code></a> in a unique one.</p>
+
+<h3 class="function"><a name="parse-2">parse/2</a></h3>
+<div class="spec">
+<p><tt>parse(Parser, Data) -&gt; [XML_Element] | continue</tt>
+<ul class="definitions"><li><tt>Parser = <a href="#type-xmlparser">xmlparser()</a></tt></li><li><tt>Data = string() | binary()</tt></li><li><tt>XML_Element = <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p>throws <tt>{xml_parser, parsing, Reason, Details}</tt></p>
+<p><p>Parse a chunk from an XML stream.</p>
+ 
+  This may be called multiple times with a new chunk of data. However
+  the entire data must represent at most one and only one XML document.
+  If you want to process the last chunk of data, you should call <a href="#parser_final-2"><code>parser_final/2</code></a>. If you can't know when the end of the document
+  occurs, you may use this function to process data, then you call
+  <a href="#parse_final-2"><code>parse_final/2</code></a> with an empty string. Here is an example:
+  <pre>  fun (Parser) -&gt;
+      xml:parse(Parser, "&lt;stream ver"),
+      xml:parse(Parser, "sion='1."),
+      xml:parse(Parser, "0'&gt;&lt;/stream&gt;"),
+      xml:parser_final(Parser, "").</pre></p>
+
+<h3 class="function"><a name="parse_document-1">parse_document/1</a></h3>
+<div class="spec">
+<p><tt>parse_document(Document) -&gt; [XML_Element] | done</tt>
+<ul class="definitions"><li><tt>Document = string() | binary()</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Parse an entire XML document at once.</p>
+ 
+  Initializing a parser with <a href="#start_parser-1"><code>start_parser/1</code></a> isn't necessary,
+  this function will take care of it. It'll use default options; see
+  <a href="#start_parser-1"><code>start_parser/1</code></a> for any related informations.</p>
+
+<h3 class="function"><a name="parse_document-2">parse_document/2</a></h3>
+<div class="spec">
+<p><tt>parse_document(Document, Parser_Options) -&gt; [XML_Element] | done</tt>
+<ul class="definitions"><li><tt>Document = string() | binary()</tt></li><li><tt>Parser_Options = [<a href="#type-xmlparseroption">xmlparseroption()</a>]</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Parse an entire XML document at once.</p>
+ 
+  <p>Initializing a parser with <a href="#start_parser-1"><code>start_parser/1</code></a> isn't necessary,
+  this function will take care of it. <code>Parser_Options</code> is passed to the
+  parser; see <a href="#start_parser-1"><code>start_parser/1</code></a> for any related informations.</p>
+ 
+  Return values are the same as <a href="#parse_final-2"><code>parse_final/2</code></a>.</p>
+
+<h3 class="function"><a name="parse_document_fragment-1">parse_document_fragment/1</a></h3>
+<div class="spec">
+<p><tt>parse_document_fragment(Fragment) -&gt; [XML_Element] | continue</tt>
+<ul class="definitions"><li><tt>Fragment = string() | binary()</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Parse a fragment of an XML document at once.</p>
+ 
+  This function is useful if you do not have a complete and valid XML
+  document. For instance, something like this:
+  <pre>  &lt;element&gt;content&lt;/elem</pre>
+ 
+  Initializing a parser with <a href="#start_parser-1"><code>start_parser/1</code></a> isn't necessary,
+  this function will take care of it. It'll use default options, but
+  will set <code>{root_depth, none}</code> (which can be overriden); see <a href="#start_parser-1"><code>start_parser/1</code></a> for any related informations.</p>
+
+<h3 class="function"><a name="parse_document_fragment-2">parse_document_fragment/2</a></h3>
+<div class="spec">
+<p><tt>parse_document_fragment(Fragment, Parser_Options) -&gt; [XML_Element] | continue</tt>
+<ul class="definitions"><li><tt>Fragment = string() | binary()</tt></li><li><tt>Parser_Options = [<a href="#type-xmlparseroption">xmlparseroption()</a>]</tt></li><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Parse a fragment of an XML document at once.</p>
+ 
+  This function is useful if you do not have a complete and valid XML
+  document. For instance, something like this:
+  <pre>  &lt;element&gt;content&lt;/elem</pre>
+ 
+  <p>Initializing a parser with <a href="#start_parser-1"><code>start_parser/1</code></a> isn't necessary,
+  this function will take care of it. <code>Parser_Options</code> is passed to the
+  parser but <code>{root_depth, none}</code> is prepended (this can be overriden);
+  see <a href="#start_parser-1"><code>start_parser/1</code></a> for any related informations.</p>
+ 
+  Return values are the same as <a href="#parse_final-2"><code>parse_final/2</code></a>.</p>
+
+<h3 class="function"><a name="parse_final-2">parse_final/2</a></h3>
+<div class="spec">
+<p><tt>parse_final(Parser, Data) -&gt; [XML_Element] | done</tt>
+<ul class="definitions"><li><tt>Parser = <a href="#type-xmlparser">xmlparser()</a></tt></li><li><tt>Data = string() | binary()</tt></li><li><tt>XML_Element = <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlendtag">xmlendtag()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p>throws <tt>{xml_parser, parsing, Reason, Details}</tt></p>
+<p><p>Parse the last chunk from an XML stream.</p>
+ 
+  This is used when you know there won't be any more data to process.
+  This last chunk must provide the end of the XML document or the
+  parser will return an error. This function may also be used to
+  process an entire XML document in one pass.
+ </p>
+<p><b>See also:</b> <a href="#parse-2"><code>parse/2</code> for an example</a>.</p>
+
+<h3 class="function"><a name="prepend_child-2">prepend_child/2</a></h3>
+<div class="spec">
+<p><tt>prepend_child(Xmlel::XML_Element, Child) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Child = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Prepend <code>Child</code> to <code>XML_Element</code>'s children list.</p>
+
+<h3 class="function"><a name="prepend_children-2">prepend_children/2</a></h3>
+<div class="spec">
+<p><tt>prepend_children(Xmlel::XML_Element, New_Children::Children) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>]</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Prepend every <code>Children</code> to <code>XML_Element</code>'s children list.</p>
+
+<h3 class="function"><a name="register_engine-2">register_engine/2</a></h3>
+<div class="spec">
+<p><tt>register_engine(Name, Driver) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Name = atom()</tt></li><li><tt>Driver = atom()</tt></li></ul></p>
+</div><p>Add a new XML engine.</p>
+
+<h3 class="function"><a name="register_engine-3">register_engine/3</a></h3>
+<div class="spec">
+<p><tt>register_engine(Name, Driver_Path, Driver) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Name = atom()</tt></li><li><tt>Driver_Path = string() | undefined</tt></li><li><tt>Driver = atom()</tt></li></ul></p>
+</div><p>Add a new XML engine.</p>
+
+<h3 class="function"><a name="remove_attribute-2">remove_attribute/2</a></h3>
+<div class="spec">
+<p><tt>remove_attribute(Xmlel::XML_Element, Name::Attr_Name) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Remove attribute named <code>Attr_Name</code> and return the new element.</p>
+ 
+  If <code>Attr_Name</code> doesn't exist, this function has no effect (it won't
+  return an error).</p>
+
+<h3 class="function"><a name="remove_attribute-3">remove_attribute/3</a></h3>
+<div class="spec">
+<p><tt>remove_attribute(Xmlel::XML_Element, NS, Name::Attr_Name) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p><p>Remove attribute named <code>Attr_Name</code> with the <code>NS</code> namespace URI  
+and return the new element.</p>
+ 
+  If <code>Attr_Name</code> doesn't exist, this function has no effect (it won't
+  return an error).</p>
+
+<h3 class="function"><a name="remove_attribute_from_list-2">remove_attribute_from_list/2</a></h3>
+<div class="spec">
+<p><tt>remove_attribute_from_list(Attrs, Name::Attr_Name) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>New_Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li></ul></p>
+</div><p><p>Remove attribute named <code>Attr_Name</code> and return the new list.</p>
+ 
+  If <code>Attr_Name</code> doesn't exist, this function has no effect (it won't
+  return an error).</p>
+
+<h3 class="function"><a name="remove_attribute_from_list-3">remove_attribute_from_list/3</a></h3>
+<div class="spec">
+<p><tt>remove_attribute_from_list(Attrs, NS, Name::Attr_Name) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>New_Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li></ul></p>
+</div><p><p>Remove attribute named <code>Attr_Name</code> with the <code>NS</code> namespace URI  
+and return the new list.</p>
+ 
+  If <code>Attr_Name</code> doesn't exist, this function has no effect (it won't
+  return an error).</p>
+
+<h3 class="function"><a name="remove_cdata-1">remove_cdata/1</a></h3>
+<div class="spec">
+<p><tt>remove_cdata(Xmlel::XML_Element) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Remove any character data from the given XML element.</p>
+ 
+  This function doesn't take a list of children like the old
+  <code>remove_cdata/1</code>, use <a href="#remove_cdata_from_list-1"><code>remove_cdata_from_list/1</code></a> for this
+  purpose!</p>
+
+<h3 class="function"><a name="remove_cdata_from_list-1">remove_cdata_from_list/1</a></h3>
+<div class="spec">
+<p><tt>remove_cdata_from_list(Children) -&gt; New_Children</tt>
+<ul class="definitions"><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li><li><tt>New_Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a>] | undefined</tt></li></ul></p>
+</div><p>Remove any character data from the given XML element children
+  list.</p>
+
+<h3 class="function"><a name="remove_element-2">remove_element/2</a></h3>
+<div class="spec">
+<p><tt>remove_element(Xmlel::XML_Element, Name) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Remove the first child with the name <code>Name</code>.</p>
+
+<h3 class="function"><a name="remove_element-3">remove_element/3</a></h3>
+<div class="spec">
+<p><tt>remove_element(Xmlel::XML_Element, NS, Name) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p>Remove the first child with the name <code>Name</code> in the namespace <code>NS</code>.</p>
+
+<h3 class="function"><a name="remove_element_by_ns-2">remove_element_by_ns/2</a></h3>
+<div class="spec">
+<p><tt>remove_element_by_ns(Xmlel::XML_Element, NS) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p>Remove the first child in the namespace <code>NS</code>.</p>
+
+<h3 class="function"><a name="remove_elements-2">remove_elements/2</a></h3>
+<div class="spec">
+<p><tt>remove_elements(Xmlel::XML_Element, Name) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | undefined</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Remove all children with the name <code>Name</code>.</p>
+
+<h3 class="function"><a name="remove_elements-3">remove_elements/3</a></h3>
+<div class="spec">
+<p><tt>remove_elements(Xmlel::XML_Element, NS, Name) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p>Remove all children with the name <code>Name</code> in the namespace <code>NS</code>.</p>
+
+<h3 class="function"><a name="remove_elements_by_ns-2">remove_elements_by_ns/2</a></h3>
+<div class="spec">
+<p><tt>remove_elements_by_ns(Xmlel::XML_Element, NS) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | undefined</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p>Remove all children in the namespace <code>NS</code>.</p>
+
+<h3 class="function"><a name="remove_whitespaces-1">remove_whitespaces/1</a></h3>
+<div class="spec">
+<p><tt>remove_whitespaces(Xmlel::XML_Element) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Remove text nodes containing only whitespaces.
+ </p>
+<p><b>See also:</b> <a href="#is_whitespace-1">is_whitespace/1</a>.</p>
+
+<h3 class="function"><a name="remove_whitespaces_deeply-1">remove_whitespaces_deeply/1</a></h3>
+<div class="spec">
+<p><tt>remove_whitespaces_deeply(Xmlel::XML_Element) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Remove text nodes containing only whitespaces in every elements
+  in the given tree.
+ </p>
+<p><b>See also:</b> <a href="#is_whitespace-1">is_whitespace/1</a>.</p>
+
+<h3 class="function"><a name="remove_whitespaces_from_list-1">remove_whitespaces_from_list/1</a></h3>
+<div class="spec">
+<p><tt>remove_whitespaces_from_list(Children) -&gt; New_Children</tt>
+<ul class="definitions"><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li><li><tt>New_Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li></ul></p>
+</div><p>Remove text nodes containing only whitespaces.
+ </p>
+<p><b>See also:</b> <a href="#is_whitespace-1">is_whitespace/1</a>.</p>
+
+<h3 class="function"><a name="replace_child-3">replace_child/3</a></h3>
+<div class="spec">
+<p><tt>replace_child(Xmlel::XML_Element, Old_Child, New_Child) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Old_Child = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>New_Child = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Replace <code>Old_Child</code> by <code>New_Child</code> in <code>XML_Element</code> children
+  list.</p>
+
+<h3 class="function"><a name="reset_parser-1">reset_parser/1</a></h3>
+<div class="spec">
+<p><tt>reset_parser(Parser) -&gt; New_Parser</tt>
+<ul class="definitions"><li><tt>Parser = <a href="#type-xmlparser">xmlparser()</a></tt></li></ul></p>
+</div><p>Reset the parser with the same previous options.</p>
+
+<h3 class="function"><a name="reset_parser-2">reset_parser/2</a></h3>
+<div class="spec">
+<p><tt>reset_parser(Xml_parser::Parser, Options) -&gt; New_Parser</tt>
+<ul class="definitions"><li><tt>Parser = <a href="#type-xmlparser">xmlparser()</a></tt></li><li><tt>Options = [<a href="#type-xmlparseroption">xmlparseroption()</a>]</tt></li></ul></p>
+</div><p>Reset the parser and update its options.</p>
+
+<h3 class="function"><a name="set_attribute-2">set_attribute/2</a></h3>
+<div class="spec">
+<p><tt>set_attribute(Xmlel::XML_Element, Attr) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a> | <a href="#type-xmlattr_old">xmlattr_old()</a></tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Add a new attribute or change the value of an existing attribute  
+with the same name.</p>
+ 
+  If a match is found, <code>Attr</code> will replace the old attribute as is,
+  regardless of the format of the latter.</p>
+
+<h3 class="function"><a name="set_attribute-3">set_attribute/3</a></h3>
+<div class="spec">
+<p><tt>set_attribute(Xmlel::XML_Element, Name::Attr_Name, Value::Attr_Value) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr_Value = binary() | string() | atom() | integer()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p>Add a new attribute or change the value of an existing attribute.</p>
+
+<h3 class="function"><a name="set_attribute-4">set_attribute/4</a></h3>
+<div class="spec">
+<p><tt>set_attribute(Xmlel::XML_Element, NS, Name::Attr_Name, Value::Attr_Value) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr_Value = binary() | string() | atom() | integer()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a></tt></li></ul></p>
+</div><p>Add a new attribute or change the value of an existing attribute
+  with the same name and the <code>NS</code> namespace URI.</p>
+
+<h3 class="function"><a name="set_attribute_in_list-2">set_attribute_in_list/2</a></h3>
+<div class="spec">
+<p><tt>set_attribute_in_list(Attrs, Xmlattr::Attr) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Attr = <a href="#type-xmlattr">xmlattr()</a> | <a href="#type-xmlattr_old">xmlattr_old()</a></tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr_Value = binary() | string() | atom() | integer()</tt></li><li><tt>New_Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li></ul></p>
+</div><p><p>Add a new attribute or change the value of an existing attribute  
+with the same name.</p>
+ 
+  If a match is found, <code>Attr</code> will replace the old attribute as is,
+  regardless of the format of the latter.</p>
+
+<h3 class="function"><a name="set_attribute_in_list-3">set_attribute_in_list/3</a></h3>
+<div class="spec">
+<p><tt>set_attribute_in_list(Attrs, Name::Attr_Name, Value::Attr_Value) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr_Value = binary() | string() | atom() | integer()</tt></li><li><tt>New_Attrs = [<a href="#type-xmlattr">xmlattr()</a>] | [<a href="#type-xmlattr_old">xmlattr_old()</a>]</tt></li></ul></p>
+</div><p><p>Add a new attribute or change the value of an existing attribute  
+with the same name.</p>
+ 
+  If the attribute is to be added, this function use the <a href="#type-xmlattr"><code>xmlattr()</code></a> record if it can't determine the type from the
+  other attributes.</p>
+
+<h3 class="function"><a name="set_attribute_in_list-4">set_attribute_in_list/4</a></h3>
+<div class="spec">
+<p><tt>set_attribute_in_list(Attrs, NS, Name::Attr_Name, Value::Attr_Value) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Attr_Name = binary()</tt></li><li><tt>Attr_Value = binary() | string() | atom() | integer()</tt></li><li><tt>New_Attrs = [<a href="#type-xmlattr">xmlattr()</a>]</tt></li></ul></p>
+</div><p><p>Add a new attribute or change the value of an existing attribute
+  with the same name and the <code>NS</code> namespace URI.</p>
+ 
+  If the attribute is to be added, this function use the <a href="#type-xmlattr"><code>xmlattr()</code></a> record.</p>
+
+<h3 class="function"><a name="set_attributes-2">set_attributes/2</a></h3>
+<div class="spec">
+<p><tt>set_attributes(XML_Element, Rest::Attrs_Spec) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Attrs_Spec = [{Name, Value} | {NS, Name, Value} | <a href="#type-xmlattr_old">xmlattr_old()</a> | <a href="#type-xmlattr">xmlattr()</a>]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Name = binary()</tt></li><li><tt>Value = binary() | string() | atom() | integer()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Set multiple attributes at a time.</p>
+ 
+  Existing attributes are not completly overwritten by the ones present
+  in <code>Attrs_Spec</code>. They are simply updated.</p>
+
+<h3 class="function"><a name="set_cdata-2">set_cdata/2</a></h3>
+<div class="spec">
+<p><tt>set_cdata(Xmlel::XML_Element, CData) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>CData = binary() | string() | atom() | integer()</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Replace any character data by <code>CData</code>.</p>
+ 
+  The new <code>CData</code> is placed at the end of the children list.</p>
+
+<h3 class="function"><a name="set_cdata_in_list-2">set_cdata_in_list/2</a></h3>
+<div class="spec">
+<p><tt>set_cdata_in_list(Children, CData) -&gt; New_Children</tt>
+<ul class="definitions"><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>] | undefined</tt></li><li><tt>CData = binary() | string() | atom() | integer()</tt></li><li><tt>New_Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>]</tt></li></ul></p>
+</div><p><p>Replace any character data by <code>CData</code> in the list.</p>
+ 
+  The new <code>CData</code> is placed at the end of the children list.</p>
+
+<h3 class="function"><a name="set_children-2">set_children/2</a></h3>
+<div class="spec">
+<p><tt>set_children(Xmlel::XML_Element, New_Children::Children) -&gt; New_XML_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li><li><tt>Children = [<a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a>]</tt></li><li><tt>New_XML_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a></tt></li></ul></p>
+</div><p><p>Set <code>XML_Element</code>'s children list to <code>Children</code>.</p>
+ 
+  Any existing child is removed.</p>
+
+<h3 class="function"><a name="start_parser-0">start_parser/0</a></h3>
+<div class="spec">
+<p><tt>start_parser() -&gt; Parser</tt>
+<ul class="definitions"><li><tt>Parser = <a href="#type-xmlparser">xmlparser()</a></tt></li></ul></p>
+</div><p><p>Initialize the Expat port driver with default options.</p>
+ 
+  Default options are:
+  <pre>  [
+    {max_size, infinity},
+    {root_depth, 0},
+    names_as_atom,
+    {emit_endtag, false}
+  ].</pre>
+ </p>
+<p><b>See also:</b> <a href="#type-xmlparseroption">xmlparseroption()</a>, <a href="#start_parser-1">start_parser/1</a>.</p>
+
+<h3 class="function"><a name="start_parser-1">start_parser/1</a></h3>
+<div class="spec">
+<p><tt>start_parser(Options) -&gt; Parser</tt>
+<ul class="definitions"><li><tt>Options = [<a href="#type-xmlparseroption">xmlparseroption()</a>]</tt></li><li><tt>Parser = <a href="#type-xmlparser">xmlparser()</a></tt></li></ul></p>
+</div><p>throws <tt>{xml_parser, options, Reason, Infos}</tt></p>
+<p><p>Initialize the Expat port driver with given <code>Options</code>.</p>
+ 
+  You must call this function before any use of functions <a href="#parse-2"><code>parse/2</code></a> or <a href="#parse_final-2"><code>parse_final/2</code></a>. The returned <code>Parser</code> must be
+  given as the first argument for those functions. When finished, you
+  must free this parser with the <a href="#stop_parser-1"><code>stop_parser/1</code></a>. Here is an
+  example:
+  <pre>  fun() -&gt;
+      Parser = xml:start_parser(),
+      xml:parse(Parser, "&lt;stream version='1.0'&gt;&lt;presence/&gt;&lt;/stream&gt;"),
+      xml:stop_parser(Parser).</pre></p>
+
+<h3 class="function"><a name="stop_parser-1">stop_parser/1</a></h3>
+<div class="spec">
+<p><tt>stop_parser(Xml_parser::Parser) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Parser = <a href="#type-xmlparser">xmlparser()</a></tt></li></ul></p>
+</div><p><p>Stop the Expat port driver.</p>
+ 
+  This must be called when you are done with the <code>Parser</code> returned by
+  <a href="#start_parser-0"><code>start_parser/0</code></a>.
+ </p>
+<p><b>See also:</b> <a href="#start_parser-0"><code>start_parser/0</code> for an example</a>.</p>
+
+<h3 class="function"><a name="xmlel_to_xmlelement-1">xmlel_to_xmlelement/1</a></h3>
+<div class="spec">
+<p><tt>xmlel_to_xmlelement(XML_Element::XML_NS_Element) -&gt; XML_Element</tt>
+<ul class="definitions"><li><tt>XML_NS_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>XML_Element = <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Convert an <a href="#type-xmlel"><code>xmlel()</code></a> to an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> tuple.</p>
+ 
+  Other tuples are ignored.</p>
+
+<h3 class="function"><a name="xmlel_to_xmlelement-3">xmlel_to_xmlelement/3</a></h3>
+<div class="spec">
+<p><tt>xmlel_to_xmlelement(Xmlel::XML_NS_Element, Default_NS, Prefixed_NS) -&gt; XML_Element</tt>
+<ul class="definitions"><li><tt>XML_NS_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>Default_NS = [NS | Equivalent_NSs]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Equivalent_NSs = [NS]</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_Element = <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Convert an <a href="#type-xmlel"><code>xmlel()</code></a> to an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> tuple.</p>
+ 
+  <p>Other tuples are ignored.</p>
+ 
+  <p><code>Default_NS</code> and <code>Prefixed_NS</code> contain namespace declaration which  
+occured above this fragment in the tree. The order in the first list  
+is important: declarations are sorted from the most recent one to  
+the oldest one.</p>
+ 
+  <p>This may be useful in XMPP context where a majority of clients or
+  servers expects a <code>stream</code> prefix for the <code>&lt;stream&gt;</code> tag and the  
+default namespace declaration in this same element.</p>
+ 
+  <code>Default_NS</code> may be a list of equivalent namespaces. This is useful
+  when stanzas go to and from streams with compatible but different
+  namespaces. Here is an example with <code>jabber:client</code>, <code>jabber:server</code>
+  and <code>jabber:component:accept</code>:
+  <pre>  exmpp_stanza:to_list(El,
+    [?NS_JABBER_CLIENT, ?NS_JABBER_SERVER, ?NS_COMPONENT_ACCEPT]).</pre></p>
+
+<h3 class="function"><a name="xmlelement_to_xmlel-1">xmlelement_to_xmlel/1</a></h3>
+<div class="spec">
+<p><tt>xmlelement_to_xmlel(XML_Element) -&gt; XML_NS_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>XML_NS_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Convert an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> to an <a href="#type-xmlel"><code>xmlel()</code></a>  
+tuple.</p>
+ 
+  Other tuples are ignored.</p>
+
+<h3 class="function"><a name="xmlelement_to_xmlel-3">xmlelement_to_xmlel/3</a></h3>
+<div class="spec">
+<p><tt>xmlelement_to_xmlel(XML_El::XML_Element, Default_NS, Prefixed_NS) -&gt; XML_NS_Element</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>Default_NS = [NS]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_NS_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Convert an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> to an <a href="#type-xmlel"><code>xmlel()</code></a>  
+tuple.</p>
+ 
+  <p>Other tuples are ignored.</p>
+ 
+  See <a href="#xmlel_to_xmlelement-3"><code>xmlel_to_xmlelement/3</code></a> for a description of
+  <code>Default_NS</code> and <code>Prefixed_NS</code>.</p>
+
+<h3 class="function"><a name="xmlelement_to_xmlel_and_nss_tables-3">xmlelement_to_xmlel_and_nss_tables/3</a></h3>
+<div class="spec">
+<p><tt>xmlelement_to_xmlel_and_nss_tables(Xmlelement::XML_Element, Default_NS, Prefixed_NS) -&gt; {XML_NS_Element, New_Default_NS, New_Prefixed_NS}</tt>
+<ul class="definitions"><li><tt>XML_Element = <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>Default_NS = [NS]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_NS_Element = <a href="#type-xmlel">xmlel()</a> | <a href="#type-xmlel_old">xmlel_old()</a> | <a href="#type-xmlcdata">xmlcdata()</a></tt></li><li><tt>New_Default_NS = [NS]</tt></li><li><tt>New_Prefixed_NS = [{NS, Prefix}]</tt></li></ul></p>
+</div><p><p>Convert an <a href="#type-xmlel_old"><code>xmlel_old()</code></a> to an <a href="#type-xmlel"><code>xmlel()</code></a>  
+tuple.</p>
+ 
+  <p>Other tuples are ignored.</p>
+ 
+  <p>See <a href="#xmlel_to_xmlelement-3"><code>xmlel_to_xmlelement/3</code></a> for a description of
+  <code>Default_NS</code> and <code>Prefixed_NS</code>.</p>
+ 
+  This function will returned updated namespaces tables
+  <code>New_Default_NS</code> and <code>New_Prefixed_NS</code> which can be used for future
+  calls.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:40.</i></p>
+</body>
+</html>
