@@ -1,0 +1,352 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_session</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_session</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_session</strong> puts together the mechanism  
+to connect to an XMPP server, using various authentication  
+mechanisms and network layers.
+
+<p><b>Behaviours:</b> <a href="gen_fsm.html"><tt>gen_fsm</tt></a>.</p>
+<p><b>Authors:</b> Mickael Remond (<a href="mailto:mickael.remond@process-one.net"><tt>mickael.remond@process-one.net</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2><p>
+  The module <strong>exmpp_session</strong> puts together the mechanism  
+to connect to an XMPP server, using various authentication  
+mechanisms and network layers.</p>
+ 
+  <p>
+  This module is intended to be used directly by client developers.
+  </p>
+ 
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#auth-4">auth/4</a></td><td>Set the authentication info (user credentials) for the session.</td></tr>
+<tr><td valign="top"><a href="#auth_basic-3">auth_basic/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#auth_basic_digest-3">auth_basic_digest/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#auth_info-3">auth_info/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#auth_method-2">auth_method/2</a></td><td>Set the authentication method for the session.</td></tr>
+<tr><td valign="top"><a href="#code_change-4">code_change/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#connect_BOSH-4">connect_BOSH/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#connect_SSL-2">connect_SSL/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#connect_SSL-3">connect_SSL/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#connect_SSL-4">connect_SSL/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#connect_TCP-2">connect_TCP/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#connect_TCP-3">connect_TCP/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#connect_TCP-4">connect_TCP/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_connection_property-2">get_connection_property/2</a></td><td>Get a property of the underling connection (socket or bosh connection).</td></tr>
+<tr><td valign="top"><a href="#handle_event-3">handle_event/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#handle_info-3">handle_info/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#handle_sync_event-4">handle_sync_event/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#init-1">init/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#logged_in-2">logged_in/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#logged_in-3">logged_in/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#login-1">login/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#login-2">login/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#register_account-2">register_account/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#register_account-3">register_account/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#send_packet-2">send_packet/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#set_controlling_process-2">set_controlling_process/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#setup-3">setup/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start-0">start/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start-1">start/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_debug-0">start_debug/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_link-1">start_link/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stop-1">stop/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stream_closed-2">stream_closed/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stream_closed-3">stream_closed/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stream_error-2">stream_error/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stream_error-3">stream_error/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stream_opened-2">stream_opened/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#stream_opened-3">stream_opened/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#terminate-3">terminate/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_auth_result-2">wait_for_auth_result/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_bind_response-2">wait_for_bind_response/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_compression_result-2">wait_for_compression_result/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_legacy_auth_method-2">wait_for_legacy_auth_method/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_register_result-2">wait_for_register_result/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_sasl_response-2">wait_for_sasl_response/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_session_response-2">wait_for_session_response/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_starttls_result-2">wait_for_starttls_result/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_stream-2">wait_for_stream/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_stream-3">wait_for_stream/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#wait_for_stream_features-2">wait_for_stream_features/2</a></td><td></td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="auth-4">auth/4</a></h3>
+<div class="spec">
+<p><tt>auth(Session, JID::Jid, Password, Method) -&gt; Reply</tt>
+<ul class="definitions"><li><tt>Session = pid()</tt></li><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Password = string()</tt></li></ul></p>
+</div><p>Set the authentication info (user credentials) for the session.
+      Method = password | digest | "PLAIN" | "ANONYMOUS" | "DIGEST-MD5" | string()
+ </p>
+
+<h3 class="function"><a name="auth_basic-3">auth_basic/3</a></h3>
+<div class="spec">
+<p><tt>auth_basic(Session, JID, Password) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="auth_basic_digest-3">auth_basic_digest/3</a></h3>
+<div class="spec">
+<p><tt>auth_basic_digest(Session, JID, Password) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="auth_info-3">auth_info/3</a></h3>
+<div class="spec">
+<p><tt>auth_info(Session, JID, Password) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="auth_method-2">auth_method/2</a></h3>
+<div class="spec">
+<p><tt>auth_method(Session, Method) -&gt; Reply</tt>
+<ul class="definitions"><li><tt>Session = pid()</tt></li><li><tt>Method = atom() | string()</tt></li></ul></p>
+</div><p>Set the authentication method for the session.
+ </p>
+
+<h3 class="function"><a name="code_change-4">code_change/4</a></h3>
+<div class="spec">
+<p><tt>code_change(OldVsn, StateName, State, Extra) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="connect_BOSH-4">connect_BOSH/4</a></h3>
+<div class="spec">
+<p><tt>connect_BOSH(Session, URL, Server, Options) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="connect_SSL-2">connect_SSL/2</a></h3>
+<div class="spec">
+<p><tt>connect_SSL(Session, Server) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="connect_SSL-3">connect_SSL/3</a></h3>
+<div class="spec">
+<p><tt>connect_SSL(Session, Server, Port) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="connect_SSL-4">connect_SSL/4</a></h3>
+<div class="spec">
+<p><tt>connect_SSL(Session, Server, Port, Options) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="connect_TCP-2">connect_TCP/2</a></h3>
+<div class="spec">
+<p><tt>connect_TCP(Session, Server) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="connect_TCP-3">connect_TCP/3</a></h3>
+<div class="spec">
+<p><tt>connect_TCP(Session, Server, Port) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="connect_TCP-4">connect_TCP/4</a></h3>
+<div class="spec">
+<p><tt>connect_TCP(Session, Server, Port, Options) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="get_connection_property-2">get_connection_property/2</a></h3>
+<div class="spec">
+<p><tt>get_connection_property(Session::pid(), Prop::atom()) -&gt; {ok, any()} | {error, any()}</tt><br></p>
+</div><p><p>Get a property of the underling connection (socket or bosh connection)</p>
+ 
+       See documentation on exmpp_socket and exmpp_bosh to see the supported properties.
+       Returns {error, undefined} if the property is not defined for that kind of connection.</p>
+
+<h3 class="function"><a name="handle_event-3">handle_event/3</a></h3>
+<div class="spec">
+<p><tt>handle_event(Event, StateName, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="handle_info-3">handle_info/3</a></h3>
+<div class="spec">
+<p><tt>handle_info(Info, StateName, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="handle_sync_event-4">handle_sync_event/4</a></h3>
+<div class="spec">
+<p><tt>handle_sync_event(Event, From, StateName, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="init-1">init/1</a></h3>
+<div class="spec">
+<p><tt>init(X1) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="logged_in-2">logged_in/2</a></h3>
+<div class="spec">
+<p><tt>logged_in(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="logged_in-3">logged_in/3</a></h3>
+<div class="spec">
+<p><tt>logged_in(X1, From, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="login-1">login/1</a></h3>
+<div class="spec">
+<p><tt>login(Session) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="login-2">login/2</a></h3>
+<div class="spec">
+<p><tt>login(Session, Mechanism) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="register_account-2">register_account/2</a></h3>
+<div class="spec">
+<p><tt>register_account(Session, Password) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="register_account-3">register_account/3</a></h3>
+<div class="spec">
+<p><tt>register_account(Session, Username, Password) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="send_packet-2">send_packet/2</a></h3>
+<div class="spec">
+<p><tt>send_packet(Session, Packet) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="set_controlling_process-2">set_controlling_process/2</a></h3>
+<div class="spec">
+<p><tt>set_controlling_process(Session, Client) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="setup-3">setup/3</a></h3>
+<div class="spec">
+<p><tt>setup(UnknownMessage, From, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="start-0">start/0</a></h3>
+<div class="spec">
+<p><tt>start() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="start-1">start/1</a></h3>
+<div class="spec">
+<p><tt>start(X1) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="start_debug-0">start_debug/0</a></h3>
+<div class="spec">
+<p><tt>start_debug() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="start_link-0">start_link/0</a></h3>
+<div class="spec">
+<p><tt>start_link() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="start_link-1">start_link/1</a></h3>
+<div class="spec">
+<p><tt>start_link(X1) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="stop-1">stop/1</a></h3>
+<div class="spec">
+<p><tt>stop(Session) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="stream_closed-2">stream_closed/2</a></h3>
+<div class="spec">
+<p><tt>stream_closed(Signal, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="stream_closed-3">stream_closed/3</a></h3>
+<div class="spec">
+<p><tt>stream_closed(Signal, From, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="stream_error-2">stream_error/2</a></h3>
+<div class="spec">
+<p><tt>stream_error(Xmlstreamend, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="stream_error-3">stream_error/3</a></h3>
+<div class="spec">
+<p><tt>stream_error(Signal, From, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="stream_opened-2">stream_opened/2</a></h3>
+<div class="spec">
+<p><tt>stream_opened(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="stream_opened-3">stream_opened/3</a></h3>
+<div class="spec">
+<p><tt>stream_opened(X1, From, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="terminate-3">terminate/3</a></h3>
+<div class="spec">
+<p><tt>terminate(Reason, StateName, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_auth_result-2">wait_for_auth_result/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_auth_result(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_bind_response-2">wait_for_bind_response/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_bind_response(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_compression_result-2">wait_for_compression_result/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_compression_result(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_legacy_auth_method-2">wait_for_legacy_auth_method/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_legacy_auth_method(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_register_result-2">wait_for_register_result/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_register_result(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_sasl_response-2">wait_for_sasl_response/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_sasl_response(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_session_response-2">wait_for_session_response/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_session_response(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_starttls_result-2">wait_for_starttls_result/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_starttls_result(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_stream-2">wait_for_stream/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_stream(Xmlstreamstart, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_stream-3">wait_for_stream/3</a></h3>
+<div class="spec">
+<p><tt>wait_for_stream(Event, From, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="wait_for_stream_features-2">wait_for_stream_features/2</a></h3>
+<div class="spec">
+<p><tt>wait_for_stream_features(Xmlstreamelement, State) -&gt; any()</tt></p>
+</div>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:40.</i></p>
+</body>
+</html>

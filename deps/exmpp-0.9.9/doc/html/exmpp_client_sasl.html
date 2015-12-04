@@ -1,0 +1,76 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_client_sasl</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_client_sasl</h1>
+<ul class="index"><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#abort-0">abort/0</a></td><td>Make a <code>&lt;abort/&gt;</code> element.</td></tr>
+<tr><td valign="top"><a href="#announced_mechanisms-1">announced_mechanisms/1</a></td><td>Return the list of SASL mechanisms announced by the receiving entity.</td></tr>
+<tr><td valign="top"><a href="#next_step-1">next_step/1</a></td><td>Extract the challenge or the ending element that the receiving  
+entity sent.</td></tr>
+<tr><td valign="top"><a href="#response-1">response/1</a></td><td>Prepare a <code>&lt;response/&gt;</code> element to send the challenge's response.</td></tr>
+<tr><td valign="top"><a href="#selected_mechanism-1">selected_mechanism/1</a></td><td>Prepare an <code>&lt;auth/&gt;</code> element with the selected mechanism.</td></tr>
+<tr><td valign="top"><a href="#selected_mechanism-2">selected_mechanism/2</a></td><td>Prepare an <code>&lt;auth/&gt;</code> element with the selected mechanism.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="abort-0">abort/0</a></h3>
+<div class="spec">
+<p><tt>abort() -&gt; Abort</tt>
+<ul class="definitions"><li><tt>Abort = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make a <code>&lt;abort/&gt;</code> element.</p>
+
+<h3 class="function"><a name="announced_mechanisms-1">announced_mechanisms/1</a></h3>
+<div class="spec">
+<p><tt>announced_mechanisms(Xmlel::Features_Announcement) -&gt; Mechanisms</tt>
+<ul class="definitions"><li><tt>Features_Announcement = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Mechanisms = [string()]</tt></li></ul></p>
+</div><p>throws <tt>{sasl, announced_mechanisms, invalid_feature, Feature} | {sasl, announced_mechanisms, invalid_mechanism, El}</tt></p>
+<p>Return the list of SASL mechanisms announced by the receiving entity.</p>
+
+<h3 class="function"><a name="next_step-1">next_step/1</a></h3>
+<div class="spec">
+<p><tt>next_step(Xmlel::El) -&gt; Type</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Type = Challenge | Success | Failure</tt></li><li><tt>Challenge = {challenge, string()}</tt></li><li><tt>Success = {success, string()}</tt></li><li><tt>Failure = {failure, Condition | undefined}</tt></li><li><tt>Condition = atom()</tt></li></ul></p>
+</div><p><p>Extract the challenge or the ending element that the receiving  
+entity sent.</p>
+ 
+  Any challenge or success data is Base64-decoded.</p>
+
+<h3 class="function"><a name="response-1">response/1</a></h3>
+<div class="spec">
+<p><tt>response(Response_Data) -&gt; Response</tt>
+<ul class="definitions"><li><tt>Response_Data = string()</tt></li><li><tt>Response = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Prepare a <code>&lt;response/&gt;</code> element to send the challenge's response.</p>
+ 
+  <code>Response_Data</code> will be Base64-encoded.</p>
+
+<h3 class="function"><a name="selected_mechanism-1">selected_mechanism/1</a></h3>
+<div class="spec">
+<p><tt>selected_mechanism(Mechanism) -&gt; Auth</tt>
+<ul class="definitions"><li><tt>Mechanism = string()</tt></li><li><tt>Auth = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare an <code>&lt;auth/&gt;</code> element with the selected mechanism.</p>
+
+<h3 class="function"><a name="selected_mechanism-2">selected_mechanism/2</a></h3>
+<div class="spec">
+<p><tt>selected_mechanism(Mechanism, Initial_Response) -&gt; Auth</tt>
+<ul class="definitions"><li><tt>Mechanism = string()</tt></li><li><tt>Initial_Response = string()</tt></li><li><tt>Auth = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Prepare an <code>&lt;auth/&gt;</code> element with the selected mechanism.</p>
+ 
+  The initial response will be Base64-encoded before inclusion.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:40.</i></p>
+</body>
+</html>

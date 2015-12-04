@@ -1,0 +1,75 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_dialback</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_dialback</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_dialback</strong> provides functions to handle
+  server dialback method.
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>
+  The module <strong>exmpp_dialback</strong> provides functions to handle
+  server dialback method.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#key-3">key/3</a></td><td>Prepare a <code>&lt;db:result/&gt;</code> element to send the key to the
+  Receiving Server.</td></tr>
+<tr><td valign="top"><a href="#validate-1">validate/1</a></td><td>Prepare a <code>&lt;db:result/&gt;</code> element to answer to the Originating
+  Server.</td></tr>
+<tr><td valign="top"><a href="#validate-2">validate/2</a></td><td>Prepare a <code>&lt;db:result/&gt;</code> element to answer to the Originating
+  Server.</td></tr>
+<tr><td valign="top"><a href="#verify_request-4">verify_request/4</a></td><td>Prepare a <code>&lt;db:verify/&gt;</code> element to send to the Authoritative
+  Server.</td></tr>
+<tr><td valign="top"><a href="#verify_response-2">verify_response/2</a></td><td>Prepare a <code>&lt;db:verify/&gt;</code> element to answer to the Receiving
+  Server.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="key-3">key/3</a></h3>
+<div class="spec">
+<p><tt>key(From, To, Key) -&gt; Result</tt>
+<ul class="definitions"><li><tt>From = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | string()</tt></li><li><tt>To = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | string()</tt></li><li><tt>Key = binary() | string()</tt></li><li><tt>Result = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;db:result/&gt;</code> element to send the key to the
+  Receiving Server.</p>
+
+<h3 class="function"><a name="validate-1">validate/1</a></h3>
+<div class="spec">
+<p><tt>validate(Result) -&gt; Response</tt>
+<ul class="definitions"><li><tt>Result = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Response = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;db:result/&gt;</code> element to answer to the Originating
+  Server.</p>
+
+<h3 class="function"><a name="validate-2">validate/2</a></h3>
+<div class="spec">
+<p><tt>validate(From, To) -&gt; Response</tt>
+<ul class="definitions"><li><tt>From = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | string()</tt></li><li><tt>To = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | string()</tt></li><li><tt>Response = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;db:result/&gt;</code> element to answer to the Originating
+  Server.</p>
+
+<h3 class="function"><a name="verify_request-4">verify_request/4</a></h3>
+<div class="spec">
+<p><tt>verify_request(From, To, ID, Key) -&gt; Request</tt>
+<ul class="definitions"><li><tt>From = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | string()</tt></li><li><tt>To = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | string()</tt></li><li><tt>ID = binary() | string() | random</tt></li><li><tt>Key = binary() | string()</tt></li><li><tt>Request = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;db:verify/&gt;</code> element to send to the Authoritative
+  Server.</p>
+
+<h3 class="function"><a name="verify_response-2">verify_response/2</a></h3>
+<div class="spec">
+<p><tt>verify_response(Request, Is_Valid) -&gt; Response</tt>
+<ul class="definitions"><li><tt>Request = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Is_Valid = bool()</tt></li><li><tt>Response = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;db:verify/&gt;</code> element to answer to the Receiving
+  Server.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>
