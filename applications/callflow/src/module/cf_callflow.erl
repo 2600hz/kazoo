@@ -31,7 +31,7 @@ handle(Data, Call) ->
 -spec maybe_branch_callflow(wh_json:object(), whapps_call:call()) -> 'ok'.
 maybe_branch_callflow(Data, Call) ->
     Id = wh_doc:id(Data),
-    case couch_mgr:open_doc(whapps_call:account_db(Call), Id) of
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Id) of
         {'error', R} ->
             lager:info("could not branch to callflow ~s, ~p", [Id, R]),
             cf_exe:continue(Call);
