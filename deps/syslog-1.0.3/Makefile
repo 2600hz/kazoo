@@ -31,7 +31,7 @@ ERL_INTERFACE := $(find $USR_INCLUDE/../../ -type d -name "erl_interface-*" -pri
 ifeq ($(ERL_INTERFACE),)
 # 3.7.9 is R15B03-1
 # Change to 3.7.20 for 17.5
-	ERL_INTERFACE := $(USR_INCLUDE)/../../lib/erl_interface-3.7.20
+	ERL_INTERFACE := $(USR_INCLUDE)/../../lib/erl_interface-3.7.9
 endif
 
 priv/syslog_drv.so: c_src/syslog_drv.c
