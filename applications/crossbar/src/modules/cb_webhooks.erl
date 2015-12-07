@@ -44,6 +44,8 @@ init() ->
     _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
     _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
     _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
+    init_master_account_db(),
+    maybe_revise_schema(),
 
     Bindings = [{<<"*.allowed_methods.webhooks">>, 'allowed_methods'}
                 ,{<<"*.authorize">>, 'authorize'}
@@ -59,6 +61,56 @@ init() ->
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
+-spec init_master_account_db() -> 'ok'.
+init_master_account_db() ->
+    case whapps_util:get_master_account_db() of
+        {'ok', MasterAccountDb} ->
+            _ = couch_mgr:revise_doc_from_file(MasterAccountDb
+                                               ,'webhooks'
+                                               ,<<"webhooks.json">>
+                                              ),
+            lager:debug("ensured view into master db");
+        {'error', _E} ->
+            lager:warning("master account not set yet, unable to load view: ~p", [_E])
+    end.
+
+-spec maybe_revise_schema() -> 'ok'.
+-spec maybe_revise_schema(wh_json:object()) -> 'ok'.
+-spec maybe_revise_schema(wh_json:object(), ne_binary()) -> 'ok'.
+maybe_revise_schema() ->
+    case wh_json_schema:load(<<"webhooks">>) of
+        {'ok', SchemaJObj} ->
+            maybe_revise_schema(SchemaJObj);
+        {'error', _E} ->
+            lager:warning("failed to find webhooks schema: ~p", [_E])
+    end.
+
+maybe_revise_schema(SchemaJObj) ->
+    case whapps_util:get_master_account_db() of
+        {'ok', MasterDb} -> maybe_revise_schema(SchemaJObj, MasterDb);
+        {'error', _E} ->
+            lager:warning("master account not set yet, unable to revise schema: ~p", [_E])
+    end.
+
+maybe_revise_schema(SchemaJObj, MasterDb) ->
+    case couch_mgr:get_results(MasterDb, ?AVAILABLE_HOOKS) of
+        {'ok', []} ->
+            lager:warning("no hooks are registered; have you started the webhooks app?");
+        {'error', _E} ->
+            lager:warning("failed to find registered webhooks: ~p", [_E]);
+        {'ok', Hooks} ->
+            revise_schema(SchemaJObj, [wh_json:get_value(<<"key">>, Hook) || Hook <- Hooks])
+    end.
+
+-spec revise_schema(wh_json:object(), ne_binaries()) -> 'ok'.
+revise_schema(SchemaJObj, HookNames) ->
+    Updated = wh_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
+    case couch_mgr:save_doc(?WH_SCHEMA_DB, Updated) of
+        {'ok', _} -> lager:info("added hooks enum to schema: ~p", [HookNames]);
+        {'error', _E} -> lager:warning("failed to add hooks enum to schema: ~p", [_E])
+    end.
+
+-spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
@@ -203,7 +255,7 @@ delete(Context, _) ->
 -spec delete_account(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_account(Context, AccountId) ->
     lager:debug("account ~s deleted, removing any webhooks", [AccountId]),
-    wh_util:spawn(fun() -> delete_account_webhooks(AccountId) end),
+    wh_util:spawn(fun delete_account_webhooks/1, [AccountId]),
     Context.
 
 -spec delete_account_webhooks(ne_binary()) -> 'ok'.

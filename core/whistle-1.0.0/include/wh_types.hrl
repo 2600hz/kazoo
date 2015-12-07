@@ -129,7 +129,11 @@
 %% Recreate the non-exported types defined in the erlang supervisor source
 -type sup_child_spec() :: supervisor:child_spec().
 -type sup_child_specs() :: [sup_child_spec()].
+-ifdef(OTP_AT_LEAST_18).
+-type sup_start_flags() :: supervisor:sup_flags().
+-else.
 -type sup_start_flags() :: {supervisor:strategy(), non_neg_integer(), non_neg_integer()}.
+-endif.
 -type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
                         'ignore'.
 
