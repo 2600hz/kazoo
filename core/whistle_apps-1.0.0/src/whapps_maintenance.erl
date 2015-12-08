@@ -1104,6 +1104,13 @@ maybe_delete_db(Database) ->
                             {'ok', wh_json:objects()} |
                             {'error', _} |
                             'ok'.
+purge_doc_type(Type, Account)
+  when is_binary(Type);
+       is_binary(Account) ->
+    purge_doc_type(Type
+                   ,Account
+                   ,whapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, ?MILLISECONDS_IN_SECOND)
+                  );
 purge_doc_type([], _Account) -> 'ok';
 purge_doc_type([Type|Types], Account) ->
     _ = purge_doc_type(Type, Account),
