@@ -14,6 +14,7 @@ release_number_test_() ->
     Tests = [fun release_unknown_number/1
              ,fun release_available_number/1
              ,fun release_in_service_number/1
+             ,fun release_with_history/1
             ],
     lists:foldl(fun(F, Acc) ->
                         F(Acc)
@@ -54,6 +55,28 @@ release_in_service_number(Tests) ->
      ,{"verify reserve history is empty now"
        ,?_assertEqual([]
                       ,knm_phone_number:reserve_history(PhoneNumber)
+                     )
+      }
+     | Tests
+    ].
+
+release_with_history(Tests) ->
+    {'ok', Unwound} = knm_number:delete(?TEST_IN_SERVICE_WITH_HISTORY_NUM),
+    PhoneNumber = knm_number:phone_number(Unwound),
+
+    [{"verify number state is moved to RESERVED"
+      ,?_assertEqual(?NUMBER_STATE_RESERVED
+                    ,knm_phone_number:state(PhoneNumber)
+                    )
+     }
+     ,{"verify reserve history is unwound"
+       ,?_assertEqual([?MASTER_ACCOUNT_ID]
+                      ,knm_phone_number:reserve_history(PhoneNumber)
+                     )
+      }
+     ,{"verify number is assigned to prev account"
+       ,?_assertEqual(?MASTER_ACCOUNT_ID
+                      ,knm_phone_number:assigned_to(PhoneNumber)
                      )
       }
      | Tests
