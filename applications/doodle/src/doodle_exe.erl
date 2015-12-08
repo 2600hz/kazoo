@@ -52,6 +52,7 @@
 -record(state, {call = whapps_call:new() :: whapps_call:call()
                 ,flow = wh_json:new() :: wh_json:object()
                 ,cf_module_pid :: {pid(), reference()} | 'undefined'
+                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
                 ,self = self()
@@ -330,10 +331,8 @@ handle_cast({'update_call', NewCall}, #state{call=OldCall, queue=Q}=State) ->
     {'noreply', State#state{call=Call}};
 
 handle_cast({'continue', Key}, #state{flow=Flow
-                                      ,cf_module_pid=OldPidRef
                                      }=State) ->
     lager:info("continuing to child '~s'", [Key]),
-    maybe_stop_caring(OldPidRef),
 
     case wh_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
@@ -452,6 +451,19 @@ handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
+handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_old_pid={Pid, Ref}
+                                            ,call=Call
+                                           }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
+    {'noreply', State#state{cf_module_old_pid='undefined'}};
+handle_info({'EXIT', Pid, _Reason}, #state{cf_module_old_pid={Pid, Ref}
+                                           ,call=Call
+                                          }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    LastAction = whapps_call:kvs_fetch('cf_last_action', Call),
+    lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
+    {'noreply', State#state{cf_module_old_pid='undefined'}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -588,12 +600,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec launch_cf_module(state()) -> state().
 launch_cf_module(#state{call=Call
                         ,flow=Flow
+                        ,cf_module_pid=OldPidRef
                        }=State) ->
     Module = <<(cf_module_prefix(Call))/binary, (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {PidRef, Action} = maybe_start_cf_module(Module, Data, Call),
     _ = cf_link(PidRef),
     State#state{cf_module_pid=PidRef
+                ,cf_module_old_pid=OldPidRef
                 ,call=whapps_call:kvs_store('cf_last_action', Action, Call)
                }.
 
@@ -609,13 +623,6 @@ cf_module_prefix(Call) ->
 -spec cf_module_prefix(whapps_call:call(), ne_binary()) -> ne_binary().
 cf_module_prefix(_Call, <<"sms">>) -> <<"cf_sms_">>;
 cf_module_prefix(_Call, _) -> <<"cf_">>.
-
--spec maybe_stop_caring('undefined' | pid_ref()) -> 'ok'.
-maybe_stop_caring('undefined') -> 'ok';
-maybe_stop_caring({P, R}) ->
-    unlink(P),
-    erlang:demonitor(R, ['flush']),
-    lager:debug("stopped caring about ~p(~p)", [P, R]).
 
 -spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
                                    {pid_ref() | 'undefined', atom()}.
