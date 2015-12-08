@@ -1,0 +1,102 @@
+
+
+A tour of common matchers
+-----------------------------
+
+Hamcrest comes with a library of useful matchers. Here are some of the most important ones.
+
+Core
+anything - always matches, useful if you don't care what the object under test is
+described_as - decorator to adding custom failure description
+is_ - decorator to improve readability - see "Syntactic sugar", below
+Logical
+all_of - matches if all matchers match, short circuits (like Python &&)
+any_of - matches if any matchers match, short circuits (like Python ||)
+is_not - matches if the wrapped matcher doesn't match and vice versa
+Object
+equal_to - test object equality using ==
+has_length - test whether len(item) satisfies another matcher
+has_string - test whether str(item) satisfies another matcher
+instance_of - test type
+none, not_none - test for None
+same_instance - test object identity
+Sequences
+has_entry, has_key, has_value - test a dictionary contains an entry, key or value
+has_item, has_items - test a sequence contains elements
+Number
+close_to - test numeric values are close to a given value
+greater_than, greater_than_or_equal_to, less_than, less_than_or_equal_to - test ordering
+Text
+equal_to_ignoring_case - test string equality ignoring case
+equal_to_ignoring_whitespace - test string equality ignoring differences in runs of whitespace
+contains_string, ends_with, starts_with - test string matching
+Syntactic sugar
+
+Hamcrest strives to make your tests as readable as possible. For example, the is_ matcher is a wrapper that doesn't
+add any extra behavior to the underlying matcher. The following assertions are all equivalent:
+
+    assert_that(theBiscuit, equal_to(myBiscuit))
+    assert_that(theBiscuit, is_(equal_to(myBiscuit)))
+    assert_that(theBiscuit, is_(myBiscuit))
+
+The last form is allowed since is_(value) wraps non-matcher arguments with equal_to.
+
+Writing custom matchers
+----------------------------
+
+Hamcrest comes bundled with lots of useful matchers, but you'll probably find that you need to create your own from
+time to time to fit your testing needs. This commonly occurs when you find a fragment of code that tests the same set
+of properties over and over again (and in different tests), and you want to bundle the fragment into a single assertion.
+By writing your own matcher you'll eliminate code duplication and make your tests more readable!
+
+Let's write our own matcher for testing if a string is comprised of only digits. This is the test we want to write:
+
+    def testStringIsOnlyDigits(self):
+        assert_that('17', is_(only_digits()))
+
+And here's the implementation:
+
+    from hamcrest.core.base_matcher import BaseMatcher
+    from hamcrest.core.internal.hasmethod import hasmethod
+
+    class IsStringOfDigits(BaseMatcher):
+
+        def _matches(self, item):
+            if not hasmethod(item, 'isdigit'):
+                return False
+            return item.isdigit()
+
+        def describe_to(self, description):
+            description.append_text('string of digits')
+
+    only_digits = IsStringOfDigits
+
+For our Matcher implementation we implement the _matches method - which calls the isdigit string method after confirming
+that the argument (which may not be a string) has such a method - and the describe_to method - which is used to produce a
+failure message when a test fails. Here's an example of how the failure message looks:
+
+    assert_that('17b', is_(only_digits()))
+
+fails with the message
+
+    AssertionError:
+    Expected: is string of digits
+         got: '17b'
+
+The factory function only_digits is defined as an alias because no further logic is needed, but other matchers may work best
+with an actual factory. We import only_digits to use the matcher in our test:
+
+    from hamcrest import *
+    import unittest
+    from hamcrest_local.isstringofdigits import only_digits
+
+    class StringTest(unittest.TestCase):
+        def testStringIsOnlyDigits(self):
+            assert_that('17', is_(only_digits()))
+
+    if __name__ == '__main__':
+        unittest.main()
+
+Even though the only_digits function creates a new matcher each time it is called, you should not assume this is the only usage
+pattern for your matcher. Therefore you should make sure your matcher is stateless, so a single instance can be reused between matches.
+
