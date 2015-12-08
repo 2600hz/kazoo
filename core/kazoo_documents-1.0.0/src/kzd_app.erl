@@ -162,7 +162,7 @@ license(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec price(wh_json:object()) -> ne_binary().
+-spec price(wh_json:object()) -> api_float().
 price(JObj) ->
     wh_json:get_float_value(?PRICE, JObj).
 
