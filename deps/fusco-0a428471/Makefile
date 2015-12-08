@@ -1,34 +1,10 @@
-.PHONY: all release compile test clean rel doc build-plt dialyzer
+ROOT = ../..
+REBAR = $(ROOT)/utils/rebar/rebar
 
-PROJECT = fusco
-
-REBAR := ./rebar
-DIALYZER = dialyzer
-
-APPS = kernel stdlib sasl inets ssl public_key crypto compiler
-
-all: compile doc
+all: compile
 
 compile:
-	$(REBAR) compile
-
-doc:
-	$(REBAR) doc
-
-test:	compile
-	$(REBAR) eunit ct
-
-release: all dialyze test
-	$(REBAR) release
+	@$(REBAR) compile
 
 clean:
-	$(REBAR) clean
-
-build-plt: compile
-	@$(DIALYZER) --build_plt --output_plt .$(PROJECT).plt \
-		--apps $(APPS)
-
-dialyzer:
-	@$(DIALYZER) --fullpath  --src ./src \
-		--plt .$(PROJECT).plt --no_native \
-		-Werror_handling  #-Wrace_conditions
+	@$(REBAR) clean
