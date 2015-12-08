@@ -239,6 +239,7 @@ build_local_extension(#state{number_props=Props
     AccountId = props:get_value('account_id', Props),
     Realm = get_account_realm(AccountId),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    CCVsNoAuth = wh_json:delete_keys([<<"Authorizing-Type">>, <<"Authorizing-ID">>], CCVs),
     CCVUpdates = props:filter_undefined(
                    [{<<"Inception">>, <<Number/binary, "@", Realm/binary>>}
                     ,{<<"Retain-CID">>, <<"true">>}
@@ -254,7 +255,7 @@ build_local_extension(#state{number_props=Props
      ,{<<"Reset">>, <<"true">>}
      ,{<<"Extension">>, Number}
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
+     ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVsNoAuth)}
      ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
      ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
      | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
