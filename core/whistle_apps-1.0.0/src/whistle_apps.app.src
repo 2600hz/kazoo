@@ -21,6 +21,7 @@
                              sasl
                             ,crypto
                             ,ibrowse
+                            ,whistle_config
                             ,whistle_amqp
                             ,whistle_couch
                            ]}
