@@ -478,9 +478,12 @@ account_update(JObj) ->
     case couch_mgr:save_doc(AccountDb, JObj) of
         {'error', _R}=E -> E;
         {'ok', SavedJObj} ->
-            case couch_mgr:save_doc(?WH_ACCOUNTS_DB, SavedJObj) of
-                {'error', _R}=E -> E;
-                {'ok', _} -> 'ok'
+            AccountId = wh_doc:id(SavedJObj),
+            case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+                {'ok', Rev} ->
+                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(SavedJObj, Rev));
+                _Else       ->
+                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(SavedJObj))
             end
     end.
 
