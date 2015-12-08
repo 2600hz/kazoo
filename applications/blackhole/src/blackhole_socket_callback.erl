@@ -111,7 +111,7 @@ check_bindings(Context, JObj, [Binding|Bds]) ->
     {'ok', Context1} = check_bindings(Context, JObj, Binding),
     check_bindings(Context1, JObj, Bds);
 check_bindings(Context, JObj, Binding) ->
-    case bh_context:already_binded(Context, Binding) of
+    case bh_context:is_bound(Context, Binding) of
         'true' ->
             ErrorJObj = wh_json:from_list([
                 {<<"message">>, <<"binding already in use">>}

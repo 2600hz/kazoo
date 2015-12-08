@@ -19,7 +19,7 @@
          ,auth_account_id/1, set_auth_account_id/2
          ,account_id/1, set_account_id/2
          ,bindings/1, set_bindings/2
-         ,bindings_from_json/1, add_binding/2, remove_binding/2, already_binded/2
+         ,bindings_from_json/1, add_binding/2, remove_binding/2, is_bound/2
          ,websocket_session_id/1, set_websocket_session_id/2
          ,websocket_pid/1, set_websocket_pid/2
          ,timestamp/1, set_timestamp/2
@@ -199,8 +199,8 @@ remove_binding(#bh_context{bindings=Bds}=Context, Binding) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec already_binded(context(), ne_binary()) -> context().
-already_binded(#bh_context{bindings=Bds}, Binding) ->
+-spec is_bound(context(), ne_binary()) -> context().
+is_bound(#bh_context{bindings=Bds}, Binding) ->
     lists:member(Binding, Bds).
 
 %%--------------------------------------------------------------------
