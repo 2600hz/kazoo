@@ -450,7 +450,7 @@ handle_cast({'update_timestamp', Key, Timestamp}, #state{tab=Tab}=State) ->
 handle_cast({'erase', Key}, #state{tab=Tab}=State) ->
     maybe_exec_erase_callbacks(Key, Tab),
     _Removed = maybe_remove_object(Key, Tab),
-    lager:debug("removed ~b objects for ~p", [_Removed, Key]),
+    log_removed(_Removed, Key),
     {'noreply', State};
 handle_cast({'flush'}, #state{tab=Tab}=State) ->
     maybe_exec_flush_callbacks(Tab),
@@ -627,7 +627,7 @@ erase_changed([#cache_obj{type='pointer', value=Key}|Objects], Removed, Tab) ->
                        _ = maybe_exec_erase_callbacks(Key, Tab),
                        maybe_remove_object(Key, Tab)
                end,
-    lager:debug("removed ~b objects for ~p", [_Removed, Key]),
+    log_removed(_Removed, Key),
     erase_changed(Objects, [Key|Removed], Tab);
 erase_changed([#cache_obj{type='normal', key=Key}|Objects], Removed, Tab) ->
     _Removed = case lists:member(Key, Removed) of
@@ -637,7 +637,7 @@ erase_changed([#cache_obj{type='normal', key=Key}|Objects], Removed, Tab) ->
                        _ = maybe_exec_erase_callbacks(Key, Tab),
                        maybe_remove_object(Key, Tab)
         end,
-    lager:debug("removed ~b objects for ~p", [_Removed, Key]),
+    log_removed(_Removed, Key),
     erase_changed(Objects, [Key|Removed], Tab).
 
 -spec expire_objects(atom()) -> non_neg_integer().
@@ -788,3 +788,8 @@ insert_origin_pointers([Origin|Origins], #cache_obj{key=Key}=CacheObj, Tab) ->
                                        ,expires='infinity'
                                       }),
     insert_origin_pointers(Origins, CacheObj, Tab).
+
+-spec log_removed(integer(), ne_binary()) -> 'ok'.
+log_removed(0, _Key) -> 'ok';
+log_removed(Removed, Key) ->
+    lager:debug("removed ~b objects for ~p", [Removed, Key]).
