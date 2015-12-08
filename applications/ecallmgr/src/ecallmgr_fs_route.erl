@@ -138,6 +138,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'fetch', 'chatplan', Something, Key, Value, Id, ['undefined' | Data]}, State) ->
+    MsgId = wh_util:rand_hex_binary(16),
+    handle_info({'fetch', 'chatplan', Something, Key, Value, Id, [MsgId, {<<"Unique-ID">>, MsgId} | Data]}, State);
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Data]}, #state{node=Node}=State) ->
     lager:warning("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p Id: ~s"
                   ,[Node, _Section, _Something, _Key, _Value, Id]),
@@ -223,9 +226,15 @@ init_message_props(Props) ->
 
 -spec add_message_missing_props(wh_proplist()) -> wh_proplist().
 add_message_missing_props(Props) ->
-    lists:foldl(fun(A,B) -> [A | B] end, Props,
+    lists:foldl(fun({K, _V}= A,B) ->
+                        case props:get_value(K, Props) of
+                            'undefined' -> [A | B];
+                            _Else -> B
+                        end
+                end, Props,
                 [{<<"Call-Direction">>, <<"outbound">>}
                  ,{<<"Resource-Type">>,<<"sms">>}
+                 ,{<<"Message-ID">>, wh_util:rand_hex_binary(16)}
                  ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
                  ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
                 ]).
