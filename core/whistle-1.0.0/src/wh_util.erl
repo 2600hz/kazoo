@@ -475,16 +475,10 @@ set_allow_number_additions(Account, IsAllowed) ->
 -spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
 account_update(JObj) ->
     AccountDb = wh_doc:account_db(JObj),
-    case couch_mgr:save_doc(AccountDb, JObj) of
+    case couch_mgr:ensure_saved(AccountDb, JObj) of
         {'error', _R}=E -> E;
         {'ok', SavedJObj} ->
-            AccountId = wh_doc:id(SavedJObj),
-            case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
-                {'ok', Rev} ->
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(SavedJObj, Rev));
-                _Else       ->
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(SavedJObj))
-            end
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, SavedJObj)
     end.
 
 account_update(Account, UpdateFun) ->
