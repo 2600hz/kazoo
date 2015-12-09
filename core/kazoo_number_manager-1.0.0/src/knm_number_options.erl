@@ -16,6 +16,7 @@
          ,ported_in/1, ported_in/2
          ,public_fields/1, public_fields/2
          ,state/1, state/2
+         ,should_delete/1, should_delete/2
 
          ,default/0
         ]).
@@ -29,7 +30,8 @@
                   {'module_name', ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', wh_json:object()} |
-                  {'state', ne_binary()}.
+                  {'state', ne_binary()} |
+                  {'should_delete', boolean()}.
 
 -type options() :: [option()].
 
@@ -96,3 +98,10 @@ module_name(Options) ->
     module_name(Options, knm_carriers:default_carrier()).
 module_name(Options, Default) ->
     props:get_binary_value('module_name', Options, Default).
+
+-spec should_delete(options()) -> boolean().
+-spec should_delete(options(), Default) -> boolean() | Default.
+should_delete(Options) ->
+    should_delete(Options, 'false').
+should_delete(Options, Default) ->
+    props:is_true('should_delete', Options, Default).
