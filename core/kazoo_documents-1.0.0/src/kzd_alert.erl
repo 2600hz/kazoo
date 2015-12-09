@@ -151,7 +151,7 @@ set_metadata(JObj, Metadata) ->
 -spec level(doc()) -> api_binary().
 -spec level(doc(), Default) -> ne_binary() | Default.
 level(JObj) ->
-    level(JObj, 'undefined').
+    level(JObj, <<"info">>).
 
 level(JObj, Default) ->
     wh_json:get_value(?LEVEL, JObj, Default).
