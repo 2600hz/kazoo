@@ -15,6 +15,7 @@ release_number_test_() ->
              ,fun release_available_number/1
              ,fun release_in_service_number/1
              ,fun release_with_history/1
+             ,fun release_for_hard_delete/1
             ],
     lists:foldl(fun(F, Acc) ->
                         F(Acc)
@@ -79,5 +80,17 @@ release_with_history(Tests) ->
                       ,knm_phone_number:assigned_to(PhoneNumber)
                      )
       }
+     | Tests
+    ].
+
+release_for_hard_delete(Tests) ->
+    {'ok', Deleted} = knm_number:delete(?TEST_IN_SERVICE_NUM, [{'should_delete', 'true'}]),
+    PhoneNumber = knm_number:phone_number(Deleted),
+
+    [{"verify number state is moved to DELETED"
+      ,?_assertEqual(?NUMBER_STATE_DELETED
+                    ,knm_phone_number:state(PhoneNumber)
+                    )
+     }
      | Tests
     ].
