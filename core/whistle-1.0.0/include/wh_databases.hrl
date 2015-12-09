@@ -5,6 +5,7 @@
 -define(WH_MEDIA_DB, <<"system_media">>).
 -define(WH_SIP_DB, <<"sip_auth">>).
 -define(WH_ACCOUNTS_DB, <<"accounts">>).
+-define(WH_ALERTS_DB, <<"alerts">>).
 -define(WH_RATES_DB, <<"ratedeck">>).
 -define(WH_PROVISIONER_DB, <<"global_provisioner">>).
 -define(WH_FAXES_DB, <<"faxes">>).
