@@ -72,7 +72,7 @@ id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_published(wh_json:object()) -> ne_binary().
+-spec is_published(wh_json:object()) -> boolean().
 is_published(JObj) ->
     wh_json:is_true(?PUBLISHED, JObj, 'true').
 
@@ -99,7 +99,7 @@ i18n(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tags(wh_json:object()) -> ne_binary().
+-spec tags(wh_json:object()) -> ne_binaries().
 tags(JObj) ->
     wh_json:get_list_value(?TAGS, JObj).
 
@@ -171,7 +171,7 @@ price(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec screenshots(wh_json:object()) -> ne_binary().
+-spec screenshots(wh_json:object()) -> ne_binaries().
 screenshots(JObj) ->
     wh_json:get_list_value(?SCREENSHOTS, JObj).
 
@@ -180,7 +180,7 @@ screenshots(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec urls(wh_json:object()) -> ne_binary().
+-spec urls(wh_json:object()) -> wh_json:object().
 urls(JObj) ->
     wh_json:get_json_value(?URLS, JObj).
 
