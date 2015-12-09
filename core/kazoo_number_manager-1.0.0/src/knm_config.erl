@@ -10,6 +10,13 @@
 
 -define(LOCALITY_CONFIG_CAT, <<"number_manager.locality">>).
 
+-ifdef(TEST).
+should_permanently_delete() ->
+    'false'.
+should_permanently_delete(Default) ->
+    Default.
+-else.
+
 -spec should_permanently_delete() -> boolean().
 -spec should_permanently_delete(boolean()) -> boolean().
 should_permanently_delete() ->
@@ -19,6 +26,7 @@ should_permanently_delete(Default) ->
                               ,<<"should_permanently_delete">>
                               ,Default
                              ).
+-endif.
 
 -spec released_state() -> ne_binary().
 -spec released_state(ne_binary()) -> ne_binary().
