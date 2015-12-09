@@ -199,7 +199,7 @@ remove_binding(#bh_context{bindings=Bds}=Context, Binding) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_bound(context(), ne_binary()) -> context().
+-spec is_bound(context(), ne_binary()) -> boolean().
 is_bound(#bh_context{bindings=Bds}, Binding) ->
     lists:member(Binding, Bds).
 
