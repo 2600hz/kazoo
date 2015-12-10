@@ -46,7 +46,7 @@
         ]).
 -export([to_boolean/1, is_boolean/1
          ,is_true/1, is_false/1
-         ,is_empty/1
+         ,is_empty/1, is_not_empty/1
          ,is_proplist/1
          ,identity/1
          ,always_true/1, always_false/1
@@ -974,6 +974,9 @@ is_empty(MaybeJObj) ->
         'false' -> 'false'; %% if not a json object, its not empty
         'true' -> wh_json:is_empty(MaybeJObj)
     end.
+
+-spec is_not_empty(any()) -> boolean().
+is_not_empty(Term) -> (not is_empty(Term)).
 
 -spec is_proplist(any()) -> boolean().
 is_proplist(Term) when is_list(Term) ->
