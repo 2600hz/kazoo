@@ -14,14 +14,14 @@
          ,fetch/1
         ]).
 
--export([title/1, title/2, set_title/2
-         ,category/1, category/2, set_category/2
-         ,message/1, message/2, set_message/2
+-export([title/0, title/1, title/2, set_title/2
+         ,category/0 ,category/1, category/2, set_category/2
+         ,message/0, message/1, message/2, set_message/2
          ,metadata/1, metadata/2, set_metadata/2
-         ,level/1, level/2, set_level/2
-         ,from/1, from/2, set_from/2
-         ,to/1, to/2, set_to/2
-         ,expiration_date/1, expiration_date/2, set_expiration_date/2
+         ,level/0, level/1, level/2, set_level/2
+         ,from/0, from/1, from/2, set_from/2
+         ,to/0, to/1, to/2, set_to/2
+         ,expiration_date/0, expiration_date/1, expiration_date/2, set_expiration_date/2
         ]).
 
 -define(ID, <<"_id">>).
@@ -84,8 +84,12 @@ fetch(<<_/binary>> = AlertId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec title() -> ne_binary().
 -spec title(doc()) -> api_binary().
 -spec title(doc(), Default) -> ne_binary() | Default.
+title() ->
+    ?TITLE.
+
 title(JObj) ->
     title(JObj, 'undefined').
 
@@ -100,8 +104,12 @@ set_title(JObj, Title) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec category() -> ne_binary().
 -spec category(doc()) -> api_binary().
 -spec category(doc(), Default) -> ne_binary() | Default.
+category() ->
+    ?CATEGORY.
+
 category(JObj) ->
     category(JObj, 'undefined').
 
@@ -116,8 +124,12 @@ set_category(JObj, Category) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec message() -> ne_binary().
 -spec message(doc()) -> api_binary().
 -spec message(doc(), Default) -> ne_binary() | Default.
+message() ->
+    ?MESSAGE.
+
 message(JObj) ->
     message(JObj, 'undefined').
 
@@ -132,8 +144,12 @@ set_message(JObj, Message) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec metadata() -> ne_binary().
 -spec metadata(doc()) -> wh_json:object().
 -spec metadata(doc(), Default) ->  wh_json:object() | Default.
+metadata() ->
+    ?METADATA.
+
 metadata(JObj) ->
     metadata(JObj, wh_json:new()).
 
@@ -148,8 +164,12 @@ set_metadata(JObj, Metadata) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec level() -> ne_binary().
 -spec level(doc()) -> api_binary().
 -spec level(doc(), Default) -> ne_binary() | Default.
+level() ->
+    ?LEVEL.
+
 level(JObj) ->
     level(JObj, <<"info">>).
 
@@ -164,8 +184,12 @@ set_level(JObj, Level) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec from() -> ne_binary().
 -spec from(doc()) -> wh_json:object().
 -spec from(doc(), Default) ->  wh_json:object() | Default.
+from() ->
+    ?FROM.
+
 from(JObj) ->
     from(JObj, wh_json:new()).
 
@@ -180,8 +204,12 @@ set_from(JObj, From) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec to() -> ne_binary().
 -spec to(doc()) -> wh_json:object().
 -spec to(doc(), Default) ->  wh_json:object() | Default.
+to() ->
+    ?TO.
+
 to(JObj) ->
     to(JObj, wh_json:new()).
 
@@ -196,8 +224,12 @@ set_to(JObj, To) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec expiration_date() -> ne_binary().
 -spec expiration_date(doc()) -> wh_json:object().
 -spec expiration_date(doc(), Default) ->  wh_json:object() | Default.
+expiration_date() ->
+    ?EXPIRATION_DATE.
+
 expiration_date(JObj) ->
     expiration_date(JObj, wh_json:new()).
 
