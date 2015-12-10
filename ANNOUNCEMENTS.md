@@ -10,6 +10,10 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 Most operations have been moved to the Cowboy or Cowlib projects. We will formally remove mochiweb from `deps/`. If you maintain code apart from Kazoo that uses mochiweb, please either covert to equivalent functionality with Cowboy/Cowlib or plan how you'll build your custom code with your own dependency of mochiweb.
 
+#### Replacing `deps/exmpp`
+
+exmpp library has problems restarting. it will be replaced by `deps/escalus`
+
 ## Versions
 
 ### 4.0
