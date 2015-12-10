@@ -8,13 +8,25 @@
 -module(whapps_alert).
 
 -export([
-    fetch/1
+    enabled/0
+    ,fetch/1
     ,create/4, create/5
     ,save/1, delete/1
 ]).
 
+-define(CONFIG_CAT, <<"alerts">>).
+
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec enabled() -> boolean().
+enabled() ->
+    whapps_config:get_is_true(?CONFIG_CAT, <<"enabled">>, 'true').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -48,14 +60,18 @@ create(_Title, _Message, 'undefined', _To, _Opts) ->
 create(_Title, _Message, _From, 'undefined', _Opts) ->
     {'error', 'missing_to'};
 create(Title, Message, From, To, Opts) ->
-    JObj = maybe_add_options(Opts, kzd_alert:new()),
-    Routines = [
-        fun(J) -> kzd_alert:set_title(J, Title) end
-        ,fun(J) -> kzd_alert:set_message(J, Message) end
-        ,fun(J) -> kzd_alert:set_from(J, From) end
-        ,fun(J) -> kzd_alert:set_to(J, To) end
-    ],
-    {'ok', lists:foldl(fun(F, J) -> F(J) end, JObj, Routines)}.
+    case enabled() of
+        'false' -> {'error', 'alerts_disabled'};
+        'true' ->
+            JObj = maybe_add_options(Opts, kzd_alert:new()),
+            Routines = [
+                fun(J) -> kzd_alert:set_title(J, Title) end
+                ,fun(J) -> kzd_alert:set_message(J, Message) end
+                ,fun(J) -> kzd_alert:set_from(J, From) end
+                ,fun(J) -> kzd_alert:set_to(J, To) end
+            ],
+            {'ok', lists:foldl(fun(F, J) -> F(J) end, JObj, Routines)}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -64,7 +80,11 @@ create(Title, Message, From, To, Opts) ->
 %%--------------------------------------------------------------------
 -spec save(wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
 save(JObj) ->
-    couch_mgr:save_doc(?WH_ALERTS_DB, JObj).
+    case enabled() of
+        'false' -> {'error', 'alerts_disabled'};
+        'true' ->
+            couch_mgr:save_doc(?WH_ALERTS_DB, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
