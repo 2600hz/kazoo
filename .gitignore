@@ -11,6 +11,7 @@
 *.o
 *.pid
 *.dump
+deps/*/rebar
 core/*/test/*.beam
 core/*/test/*.app
 applications/*/priv/archive_data/*
