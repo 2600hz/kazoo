@@ -45,6 +45,7 @@
                         ,?KZ_OAUTH_DB
                         ,?KZ_WEBHOOKS_DB
                         ,?KZ_TOKEN_DB
+                        ,?WH_ALERTS_DB
                        ]).
 
 -define(WH_DATABASES_HRL, 'true').
