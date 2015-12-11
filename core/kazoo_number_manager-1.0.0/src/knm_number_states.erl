@@ -79,6 +79,50 @@ to_reserved(Number, ?NUMBER_STATE_IN_SERVICE) ->
 to_reserved(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_RESERVED).
 
+-spec to_in_service(kn()) -> kn().
+-spec to_in_service(kn(), ne_binary()) -> kn().
+to_in_service(Number) ->
+    to_in_service(Number, number_state(Number)).
+
+to_in_service(Number, ?NUMBER_STATE_DISCOVERY) ->
+    Routines = [fun authorize/1
+                ,fun move_to_in_service_state/1
+                ,fun knm_services:activate_phone_number/1
+                ,fun knm_carriers:acquire/1
+               ],
+    apply_transitions(Number, Routines);
+to_in_service(Number, ?NUMBER_STATE_PORT_IN) ->
+    Routines = [fun authorize/1
+                ,fun move_to_in_service_state/1
+               ],
+    apply_transitions(Number, Routines);
+to_in_service(Number, ?NUMBER_STATE_AVAILABLE) ->
+    Routines = [fun authorize/1
+                ,fun move_to_in_service_state/1
+                ,fun knm_services:activate_phone_number/1
+                ,fun knm_carriers:acquire/1
+               ],
+    apply_transitions(Number, Routines);
+to_in_service(Number, ?NUMBER_STATE_RESERVED) ->
+    Routines = [fun in_service_from_reserved_authorize/1
+                ,fun move_to_in_service_state/1
+               ],
+    apply_transitions(Number, Routines);
+to_in_service(Number, ?NUMBER_STATE_IN_SERVICE) ->
+    PhoneNumber = knm_number:phone_number(Number),
+
+    AssignTo = knm_phone_number:assign_to(PhoneNumber),
+    case knm_phone_number:assigned_to(PhoneNumber) of
+        AssignTo -> Number;
+        _AssignedTo ->
+            Routines = [fun in_service_from_in_service_authorize/1
+                        ,fun move_to_in_service_state/1
+                       ],
+            apply_transitions(Number, Routines)
+    end;
+to_in_service(Number, State) ->
+    knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_IN_SERVICE).
+
 -spec to_deleted(kn()) -> kn().
 to_deleted(Number) ->
     apply_transitions(Number, [fun move_to_deleted_state/1]).
@@ -103,6 +147,37 @@ authorize(Number, ?DEFAULT_AUTH_BY) -> Number;
 authorize(Number, AuthBy) ->
     AssignTo = knm_phone_number:assign_to(knm_number:phone_number(Number)),
     case ?ACCT_HIERARCHY(AuthBy, AssignTo, 'true') of
+        'false' -> knm_errors:unauthorized();
+        'true' -> Number
+    end.
+
+-spec in_service_from_reserved_authorize(kn()) -> kn().
+in_service_from_reserved_authorize(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+
+    AssignTo = knm_phone_number:assign_to(PhoneNumber),
+    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
+    AuthBy = knm_phone_number:auth_by(PhoneNumber),
+
+    case (?ACCT_HIERARCHY(AssignedTo, AuthBy, 'true')
+          orelse ?ACCT_HIERARCHY(AuthBy, AssignedTo, 'false')
+         )
+        andalso ?ACCT_HIERARCHY(AssignedTo, AssignTo, 'true')
+    of
+        'false' -> knm_errors:unauthorized();
+        'true' -> Number
+    end.
+
+-spec in_service_from_in_service_authorize(kn()) -> kn().
+in_service_from_in_service_authorize(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+
+    AssignTo = knm_phone_number:assign_to(PhoneNumber),
+    AuthBy = knm_phone_number:auth_by(PhoneNumber),
+
+    case ?ACCT_HIERARCHY(AssignTo, AuthBy, 'true')
+        orelse ?ACCT_HIERARCHY(AuthBy, AssignTo, 'false')
+    of
         'false' -> knm_errors:unauthorized();
         'true' -> Number
     end.
@@ -148,6 +223,17 @@ move_to_reserved_state(Number) ->
       ,move_phone_number_to_state(
          PhoneNumber
          ,?NUMBER_STATE_RESERVED
+        )
+     ).
+
+-spec move_to_in_service_state(kn()) -> kn().
+move_to_in_service_state(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    knm_number:set_phone_number(
+      Number
+      ,move_phone_number_to_state(
+         PhoneNumber
+         ,?NUMBER_STATE_IN_SERVICE
         )
      ).
 
