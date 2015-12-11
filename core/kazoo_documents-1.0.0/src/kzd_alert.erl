@@ -205,13 +205,13 @@ set_from(JObj, From) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec to() -> ne_binary().
--spec to(doc()) -> wh_json:object().
--spec to(doc(), Default) ->  wh_json:object() | Default.
+-spec to(doc()) -> wh_json:objects().
+-spec to(doc(), Default) ->  wh_json:objects() | Default.
 to() ->
     ?TO.
 
 to(JObj) ->
-    to(JObj, wh_json:new()).
+    to(JObj, []).
 
 to(JObj, Default) ->
     wh_json:get_value(?TO, JObj, Default).

@@ -20,7 +20,7 @@
 
 -include("../crossbar.hrl").
 
--define(CB_LIST, <<"alerts/crossbar_listing">>).
+-define(AVAILABLE_LIST, <<"alerts/available">>).
 
 %%%===================================================================
 %%% API
@@ -167,7 +167,99 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    Context1 = cb_context:set_account_db(Context, ?WH_ALERTS_DB),
+    Keys = view_keys(Context),
+    crossbar_doc:load_view(?AVAILABLE_LIST, [{'keys', Keys}], Context1, fun normalize_view_results/2).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec view_keys(cb_context:context()) -> list().
+view_keys(Context) ->
+    AuthDoc = cb_context:auth_doc(Context),
+
+    AccountId = cb_context:account_id(Context),
+    OwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
+
+    IsAdmin = is_user_admin(AccountId, OwnerId),
+
+    Routines = [
+        fun(K) -> [[<<"all">>, <<"all">>], [<<"all">>, <<"users">>]|K] end
+        ,fun(K) -> [[AccountId, <<"all">>], [AccountId, <<"users">>]|K] end
+        ,fun(K) ->
+            case OwnerId of
+                'undefined' -> K;
+                UserId -> [[AccountId, UserId]|K]
+            end
+        end
+        ,fun(K) ->
+            case wh_services:is_reseller(AccountId) of
+                'false' -> K;
+                'true' -> [[<<"resellers">>, <<"all">>], [<<"resellers">>, <<"users">>]|K]
+            end
+        end
+        ,fun(K) ->
+            case IsAdmin of
+                'false' -> K;
+                'true' ->
+                    [[<<"all">>, <<"admins">>]
+                     ,[AccountId, <<"admins">>]
+                     ,[<<"resellers">>, <<"admins">>]
+                     |K
+                    ]
+            end
+        end
+        ,fun(K) ->
+            lists:foldl(
+                fun(Descendant, Acc) ->
+                    add_descendants(Descendant, IsAdmin, Acc)
+                end
+                ,K
+                ,crossbar_util:get_descendants(AccountId)
+            )
+        end
+    ],
+    lists:foldl(fun(F, Keys) -> F(Keys) end, [], Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_user_admin(ne_binary(), api_binary()) -> boolean().
+is_user_admin(_Account, 'undefined') -> 'false';
+is_user_admin(Account, UserId) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+        {'error', _} -> 'false';
+        {'ok', JObj} ->
+            case wh_json:get_value(<<"priv_level">>, JObj) of
+                <<"admin">> -> 'true';
+                _ -> 'false'
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_descendants(ne_binary(), boolean(), list()) -> list().
+add_descendants(Descendant, 'false', Keys) ->
+    [[<<"descendants">>, [Descendant, <<"all">>]]
+     ,[<<"descendants">>, [Descendant, <<"users">>]]
+     | Keys];
+add_descendants(Descendant, 'true', Keys) ->
+    [[<<"descendants">>, [Descendant, <<"all">>]]
+     ,[<<"descendants">>, [Descendant, <<"users">>]]
+     ,[<<"descendants">>, [Descendant, <<"admins">>]]
+     | Keys].
 
 %%--------------------------------------------------------------------
 %% @private
