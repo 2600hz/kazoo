@@ -281,20 +281,22 @@ move(Num, MoveTo) ->
     move(Num, MoveTo, knm_number_options:default()).
 
 move(Num, MoveTo, Options) ->
-    lager:debug("trying to move ~s to ~s", [Num, MoveTo]),
-    case ?MODULE:get(Num, Options) of
-        {'error', _R}=E -> E;
+    case get(Num, Options) of
         {'ok', Number} ->
-            AccountId = wh_util:format_account_id(MoveTo, 'raw'),
-
-            AssignedTo = knm_phone_number:assigned_to(phone_number(Number)),
-
-            Routines = [{fun knm_phone_number:set_assigned_to/2, AccountId}
-                        ,{fun knm_phone_number:set_prev_assigned_to/2, AssignedTo}
-                        ,fun knm_phone_number:save/1
-                       ],
-            wrap_phone_number_routines(Number, Routines)
+            move_to(Number, MoveTo, Options);
+        {'error', 'not_found'} ->
+            PN = knm_phone_number:new(Num, Options),
+            Number = set_phone_number(new(), PN),
+            move_to(Number, MoveTo, Options);
+        {'error', _E}=E -> E
     end.
+
+move_to(Number, MoveTo, Options) ->
+    AccountId = wh_util:format_account_id(MoveTo, 'raw'),
+    PhoneNumber = phone_number(Number),
+    MovedPhoneNumber = knm_phone_number:set_assign_to(PhoneNumber, AccountId),
+    Number = set_phone_number(Number, MovedPhoneNumber),
+
 
 %%--------------------------------------------------------------------
 %% @public
