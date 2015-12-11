@@ -216,7 +216,6 @@ init([]) ->
 
 %% @private
 elected(State, _Election, undefined) ->
-    Sync = State#state.tasks,
     State1 = case State#state.is_leader of
 		 false ->
 		     start_tasks(State);
@@ -224,9 +223,8 @@ elected(State, _Election, undefined) ->
 		     State
 	     end,
     State2 = State1#state{is_leader = true},
-    {ok, Sync, State2};
+    {ok, State2#state.tasks, State2};
 elected(State, _Election, _Node) ->
-    Sync = State#state.tasks,
     State1 = case State#state.is_leader of
 		 false ->
 		     start_tasks(State);
@@ -234,7 +232,7 @@ elected(State, _Election, _Node) ->
 		     State
 	     end,
     State2 = State1#state{is_leader = true},
-    {reply, Sync, State2}.
+    {reply, State2#state.tasks, State2}.
 
 %% @private
 surrendered(State, Sync, _Election) ->
@@ -371,10 +369,13 @@ send_tasks(Tasks, Election) ->
 
 stop_tasks(State) ->
     Tasks = State#state.tasks,
-    Tasks1 = lists:foldl(fun({Name, Pid, Schedule, Exec}, Acc) ->
-				 ok = leader_cron_task:stop(Pid),
-				 [{Name, undefined, Schedule, Exec}|Acc]
-			 end, [], Tasks),
+    Tasks1 = lists:foldl(
+               fun({Name, Pid, Schedule, Exec}, Acc) when node(Pid) == node() ->
+                       ok = leader_cron_task:stop(Pid),
+                       [{Name, undefined, Schedule, Exec}|Acc];
+                  (Task, Acc) ->
+                       [Task | Acc]
+               end, [], Tasks),
     State#state{tasks = Tasks1}.
 
 -spec start_tasks(#state{}) -> #state{}.
