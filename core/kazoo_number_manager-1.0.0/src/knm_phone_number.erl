@@ -12,6 +12,7 @@
          ,save/1
          ,delete/1
          ,release/1
+         ,new/1, new/2
         ]).
 
 -export([to_json/1
@@ -72,6 +73,30 @@
               ,set_function/0
               ,set_functions/0
              ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec new(ne_binary()) -> knm_phone_number().
+-spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
+new(DID) ->
+    new(DID, knm_number_options:default()).
+
+new(DID, Options) ->
+    NormalizedNum = knm_converters:normalize(DID),
+    NumberDb = knm_converters:to_db(NormalizedNum),
+
+    #knm_phone_number{number=NormalizedNum
+                     ,number_db=NumberDb
+                     ,assign_to=knm_number_options:assign_to(Options)
+                     ,state=?NUMBER_STATE_DISCOVERY
+                     ,module_name=?CARRIER_OTHER
+                     ,carrier_data=wh_json:new()
+                     ,auth_by=knm_number_options:auth_by(Options)
+                     ,dry_run=knm_number_options:dry_run(Options)
+                     }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -323,26 +348,34 @@ run_setters(Number, Routines) ->
 -spec setters_fold(set_function(), setter_acc()) -> setter_acc().
 setters_fold(_, {'error', _R}=Error) ->
     throw({'stop', Error});
-setters_fold({Fun, [_|_]=Value}, {'ok', Number}) when is_function(Fun) ->
-    lager:debug("applying ~p", [Fun]),
-    erlang:apply(Fun, [Number|Value]);
-setters_fold({Fun, [_|_]=Value}, Number) when is_function(Fun) ->
-    lager:debug("applying ~p", [Fun]),
-    erlang:apply(Fun, [Number|Value]);
 
-setters_fold({Fun, Value}, {'ok', Number}) when is_function(Fun) ->
+setters_fold({Fun, [_|_]=Value}, {'ok', PhoneNumber}) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
-    erlang:apply(Fun, [Number, Value]);
-setters_fold({Fun, Value}, Number) when is_function(Fun) ->
+    erlang:apply(Fun, [PhoneNumber|Value]);
+setters_fold({Fun, [_|_]=Value}, PhoneNumber) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
-    erlang:apply(Fun, [Number, Value]);
+    erlang:apply(Fun, [PhoneNumber|Value]);
 
-setters_fold(Fun, {'ok', Number}) when is_function(Fun) ->
+setters_fold({_Fun, 'undefined'}, {'ok', PhoneNumber}) ->
+    lager:debug("skipping ~p", [_Fun]),
+    PhoneNumber;
+setters_fold({_Fun, 'undefined'}, PhoneNumber) ->
+    lager:debug("skipping ~p", [_Fun]),
+    PhoneNumber;
+
+setters_fold({Fun, Value}, {'ok', PhoneNumber}) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
-    erlang:apply(Fun, [Number]);
-setters_fold(Fun, Number) when is_function(Fun) ->
+    erlang:apply(Fun, [PhoneNumber, Value]);
+setters_fold({Fun, Value}, PhoneNumber) when is_function(Fun) ->
     lager:debug("applying ~p", [Fun]),
-    erlang:apply(Fun, [Number]).
+    erlang:apply(Fun, [PhoneNumber, Value]);
+
+setters_fold(Fun, {'ok', PhoneNumber}) when is_function(Fun) ->
+    lager:debug("applying ~p", [Fun]),
+    erlang:apply(Fun, [PhoneNumber]);
+setters_fold(Fun, PhoneNumber) when is_function(Fun) ->
+    lager:debug("applying ~p", [Fun]),
+    erlang:apply(Fun, [PhoneNumber]).
 
 -type routine() :: fun((knm_phone_number()) -> knm_phone_number()) |
                    fun((knm_phone_number(), any()) -> knm_phone_number()).
@@ -612,6 +645,9 @@ set_options(Number, Options) ->
              }
              ,{fun set_auth_by/2
                ,knm_number_options:auth_by(Options, ?DEFAULT_AUTH_BY)
+              }
+             ,{fun set_assign_to/2
+               ,knm_number_options:assign_to(Options)
               }
             ],
     setters(Number, Props).
