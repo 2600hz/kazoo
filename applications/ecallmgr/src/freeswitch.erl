@@ -20,6 +20,7 @@
         ]).
 -export([bgapi/3
          ,bgapi/4
+         ,bgapi/5
          ,bgapi/6
         ]).
 -export([event/2
@@ -170,6 +171,39 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
                                   Fun('ok', Reply);
                               {'bgerror', JobId, Reply} ->
                                   Fun('error', Reply)
+                          end;
+                      {'error', Reason} ->
+                          Self ! {'api', {'error', Reason}};
+                      'timeout' ->
+                          Self ! {'api', {'error', 'timeout'}}
+                  catch
+                      _E:_R ->
+                          lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
+                                     ,[Cmd, Node, _E, _R]),
+                          Self ! {'api', {'error', 'exception'}}
+                  end
+          end),
+    %% get the initial result of the command, NOT the asynchronous response, and
+    %% return it
+    receive
+        {'api', Result} -> Result
+    end.
+
+-spec bgapi(atom(), atom(), string() | binary(), fun(), list()) ->
+                   {'ok', binary()} |
+                   {'error', 'timeout' | 'exception' | binary()}.
+bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
+    Self = self(),
+    _ = wh_util:spawn(
+          fun() ->
+                  try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
+                      {'ok', JobId}=JobOk ->
+                          Self ! {'api', JobOk},
+                          receive
+                              {'bgok', JobId, Reply} ->
+                                  Fun('ok', Reply, [JobId | CallBackParams]);
+                              {'bgerror', JobId, Reply} ->
+                                  Fun('error', Reply, [JobId | CallBackParams])
                           end;
                       {'error', Reason} ->
                           Self ! {'api', {'error', Reason}};
