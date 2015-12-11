@@ -283,20 +283,27 @@ move(Num, MoveTo) ->
 move(Num, MoveTo, Options) ->
     case get(Num, Options) of
         {'ok', Number} ->
-            move_to(Number, MoveTo, Options);
+            move_to(Number, MoveTo);
         {'error', 'not_found'} ->
             PN = knm_phone_number:new(Num, Options),
             Number = set_phone_number(new(), PN),
-            move_to(Number, MoveTo, Options);
+            move_to(Number, MoveTo);
         {'error', _E}=E -> E
     end.
 
-move_to(Number, MoveTo, Options) ->
+-spec move_to(knm_number:knm_number(), ne_binary()) ->
+                     knm_number_return().
+move_to(Number, MoveTo) ->
     AccountId = wh_util:format_account_id(MoveTo, 'raw'),
     PhoneNumber = phone_number(Number),
     MovedPhoneNumber = knm_phone_number:set_assign_to(PhoneNumber, AccountId),
-    Number = set_phone_number(Number, MovedPhoneNumber),
+    MovedNumber = set_phone_number(Number, MovedPhoneNumber),
 
+    Routines = [fun knm_number_states:to_in_service/1
+                ,fun save_number/1
+                ,fun dry_run_or_number/1
+               ],
+    apply_number_routines(MovedNumber, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
