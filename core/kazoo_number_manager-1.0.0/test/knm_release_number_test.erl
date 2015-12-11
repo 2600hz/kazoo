@@ -89,7 +89,7 @@ release_for_hard_delete(Tests) ->
 
     [{"verify number state is moved to DELETED"
       ,?_assertEqual(?NUMBER_STATE_DELETED
-                    ,knm_phone_number:state(PhoneNumber)
+                     ,knm_phone_number:state(PhoneNumber)
                     )
      }
      | Tests
