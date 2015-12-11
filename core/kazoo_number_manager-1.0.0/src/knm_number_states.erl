@@ -10,6 +10,7 @@
 
 -export([to_reserved/1
          ,to_deleted/1
+         ,to_in_service/1
          ,to_state/2, to_state/3
         ]).
 
