@@ -1,11 +1,13 @@
 #!/usr/bin/env python2
 
+# print 'Usage: ' + sys.argv[0] + ' file.json+'
+
 import sys
 import json
 import shutil
 
 if len(sys.argv) < 2:
-    print 'Usage: ' + sys.argv[0] + ' file.json+'
+    pass
 
 json.encoder.FLOAT_REPR = str
 for fn in sys.argv[1:]:

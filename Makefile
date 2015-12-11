@@ -19,8 +19,8 @@ $(MAKEDIRS):
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)
-	rm -f *crash.dump
-	rm -rf scripts/log/*
+	$(if $(wildcard *crash.dump), rm *crash.dump)
+	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 
 clean-test : ACTION = clean-test
 clean-test : $(KAZOODIRS)

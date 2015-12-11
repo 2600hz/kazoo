@@ -1,17 +1,10 @@
 ROOT = ../..
 REBAR = $(ROOT)/utils/rebar/rebar
-PREFIX:=../
 
 all: compile
 
 compile:
 	@$(REBAR) compile
-
-deps:
-	$(REBAR) get-deps
-
-edoc:
-	@$(REBAR) doc
 
 test:
 	@rm -rf .eunit

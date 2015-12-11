@@ -1,12 +1,9 @@
-PROJECT = gen_smtp
 ROOT = ../..
+PROJECT = gen_smtp
 REBAR = $(ROOT)/utils/rebar/rebar
 
-FILES = $(shell ls ebin/*.beam | grep -v smtp_rfc822_parse)
 
-all:
-	@$(REBAR) compile
-
+all: compile
 compile:
 	@$(REBAR) compile
 
@@ -19,6 +16,7 @@ test:
 	ERL_AFLAGS="-s ssl"
 	$(REBAR) -C rebar.test.config skip_deps=true eunit
 
+dialyze: FILES = $(shell ls ebin/*.beam | grep -v smtp_rfc822_parse)
 dialyze:
 	dialyzer $(FILES)
 

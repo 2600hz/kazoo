@@ -8,7 +8,7 @@ all: app
 
 app: compile
 
-compile: 
+compile:
 	@mkdir -p ebin
 	@$(REBAR) compile
 

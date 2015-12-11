@@ -1,17 +1,12 @@
-PROJECT = exmpp
 ROOT = ../..
+PROJECT = exmpp
 REBAR = $(ROOT)/utils/rebar/rebar
 
-all: app
+all: compile
 
-app: compile
-
-compile: 
+compile:
 	@mkdir -p ebin
 	@$(REBAR) compile
-
-deps:
-	@rebar get-deps
 
 clean:
 	@$(REBAR) clean
