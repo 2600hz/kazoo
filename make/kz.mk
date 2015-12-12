@@ -2,10 +2,12 @@
 
 .PHONY: compile json compile-test clean clean-test eunit
 
-ifeq (,$(findstring deps, $(PWD)))
+SHELL = /bin/bash -o pipefail
+
+ifeq ($(findstring deps, $(abspath Makefile)), deps)
     KZ_APP_OTPS =
 else
-    KZ_APP_OTPS = -Werror +warn_export_all
+    KZ_APP_OTPS = -Werror +warn_export_all +warn_unused_import
 endif
 ERLC_OPTS += $(KZ_APP_OTPS) +debug_info
 
@@ -24,13 +26,11 @@ TEST_MODULES = $(shell find test/ src/ -name '*.erl' | sed 's%[/.]% %g' | awk -v
 
 
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
-	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
-		> ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: $(wildcard $(SOURCES))
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
+	@sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' src/$(PROJECT).app.src > ebin/$(PROJECT).app
 
 
 json: JSON = $(if $(wildcard priv/), $(shell find priv/ -name '*.json' -print))
@@ -39,13 +39,11 @@ json:
 
 
 compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
-	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(TEST_MODULES)\]}/' \
-		> test/$(PROJECT).app
 
 test/$(PROJECT).app: $(wildcard $(TEST_SOURCES))
 	@mkdir -p test/
 	ERL_LIBS=$(ELIBS) erlc -DTEST -v $(ERLC_OPTS) $(TEST_PA) -o test/ $?
+	@sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' src/$(PROJECT).app.src > test/$(PROJECT).app
 
 
 clean: clean-test
