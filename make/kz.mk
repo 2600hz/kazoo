@@ -29,7 +29,6 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 		> ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: $(wildcard $(SOURCES))
-	$(if $(wildcard lib/), $(MAKE) -C lib/ all)
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
 
@@ -45,7 +44,6 @@ compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
 		> test/$(PROJECT).app
 
 test/$(PROJECT).app: $(wildcard $(TEST_SOURCES))
-	$(if $(wildcard lib/), $(MAKE) -C lib/ all)
 	@mkdir -p test/
 	ERL_LIBS=$(ELIBS) erlc -DTEST -v $(ERLC_OPTS) $(TEST_PA) -o test/ $?
 
