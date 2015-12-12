@@ -2,16 +2,8 @@
  [
    {description, "Simplified interface to CouchDB"}
   ,{id, "14f7c3cd-06f0-40a8-b750-2fda4cb06ea7"}
-  ,{vsn, "0.5.0"}
-  ,{modules, [
-               change_handler
-              ,change_mgr_sup
-              ,couch_mgr
-              ,whistle_couch_app
-              ,whistle_couch_deps
-              ,whistle_couch
-              ,whistle_couch_sup
-            ]}
+  ,{vsn, "1.0.0"}
+  ,{modules, []}
   ,{registered, [couch_mgr]}
   ,{applications, [
                     kernel

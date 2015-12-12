@@ -1,7 +1,39 @@
 {application, escalus,
  [
   {description, ""},
-  {vsn, git},
+  {vsn, "0f0f6367c2a7adbe3fafce26bb9ba15502d155f7"},
+  {modules, [
+csvkv
+,escalus
+,escalus_app
+,escalus_assert
+,escalus_auth
+,escalus_bosh
+,escalus_cleaner
+,escalus_client
+,escalus_compat
+,escalus_config
+,escalus_connection
+,escalus_ct
+,escalus_ejabberd
+,escalus_event
+,escalus_history_h
+,escalus_mongooseim
+,escalus_new_assert
+,escalus_overridables
+,escalus_pred
+,escalus_server
+,escalus_session
+,escalus_stanza
+,escalus_story
+,escalus_sup
+,escalus_tcp
+,escalus_user_db
+,escalus_users
+,escalus_utils
+,escalus_ws
+,scram
+]},
   {registered, []},
   {applications, [
                   kernel,

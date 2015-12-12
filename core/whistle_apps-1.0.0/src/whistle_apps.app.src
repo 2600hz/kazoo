@@ -2,16 +2,8 @@
  [
   {description, "Applications on top of Whistle"}
   ,{id, "9fd3b140-8727-11e0-9d78-0800200c9a66"}
-  ,{vsn, "0.5.0"}
-  ,{modules, [
-               whapps_controller
-              ,whistle_util
-              ,whistle_app
-              ,whistle_cli
-              ,whistle_deps
-              ,whistles
-              ,whistle_sup
-            ]}
+  ,{vsn, "1.0.0"}
+  ,{modules, []}
   ,{registered, [whapps_controller]}
   ,{applications, [
                    kernel

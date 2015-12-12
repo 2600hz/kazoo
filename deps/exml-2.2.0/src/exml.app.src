@@ -1,8 +1,13 @@
 {application, exml,
  [
   {description, "XML parsing library"},
-  {vsn, git},
-  {modules, []},
+  {vsn, "2.2.0"},
+  {modules, [
+exml
+,exml_event
+,exml_query
+,exml_stream
+]},
   {registered, []},
   {applications, [kernel,
                   stdlib]},

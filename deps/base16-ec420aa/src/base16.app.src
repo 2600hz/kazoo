@@ -1,7 +1,8 @@
 {application, base16,
  [
   {description, "Base16 encoding and decoding"},
-  {vsn, git},
+  {vsn, "ec420aa"},
+  {modules, [base16]},
   {registered, []},
   {applications, [kernel,
                   stdlib]},
