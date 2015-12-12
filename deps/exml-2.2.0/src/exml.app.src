@@ -2,6 +2,7 @@
  [
   {description, "XML parsing library"},
   {vsn, git},
+  {modules, []},
   {registered, []},
   {applications, [kernel,
                   stdlib]},

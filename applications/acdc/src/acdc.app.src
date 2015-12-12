@@ -2,6 +2,7 @@
  [
   {description, "ACDc - Automatic Call Distribution commander"},
   {vsn, "1"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,

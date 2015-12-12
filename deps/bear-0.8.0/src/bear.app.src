@@ -2,6 +2,7 @@
  [
   {description, ""},
   {vsn, git},
+  {modules, []},
   {registered, []},
   {applications, []},
   {env, []}

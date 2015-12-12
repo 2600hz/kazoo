@@ -2,6 +2,7 @@
  [
   {description, "Jonny 5 - Short circuit accounts exceeding call volume"},
   {vsn, "1"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,

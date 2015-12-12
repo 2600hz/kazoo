@@ -2,6 +2,7 @@
  [
   {description, ""},
   {vsn, "1"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,

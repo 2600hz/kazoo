@@ -2,6 +2,7 @@
  [
   {description, "Whistle Transactions provides some stuff"},
   {vsn, "1"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,

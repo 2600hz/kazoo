@@ -2,6 +2,7 @@
  [
   {description, "Registrar For the Stars"},
   {vsn, "0.0.3"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,

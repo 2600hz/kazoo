@@ -1,3 +1,9 @@
 {application, erlsom,
- [{description, "Erlsom"},
-  {vsn, "1.3"}]}.
+ [
+  {description, "Erlsom"},
+  {vsn, "1.3"},
+  {modules, []},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {env, []}
+ ]}.

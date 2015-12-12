@@ -2,6 +2,7 @@
  [
   {description, "Whistle Stats - An application for statistics tracking and analytics"},
   {vsn, "1"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,

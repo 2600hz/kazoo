@@ -2,6 +2,7 @@
  [
   {description, "milliwatt "},
   {vsn, "1"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,

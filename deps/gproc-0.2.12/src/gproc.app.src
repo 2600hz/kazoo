@@ -6,6 +6,7 @@
  [
   {description, "GPROC"},
   {vsn, "gproc-0.2.12"},
+  {modules, []},
   {id, "GPROC"},
   {registered, [ ] },
   %% NOTE: do not list applications which are load-only!

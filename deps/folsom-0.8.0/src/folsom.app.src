@@ -3,6 +3,7 @@
  [
   {description, ""},
   {vsn, git},
+  {modules, []},
   {registered, [folsom_meter_timer_server,
                 folsom_metrics_histogram_ets,
                 folsom_sup]},

@@ -4,6 +4,7 @@
   ,[
     {description, "Trunk Store Backend - Authentication and Routing"}
     ,{vsn, "0.3.5"}
+    ,{modules, []}
     ,{registered, []}
     ,{applications, [
                      kernel

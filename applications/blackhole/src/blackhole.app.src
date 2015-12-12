@@ -2,6 +2,7 @@
  [
   {description, "blackhole - websocket"},
   {vsn, "1"},
+  {modules, []},
   {registered, []},
   {applications, [
                   kernel,
