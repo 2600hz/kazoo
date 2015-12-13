@@ -332,6 +332,8 @@ to_uri(_State, _, From, _, _) ->
 -spec to_uri_cookie(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 to_uri_cookie(?PRESENCE_RINGING, _, _, Realm, Cookie) ->
     <<"sip:kfp+", Cookie/binary, "@", Realm/binary>>;
+to_uri_cookie(?PRESENCE_ANSWERED, _, _, Realm, Cookie) ->
+    <<"sip:kfp+", Cookie/binary, "@", Realm/binary>>;
 to_uri_cookie(_State, _, From, _, _) ->
     <<"sip:", From/binary>>.
 
