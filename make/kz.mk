@@ -1,6 +1,6 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile json compile-test clean clean-test eunit dialyze
+.PHONY: compile json compile-test clean clean-test eunit dialyze xref
 
 SHELL = /bin/bash -o pipefail
 
@@ -83,3 +83,8 @@ $(PLT):
 dialyze: TO_DIALYZE ?= $(abspath ebin)
 dialyze: $(PLT) compile
 	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
+
+
+xref: TO_XREF = $(EBINS)
+xref: compile
+	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
