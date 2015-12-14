@@ -4,12 +4,26 @@
 
 SHELL = /bin/bash -o pipefail
 
+
 ifeq ($(findstring deps, $(abspath Makefile)), deps)
     KZ_APP_OTPS =
 else
     KZ_APP_OTPS = -Werror +warn_export_all +warn_unused_import
 endif
+
 ERLC_OPTS += $(KZ_APP_OTPS) +debug_info
+
+# Could use OTP_VERSION, if ≥ 17
+OTP_VSN = $(shell erl -noshell -eval 'io:fwrite("~s\n", [erlang:system_info(otp_release)]).' -s erlang halt)
+
+ifeq ($(findstring 1, $(OTP_VSN)), 1)
+    ERLC_OPTS += +nowarn_deprecated_type +nowarn_deprecated_function
+endif
+
+ifeq ($(findstring 18, $(OTP_VSN)), 18)
+    ERLC_OPTS += -DOTP_AT_LEAST_18
+endif
+
 
 ELIBS ?= $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
