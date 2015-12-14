@@ -186,8 +186,8 @@ set_level(JObj, Level) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec from() -> ne_binary().
--spec from(doc()) -> wh_json:object().
--spec from(doc(), Default) ->  wh_json:object() | Default.
+-spec from(doc()) -> wh_json:objects().
+-spec from(doc(), Default) ->  wh_json:objects() | Default.
 from() ->
     ?FROM.
 
