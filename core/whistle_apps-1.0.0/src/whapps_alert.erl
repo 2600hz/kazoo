@@ -98,7 +98,7 @@ delete(AlertId) when is_binary(AlertId) ->
         {'ok', JObj} -> delete(JObj)
     end;
 delete(JObj) ->
-    couch_mgr:del_doc(?WH_ALERTS_DB, JObj).
+    couch_mgr:save_doc(?WH_ALERTS_DB, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj)).
 
 %%%===================================================================
 %%% Internal functions

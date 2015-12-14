@@ -240,7 +240,14 @@ fix_envelope(Context) ->
 
 filter_alerts(Alerts) ->
     lists:filter(
-        fun kzd_alert:expired/1
+        fun(Alert) ->
+            case kzd_alert:expired(Alert) of
+                'false' -> 'true';
+                'true' ->
+                    _ = wh_util:spawn(fun whapps_alert:delete/1, [kzd_alert:id(Alert)]),
+                    'false'
+            end
+        end
         ,lists:usort(Alerts)
     ).
 
