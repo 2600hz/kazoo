@@ -238,6 +238,12 @@ fix_envelope(Context) ->
     cb_context:setters(Context, Setters).
 
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_alerts(wh_json:objects()) -> wh_json:objects().
 filter_alerts(Alerts) ->
     lists:filter(
         fun(Alert) ->
