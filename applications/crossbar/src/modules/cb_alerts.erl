@@ -239,20 +239,8 @@ fix_envelope(Context) ->
 
 
 filter_alerts(Alerts) ->
-    Now = wh_util:current_tstamp(),
     lists:filter(
-        fun(Alert) ->
-            case
-                wh_json:get_value(
-                    kzd_alert:expiration_date()
-                    ,Alert
-                )
-            of
-                Date when Date < Now ->
-                    'false';
-                _ -> 'true'
-            end
-        end
+        fun kzd_alert:expired/1
         ,lists:usort(Alerts)
     ).
 

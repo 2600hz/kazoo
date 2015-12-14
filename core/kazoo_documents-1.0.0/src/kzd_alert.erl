@@ -22,6 +22,7 @@
          ,from/0, from/1, from/2, set_from/2
          ,to/0, to/1, to/2, set_to/2
          ,expiration_date/0, expiration_date/1, expiration_date/2, set_expiration_date/2
+         ,expired/1
         ]).
 
 -define(ID, <<"_id">>).
@@ -238,6 +239,15 @@ expiration_date(JObj, Default) ->
 
 set_expiration_date(JObj, ExpDate) ->
     wh_json:set_value(?EXPIRATION_DATE, ExpDate, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec expired(doc()) -> wh_json:object().
+expired(JObj) ->
+    wh_util:current_tstamp() < wh_json:get_value(?EXPIRATION_DATE, JObj).
 
 %%%===================================================================
 %%% Internal functions
