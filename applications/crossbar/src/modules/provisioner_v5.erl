@@ -550,6 +550,7 @@ create_alert(JObj, AccountId, AuthToken) ->
 
     To = [
         wh_json:from_list([{<<"type">>, AccountId}, {<<"value">>, <<"admins">>}])
+        ,wh_json:from_list([{<<"type">>, wh_services:get_reseller_id(AccountId)}, {<<"value">>, <<"admins">>}])
     ],
 
     {'ok', JObj} =
