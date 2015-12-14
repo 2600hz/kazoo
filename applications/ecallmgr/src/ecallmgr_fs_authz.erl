@@ -84,10 +84,11 @@ maybe_authorize_channel(Props, Node) ->
             end
     end.
 
+-spec is_referred(wh_proplist()) -> 'true' | 'false'.
 is_referred(Props) ->
   case kzd_freeswitch:ccv(Props, [<<"Referred-By">>, <<"Referred-To">>]) of
-    {'undefined', 'undefined'} -> false;
-    _ -> true
+    {'undefined', 'undefined'} -> 'false';
+    _ -> 'true'
   end.
 
 -spec maybe_channel_recovering(wh_proplist(), ne_binary(), atom()) -> boolean().
