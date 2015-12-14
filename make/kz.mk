@@ -1,6 +1,6 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile json compile-test clean clean-test eunit
+.PHONY: compile json compile-test clean clean-test eunit dialyze
 
 SHELL = /bin/bash -o pipefail
 
@@ -60,3 +60,12 @@ test: clean-test eunit
 
 eunit: compile-test
 	erl -noshell $(TEST_PA) -pa test/ -eval 'case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end.'
+
+
+PLT ?= $(ROOT)/.kazoo.plt
+$(PLT):
+	$(MAKE) -C $(ROOT) '.kazoo.plt'
+
+dialyze: TO_DIALYZE ?= $(abspath ebin)
+dialyze: $(PLT) compile
+	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)

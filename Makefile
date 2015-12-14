@@ -46,7 +46,7 @@ apps:
 kazoo: core apps
 
 DIALYZER ?= dialyzer
-PLT ?= $(ROOT)/.kazoo.plt
+PLT ?= .kazoo.plt
 $(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src  -print)
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin -print)
 $(PLT):
@@ -66,11 +66,11 @@ dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin -print
 dialyze-core: dialyze
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin -print)
 dialyze: $(PLT)
-	@$(ROOT)/scripts/check-dialyzer.escript $(TO_DIALYZE)
+	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
-xref: EBINS = $(shell find $(ROOT) -name ebin -print)
+xref: TO_XREF = $(shell find $(ROOT) -name ebin -print)
 xref:
-	@$(ROOT)/scripts/check-xref.escript $(EBINS)
+	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
 
 sup_completion: sup_completion_file = $(ROOT)/sup.bash
 sup_completion: kazoo
