@@ -10,13 +10,19 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("../src/knm.hrl").
 
-release_number_test_() ->
-    Tests = [move_number/1
-            ],
-    lists:foldl(fun(F, Acc) ->
-                        F(Acc)
-                end, [], Tests
-               ).
+move_number_test_() ->
+    TestFuns = [fun move_to_child/1],
+    lists:foldl(fun gen_tests/2, [], TestFuns).
 
-move_number(Tests) ->
-    Tests.
+gen_tests(F, A) ->
+    F(A).
+
+move_to_child(Tests) ->
+    {'ok', Number} = knm_number:move(?TEST_AVAILABLE_NUM, ?CHILD_ACCOUNT_ID),
+    PhoneNumber = knm_number:phone_number(Number),
+
+    [{"verify assigned_to is child account"
+      ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PhoneNumber))
+     }
+     | Tests
+    ].
