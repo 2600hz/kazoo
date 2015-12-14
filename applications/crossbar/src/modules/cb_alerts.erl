@@ -156,7 +156,8 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    Context1 = cb_context:set_account_db(Context, ?WH_ALERTS_DB),
+    crossbar_doc:load(Id, Context1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -167,9 +168,47 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
+    Context1 = load_summary(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            fix_envelope(Context1);
+        _ -> Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec load_summary(cb_context:context()) -> cb_context:context().
+load_summary(Context) ->
     Context1 = cb_context:set_account_db(Context, ?WH_ALERTS_DB),
-    Keys = view_keys(Context),
-    crossbar_doc:load_view(?AVAILABLE_LIST, [{'keys', Keys}], Context1, fun normalize_view_results/2).
+    crossbar_doc:load_view(
+        ?AVAILABLE_LIST
+        ,[{'keys', view_keys(Context1)}]
+        ,Context1
+        ,fun normalize_view_results/2
+    ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec fix_envelope(cb_context:context()) -> cb_context:context().
+fix_envelope(Context) ->
+    RespData = cb_context:resp_data(Context),
+    RespEnv = cb_context:resp_envelope(Context),
+    NewRespData = lists:usort(RespData),
+    Setters = [
+        {fun cb_context:set_resp_data/2, NewRespData}
+        ,{fun cb_context:set_resp_envelope/2
+          ,wh_json:set_value(<<"page_size">>, erlang:length(NewRespData), RespEnv)}
+    ],
+    cb_context:setters(Context, Setters).
+
 
 %%--------------------------------------------------------------------
 %% @private
