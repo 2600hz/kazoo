@@ -227,14 +227,34 @@ load_summary(Context) ->
 fix_envelope(Context) ->
     RespData = cb_context:resp_data(Context),
     RespEnv = cb_context:resp_envelope(Context),
-    NewRespData = lists:usort(RespData),
+
+    Alerts = filter_alerts(RespData),
+
     Setters = [
-        {fun cb_context:set_resp_data/2, NewRespData}
+        {fun cb_context:set_resp_data/2, Alerts}
         ,{fun cb_context:set_resp_envelope/2
-          ,wh_json:set_value(<<"page_size">>, erlang:length(NewRespData), RespEnv)}
+          ,wh_json:set_value(<<"page_size">>, erlang:length(Alerts), RespEnv)}
     ],
     cb_context:setters(Context, Setters).
 
+
+filter_alerts(Alerts) ->
+    Now = wh_util:current_tstamp(),
+    lists:filter(
+        fun(Alert) ->
+            case
+                wh_json:get_value(
+                    kzd_alert:expiration_date()
+                    ,Alert
+                )
+            of
+                Date when Date < Now ->
+                    'false';
+                _ -> 'true'
+            end
+        end
+        ,lists:usort(Alerts)
+    ).
 
 %%--------------------------------------------------------------------
 %% @private

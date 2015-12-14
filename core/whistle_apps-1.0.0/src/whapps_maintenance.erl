@@ -252,6 +252,7 @@ refresh(?KZ_TOKEN_DB) ->
     'ok';
 refresh(?WH_ALERTS_DB) ->
     _ = couch_mgr:db_create(?WH_ALERTS_DB),
+    couch_mgr:revise_doc_from_file(?WH_ALERTS_DB, 'crossbar', "views/alerts.json"),
     'ok';
 refresh(Database) when is_binary(Database) ->
     case couch_util:db_classification(Database) of
