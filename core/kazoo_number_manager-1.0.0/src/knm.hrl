@@ -30,8 +30,9 @@
 -define(TEST_CREATE_TOLL, <<"+18887771111">>).
 -define(TEST_EXISTING_TOLL, <<"+18005551212">>).
 
--define(MASTER_ACCOUNT_ID, <<"master_account_6992af0e9504d0b27">>).
+-define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
+-define(CHILD_ACCOUNT_ID,    <<"child_account_670a04df0014d0b27a">>).
 
 -define(PVT_TREE, [?MASTER_ACCOUNT_ID
                    ,?RESELLER_ACCOUNT_ID
