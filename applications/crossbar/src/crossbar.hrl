@@ -79,7 +79,7 @@
                           ,'cb_vmboxes'
                           ,'cb_webhooks', 'cb_whitelabel'
                           ,'cb_ledgers', 'cb_comments'
-                          ,'cb_websockets'
+                          ,'cb_websockets', 'cb_alerts'
                          ]).
 
 -define(DEPRECATED_MODULES, ['cb_local_resources'
