@@ -283,11 +283,11 @@ move(Num, MoveTo) ->
 move(Num, MoveTo, Options) ->
     case get(Num, Options) of
         {'ok', Number} ->
-            move_to(Number, MoveTo);
+            attempt(fun move_to/2, [Number, MoveTo]);
         {'error', 'not_found'} ->
             PN = knm_phone_number:new(Num, Options),
             Number = set_phone_number(new(), PN),
-            move_to(Number, MoveTo);
+            attempt(fun move_to/2, [Number, MoveTo]);
         {'error', _E}=E -> E
     end.
 
