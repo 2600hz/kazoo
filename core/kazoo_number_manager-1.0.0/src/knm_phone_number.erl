@@ -703,9 +703,9 @@ save_to_number_db(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec handle_assignment(knm_phone_number()) -> knm_phone_number().
 handle_assignment(PhoneNumber) ->
-    lager:debug("handling assignment for ~s"
-                ,[?MODULE:number(PhoneNumber)]
-               ),
+    ?LOG_DEBUG("handling assignment for ~s"
+               ,[?MODULE:number(PhoneNumber)]
+              ),
     unassign(assign(PhoneNumber)).
 
 %%--------------------------------------------------------------------
@@ -749,7 +749,6 @@ assign(PhoneNumber, AssignedTo) ->
 %%--------------------------------------------------------------------
 -spec unassign(knm_phone_number()) -> knm_phone_number().
 -spec unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
--spec do_unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 unassign(PhoneNumber) ->
     PrevAssignedTo = prev_assigned_to(PhoneNumber),
     case wh_util:is_empty(PrevAssignedTo) of
@@ -762,6 +761,10 @@ unassign(PhoneNumber) ->
             unassign(PhoneNumber, PrevAssignedTo)
     end.
 
+-ifdef(TEST).
+unassign(PhoneNumber, _PrevAssignedTo) ->
+    PhoneNumber.
+-else.
 unassign(PhoneNumber, PrevAssignedTo) ->
     Num = ?MODULE:number(PhoneNumber),
     case get_number_in_account(PrevAssignedTo, Num) of
@@ -774,6 +777,7 @@ unassign(PhoneNumber, PrevAssignedTo) ->
         {'error', _R} -> do_unassign(PhoneNumber, PrevAssignedTo)
     end.
 
+-spec do_unassign(knm_phone_number(), ne_binary()) -> knm_phone_number().
 do_unassign(PhoneNumber, PrevAssignedTo) ->
     AccountDb = wh_util:format_account_id(PrevAssignedTo, 'encoded'),
     case couch_mgr:del_doc(AccountDb, to_json(PhoneNumber)) of
@@ -789,17 +793,14 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
             PhoneNumber
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec get_number_in_account(ne_binary(), ne_binary()) ->
                                    {'ok', wh_json:object()} |
                                    {'error', _}.
 get_number_in_account(AccountId, Num) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_cache_doc(AccountDb, Num).
+
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
