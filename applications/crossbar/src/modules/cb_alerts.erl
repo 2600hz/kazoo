@@ -95,7 +95,8 @@ validate(Context, Id) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    Context1 = cb_context:set_account_db(Context, ?WH_ALERTS_DB),
+    crossbar_doc:save(Context1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -145,8 +146,33 @@ validate_alert(Context, Id, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
-    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    cb_context:validate_request_data(<<"alerts">>, Context, OnSuccess).
+    Props = wh_json:to_proplist(cb_context:req_data(Context)),
+
+    Title = props:get_value(kzd_alert:title(), Props),
+    Msg = props:get_value(kzd_alert:message(), Props),
+    From = props:get_value(kzd_alert:from(), Props),
+    To = props:get_value(kzd_alert:to(), Props),
+
+    case whapps_alert:create(Title, Msg, From, To, Props) of
+        {'required', Reason} ->
+            cb_context:add_validation_error(
+                Reason
+                ,<<"required">>
+                ,<<"missing property">>
+                ,Context
+            );
+        {'error', 'disabled'} ->
+            cb_context:add_system_error('disabled', Context);
+        {'error', _Reason} ->
+            lager:error("unknown errror ~p", [_Reason]),
+            cb_context:add_system_error('unspecified_fault', Context);
+        {'ok', JObj} ->
+            Setters = [
+                {fun cb_context:set_resp_status/2, 'success'}
+                ,{fun cb_context:set_doc/2, JObj}
+            ],
+            cb_context:setters(Context, Setters)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -299,18 +325,6 @@ add_descendants(Descendant, 'true', Keys) ->
      ,[<<"descendants">>, [Descendant, <<"users">>]]
      ,[<<"descendants">>, [Descendant, <<"admins">>]]
      | Keys].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"alert">>));
-on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
