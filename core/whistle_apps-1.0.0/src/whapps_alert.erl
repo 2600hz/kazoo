@@ -52,25 +52,25 @@ create(Title, Message, From, To) ->
     create(Title, Message, From, To, []).
 
 create('undefined', _Message, _From, _To, _Opts) ->
-    {'error', 'missing_title'};
+    {'required', kzd_alert:title()};
 create(_Title, 'undefined', _From, _To, _Opts) ->
-    {'error', 'missing_message'};
+    {'required', kzd_alert:message()};
 create(_Title, _Message, 'undefined', _To, _Opts) ->
-    {'error', 'missing_from'};
+    {'required', kzd_alert:from()};
 create(_Title, _Message, _From, 'undefined', _Opts) ->
-    {'error', 'missing_to'};
+    {'required', kzd_alert:to()};
 create(Title, Message, From, To, Opts) ->
     case enabled() of
-        'false' -> {'error', 'alerts_disabled'};
+        'false' -> {'error', 'disabled'};
         'true' ->
-            JObj = maybe_add_options(Opts, kzd_alert:new()),
             Routines = [
                 fun(J) -> kzd_alert:set_title(J, Title) end
                 ,fun(J) -> kzd_alert:set_message(J, Message) end
                 ,fun(J) -> kzd_alert:set_from(J, From) end
                 ,fun(J) -> kzd_alert:set_to(J, To) end
+                ,fun(J) -> maybe_add_options(J, Opts) end
             ],
-            {'ok', lists:foldl(fun(F, J) -> F(J) end, JObj, Routines)}
+            {'ok', lists:foldl(fun(F, J) -> F(J) end, kzd_alert:new(), Routines)}
     end.
 
 %%--------------------------------------------------------------------
@@ -109,13 +109,13 @@ delete(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_add_options(wh_proplist(), wh_json:object()) -> wh_json:object().
-maybe_add_options(Props, JObj) ->
+-spec maybe_add_options(wh_json:object(), wh_proplist()) -> wh_json:object().
+maybe_add_options(JObj, Props) ->
     Options = [
-        {kzd_alert:category(), fun kzd_alert:category/2}
-        ,{kzd_alert:metadata(), fun kzd_alert:metadata/2}
-        ,{kzd_alert:level(), fun kzd_alert:level/2}
-        ,{kzd_alert:expiration_date(), fun kzd_alert:expiration_date/2}
+        {kzd_alert:category(), fun kzd_alert:set_category/2}
+        ,{kzd_alert:metadata(), fun kzd_alert:set_metadata/2}
+        ,{kzd_alert:level(), fun kzd_alert:set_level/2}
+        ,{kzd_alert:expiration_date(), fun kzd_alert:set_expiration_date/2}
     ],
     lists:foldl(
         fun({Option, Fun}, Acc) ->
