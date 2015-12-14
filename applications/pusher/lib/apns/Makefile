@@ -1,7 +1,7 @@
 ROOT = ../../../..
 PROJECT = apns
 
-EBINS = $(shell find $(ROOT)/applications/pusher/lib/apns -maxdepth 2 -name ebin -print)
+EBINS = $(shell find $(ROOT)/applications/pusher/lib/apns -maxdepth 2 -name ebin)
 
 ERLC_OPTS += +warn_missing_spec +warn_unused_vars -Iinclude/
 

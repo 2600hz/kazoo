@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = erlang_localtime
 
-EBINS = $(shell find $(ROOT)/deps/erlang_localtime-* -maxdepth 2 -name ebin -print)
+EBINS = $(shell find $(ROOT)/deps/erlang_localtime-* -maxdepth 2 -name ebin)
 
 ERLC_OPTS += -I $(wildcard $(ROOT)/deps/erlang_localtime-*/include)
 

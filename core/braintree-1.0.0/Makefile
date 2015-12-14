@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = braintree
 
-EBINS = $(shell find $(ROOT)/core/braintree-* -maxdepth 2 -name ebin -print)
+EBINS = $(shell find $(ROOT)/core/braintree-* -maxdepth 2 -name ebin)
 
 ERLC_OPTS += -Iinclude/
 

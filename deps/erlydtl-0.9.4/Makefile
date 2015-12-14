@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = erlydtl
 
-EBINS = $(shell find $(ROOT)/deps/merl-* -maxdepth 2 -name ebin -print)
+EBINS = $(shell find $(ROOT)/deps/merl-* -maxdepth 2 -name ebin)
 
 ERLC_OPTS += -Iinclude
 

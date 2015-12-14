@@ -27,8 +27,8 @@ endif
 
 ELIBS ?= $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
-EBINS += $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print) \
-	$(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print)
+EBINS += $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin) \
+	$(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin)
 TEST_EBINS += $(EBINS)
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa test/ $(PA) $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
@@ -47,7 +47,7 @@ ebin/$(PROJECT).app: $(wildcard $(SOURCES))
 	@sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' src/$(PROJECT).app.src > $@
 
 
-json: JSON = $(if $(wildcard priv/), $(shell find priv/ -name '*.json' -print))
+json: JSON = $(if $(wildcard priv/), $(shell find priv/ -name '*.json'))
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 

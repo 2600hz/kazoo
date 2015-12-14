@@ -2,7 +2,7 @@ ROOT = ../..
 PROJECT = pusher
 
 EBINS = lib/apns/ebin lib/gcm/ebin \
-	$(shell find $(ROOT)/deps/nksip-* -maxdepth 2 -name ebin -print)
+	$(shell find $(ROOT)/deps/nksip-* -maxdepth 2 -name ebin)
 
 COMPILE_MOAR = compile-lib
 CLEAN_MOAR = clean-lib
