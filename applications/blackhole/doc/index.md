@@ -99,6 +99,8 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
 
 You can add one or multiple bindings by using:
 
+`note: binding will be picked first over bindings in case both are added`
+
 ``` javascript
 // For one use: binding
 socket.emit('subscribe', {
