@@ -47,7 +47,8 @@ fetch(AlertId) ->
                                                                               {'error', any()}.
 -spec create(ne_binary(), ne_binary(), wh_json:object()
              ,wh_json:object(), wh_proplist()) -> {'ok', wh_json:object()} |
-                                                  {'error', any()}.
+                                                  {'required', ne_binary()} |
+                                                  {'error', 'disabled'}.
 create(Title, Message, From, To) ->
     create(Title, Message, From, To, []).
 

@@ -245,7 +245,7 @@ set_expiration_date(JObj, ExpDate) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec expired(doc()) -> wh_json:object().
+-spec expired(doc()) -> boolean().
 expired(JObj) ->
     wh_json:get_value(?EXPIRATION_DATE, JObj) < wh_util:current_tstamp().
 

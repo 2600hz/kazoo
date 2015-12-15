@@ -154,18 +154,15 @@ create(Context) ->
     To = props:get_value(kzd_alert:to(), Props),
 
     case whapps_alert:create(Title, Msg, From, To, Props) of
-        {'required', Reason} ->
+        {'required', Item} ->
             cb_context:add_validation_error(
-                Reason
+                Item
                 ,<<"required">>
                 ,<<"missing property">>
                 ,Context
             );
         {'error', 'disabled'} ->
             cb_context:add_system_error('disabled', Context);
-        {'error', _Reason} ->
-            lager:error("unknown errror ~p", [_Reason]),
-            cb_context:add_system_error('unspecified_fault', Context);
         {'ok', JObj} ->
             Setters = [
                 {fun cb_context:set_resp_status/2, 'success'}
