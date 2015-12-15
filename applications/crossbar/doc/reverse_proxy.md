@@ -8,7 +8,7 @@ Version: 3.18
 # Working with reverse proxies (HAProxy, Nginx, etc)
 
 ## Configuring list allowed proxies
-Set list in `system_config/crossbar`, key `reverse_proxies`.  
+Set list in `system_config/crossbar`, key `reverse_proxies`.
 Values can be:
 - single ip address ("192.168.0.1");
 - single ip address in CIDR notation ("192.168.0.1/32")

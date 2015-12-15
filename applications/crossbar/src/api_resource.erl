@@ -138,7 +138,7 @@ is_proxied(Peer) ->
 is_proxied(_Peer, []) -> false;
 is_proxied(Peer, [Proxy|Rest]) ->
     case wh_network_utils:verify_cidr(Peer, wh_network_utils:to_cidr(Proxy)) of
-        'true' -> 
+        'true' ->
             lager:info("request from reverse proxy: ~s", [Proxy]),
             'true';
         'false' -> is_proxied(Peer, Rest)
