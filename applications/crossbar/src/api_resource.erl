@@ -75,7 +75,7 @@ rest_init(Req0, Opts) ->
 
     ClientIP = case cowboy_req:header(<<"x-forwarded-for">>, Req7) of
                 {'undefined', _} -> wh_network_utils:iptuple_to_binary(Peer);
-                {ForwardIP, _} -> wh_util:to_binary(ForwardIP)
+                {ForwardIP, _} -> maybe_allow_proxy_req(wh_network_utils:iptuple_to_binary(Peer), ForwardIP)
             end,
 
     {Headers, _} = cowboy_req:headers(Req7),
@@ -122,6 +122,26 @@ find_version(Path) ->
         [Path] -> ?VERSION_1;
         [<<>>, Ver | _] -> to_version(Ver);
         [Ver | _] -> to_version(Ver)
+    end.
+
+maybe_allow_proxy_req(Peer, ForwardIP) ->
+    case is_proxied(Peer) of
+        true -> wh_util:to_binary(ForwardIP);
+        false ->
+            lager:warning("request with \"X-Forwarded-For: ~s\" header, but peer (~s) is not allowed as proxy", [ForwardIP, Peer]),
+            Peer
+    end.
+
+is_proxied(Peer) ->
+    Proxies = whapps_config:get_non_empty(?APP_NAME, <<"reverse_proxies">>, []),
+    is_proxied(Peer, Proxies).
+is_proxied(_Peer, []) -> false;
+is_proxied(Peer, [Proxy|Rest]) ->
+    case wh_network_utils:verify_cidr(Peer, wh_network_utils:to_cidr(Proxy)) of
+        'true' -> 
+            lager:info("request from reverse proxy: ~s", [Proxy]),
+            'true';
+        'false' -> is_proxied(Peer, Rest)
     end.
 
 to_version(<<"v", Int/binary>>=Version) ->
