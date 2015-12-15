@@ -90,7 +90,7 @@ name(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec i18n(wh_json:object()) -> ne_binary().
+-spec i18n(wh_json:object()) -> wh_json:object().
 i18n(JObj) ->
     wh_json:get_json_value(?I18N, JObj).
 
