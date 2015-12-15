@@ -176,12 +176,20 @@ merge_attributes(Endpoint, Type) ->
            ],
     merge_attributes(Endpoint, Type, Keys).
 
-merge_attributes(Endpoint, <<"user">>, Keys) ->
-    merge_attributes(Keys, 'undefined', 'undefined', Endpoint);
-merge_attributes(Endpoint, <<"device">>, Keys) ->
-    merge_attributes(Keys, 'undefined', Endpoint, 'undefined');
-merge_attributes(Endpoint, <<"account">>, Keys) ->
-    merge_attributes(Keys, Endpoint, 'undefined', 'undefined');
+merge_attributes(Owner, <<"user">>, Keys) ->
+    case kz_account:fetch(wh_doc:account_id(Owner)) of
+        {'ok', Account} -> merge_attributes(Keys, Account, wh_json:new(), Owner);
+        {'error', _} -> merge_attributes(Keys, wh_json:new(), wh_json:new(), Owner)
+    end;
+merge_attributes(Device, <<"device">>, Keys) ->
+    Owner = get_user(wh_doc:account_db(Device), Device),
+    Endpoint = wh_json:set_value(<<"owner_id">>, wh_doc:id(Owner), Device),
+    case kz_account:fetch(wh_doc:account_id(Device)) of
+        {'ok', Account} -> merge_attributes(Keys, Account, Endpoint, Owner);
+        {'error', _} -> merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
+    end;
+merge_attributes(Account, <<"account">>, Keys) ->
+   merge_attributes(Keys, Account, wh_json:new(), wh_json:new());
 merge_attributes(Endpoint, Type, _Keys) ->
     lager:debug("unhandled endpoint type on merge attributes : ~p : ~p", [Type, Endpoint]),
     wh_json:new().
@@ -189,25 +197,6 @@ merge_attributes(Endpoint, Type, _Keys) ->
 -spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
                               wh_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
-merge_attributes(Keys, 'undefined', 'undefined', Owner) ->
-    case kz_account:fetch(wh_doc:account_id(Owner)) of
-        {'ok', JObj} -> merge_attributes(Keys, JObj, 'undefined', Owner);
-        {'error', _} -> merge_attributes(Keys, wh_json:new(), 'undefined', Owner)
-    end;
-merge_attributes(Keys, 'undefined', Endpoint, Owner) ->
-    case kz_account:fetch(wh_doc:account_id(Endpoint)) of
-        {'ok', JObj} -> merge_attributes(Keys, JObj, Endpoint, Owner);
-        {'error', _} -> merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
-    end;
-merge_attributes(Keys, Account, Endpoint, 'undefined') ->
-    AccountDb = wh_doc:account_db(Endpoint),
-    JObj = get_user(AccountDb, Endpoint),
-    merge_attributes(Keys
-                     ,Account
-                     ,wh_json:set_value(<<"owner_id">>, wh_doc:id(JObj), Endpoint)
-                     ,JObj);
-merge_attributes(Keys, Account, 'undefined', Owner) ->
-    merge_attributes(Keys, Account, wh_json:new(), Owner);
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
     Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),
     Update = merge_call_restrictions(Classifiers, Account, Endpoint, Owner),
