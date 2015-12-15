@@ -338,7 +338,6 @@ maybe_reload_acls(_Name, _Action, 0) ->
 maybe_reload_acls(Name, Action, Tries) ->
     case has_acl(Name, Action, get_acls()) of
         'true' ->
-            io:format("flushing"),
             ecallmgr_config:flush(<<"acls">>),
             reload_acls(),
             'no_return';
