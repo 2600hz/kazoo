@@ -401,10 +401,12 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"pvt_rate_cost">>, InternalRate}
                        ,{<<"pvt_carrier">>, <<"default">>}
                        ,{<<"pvt_type">>, <<"rate">>}
-                       ,{<<"rate_increment">>, 60}
-                       ,{<<"rate_minimum">>, 60}
+                       ,{<<"routes">>, get_row_routes(Row)}
+                       ,{<<"rate_increment">>, get_row_increment(Row)}
+                       ,{<<"rate_minimum">>, get_row_minimum(Row)}
                        ,{<<"rate_surcharge">>, get_row_surcharge(Row)}
                        ,{<<"rate_cost">>, get_row_rate(Row)}
+                       ,{<<"direction">>, get_row_direction(Row)}
                        ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
                        ,{?HTTP_OPTIONS, []}
@@ -475,6 +477,32 @@ get_row_rate([_, _, _, _, _, Rate]) -> wh_util:to_float(Rate);
 get_row_rate([_, _, _, _, _, _, Rate | _]) -> wh_util:to_float(Rate);
 get_row_rate([_|_]=_R) ->
     lager:info("rate not found on row: ~p", [_R]),
+    'undefined'.
+    
+get_row_routes([_, _, _, _, _, _, _, Routes | _]) ->
+    [wh_util:to_binary(X) || X <- string:tokens(wh_util:to_list(Routes), ";")];
+get_row_routes([_|_]) ->
+    'undefined'.
+
+get_row_increment([_, _, _, _, _, _, _, _, Increment | _]) ->
+    case wh_util:to_float(Increment) of
+        Inc when Inc < 10 -> 10;
+        Inc -> Inc
+    end;
+get_row_increment([_|_]) ->
+    60.
+
+get_row_minimum([_, _, _, _, _, _, _, _, _, Minimum | _]) ->
+    case wh_util:to_float(Minimum) of
+        Min when Min < 10 -> 10;
+        Min -> Min
+    end;
+get_row_minimum([_|_]) ->
+    60.
+
+get_row_direction([_, _, _, _, _, _, _, _, _, _, Direction | _]) ->
+    [wh_util:to_binary(X) || X <- string:tokens(wh_util:to_list(Direction), ";")];
+get_row_direction([_|_]) ->
     'undefined'.
 
 -spec strip_quotes(ne_binary()) -> ne_binary().
