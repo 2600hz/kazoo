@@ -18,7 +18,7 @@ The enabled Monster UI applications were moved from an object on the account doc
 
 #### Erlang Version Support
 
-Starting with Kazoo 4.0 Erlang support will target 17+ and will not be backward compatable with prior Erlang versions.
+Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward compatable with prior Erlang versions.
 
 #### Number Manager
 
