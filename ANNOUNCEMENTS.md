@@ -2,21 +2,23 @@
 
 This file will serve as a reference point for upcoming announcements, both of the temporal nature (this library will be deprecated in 6 months) and version-specific (upgrading from X to Y will require A, B, and C).
 
-## Upcoming
-
-### May 2016
-
-#### Deprecating `deps/mochiweb`
-
-Most operations have been moved to the Cowboy or Cowlib projects. We will formally remove mochiweb from `deps/`. If you maintain code apart from Kazoo that uses mochiweb, please either covert to equivalent functionality with Cowboy/Cowlib or plan how you'll build your custom code with your own dependency of mochiweb.
-
-#### Replacing `deps/exmpp`
-
-exmpp library has problems restarting. it will be replaced by `deps/escalus`
-
 ## Versions
 
+### 3.22
+
+#### FreeSWITCH 1.4.26+ / 1.6+
+
+To upgrade to Kazoo-FreeSWITCH 1.4.26+ or FreeSWITCH 1.6+ you must set the system_config/ecallmgr parameter `use_kazoo_dptools` to TRUE.  Failure to do so may cause inconsistent channel information among eCallMgr nodes connected to the same FreeSWITCH instance.  If you are using Kazoo-FreeSWITCH 1.4.x builds prior to .26 this parameter should be left as its default, FALSE.
+
+#### Monster UI Enabled Applications
+
+The enabled Monster UI applications were moved from an object on the Account document to its own document `apps_store`.  When you run `sup whapps_maintenance migrate` this will automatically preform this operation but until it is complete new logins to Monster UI may not see their previously enabled applications enabled.  Once the migration is complete the change should be transparent to end-users.
+
 ### 4.0
+
+#### Erlang Version Support
+
+Starting with Kazoo 4.0 Erlang support will target 17+ and will not be backward compatable with prior Erlang versions.
 
 #### Number Manager
 
@@ -25,3 +27,15 @@ Upgrading to 4.0 will shift number management from `core/whistle_number_manager`
 #### CouchDB
 
 Upgrading will change the way Kazoo interacts with CouchDB (including deprecating using BigCouch and recommending CouchDB!). For most operations, nothing will be noticably different.
+
+## Upcoming
+
+### May 2016
+
+#### Deprecating `deps/mochiweb`
+
+Most operations have been moved to the Cowboy or Cowlib projects. We will formally remove mochiweb from `deps/`. If you maintain code apart from Kazoo that uses mochiweb, please either covert to equivalent functionality with Cowboy/Cowlib or plan how you'll build your custom code with your own dependency of mochiweb.
+
+#### Deprecating `deps/exmpp`
+
+exmpp library has problems restarting. it will be replaced by `deps/escalus`
