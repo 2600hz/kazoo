@@ -173,9 +173,13 @@ set_account_id(#bh_context{}=Context, AcctId) ->
 bindings(#bh_context{bindings=Bds}) ->
     Bds.
 
--spec bindings_from_json(wh_json:object()) -> ne_binary() | ne_binaries().
+-spec bindings_from_json(wh_json:object()) -> ne_binaries().
 bindings_from_json(JObj) ->
-    wh_json:get_first_defined([<<"binding">>, <<"bindings">>], JObj).
+    case wh_json:get_value(<<"binding">>, JObj) of
+        'undefined' ->
+             wh_json:get_value(<<"bindings">>, JObj, []);
+        Binding -> [Binding]
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

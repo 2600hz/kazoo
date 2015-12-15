@@ -104,13 +104,15 @@ maybe_subscribe(Context, JObj, 'true') ->
     Bindings = bh_context:bindings_from_json(JObj),
     check_bindings(Context, JObj, Bindings).
 
--spec check_bindings(bh_context:context(), wh_json:object(), ne_binaries() | ne_binary()) -> cb_return().
+-spec check_bindings(bh_context:context(), wh_json:object(), ne_binaries()) -> cb_return().
 check_bindings(Context, _JObj, []) ->
     {'ok', Context};
 check_bindings(Context, JObj, [Binding|Bds]) ->
-    {'ok', Context1} = check_bindings(Context, JObj, Binding),
-    check_bindings(Context1, JObj, Bds);
-check_bindings(Context, JObj, Binding) ->
+    {'ok', Context1} = check_binding(Context, JObj, Binding),
+    check_bindings(Context1, JObj, Bds).
+
+-spec check_binding(bh_context:context(), wh_json:object(), ne_binary()) -> cb_return().
+check_binding(Context, JObj, Binding) ->
     case bh_context:is_bound(Context, Binding) of
         'true' ->
             ErrorJObj = wh_json:from_list([
@@ -186,10 +188,7 @@ unsubscribe_for_account(Context, _JObj, _AccountId, []) ->
 unsubscribe_for_account(Context, JObj, AccountId, [Binding|Bds]) ->
     Module = blackhole_util:get_callback_module(Binding),
     {'ok', Context1} = unsubscribe_for_account(Context, JObj, AccountId, Binding, Module),
-    unsubscribe_for_account(Context1, JObj, AccountId, Bds);
-unsubscribe_for_account(Context, JObj, AccountId, Binding) ->
-    Module = blackhole_util:get_callback_module(Binding),
-    unsubscribe_for_account(Context, JObj, AccountId, Binding, Module).
+    unsubscribe_for_account(Context1, JObj, AccountId, Bds).
 
 unsubscribe_for_account(Context, _JObj, _AccountId, _Binding, 'undefined') ->
     {'ok', blackhole_util:respond_with_error(Context)};
