@@ -13,7 +13,7 @@
 -ifdef(namespaced_types).
 -type dict_t() :: dict:dict().
 -else.
--type dict_t() :: dict().
+-type dict_t() :: dict:dict().
 -endif.
 
 -record(state, {

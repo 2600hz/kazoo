@@ -13,7 +13,7 @@
 -define(TIMEOUT, 5000).
 
 -ifdef(pre17).
--type pid_queue() :: queue().
+-type pid_queue() :: queue:queue().
 -else.
 -type pid_queue() :: queue:queue().
 -endif.

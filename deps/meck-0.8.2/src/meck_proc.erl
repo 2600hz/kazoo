@@ -50,7 +50,7 @@
 -ifdef(namespaced_dicts).
 -type meck_dict() :: dict:dict().
 -else.
--type meck_dict() :: dict().
+-type meck_dict() :: dict:dict().
 -endif.
 
 -record(state, {mod :: atom(),
