@@ -94,7 +94,7 @@ save(JObj) ->
 %%--------------------------------------------------------------------
 -spec delete(wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
 delete(AlertId) when is_binary(AlertId) ->
-    case ?MODULE:fetch(AlertId) of
+    case fetch(AlertId) of
         {'error', _}=Error -> Error;
         {'ok', JObj} -> delete(JObj)
     end;
