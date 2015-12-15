@@ -478,7 +478,7 @@ get_row_rate([_, _, _, _, _, _, Rate | _]) -> wh_util:to_float(Rate);
 get_row_rate([_|_]=_R) ->
     lager:info("rate not found on row: ~p", [_R]),
     'undefined'.
-    
+
 get_row_routes([_, _, _, _, _, _, _, Routes | _]) ->
     [wh_util:to_binary(X) || X <- string:tokens(wh_util:to_list(Routes), ";")];
 get_row_routes([_|_]) ->
