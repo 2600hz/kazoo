@@ -12,7 +12,7 @@ To upgrade to Kazoo-FreeSWITCH 1.4.26+ or FreeSWITCH 1.6+ you must set the syste
 
 #### Monster UI Enabled Applications
 
-The enabled Monster UI applications were moved from an object on the Account document to its own document `apps_store`.  When you run `sup whapps_maintenance migrate` this will automatically preform this operation but until it is complete new logins to Monster UI may not see their previously enabled applications enabled.  Once the migration is complete the change should be transparent to end-users.
+The enabled Monster UI applications were moved from an object on the account document to its own document with the id `apps_store`.  When you run `sup whapps_maintenance migrate` this will automatically preform this operation but until it is complete users logging into Monster UI may not see their previously enabled applications.  Once the migration is complete the change should be transparent to end-users.
 
 ## Upcoming
 
