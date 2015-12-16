@@ -5,6 +5,7 @@
 -define(WH_MEDIA_DB, <<"system_media">>).
 -define(WH_SIP_DB, <<"sip_auth">>).
 -define(WH_ACCOUNTS_DB, <<"accounts">>).
+-define(WH_ALERTS_DB, <<"alerts">>).
 -define(WH_RATES_DB, <<"ratedeck">>).
 -define(WH_PROVISIONER_DB, <<"global_provisioner">>).
 -define(WH_FAXES_DB, <<"faxes">>).
@@ -44,6 +45,7 @@
                         ,?KZ_OAUTH_DB
                         ,?KZ_WEBHOOKS_DB
                         ,?KZ_TOKEN_DB
+                        ,?WH_ALERTS_DB
                        ]).
 
 -define(WH_DATABASES_HRL, 'true').

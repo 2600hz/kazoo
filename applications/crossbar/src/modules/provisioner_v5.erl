@@ -459,21 +459,21 @@ send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("provisioning via ~s: ~s", [UrlString, Data]),
     Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
-    handle_resp(Resp);
+    handle_resp(Resp, AccountId, AuthToken);
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("unprovisioning via ~s", [UrlString]),
     Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
-    handle_resp(Resp);
+    handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_delete', _, AuthToken, AccountId, _) ->
     Headers = req_headers(AuthToken),
     HTTPOptions = [],
     UrlString = req_uri('accounts', AccountId),
     lager:debug("accounts delete via ~s", [UrlString]),
     Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
-    handle_resp(Resp);
+    handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
     Data = wh_json:encode(account_payload(JObj, AccountId)),
     Headers = req_headers(AuthToken),
@@ -481,7 +481,7 @@ send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
     UrlString = req_uri('accounts', AccountId),
     lager:debug("account update via ~s: ~s", [UrlString, Data]),
     Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
-    handle_resp(Resp).
+    handle_resp(Resp, AccountId, AuthToken).
 
 -spec req_uri('accounts' | 'devices', ne_binary()) -> iolist().
 req_uri('accounts', AccountId) ->
@@ -521,13 +521,47 @@ device_payload(JObj) ->
       ]
      ).
 
--spec handle_resp(ibrowse_ret()) -> 'ok'.
-handle_resp({'ok', "200", _, Resp}) ->
+-spec handle_resp(ibrowse_ret(), ne_binary(), ne_binary()) -> 'ok'.
+handle_resp({'ok', "200", _, Resp}, _AccountId, _AuthToken) ->
     lager:debug("provisioning success ~s", [decode(Resp)]);
-handle_resp({'ok', Code, _, Resp}) ->
-    lager:warning("provisioning error ~p. ~s", [Code, decode(Resp)]);
-handle_resp(_Error) ->
+handle_resp({'ok', Code, _, Resp}, AccountId, AuthToken) ->
+    JObj = decode(Resp),
+    _ = create_alert(JObj, AccountId, AuthToken),
+    lager:warning("provisioning error ~p. ~s", [Code, JObj]);
+handle_resp(_Error, _AccountId, _AuthToken) ->
     lager:error("provisioning fatal error ~p", [_Error]).
+
+create_alert(JObj, AccountId, AuthToken) ->
+    Props = [
+        {<<"metadata">>, JObj}
+        ,{<<"category">>, <<"provisioner">>}
+    ],
+
+    OwnerId =
+        case couch_mgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
+            {'error', _R} -> 'undefined';
+            {'ok', JObj} ->
+                wh_json:get_value(<<"owner_id">>, JObj)
+        end,
+    From = [
+        wh_json:from_list([{<<"type">>, <<"account">>}, {<<"value">>, AccountId}])
+        ,wh_json:from_list([{<<"type">>, <<"user">>}, {<<"value">>, OwnerId}])
+    ],
+
+    To = [
+        wh_json:from_list([{<<"type">>, AccountId}, {<<"value">>, <<"admins">>}])
+        ,wh_json:from_list([{<<"type">>, wh_services:get_reseller_id(AccountId)}, {<<"value">>, <<"admins">>}])
+    ],
+
+    {'ok', JObj} =
+        whapps_alert:create(
+            <<"Provisioning Error">>
+            ,<<"Error trying to provision device">>
+            ,From
+            ,To
+            ,Props
+        ),
+    whapps_alert:save(JObj).
 
 -spec decode(string()) -> ne_binary().
 decode(JSON) ->
