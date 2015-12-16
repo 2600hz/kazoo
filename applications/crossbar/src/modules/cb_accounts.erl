@@ -1548,6 +1548,7 @@ delete_remove_from_accounts(Context) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->
             _ = wh_util:spawn(fun provisioner_util:maybe_delete_account/1, [Context]),
+            _ = wh_util:spawn(fun cb_mobile_manager:delete_account/1, [Context]),
             crossbar_doc:delete(
               cb_context:setters(Context
                                  ,[{fun cb_context:set_account_db/2, ?WH_ACCOUNTS_DB}
