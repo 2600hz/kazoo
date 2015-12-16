@@ -9,6 +9,7 @@
 
 -export([authorize/2]).
 -export([reconcile_cdr/2]).
+-export([maybe_credit_available/2, maybe_credit_available/3]).
 
 -include("jonny5.hrl").
 
@@ -57,12 +58,18 @@ reconcile_call_cost(Request, Limits) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_credit_available(integer(), j5_limits:limits()) -> boolean().
-maybe_credit_available(Amount, Limits) ->
+maybe_credit_available(Amount, Limits) -> maybe_credit_available(Amount, Limits, 'false').
+
+-spec maybe_credit_available(integer(), j5_limits:limits(), boolean()) -> boolean().
+maybe_credit_available(Amount, Limits, IsReal) ->
     AccountId = j5_limits:account_id(Limits),
-    Balance = wht_util:current_balance(AccountId)
-        - j5_channels:per_minute_cost(AccountId),
-    maybe_prepay_credit_available(Balance, Amount, Limits)
-        orelse maybe_postpay_credit_available(Balance, Amount, Limits).
+    Balance = wht_util:current_balance(AccountId),
+    PerMinuteCost = case wh_util:is_true(IsReal) of
+        'true' -> j5_channels:real_per_minute_cost(AccountId);
+        'false' -> j5_channels:per_minute_cost(AccountId)
+    end,
+    maybe_prepay_credit_available(Balance - PerMinuteCost, Amount, Limits)
+        orelse maybe_postpay_credit_available(Balance - PerMinuteCost, Amount, Limits).
 
 -spec maybe_prepay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
 maybe_prepay_credit_available(Balance, Amount, Limits) ->

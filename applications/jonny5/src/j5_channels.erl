@@ -18,7 +18,7 @@
 -export([allotments/1]).
 -export([allotment_consumed/4]).
 -export([per_minute/1]).
--export([per_minute_cost/1]).
+-export([per_minute_cost/1, real_per_minute_cost/1]).
 -export([accounts/0]).
 -export([account/1]).
 -export([to_props/1]).
@@ -326,6 +326,27 @@ per_minute_cost(AccountId) ->
                 ],
     lists:foldl(fun(Channel, Cost) ->
                         call_cost(Channel) + Cost
+                end, 0, ets:select(?TAB, MatchSpec)).
+
+-spec real_per_minute_cost(ne_binary()) -> non_neg_integer().
+real_per_minute_cost(AccountId) ->
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,account_billing = <<"per_minute">>
+                           ,_='_'
+                          }
+                  ,[]
+                  ,['$_']
+                 }
+                 ,{#channel{reseller_id = AccountId
+                            ,reseller_billing = <<"per_minute">>
+                            ,_='_'
+                           }
+                   ,[]
+                   ,['$_']
+                  }
+                ],
+    lists:foldl(fun(Channel, Cost) ->
+                        call_cost(Channel, 0) + Cost
                 end, 0, ets:select(?TAB, MatchSpec)).
 
 -spec accounts() -> ne_binaries().
@@ -734,10 +755,13 @@ calculate_consumed(CycleStart, Span, CurrentTimestamp, Timestamp) ->
     end.
 
 -spec call_cost(channel()) -> non_neg_integer().
-call_cost(#channel{answered_timestamp='undefined'}=Channel) ->
-    wht_util:call_cost(billing_jobj(60, Channel));
-call_cost(#channel{answered_timestamp=Timestamp}=Channel) ->
-    BillingSeconds = wh_util:current_tstamp() - Timestamp + 60,
+call_cost(Channel) -> call_cost(Channel, 60).
+
+-spec call_cost(channel(), integer()) -> non_neg_integer().
+call_cost(#channel{answered_timestamp='undefined'}=Channel, Seconds) ->
+    wht_util:call_cost(billing_jobj(Seconds, Channel));
+call_cost(#channel{answered_timestamp=Timestamp}=Channel, Seconds) ->
+    BillingSeconds = wh_util:current_tstamp() - Timestamp + Seconds,
     wht_util:call_cost(billing_jobj(BillingSeconds, Channel)).
 
 -spec billing_jobj(non_neg_integer(), channel()) -> wh_json:object().
