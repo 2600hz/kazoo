@@ -22,16 +22,13 @@
 %%--------------------------------------------------------------------
 -spec delete_account(cb_context:context()) -> 'ok'.
 delete_account(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AuthToken = cb_context:auth_token(Context),
-
-    case req_uri([<<"accounts">>, AccountId]) of
+    case req_uri([<<"accounts">>, cb_context:account_id(Context)]) of
         'undefined' ->
             lager:debug("ignore request mobile_manger url is not set");
         UrlString ->
             lager:debug("mobile_manager delete via ~s", [UrlString]),
 
-            Headers = req_headers(AuthToken),
+            Headers = req_headers(cb_context:auth_token(Context)),
 
             Resp = ibrowse:send_req(UrlString, Headers, 'delete'),
             handle_resp(Resp)
@@ -56,7 +53,6 @@ handle_resp({'ok', Code, _, Resp}) ->
 handle_resp(_Error) ->
     lager:error("mobile_manager fatal error ~p", [_Error]).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -80,8 +76,8 @@ req_uri(ExplodedPath) ->
 %%--------------------------------------------------------------------
 -spec req_headers(ne_binary()) -> wh_proplist().
 req_headers(AuthToken) ->
-    props:filter_undefined([
-        {"Content-Type", "application/json"}
-        ,{"X-Auth-Token", wh_util:to_list(AuthToken)}
-        ,{"User-Agent", wh_util:to_list(erlang:node())}
-    ]).
+    props:filter_undefined(
+      [{"Content-Type", "application/json"}
+      ,{"X-Auth-Token", wh_util:to_list(AuthToken)}
+      ,{"User-Agent", wh_util:to_list(erlang:node())}
+      ]).
