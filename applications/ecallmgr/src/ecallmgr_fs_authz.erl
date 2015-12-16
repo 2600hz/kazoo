@@ -84,7 +84,7 @@ maybe_authorize_channel(Props, Node) ->
             end
     end.
 
--spec is_referred(wh_proplist()) -> 'true' | 'false'.
+-spec is_referred(wh_proplist()) -> boolean().
 is_referred(Props) ->
     ReferredBy = kzd_freeswitch:ccv(Props, <<"Referred-By">>),
     ReferredTo = kzd_freeswitch:ccv(Props, <<"Referred-To">>),

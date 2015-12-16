@@ -824,7 +824,7 @@ set_authorization(AuthorizingType, AuthorizingId, #whapps_call{}=Call)
 
 -spec set_owner_id(ne_binary(), call()) -> call().
 set_owner_id(OwnerId, #whapps_call{}=Call) when is_binary(OwnerId) ->
-    set_custom_channel_var(<<"Owner-Id">>, OwnerId, Call#whapps_call{owner_id=OwnerId}).
+    set_custom_channel_var(<<"Owner-ID">>, OwnerId, Call#whapps_call{owner_id=OwnerId}).
 
 -spec owner_id(call()) -> api_binary().
 owner_id(#whapps_call{owner_id=OwnerId}) -> OwnerId.
