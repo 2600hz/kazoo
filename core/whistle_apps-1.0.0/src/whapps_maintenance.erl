@@ -49,6 +49,7 @@
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
 -define(FAXES_VIEW_FILE, <<"views/faxes.json">>).
 -define(FAXBOX_VIEW_FILE, <<"views/faxbox.json">>).
+-define(FMC_VIEW_FILE, <<"views/fmc_devices.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
 -define(SEARCH_VIEW_FILE, <<"views/search.json">>).
@@ -249,6 +250,10 @@ refresh(?KZ_CCCPS_DB) ->
 refresh(?KZ_TOKEN_DB) ->
     _ = couch_mgr:db_create(?KZ_TOKEN_DB),
     couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    'ok';
+refresh(?WH_FMC_DB) ->
+    couch_mgr:db_create(?WH_FMC_DB),
+    _ = couch_mgr:revise_doc_from_file(?WH_FMC_DB, 'fmc', ?FMC_VIEW_FILE),
     'ok';
 refresh(Database) when is_binary(Database) ->
     case couch_util:db_classification(Database) of

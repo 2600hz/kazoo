@@ -1,0 +1,17 @@
+{
+    "_id": "fmc_device",
+    "description": "FMC Device",
+    "id": "http://json-schema.org/draft-03/schema#",
+    "properties": {
+        "device_id": {
+            "description": "Device ID of the account which will be used as caller",
+            "required": true,
+            "type": "string"
+        },
+        "x_fmc_value": {
+            "description": "Special value received as part of header extracted by regexp (see FMC config)",
+            "required": true,
+            "type": "string"
+        }
+    }
+}

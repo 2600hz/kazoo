@@ -12,6 +12,7 @@
 -define(WH_OFFNET_DB, <<"offnet">>).
 -define(WH_DEDICATED_IP_DB, <<"dedicated_ips">>).
 -define(WH_ANONYMOUS_CDR_DB, <<"anonymous_cdrs">>).
+-define(WH_FMC_DB, <<"fmc">>).
 
 -define(KZ_TOKEN_DB, <<"token_auth">>).
 
@@ -44,6 +45,7 @@
                         ,?KZ_OAUTH_DB
                         ,?KZ_WEBHOOKS_DB
                         ,?KZ_TOKEN_DB
+                        ,?WH_FMC_DB
                        ]).
 
 -define(WH_DATABASES_HRL, 'true').

@@ -1,0 +1,12 @@
+{application, fmc,
+    [
+        {description, "fmc"},
+        {vsn, "1"},
+        {registered, []},
+        {applications, [
+            kernel,
+            stdlib
+        ]},
+        {mod, { fmc_app, []}},
+        {env, []}
+    ]}.
