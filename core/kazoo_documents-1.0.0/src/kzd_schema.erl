@@ -28,31 +28,19 @@ find_schema(<<_/binary>> = Schema) ->
 
 %%% Meta keywords
 %%% ===================
--spec properties(wh_json:key(), api_object()) -> wh_json:object() | 'undefined'.
+-spec properties(wh_json:key(), api_object()) -> wh_json:object().
 properties(Key, Schema) ->
 	case find_schema(Schema) of
 		'undefined' ->
-			'undefined';
+			wh_json:new();
 		SchemaJObj ->
-			get_path(Key, SchemaJObj)
+			wh_json:get_value(Key, SchemaJObj, wh_json:new())
 	end.
 
 %%% Keywords
 %%% ==================================
 %% String
--spec max_length(wh_json:key(), api_object()) -> wh_json:object() | 'undefined'.
+-spec max_length(wh_json:key(), api_object()) -> api_object().
 max_length(Key, Schema) ->
 	Properties = properties(Key, Schema),
 	wh_json:get_value(?SCHEMA_KEYWORDS_MAXLENGTH, Properties).
-
-%%% Internal function
-%%% =================
-get_path(K, P) when not is_list(K) ->
-	get_path([K], P);
-get_path([], P) ->
-	P;
-get_path([K | Ks], P) ->
-	get_path(Ks, get_value(K, P)).
-
-get_value(Key, SchemaJObj) ->
-	wh_json:get_value(Key, SchemaJObj).
