@@ -181,7 +181,9 @@ create_debit_tansaction(Context) ->
         wh_json:from_list(
           [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
          ),
-    Routines = [fun(Tr) -> wh_transaction:set_reason(<<"admin_discretion">>, Tr) end
+    Reason = wh_json:get_value(<<"reason">>, JObj, <<"admin_discretion">>),
+
+    Routines = [fun(Tr) -> wh_transaction:set_reason(Reason, Tr) end
                 ,fun(Tr) -> wh_transaction:set_metadata(Meta, Tr) end
                 ,fun wh_transaction:save/1
                ],

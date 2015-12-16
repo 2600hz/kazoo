@@ -54,6 +54,7 @@
                   ,{<<"recurring">>, ?CODE_RECURRING}
                   ,{<<"monthly_recurring">>, ?CODE_MONTHLY_RECURRING}
                   ,{<<"recurring_prorate">>, ?CODE_RECURRING_PRORATE}
+                  ,{<<"mobile">>, ?CODE_MOBILE}
                   ,{<<"unknown">>, ?CODE_UNKNOWN}
                  ]).
 
