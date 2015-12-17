@@ -137,7 +137,7 @@ correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
             'undefined'
     end;
 correct_shortdial(Number, OffnetReq) ->
-    CIDNum = case stepswitch_bridge:bridge_outbound_cid_name(OffnetReq) of
+    CIDNum = case stepswitch_bridge:bridge_outbound_cid_number(OffnetReq) of
                  'undefined' -> Number;
                  N -> N
              end,
