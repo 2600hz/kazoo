@@ -289,7 +289,7 @@ bridge_to_loopback(CallId, ToDID, CID,  CtrlQ, AccountId) ->
 -spec bridge(ne_binary(), ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 bridge(CallId, ToDID, CID, Q, CtrlQ, AccountId, AccountCID) ->
     case wnm_util:is_reconcilable(ToDID) of
-        'true' -> 
+        'true' ->
             case wh_number_manager:lookup_account_by_number(ToDID) of
                 {'ok',_,_} ->
                     bridge_to_loopback(CallId, ToDID, CID, CtrlQ, AccountId);

@@ -33,7 +33,7 @@
 
 ####Delete CID/PIN
 
-      curl -X DELETE -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps/{DOC_ID} 
+      curl -X DELETE -H X-Auth-Token:{AUTH_TOKEN} https://{SERVER}:8443/v1/accounts/{ACCOUNT_ID}/cccps/{DOC_ID}
 
 ####Call initiation over API:
 
