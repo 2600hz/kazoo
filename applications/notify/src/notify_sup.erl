@@ -42,7 +42,8 @@ start_link() ->
 -spec listener_proc() -> {'ok', pid()}.
 listener_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= 'notify_listener'],
+                Mod =:= 'notify_listener'
+          ],
     {'ok', P}.
 
 %% ===================================================================
@@ -60,6 +61,7 @@ listener_proc() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

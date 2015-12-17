@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: ACDC
 Title: UI Updates
 Language: en-US

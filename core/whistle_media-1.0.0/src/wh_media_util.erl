@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -41,14 +41,24 @@
                             {'error', ne_binary()}.
 -spec normalize_media(ne_binary(), ne_binary(), binary()) ->
                              normalized_media().
+-spec normalize_media(ne_binary(), ne_binary(), binary(), wh_proplist()) ->
+                             normalized_media().
 normalize_media(FromFormat, FromFormat, FileContents) ->
     {'ok', FileContents};
 normalize_media(FromFormat, ToFormat, FileContents) ->
+    normalize_media(FromFormat, ToFormat, FileContents, []).
+
+normalize_media(FromFormat, ToFormat, FileContents, Options) ->
     OldFlag = process_flag('trap_exit', 'true'),
 
+    FromArgs = props:get_value('from_args', Options, ?NORMALIZE_SOURCE_ARGS),
+    ToArgs = props:get_value('to_args', Options, ?NORMALIZE_DEST_ARGS),
+    ExtraArgs = props:get_value('extra_args', Options, ""),
+
     Command = iolist_to_binary([?NORMALIZE_EXE
-                                ," -t ", FromFormat, " ", ?NORMALIZE_SOURCE_ARGS, " - "
-                                ," -t ", ToFormat, " ", ?NORMALIZE_DEST_ARGS, " - "
+                                ," ", ExtraArgs
+                                ," -t ", FromFormat, " ", FromArgs, " - "
+                                ," -t ", ToFormat, " ", ToArgs, " - "
                                ]),
     PortOptions = ['binary'
                    ,'exit_status'
@@ -59,7 +69,7 @@ normalize_media(FromFormat, ToFormat, FileContents) ->
         try open_port({'spawn', wh_util:to_list(Command)}, PortOptions) of
             Port ->
                 lager:debug("opened port ~p to sox with '~s'", [Port, Command]),
-                normalize_media(FileContents, Port)
+                do_normalize_media(FileContents, Port, props:get_integer_value('timeout', Options, 20 * ?MILLISECONDS_IN_SECOND))
         catch
             _E:_R ->
                 lager:debug("failed to open port with '~s': ~s: ~p", [Command, _E, _R]),
@@ -68,13 +78,13 @@ normalize_media(FromFormat, ToFormat, FileContents) ->
     process_flag('trap_exit', OldFlag),
     Response.
 
--spec normalize_media(binary(), port()) ->
+-spec do_normalize_media(binary(), port(), pos_integer()) ->
                              normalized_media().
-normalize_media(FileContents, Port) ->
+do_normalize_media(FileContents, Port, Timeout) ->
     try erlang:port_command(Port, FileContents) of
         'true' ->
             lager:debug("sent data to port"),
-            wait_for_results(Port)
+            wait_for_results(Port, Timeout)
     catch
         _E:_R ->
             lager:debug("failed to send data to port: ~s: ~p", [_E, _R]),
@@ -82,14 +92,14 @@ normalize_media(FileContents, Port) ->
             {'error', <<"failed to communicate with conversion utility">>}
     end.
 
--spec wait_for_results(port()) ->  normalized_media().
--spec wait_for_results(port(), iolist()) -> normalized_media().
-wait_for_results(Port) ->
-    wait_for_results(Port, []).
-wait_for_results(Port, Response) ->
+-spec wait_for_results(port(), pos_integer()) ->  normalized_media().
+-spec wait_for_results(port(), pos_integer(), iolist()) -> normalized_media().
+wait_for_results(Port, Timeout) ->
+    wait_for_results(Port, Timeout, []).
+wait_for_results(Port, Timeout, Response) ->
     receive
         {Port, {'data', Msg}} ->
-            wait_for_results(Port, [Response | [Msg]]);
+            wait_for_results(Port, Timeout, [Response | [Msg]]);
         {Port, {'exit_status', 0}} ->
             lager:debug("process exited successfully"),
             {'ok', Response};
@@ -99,7 +109,7 @@ wait_for_results(Port, Response) ->
         {'EXIT', Port, _Reason} ->
             lager:debug("port closed unexpectedly: ~p", [_Reason]),
             {'error', iolist_to_binary(Response)}
-    after 20000 ->
+    after Timeout ->
             lager:debug("timeout, sending error response: ~p", [Response]),
             catch erlang:port_close(Port),
             {'error', iolist_to_binary(Response)}
@@ -116,7 +126,7 @@ recording_url(CallId, Data) ->
 
 -spec max_recording_time_limit() -> ?SECONDS_IN_HOUR.
 max_recording_time_limit() ->
-    whapps_config:get_integer(?WHS_CONFIG_CAT, <<"max_recording_time_limit">>, ?SECONDS_IN_HOUR).
+    whapps_config:get_integer(?WHM_CONFIG_CAT, <<"max_recording_time_limit">>, ?SECONDS_IN_HOUR).
 
 base_url(Host) ->
     Port = wh_couch_connections:get_port(),
@@ -174,6 +184,7 @@ convert_stream_type(_) -> <<"single">>.
 media_path(Path) -> media_path(Path, 'undefined').
 
 media_path('undefined', _AccountId) -> 'undefined';
+media_path(<<>>, _AccountId) -> 'undefined';
 media_path(<<"/system_media", _/binary>> = Path, _AccountId) -> Path;
 media_path(<<"system_media", _/binary>> = Path, _AccountId) -> Path;
 media_path(<<"local_stream://",_/binary>> = Path, _AccountId) -> Path;
@@ -229,11 +240,12 @@ get_prompt(Name, 'undefined') ->
 get_prompt(Name, <<_/binary>> = Lang) ->
     get_prompt(Name, Lang, 'undefined');
 get_prompt(Name, Call) ->
-    get_prompt(Name
-               ,whapps_call:language(Call)
-               ,Call
-              ).
+    Lang = whapps_call:language(Call),
+    get_prompt(Name, Lang, Call).
 
+get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _Call) ->
+    lager:debug("prompt is already encoded: ~s", [PromptId]),
+    PromptId;
 get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
     get_prompt(Name, Lang, Call);
 get_prompt(PromptId, Lang, 'undefined') ->
@@ -243,9 +255,14 @@ get_prompt(PromptId, Lang, <<_/binary>> = AccountId) ->
 get_prompt(PromptId, Lang, Call) ->
     get_prompt(PromptId, Lang, whapps_call:account_id(Call)).
 
+get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId, _UseOverride) ->
+    lager:debug("prompt is already encoded: ~s", [PromptId]),
+    PromptId;
 get_prompt(PromptId, Lang, AccountId, 'true') ->
+    lager:debug("using account override for ~s in account ~s", [PromptId, AccountId]),
     wh_util:join_binary([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
 get_prompt(PromptId, Lang, _AccountId, 'false') ->
+    lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
     wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>).
 
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call()) -> api_binary().
@@ -338,7 +355,7 @@ lookup_prompt(Db, Id) ->
                               {'ok', wh_json:object()} |
                               {'error', 'not_found'}.
 prompt_is_usable(Doc) ->
-    case wh_json:is_true(<<"pvt_deleted">>, Doc, 'false') of
+    case wh_doc:is_soft_deleted(Doc) of
         'true' -> {'error', 'not_found'};
         'false' -> {'ok', Doc}
     end.
@@ -391,21 +408,24 @@ default_prompt_language() ->
     default_prompt_language(<<"en-us">>).
 default_prompt_language(Default) ->
     wh_util:to_lower_binary(
-      whapps_config:get(?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
+      whapps_config:get(?WHM_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
      ).
 
 -spec prompt_language(api_binary()) -> ne_binary().
+prompt_language(?WH_MEDIA_DB) -> default_prompt_language();
 prompt_language(AccountId) ->
     prompt_language(AccountId, default_prompt_language()).
 
--spec prompt_language(api_binary(), ne_binary()) -> ne_binary().
+-spec prompt_language(api_binary(), api_binary()) -> ne_binary().
 prompt_language('undefined', Default) ->
     default_prompt_language(Default);
+prompt_language(<<_/binary>> = AccountId, 'undefined') ->
+    prompt_language(AccountId);
 prompt_language(<<_/binary>> = AccountId, Default) ->
     case ?USE_ACCOUNT_OVERRIDES of
         'false' -> default_prompt_language();
         'true' ->
             wh_util:to_lower_binary(
-              whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, wh_util:to_lower_binary(Default))
+              whapps_account_config:get(AccountId, ?WHM_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, wh_util:to_lower_binary(Default))
              )
     end.

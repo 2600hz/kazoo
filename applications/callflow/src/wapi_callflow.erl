@@ -14,7 +14,7 @@
          ,unbind_q/2
         ]).
 -export([declare_exchanges/0]).
--export([publish_resume/1, publish_resume/2]).
+-export([publish_resume/1]).
 
 -include("callflow.hrl").
 
@@ -67,9 +67,6 @@ declare_exchanges() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_resume(api_terms()) -> 'ok'.
--spec publish_resume(api_terms(), binary()) -> 'ok'.
 publish_resume(JObj) ->
-    publish_resume(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_resume(API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?RESUME_VALUES, fun ?MODULE:resume/1),
-    amqp_util:whapps_publish(?RESUME_ROUTING_KEY, Payload, ContentType).
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?RESUME_VALUES, fun ?MODULE:resume/1),
+    amqp_util:whapps_publish(?RESUME_ROUTING_KEY, Payload).

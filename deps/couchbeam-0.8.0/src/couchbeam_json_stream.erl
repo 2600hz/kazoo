@@ -18,7 +18,12 @@
 -define(IS_DELIM(X), (X == $} orelse X == $] orelse X == $,)).
 -define(IS_DIGIT(X), (X >= $0 andalso X =< $9)).
 
-
+%% some useful guards
+-define(is_hex(Symbol),
+    (Symbol >= $a andalso Symbol =< $f) orelse
+    (Symbol >= $A andalso Symbol =< $F) orelse
+    (Symbol >= $0 andalso Symbol =< $9)
+).
 
 % Parses the json into events.
 %
@@ -308,16 +313,30 @@ toke_string(DF, <<$\\,$r,Rest/binary>>, Acc) ->
     toke_string(DF, Rest, [$\r | Acc]);
 toke_string(DF, <<$\\,$t,Rest/binary>>, Acc) ->
     toke_string(DF, Rest, [$\t | Acc]);
-toke_string(DF, <<$\\,$u,Rest/binary>>, Acc) ->
-    {<<A,B,C,D,Data/binary>>, DF2} = must_df(DF,4,Rest,missing_hex),
-    UTFChar = erlang:list_to_integer([A, B, C, D], 16),
-    if UTFChar == 16#FFFF orelse UTFChar == 16#FFFE ->
-        err(invalid_utf_char);
-    true ->
-        ok
-    end,
-    Chars = xmerl_ucs:to_utf8(UTFChar),
-    toke_string(DF2, Data, lists:reverse(Chars) ++ Acc);
+toke_string(DF, <<$\\, $u, F, A, B, C, $\\, $u, G, X, Y, Z, Rest/binary>>, Acc)
+        when (A == $8 orelse A == $9 orelse A == $a orelse A == $b orelse A == $A orelse A == $B),
+            (X == $c orelse X == $d orelse X == $e orelse X == $f orelse X == $C orelse X == $D orelse X == $E orelse X == $F),
+            (F == $d orelse F == $D),
+            (G == $d orelse G == $D),
+            ?is_hex(B), ?is_hex(C), ?is_hex(Y), ?is_hex(Z)
+        ->
+    High = erlang:list_to_integer([$d, A, B, C], 16),
+    Low = erlang:list_to_integer([$d, X, Y, Z], 16),
+    Codepoint = (High - 16#d800) * 16#400 + (Low - 16#dc00) + 16#10000,
+    Chars = xmerl_ucs:to_utf8(Codepoint),
+    toke_string(DF, Rest, lists:reverse(Chars) ++ Acc);
+toke_string(DF, <<$\\, $u, A, B, C, D, Rest/binary>>, Acc)
+        when ?is_hex(A), ?is_hex(B), ?is_hex(C), ?is_hex(D) ->
+    case erlang:list_to_integer([A, B, C, D], 16) of
+        Codepoint when Codepoint < 16#d800; Codepoint > 16#dfff ->
+            Chars = xmerl_ucs:to_utf8(Codepoint),
+            toke_string(DF, Rest, lists:reverse(Chars) ++ Acc);
+        _ -> toke_string(DF, Rest, [<<16#fffd/utf8>>] ++ Acc)
+    end;
+toke_string(DF, <<$\\, $u, Rest/binary>>, Acc)
+        when byte_size(Rest) < 4 ->
+    {Data, DF2} = must_df(DF, bad_escape_utf8_character_code),
+    toke_string(DF2, <<$\\, $u, Rest/binary, Data/binary>>, Acc);
 toke_string(DF, <<$\\>>, Acc) ->
     {Data, DF2} = must_df(DF, unterminated_string),
     toke_string(DF2, <<$\\,Data/binary>>, Acc);

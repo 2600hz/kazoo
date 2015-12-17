@@ -1,19 +1,19 @@
 {
-  "_id": "api_auth",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "API Auth",
-  "description": "Provides an auth-token via an Account API key",
-  "additionalProperties": false,
-  "properties": {
-    "api_key": {
-      "type": "string",
-      "required": true,
-      "name": "API Key",
-      "description": "The Accounts API key",
-      "minLength": 64,
-      "maxLength": 64
-    }
-  }
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "api_auth",
+    "additionalProperties": false,
+    "description": "Provides an auth-token via an Account API key",
+    "name": "API Auth",
+    "properties": {
+        "api_key": {
+            "description": "The Accounts API key",
+            "maxLength": 64,
+            "minLength": 64,
+            "name": "API Key",
+            "required": true,
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
 }

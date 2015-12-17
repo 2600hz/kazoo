@@ -13,12 +13,12 @@
           ,miss_timestamp = wh_util:current_tstamp() :: pos_integer()
          }).
 -type agent_miss() :: #agent_miss{}.
--type agent_misses() :: [agent_miss(),...] | [].
+-type agent_misses() :: [agent_miss()].
 
 -record(call_stat, {
           id :: api_binary() | '_' %% call_id::queue_id
           ,call_id :: api_binary() | '_'
-          ,acct_id :: api_binary() | '$1' | '_'
+          ,account_id :: api_binary() | '$1' | '_'
           ,queue_id :: api_binary() | '$2' | '_'
 
           ,agent_id :: api_binary() | '$3' | '_' % the handling agent
@@ -28,14 +28,17 @@
           ,handled_timestamp :: api_integer() | '_'
           ,processed_timestamp :: api_integer() | '_'
 
+          ,hung_up_by :: api_binary() | '_'
+
           ,abandoned_reason :: api_binary() | '_'
 
           ,misses = [] :: agent_misses() | '_'
 
-          ,status :: api_binary() | '$2' | '$4' | '_'
+          ,status :: api_binary() | '$1' | '$2' | '$4' | '_'
           ,caller_id_name :: api_binary() | '_'
           ,caller_id_number :: api_binary() | '_'
-          ,is_archived = 'false' :: boolean() | '$3' | '_'
+          ,caller_priority :: api_integer() | '_'
+          ,is_archived = 'false' :: boolean() | '$2' | '$3' | '_'
          }).
 -type call_stat() :: #call_stat{}.
 
@@ -47,7 +50,7 @@
 -record(status_stat, {
           id :: api_binary() | '_'
           ,agent_id :: api_binary() | '$2' | '_'
-          ,acct_id :: api_binary() | '$1' | '_'
+          ,account_id :: api_binary() | '$1' | '_'
           ,status :: api_binary() | '$4' | '_'
           ,timestamp :: api_pos_integer() | '$1' | '$3' | '$5' | '_'
 

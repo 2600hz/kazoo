@@ -1,129 +1,137 @@
 {
-  "_id": "queues",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Call Queue",
-  "description": "Call Queues - FIFO call queues for serializing callers connecting to agents",
-  "properties": {
-    "name": {
-      "type": "string",
-      "required": true,
-      "name": "Name",
-      "description": "A friendly name for the queue",
-      "minLength": 1,
-      "maxLength": 128
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "queues",
+    "description": "Call Queues - FIFO call queues for serializing callers connecting to agents",
+    "name": "Call Queue",
+    "properties": {
+        "agent_ring_timeout": {
+            "default": 15,
+            "description": "In seconds, how long to ring an agent before progressing to the next agent available",
+            "minimum": 1,
+            "name": "Agent Ring Timeout",
+            "required": false,
+            "type": "integer"
+        },
+        "agent_wrapup_time": {
+            "default": 0,
+            "description": "Pre-defined wait period applied after an agent handles a customer call",
+            "minimum": 0,
+            "name": "Agent Wrapup Time",
+            "required": false,
+            "type": "integer"
+        },
+        "announce": {
+            "description": "Media ID (or appropriate media URI) of media to play when caller is about to be connected.",
+            "name": "Annouce",
+            "required": false,
+            "type": "string"
+        },
+        "caller_exit_key": {
+            "default": "#",
+            "description": "Key caller can press while on hold to exit the queue and continue in the callflow",
+            "enum": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "*",
+                "0",
+                "#"
+            ],
+            "name": "Caller Exit Key",
+            "required": false,
+            "type": "string"
+        },
+        "cdr_url": {
+            "description": "An optional HTTP URL to POST the CDR",
+            "format": "uri",
+            "name": "CDR Url",
+            "required": false,
+            "type": "string"
+        },
+        "connection_timeout": {
+            "default": 3600,
+            "description": "In seconds, how long to try to connect the caller before progressing past the queue callflow action",
+            "minimum": 0,
+            "name": "Connection Timeout",
+            "required": false,
+            "type": "integer"
+        },
+        "enter_when_empty": {
+            "default": true,
+            "description": "Allows a caller to enter a queue and wait when no agents are available",
+            "name": "Enter When Empty",
+            "required": false,
+            "type": "boolean"
+        },
+        "max_priority": {
+            "description": "Maximum possible priority level queue will support. Can not be redefined for existing queue.",
+            "maximum": 255,
+            "minimum": 0,
+            "name": "Maximum possible priority level",
+            "required": false,
+            "type": "integer"
+        },
+        "max_queue_size": {
+            "default": 0,
+            "description": "How many callers are allowed to wait on hold in the queue (0 for no limit)",
+            "name": "Maximum Queue Size",
+            "required": false,
+            "type": "integer"
+        },
+        "moh": {
+            "description": "Media ID (or appropriate media URI) of media to play while caller is on hold.",
+            "name": "Moh",
+            "required": false,
+            "type": "string"
+        },
+        "name": {
+            "description": "A friendly name for the queue",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Name",
+            "required": true,
+            "type": "string"
+        },
+        "record_caller": {
+            "default": false,
+            "description": "When enabled, a caller's audio will be recorded",
+            "name": "Record Caller",
+            "required": false,
+            "type": "boolean"
+        },
+        "recording_url": {
+            "description": "An optional HTTP URL to PUT the call recording after the call ends (and should respond to GET for retrieving the audio data)",
+            "format": "uri",
+            "name": "Recording Url",
+            "required": false,
+            "type": "string"
+        },
+        "ring_simultaneously": {
+            "default": 1,
+            "description": "The number of agents to try in parallel when connecting a caller",
+            "minimum": 1,
+            "name": "Ring Simultaneously",
+            "required": false,
+            "type": "integer"
+        },
+        "strategy": {
+            "default": "round_robin",
+            "description": "The queue strategy for connecting agents to callers",
+            "enum": [
+                "round_robin",
+                "most_idle"
+            ],
+            "name": "Stategy",
+            "required": false,
+            "type": "string"
+        }
     },
-    "connection_timeout": {
-      "type": "integer",
-      "required": false,
-      "name": "Connection Timeout",
-      "description": "In seconds, how long to try to connect the caller before progressing past the queue callflow action",
-      "default": 3600,
-      "minimum": 0
-    },
-    "agent_ring_timeout": {
-      "type": "integer",
-      "required": false,
-      "name": "Agent Ring Timeout",
-      "description": "In seconds, how long to ring an agent before progressing to the next agent available",
-      "default": 15,
-      "minimum": 1
-    },
-    "max_queue_size": {
-      "type": "integer",
-      "required": false,
-      "name": "Maximum Queue Size",
-      "description": "How many callers are allowed to wait on hold in the queue (0 for no limit)",
-      "default": 0
-    },
-    "ring_simultaneously": {
-      "type": "integer",
-      "required": false,
-      "name": "Ring Simultaneously",
-      "description": "The number of agents to try in parallel when connecting a caller",
-      "default": 1,
-      "minimum": 1
-    },
-    "enter_when_empty": {
-      "type": "boolean",
-      "required": false,
-      "name": "Enter When Empty",
-      "description": "Allows a caller to enter a queue and wait when no agents are available",
-      "default": true
-    },
-    "agent_wrapup_time": {
-      "type": "integer",
-      "required": false,
-      "name": "Agent Wrapup Time",
-      "description": "Pre-defined wait period applied after an agent handles a customer call",
-      "default": 0,
-      "minimum": 0
-    },
-    "moh": {
-      "type": "string",
-      "required": false,
-      "name": "Moh",
-      "description": "Media ID (or appropriate media URI) of media to play while caller is on hold."
-    },
-    "announce": {
-      "type": "string",
-      "required": false,
-      "name": "Annouce",
-      "description": "Media ID (or appropriate media URI) of media to play when caller is about to be connected."
-    },
-    "strategy": {
-      "type": "string",
-      "required": false,
-      "name": "Stategy",
-      "description": "The queue strategy for connecting agents to callers",
-      "enum": [
-        "round_robin",
-        "most_idle"
-      ],
-      "default": "round_robin"
-    },
-    "caller_exit_key": {
-      "type": "string",
-      "required": false,
-      "name": "Caller Exit Key",
-      "description": "Key caller can press while on hold to exit the queue and continue in the callflow",
-      "enum": [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        "8",
-        "9",
-        "*",
-        "0",
-        "#"
-      ],
-      "default": "#"
-    },
-    "record_caller": {
-      "type": "boolean",
-      "required": false,
-      "name": "Record Caller",
-      "description": "When enabled, a caller's audio will be recorded",
-      "default": false
-    },
-    "cdr_url": {
-      "type": "string",
-      "required": false,
-      "name": "CDR Url",
-      "description": "An optional HTTP URL to POST the CDR",
-      "format": "uri"
-    },
-    "recording_url": {
-      "type": "string",
-      "required": false,
-      "name": "Recording Url",
-      "description": "An optional HTTP URL to PUT the call recording after the call ends (and should respond to GET for retrieving the audio data)",
-      "format": "uri"
-    }
-  }
+    "required": true,
+    "type": "object"
 }

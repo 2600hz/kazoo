@@ -1,0 +1,46 @@
+{
+    "fast deliver": {
+        "interval": {
+            "second": 5
+        },
+        "number": 3
+    },
+    "first deliver": {
+        "interval": {
+            "minute": 30
+        },
+        "number": 5
+    },
+    "last deliver": {
+        "number": 1,
+        "report": {}
+    },
+    "no_route": {
+        "error": {
+            "reason": [
+                "NO_ROUTE"
+            ]
+        },
+        "interval": {
+            "minute": 3
+        },
+        "number": 5,
+        "report": {}
+    },
+    "second deliver": {
+        "interval": {
+            "minute": 180
+        },
+        "time": {
+            "day": 3
+        }
+    },
+    "third deliver": {
+        "interval": {
+            "hour": 12
+        },
+        "time": {
+            "day": 3
+        }
+    }
+}

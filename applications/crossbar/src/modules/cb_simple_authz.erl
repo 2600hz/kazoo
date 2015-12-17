@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Simple authorization module
 %%%
@@ -30,7 +30,7 @@
                         ]).
 
 %% Endpoints performing their own auth
--define(IGNORE_MODS, [<<"notifications">>]).
+-define(IGNORE_MODS, []).
 
 %%%===================================================================
 %%% API
@@ -102,15 +102,14 @@ account_is_descendant('false', Context, AuthAccountId) ->
             %% we will get the requested account definition from accounts using a view
             %% with a complex key (whose alternate value is useful to use on retrieval)
             lager:debug("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
-            ReqAccountDb = wh_util:format_account_id(ReqAccountId, 'encoded'),
-            case ReqAccountId =:= AuthAccountId orelse couch_mgr:open_cache_doc(ReqAccountDb, ReqAccountId) of
+            case ReqAccountId =:= AuthAccountId orelse kz_account:fetch(ReqAccountId) of
                 'true' ->
                     lager:debug("authorizing, requested account is the same as the auth token account"),
                     'true';
                 %% if the requested account exists, the second component of the key
                 %% is the parent tree, make sure the authorized account id is in that tree
                 {'ok', JObj} ->
-                    Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+                    Tree = kz_account:tree(JObj),
                     case lists:member(AuthAccountId, Tree) of
                         'true' ->
                             lager:debug("authorizing requested account is a descendant of the auth token"),

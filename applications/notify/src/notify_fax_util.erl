@@ -40,7 +40,7 @@ get_file_name(Props, Ext) ->
 %%--------------------------------------------------------------------
 -spec get_attachment(ne_binary(), wh_proplist()) ->
                             {ne_binary(), ne_binary(), ne_binary()} |
-                            {'error', _}.
+                            {'error', any()}.
 get_attachment(Category, Props) ->
     {'ok', AttachmentBin, ContentType} = raw_attachment_binary(Props),
     case whapps_config:get_binary(Category, <<"attachment_format">>, <<"pdf">>) of
@@ -55,18 +55,15 @@ get_attachment(Category, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec raw_attachment_binary(wh_proplist()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 -spec raw_attachment_binary(ne_binary(), ne_binary()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 -spec raw_attachment_binary(ne_binary(), ne_binary(), non_neg_integer()) ->
-                                   {'ok', ne_binary(), ne_binary()} |
-                                   {'error', _}.
+                                   {'ok', ne_binary(), ne_binary()}.
 raw_attachment_binary(Props) ->
     Fax = props:get_value(<<"fax">>, Props),
     FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], Fax),
-    Db = props:get_value(<<"account_db">>, Props, ?WH_FAXES),
+    Db = props:get_value(<<"account_db">>, Props, ?WH_FAXES_DB),
     lager:debug("raw attachment ~s / ~s", [Db, FaxId]),
     raw_attachment_binary(Db, FaxId).
 
@@ -75,12 +72,12 @@ raw_attachment_binary(Db, FaxId) ->
 
 raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
     case couch_mgr:open_doc(Db, FaxId) of
-        {'error','not_found'} when Db =/= ?WH_FAXES ->
-            raw_attachment_binary(?WH_FAXES, FaxId, Retries);
+        {'error','not_found'} when Db =/= ?WH_FAXES_DB ->
+            raw_attachment_binary(?WH_FAXES_DB, FaxId, Retries);
         {'ok', FaxJObj} ->
-            case wh_json:get_keys(<<"_attachments">>, FaxJObj) of
+            case wh_doc:attachment_names(FaxJObj) of
                 [AttachmentId | _] ->
-                    ContentType = wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], FaxJObj, <<"image/tiff">>),
+                    ContentType = wh_doc:attachment_content_type(FaxJObj, AttachmentId, <<"image/tiff">>),
                     {'ok', AttachmentBin} = couch_mgr:fetch_attachment(Db, FaxId, AttachmentId),
                     {'ok', AttachmentBin, ContentType};
                 [] ->
@@ -109,21 +106,21 @@ convert_to_tiff(AttachmentBin, Props, _ContentType) ->
 %%--------------------------------------------------------------------
 -spec convert_to_pdf(ne_binary(), wh_proplist(), ne_binary()) ->
                             {ne_binary(), ne_binary(), ne_binary()} |
-                            {'error', _}.
+                            {'error', any()}.
 convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
     {<<"application/pdf">>, get_file_name(Props, "pdf"), AttachmentBin};
 convert_to_pdf(AttachmentBin, Props, _ContentType) ->
     TiffFile = tmp_file_name(<<"tiff">>),
     PDFFile = tmp_file_name(<<"pdf">>),
-    _ = file:write_file(TiffFile, AttachmentBin),
+    wh_util:write_file(TiffFile, AttachmentBin),
     ConvertCmd = whapps_config:get_binary(<<"notify.fax">>, <<"tiff_to_pdf_conversion_command">>, ?TIFF_TO_PDF_CMD),
     Cmd = io_lib:format(ConvertCmd, [PDFFile, TiffFile]),
     lager:debug("running command: ~s", [Cmd]),
     _ = os:cmd(Cmd),
-    _ = file:delete(TiffFile),
+    wh_util:delete_file(TiffFile),
     case file:read_file(PDFFile) of
         {'ok', PDFBin} ->
-            _ = file:delete(PDFFile),
+            wh_util:delete_file(PDFFile),
             {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
         {'error', _R}=E ->
             lager:debug("unable to convert tiff: ~p", [_R]),

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Display various informations
 %%%
@@ -59,7 +59,7 @@ resource_exists() -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
     display_version(Context).
 
 %%%===================================================================
@@ -74,5 +74,14 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
 %%--------------------------------------------------------------------
 -spec display_version(cb_context:context()) -> cb_context:context().
 display_version(Context) ->
-    WhVsn = wh_json:set_value(<<"whistle_version">>, wh_util:whistle_version(), wh_json:new()),
-    crossbar_util:response(WhVsn, Context).
+    crossbar_util:response(
+      wh_json:from_list(
+        [{<<"version">>, wh_util:whistle_version()}
+         ,{<<"used_memory">>, erlang:memory('total')}
+         ,{<<"processes">>, erlang:system_info('process_count')}
+         ,{<<"ports">>, length(erlang:ports())}
+         ,{<<"erlang_version">>, wh_util:to_binary(erlang:system_info('otp_release'))}
+        ]
+       )
+      ,Context
+     ).

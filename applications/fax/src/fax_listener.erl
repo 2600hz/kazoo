@@ -71,7 +71,7 @@ handle_printer_start(JObj, _Props) ->
     PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
     fax_xmpp_sup:start_printer(PrinterId).
 
--spec handle_printer_stop(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
+-spec handle_printer_stop(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_printer_stop(JObj, _Props) ->
     'true' = wapi_xmpp:event_v(JObj),
     PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
@@ -125,7 +125,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
-    spawn(?MODULE, 'start_all_printers', []),
+    _ = wh_util:spawn(fun start_all_printers/0),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -177,12 +177,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec start_all_printers() -> any().
 start_all_printers() ->
-    {'ok', Results} = couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>),
+    {'ok', Results} = couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>),
     [ send_start_printer(Id, Jid)
        || {Id, Jid, <<"claimed">>}
-              <- [{wh_json:get_value(<<"id">>, Result)
+              <- [{wh_doc:id(Result)
                    ,wh_json:get_value([<<"value">>,<<"xmpp_jid">>], Result)
                    ,wh_json:get_value([<<"value">>,<<"state">>], Result)
                   }
@@ -200,4 +199,4 @@ send_start_printer(PrinterId, JID) ->
                  ,{<<"JID">>, JID}
                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
-    wapi_xmpp:publish_event(Payload).
+    wh_amqp_worker:cast(Payload, fun wapi_xmpp:publish_event/1).

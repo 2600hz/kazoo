@@ -14,13 +14,14 @@
 
 -include("../blackhole.hrl").
 
--spec handle_event(bh_context:context(), wh_json:object()) -> any().
+-spec handle_event(bh_context:context(), wh_json:object()) -> 'ok'.
 handle_event(Context, EventJObj) ->
     wh_util:put_callid(EventJObj),
     lager:debug("handle_event fired for ~s ~s", [bh_context:account_id(Context), bh_context:websocket_session_id(Context)]),
     'true' = wapi_fax:status_v(EventJObj) andalso is_account_event(Context, EventJObj),
     lager:debug("valid event and emitting to ~p: ~s", [bh_context:websocket_pid(Context), event_name(EventJObj)]),
-    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), EventJObj).
+    J = wh_json:normalize_jobj(EventJObj),
+    blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), J).
 
 -spec is_account_event(bh_context:context(), wh_json:object()) -> any().
 is_account_event(Context, EventJObj) ->
@@ -38,6 +39,7 @@ add_amqp_binding(<<"fax.status.", FaxId/binary>>, Context) ->
     blackhole_listener:add_binding('fax', [{'restrict_to', ['status']}
                                            ,{'account_id', bh_context:account_id(Context)}
                                            ,{'fax_id', FaxId}
+                                           ,'federate'
                                           ]);
 add_amqp_binding(_Binding, _Context) ->
     lager:debug("unmatched binding ~s", [_Binding]).

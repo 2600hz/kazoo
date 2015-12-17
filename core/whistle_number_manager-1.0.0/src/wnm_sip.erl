@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%% Parse and manipulate SIP URIs
 %%% @end
@@ -18,6 +18,10 @@
          ,host/1, set_host/2
          ,port/1, set_port/2
         ]).
+
+-ifdef(TEST).
+-export([parse_until/2]).
+-endif.
 
 -include("wnm.hrl").
 
@@ -93,86 +97,3 @@ set_host(#sip_uri{}=Sip, H) ->
 port(#sip_uri{port=P}) -> P.
 set_port(#sip_uri{}=Sip, P) ->
     Sip#sip_uri{port=P}.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-parse_until_test() ->
-    {Before, After} = parse_until(<<":">>, <<"foo:bar">>),
-    ?assertEqual(<<"foo">>, Before),
-    ?assertEqual(<<"bar">>, After).
-
-parse_full_test() ->
-    Uri = parse(<<"sip:username@host.com:2600">>),
-
-    ?assertEqual('sip', scheme(Uri)),
-    ?assertEqual(<<"username">>, user(Uri)),
-    ?assertEqual(<<"host.com">>, host(Uri)),
-    ?assertEqual(2600, port(Uri)).
-
-parse_uh_test() ->
-    Uri = parse(<<"sip:username@host.com">>),
-
-    ?assertEqual('sip', scheme(Uri)),
-    ?assertEqual(<<"username">>, user(Uri)),
-    ?assertEqual(<<"host.com">>, host(Uri)),
-    ?assertEqual(5060, port(Uri)).
-
-parse_suh_test() ->
-    Uri = parse(<<"sips:username@host.com">>),
-
-    ?assertEqual('sips', scheme(Uri)),
-    ?assertEqual(<<"username">>, user(Uri)),
-    ?assertEqual(<<"host.com">>, host(Uri)),
-    ?assertEqual(5060, port(Uri)).
-
-parse_noscheme_test() ->
-    Uri = parse(<<"username@host.com">>),
-
-    ?assertEqual('sip', scheme(Uri)),
-    ?assertEqual(<<"username">>, user(Uri)),
-    ?assertEqual(<<"host.com">>, host(Uri)),
-    ?assertEqual(5060, port(Uri)).
-
-parse_noscheme_port_test() ->
-    Uri = parse(<<"username@host.com:2600">>),
-
-    ?assertEqual('sip', scheme(Uri)),
-    ?assertEqual(<<"username">>, user(Uri)),
-    ?assertEqual(<<"host.com">>, host(Uri)),
-    ?assertEqual(2600, port(Uri)).
-
-encode_test() ->
-    Uri = parse(<<"username@host.com:2600">>),
-    ?assertEqual(<<"sip:username@host.com:2600">>, encode(Uri)).
-
-encode_full_test() ->
-    U = <<"sip:username@host.com:2600">>,
-    Uri = parse(U),
-    ?assertEqual(U, encode(Uri)).
-
-encode_5060_test() ->
-    U = <<"sips:username@host.com">>,
-    Uri = parse(U),
-    ?assertEqual(U, encode(Uri)).
-
-encode_full_5060_test() ->
-    U = <<"sips:username@host.com:5060">>,
-    Uri = parse(U),
-    ?assertEqual(<<"sips:username@host.com">>, encode(Uri)).
-
-parse_angles_test() ->
-    U = <<"<sips:username@host.com:5060>">>,
-    Uri = parse(U),
-
-    ?assertEqual(<<"username">>, user(Uri)),
-    ?assertEqual(<<"sips:username@host.com">>, encode(Uri)).
-
-parse_angles_2_test() ->
-    U = <<"<sip:username@host.com>">>,
-    Uri = parse(U),
-
-    ?assertEqual(<<"username">>, user(Uri)),
-    ?assertEqual(<<"sip:username@host.com">>, encode(Uri)).
-
--endif.

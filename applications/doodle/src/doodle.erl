@@ -8,6 +8,7 @@
 -module(doodle).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include("doodle.hrl").
 
 -export([start_link/0
          ,start/0
@@ -24,6 +25,16 @@
 start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
+    case whapps_config:get(?CONFIG_CAT, <<"reschedule">>) of
+        'undefined' ->
+            case  wh_json:load_fixture_from_file(?APP, <<"reschedule.json">>) of
+                {'error', Err} ->
+                    lager:error("default sms is 'undefined' and cannot read default from file : ~p", [Err]);
+                JObj ->
+                    whapps_config:set(?CONFIG_CAT, <<"reschedule">>, JObj)
+            end;
+        _ -> 'ok'
+    end,
     doodle_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -32,7 +43,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     application:start(?MODULE).
 

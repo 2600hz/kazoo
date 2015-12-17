@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "webhook_attempts",
+    "description": "Log of an attempt to send a webhook to a third-party server",
+    "name": "Webhook Attempt",
+    "properties": {
+        "client_error": {
+            "description": "Kazoo-side error string, if any",
+            "type": "string"
+        },
+        "hook_id": {
+            "description": "Id of the hook attempted",
+            "name": "Hook Id",
+            "required": true,
+            "type": "string"
+        },
+        "reason": {
+            "description": "short reason for the failure",
+            "type": "string"
+        },
+        "response_body": {
+            "description": "HTTP response body received, if any",
+            "type": "string"
+        },
+        "response_code": {
+            "description": "HTTP response code received, if any",
+            "type": "string"
+        },
+        "result": {
+            "description": "Whether the attempt succeeded or not",
+            "enum": [
+                "success",
+                "failure"
+            ],
+            "required": true,
+            "type": "string"
+        },
+        "retries_left": {
+            "description": "How many retries were left after this attempt",
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

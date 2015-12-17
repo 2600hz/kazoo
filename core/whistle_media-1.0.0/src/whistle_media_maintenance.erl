@@ -19,12 +19,12 @@
 
 -spec migrate() -> 'no_return'.
 migrate() ->
-    io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?WHS_CONFIG_CAT]),
+    io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?WHM_CONFIG_CAT]),
 
     maybe_migrate_system_config(<<"callflow">>),
 
-    io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHS_CONFIG_CAT]),
-    maybe_migrate_system_config(<<"media_mgr">>),
+    io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHM_CONFIG_CAT]),
+    maybe_migrate_system_config(<<"media_mgr">>, 'true'),
 
     'no_return'.
 
@@ -39,7 +39,7 @@ set_account_language(Account, Language) ->
     OldLang = wh_media_util:prompt_language(AccountId),
 
     try whapps_account_config:set(AccountId
-                                  ,?WHS_CONFIG_CAT
+                                  ,?WHM_CONFIG_CAT
                                   ,?PROMPT_LANGUAGE_KEY
                                   ,wh_util:to_lower_binary(Language)
                                  )
@@ -49,8 +49,7 @@ set_account_language(Account, Language) ->
                       ,[AccountId, OldLang, Language]
                      )
     catch
-        _E:_R ->
-            io:format("", [])
+        _E:_R -> 'ok'
     end.
 
 import_prompts(Path) ->
@@ -63,23 +62,31 @@ import_prompts(Path, Lang) ->
         [] ->
             io:format("failed to find media files in '~s'~n", [Path]);
         Files ->
-            io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
-            case [{F, Err}
-                  || F <- Files,
-                     (Err = (catch import_prompt(F, Lang))) =/= 'ok'
-                 ]
-            of
-                [] -> io:format("importing went successfully~n", []);
-                Errors ->
-                    io:format("errors encountered during import:~n"),
-                    [io:format("  '~s': ~p~n", [F, Err]) || {F, Err} <- Errors],
-                    'ok'
-            end
+            import_files(Path, Lang, Files)
     end.
 
--spec import_prompt(text()) -> 'ok' | {'error', _}.
--spec import_prompt(text(), text()) -> 'ok' | {'error', _}.
--spec import_prompt(text(), text(), ne_binary()) -> 'ok' | {'error', _}.
+-spec import_files(ne_binary(), ne_binary(), [file:filename()]) -> 'ok'.
+import_files(Path, Lang, Files) ->
+    io:format("importing prompts from '~s' with language '~s'~n", [Path, Lang]),
+    case import_prompts_from_files(Files, Lang) of
+        [] -> io:format("importing went successfully~n");
+        Errors ->
+            io:format("errors encountered during import:~n"),
+            _ = [io:format("  '~s': ~p~n", [F, Err]) || {F, Err} <- Errors],
+            'ok'
+    end.
+
+-spec import_prompts_from_files([file:filename()], ne_binary()) ->
+                                       [{file:filename(), {'error', _}}].
+import_prompts_from_files(Files, Lang) ->
+     [{F, Err}
+      || F <- Files,
+         (Err = (catch import_prompt(F, Lang))) =/= 'ok'
+     ].
+
+-spec import_prompt(text() | file:filename()) -> 'ok' | {'error', any()}.
+-spec import_prompt(text() | file:filename(), text()) -> 'ok' | {'error', any()}.
+-spec import_prompt(text() | file:filename(), text(), ne_binary()) -> 'ok' | {'error', any()}.
 
 import_prompt(Path) ->
     import_prompt(Path, wh_media_util:default_prompt_language()).
@@ -87,7 +94,7 @@ import_prompt(Path) ->
 import_prompt(Path, Lang) ->
     couch_mgr:db_create(?WH_MEDIA_DB),
     timer:sleep(250),
-	case file:read_file(Path) of
+    case file:read_file(Path) of
         {'ok', Contents} ->
             io:format("importing prompt '~s' with language '~s'~n", [Path, Lang]),
             import_prompt(Path, Lang, Contents);
@@ -138,7 +145,7 @@ import_prompt(Path0, Lang0, Contents) ->
                           ,Contents
                           ,[{'content_type', wh_util:to_list(ContentType)}
                             ,{'content_length', ContentLength}
-                            ,{'rev', wh_json:get_value(<<"_rev">>, MetaJObj1)}
+                            ,{'rev', wh_doc:revision(MetaJObj1)}
                            ]
                          );
         {'error', E} ->
@@ -148,10 +155,10 @@ import_prompt(Path0, Lang0, Contents) ->
 
 -spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                            'ok' |
-                           {'error', _}.
+                           {'error', any()}.
 -spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), wh_proplist(), non_neg_integer()) ->
                            'ok' |
-                           {'error', _}.
+                           {'error', any()}.
 upload_prompt(ID, AttachmentName, Contents, Options) ->
     upload_prompt(ID, AttachmentName, Contents, Options, 3).
 
@@ -170,7 +177,7 @@ upload_prompt(ID, AttachmentName, Contents, Options, Retries) ->
             maybe_cleanup_metadoc(ID, E)
     end.
 
--spec maybe_cleanup_metadoc(ne_binary(), _) -> {'error', _}.
+-spec maybe_cleanup_metadoc(ne_binary(), any()) -> {'error', any()}.
 maybe_cleanup_metadoc(ID, E) ->
     io:format("  deleting metadata from ~s~n", [?WH_MEDIA_DB]),
     case couch_mgr:del_doc(?WH_MEDIA_DB, ID) of
@@ -184,14 +191,14 @@ maybe_cleanup_metadoc(ID, E) ->
 
 -spec maybe_retry_upload(ne_binary(), ne_binary(), ne_binary(), wh_proplist(), non_neg_integer()) ->
                                 'ok' |
-                                {'error', _}.
+                                {'error', any()}.
 maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
     case couch_mgr:open_doc(?WH_MEDIA_DB, ID) of
         {'ok', JObj} ->
-            case wh_json:get_value([<<"_attachments">>, AttachmentName], JObj) of
+            case wh_doc:attachment(JObj, AttachmentName) of
                 'undefined' ->
                     io:format("  attachment does not appear on the document, retrying after a pause~n"),
-                    timer:sleep(1000),
+                    timer:sleep(?MILLISECONDS_IN_SECOND),
                     upload_prompt(ID, AttachmentName, Contents, Options, Retries-1);
                 _Attachment ->
                     io:format("  attachment appears to have uploaded successfully!")
@@ -207,36 +214,58 @@ refresh() ->
     'ok'.
 
 -spec maybe_migrate_system_config(ne_binary()) -> 'ok'.
+-spec maybe_migrate_system_config(ne_binary(), boolean()) -> 'ok'.
 maybe_migrate_system_config(ConfigId) ->
+    maybe_migrate_system_config(ConfigId, 'false').
+
+maybe_migrate_system_config(ConfigId, DeleteAfter) ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, ConfigId) of
-        {'ok', JObj} -> migrate_system_config(wh_doc:public_fields(JObj));
-        {'error', 'not_found'} -> 'ok'
+        {'error', 'not_found'} -> 'ok';
+        {'ok', JObj} ->
+            migrate_system_config(wh_doc:public_fields(JObj)),
+            maybe_delete_system_config(ConfigId, DeleteAfter)
     end.
+
+-spec maybe_delete_system_config(ne_binary(), boolean()) -> 'ok'.
+maybe_delete_system_config(_ConfigId, 'false') -> 'ok';
+maybe_delete_system_config(ConfigId, 'true') ->
+    {'ok', _} = couch_mgr:del_doc(?WH_CONFIG_DB, ConfigId),
+    io:format("deleted ~s from ~s", [ConfigId, ?WH_CONFIG_DB]).
 
 -spec migrate_system_config(wh_json:object()) -> 'ok'.
 migrate_system_config(ConfigJObj) ->
     {'ok', MediaJObj} = get_media_config_doc(),
 
-    UpdatedMediaJObj = wh_json:foldl(fun migrate_system_config_fold/3, MediaJObj, ConfigJObj),
+    UpdatedMediaJObj = wh_json:foldl(fun migrate_system_config_fold/3
+                                     ,MediaJObj
+                                     ,ConfigJObj
+                                    ),
     io:format("saving updated media config~n", []),
     {'ok', _} = couch_mgr:save_doc(?WH_CONFIG_DB, UpdatedMediaJObj),
     'ok'.
 
 -spec get_media_config_doc() -> {'ok', wh_json:object()}.
 get_media_config_doc() ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, ?WHS_CONFIG_CAT) of
+    case couch_mgr:open_doc(?WH_CONFIG_DB, ?WHM_CONFIG_CAT) of
         {'ok', _MediaJObj}=OK -> OK;
-        {'error', 'not_found'} -> {'ok', wh_json:from_list([{<<"_id">>, ?WHS_CONFIG_CAT}])}
+        {'error', 'not_found'} ->
+            {'ok', wh_json:from_list([{<<"_id">>, ?WHM_CONFIG_CAT}])}
     end.
 
--spec migrate_system_config_fold(ne_binary(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
-migrate_system_config_fold(<<"_id">>, _Id, MediaJObj) ->
-    MediaJObj;
-migrate_system_config_fold(<<"_rev">>, _Rev, MediaJObj) ->
-    MediaJObj;
-migrate_system_config_fold(Node, Settings, MediaJObj) ->
+-spec migrate_system_config_fold(ne_binary(), wh_json:json_term(), wh_json:object()) ->
+                                        wh_json:object().
+migrate_system_config_fold(<<"default">> = Node, Settings, MediaJObj) ->
     io:format("migrating node '~s' settings~n", [Node]),
-    migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS).
+    migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS);
+migrate_system_config_fold(Node, Settings, MediaJObj) ->
+    case binary:split(Node, <<"@">>) of
+        [_User, _Domain] ->
+            io:format("migrating node '~s' settings~n", [Node]),
+            migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS);
+        _Split ->
+            io:format("skipping non-node '~s'~n", [Node]),
+            MediaJObj
+    end.
 
 -spec migrate_node_config(ne_binary(), wh_json:object(), wh_json:object(), wh_proplist()) -> wh_json:object().
 migrate_node_config(_Node, _Settings, MediaJObj, []) -> MediaJObj;
@@ -247,15 +276,26 @@ migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
             migrate_node_config(Node, Settings, maybe_update_media_config(Node, K, V, MediaJObj), KVs);
         NodeV ->
             io:format("  maybe setting ~p for node ~p to '~p'~n", [K, Node, NodeV]),
-            migrate_node_config(Node, Settings, wh_json:set_value([Node, K], NodeV, MediaJObj), KVs)
+
+            migrate_node_config(Node, Settings, set_node_value(Node, K, NodeV, MediaJObj), KVs)
     end.
 
--spec maybe_update_media_config(ne_binary(), ne_binary(), api_binary(), wh_json:object()) -> wh_json:object().
+-spec set_node_value(ne_binary(), wh_json:keys(), ne_binary(), wh_json:object()) ->
+                            wh_json:object().
+set_node_value(Node, <<_/binary>> = K, V, MediaJObj) ->
+    set_node_value(Node, [K], V, MediaJObj);
+set_node_value(Node, K, V, MediaJObj) ->
+    wh_json:set_value([Node | K], V, MediaJObj).
+
+-spec maybe_update_media_config(ne_binary(), wh_json:keys(), api_binary(), wh_json:object()) ->
+                                       wh_json:object().
 maybe_update_media_config(_Node, _K, 'undefined', MediaJObj) ->
     io:format("    no value to set for ~p~n", [_K]),
     MediaJObj;
+maybe_update_media_config(Node, <<_/binary>> = K, V, MediaJObj) ->
+    maybe_update_media_config(Node, [K], V, MediaJObj);
 maybe_update_media_config(Node, K, V, MediaJObj) ->
-    Key = [Node, K],
+    Key = [Node | K],
     case wh_json:get_value(Key, MediaJObj) of
         'undefined' -> wh_json:set_value(Key, V, MediaJObj);
         V ->
@@ -278,17 +318,22 @@ remove_empty_media_docs(AccountId, AccountDb) ->
             io:format("no media docs in account ~s~n", [AccountId]);
         {'ok', MediaDocs} ->
             io:format("found ~b media docs in account ~s~n", [length(MediaDocs), AccountId]),
-            Filename = list_to_binary(["/tmp/empty_media_", AccountId, "_", wh_util:to_binary(wh_util:current_tstamp()), ".json"]),
-            {'ok', File} = file:open(Filename, ['write', 'binary']),
+            Filename = media_doc_filename(AccountId, wh_util:current_tstamp()),
             io:format("archiving removed media docs to ~s~n", [Filename]),
-            remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs);
+            {'ok', File} = file:open(Filename, ['write', 'binary', 'append']),
+            catch remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs),
+            'ok' = file:close(File);
         {'error', _E} ->
             io:format("error looking up media docs in account ~s: ~p~n", [AccountId, _E])
     end.
 
+-spec media_doc_filename(ne_binary(), non_neg_integer()) -> file:name().
+media_doc_filename(AccountId, Timestamp) ->
+    Path = ["/tmp/empty_media_", AccountId, "_", wh_util:to_binary(Timestamp), ".json"],
+    binary_to_list(list_to_binary(Path)).
+
 -spec remove_empty_media_docs(ne_binary(), ne_binary(), file:io_device(), wh_json:objects()) -> 'ok'.
-remove_empty_media_docs(AccountId, _AccountDb, File, []) ->
-    file:close(File),
+remove_empty_media_docs(AccountId, _AccountDb, _Filename, []) ->
     io:format("finished cleaning up empty media docs for account ~s~n", [AccountId]);
 remove_empty_media_docs(AccountId, AccountDb, File, [Media|MediaDocs]) ->
     maybe_remove_media_doc(AccountDb, File, wh_json:get_value(<<"doc">>, Media)),
@@ -296,26 +341,18 @@ remove_empty_media_docs(AccountId, AccountDb, File, [Media|MediaDocs]) ->
 
 -spec maybe_remove_media_doc(ne_binary(), file:io_device(), wh_json:object()) -> 'ok'.
 maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
-    case wh_json:get_value(<<"_attachments">>, MediaJObj) of
+    DocId = wh_doc:id(MediaJObj),
+    case wh_doc:attachments(MediaJObj) of
         'undefined' ->
-            io:format("media doc ~s has undefined attachments, archiving and removing~n"
-                      ,[wh_json:get_value(<<"_id">>, MediaJObj)]
-                     ),
-            file:write(File, wh_json:encode(MediaJObj)),
-            file:write(File, [$\n]),
-            remove_media_doc(AccountDb, MediaJObj);
-        [] ->
-            io:format("media doc ~s has no attachments, archiving and removing~n"
-                      ,[wh_json:get_value(<<"_id">>, MediaJObj)]
-                     ),
-            file:write(File, wh_json:encode(MediaJObj)),
-            file:write(File, [$\n]),
+            io:format("media doc ~s has no attachments, archiving and removing~n", [DocId]),
+            _R = file:write(File, [wh_json:encode(MediaJObj), $\n]),
+            io:format("dumping media doc ~s to file : ~p\n", [DocId, _R]),
             remove_media_doc(AccountDb, MediaJObj);
         _Attachments ->
-            io:format("media doc ~s has attachments, leaving alone~n", [wh_json:get_value(<<"_id">>, MediaJObj)])
+            io:format("media doc ~s has attachments, leaving alone~n", [wh_doc:id(MediaJObj)])
     end.
 
 -spec remove_media_doc(ne_binary(), wh_json:object()) -> 'ok'.
 remove_media_doc(AccountDb, MediaJObj) ->
     {'ok', _Doc} = couch_mgr:del_doc(AccountDb, MediaJObj),
-    io:format("removed media doc ~s~n", [wh_json:get_value(<<"_id">>, MediaJObj)]).
+    io:format("removed media doc ~s~n", [wh_doc:id(MediaJObj)]).

@@ -33,19 +33,15 @@ blocking_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh() -> 'started'.
--spec refresh(binary() | string()) -> 'ok'.
+-spec refresh(text()) -> 'ok'.
 
 refresh() ->
-    spawn(fun() ->
-                  lists:foreach(fun(AccountDb) ->
-                                        refresh(AccountDb)
-                                end, whapps_util:get_all_accounts())
-          end),
-    started.
+    _ = wh_util:spawn(fun blocking_refresh/0),
+    'started'.
 
 refresh(<<Account/binary>>) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    Views = whapps_util:get_views_json(conference, "views"),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    Views = whapps_util:get_views_json('conference', "views"),
     whapps_util:update_views(AccountDb, Views);
 refresh(Account) ->
     refresh(wh_util:to_binary(Account)).

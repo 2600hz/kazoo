@@ -31,19 +31,18 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = wapi_notifications:fax_outbound_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     lager:debug("new outbound fax left, sending to email if enabled"),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, JobId]),
-    {'ok', FaxDoc} = couch_mgr:open_doc(?WH_FAXES, JobId),
+    {'ok', FaxDoc} = couch_mgr:open_doc(?WH_FAXES_DB, JobId),
 
     Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
-    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AcctObj} = kz_account:fetch(AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
 
@@ -107,7 +106,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                    | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
                   ]}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
+     ,{<<"account_db">>, wh_doc:account_db(Account)}
     ].
 
 fax_values(Event) ->

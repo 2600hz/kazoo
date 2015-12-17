@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(omnipresence).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("omnipresence.hrl").
 
 -export([start_link/0
          ,start/0
@@ -32,7 +32,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     application:start(?MODULE).
 
@@ -43,7 +43,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 
+stop() ->
     exit(whereis('omnipresence_sup'), 'shutdown'),
     'ok'.
 

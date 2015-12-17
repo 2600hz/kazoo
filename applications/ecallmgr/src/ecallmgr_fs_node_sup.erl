@@ -31,15 +31,16 @@
 
 -include("ecallmgr.hrl").
 
--define(CHILD(Name, Mod, Args), fun('ecallmgr_fs_event_stream_sup' = N, M, A) ->
+-define(CHILD(Name, Mod, Args), fun(N, 'ecallmgr_fs_event_stream_sup' = M, A) ->
                                         {N, {M, 'start_link', A}, 'permanent', 'infinity', 'supervisor', [N]};
                                    (N, M, A) ->
-                                        {N, {M, 'start_link', A}, 'permanent', 6000, 'worker', [N]}
+                                        {N, {M, 'start_link', A}, 'permanent', 6 * ?MILLISECONDS_IN_SECOND, 'worker', [N]}
                                 end(Name, Mod, Args)).
--define(CHILDREN, [<<"_node">>, <<"_authn">>, <<"_route">>, <<"_channel">>
-                   ,<<"_config">>, <<"_resource">>, <<"_notify">>
-                   ,<<"_conference">>, <<"_event_stream_sup">>
-                   ,<<"_msg">>
+-define(CHILDREN, [<<"node">>, <<"authn">>, <<"route">>, <<"channel">>
+                   ,<<"config">>, <<"resource">>, <<"notify">>
+                   ,<<"conference">>
+                   ,<<"event_stream_sup">>
+                   ,<<"msg">>
                   ]).
 
 %% ===================================================================
@@ -114,17 +115,17 @@ init([Node, Options]) ->
 
     NodeB = wh_util:to_binary(Node),
     Children = [ begin
-                     Name = wh_util:to_atom(<<NodeB/binary, H/binary>>, 'true'),
-                     Mod = wh_util:to_atom(<<"ecallmgr_fs", H/binary>>, 'true'),
+                     Name = wh_util:to_atom(<<NodeB/binary, "_", H/binary>>, 'true'),
+                     Mod = wh_util:to_atom(<<"ecallmgr_fs_", H/binary>>, 'true'),
                      lager:debug("starting handler ~s", [Name]),
                      ?CHILD(Name, Mod, [Node, Options])
                  end
-                 || H <- ?CHILDREN
+                 || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)
                ],
 
     {'ok', {SupFlags, Children}}.
 
--spec srv([{atom(), pid(), _, _},...] | [], list()) -> api_pid().
+-spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';
 srv([{Name, Pid, _, _} | Children], Suffix) ->
     case lists:prefix(Suffix, lists:reverse(wh_util:to_list(Name))) of

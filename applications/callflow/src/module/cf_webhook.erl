@@ -21,7 +21,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    spawn(?MODULE, 'handle_webhook', [Data, Call]),
+    _ = wh_util:spawn(fun handle_webhook/2, [Data, Call]),
     cf_exe:continue(Call).
 
 -spec handle_webhook(wh_json:object(), whapps_call:call()) -> 'ok' | {'error', any()}.

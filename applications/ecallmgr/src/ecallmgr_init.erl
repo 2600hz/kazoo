@@ -30,10 +30,12 @@
           ,wh_config:get_atom('log', 'error', ['error'])
          }).
 
-start_link() -> spawn(?MODULE, 'init', []), 'ignore'.
+start_link() ->
+    wh_util:spawn(fun init/0),
+    'ignore'.
 
 init() ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     case wh_config:get_atom('ecallmgr', 'cookie') of
         [] ->
             lager:info("no cookie defined for ecallmgr, leaving as ~s", [erlang:get_cookie()]);

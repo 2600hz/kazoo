@@ -23,6 +23,7 @@
 -define(CHILDREN, [?CACHE_ARGS(?JONNY5_CACHE, ?CACHE_PROPS)
                    ,?WORKER('jonny5_listener')
                    ,?WORKER('j5_channels')
+                   ,?WORKER('j5_balance_crawler_fsm')
                   ]).
 
 %% ===================================================================
@@ -54,6 +55,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

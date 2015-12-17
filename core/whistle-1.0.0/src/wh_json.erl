@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% proplists-like interface to json objects
 %%% @end
@@ -25,23 +25,36 @@
 -export([get_ne_binary_value/2, get_ne_binary_value/3]).
 -export([get_lower_binary/2, get_lower_binary/3]).
 -export([get_atom_value/2, get_atom_value/3]).
--export([get_string_value/2, get_string_value/3]).
--export([get_json_value/2, get_json_value/3]).
+-export([get_string_value/2, get_string_value/3
+         ,get_list_value/2, get_list_value/3
+        ]).
+-export([get_json_value/2, get_json_value/3
+         ,get_ne_json_value/2, get_ne_json_value/3
+        ]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
 -export([filter/2, filter/3
          ,map/2
          ,foldl/3
          ,find/2, find/3
+         ,find_first_defined/2, find_first_defined/3
+         ,find_value/3, find_value/4
          ,foreach/2
          ,all/2, any/2
         ]).
+
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3
-         ,get_values/1
+         ,get_values/1, get_values/2
         ]).
 -export([get_keys/1, get_keys/2]).
--export([set_value/3, set_values/2, new/0]).
+-export([get_public_keys/1
+         ,get_private_keys/1
+        ]).
+-export([set_value/3, set_values/2
+         ,insert_value/3
+         ,new/0
+        ]).
 -export([delete_key/2, delete_key/3, delete_keys/2]).
 -export([merge_recursive/1
          ,merge_recursive/2
@@ -75,17 +88,10 @@
 
 -include_lib("whistle/include/wh_log.hrl").
 
--ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -include("wh_json.hrl").
 
--export_type([json_string/0, json_strings/0
-              ,json_term/0, json_terms/0
+-export_type([json_term/0, json_terms/0
               ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
-              ,json_key/0
               ,object/0, objects/0
               ,key/0, keys/0
              ]).
@@ -96,11 +102,11 @@ new() -> ?JSON_WRAPPER([]).
 -spec encode(json_term()) -> text().
 encode(JObj) -> ejson:encode(JObj).
 
--spec decode(iolist() | ne_binary()) -> object().
--spec decode(iolist() | ne_binary(), ne_binary()) -> object().
+-spec decode(iolist() | ne_binary()) -> json_term().
+-spec decode(iolist() | ne_binary(), ne_binary()) -> json_term().
 
 decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
-    decode(Thing, ?DEFAULT_CONTENT_TYPE).
+    decode(Thing, <<"application/json">>).
 
 decode(JSON, <<"application/json">>) ->
     try ejson:decode(JSON) of
@@ -138,19 +144,19 @@ try_converting(JSON, E) ->
             throw(E)
     end.
 
--spec is_empty(term()) -> boolean().
+-spec is_empty(any()) -> boolean().
 is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
--spec is_json_object(term()) -> boolean().
--spec is_json_object(key(), term()) -> boolean().
+-spec is_json_object(any()) -> boolean().
+-spec is_json_object(key(), any()) -> boolean().
 is_json_object(?JSON_WRAPPER(P)) when is_list(P) -> 'true';
 is_json_object(_) -> 'false'.
 
 is_json_object(Key, JObj) ->
     is_json_object(get_value(Key, JObj)).
 
--spec is_valid_json_object(term()) -> boolean().
+-spec is_valid_json_object(any()) -> boolean().
 is_valid_json_object(MaybeJObj) ->
     try
         lists:all(fun(K) ->
@@ -209,18 +215,21 @@ merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Pred) when is_function(Pred, 2) ->
                         merge_recursive(JObjAcc, JObj2, Pred)
                 end, J, JObjs);
 merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
-    merge_recursive([JObj1, JObj2], fun merge_true/2).
+    merge_recursive(JObj1, JObj2, fun merge_true/2).
 
 -spec merge_recursive(object(), object() | json_term(), merge_pred()) -> object().
 merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
     merge_recursive(JObj1, JObj2, Pred, []).
 
 %% inserts values from JObj2 into JObj1
--spec merge_recursive(object(), object() | json_term(), merge_pred(), json_strings()) -> object().
-merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(Prop2), Pred, Keys) when is_function(Pred, 2) ->
-    lists:foldr(fun(Key, J) ->
-                        merge_recursive(J, props:get_value(Key, Prop2), Pred, [Key|Keys])
-                end, JObj1, props:get_keys(Prop2));
+-spec merge_recursive(object(), object() | json_term(), merge_pred(), keys()) -> object().
+merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when is_function(Pred, 2) ->
+    foldl(fun(Key2, Value2, JObj1Acc) ->
+                  merge_recursive(JObj1Acc, Value2, Pred, [Key2|Keys])
+          end
+          ,JObj1
+          ,JObj2
+         );
 merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
     case Pred(get_value(Syek, JObj1), Value) of
@@ -259,7 +268,7 @@ to_querystring(JObj, Prefix) ->
 %% foreach key/value pair, encode the key/value with the prefix and prepend the &
 %% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
 %% and reverse the list (putting the key/value at the end of the list)
--spec fold_kvs(json_strings(), json_terms(), binary() | iolist(), iolist()) -> iolist().
+-spec fold_kvs(keys(), json_terms(), binary() | iolist(), iolist()) -> iolist().
 fold_kvs([], [], _, Acc) -> Acc;
 fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
 fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
@@ -271,7 +280,7 @@ encode_kv(Prefix, K, Vs) when is_list(Vs) ->
     encode_kv(Prefix, wh_util:to_binary(K), Vs, <<"[]=">>, []);
 %% if the value is a "simple" value, just encode it (url-encoded)
 encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
-    encode_kv(Prefix, K, <<"=">>, mochiweb_util:quote_plus(V));
+    encode_kv(Prefix, K, <<"=">>, kz_http:urlencode(V));
 encode_kv(Prefix, K, 'true') ->
     encode_kv(Prefix, K, <<"=">>, <<"true">>);
 encode_kv(Prefix, K, 'false') ->
@@ -287,11 +296,11 @@ encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [Prefix, <<"
 encode_kv(<<>>, K, Sep, V) -> [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
 encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>, Sep, wh_util:to_binary(V)].
 
--spec encode_kv(iolist() | binary(), ne_binary(), [string(),...] | [], ne_binary(), iolist()) -> iolist().
+-spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
-    lists:reverse([ encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+    lists:reverse([ encode_kv(Prefix, K, Sep, kz_http:urlencode(V)) | Acc]);
 encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
-    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, kz_http:urlencode(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
 -spec get_json_value(key(), object()) -> api_object().
@@ -304,9 +313,21 @@ get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
         _ -> Default
     end.
 
--spec filter(fun(({json_string(), json_term()}) -> boolean()), object()) ->
+-spec get_ne_json_value(key(), object()) -> api_object().
+-spec get_ne_json_value(key(), object(), Default) -> Default | object().
+get_ne_json_value(Key, JObj) ->
+    get_ne_json_value(Key, JObj, 'undefined').
+get_ne_json_value(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        'undefined' -> Default;
+        ?EMPTY_JSON_OBJECT -> Default;
+        ?JSON_WRAPPER(_)=V -> V;
+        _ -> Default
+    end.
+
+-spec filter(fun(({key(), json_term()}) -> boolean()), object()) ->
                           object().
--spec filter(fun(({json_string(), json_term()}) -> boolean()), object(), key()) ->
+-spec filter(fun(({key(), json_term()}) -> boolean()), object(), key()) ->
                           object() | objects().
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
@@ -316,7 +337,7 @@ filter(Pred, ?JSON_WRAPPER(_)=JObj, Keys) when is_list(Keys),
     set_value(Keys, filter(Pred, get_json_value(Keys, JObj)), JObj);
 filter(Pred, JObj, Key) -> filter(Pred, JObj, [Key]).
 
--spec map(fun((json_string(), json_term()) -> {json_string(), json_term()}), object()) -> object().
+-spec map(fun((key(), json_term()) -> {key(), json_term()}), object()) -> object().
 map(F, ?JSON_WRAPPER(Prop)) -> from_list([ F(K, V) || {K,V} <- Prop]).
 
 -spec foreach(fun(({json_key(), json_term()}) -> any()), object()) -> 'ok'.
@@ -345,7 +366,18 @@ get_string_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun wh_util:to_list/1)
     end.
 
--spec get_binary_value(key(), object() | objects()) -> 'undefined' | binary().
+-spec get_list_value(key(), object() | objects()) -> 'undefined' | list().
+-spec get_list_value(key(), object() | objects(), Default) -> Default | list().
+get_list_value(Key, JObj) ->
+    get_list_value(Key, JObj, 'undefined').
+get_list_value(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        'undefined' -> Default;
+        List when is_list(List) -> List;
+        _Else -> Default
+    end.
+
+-spec get_binary_value(key(), object() | objects()) -> api_binary().
 -spec get_binary_value(key(), object() | objects(), Default) -> binary() | Default.
 get_binary_value(Key, JObj) ->
     get_binary_value(Key, JObj, 'undefined').
@@ -366,7 +398,7 @@ get_ne_binary_value(Key, JObj, Default) ->
         Value -> Value
     end.
 
--spec get_lower_binary(key(), object() | objects()) -> 'undefined' | binary().
+-spec get_lower_binary(key(), object() | objects()) -> api_binary().
 -spec get_lower_binary(key(), object() | objects(), Default) -> binary() | Default.
 get_lower_binary(Key, JObj) ->
     get_lower_binary(Key, JObj, 'undefined').
@@ -378,7 +410,7 @@ get_lower_binary(Key, JObj, Default) ->
     end.
 
 %% must be an existing atom
--spec get_atom_value(key(), object() | objects()) -> 'undefined' | atom().
+-spec get_atom_value(key(), object() | objects()) -> api_atom().
 -spec get_atom_value(key(), object() | objects(), Default) -> atom() | Default.
 get_atom_value(Key, JObj) ->
     get_atom_value(Key, JObj, 'undefined').
@@ -408,7 +440,7 @@ safe_cast(Value, Default, CastFun) ->
         _:_ -> Default
     end.
 
--spec get_number_value(key(), object() | objects()) -> 'undefined' | number().
+-spec get_number_value(key(), object() | objects()) -> api_number().
 -spec get_number_value(key(), object() | objects(), Default) -> number() | Default.
 get_number_value(Key, JObj) ->
     get_number_value(Key, JObj, 'undefined').
@@ -419,7 +451,7 @@ get_number_value(Key, JObj, Default) ->
         Value -> safe_cast(Value, Default, fun wh_util:to_number/1)
     end.
 
--spec get_float_value(key(), object() | objects()) -> 'undefined' | float().
+-spec get_float_value(key(), object() | objects()) -> api_float().
 -spec get_float_value(key(), object() | objects(), Default) -> float() | Default.
 get_float_value(Key, JObj) ->
     get_float_value(Key, JObj, 'undefined').
@@ -462,16 +494,30 @@ get_binary_boolean(Key, JObj, Default) ->
         Value -> wh_util:to_binary(wh_util:is_true(Value))
     end.
 
--spec get_keys(object()) -> json_strings().
--spec get_keys(key(), object()) -> [pos_integer(),...] | json_strings().
+-spec get_keys(object()) -> keys().
+-spec get_keys(key(), object()) -> [pos_integer(),...] | keys().
 get_keys(JObj) -> get_keys1(JObj).
 
 get_keys([], JObj) -> get_keys1(JObj);
 get_keys(Keys, JObj) -> get_keys1(get_value(Keys, JObj, new())).
 
--spec get_keys1(list() | object()) -> [pos_integer(),...] | json_strings().
+-spec get_keys1(list() | object()) -> [pos_integer(),...] | keys().
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1,length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
+
+-spec get_public_keys(object()) -> keys().
+get_public_keys(JObj) ->
+    [Key
+     || Key <- get_keys(JObj)
+            ,not is_private_key(Key)
+    ].
+
+-spec get_private_keys(object()) -> keys().
+get_private_keys(JObj) ->
+    [Key
+     || Key <- get_keys(JObj)
+            ,is_private_key(Key)
+    ].
 
 -spec get_ne_value(key(), object() | objects()) ->
                           json_term() | 'undefined'.
@@ -505,6 +551,37 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
     case get_value(Key, JObj) of
         'undefined' -> find(Key, JObjs, Default);
         V -> V
+    end.
+
+-spec find_first_defined(key(), objects()) -> json_term() | 'undefined'.
+-spec find_first_defined(key(), objects(), Default) -> json_term() | Default.
+find_first_defined(Keys, Docs) ->
+    find_first_defined(Keys, Docs, 'undefined').
+
+find_first_defined([], _Docs, Default) -> Default;
+find_first_defined([Key|Keys], Docs, Default) ->
+    case find(Key, Docs) of
+        'undefined' -> find_first_defined(Keys, Docs, Default);
+        V -> V
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find first json object that has a Value for Key.
+%% Returns the json object or 'undefined'
+%% @end
+%%--------------------------------------------------------------------
+-spec find_value(key(), json_term(), objects()) -> api_object().
+-spec find_value(key(), json_term(), objects(), Default) -> object() | Default.
+find_value(Key, Value, JObjs) ->
+    find_value(Key, Value, JObjs, 'undefined').
+
+find_value(_Key, _Value, [], Default) -> Default;
+find_value(Key, Value, [JObj|JObjs], Default) ->
+    case get_value(Key, JObj) of
+        Value -> JObj;
+        _Value -> find_value(Key, Value, JObjs, Default)
     end.
 
 -spec get_first_defined(keys(), object()) -> 'undefined' | json_term().
@@ -554,22 +631,42 @@ get_value1([K|Ks], ?JSON_WRAPPER(Props)=_JObj, Default) ->
 get_value1(_, _, Default) -> Default.
 
 %% split the json object into values and the corresponding keys
--spec get_values(object()) -> {json_terms(), json_strings()}.
+-spec get_values(object()) -> {json_terms(), keys()}.
 get_values(JObj) ->
     lists:foldr(fun(Key, {Vs, Ks}) ->
                         {[get_value(Key, JObj)|Vs], [Key|Ks]}
                 end, {[], []}, ?MODULE:get_keys(JObj)).
 
+-spec get_values(key(), object()) -> {json_terms(), keys()}.
+get_values(Key, JObj) ->
+    get_values(get_value(Key, JObj, new())).
+
 %% Figure out how to set the current key among a list of objects
--spec set_values(json_proplist(), object()) -> object().
+-type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()}.
+-type set_value_funs() :: [set_value_fun(),...].
+
+-spec set_values(json_proplist() | set_value_funs(), object()) -> object().
 set_values(KVs, JObj) when is_list(KVs) ->
-    lists:foldr(fun({K,V}, JObj0) -> set_value(K, V, JObj0) end, JObj, KVs).
+    lists:foldr(fun set_value_fold/2, JObj, KVs).
+
+-spec set_value_fold(set_value_fun() | {key(), json_term()}, object()) -> object().
+set_value_fold({F, V}, JObj) when is_function(F, 2) ->
+    F(JObj, V);
+set_value_fold({K, V}, JObj) ->
+    set_value(K, V, JObj).
+
+-spec insert_value(key(), json_term(), object()) -> object().
+insert_value(Key, Value, JObj) ->
+    case get_value(Key, JObj) of
+        'undefined' -> set_value(Key, Value, JObj);
+        _V -> JObj
+    end.
 
 -spec set_value(key(), json_term(), object() | objects()) -> object() | objects().
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
--spec set_value1(json_strings() | [integer(),...], json_term(), object() | objects()) -> object() | objects().
+-spec set_value1(keys() | integers(), json_term(), object() | objects()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, []) when not is_integer(Key) -> set_value1(Keys, Value, new());
 set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
     Key1 = wh_util:to_integer(Key),
@@ -778,8 +875,8 @@ normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so
 normalize_key_char(C) -> C.
 
 -type search_replace_format() :: {ne_binary(), ne_binary()} |
-                                  {ne_binary(), ne_binary(), fun((term()) -> term())}.
--type search_replace_formatters() :: [search_replace_format(),...] | [].
+                                  {ne_binary(), ne_binary(), fun((any()) -> any())}.
+-type search_replace_formatters() :: [search_replace_format()].
 -spec normalize_jobj(object(), ne_binaries(), search_replace_formatters()) -> object().
 normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->
     normalize_jobj(
@@ -804,11 +901,11 @@ search_replace_format({Old, New, Formatter}, JObj) when is_function(Formatter, 1
 %% @end
 %%--------------------------------------------------------------------
 -spec public_fields(object() | objects()) -> object() | objects().
-public_fields(JObjs) when is_list(JObjs) -> [public_fields(JObj) || JObj <- JObjs];
+public_fields(JObjs) when is_list(JObjs) ->
+    [public_fields(JObj) || JObj <- JObjs];
 public_fields(JObj) ->
     PubJObj = filter(fun({K, _}) -> (not is_private_key(K)) end, JObj),
-
-    case get_binary_value(<<"_id">>, JObj) of
+    case wh_doc:id(JObj) of
         'undefined' -> PubJObj;
         Id -> set_value(<<"id">>, Id, PubJObj)
     end.
@@ -821,8 +918,10 @@ public_fields(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec private_fields(object() | objects()) -> object() | objects().
-private_fields(JObjs) when is_list(JObjs) -> [private_fields(JObj) || JObj <- JObjs];
-private_fields(JObj) -> filter(fun({K, _}) -> is_private_key(K) end, JObj).
+private_fields(JObjs) when is_list(JObjs) ->
+    [private_fields(JObj) || JObj <- JObjs];
+private_fields(JObj) ->
+    filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -831,7 +930,7 @@ private_fields(JObj) -> filter(fun({K, _}) -> is_private_key(K) end, JObj).
 %% considered private; otherwise 'false'
 %% @end
 %%--------------------------------------------------------------------
--spec is_private_key(json_string()) -> boolean().
+-spec is_private_key(key()) -> boolean().
 is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
@@ -883,352 +982,3 @@ flatten(Value, Acc, [K | Keys], Depth) ->
         'true' ->
             [{K, Value} | Acc]
     end.
-
-
-%% EUNIT TESTING
--ifdef(TEST).
-
-%% PropEr Testing
-prop_is_object() ->
-    ?FORALL(JObj, object(),
-            ?WHENFAIL(io:format("Failed prop_is_json_object ~p~n", [JObj]),
-                      is_json_object(JObj))
-           ).
-
-prop_from_list() ->
-    ?FORALL(Prop, json_proplist(),
-            ?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop]),
-                      is_json_object(from_list(Prop)))
-           ).
-
-prop_get_value() ->
-    ?FORALL(Prop, json_proplist(),
-            ?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop]),
-                      begin
-                          JObj = from_list(Prop),
-                          case length(Prop) > 0 andalso hd(Prop) of
-                              {K,V} ->
-                                  V =:= get_value([K], JObj);
-                              'false' -> new() =:= JObj
-                          end
-                      end)).
-
-prop_set_value() ->
-    ?FORALL({JObj, Key, Value}, {object(), json_strings(), json_term()},
-            ?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
-                      begin
-                          JObj1 = set_value(Key, Value, JObj),
-                          Value =:= get_value(Key, JObj1)
-                      end)).
-
-prop_to_proplist() ->
-    ?FORALL(Prop, json_proplist(),
-      ?WHENFAIL(io:format("Failed prop_to_proplist ~p~n", [Prop]),
-                begin
-                    JObj = from_list(Prop),
-                    lists:all(fun(K) -> props:get_value(K, Prop) =/= 'undefined' end, ?MODULE:get_keys(JObj))
-                end)
-           ).
-
--define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}
-                           ,{<<"d1k2">>, 'd1v2'}
-                           ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
-                          ])).
--define(D2, ?JSON_WRAPPER([{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}])).
--define(D3, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2]}])).
--define(D4, [?D1, ?D2, ?D3]).
-
--define(D6, ?JSON_WRAPPER([{<<"d2k1">>, 1}
-                           ,{<<"d2k2">>, 3.14}
-                           ,{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}
-                          ]
-                         )).
--define(D7, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])).
-
-is_json_object_proper_test_() ->
-    {"Runs wh_json PropEr tests for is_json_object/1",
-     {'timeout', 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
-
-is_empty_test() ->
-    ?assertEqual('true', is_empty(new())),
-    ?assertEqual('false', is_empty(?D1)),
-    ?assertEqual('false', is_empty(?D6)),
-    ?assertEqual('false', is_empty(123)),
-    ?assertEqual('false', is_empty(<<"foobar">>)),
-    ?assertEqual('false', is_empty([{'bar', 'bas'}])).
-
-merge_jobjs_test() ->
-    JObj = merge_jobjs(?D1, ?D2),
-    ?assertEqual('true', 'undefined' =/= get_value(<<"d1k1">>, JObj)),
-    ?assertEqual('true', 'undefined' =/= get_value(<<"d2k1">>, JObj)),
-    ?assertEqual('true', 'undefined' =/= get_value(<<"sub_d1">>, JObj)),
-    ?assertEqual('true', 'undefined' =:= get_value(<<"missing_k">>, JObj)).
-
-merge_recursive_test() ->
-    JObj = merge_recursive(?D1, set_value(<<"d1k2">>, 'd2k2', ?D2)),
-    ?assertEqual('true', is_json_object(JObj)),
-    ?assertEqual('true', 'undefined' =/= get_value(<<"d1k1">>, JObj)),
-    ?assertEqual('true', 'undefined' =/= get_value(<<"d2k1">>, JObj)),
-
-    ?assertEqual('true', 'undefined' =/= get_value([<<"d1k3">>, 2], JObj)),
-
-    ?assertEqual('true', 'undefined' =/= get_value(<<"sub_d1">>, JObj)),
-
-    ?assertEqual('true', 'undefined' =/= get_value([<<"sub_d1">>, <<"d1k1">>], JObj)),
-    ?assertEqual('true', 'd2k2' =:= get_value(<<"d1k2">>, JObj)), %% second JObj takes precedence
-    ?assertEqual('true', 'undefined' =:= get_value(<<"missing_k">>, JObj)).
-
-get_binary_value_test() ->
-    ?assertEqual('true', is_binary(get_binary_value(<<"d1k1">>, ?D1))),
-    ?assertEqual('undefined', get_binary_value(<<"d2k1">>, ?D1)),
-    ?assertEqual('true', is_binary(get_binary_value(<<"d1k1">>, ?D1, <<"something">>))),
-    ?assertEqual(<<"something">>, get_binary_value(<<"d2k1">>, ?D1, <<"something">>)).
-
-get_integer_value_test() ->
-    ?assertEqual(1, get_integer_value(<<"d2k1">>, ?D2)),
-    ?assertEqual('undefined', get_integer_value(<<"d1k1">>, ?D2)),
-    ?assertEqual(1, get_integer_value(<<"d2k1">>, ?D2, 0)),
-    ?assertEqual(0, get_integer_value(<<"d1k1">>, ?D2, 0)).
-
-get_float_value_test() ->
-    ?assertEqual('true', is_float(get_float_value(<<"d2k2">>, ?D2))),
-    ?assertEqual('undefined', get_float_value(<<"d1k1">>, ?D2)),
-    ?assertEqual(3.14, get_float_value(<<"d2k2">>, ?D2, 0.0)),
-    ?assertEqual(0.0, get_float_value(<<"d1k1">>, ?D2, 0.0)).
-
-get_binary_boolean_test() ->
-    ?assertEqual('undefined', get_binary_boolean(<<"d1k1">>, ?D2)),
-    ?assertEqual(<<"false">>, get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'false'}]))),
-    ?assertEqual(<<"true">>, get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}]))).
-
-is_false_test() ->
-    ?assertEqual('false', is_false(<<"d1k1">>, ?D1)),
-    ?assertEqual('true', is_false(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'false'}]))).
-
-is_true_test() ->
-    ?assertEqual('false', is_true(<<"d1k1">>, ?D1)),
-    ?assertEqual('true', is_true(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}]))).
-
--define(D1_FILTERED, ?JSON_WRAPPER([{<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
--define(D2_FILTERED, ?JSON_WRAPPER([{<<"sub_d1">>, ?D1}])).
--define(D3_FILTERED, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2_FILTERED]}])).
-filter_test() ->
-    ?assertEqual(?D1_FILTERED, filter(fun({<<"d1k1">>, _}) -> 'false'; (_) -> 'true' end, ?D1)),
-    ?assertEqual(?D2_FILTERED, filter(fun({_, V}) when is_number(V) -> 'false'; (_) -> 'true' end, ?D2)),
-    ?assertEqual(?D3_FILTERED, filter(fun({_, V}) when is_number(V) -> 'false'; (_) -> 'true' end, ?D3, [<<"sub_docs">>, 2])).
-
-new_test() ->
-    ?EMPTY_JSON_OBJECT =:= new().
-
--spec is_json_object_test() -> any().
-is_json_object_test() ->
-    ?assertEqual('false', is_json_object(foo)),
-    ?assertEqual('false', is_json_object(123)),
-    ?assertEqual('false', is_json_object([boo, yah])),
-    ?assertEqual('false', is_json_object(<<"bin">>)),
-
-    ?assertEqual('true', is_json_object(?D1)),
-    ?assertEqual('true', is_json_object(?D2)),
-    ?assertEqual('true', is_json_object(?D3)),
-    ?assertEqual('true', lists:all(fun is_json_object/1, ?D4)),
-    ?assertEqual('true', is_json_object(?D6)),
-    ?assertEqual('true', is_json_object(?D7)).
-
-%% delete results
--define(D1_AFTER_K1, ?JSON_WRAPPER([{<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
--define(D1_AFTER_K3_V2, ?JSON_WRAPPER([{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}, {<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}])).
-
--define(D6_AFTER_SUB, ?JSON_WRAPPER([{<<"sub_d1">>, ?EMPTY_JSON_OBJECT}
-                                     ,{<<"d2k1">>, 1}
-                                     ,{<<"d2k2">>, 3.14}
-                                    ]
-                                   )).
--define(D6_AFTER_SUB_PRUNE, ?JSON_WRAPPER([{<<"d2k1">>, 1}
-                                           ,{<<"d2k2">>, 3.14}
-                                          ]
-                                         )).
-
--define(P1, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]).
--define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?JSON_WRAPPER(?P1)}]).
--define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?JSON_WRAPPER(?P1), ?JSON_WRAPPER(?P2)]}]).
--define(P4, [?P1, ?P2, ?P3]).
--define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}]).
--define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
-
--define(P8, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]).
--define(P9, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?P1}]).
--define(P10, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?P8, ?P9]}]).
--define(P11, [?P8, ?P9, ?P10]).
--define(P12, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14},{<<"sub_d1">>, [{<<"d1k1">>, <<"d1v1">>}]}]).
--define(P13, [{<<"d1k1">>, <<"d1v1">>}]).
-
-%% deleting [k1, 1] should return empty json object
--define(D_ARR, ?JSON_WRAPPER([{<<"k1">>, [1]}])).
--define(P_ARR, ?JSON_WRAPPER([{<<"k1">>, []}])).
-
--spec get_keys_test() -> any().
-get_keys_test() ->
-    Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
-    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([], ?D1))),
-    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([<<"sub_docs">>, 1], ?D3))),
-    ?assertEqual('true', lists:all(fun(K) -> lists:member(K, [1,2,3]) end, ?MODULE:get_keys([<<"sub_docs">>], ?D3))).
-
--spec to_proplist_test() -> any().
-to_proplist_test() ->
-    ?assertEqual(?P1, to_proplist(?D1)),
-    ?assertEqual(?P2, to_proplist(?D2)),
-    ?assertEqual(?P3, to_proplist(?D3)),
-    ?assertEqual(?P4, lists:map(fun to_proplist/1, ?D4)),
-    ?assertEqual(?P6, to_proplist(?D6)),
-    ?assertEqual(?P7, to_proplist(?D7)).
-
--spec recursive_to_proplist_test() -> any().
-recursive_to_proplist_test() ->
-    ?assertEqual(?P8, recursive_to_proplist(?D1)),
-    ?assertEqual(?P9, recursive_to_proplist(?D2)),
-    ?assertEqual(?P10, recursive_to_proplist(?D3)),
-    ?assertEqual(?P11, lists:map(fun recursive_to_proplist/1, ?D4)),
-    ?assertEqual(?P12, recursive_to_proplist(?D6)),
-    ?assertEqual(?P13, recursive_to_proplist(?D7)).
-
--spec delete_key_test() -> any().
-delete_key_test() ->
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT, 'prune')),
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key([<<"foo">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key([<<"foo">>], ?EMPTY_JSON_OBJECT, 'prune')),
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key([<<"foo">>, <<"bar">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key([<<"foo">>, <<"bar">>], ?EMPTY_JSON_OBJECT, 'prune')),
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key([<<"d1k1">>], ?D7)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key([<<"d1k1">>], ?D7, 'prune')),
-    ?assertEqual(?D1_AFTER_K1, delete_key([<<"d1k1">>], ?D1)),
-    ?assertEqual(?D1_AFTER_K1, delete_key([<<"d1k1">>], ?D1, 'prune')),
-    ?assertEqual(?D1_AFTER_K3_V2, delete_key([<<"d1k3">>, 2], ?D1)),
-    ?assertEqual(?D1_AFTER_K3_V2, delete_key([<<"d1k3">>, 2], ?D1, 'prune')),
-    ?assertEqual(?D6_AFTER_SUB, delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6)),
-    ?assertEqual(?D6_AFTER_SUB_PRUNE, delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6, 'prune')),
-    ?assertEqual(?P_ARR, delete_key([<<"k1">>, 1], ?D_ARR)),
-    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key([<<"k1">>, 1], ?D_ARR, 'prune')).
-
--spec get_value_test() -> any().
-get_value_test() ->
-    %% Basic first level key
-    ?assertEqual('undefined', get_value([<<"d1k1">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual(<<"d1v1">>, get_value([<<"d1k1">>], ?D1)),
-    ?assertEqual('undefined', get_value([<<"d1k1">>], ?D2)),
-    ?assertEqual('undefined', get_value([<<"d1k1">>], ?D3)),
-    ?assertEqual('undefined', get_value([<<"d1k1">>], ?D4)),
-    %% Basic nested key
-    ?assertEqual('undefined', get_value([<<"sub_d1">>, <<"d1k2">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual('undefined', get_value([<<"sub_d1">>, <<"d1k2">>], ?D1)),
-    ?assertEqual(d1v2,      get_value([<<"sub_d1">>, <<"d1k2">>], ?D2)),
-    ?assertEqual('undefined', get_value([<<"sub_d1">>, <<"d1k2">>], ?D3)),
-    ?assertEqual('undefined', get_value([<<"sub_d1">>, <<"d1k2">>], ?D4)),
-    %% Get the value in an object in an array in another object that is part of
-    %% an array of objects
-    ?assertEqual('undefined', get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual('undefined', get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D1)),
-    ?assertEqual('undefined', get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D2)),
-    ?assertEqual('undefined', get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D3)),
-    ?assertEqual(3.14,      get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4)),
-    %% Get the value in an object in an array in another object that is part of
-    %% an array of objects, but change the default return if it is not present.
-    %% Also tests the ability to have indexs represented as strings
-    ?assertEqual(<<"not">>, get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], [], <<"not">>)),
-    ?assertEqual(<<"not">>, get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D1, <<"not">>)),
-    ?assertEqual(<<"not">>, get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D2, <<"not">>)),
-    ?assertEqual(<<"not">>, get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D3, <<"not">>)),
-    ?assertEqual(3.14,      get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4, <<"not">>)).
-
--define(T2R1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"update">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
--define(T2R2, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, new_value}])).
--define(T2R3, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, ?JSON_WRAPPER([{<<"new_key">>, added_value}])}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
--define(T2R4, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, ?JSON_WRAPPER([{<<"new_key">>, added_value}])}])).
-
-set_value_object_test() ->
-    %% Test setting an existing key
-    ?assertEqual(?T2R1, set_value([<<"d1k2">>], <<"update">>, ?D1)),
-    %% Test setting a non-existing key
-    ?assertEqual(?T2R2, set_value([<<"d1k4">>], new_value, ?D1)),
-    %% Test setting an existing key followed by a non-existant key
-    ?assertEqual(?T2R3, set_value([<<"d1k2">>, <<"new_key">>], added_value, ?D1)),
-    %% Test setting a non-existing key followed by another non-existant key
-    ?assertEqual(?T2R4, set_value([<<"d1k4">>, <<"new_key">>], added_value, ?D1)).
-
--define(D5,   [?JSON_WRAPPER([{<<"k1">>, v1}]), ?JSON_WRAPPER([{<<"k2">>, v2}])]).
--define(T3R1, [?JSON_WRAPPER([{<<"k1">>,test}]),?JSON_WRAPPER([{<<"k2">>,v2}])]).
--define(T3R2, [?JSON_WRAPPER([{<<"k1">>,v1},{<<"pi">>, 3.14}]),?JSON_WRAPPER([{<<"k2">>,v2}])]).
--define(T3R3, [?JSON_WRAPPER([{<<"k1">>,v1},{<<"callerid">>,?JSON_WRAPPER([{<<"name">>,<<"2600hz">>}])}]),?JSON_WRAPPER([{<<"k2">>,v2}])]).
--define(T3R4, [?JSON_WRAPPER([{<<"k1">>,v1}]),?JSON_WRAPPER([{<<"k2">>,<<"updated">>}])]).
--define(T3R5, [?JSON_WRAPPER([{<<"k1">>,v1}]),?JSON_WRAPPER([{<<"k2">>,v2}]),?JSON_WRAPPER([{<<"new_key">>,<<"added">>}])]).
-
-set_value_multiple_object_test() ->
-    %% Set an existing key in the first object()
-    ?assertEqual(?T3R1, set_value([1, <<"k1">>], test, ?D5)),
-    %% Set a non-existing key in the first object()
-    ?assertEqual(?T3R2, set_value([1, <<"pi">>], 3.14, ?D5)),
-    %% Set a non-existing key followed by another non-existant key in the first object()
-    ?assertEqual(?T3R3, set_value([1, <<"callerid">>, <<"name">>], <<"2600hz">>, ?D5)),
-    %% Set an existing key in the second object()
-    ?assertEqual(?T3R4, set_value([2, <<"k2">>], <<"updated">>, ?D5)),
-    %% Set a non-existing key in a non-existing object()
-    ?assertEqual(?T3R5, set_value([3, <<"new_key">>], <<"added">>, ?D5)).
-
-%% <<"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ"
--define(T4R1,  ?JSON_WRAPPER([{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#C0, 16#D6)), <<"Smith">>} ])).
-%% <<"àáâãäåæçèéêëìíîïðñòóôõö"
--define(T4R1V, ?JSON_WRAPPER([{<<"caller_id">>, 1234},{list_to_binary(lists:seq(16#E0, 16#F6)), <<"Smith">>} ])).
-%% <<"ØÙÚÛÜÝÞ"
--define(T5R1,  ?JSON_WRAPPER([{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#D8, 16#DE)), <<"Smith">>} ])).
-%% <<"øùúûüýþ"
--define(T5R1V, ?JSON_WRAPPER([{<<"caller_id">>, 1234},{list_to_binary(lists:seq(16#F8, 16#FE)), <<"Smith">>} ])).
-
--define(T4R2,  ?JSON_WRAPPER([{<<"Account-ID">>, <<"45AHGJDF8DFDS2130S">>}, {<<"TRUNK">>, 'false'}, {<<"Node1">>, ?T4R1 }, {<<"Node2">>, ?T4R1 }])).
--define(T4R2V, ?JSON_WRAPPER([{<<"account_id">>, <<"45AHGJDF8DFDS2130S">>}, {<<"trunk">>, 'false'}, {<<"node1">>, ?T4R1V}, {<<"node2">>, ?T4R1V}])).
--define(T4R3,  ?JSON_WRAPPER([{<<"Node-1">>, ?JSON_WRAPPER([{<<"Node-2">>, ?T4R2  }])}, {<<"Another-Node">>, ?T4R1 }] )).
--define(T4R3V, ?JSON_WRAPPER([{<<"node_1">>, ?JSON_WRAPPER([{<<"node_2">>, ?T4R2V }])}, {<<"another_node">>, ?T4R1V}] )).
-
-set_value_normalizer_test() ->
-    %% Normalize a flat JSON object
-    ?assertEqual(normalize_jobj(?T4R1), ?T4R1V),
-    %% Normalize a single nested JSON object
-    ?assertEqual(normalize_jobj(?T4R2), ?T4R2V),
-    %% Normalize multiple nested JSON object
-    ?assertEqual(normalize_jobj(?T4R3), ?T4R3V),
-
-    ?assertEqual(normalize_jobj(?T5R1), ?T5R1V).
-
-to_querystring_test() ->
-    Tests = [{<<"{}">>, <<>>}
-             ,{<<"{\"foo\":\"bar\"}">>, <<"foo=bar">>}
-             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"foo=bar&fizz=buzz">>}
-             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\",\"arr\":[1,3,5]}">>, <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
-             ,{<<"{\"Msg-ID\":\"123-abc\"}">>, <<"Msg-ID=123-abc">>}
-             ,{<<"{\"url\":\"http://user:pass@host:port/\"}">>, <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
-             ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":\"v2\",\"subkey3\":[\"v31\",\"v32\"]}}">>
-                   ,<<"topkey[subkey1]=v1&topkey[subkey2]=v2&topkey[subkey3][]=v31&topkey[subkey3][]=v32">>}
-             ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":{\"k3\":\"v3\"}}}">>
-                   ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
-            ],
-    lists:foreach(fun({JSON, QS}) ->
-                          QS1 = wh_util:to_binary(to_querystring(decode(JSON))),
-                          ?assertEqual(QS, QS1)
-                  end, Tests).
-
-get_values_test() ->
-    ?assertEqual('true', are_all_there(?D1, [<<"d1v1">>, d1v2, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
-
--define(CODEC_JOBJ, ?JSON_WRAPPER([{<<"k1">>, <<"v1">>}
-                                   ,{<<"k2">>, ?EMPTY_JSON_OBJECT}
-                                   ,{<<"k3">>, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])}
-                                   ,{<<"k4">>, [1,2,3]}
-                                  ])).
-codec_test() ->
-    ?assertEqual(?CODEC_JOBJ, decode(encode(?CODEC_JOBJ))).
-
-are_all_there(JObj, Vs, Ks) ->
-    {Values, Keys} = get_values(JObj),
-    lists:all(fun(K) -> lists:member(K, Keys) end, Ks) andalso
-        lists:all(fun(V) -> lists:member(V, Values) end, Vs).
-
--endif.

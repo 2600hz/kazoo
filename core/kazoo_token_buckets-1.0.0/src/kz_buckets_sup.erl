@@ -34,15 +34,16 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_bucket(pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) -> any().
--spec stop_bucket(pid()) -> any().
-
+-spec start_bucket(pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) ->
+                          sup_startchild_ret().
 start_bucket(MaxTokens, FillRate, FillTime) ->
     supervisor:start_child(?SERVER, [MaxTokens, FillRate, 'true', FillTime]).
 
+-spec stop_bucket(server_ref()) -> 'ok' | {'error', any()}.
 stop_bucket(Pid) ->
     supervisor:terminate_child(?SERVER, Pid).
 

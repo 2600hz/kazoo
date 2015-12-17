@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -34,7 +34,7 @@
 
 -include("amqp_util.hrl").
 
--define(ASSIGNMENT_TIMEOUT, 5000).
+-define(ASSIGNMENT_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -type consumer_pid() :: pid().
 -export_type([consumer_pid/0]).
@@ -76,6 +76,7 @@ requisition() -> requisition(consumer_pid()).
 requisition(Consumer) when is_pid(Consumer) ->
     requisition(Consumer, consumer_broker());
 requisition(Broker) ->
+    put('$wh_amqp_consumer_broker', Broker),
     requisition(consumer_pid(), Broker).
 
 -spec requisition(pid(), api_binary()) -> boolean().
@@ -99,7 +100,7 @@ release(Pid) when is_pid(Pid) ->
 close(Channel) -> close(Channel, []).
 
 close(Channel, []) when is_pid(Channel) ->
-    _ = (catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5000)),
+    _ = (catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5 * ?MILLISECONDS_IN_SECOND)),
     lager:debug("closed amqp channel ~p", [Channel]);
 close(_, []) -> 'ok';
 close(Channel, [#'basic.consume'{consumer_tag=CTag}|Commands]) when is_pid(Channel) ->
@@ -181,8 +182,13 @@ command(Command) ->
     command(wh_amqp_assignments:get_channel(), Command).
 
 -spec command(wh_amqp_assignment(), wh_amqp_command()) -> command_ret().
+command(#wh_amqp_assignment{channel=Pid}, #'channel.flow_ok'{}=FlowCtl) ->
+    amqp_channel:cast(Pid, FlowCtl);
 command(#wh_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
     amqp_channel:cast(Pid, BasicAck);
+command(#wh_amqp_assignment{channel=Channel}=Assignment, #'confirm.select'{}=Command) ->
+    Result = amqp_channel:call(Channel, Command),
+    handle_command_result(Result, Command, Assignment);
 command(#wh_amqp_assignment{channel=Pid}, #'basic.nack'{}=BasicNack) ->
     amqp_channel:cast(Pid, BasicNack);
 command(#wh_amqp_assignment{consumer=Consumer
@@ -235,7 +241,13 @@ command(#wh_amqp_assignment{channel=Channel
             lager:debug("queue ~s is not bound to ~s(~s)", [QueueName, Exchange, RoutingKey])
     end;
 command(#wh_amqp_assignment{channel=Channel}=Assignment, Command) ->
-    Result = amqp_channel:call(Channel, Command),
+    Result = try amqp_channel:call(Channel, Command) of
+                 R -> R
+             catch
+                 E:R ->
+                     lager:debug("amqp command exception ~p : ~p", [E, R]),
+                     {'error', R}
+             end,
     handle_command_result(Result, Command, Assignment).
 
 -spec handle_command_result(command_ret(), wh_amqp_command(), wh_amqp_assignment()) -> command_ret().
@@ -255,6 +267,16 @@ handle_command_result(#'queue.delete_ok'{}
     lager:debug("deleted queue ~s via channel ~p", [Q, Channel]),
     _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
+handle_command_result(#'exchange.declare_ok'{}=Ok
+                      ,#'exchange.declare'{passive='true',exchange=Ex}
+                      ,#wh_amqp_assignment{channel=Channel}) ->
+    lager:debug("passive declared exchange ~s via channel ~p", [Ex, Channel]),
+    {'ok', Ok};
+handle_command_result(#'exchange.declare_ok'{}=Ok
+                      ,#'exchange.declare'{exchange=Ex}
+                      ,#wh_amqp_assignment{channel=Channel}) ->
+    lager:debug("declared exchanged ~s via channel ~p", [Ex, Channel]),
+    {'ok', Ok};
 handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
                       ,#'queue.declare'{passive='true'}
                       ,#wh_amqp_assignment{channel=Channel}) ->
@@ -296,6 +318,24 @@ handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
                       ,#'basic.cancel'{}=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("canceled consumer ~s via channel ~p", [CTag, Channel]),
+    _ = wh_amqp_history:add_command(Assignment, Command),
+    'ok';
+handle_command_result(#'confirm.select_ok'{}
+                      ,Command
+                      ,#wh_amqp_assignment{channel=Channel
+                                           ,consumer=Consumer
+                                          }=Assignment) ->
+    lager:debug("publisher confirms activated on channel ~p", [Channel]),
+    Consumer ! {'$server_confirms', 'true'},
+    _ = wh_amqp_history:add_command(Assignment, Command),
+    'ok';
+handle_command_result(#'channel.flow_ok'{active=Active}
+                      ,Command
+                      ,#wh_amqp_assignment{channel=Channel
+                                           ,consumer=Consumer
+                                          }=Assignment) ->
+    lager:debug("channel flow ~p on channel ~p", [Active, Channel]),
+    Consumer ! {'$channel_flow', Active},
     _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result('ok', Command, #wh_amqp_assignment{channel=Channel}=Assignment) ->

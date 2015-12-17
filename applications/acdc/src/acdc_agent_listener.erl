@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -19,6 +19,8 @@
          ,bridge_to_member/6
          ,monitor_call/4
          ,channel_hungup/2
+         ,rebind_events/3
+         ,unbind_from_events/2
          ,originate_execute/2
          ,originate_uuid/3
          ,outbound_call/2
@@ -57,6 +59,9 @@
          ,terminate/2
          ,code_change/3
         ]).
+
+-type config() :: {ne_binary(), ne_binary(), ne_binary()}.
+-export_type([config/0]).
 
 -include("acdc.hrl").
 
@@ -165,7 +170,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Supervisor, AgentJObj) ->
-    AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
+    AgentId = wh_doc:id(AgentJObj),
     AcctId = account_id(AgentJObj),
 
     Queues = case wh_json:get_value(<<"queues">>, AgentJObj) of
@@ -175,13 +180,13 @@ start_link(Supervisor, AgentJObj) ->
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
 start_link(Supervisor, _, _AcctId, _AgentId, []) ->
     lager:debug("agent ~s has no queues, not starting", [_AgentId]),
-    spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     'ignore';
 start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
     case acdc_agent_util:most_recent_status(AcctId, AgentId) of
         {'ok', <<"logged_out">>} ->
             lager:debug("agent ~s in ~s is logged out, not starting", [AgentId, AcctId]),
-            spawn('acdc_agent_sup', 'stop', [Supervisor]),
+            _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
             'ignore';
         {'ok', _S} ->
             lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
@@ -235,6 +240,14 @@ monitor_call(Srv, Call, CDRUrl, RecordingUrl) ->
 channel_hungup(Srv, CallId) ->
     gen_listener:cast(Srv, {'channel_hungup', CallId}).
 
+-spec unbind_from_events(pid(), ne_binary()) -> 'ok'.
+unbind_from_events(Srv, CallId) ->
+    gen_listener:cast(Srv, {'unbind_from_events', CallId}).
+
+-spec rebind_events(pid(), ne_binary(), ne_binary()) -> 'ok'.
+rebind_events(Srv, OldCallId, NewCallId) ->
+    gen_listener:cast(Srv, {'rebind_events', OldCallId, NewCallId}).
+
 originate_execute(Srv, JObj) ->
     gen_listener:cast(Srv, {'originate_execute', JObj}).
 
@@ -250,7 +263,7 @@ send_sync_resp(Srv, Status, ReqJObj) -> send_sync_resp(Srv, Status, ReqJObj, [])
 send_sync_resp(Srv, Status, ReqJObj, Options) ->
     gen_listener:cast(Srv, {'send_sync_resp', Status, ReqJObj, Options}).
 
--spec config(pid()) -> {ne_binary(), ne_binary(), ne_binary()}.
+-spec config(pid()) -> config().
 config(Srv) -> gen_listener:call(Srv, 'config').
 
 refresh_config(_, 'undefined') -> 'ok';
@@ -338,7 +351,7 @@ id(Srv) ->
 %%--------------------------------------------------------------------
 init([Supervisor, Agent, Queues]) ->
     AgentId = agent_id(Agent),
-    put('callid', AgentId),
+    wh_util:put_callid(AgentId),
     lager:debug("starting acdc agent listener"),
 
     {'ok', #state{agent_id=AgentId
@@ -398,13 +411,12 @@ handle_cast({'refresh_config', Qs}, #state{agent_queues=Queues}=State) ->
     {Add, Rm} = acdc_agent_util:changed(Queues, Qs),
 
     Self = self(),
-    [gen_listener:cast(Self, {'queue_login', A}) || A <- Add],
-    [gen_listener:cast(Self, {'queue_logout', R}) || R <- Rm],
-
+    _ = [gen_listener:cast(Self, {'queue_login', A}) || A <- Add],
+    _ = [gen_listener:cast(Self, {'queue_logout', R}) || R <- Rm],
     {'noreply', State};
 handle_cast({'stop_agent', Req}, #state{supervisor=Supervisor}=State) ->
     lager:debug("stop agent requested by ~p", [Req]),
-    _ = spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     {'noreply', State};
 
 handle_cast({'fsm_started', FSMPid}, State) ->
@@ -432,7 +444,7 @@ handle_cast({'queue_login', Q}, #state{agent_queues=Qs
     end;
 handle_cast({'queue_login', QJObj}, State) ->
     lager:debug("queue jobj: ~p", [QJObj]),
-    handle_cast({'queue_login', wh_json:get_value(<<"_id">>, QJObj)}, State);
+    handle_cast({'queue_login', wh_doc:id(QJObj)}, State);
 
 handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
                                         ,acct_id=AcctId
@@ -440,7 +452,7 @@ handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
                                        }=State) ->
     lager:debug("agent logged out of last known queue ~s, logging out", [Q]),
     logout_from_queue(AcctId, AgentId, Q),
-    acdc_agent_listener:logout_agent(self()),
+    ?MODULE:logout_agent(self()),
     {'noreply', State#state{agent_queues=[]}};
 handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
                                         ,acct_id=AcctId
@@ -464,6 +476,15 @@ handle_cast('bind_to_member_reqs', #state{agent_queues=Qs
     _ = [login_to_queue(AcctId, AgentId, Q) || Q <- Qs],
     {'noreply', State};
 
+handle_cast({'rebind_events', OldCallId, NewCallId}, State) ->
+    acdc_util:unbind_from_call_events(OldCallId),
+    acdc_util:bind_to_call_events(NewCallId),
+    {'noreply', State};
+
+handle_cast({'unbind_from_events', CallId}, State) ->
+    acdc_util:unbind_from_call_events(CallId),
+    {'noreply', State};
+
 handle_cast({'channel_hungup', CallId}, #state{call=Call
                                                ,is_thief=IsThief
                                                ,agent_call_ids=ACallIds
@@ -477,7 +498,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
 
             _ = filter_agent_calls(ACallIds, CallId),
 
-            put('callid', AgentId),
+            wh_util:put_callid(AgentId),
             case IsThief of
                 'false' ->
                     {'noreply', State#state{call='undefined'
@@ -489,7 +510,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
                      ,'hibernate'};
                 'true' ->
                     lager:debug("thief is done, going down"),
-                    acdc_agent_listener:stop(self()),
+                    ?MODULE:stop(self()),
                     {'noreply', State}
             end;
         _ ->
@@ -517,7 +538,7 @@ handle_cast('agent_timeout', #state{agent_call_ids=ACallIds
 
     _ = filter_agent_calls(ACallIds, AgentId),
 
-    put('callid', AgentId),
+    wh_util:put_callid(AgentId),
     {'noreply', State#state{msg_queue_id='undefined'
                             ,acdc_queue_id='undefined'
                             ,agent_call_ids=[]
@@ -535,10 +556,10 @@ handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
             lager:debug("need to retry member connect, agent isn't able to take it"),
             send_member_connect_retry(Server, CallId, MyId, AgentId),
 
-            [acdc_util:unbind_from_call_events(ACallId) || ACallId <- ACallIds],
+            _ = [acdc_util:unbind_from_call_events(ACallId) || ACallId <- ACallIds],
             acdc_util:unbind_from_call_events(CallId),
 
-            put('callid', AgentId),
+            wh_util:put_callid(AgentId),
 
             {'noreply', State#state{msg_queue_id='undefined'
                                     ,acdc_queue_id='undefined'
@@ -774,7 +795,7 @@ handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                       }=State) ->
     lager:debug("no custom presence id, using ~s for ~s", [AgentId, PresenceState]),
     acdc_util:presence_update(AcctId, AgentId, PresenceState
-                              ,wh_util:to_hex_binary(crypto:md5(AgentId))
+                              ,wh_util:to_hex_binary(crypto:hash(md5, AgentId))
                              ),
     {'noreply', State};
 handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
@@ -782,7 +803,7 @@ handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                       }=State) ->
     lager:debug("custom presence id, using ~s for ~s", [PresenceId, PresenceState]),
     acdc_util:presence_update(AcctId, PresenceId, PresenceState
-                              ,wh_util:to_hex_binary(crypto:md5(PresenceId))
+                              ,wh_util:to_hex_binary(crypto:hash(md5, PresenceId))
                              ),
     {'noreply', State};
 
@@ -981,7 +1002,7 @@ call_id(Call) ->
                                     ne_binaries().
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = whapps_call:call_id(Call),
-    put('callid', MCallId),
+    wh_util:put_callid(MCallId),
 
     ReqId = wh_util:rand_hex_binary(6),
     AcctId = whapps_call:account_id(Call),
@@ -1111,7 +1132,7 @@ recording_format() ->
 -spec agent_id(agent()) -> api_binary().
 agent_id(Agent) ->
     case wh_json:is_json_object(Agent) of
-        'true' -> wh_json:get_value(<<"_id">>, Agent);
+        'true' -> wh_doc:id(Agent);
         'false' -> whapps_call:owner_id(Agent)
     end.
 
@@ -1125,7 +1146,7 @@ account_id(Agent) ->
 -spec account_db(agent()) -> api_binary().
 account_db(Agent) ->
     case wh_json:is_json_object(Agent) of
-        'true' -> wh_json:get_value(<<"pvt_account_db">>, Agent);
+        'true' -> wh_doc:account_db(Agent);
         'false' -> whapps_call:account_db(Agent)
     end.
 
@@ -1153,8 +1174,8 @@ stop_agent_leg(ACallId, ACtrlQ) ->
     wapi_dialplan:publish_command(ACtrlQ, Command).
 
 find_account_id(JObj) ->
-    case wh_json:get_value(<<"pvt_account_id">>, JObj) of
-        'undefined' -> wh_util:format_account_id(wh_json:get_value(<<"pvt_account_db">>, JObj), 'raw');
+    case wh_doc:account_id(JObj) of
+        'undefined' -> wh_util:format_account_id(wh_doc:account_db(JObj), 'raw');
         AcctId -> AcctId
     end.
 

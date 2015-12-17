@@ -29,7 +29,7 @@
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: wh_proplist()
-                ,timeout = 2000
+                ,timeout = 2 * ?MILLISECONDS_IN_SECOND
                }).
 
 %%%===================================================================
@@ -54,7 +54,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Props]) ->
-    put('callid', Node),
+    wh_util:put_callid(Node),
     self() ! 'initialize_pinger',
     lager:info("node ~s not responding, periodically retrying connection", [Node]),
     {'ok', #state{node=Node, options=Props}}.
@@ -109,7 +109,7 @@ handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
                 lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
                 erlang:set_cookie(Node, Cookie)
         end,
-    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10000)),
+    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10 * ?MILLISECONDS_IN_SECOND)),
     erlang:send_after(GracePeriod, self(), {'flush_channels', Node}),
     self() ! 'check_node_status',
     {'noreply', State};
@@ -122,15 +122,17 @@ handle_info('check_node_status', #state{node=Node, timeout=Timeout}=State) ->
     case net_adm:ping(Node) of
         'pong' ->
             %% give the node a moment to init
-            timer:sleep(1000),
+            timer:sleep(?MILLISECONDS_IN_SECOND),
             wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
             'ok' = ecallmgr_fs_nodes:nodeup(Node),
             {'stop', 'normal', State};
         _Else ->
-            lager:debug("node ~s not responding, waiting ~b seconds to ping again", [Node, Timeout div 1000]),
+            lager:debug("node ~s not responding, waiting ~b seconds to ping again", [Node, Timeout div ?MILLISECONDS_IN_SECOND]),
             erlang:send_after(Timeout, self(), 'check_node_status'),
             {'noreply', State, 'hibernate'}
     end;
+handle_info('exit', State) ->
+    {stop, normal, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.

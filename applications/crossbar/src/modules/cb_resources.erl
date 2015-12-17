@@ -29,6 +29,8 @@
 -define(COLLECTION, <<"collection">>).
 -define(JOBS, <<"jobs">>).
 
+-define(KEY_SUCCESS, <<"success">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -161,35 +163,32 @@ resource_exists(?JOBS, _ID) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resources"),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_resources(cb_context:set_account_db(Context, ?WH_OFFNET_DB)
                                ,cb_context:req_verb(Context)
                               );
-        _AccountId ->
+        'false' ->
             validate_resources(Context, cb_context:req_verb(Context))
     end.
 
 validate(Context, ?COLLECTION) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resources collection"),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_collection(cb_context:set_account_db(Context, ?WH_OFFNET_DB));
-        _AccountId ->
+        'false' ->
             validate_collection(Context)
     end;
 validate(Context, ?JOBS) ->
     validate_jobs(maybe_set_account_to_master(Context), cb_context:req_verb(Context));
 validate(Context, Id) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resource ~s", [Id]),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_resource(cb_context:set_account_db(Context, ?WH_OFFNET_DB)
                               ,Id
                               ,cb_context:req_verb(Context)
                              );
-        _AccountId ->
+        'false' ->
             validate_resource(Context, Id, cb_context:req_verb(Context))
     end.
 
@@ -214,7 +213,7 @@ validate_resources(Context, ?HTTP_GET) ->
 validate_resources(Context, ?HTTP_PUT) ->
     case cb_context:account_db(Context) of
         ?WH_OFFNET_DB -> create(Context);
-        _AccountDb -> cb_local_resources:validate_request('undefined', Context)
+        _AccountDb -> create_local(Context)
     end.
 
 -spec validate_resource(cb_context:context(), path_token(), http_method()) -> cb_context:context().
@@ -223,7 +222,7 @@ validate_resource(Context, Id, ?HTTP_GET) ->
 validate_resource(Context, Id, ?HTTP_POST) ->
     case cb_context:account_db(Context) of
         ?WH_OFFNET_DB -> update(Id, Context);
-        _AccountDb -> cb_local_resources:validate_request(Id, Context)
+        _AccountDb -> update_local(Context, Id)
     end;
 validate_resource(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
@@ -236,13 +235,13 @@ validate_collection(Context) ->
                                       ,{fun cb_context:set_resp_status/2, 'success'}
                                      ]
                                    )
-                    ,cb_context:req_data(Context)
+                ,cb_context:req_data(Context)
                ).
 
 -type collection_fold_acc() :: cb_context:context().
 -spec validate_collection_fold(wh_json:object(), collection_fold_acc()) -> collection_fold_acc().
 validate_collection_fold(Resource, C) ->
-    Id = wh_json:get_value(<<"id">>, Resource, couch_mgr:get_uuid()),
+    Id = wh_doc:id(Resource, couch_mgr:get_uuid()),
     case validate_collection_resource(wh_json:set_value(<<"id">>, Id, Resource)
                                       ,C
                                       ,cb_context:req_verb(C)
@@ -251,7 +250,7 @@ validate_collection_fold(Resource, C) ->
         {'ok', C1} ->
             lager:debug("~s loaded successfully", [Id]),
             cb_context:set_resp_data(C
-                                     ,wh_json:set_value([<<"success">>, Id], cb_context:doc(C1), cb_context:resp_data(C))
+                                     ,wh_json:set_value([?KEY_SUCCESS, Id], cb_context:doc(C1), cb_context:resp_data(C))
                                     );
         {'error', 'not_found'} ->
             RespData = cb_context:resp_data(C),
@@ -268,7 +267,7 @@ validate_collection_fold(Resource, C) ->
                                           {'ok', cb_context:context()} |
                                           {'error', 'not_found' | wh_json:object()}.
 validate_collection_resource(Resource, Context, ?HTTP_POST) ->
-    C1 = crossbar_doc:load(wh_json:get_value(<<"id">>, Resource), Context),
+    C1 = crossbar_doc:load(wh_doc:id(Resource), Context),
     case cb_context:resp_status(C1) of
         'success' -> validate_collection_resource_patch(Resource, C1);
         _Status -> {'error', 'not_found'}
@@ -285,7 +284,7 @@ validate_collection_resource(Resource, Context, ?HTTP_PUT) ->
                                                 {'error', wh_json:object()}.
 validate_collection_resource_patch(PatchJObj, Context) ->
     PatchedJObj = wh_json:merge_jobjs(wh_doc:public_fields(PatchJObj), cb_context:doc(Context)),
-    Context1 = update(wh_json:get_first_defined([<<"_id">>, <<"id">>], PatchedJObj)
+    Context1 = update(wh_doc:id(PatchedJObj)
                       ,cb_context:set_req_data(Context, PatchedJObj)
                      ),
     case cb_context:resp_status(Context1) of
@@ -388,10 +387,10 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
 -spec read_job(cb_context:context(), ne_binary()) -> cb_context:context().
-read_job(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = JobId) ->
+read_job(Context, ?MATCH_MODB_PREFIX(Year,Month,_) = JobId) ->
     Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb)));
-read_job(Context, <<Year:4/binary, Month:1/binary, "-", _/binary>> = JobId) ->
+read_job(Context, ?MATCH_MODB_PREFIX_M1(Year,Month,_) = JobId) ->
     Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb)));
 read_job(Context, JobId) ->
@@ -404,7 +403,7 @@ leak_job_fields(Context) ->
         'success' ->
             JObj = cb_context:doc(Context),
             cb_context:set_resp_data(Context
-                                     ,wh_json:set_values([{<<"timestamp">>, wh_json:get_value(<<"pvt_created">>, JObj)}
+                                     ,wh_json:set_values([{<<"timestamp">>, wh_doc:created(JObj)}
                                                           ,{<<"status">>, wh_json:get_value(<<"pvt_status">>, JObj)}
                                                          ], cb_context:resp_data(Context))
                                     );
@@ -479,6 +478,11 @@ create_job(Context) ->
     OnSuccess = fun(C) -> on_successful_job_validation('undefined', C) end,
     cb_context:validate_request_data(<<"resource_jobs">>, Context, OnSuccess).
 
+-spec create_local(cb_context:context()) -> cb_context:context().
+create_local(Context) ->
+    OnSuccess = fun(C) -> on_successful_local_validation('undefined', C) end,
+    cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -491,6 +495,11 @@ update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
+-spec update_local(cb_context:context(), ne_binary()) -> cb_context:context().
+update_local(Context, Id) ->
+    OnSuccess = fun(C) -> on_successful_local_validation(Id, C) end,
+    cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -499,11 +508,14 @@ update(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, <<"resource">>, cb_context:doc(Context))
-                      );
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
+
+
+-spec on_successful_local_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_local_validation(Id, Context) ->
+    cb_local_resources:validate_request(Id, Context).
 
 -spec on_successful_job_validation('undefined', cb_context:context()) -> cb_context:context().
 on_successful_job_validation('undefined', Context) ->
@@ -521,7 +533,7 @@ on_successful_job_validation('undefined', Context) ->
                                             ,{<<"pvt_request_id">>, cb_context:req_id(Context)}
                                             ,{<<"_id">>, Id}
 
-                                            ,{<<"successes">>, wh_json:new()}
+                                            ,{?KEY_SUCCESS, wh_json:new()}
                                             ,{<<"errors">>, wh_json:new()}
                                            ]
                                            ,cb_context:doc(Context)
@@ -539,13 +551,13 @@ collection_process(Context) ->
     RespData = cb_context:resp_data(Context),
 
     case wh_util:is_empty(wh_json:get_value(<<"errors">>, RespData)) of
-        'true' -> collection_process(Context, wh_json:get_value(<<"success">>, RespData));
-        'false' -> cb_context:set_resp_data(Context, wh_json:delete_key(<<"success">>, RespData))
+        'true' -> collection_process(Context, wh_json:get_value(?KEY_SUCCESS, RespData));
+        'false' -> cb_context:set_resp_data(Context, wh_json:delete_key(?KEY_SUCCESS, RespData))
     end.
 collection_process(Context, []) -> Context;
 collection_process(Context, Successes) ->
     {Resources, _} = wh_json:get_values(Successes),
-    [lager:debug("save ~p", [Resource]) || Resource <- Resources],
+    _ = [lager:debug("save ~p", [Resource]) || Resource <- Resources],
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, Resources)),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -554,3 +566,18 @@ collection_process(Context, Successes) ->
             summary(Context1);
         _Status -> 'ok'
     end.
+
+-spec is_global_resource_request(cb_context:context()) -> boolean().
+-spec is_global_resource_request(req_nouns(), api_binary()) -> boolean().
+is_global_resource_request(Context) ->
+    is_global_resource_request(cb_context:req_nouns(Context), cb_context:account_id(Context)).
+
+is_global_resource_request(_ReqNouns, 'undefined') ->
+    lager:debug("request is for global resources"),
+    'true';
+is_global_resource_request([{<<"global_resources">>, _}|_], _AccountId) ->
+    lager:debug("request is for global resources"),
+    'true';
+is_global_resource_request(_ReqNouns, _AccountId) ->
+    lager:debug("request is for local resources for account ~s", [_AccountId]),
+    'false'.

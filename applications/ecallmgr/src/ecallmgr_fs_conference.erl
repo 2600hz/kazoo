@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012 VoIP INC
+%%% @copyright (C) 2011-2015 2600Hz INC
 %%% @doc
 %%% Execute conference commands
 %%% @end
@@ -30,7 +30,11 @@
                       ,[{<<"conference">>, <<"command">>}]
                      }
                     ]).
--define(BINDINGS, [{'conference', [{'restrict_to', ['command']}]}]).
+-define(BINDINGS, [{'conference'
+                    ,[{'restrict_to', ['command']}
+                      ,'federate'
+                     ]}
+                  ]).
 %% This queue is used to round-robin conference commands among ALL the
 %% conference listeners with the hopes that the one receiving the command
 %% can send it to the focus (barring network connectivity)...
@@ -89,7 +93,7 @@ do_handle_command(_, _) -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     lager:info("starting new fs conference listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     ecallmgr_fs_conferences:sync_node(Node),
@@ -130,19 +134,20 @@ handle_cast('bind_to_events', #state{node=Node}=State) ->
 handle_cast({'gen_listener', {'created_queue', <<"ecallmgr_fs_conference">>}}, #state{node=Node}=State) ->
     Self = self(),
     ConsumerPid = wh_amqp_channel:consumer_pid(),
-    spawn(fun() ->
-                  %% This queue is used to round-robin conference commands
-                  %% between listeners that have established connections
-                  %% to the conference focus when the upstream whapp
-                  %% knows the conference focus...
-                  wh_amqp_channel:consumer_pid(ConsumerPid),
-                  QueueName = wapi_conference:focus_queue_name(Node),
-                  Options = [{'queue_options', [{'exclusive', 'false'}]}
-                             ,{'consume_options', [{'exclusive', 'false'}]}
-                            ],
-                  Bindings= [{'self', []}],
-                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
-          end),
+    wh_util:spawn(
+      fun() ->
+              %% This queue is used to round-robin conference commands
+              %% between listeners that have established connections
+              %% to the conference focus when the upstream whapp
+              %% knows the conference focus...
+              wh_amqp_channel:consumer_pid(ConsumerPid),
+              QueueName = wapi_conference:focus_queue_name(Node),
+              Options = [{'queue_options', [{'exclusive', 'false'}]}
+                         ,{'consume_options', [{'exclusive', 'false'}]}
+                        ],
+              Bindings= [{'self', []}],
+              gen_listener:add_queue(Self, QueueName, Options, Bindings)
+      end),
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
     {'noreply', State};
@@ -169,7 +174,6 @@ handle_info({'event', ['undefined' | Props]}, #state{node=Node}=State) ->
             {'continue', CustomProps} ->
                 send_conference_event(Action, Props, CustomProps)
         end,
-    process_conference_event(Action, Props, Node),
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{node=Node}=State) ->
     Action = props:get_value(<<"Action">>, Props),
@@ -362,9 +366,7 @@ process_conference_event(<<"play-file-done">> = Event, Props, _) ->
                  ]};
 process_conference_event(<<"lock">>, _, _) -> 'continue';
 process_conference_event(<<"unlock">>, _, _) -> 'continue';
-process_conference_event(<<"speak-text">>, _, _) ->
-    %% Test = props:get_value(<<"Text">>, Props),
-    'stop';
+process_conference_event(<<"speak-text">>, _, _) -> 'stop';
 process_conference_event(<<"exit-sounds-on">>, _, _) -> 'stop';
 process_conference_event(<<"exit-sounds-off">>, _, _) -> 'stop';
 process_conference_event(<<"exit-sound-file-changed">>, _, _) -> 'stop';
@@ -378,14 +380,8 @@ process_conference_event(<<"start-recording">> = Event, Props, _) ->
                   ,{<<"whistle_application_name">>, Event}
                   ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
                  ]};
-process_conference_event(<<"pause-recording">>, _, _) ->
-    %% Path = props:get_value(<<"Path">>, Props),
-    %% OtherRecordings = props:get_is_true(<<"Other-Recordings">>, Props),
-    'stop';
-process_conference_event(<<"resume-recording">>, _, _) ->
-    %% Path = props:get_value(<<"Path">>, Props),
-    %% OtherRecordings = props:get_is_true(<<"Other-Recordings">>, Props),
-    'stop';
+process_conference_event(<<"pause-recording">>, _, _) -> 'stop';
+process_conference_event(<<"resume-recording">>, _, _) -> 'stop';
 process_conference_event(<<"stop-recording">> = Event, Props, _) ->
     {'continue', [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
                   ,{<<"whistle_event_name">>, <<"CHANNEL_EXECUTE_COMPLETE">>}
@@ -394,10 +390,7 @@ process_conference_event(<<"stop-recording">> = Event, Props, _) ->
                   ,{<<"Application-Data">>, props:get_value(<<"Path">>, Props)}
                   ,{<<"Other-Recordings">>, props:get_is_true(<<"Other-Recordings">>, Props)}
                  ]};
-process_conference_event(<<"bgdial-result">>, _, _) ->
-    %% Result = props:get_value(<<"Result">>, Props),
-    %% JobUUID = props:get_value(<<"Job-UUID">>, Props),
-    'stop';
+process_conference_event(<<"bgdial-result">>, _, _) -> 'stop';
 process_conference_event(_, _, _) -> 'stop'.
 
 -spec send_conference_event(ne_binary(), wh_proplist()) -> 'ok'.
@@ -413,8 +406,6 @@ send_conference_event(Action, Props, CustomProps) ->
              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    Publisher = fun(P) -> wapi_conference:publish_conference_event(ConferenceName, P) end,
-    _ = wh_amqp_worker:cast(Event, Publisher),
     %% TODO: After KAZOO-27 is accepted the relay should not be necessary
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
@@ -445,10 +436,6 @@ send_participant_event(Action, CallId, Props, CustomProps) ->
              %% NOTE: Participant-ID is depreciated, use call-id instead
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    %% TODO: After KAZOO-27 is accepted the relay should not be necessary and we can
-    %%    use publish_participant_event
-    %% Publisher = fun(P) -> wapi_conference:publish_participant_event(ConferenceName, P) end,
-    %% _ = wh_amqp_worker:cast(Event, Publisher),
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
 -spec exec(atom(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -478,6 +465,16 @@ exec(Focus, ConferenceId, JObj) ->
                         lager:debug("api to ~s: expand ~s", [Focus, Command]),
                         freeswitch:api(Focus, 'expand', Command)
                 end,
+            send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
+        {<<"play_macro">>, AppData} ->
+            Commands = wh_json:get_value(<<"Commands">>, AppData, []),
+            Result = lists:foldl(fun(Command, _Acc) ->
+                {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
+                Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
+                Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
+                lager:debug("api to ~s: conference ~s", [Focus, Command2]),
+                freeswitch:api(Focus, 'conference', Command2)
+            end, 'undefined', Commands),
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
@@ -556,7 +553,7 @@ get_conf_command(<<"tones">>, _Focus, _ConferenceId, JObj) ->
                            Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
                            wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
                        end || Tone <- Tones],
-            Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+            Arg = "tone_stream://" ++ string:join(FSTones, ";"),
             {<<"play">>, Arg}
     end;
 %% The following conference commands can optionally specify a participant
@@ -573,6 +570,8 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
                    end,
             {<<"play">>, Args}
     end;
+get_conf_command(<<"play_macro">>, _Focus, _ConferenceId, JObj) ->
+    {<<"play_macro">>, JObj};
 get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:stop_play_v(JObj) of
         'false' ->
@@ -760,9 +759,9 @@ safe_integer_get(Key, Props, Default) ->
 -spec relay_event(wh_proplist()) -> 'ok'.
 relay_event(Props) ->
     ConferenceName = props:get_value(<<"Conference-Name">>, Props),
-    [relay_event(UUID, Node, Props)
-     || #participant{uuid=UUID, node=Node} <- ecallmgr_fs_conferences:participants(ConferenceName)
-    ],
+    _ = [relay_event(UUID, Node, Props)
+         || #participant{uuid=UUID, node=Node} <- ecallmgr_fs_conferences:participants(ConferenceName)
+        ],
     'ok'.
 
 -spec relay_event(ne_binary(), atom(), wh_proplist()) -> 'ok'.

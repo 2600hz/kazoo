@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Handles authorization requests, responses, queue bindings
 %%% @end
@@ -23,25 +23,28 @@
 -define(KEY_RATE_BROADCAST, <<"rate.resp.broadcast">>).
 
 %% AMQP fields for Rating Request
--define(RATE_REQ_HEADERS, [<<"To-DID">>, <<"Call-ID">>]).
+-define(RATE_REQ_HEADERS, [<<"To-DID">>]).
 -define(OPTIONAL_RATE_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"From-DID">>
                                     ,<<"Options">>, <<"Direction">>, <<"Resource-Type">>
+                                    ,<<"Send-Empty">>, <<"Outbound-Flags">>
                                    ]).
 -define(RATE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                           ,{<<"Event-Name">>, <<"req">>}
                           ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
                           ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"sms">>]}
                          ]).
--define(RATE_REQ_TYPES, [
-                         {<<"Options">>, fun is_list/1}
+-define(RATE_REQ_TYPES, [{<<"Options">>, fun is_list/1}
+                         ,{<<"Send-Empty">>, fun wh_util:is_boolean/1}
                         ]).
 
 %% AMQP fields for Rating Response
--define(RATE_RESP_HEADERS, [<<"Rate">>, <<"Call-ID">>]).
--define(OPTIONAL_RATE_RESP_HEADERS, [<<"Rate-Increment">>, <<"Rate-Minimum">>
-                                         ,<<"Surcharge">>, <<"Base-Cost">>, <<"Pvt-Cost">>
-                                         ,<<"Rate-Name">>, <<"Discount-Percentage">>
-                                         ,<<"Update-Callee-ID">>, <<"Rate-NoCharge-Time">>
+-define(RATE_RESP_HEADERS, []).
+-define(OPTIONAL_RATE_RESP_HEADERS, [<<"Rate">>, <<"Call-ID">>
+                                     ,<<"Rate-Increment">>, <<"Rate-Minimum">>
+                                     ,<<"Surcharge">>, <<"Base-Cost">>, <<"Pvt-Cost">>
+                                     ,<<"Prefix">>, <<"Rate-Name">>
+                                     ,<<"Rate-Description">>, <<"Discount-Percentage">>
+                                     ,<<"Update-Callee-ID">>, <<"Rate-NoCharge-Time">>
                                     ]).
 -define(RATE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"resp">>}

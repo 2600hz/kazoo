@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -12,6 +12,8 @@
 -export([log_stacktrace/0, log_stacktrace/1
          ,format_account_id/1, format_account_id/2, format_account_id/3
          ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
+         ,format_account_db/1
+         ,format_account_modb/1, format_account_modb/2
          ,normalize_account_name/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -19,8 +21,13 @@
          ,is_system_db/1
         ]).
 -export([get_account_realm/1, get_account_realm/2]).
--export([is_account_enabled/1]).
--export([is_account_expired/1]).
+-export([is_account_enabled/1, is_account_expired/1]).
+-export([maybe_disable_account/1
+         ,disable_account/1
+         ,enable_account/1
+         ,set_superduper_admin/2
+         ,set_allow_number_additions/2
+        ]).
 
 -export([try_load_module/1]).
 -export([shuffle_list/1]).
@@ -33,6 +40,9 @@
          ,from_hex_binary/1, from_hex_string/1
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
+         ,to_date/1
+         ,to_datetime/1
+         ,error_to_binary/1
         ]).
 -export([to_boolean/1, is_boolean/1
          ,is_true/1, is_false/1
@@ -49,12 +59,14 @@
          ,suffix_binary/2
         ]).
 
-
--export([clean_binary/1, clean_binary/2]).
+-export([clean_binary/1, clean_binary/2
+         ,remove_white_spaces/1
+        ]).
 
 -export([uri_encode/1
          ,uri_decode/1
          ,resolve_uri/2
+         ,normalize_amqp_uri/1
         ]).
 
 -export([uri/2]).
@@ -69,17 +81,25 @@
 
 -export([current_tstamp/0, current_unix_tstamp/0
          ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
+         ,unix_timestamp_to_gregorian_seconds/1
          ,pretty_print_datetime/1
+         ,rfc1036/1, rfc1036/2
+         ,iso8601/1
+         ,pretty_print_elapsed_s/1
          ,decr_timeout/2
         ]).
 -export([microseconds_to_seconds/1
          ,milliseconds_to_seconds/1
          ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
          ,elapsed_s/2, elapsed_ms/2, elapsed_us/2
-         ,now_s/1, now_ms/1, now_us/1
+         ,now/0, now_s/1, now_ms/1, now_us/1
         ]).
 
--export([put_callid/1]).
+-export([put_callid/1, get_callid/0
+         ,spawn/1, spawn/2
+         ,spawn_link/1, spawn_link/2
+         ,set_startup/0, startup/0
+        ]).
 -export([get_event_type/1]).
 -export([get_xml_value/2]).
 
@@ -90,12 +110,22 @@
          ,change_syslog_log_level/1
         ]).
 
--include_lib("kernel/include/inet.hrl").
+-export([format_date/0, format_date/1]).
+-export([format_time/0, format_time/1]).
+-export([format_datetime/0, format_datetime/1]).
 
--ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
--endif.
+-export([node_name/0, node_hostname/0]).
+
+-export([anonymous_caller_id_name/0
+         ,anonymous_caller_id_number/0
+        ]).
+
+-export([write_file/2, write_file/3
+         ,delete_file/1
+         ,make_dir/1
+        ]).
+
+-include_lib("kernel/include/inet.hrl").
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -115,17 +145,17 @@ log_stacktrace() ->
     ST = erlang:get_stacktrace(),
     log_stacktrace(ST).
 log_stacktrace(ST) ->
-    lager:debug("stacktrace:"),
+    lager:info("stacktrace:"),
     _ = [log_stacktrace_mfa(M, F, A, Info)
          || {M, F, A, Info} <- ST
         ],
     'ok'.
 
 log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
-    lager:debug("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
+    lager:info("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
 log_stacktrace_mfa(M, F, Args, Info) ->
-    lager:debug("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    [lager:debug("args: ~p", [Arg]) || Arg <- Args],
+    lager:info("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
+    _ = [lager:info("args: ~p", [Arg]) || Arg <- Args],
     'ok'.
 
 -define(LOG_LEVELS, ['emergency'
@@ -176,76 +206,83 @@ change_syslog_log_level(L) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
--spec format_account_id(ne_binaries() | api_binary() | wh_json:object(), account_format()) -> api_binary().
--spec format_account_id(ne_binaries() | api_binary(), wh_year(), wh_month()) -> api_binary().
+-spec format_account_id(ne_binaries() | api_binary()) -> api_binary().
+-spec format_account_id(ne_binaries() | api_binary(), account_format()) ->
+                               api_binary().
+-spec format_account_id(ne_binaries() | api_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) ->
+                               api_binary().
 
-format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
+format_account_id(Doc) -> format_account_id(Doc, 'raw').
 
 format_account_id('undefined', _Encoding) -> 'undefined';
-format_account_id(DbName, Timestamp) when is_integer(Timestamp) andalso Timestamp > 0 ->
+format_account_id(DbName, Timestamp)
+  when is_integer(Timestamp)
+       andalso Timestamp > 0 ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     format_account_id(DbName, Year, Month);
 format_account_id(<<"accounts">>, _) -> <<"accounts">>;
 
-%% unencode the account db name
-format_account_id(<<"account/", _/binary>> = DbName, 'unencoded') ->
-    DbName;
-format_account_id(<<"account%2F", _/binary>> = DbName, 'unencoded') ->
-    binary:replace(DbName, <<"%2F">>, <<"/">>, ['global']);
-
-%% encode the account db name
-format_account_id(<<"account%2F", _/binary>>=DbName, 'encoded') ->
-    DbName;
-format_account_id(<<"account/", _/binary>>=DbName, 'encoded') ->
-    binary:replace(DbName, <<"/">>, <<"%2F">>, ['global']);
-
-%% get just the account ID from the account db name
-format_account_id(<<"account/", AccountId:34/binary, "-", _Date:6/binary>>, 'raw') ->
-    binary:replace(AccountId, <<"/">>, <<>>, ['global']);
-format_account_id(<<"account%2F", AccountId:38/binary, "-", _Date:6/binary>>, 'raw') ->
-    binary:replace(AccountId, <<"%2F">>, <<>>, ['global']);
-
-format_account_id(<<"account%2F", AccountId/binary>>, 'raw') ->
-    binary:replace(AccountId, <<"%2F">>, <<>>, ['global']);
-format_account_id(<<"account/", AccountId/binary>>, 'raw') ->
-    binary:replace(AccountId, <<"/">>, <<>>, ['global']);
-
-format_account_id(<<AccountId:32/binary, "-", _Date:6/binary>>, 'raw') ->
+%% Short-circuit IDs already in encoding
+format_account_id(?MATCH_ACCOUNT_RAW(AccountId), 'raw') ->
+    AccountId;
+format_account_id(?MATCH_ACCOUNT_UNENCODED(_) = AccountId, 'unencoded') ->
+    AccountId;
+format_account_id(?MATCH_ACCOUNT_ENCODED(_) = AccountId, 'encoded') ->
     AccountId;
 
-format_account_id([AccountId], Encoding) when is_binary(AccountId) ->
-    format_account_id(AccountId, Encoding);
-format_account_id(Account, Encoding) when not is_binary(Account) ->
-    case wh_json:is_json_object(Account) of
-        'true' -> format_account_id([wh_json:get_value([<<"_id">>], Account)], Encoding);
-        'false' -> format_account_id(wh_util:to_binary(Account), Encoding)
-    end;
-
+format_account_id(AccountId, 'raw') ->
+    raw_account_id(AccountId);
 format_account_id(AccountId, 'unencoded') ->
-    [Id1, Id2, Id3, Id4 | IdRest] = to_list(AccountId),
-    to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
-format_account_id(AccountId, 'encoded') when is_binary(AccountId) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = to_list(AccountId),
-    to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
-format_account_id(AccountId, 'raw') -> AccountId.
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
+    to_binary(["account/", A, "/", B, "/", Rest]);
+format_account_id(AccountId, 'encoded') ->
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
+    to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
+
+-spec raw_account_id(ne_binary()) -> ne_binary().
+raw_account_id(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    AccountId;
+raw_account_id(?MATCH_ACCOUNT_UNENCODED(A, B, Rest)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _)) ->
+    AccountId;
+raw_account_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(<<"number/", _/binary>>=Other) ->
+    Other;
+raw_account_id(Other) ->
+    case lists:member(Other, ?KZ_SYSTEM_DBS) of
+        'true' -> Other;
+        'false' ->
+            lager:warning("raw account id doesn't process '~p'", [Other]),
+            Other
+    end.
+
+-spec raw_account_modb(ne_binary()) -> ne_binary().
+raw_account_modb(?MATCH_MODB_SUFFIX_RAW(_, _, _) = AccountId) ->
+    AccountId;
+raw_account_modb(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)) ->
+    ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month);
+raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
+    ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
 
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
     format_account_id(AccountId, to_integer(Year), Month);
 format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
     format_account_id(AccountId, Year, to_integer(Month));
-format_account_id(Account, Year, Month) when is_integer(Year), is_integer(Month) ->
-    AccountId = format_account_id(Account, 'raw'),
-    <<(format_account_id(AccountId, 'encoded'))/binary
-      ,"-"
-      ,(to_binary(Year))/binary
-      ,(pad_month(Month))/binary
-    >>.
+format_account_id(Account, Year, Month) when is_integer(Year),
+                                             is_integer(Month) ->
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(Account),
+    ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, to_binary(Year), pad_month(Month)).
 
 -spec format_account_mod_id(ne_binary()) -> ne_binary().
--spec format_account_mod_id(ne_binary(), pos_integer() | wh_now()) -> ne_binary().
--spec format_account_mod_id(ne_binary(), wh_year(), wh_month()) -> ne_binary().
+-spec format_account_mod_id(ne_binary(), gregorian_seconds() | wh_now()) -> ne_binary().
+-spec format_account_mod_id(ne_binary(), wh_year() | ne_binary(), wh_month() | ne_binary()) -> ne_binary().
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
 
@@ -259,6 +296,22 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
+-spec format_account_db(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
+format_account_db(AccountId) ->
+    format_account_id(AccountId, 'encoded').
+
+-spec format_account_modb(ne_binary()) -> ne_binary().
+format_account_modb(AccountId) ->
+    format_account_modb(AccountId, 'raw').
+format_account_modb(AccountId, 'raw') ->
+    raw_account_modb(AccountId);
+format_account_modb(AccountId, 'unencoded') ->
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
+    to_binary(["account/", A, "/", B, "/", Rest]);
+format_account_modb(AccountId, 'encoded') ->
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_modb(AccountId),
+    to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
+
 -spec pad_month(wh_month() | ne_binary()) -> ne_binary().
 pad_month(<<_/binary>> = Month) ->
     pad_month(to_integer(Month));
@@ -271,7 +324,7 @@ pad_month(Month) ->
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
     << <<Char>>
-       || <<Char>> <= wh_util:to_lower_binary(AccountName),
+       || <<Char>> <= ?MODULE:to_lower_binary(AccountName),
           (Char >= $a andalso Char =< $z)
               orelse (Char >= $0 andalso Char =< $9)
     >>.
@@ -293,15 +346,14 @@ is_in_account_hierarchy(CheckFor, InAccount) ->
 is_in_account_hierarchy('undefined', _, _) -> 'false';
 is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
-    CheckId = wh_util:format_account_id(CheckFor, 'raw'),
-    AccountId = wh_util:format_account_id(InAccount, 'raw'),
-    AccountDb = wh_util:format_account_id(InAccount, 'encoded'),
-    case (IncludeSelf andalso AccountId =:= CheckId) orelse couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    CheckId = ?MODULE:format_account_id(CheckFor, 'raw'),
+    AccountId = ?MODULE:format_account_id(InAccount, 'raw'),
+    case (IncludeSelf andalso AccountId =:= CheckId) orelse kz_account:fetch(AccountId) of
         'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
             'true';
         {'ok', JObj} ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+            Tree = kz_account:tree(JObj),
             case lists:member(CheckId, Tree) of
                 'true' ->
                     lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
@@ -324,10 +376,8 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 -spec is_system_admin(api_binary()) -> boolean().
 is_system_admin('undefined') -> 'false';
 is_system_admin(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} -> wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
+    case kz_account:fetch(Account) of
+        {'ok', JObj} -> kz_account:is_superduper_admin(JObj);
         {'error', _R} ->
             lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
             'false'
@@ -349,31 +399,94 @@ is_system_db(Db) ->
 -spec is_account_enabled(api_binary()) -> boolean().
 is_account_enabled('undefined') -> 'false';
 is_account_enabled(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'error', _E} ->
-            lager:error("could not open account ~p in ~p", [AccountId, AccountDb]),
+            lager:error("could not open account ~s", [Account]),
             'false';
         {'ok', JObj} ->
-            wh_json:is_true(<<"pvt_enabled">>, JObj, 'true')
-                andalso wh_json:is_true(<<"enabled">>, JObj, 'true')
-
+            kz_account:is_enabled(JObj)
     end.
 
--spec is_account_expired(api_binary()) -> boolean().
+-spec is_account_expired(api_binary()) -> 'false' | {'true', gregorian_seconds()}.
 is_account_expired('undefined') -> 'false';
 is_account_expired(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', Doc} ->
-            Now = wh_util:current_tstamp(),
-            Trial = wh_json:get_integer_value(<<"pvt_trial_expires">>, Doc, Now+1),
-            Trial < Now;
-        {'error', R} ->
-            lager:debug("failed to check if expired token auth, ~p", [R]),
-            'false'
+    case kz_account:fetch(Account) of
+        {'error', _R} ->
+            lager:debug("failed to check if expired token auth, ~p", [_R]),
+            'false';
+        {'ok', JObj} ->
+             kz_account:is_expired(JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_disable_account(ne_binary()) ->'ok' | {'error', any()}.
+maybe_disable_account(Account) ->
+    case is_account_enabled(Account) of
+        'false' -> 'ok';
+        'true' ->
+            disable_account(Account)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec disable_account(ne_binary()) ->'ok' | {'error', any()}.
+disable_account(Account) ->
+    account_update(Account, fun kz_account:disable/1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec enable_account(ne_binary()) ->'ok' | {'error', any()}.
+enable_account(Account) ->
+    account_update(Account, fun kz_account:enable/1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_superduper_admin(ne_binary(), boolean()) ->'ok' | {'error', any()}.
+set_superduper_admin(Account, IsAdmin) ->
+    account_update(Account, fun(J) -> kz_account:set_superduper_admin(J, IsAdmin) end).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_allow_number_additions(ne_binary(), boolean()) ->'ok' | {'error', any()}.
+set_allow_number_additions(Account, IsAllowed) ->
+    account_update(Account, fun(J) -> kz_account:set_allow_number_additions(J, IsAllowed) end).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec account_update(wh_json:object()) -> 'ok' | {'error', any()}.
+-spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
+account_update(JObj) ->
+    AccountDb = wh_doc:account_db(JObj),
+    case couch_mgr:ensure_saved(AccountDb, JObj) of
+        {'error', _R}=E -> E;
+        {'ok', SavedJObj} ->
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, SavedJObj)
+    end.
+
+account_update(Account, UpdateFun) ->
+    case kz_account:fetch(Account) of
+        {'error', _R}=E -> E;
+        {'ok', AccountJObj} ->
+            account_update(UpdateFun(AccountJObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -386,16 +499,16 @@ is_account_expired(Account) ->
 -spec get_account_realm(api_binary(), ne_binary()) -> api_binary().
 get_account_realm(AccountId) ->
     get_account_realm(
-      wh_util:format_account_id(AccountId, 'encoded')
-      ,wh_util:format_account_id(AccountId, 'raw')
+      ?MODULE:format_account_id(AccountId, 'encoded')
+      ,?MODULE:format_account_id(AccountId, 'raw')
      ).
 
 get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
     case couch_mgr:open_cache_doc(Db, AccountId) of
-        {'ok', JObj} -> wh_json:get_ne_value(<<"realm">>, JObj);
-        {'error', R} ->
-            lager:debug("error while looking up account realm in ~s: ~p", [AccountId, R]),
+        {'ok', JObj} -> kz_account:realm(JObj);
+        {'error', _R} ->
+            lager:debug("error while looking up account realm in ~s: ~p", [AccountId, _R]),
             'undefined'
     end.
 
@@ -408,8 +521,8 @@ get_account_realm(Db, AccountId) ->
 %%--------------------------------------------------------------------
 -spec try_load_module(string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
-    Module = wh_util:to_atom(Name, 'true'),
-    try Module:module_info('imports') of
+    Module = ?MODULE:to_atom(Name, 'true'),
+    try Module:module_info('exports') of
         _ when Module =:= 'undefined' -> 'false';
         _ ->
             {'module', Module} = code:ensure_loaded(Module),
@@ -431,6 +544,11 @@ try_load_module(Name) ->
 pad_binary(Bin, Size, Value) when size(Bin) < Size ->
     pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
 pad_binary(Bin, _, _) -> Bin.
+
+-spec pad_binary_left(binary(), non_neg_integer(), binary()) -> binary().
+pad_binary_left(Bin, Size, Value) when size(Bin) < Size ->
+    pad_binary_left(<<Value/binary, Bin/binary>>, Size, Value);
+pad_binary_left(Bin, _Size, _Value) -> Bin.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -497,10 +615,51 @@ put_callid(Atom) when is_atom(Atom) -> erlang:put('callid', Atom);
 put_callid(Prop) when is_list(Prop) -> erlang:put('callid', callid(Prop));
 put_callid(JObj) -> erlang:put('callid', callid(JObj)).
 
+-spec get_callid() -> ne_binary().
+get_callid() -> erlang:get('callid').
+
 callid(Prop) when is_list(Prop) ->
     props:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], Prop, ?LOG_SYSTEM_ID);
 callid(JObj) ->
     wh_json:get_first_defined([<<"Call-ID">>, <<"Msg-ID">>], JObj, ?LOG_SYSTEM_ID).
+
+-spec spawn(fun(() -> any())) -> pid().
+-spec spawn(fun(), list()) -> pid().
+spawn(Fun, Arguments) ->
+    CallId = get_callid(),
+    erlang:spawn(fun() ->
+                         _ = put_callid(CallId),
+                         erlang:apply(Fun, Arguments)
+                 end).
+spawn(Fun) ->
+    CallId = get_callid(),
+    erlang:spawn(fun() ->
+                         _ = put_callid(CallId),
+                         Fun()
+                 end).
+
+-spec spawn_link(fun(() -> any())) -> pid().
+-spec spawn_link(fun(), list()) -> pid().
+spawn_link(Fun, Arguments) ->
+    CallId = get_callid(),
+    erlang:spawn_link(fun () ->
+                         _ = put_callid(CallId),
+                         erlang:apply(Fun, Arguments)
+                 end).
+spawn_link(Fun) ->
+    CallId = get_callid(),
+    erlang:spawn_link(fun() ->
+                         _ = put_callid(CallId),
+                         Fun()
+                 end).
+
+-spec set_startup() -> api_seconds().
+set_startup() ->
+    put('$startup', current_tstamp()).
+
+-spec startup() -> api_seconds().
+startup() ->
+    get('$startup').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -525,21 +684,21 @@ get_event_type(JObj) ->
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value(wh_deeplist(), xml_el()) -> api_binary().
+-spec get_xml_value(wh_deeplist(), xml_el() | string()) -> api_binary().
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
         [#xmlText{value=Value}] ->
-            wh_util:to_binary(Value);
+            ?MODULE:to_binary(Value);
         [#xmlText{}|_]=Values ->
-            iolist_to_binary([wh_util:to_binary(Value)
+            iolist_to_binary([?MODULE:to_binary(Value)
                               || #xmlText{value=Value} <- Values
                              ]);
         [#xmlAttribute{value=Value}] ->
-            wh_util:to_binary(Value);
+            ?MODULE:to_binary(Value);
         [#xmlAttribute{}|_]=Values ->
-            iolist_to_binary([wh_util:to_binary(Value)
-                              || #xmlText{value=Value} <- Values
+            iolist_to_binary([?MODULE:to_binary(Value)
+                              || #xmlAttribute{value=Value} <- Values
                              ]);
         _Else -> 'undefined'
     catch
@@ -596,7 +755,7 @@ hex_char_to_binary(B) ->
 
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
-    rand_hex_binary(wh_util:to_integer(Size));
+    rand_hex_binary(?MODULE:to_integer(Size));
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
     to_hex_binary(rand_hex(Size)).
 
@@ -722,11 +881,12 @@ to_list(X) when is_list(X) -> X.
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
--spec to_binary(atom() | string() | binary() | integer() | float()) -> binary().
+-spec to_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> binary().
 to_binary(X) when is_float(X) -> to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) -> list_to_binary(integer_to_list(X));
 to_binary(X) when is_atom(X) -> list_to_binary(atom_to_list(X));
 to_binary(X) when is_list(X) -> iolist_to_binary(X);
+to_binary(X) when is_pid(X) -> to_binary(pid_to_list(X));
 to_binary(X) when is_binary(X) -> X.
 
 %% the safer version, won't let you leak atoms
@@ -758,6 +918,26 @@ to_boolean(<<"false">>) -> 'false';
 to_boolean("false") -> 'false';
 to_boolean('false') -> 'false'.
 
+-spec to_date(binary() | string() | integer()) -> wh_date().
+to_date(X) ->
+    {Date, _ } = to_datetime(X),
+    Date.
+
+-spec to_datetime(binary() | string() | integer()) -> wh_datetime().
+to_datetime(X) when is_integer(X) -> calendar:gregorian_seconds_to_datetime(X);
+to_datetime(X) when is_binary(X) -> to_datetime(to_integer(X));
+to_datetime(X) when is_list(X) -> to_datetime(to_integer(X)).
+
+-spec error_to_binary({'error', binary()} | binary()) -> binary().
+error_to_binary({'error', Reason}) ->
+    error_to_binary(Reason);
+error_to_binary(Reason) ->
+    try to_binary(Reason) of
+        Message -> Message
+    catch
+        _:_ -> <<"Unknown Error">>
+    end.
+
 -spec is_true(binary() | string() | atom()) -> boolean().
 is_true(<<"true">>) -> 'true';
 is_true("true") -> 'true';
@@ -785,7 +965,7 @@ is_boolean("false") -> 'true';
 is_boolean('false') -> 'true';
 is_boolean(_) -> 'false'.
 
--spec is_empty(term()) -> boolean().
+-spec is_empty(any()) -> boolean().
 is_empty(0) -> 'true';
 is_empty([]) -> 'true';
 is_empty("0") -> 'true';
@@ -807,7 +987,7 @@ is_empty(MaybeJObj) ->
         'true' -> wh_json:is_empty(MaybeJObj)
     end.
 
--spec is_not_empty(term()) -> boolean().
+-spec is_not_empty(any()) -> boolean().
 is_not_empty(Term) -> (not is_empty(Term)).
 
 -spec is_proplist(any()) -> boolean().
@@ -818,12 +998,12 @@ is_proplist(_) -> 'false'.
 -spec identity(X) -> X.
 identity(X) -> X.
 
--spec to_lower_binary(term()) -> api_binary().
+-spec to_lower_binary(any()) -> api_binary().
 to_lower_binary('undefined') -> 'undefined';
 to_lower_binary(Bin) when is_binary(Bin) -> << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) -> to_lower_binary(to_binary(Else)).
 
--spec to_lower_string(term()) -> 'undefined' | list().
+-spec to_lower_string(any()) -> 'undefined' | list().
 to_lower_string('undefined') -> 'undefined';
 to_lower_string(L) when is_list(L) ->
     [to_lower_char(C) || C <- L];
@@ -843,12 +1023,12 @@ to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from st
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.
 
--spec to_upper_binary(term()) -> api_binary().
+-spec to_upper_binary(any()) -> api_binary().
 to_upper_binary('undefined') -> 'undefined';
 to_upper_binary(Bin) when is_binary(Bin) -> << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
 to_upper_binary(Else) -> to_upper_binary(to_binary(Else)).
 
--spec to_upper_string(term()) -> 'undefined' | list().
+-spec to_upper_string(any()) -> 'undefined' | list().
 to_upper_string('undefined') -> 'undefined';
 to_upper_string(L) when is_list(L) -> [to_upper_char(C) || C <- L];
 to_upper_string(Else) -> to_upper_string(to_list(Else)).
@@ -860,15 +1040,20 @@ to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 to_upper_char(C) -> C.
 
 -spec strip_binary(binary()) -> binary().
--spec strip_binary(binary(), 'both' | 'left' | 'right') -> binary().
--spec strip_left_binary(binary(), char()) -> binary().
--spec strip_right_binary(binary(), char()) -> binary().
+-spec strip_binary(binary(), 'both' | 'left' | 'right' | char() | [char()]) -> binary().
+-spec strip_left_binary(binary(), char() | binary()) -> binary().
+-spec strip_right_binary(binary(), char() | binary()) -> binary().
 strip_binary(B) -> strip_binary(B, 'both').
 
 strip_binary(B, 'left') -> strip_left_binary(B, $\s);
 strip_binary(B, 'right') -> strip_right_binary(B, $\s);
 strip_binary(B, 'both') -> strip_right_binary(strip_left_binary(B, $\s), $\s);
-strip_binary(B, C) when is_integer(C) -> strip_right_binary(strip_left_binary(B, C), C).
+strip_binary(B, C) when is_integer(C) -> strip_right_binary(strip_left_binary(B, C), C);
+strip_binary(B, Cs) when is_list(Cs) ->
+    lists:foldl(fun(C, Acc) -> strip_binary(Acc, C) end
+                ,B
+                ,Cs
+               ).
 
 strip_left_binary(<<C, B/binary>>, C) -> strip_left_binary(B, C);
 strip_left_binary(B, _) -> B.
@@ -904,9 +1089,12 @@ clean_binary(Bin, Opts) ->
 remove_white_spaces(Bin, Opts) ->
     case props:get_value(<<"remove_white_spaces">>, Opts, 'true') of
         'false' -> Bin;
-        'true' ->
-            binary:replace(Bin, <<" ">>, <<>>, ['global'])
+        'true' -> remove_white_spaces(Bin)
     end.
+
+-spec remove_white_spaces(binary()) -> binary().
+remove_white_spaces(Bin) ->
+    << <<X>> || <<X>> <= Bin, X =/= $\s >>.
 
 -spec binary_md5(text()) -> ne_binary().
 binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).
@@ -936,58 +1124,58 @@ ceiling(X) ->
     end.
 
 %% returns current seconds
--spec current_tstamp() -> non_neg_integer().
+-spec current_tstamp() -> gregorian_seconds().
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
+-spec current_unix_tstamp() -> unix_seconds().
 current_unix_tstamp() ->
     gregorian_seconds_to_unix_seconds(current_tstamp()).
 
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec whistle_version() -> ne_binary().
 whistle_version() ->
-    case wh_cache:fetch(?WHISTLE_VERSION_CACHE_KEY) of
-        {'ok', Version} ->  Version;
-        {'error', _} ->
-            VersionFile = filename:join([code:lib_dir('whistle'), "..", "..", "VERSION"]),
-            whistle_version(VersionFile)
-    end.
-
--spec whistle_version(ne_binary() | nonempty_string()) -> ne_binary().
-whistle_version(FileName) ->
-    case file:read_file(FileName) of
-        {'ok', Version} ->
-            wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
-            list_to_binary(string:strip(binary_to_list(Version), 'right', $\n));
-        _ ->
-            Version = <<"not available">>,
-            wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
-            Version
+    VersionFile = filename:join([code:lib_dir('whistle'), "..", "..", "VERSION"]),
+    case file:open(VersionFile, ['read']) of
+        {'ok', File} ->
+            {'ok', Line} = file:read_line(File),
+            _ = file:close(File),
+            ?MODULE:to_binary(string:strip(Line, 'right', $\n));
+        _ -> <<"unknown">>
     end.
 
 -spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
 
--spec ensure_started(atom()) -> 'ok' | {'error', term()}.
+-spec ensure_started(atom()) -> 'ok' | {'error', any()}.
+- ifdef(OTP_AT_LEAST_18).
+ensure_started(App) ->
+    case application:ensure_all_started(App) of
+        {'ok', _AppNames} -> 'ok';
+        {'error', {'already_started', App}} -> 'ok';
+        E -> E
+    end.
+-else.
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
         'ok' -> 'ok';
         {'error', {'already_started', App}} -> 'ok';
         E -> E
     end.
-
-%% there are 86400 seconds in a day
-%% there are 62167219200 seconds between Jan 1, 0000 and Jan 1, 1970
--define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
+-endif.
 
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
-    to_integer(GregorianSeconds) - ?UNIX_EPOCH_AS_GREG_SECONDS.
+    to_integer(GregorianSeconds) - ?UNIX_EPOCH_IN_GREGORIAN.
 
 -spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
-    to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.
+    to_integer(UnixSeconds) + ?UNIX_EPOCH_IN_GREGORIAN.
+
+-spec unix_timestamp_to_gregorian_seconds(integer() | string() | binary()) -> integer().
+unix_timestamp_to_gregorian_seconds(UnixTimestamp) ->
+    ?UNIX_EPOCH_IN_GREGORIAN + (to_integer(UnixTimestamp) div 1000).
 
 -spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
@@ -996,6 +1184,77 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w"
                                    ,[Y, Mo, D, H, Mi, S]
                                   )).
+
+-spec rfc1036(calendar:datetime() | gregorian_seconds()) -> ne_binary().
+-spec rfc1036(calendar:datetime() | gregorian_seconds(), ne_binary()) -> ne_binary().
+rfc1036(DateTime) ->
+    rfc1036(DateTime, <<"GMT">>).
+
+rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
+    Wday = calendar:day_of_the_week(Date),
+    <<(weekday(Wday))/binary, ", ",
+      (pad_binary_left(to_binary(D), 2, <<"0">>))/binary, " ",
+      (month(Mo))/binary, " ",
+      (to_binary(Y))/binary, " ",
+      (pad_binary_left(to_binary(H), 2, <<"0">>))/binary, ":",
+      (pad_binary_left(to_binary(Mi), 2, <<"0">>))/binary, ":",
+      (pad_binary_left(to_binary(S), 2, <<"0">>))/binary,
+      " ", TZ/binary
+    >>;
+rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
+    rfc1036(calendar:gregorian_seconds_to_datetime(Timestamp), TZ).
+
+-spec iso8601(calendar:datetime() | gregorian_seconds()) -> ne_binary().
+iso8601({{Y,M,D},_}) ->
+    <<(to_binary(Y))/binary, "-"
+      ,(pad_binary_left(to_binary(M), 2, <<"0">>))/binary, "-"
+      ,(pad_binary_left(to_binary(D), 2, <<"0">>))/binary
+    >>;
+iso8601(Timestamp) when is_integer(Timestamp) ->
+    iso8601(calendar:gregorian_seconds_to_datetime(Timestamp)).
+
+%% borrowed from cow_date.erl
+-spec weekday(1..7) -> <<_:24>>.
+weekday(1) -> <<"Mon">>;
+weekday(2) -> <<"Tue">>;
+weekday(3) -> <<"Wed">>;
+weekday(4) -> <<"Thu">>;
+weekday(5) -> <<"Fri">>;
+weekday(6) -> <<"Sat">>;
+weekday(7) -> <<"Sun">>.
+
+-spec month(1..12) -> <<_:24>>.
+month( 1) -> <<"Jan">>;
+month( 2) -> <<"Feb">>;
+month( 3) -> <<"Mar">>;
+month( 4) -> <<"Apr">>;
+month( 5) -> <<"May">>;
+month( 6) -> <<"Jun">>;
+month( 7) -> <<"Jul">>;
+month( 8) -> <<"Aug">>;
+month( 9) -> <<"Sep">>;
+month(10) -> <<"Oct">>;
+month(11) -> <<"Nov">>;
+month(12) -> <<"Dec">>.
+
+-spec pretty_print_elapsed_s(non_neg_integer()) -> ne_binary().
+pretty_print_elapsed_s(0) -> <<"0s">>;
+pretty_print_elapsed_s(Seconds) ->
+    iolist_to_binary(unitfy_seconds(Seconds)).
+
+-spec unitfy_seconds(non_neg_integer()) -> iolist().
+unitfy_seconds(0) -> "";
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_MINUTE ->
+    [to_binary(Seconds), "s"];
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_HOUR ->
+    M = Seconds div ?SECONDS_IN_MINUTE,
+    [to_binary(M), "m", unitfy_seconds(Seconds - (M * ?SECONDS_IN_MINUTE))];
+unitfy_seconds(Seconds) when Seconds < ?SECONDS_IN_DAY ->
+    H = Seconds div ?SECONDS_IN_HOUR,
+    [to_binary(H), "h", unitfy_seconds(Seconds - (H * ?SECONDS_IN_HOUR))];
+unitfy_seconds(Seconds) ->
+    D = Seconds div ?SECONDS_IN_DAY,
+    [to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
 decr_timeout('infinity', _) -> 'infinity';
@@ -1006,11 +1265,11 @@ decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
         'false' -> Diff
     end;
 decr_timeout(Timeout, Start) ->
-    decr_timeout(Timeout, wh_util:elapsed_ms(Start)).
+    decr_timeout(Timeout, ?MODULE:elapsed_ms(Start)).
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> to_integer(Microseconds) div 1000000.
-milliseconds_to_seconds(Milliseconds) -> to_integer(Milliseconds) div 1000.
+milliseconds_to_seconds(Milliseconds) -> to_integer(Milliseconds) div ?MILLISECONDS_IN_SECOND.
 
 -spec elapsed_s(wh_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(wh_now() | pos_integer()) -> pos_integer().
@@ -1032,204 +1291,123 @@ elapsed_s({_,_,_}=Start, Now) -> elapsed_s(now_s(Start), Now);
 elapsed_s(Start, {_,_,_}=Now) -> elapsed_s(Start, now_s(Now));
 elapsed_s(Start, Now) when is_integer(Start), is_integer(Now) -> Now - Start.
 
-elapsed_ms({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div 1000;
+elapsed_ms({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
 elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_s(Start), Now);
 elapsed_ms(Start, {_,_,_}=Now) -> elapsed_ms(Start, now_s(Now));
-elapsed_ms(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000.
+elapsed_ms(Start, Now)
+  when is_integer(Start),
+       is_integer(Now) ->
+    (Now - Start) * ?MILLISECONDS_IN_SECOND.
 
 elapsed_us({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start);
 elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);
 elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
 elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000000.
 
--spec now_s(wh_now()) -> integer().
--spec now_ms(wh_now()) -> integer().
--spec now_us(wh_now()) -> integer().
+-spec now() -> wh_now().
+
+-ifdef(OTP_AT_LEAST_18).
+now() -> erlang:timestamp().
+-spec now_s(any()) -> gregorian_seconds().
+-spec now_ms(any()) -> pos_integer().
+-spec now_us(any()) -> pos_integer().
+now_s(_) ->  erlang:system_time('seconds').
+now_ms(_) -> erlang:system_time('milli_seconds').
+now_us(_) -> erlang:system_time('micro_seconds').
+-else.
+now() -> erlang:now().
+-spec now_s(wh_now()) -> gregorian_seconds().
+-spec now_ms(wh_now()) -> pos_integer().
+-spec now_us(wh_now()) -> pos_integer().
+now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div 1000000).
+now_ms({_,_,_}=Now) -> now_us(Now) div ?MILLISECONDS_IN_SECOND.
 now_us({MegaSecs,Secs,MicroSecs}) ->
-    unix_seconds_to_gregorian_seconds((MegaSecs*1000000 + Secs)*1000000 + MicroSecs).
-now_ms({_,_,_}=Now) -> now_us(Now) div 1000.
-now_s({_,_,_}=Now) -> now_us(Now) div 1000000.
+    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+-endif.
+
+-spec format_date() -> binary().
+-spec format_date(gregorian_seconds()) -> binary().
+-spec format_time() -> binary().
+-spec format_time(gregorian_seconds()) -> binary().
+-spec format_datetime() -> binary().
+-spec format_datetime(gregorian_seconds()) -> binary().
+
+format_date() ->
+    format_date(current_tstamp()).
+
+format_date(Timestamp) ->
+    {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
+    list_to_binary([?MODULE:to_binary(Y), "-", ?MODULE:to_binary(M), "-", ?MODULE:to_binary(D)]).
+
+format_time() ->
+    format_time(current_tstamp()).
+
+format_time(Timestamp) ->
+    { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    list_to_binary([?MODULE:to_binary(H), ":", ?MODULE:to_binary(I), ":", ?MODULE:to_binary(S)]).
+
+format_datetime() ->
+    format_datetime(current_tstamp()).
+
+format_datetime(Timestamp) ->
+    list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
+
+-spec node_name() -> binary().
+-spec node_hostname() -> binary().
+node_name() ->
+    [Name, _Host] = binary:split(to_binary(node()), <<"@">>),
+    Name.
+node_hostname() ->
+    [_Name, Host] = binary:split(to_binary(node()), <<"@">>),
+    Host.
+
+
+%% @public
+-spec write_file(file:name(), iodata()) -> 'ok'.
+write_file(Filename, Bytes) ->
+    write_file(Filename, Bytes, []).
+
+%% @public
+-spec write_file(file:name(), iodata(), [file:mode()]) -> 'ok'.
+write_file(Filename, Bytes, Modes) ->
+    case file:write_file(Filename, Bytes, Modes) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:debug("writing file ~s (~p) failed : ~p", [Filename, Modes, _E])
+    end.
+
+%% @public
+-spec delete_file(file:name()) -> 'ok'.
+delete_file(Filename) ->
+    case file:delete(Filename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:debug("deleting file ~s failed : ~p", [Filename, _E])
+    end.
+
+%% @public
+-spec make_dir(file:name()) -> 'ok'.
+make_dir(Filename) ->
+    case file:make_dir(Filename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:debug("creating directory ~s failed : ~p", [Filename, _E])
+    end.
+
+normalize_amqp_uri(URI) ->
+    to_binary(amqp_uri:remove_credentials(to_list(URI))).
+
+-spec anonymous_caller_id_name() -> ne_binary().
+anonymous_caller_id_name() ->
+    <<"anonymous">>.
+
+-spec anonymous_caller_id_number() -> ne_binary().
+anonymous_caller_id_number() ->
+    <<"0000000000">>.
 
 -ifdef(TEST).
 
-%% PROPER TESTING
-prop_to_integer() ->
-    ?FORALL({F, I}, {float(), integer()},
-            begin
-                Is = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-                lists:all(fun([FN, N]) -> erlang:is_integer(to_integer(N)) andalso erlang:is_integer(to_integer(FN)) end, Is)
-            end).
-
-prop_to_number() ->
-    ?FORALL({F, I}, {float(), integer()},
-            begin
-                Is = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-                lists:all(fun([FN, N]) -> erlang:is_number(to_number(N)) andalso erlang:is_number(to_number(FN)) end, Is)
-            end).
-
-prop_to_float() ->
-    ?FORALL({F, I}, {float(), integer()},
-            begin
-                Fs = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-                lists:all(fun([FN, N]) -> erlang:is_float(to_float(N)) andalso erlang:is_float(to_float(FN)) end, Fs)
-            end).
-
-prop_to_list() ->
-    ?FORALL({A, L, B, I, F}, {atom(), list(), binary(), integer(), float()},
-            lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])).
-
-                                                %-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
-prop_to_binary() ->
-    ?FORALL({A, L, B, I, F, IO}, {atom(), list(range(0,255)), binary(), integer(), float(), iolist()},
-            lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])).
-
-prop_iolist_t() ->
-    ?FORALL(IO, iolist(), is_binary(to_binary(IO))).
-
-prop_to_from_hex() ->
-    ?FORALL({F}, {binary()},
-            begin
-                F =:= from_hex_binary(to_hex_binary(F))
-            end).
-
-proper_test_() ->
-    {"Runs the module's PropEr tests during eunit testing",
-     {'timeout', 15000,
-      [
-       ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}]))
-      ]}}.
-
-pad_binary_test() ->
-    ?assertEqual(<<"1234500000">>, pad_binary(<<"12345">>, 10, <<"0">>)).
-
-greg_secs_to_unix_secs_test() ->
-    GregSecs = current_tstamp(),
-    ?assertEqual(GregSecs - ?UNIX_EPOCH_AS_GREG_SECONDS, gregorian_seconds_to_unix_seconds(GregSecs)).
-
-unix_secs_to_greg_secs_test() ->
-    UnixSecs = 1000000000,
-    ?assertEqual(UnixSecs + ?UNIX_EPOCH_AS_GREG_SECONDS, unix_seconds_to_gregorian_seconds(UnixSecs)).
-
-microsecs_to_secs_test() ->
-    Microsecs = 1310157838405890,
-    Secs = 1310157838,
-    ?assertEqual(Secs, microseconds_to_seconds(Microsecs)).
-
-elapsed_test() ->
-    Start = {1401,998570,817606},
-    Now = {1401,998594,798064},
-
-    ?assertEqual(elapsed_us(Start, Now), 23980458),
-    ?assertEqual(elapsed_ms(Start, Now), 23980),
-    ?assertEqual(elapsed_s(Start, Now), 23),
-
-    StartDateTime = {{2014,6,5},{20,7,7}},
-    StartTimestamp = calendar:datetime_to_gregorian_seconds(StartDateTime),
-
-    NowDateTime = {{2014,6,5},{20,7,9}},
-    NowTimestamp = calendar:datetime_to_gregorian_seconds(NowDateTime),
-
-    ?assertEqual(elapsed_s(StartTimestamp, NowTimestamp), 2),
-    ?assertEqual(elapsed_ms(StartTimestamp, NowTimestamp), 2000),
-    ?assertEqual(elapsed_us(StartTimestamp, NowTimestamp), 2000000).
-
-no_whistle_version_test() ->
-    ?assertEqual(<<"not available">>, whistle_version(<<"/path/to/nonexistent/file">>)).
-
-join_binary_test() ->
-    ?assertEqual(<<"foo">>, join_binary([<<"foo">>], <<", ">>)),
-    ?assertEqual(<<"foo, bar">>, join_binary([<<"foo">>, <<"bar">>], <<", ">>)),
-    ?assertEqual(<<"foo, bar, baz">>, join_binary([<<"foo">>, <<"bar">>, <<"baz">>], <<", ">>)).
-
-ucfirst_binary_test() ->
-    ?assertEqual(<<"Foo">>, ucfirst_binary(<<"foo">>)),
-    ?assertEqual(<<"Foo">>, ucfirst_binary(<<"Foo">>)),
-    ?assertEqual(<<"FOO">>, ucfirst_binary(<<"FOO">>)),
-    ?assertEqual(<<"1oo">>, ucfirst_binary(<<"1oo">>)),
-    ?assertEqual(<<"100">>, ucfirst_binary(<<"100">>)),
-    ?assertEqual(<<"1FF">>, ucfirst_binary(<<"1FF">>)).
-
-lcfirst_binary_test() ->
-    ?assertEqual(<<"foo">>, lcfirst_binary(<<"foo">>)),
-    ?assertEqual(<<"foo">>, lcfirst_binary(<<"Foo">>)),
-    ?assertEqual(<<"fOO">>, lcfirst_binary(<<"FOO">>)),
-    ?assertEqual(<<"1oo">>, lcfirst_binary(<<"1oo">>)),
-    ?assertEqual(<<"100">>, lcfirst_binary(<<"100">>)),
-    ?assertEqual(<<"1FF">>, lcfirst_binary(<<"1FF">>)).
-
-to_lower_binary_test() ->
-    ?assertEqual(<<"foo">>, to_lower_binary(<<"foo">>)),
-    ?assertEqual(<<"foo">>, to_lower_binary(<<"Foo">>)),
-    ?assertEqual(<<"foo">>, to_lower_binary(<<"FoO">>)),
-    ?assertEqual(<<"f00">>, to_lower_binary(<<"f00">>)),
-    ?assertEqual(<<"f00">>, to_lower_binary(<<"F00">>)).
-
-to_upper_binary_test() ->
-    ?assertEqual(<<"FOO">>, to_upper_binary(<<"foo">>)),
-    ?assertEqual(<<"FOO">>, to_upper_binary(<<"Foo">>)),
-    ?assertEqual(<<"FOO">>, to_upper_binary(<<"FoO">>)),
-    ?assertEqual(<<"F00">>, to_upper_binary(<<"f00">>)),
-    ?assertEqual(<<"F00">>, to_upper_binary(<<"F00">>)).
-
-to_lower_string_test() ->
-    ?assertEqual("foo", to_lower_string("foo")),
-    ?assertEqual("foo", to_lower_string("Foo")),
-    ?assertEqual("foo", to_lower_string("FoO")),
-    ?assertEqual("f00", to_lower_string("f00")),
-    ?assertEqual("f00", to_lower_string("F00")).
-
-to_upper_string_test() ->
-    ?assertEqual("FOO", to_upper_string("foo")),
-    ?assertEqual("FOO", to_upper_string("Foo")),
-    ?assertEqual("FOO", to_upper_string("FoO")),
-    ?assertEqual("F00", to_upper_string("f00")),
-    ?assertEqual("F00", to_upper_string("F00")).
-
-strip_binary_test() ->
-    ?assertEqual(<<"foo">>, strip_binary(<<"foo">>)),
-    ?assertEqual(<<"foo">>, strip_binary(<<"foo ">>)),
-    ?assertEqual(<<"foo">>, strip_binary(<<" foo ">>)),
-    ?assertEqual(<<"foo">>, strip_binary(<<"  foo  ">>)),
-    ?assertEqual(<<"foo">>, strip_binary(<<"     foo">>)),
-
-    ?assertEqual(<<"foo">>, strip_left_binary(<<"foo">>, $\s)),
-    ?assertEqual(<<"foo">>, strip_left_binary(<<" foo">>, $\s)),
-    ?assertEqual(<<"foo ">>, strip_left_binary(<<" foo ">>, $\s)),
-    ?assertEqual(<<"foo ">>, strip_left_binary(<<"foo ">>, $\s)),
-
-    ?assertEqual(<<"foo">>, strip_right_binary(<<"foo">>, $\s)),
-    ?assertEqual(<<" foo">>, strip_right_binary(<<" foo">>, $\s)),
-    ?assertEqual(<<" foo">>, strip_right_binary(<<" foo ">>, $\s)),
-    ?assertEqual(<<"foo">>, strip_right_binary(<<"foo ">>, $\s)).
-
-to_boolean_test() ->
-    All = [<<"true">>, "true", 'true', <<"false">>, "false", 'false'],
-    NotAll = [0, 123, 1.23, "123", "abc", abc, <<"abc">>, <<"123">>, {what, is, this, doing, here}],
-    ?assertEqual('true', lists:all(fun(X) ->
-                                         try to_boolean(X) of
-                                             _ -> 'true'
-                                         catch _:_ -> 'false'
-                                         end
-                                   end, All)),
-    ?assertEqual('true', lists:all(fun(X) ->
-                                         try to_boolean(X) of
-                                             _ -> 'false'
-                                         catch _:_ -> 'true'
-                                         end
-                                   end, NotAll)).
-
-strip_test() ->
-    ?assertEqual(strip_binary(<<"...Hello.....">>, $.), <<"Hello">>).
-
-uri_test() ->
-    ?assertEqual(<<"http://test.com/path1/path2">>, uri(<<"http://test.com">>, [<<"path1">>, <<"path2">>])),
-    ?assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>])),
-    ?assertEqual(<<"http://test.com/path1/path2">>, uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>])).
-
-suffix_binary_test() ->
-    ?assertEqual('true', suffix_binary(<<"34">>, <<"1234">>)),
-    ?assertEqual('false', suffix_binary(<<"34">>, <<"12345">>)),
-    ?assertEqual('false', suffix_binary(<<"1234">>, <<"1">>)).
+-include_lib("eunit/include/eunit.hrl").
 
 -spec resolve_uri_test() -> any().
 resolve_uri_test() ->
@@ -1239,6 +1417,5 @@ resolve_uri_test() ->
 
     ?assertEqual(RawPathList, resolve_uri_path(RawPath, Relative)),
     ?assertEqual(RawPathList, resolve_uri_path(RawPath, <<"/", Relative/binary>>)).
-
 
 -endif.

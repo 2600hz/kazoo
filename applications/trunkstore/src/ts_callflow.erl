@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Common functionality for onnet and offnet call handling
 %%% @end
@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ts_callflow).
 
--export([init/1
+-export([init/2
          ,start_amqp/1
          ,send_park/1
          ,wait_for_win/1
@@ -36,29 +36,33 @@
 
 -include("ts.hrl").
 
--define(WAIT_FOR_WIN_TIMEOUT, 5000). %% 5 seconds
+-define(WAIT_FOR_WIN_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
--type ts_state() :: #ts_callflow_state{}.
+-type state() :: #ts_callflow_state{}.
 
--spec init(wh_json:object()) -> ts_state() | {'error', 'not_ts_account'}.
-init(RouteReqJObj) ->
+-export_type([state/0]).
+
+-spec init(wh_json:object(), api_binary() | api_binaries()) ->
+                  state() |
+                  {'error', 'not_ts_account'}.
+init(RouteReqJObj, Type) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
-    put('callid', CallID),
-    case is_trunkstore_acct(RouteReqJObj) of
+    wh_util:put_callid(CallID),
+    case is_trunkstore_acct(RouteReqJObj, Type) of
         'false' ->
             lager:info("request is not for a trunkstore account"),
             {'error', 'not_ts_account'};
         'true' ->
-            AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
+            AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
             #ts_callflow_state{
                aleg_callid=CallID
                ,route_req_jobj=RouteReqJObj
-               ,acctid=AcctID
-               ,acctdb=wh_util:format_account_id(AcctID, 'encoded')
+               ,acctid=AccountId
+               ,acctdb=wh_util:format_account_id(AccountId, 'encoded')
               }
     end.
 
--spec start_amqp(ts_state()) -> ts_state().
+-spec start_amqp(state()) -> state().
 start_amqp(#ts_callflow_state{}=State) ->
     %% Trunkstore is pre-gen_listener so do it
     %% manually till it can be refactored
@@ -68,11 +72,12 @@ start_amqp(#ts_callflow_state{}=State) ->
     lager:info("started AMQP with queue ~s", [Q]),
     State#ts_callflow_state{my_q=Q}.
 
--spec send_park(ts_state()) -> ts_state().
+-spec send_park(state()) -> state().
 send_park(#ts_callflow_state{my_q=Q
                              ,route_req_jobj=JObj
-                             ,acctid=AccountId}=State) ->
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                             ,acctid=AccountId
+                            }=State) ->
+    Resp = [{<<"Msg-ID">>, wh_api:msg_id(JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Pre-Park">>, pre_park_action()}
             ,{<<"Method">>, <<"park">>}
@@ -81,20 +86,21 @@ send_park(#ts_callflow_state{my_q=Q
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
-    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
+    wapi_route:publish_resp(wh_api:server_id(JObj), Resp),
     State.
 
--spec wait_for_win(ts_state()) -> {'won' | 'lost', ts_state()}.
+-spec wait_for_win(state()) -> {'won' | 'lost', state()}.
 wait_for_win(#ts_callflow_state{aleg_callid=CallID
-                                ,my_q=Q}=State) ->
+                                ,my_q=Q
+                               }=State) ->
     receive
         #'basic.consume_ok'{} -> wait_for_win(State);
         %% call events come from callevt exchange, ignore for now
         {#'basic.deliver'{exchange = <<"targeted">>}, #amqp_msg{payload=Payload}} ->
             WinJObj = wh_json:decode(Payload),
             'true' = wapi_route:win_v(WinJObj),
-            CallID = wh_json:get_value(<<"Call-ID">>, WinJObj),
-            CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
+            CallID = wapi_route:call_id(WinJObj),
+            CallctlQ = wapi_route:control_queue(WinJObj),
             lager:info("callflow has received a route win, taking control of the call"),
             wapi_call:bind_q(Q, [{'callid', CallID}]),
             {'won', State#ts_callflow_state{callctl_q=CallctlQ}}
@@ -103,7 +109,7 @@ wait_for_win(#ts_callflow_state{aleg_callid=CallID
             {'lost', State}
     end.
 
--spec wait_for_bridge(ts_state()) -> {'hangup' | 'error', ts_state()}.
+-spec wait_for_bridge(state()) -> {'hangup' | 'error', state()}.
 wait_for_bridge(State) ->
     receive
         #'basic.consume_ok'{} -> wait_for_bridge(State);
@@ -114,27 +120,34 @@ wait_for_bridge(State) ->
                 {'error', _}=Error -> Error;
                 {'hangup', _}=Hangup -> Hangup
             end;
+        {'$gen_cast',{'wh_amqp_assignment',_}} ->
+            wait_for_bridge(State);
         _E ->
             lager:info("unexpected msg: ~p", [_E]),
             wait_for_bridge(State)
     end.
 
--spec process_event_for_bridge(ts_state(), wh_json:object()) ->
-                                      'ignore' | {'hangup' | 'error', ts_state()}.
+-spec process_event_for_bridge(state(), wh_json:object()) ->
+                                      'ignore' | {'hangup' | 'error', state()}.
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
                                             ,callctl_q=CtlQ
-                                           }=State, JObj) ->
+                                           }=State
+                         ,JObj) ->
     case get_event_type(JObj) of
         {<<"resource">>, <<"offnet_resp">>, _} ->
-            case wh_json:get_value(<<"Response-Message">>, JObj) of
-                <<"SUCCESS">> ->
+            case is_success(<<"Response-Message">>, JObj) of
+                'true' ->
                     lager:info("offnet bridge has completed successfully"),
                     {'hangup', State};
-                _Err ->
+                'false' ->
                     Failure = wh_json:get_first_defined([<<"Error-Message">>
                                                          ,<<"Response-Code">>
-                                                        ], JObj),
-                    lager:info("offnet failed: ~s ~s", [Failure, _Err]),
+                                                        ]
+                                                        ,JObj
+                                                       ),
+                    lager:info("offnet failed: ~s ~s"
+                               ,[Failure, wh_json:get_value(<<"Response-Message">>, JObj)]
+                              ),
                     {'error', State}
             end;
         {<<"resource">>, <<"resource_error">>, _} ->
@@ -148,38 +161,50 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
             lager:info("channel hungup before bridge"),
             {'hangup', State};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-            case wh_json:get_value(<<"Disposition">>, JObj) =:= <<"SUCCESS">>
-                orelse
-                wh_json:get_first_defined([<<"Application-Response">>
-                                           ,<<"Hangup-Cause">>
-                                          ], JObj, <<"UNSPECIFIED">>) =:= <<"SUCCESS">>
-            of
+            case was_bridge_successful(JObj) of
                 'true' ->
-                    lager:info("bridge completed sucessfully", []),
+                    lager:info("bridge completed successfully"),
                     {'hangup', State};
                 'false' ->
-                    lager:info("bridge failed: ~s"
-                               ,[wh_json:encode(JObj)]),
+                    lager:info("bridge failed: ~s",[wh_json:encode(JObj)]),
                     {'error', State}
              end;
         {<<"error">>, _, <<"bridge">>} ->
             lager:debug("channel execution error while waiting for bridge: ~s"
-                        ,[wh_json:encode(JObj)]),
+                        ,[wh_json:encode(JObj)]
+                       ),
             {'error', State};
         {<<"call_event">>,<<"CHANNEL_EXECUTE_COMPLETE">>,<<"answer">>} ->
             %% support one legged bridges such as on-net conference
-            lager:info("channel was answered", []),
+            lager:info("channel was answered"),
             'ignore';
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
             BLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             lager:debug("channel ~s bridged to ~s", [ALeg, BLeg]),
             'ignore';
         _Unhandled ->
-            lager:info("unhandled combo: ~p", [_Unhandled]),
             'ignore'
     end.
 
--spec get_event_type(wh_json:object()) -> {api_binary(), api_binary(), api_binary()}.
+-spec was_bridge_successful(wh_json:object()) -> boolean().
+was_bridge_successful(JObj) ->
+    is_success(<<"Disposition">>, JObj)
+        orelse is_success([<<"Application-Response">>
+                           ,<<"Hangup-Cause">>
+                          ]
+                          ,JObj
+                          ,<<"UNSPECIFIED">>
+                         ).
+
+-spec is_success(ne_binary(), wh_json:object()) -> boolean().
+-spec is_success(ne_binaries(), wh_json:object(), ne_binary()) -> boolean().
+is_success(Key, JObj) ->
+    wh_json:get_value(Key, JObj) =:= <<"SUCCESS">>.
+is_success(Key, JObj, Default) ->
+    wh_json:get_first_defined(Key, JObj, Default) =:= <<"SUCCESS">>.
+
+-spec get_event_type(wh_json:object()) ->
+                            {api_binary(), api_binary(), api_binary()}.
 get_event_type(JObj) ->
     {C, N} = wh_util:get_event_type(JObj),
     {C, N, get_app(JObj)}.
@@ -190,7 +215,7 @@ get_app(JObj) ->
         App -> App
     end.
 
--spec send_hangup(ts_state()) -> 'ok'.
+-spec send_hangup(state()) -> 'ok'.
 send_hangup(#ts_callflow_state{callctl_q = <<>>}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
@@ -214,55 +239,57 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
 %%%-----------------------------------------------------------------------------
--spec get_request_data(ts_state()) -> wh_json:object().
+-spec get_request_data(state()) -> wh_json:object().
 get_request_data(#ts_callflow_state{route_req_jobj=JObj}) -> JObj.
 
--spec get_custom_channel_vars(ts_state()) -> wh_json:object().
+-spec get_custom_channel_vars(state()) -> wh_json:object().
 get_custom_channel_vars(#ts_callflow_state{route_req_jobj=JObj}) ->
     wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()).
 
--spec get_custom_sip_headers(ts_state()) -> api_object().
+-spec get_custom_sip_headers(state()) -> api_object().
 get_custom_sip_headers(#ts_callflow_state{route_req_jobj=JObj}) ->
     wh_json:get_value(<<"Custom-SIP-Headers">>, JObj).
 
--spec set_endpoint_data(ts_state(), wh_json:object()) -> ts_state().
+-spec set_endpoint_data(state(), wh_json:object()) -> state().
 set_endpoint_data(State, Data) -> State#ts_callflow_state{ep_data=Data}.
 
--spec get_endpoint_data(ts_state()) -> wh_json:object().
+-spec get_endpoint_data(state()) -> wh_json:object().
 get_endpoint_data(#ts_callflow_state{ep_data=EP}) -> EP.
 
--spec set_account_id(ts_state(), ne_binary()) -> ts_state().
+-spec set_account_id(state(), ne_binary()) -> state().
 set_account_id(State, ID) -> State#ts_callflow_state{acctid=ID}.
 
--spec get_account_id(ts_state()) -> ne_binary().
+-spec get_account_id(state()) -> ne_binary().
 get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 
--spec get_my_queue(ts_state()) -> ne_binary().
--spec get_control_queue(ts_state()) -> ne_binary().
+-spec get_my_queue(state()) -> ne_binary().
+-spec get_control_queue(state()) -> ne_binary().
 get_my_queue(#ts_callflow_state{my_q=Q}) -> Q.
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
 
--spec get_aleg_id(ts_state()) -> api_binary().
--spec get_bleg_id(ts_state()) -> api_binary().
+-spec get_aleg_id(state()) -> api_binary().
+-spec get_bleg_id(state()) -> api_binary().
 get_aleg_id(#ts_callflow_state{aleg_callid=ALeg}) -> ALeg.
 get_bleg_id(#ts_callflow_state{bleg_callid=ALeg}) -> ALeg.
 
--spec get_call_cost(ts_state()) -> float().
+-spec get_call_cost(state()) -> float().
 get_call_cost(#ts_callflow_state{call_cost=Cost}) -> Cost.
 
--spec set_failover(ts_state(), wh_json:object()) -> ts_state().
+-spec set_failover(state(), wh_json:object()) -> state().
 set_failover(State, Failover) -> State#ts_callflow_state{failover=Failover}.
 
--spec get_failover(ts_state()) -> wh_json:object() | 'undefined'.
+-spec get_failover(state()) -> api_object().
 get_failover(#ts_callflow_state{failover=Fail}) -> Fail.
 
--spec is_trunkstore_acct(wh_json:object()) -> boolean().
-is_trunkstore_acct(JObj) ->
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj) of
-        <<"sys_info">> -> 'true';
-        'undefined' -> 'true';
-        _AuthType -> 'false'
-    end.
+-spec is_trunkstore_acct(wh_json:object(), api_binary() | api_binaries()) -> boolean().
+is_trunkstore_acct(JObj, [Type|Types]) ->
+    case is_trunkstore_acct(JObj, Type) of
+        'true' -> 'true';
+        'false' -> is_trunkstore_acct(JObj, Types)
+    end;
+is_trunkstore_acct(_JObj, []) -> 'false';
+is_trunkstore_acct(JObj, Type) ->
+    Type =:= wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj).
 
 -spec pre_park_action() -> ne_binary().
 pre_park_action() ->

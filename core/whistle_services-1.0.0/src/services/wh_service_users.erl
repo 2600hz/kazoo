@@ -12,6 +12,8 @@
 
 -include("../whistle_services.hrl").
 
+-define(SERVICE_CATEGORY, <<"users">>).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -19,6 +21,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(wh_services:services()) -> wh_services:services().
+-spec reconcile(wh_services:services(), api_binary()) -> wh_services:services().
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -29,43 +32,17 @@ reconcile(Services) ->
         {'error', _R} ->
             lager:debug("unable to get current users in service: ~p", [_R]),
             Services;
-        {'ok', []} -> wh_services:reset_category(<<"users">>, Services);
+        {'ok', []} -> wh_services:reset_category(?SERVICE_CATEGORY, Services);
         {'ok', JObjs} ->
             lists:foldl(fun(JObj, S) ->
                                 Item = wh_json:get_value(<<"key">>, JObj),
                                 Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
-                                wh_services:update(<<"users">>, Item, Quantity, S)
-                        end, wh_services:reset_category(<<"users">>, Services), JObjs)
+                                wh_services:update(?SERVICE_CATEGORY, Item, Quantity, S)
+                        end, wh_services:reset_category(?SERVICE_CATEGORY, Services), JObjs)
     end.
 
-reconcile(Services, UserType) ->
-    AccountId = wh_services:account_id(Services),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    ViewOptions = ['reduce'
-                   ,'group'
-                  ],
-    case couch_mgr:get_results(AccountDb, <<"services/users">>, ViewOptions) of
-        {'error', _R} ->
-            lager:debug("unable to get current users in service: ~p", [_R]),
-            Services;
-        {'ok', []} -> wh_services:reset_category(<<"users">>, Services);
-        {'ok', JObjs} ->
-            S = lists:foldl(
-                    fun(JObj, S) ->
-                        Item = wh_json:get_value(<<"key">>, JObj),
-                        Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
-                        case Item =:= UserType of
-                            'false' -> wh_services:update(<<"users">>, Item, Quantity, S);
-                            'true' -> wh_services:update(<<"users">>, Item, Quantity+1, S)
-                        end
-                    end
-                    ,wh_services:reset_category(<<"users">>, Services)
-                    ,JObjs
-                ),
-            Keys = couch_mgr:get_result_keys(JObjs),
-            case lists:member(UserType, Keys) of
-                'false' -> wh_services:update(<<"users">>, UserType, 1, S);
-                'true' -> S
-            end
-    end.
-
+reconcile(Services, 'undefined') -> Services;
+reconcile(Services0, UserType) ->
+    Services1 = reconcile(Services0),
+    Quantity = wh_services:updated_quantity(?SERVICE_CATEGORY, UserType, Services1),
+    wh_services:update(?SERVICE_CATEGORY, UserType, Quantity+1, Services1).

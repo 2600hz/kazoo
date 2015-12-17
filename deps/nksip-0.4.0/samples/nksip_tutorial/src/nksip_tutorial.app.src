@@ -1,0 +1,8 @@
+{application, nksip_tutorial, [
+  {description, "NkSIP Tutorial"},
+  {vsn, "0.4.0"},
+  {modules, []},
+  {registered, []},
+  {applications, [kernel, stdlib, nksip]},
+  {env, []}
+]}.

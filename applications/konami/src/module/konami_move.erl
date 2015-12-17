@@ -93,13 +93,14 @@ get_originate_req(Data, Call) ->
                                  ,{<<"can_call_self">>, 'true'}
                                 ], Data),
 
-    OwnerId = wh_json:get_value(<<"owner_id">>, Data),
     {SourceDeviceId, TargetCallId} =
         case source_leg_of_dtmf(SourceOfDTMF, Call) of
             'a' -> {whapps_call:authorizing_id(Call), whapps_call:other_leg_call_id(Call)};
             'b' -> {find_device_id_for_leg(SourceOfDTMF), whapps_call:call_id(Call)}
         end,
 
+    DeviceOwnerId = cf_attributes:owner_id(SourceDeviceId, Call),
+    OwnerId = wh_json:get_value(<<"owner_id">>, Data, DeviceOwnerId),
     Endpoints = build_endpoints(SourceDeviceId, OwnerId, Params, Call),
     build_originate(Endpoints, TargetCallId, Call).
 
@@ -152,7 +153,11 @@ send_originate_req([], _Call) ->
     lager:debug("no origination proprs, skipping"),
     {'error', 'no_endpoints'};
 send_originate_req(OriginateProps, _Call) ->
-    whapps_util:amqp_pool_collect(OriginateProps, fun wapi_resource:publish_originate_req/1, fun is_resp/1, 20000).
+    whapps_util:amqp_pool_collect(OriginateProps
+                                  ,fun wapi_resource:publish_originate_req/1
+                                  ,fun is_resp/1
+                                  ,20 * ?MILLISECONDS_IN_SECOND
+                                 ).
 
 -spec is_resp(wh_json:objects() | wh_json:object()) -> boolean().
 is_resp([JObj|_]) ->

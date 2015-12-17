@@ -34,7 +34,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     application:start(?MODULE).
 
@@ -55,7 +55,7 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps() -> _.
+-spec start_deps() -> any().
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     [wh_util:ensure_started(App) || App <- ['crypto'

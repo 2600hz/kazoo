@@ -1,16 +1,16 @@
 {
-  "_id": "callflows.language",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "description": "Validator for the Language callflow element",
-  "properties": {
-    "language": {
-      "type": "string",
-      "required": true,
-      "name": "Language",
-      "description": "The language to default to for the rest of the call",
-      "pattern": "^[A-Za-z]{2}(-[A-Za-z]{2})?$"
-    }
-  }
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.language",
+    "description": "Validator for the Language callflow element",
+    "properties": {
+        "language": {
+            "description": "The language to default to for the rest of the call",
+            "name": "Language",
+            "pattern": "^[A-Za-z]{2}(-[A-Za-z]{2})?$",
+            "required": true,
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
 }

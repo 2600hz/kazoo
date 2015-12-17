@@ -163,16 +163,19 @@ resource_exists(_, _, _) -> 'false'.
 %% Ensure we will be able to bill for phone_numbers
 %% @end
 %%--------------------------------------------------------------------
-billing(#cb_context{req_nouns=[{<<"phone_numbers">>, _}|_], req_verb= ?HTTP_GET}=Context) ->
+billing(Context) ->
+    billing(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+billing(Context, ?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, _}|_]) ->
     Context;
-billing(#cb_context{req_nouns=[{<<"phone_numbers">>, _}|_]}=Context) ->
+billing(Context, _, [{?WNM_PHONE_NUMBER_DOC, _}|_]) ->
     try wh_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
-billing(Context) -> Context.
+billing(Context, _, _) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -182,10 +185,11 @@ billing(Context) -> Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> 'true'.
-authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>, []}]
-                         ,req_verb = ?HTTP_GET
-                        }) ->
-    'true'.
+-spec authenticate(http_method(), req_nouns()) -> 'true'.
+authenticate(Context) ->
+    authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+authenticate(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, []}]) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -195,10 +199,11 @@ authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>, []}]
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> 'true'.
-authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
-                      ,req_verb = ?HTTP_GET
-                     }) ->
-    'true'.
+-spec authorize(http_method(), req_nouns()) -> 'true'.
+authorize(Context) ->
+    authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+authorize(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC,[]}]) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -208,10 +213,14 @@ authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_accepted(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?PORT_DOCS, _Name) ->
-    Context#cb_context{content_types_accepted=[{'from_binary', ?MIME_TYPES}]};
-content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _Number, ?PORT_DOCS, _Name) ->
-    Context#cb_context{content_types_accepted=[{'from_binary', ?MIME_TYPES}]}.
+-spec content_types_accepted(cb_context:context(), http_method()) -> cb_context:context().
+content_types_accepted(Context, _Number, ?PORT_DOCS, _Name) ->
+    content_types_accepted(Context, cb_context:req_verb(Context)).
+
+content_types_accepted(Context, ?HTTP_PUT) ->
+    cb_context:set_content_types_accepted(Context, [{'from_binary', ?MIME_TYPES}]);
+content_types_accepted(Context, ?HTTP_POST) ->
+    cb_context:set_content_types_accepted(Context, [{'from_binary', ?MIME_TYPES}]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -226,67 +235,95 @@ content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _Number, ?POR
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec validate_1(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_2(cb_context:context(), http_method(), path_token()) -> cb_context:context().
+-spec validate_3(cb_context:context(), http_method(), path_token(), path_token()) -> cb_context:context().
+-spec validate_4(cb_context:context(), http_method(), path_token(), path_token(), path_token()) ->
+                        cb_context:context().
+-spec validate_files(cb_context:context(), req_files(), path_token(), path_token(), path_token()) ->
+                            cb_context:context().
 
-validate(#cb_context{req_verb = ?HTTP_GET
-                     ,account_id='undefined'
-                    }=Context) ->
-    find_numbers(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    summary(Context).
+validate(Context) ->
+    validate_1(Context, cb_context:req_verb(Context)).
+validate_1(Context, ?HTTP_GET) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> find_numbers(Context);
+        _ -> summary(Context)
+    end.
 
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?COLLECTION) ->
+validate(Context, PathToken1) ->
+    validate_2(Context, cb_context:req_verb(Context), PathToken1).
+validate_2(Context, ?HTTP_PUT, ?COLLECTION) ->
     validate_request(Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?COLLECTION) ->
+validate_2(Context, ?HTTP_POST, ?COLLECTION) ->
     validate_request(Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, ?COLLECTION) ->
+validate_2(Context, ?HTTP_DELETE, ?COLLECTION) ->
     validate_delete(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?CLASSIFIERS) ->
+validate_2(Context, ?HTTP_GET, ?CLASSIFIERS) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                              ,wnm_util:available_classifiers()
                             );
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
+validate_2(Context, ?HTTP_GET, Number) ->
     read(Number, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
+validate_2(Context, ?HTTP_POST, _Number) ->
     validate_request(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number) ->
+validate_2(Context, ?HTTP_PUT, _Number) ->
     validate_request(Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, _Number) ->
+validate_2(Context, ?HTTP_DELETE, _Number) ->
     validate_delete(Context).
 
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?COLLECTION, ?ACTIVATE) ->
+validate(Context, PathToken1, PathToken2) ->
+    validate_3(Context, cb_context:req_verb(Context), PathToken1, PathToken2).
+validate_3(Context, ?HTTP_PUT, ?COLLECTION, ?ACTIVATE) ->
     validate_request(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?ACTIVATE) ->
+validate_3(Context, ?HTTP_PUT, _Number, ?ACTIVATE) ->
     case has_tokens(Context) of
         'true' -> validate_request(Context);
         'false' -> cb_context:add_system_error('too_many_requests', Context)
     end;
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?RESERVE) ->
+validate_3(Context, ?HTTP_PUT, _Number, ?RESERVE) ->
     validate_request(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number, ?PORT) ->
+validate_3(Context, ?HTTP_PUT, _Number, ?PORT) ->
     validate_request(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number, ?PORT_DOCS) ->
+validate_3(Context, ?HTTP_GET, Number, ?PORT_DOCS) ->
     list_attachments(Number, Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number, ?IDENTIFY) ->
+validate_3(Context, ?HTTP_GET, Number, ?IDENTIFY) ->
     identify(Context, Number).
 
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Number, ?PORT_DOCS, _) ->
+validate(Context, PathToken1, PathToken2, PathToken3) ->
+    validate_4(Context, cb_context:req_verb(Context), PathToken1, PathToken2, PathToken3).
+validate_4(Context, ?HTTP_DELETE, Number, ?PORT_DOCS, _) ->
     read(Number, Context);
-validate(#cb_context{req_files=[]}=Context, _, ?PORT_DOCS, _) ->
-    lager:debug("No files in request to save attachment"),
-    Message = <<"please provide an port document">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
-validate(#cb_context{req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
-    FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
-    read(Number, Context#cb_context{req_files=[{FileName, FileObj}]});
-validate(Context, _, ?PORT_DOCS, _) ->
-    lager:debug("Multiple files in request to save attachment"),
-    Message = <<"please provide a single port document per request">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+validate_4(Context, _, PathToken1, PathToken2, PathToken3) ->
+    validate_files(Context, cb_context:req_files(Context), PathToken1, PathToken2, PathToken3).
 
--spec post(cb_context:context(), path_token()) ->
-                  cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) ->
-                  cb_context:context().
+validate_files(Context, [], _, ?PORT_DOCS, _) ->
+    lager:debug("No files in request to save attachment"),
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an port document">>}
+         ])
+        ,Context
+    );
+validate_files(Context, [{_, FileObj}], Number, ?PORT_DOCS, Name) ->
+    FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
+    Context1 = cb_context:set_req_files(Context, [{FileName, FileObj}]),
+    read(Number, Context1);
+validate_files(Context, _, _, ?PORT_DOCS, _) ->
+    lager:debug("Multiple files in request to save attachment"),
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single port document per request">>}
+         ])
+        ,Context
+    ).
+
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
     set_response(collection_process(Context), <<>>, Context);
 post(Context, Number) ->
@@ -299,12 +336,9 @@ post(Context, Number) ->
 post(Context, Number, ?PORT_DOCS, _) ->
     put_attachments(Number, Context, cb_context:req_files(Context)).
 
--spec put(cb_context:context(), path_token()) ->
-                 cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) ->
-                 cb_context:context().
--spec put(cb_context:context(), path_token(), path_token(), path_token()) ->
-                 cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
@@ -364,11 +398,10 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    case crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context) of
-        #cb_context{resp_error_code=404}=C ->
-            crossbar_util:response(wh_json:new(), C);
-        Context1 ->
-            cb_context:set_resp_data(Context1, clean_summary(Context1))
+    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
+    case cb_context:resp_error_code(Context1) of
+        404 -> crossbar_util:response(wh_json:new(), Context1);
+        _ -> cb_context:set_resp_data(Context1, clean_summary(Context1))
     end.
 
 %%%===================================================================
@@ -388,7 +421,7 @@ clean_summary(Context) ->
                 ,fun(J) -> wh_json:set_value(<<"numbers">>, J, wh_json:new()) end
                 ,fun(J) ->
                     Service =  wh_services:fetch(AccountId),
-                    Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
+                    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
                     wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
                 end
                ],
@@ -406,7 +439,11 @@ clean_summary(Context) ->
 identify(Context, Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {'error', 'not_reconcilable'} ->
-            cb_context:add_system_error('bad_identifier', [{'details', Number}], Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, Number}])
+                ,Context
+            );
         {'error', E} ->
             set_response({wh_util:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
@@ -437,19 +474,26 @@ read(Number, Context) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
-    AccountId = cb_context:auth_account_id(Context),
-    QueryString = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
+    JObj = get_find_numbers_req(Context),
     OnSuccess = fun(C) ->
-                    cb_context:set_resp_data(
-                        cb_context:set_resp_status(C, 'success')
-                        ,get_numbers(QueryString)
-                    )
+                        cb_context:setters(C
+                                           ,[{fun cb_context:set_resp_data/2, get_numbers(JObj)}
+                                             ,{fun cb_context:set_resp_status/2, 'success'}
+                                            ])
                 end,
-    Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
-    cb_context:validate_request_data(Schema
-                                     ,cb_context:set_req_data(Context, QueryString)
+    cb_context:validate_request_data(wh_json:decode(?FIND_NUMBER_SCHEMA)
+                                     ,cb_context:set_req_data(Context, JObj)
                                      ,OnSuccess
                                     ).
+
+-spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
+get_find_numbers_req(Context) ->
+    JObj = cb_context:query_string(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
+    wh_json:set_values([{<<"quantity">>, Quantity}
+                       ,{<<"Account-ID">>, AccountId}
+                       ], JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -500,7 +544,7 @@ add_porting_email(Context) ->
     end.
 
 check_phone_number_schema(Context) ->
-    cb_context:validate_request_data(<<"phone_numbers">>, Context).
+    cb_context:validate_request_data(?WNM_PHONE_NUMBER_DOC, Context).
 
 get_auth_user_email(Context) ->
     JObj = cb_context:auth_doc(Context),
@@ -636,39 +680,44 @@ collection_process(Context, Numbers, Action) ->
       ,Numbers
      ).
 
--spec collection_action(cb_context:context(), ne_binary()) ->
-                               operation_return().
--spec collection_action(cb_context:context(), ne_binary(), ne_binary()) ->
-                               operation_return().
-collection_action(#cb_context{account_id=AssignTo
-                              ,auth_account_id=AuthBy
-                              ,doc=JObj
-                              ,req_verb = ?HTTP_PUT
-                             }, Number) ->
-    wh_number_manager:create_number(Number, AssignTo, AuthBy, wh_json:delete_key(<<"numbers">>, JObj));
-collection_action(#cb_context{auth_account_id=AuthBy
-                              ,doc=Doc
-                              ,req_verb = ?HTTP_POST
-                             }, Number) ->
-    case wh_number_manager:get_public_fields(Number, AuthBy) of
+-spec collection_action(cb_context:context(), ne_binary()) -> operation_return().
+-spec collection_action(cb_context:context(), ne_binary(), ne_binary()) -> operation_return().
+-spec do_collection_action(cb_context:context(), http_method(), ne_binary()) -> operation_return().
+-spec do_collection_action(cb_context:context(), http_method(), ne_binary(), ne_binary()) ->
+                                  operation_return().
+collection_action(Context, Number) ->
+    do_collection_action(Context, cb_context:req_verb(Context), Number).
+collection_action(Context, Number, Action) ->
+    do_collection_action(Context, cb_context:req_verb(Context), Number, Action).
+
+do_collection_action(Context, ?HTTP_PUT, Number) ->
+    wh_number_manager:create_number(Number
+                                    ,cb_context:account_id(Context)
+                                    ,cb_context:auth_account_id(Context)
+                                    ,wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))
+                                   );
+do_collection_action(Context, ?HTTP_POST, Number) ->
+    case wh_number_manager:get_public_fields(Number, cb_context:auth_account_id(Context)) of
         {'ok', JObj} ->
-            Doc1 = wh_json:delete_key(<<"numbers">>, Doc),
-            wh_number_manager:set_public_fields(Number, wh_json:merge_jobjs(JObj, Doc1), AuthBy);
+            Doc1 = wh_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
+            wh_number_manager:set_public_fields(Number
+                                                ,wh_json:merge_jobjs(JObj, Doc1)
+                                                ,cb_context:auth_account_id(Context)
+                                               );
         {State, Error} ->
             lager:error("error while fetching number ~p : ~p", [Number, Error]),
             {State, Error}
     end;
-collection_action(#cb_context{auth_account_id=AuthBy
-                              ,req_verb = ?HTTP_DELETE
-                             }, Number) ->
-    wh_number_manager:release_number(Number, AuthBy).
+do_collection_action(Context, ?HTTP_DELETE, Number) ->
+    wh_number_manager:release_number(Number, cb_context:auth_account_id(Context)).
 
-collection_action(#cb_context{account_id=AssignTo
-                              ,auth_account_id=AuthBy
-                              ,doc=JObj
-                              ,req_verb = ?HTTP_PUT
-                             }, Number, ?ACTIVATE) ->
-    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
+do_collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
+    case wh_number_manager:assign_number_to_account(Number
+                                                    ,cb_context:account_id(Context)
+                                                    ,cb_context:auth_account_id(Context)
+                                                    ,cb_context:doc(Context)
+                                                   )
+    of
         {'ok', RJObj} ->
             {'ok', wh_json:delete_key(<<"numbers">>, RJObj)};
         Else -> Else
@@ -679,7 +728,11 @@ collection_action(#cb_context{account_id=AssignTo
 has_tokens(Context) -> has_tokens(Context, 1).
 has_tokens(Context, Count) ->
     Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
-    case kz_buckets:consume_tokens(Name, Count) of
+    case kz_buckets:consume_tokens(?APP_NAME
+                                   ,Name
+                                   ,cb_modules_util:token_cost(Context, Count)
+                                  )
+    of
         'true' -> 'true';
         'false' ->
             lager:warning("rate limiting activation limit reached, rejecting"),

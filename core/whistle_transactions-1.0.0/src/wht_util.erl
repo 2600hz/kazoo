@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz, INC
+%%% @copyright (C) 2013-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -10,12 +10,15 @@
 
 -export([reasons/0
          ,reasons/1
-         ,reasons/2]).
+         ,reasons/2
+        ]).
 -export([dollars_to_units/1]).
 -export([units_to_dollars/1]).
+-export([pretty_print_dollars/1]).
 -export([base_call_cost/3]).
 -export([current_balance/1
          ,previous_balance/3
+         ,current_account_dollars/1
         ]).
 -export([get_balance_from_account/2]).
 -export([call_cost/1]).
@@ -23,33 +26,36 @@
 -export([calculate_cost/5]).
 -export([default_reason/0]).
 -export([is_valid_reason/1]).
--export([reason_code/1]).
+-export([reason_code/1, code_reason/1]).
 -export([collapse_call_transactions/1]).
 -export([modb/1]).
 -export([rollup/1
          ,rollup/2
         ]).
 
-
--include("whistle_transactions.hrl").
+-include("../include/whistle_transactions.hrl").
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).
 
--define(REASONS, [{<<"per_minute_call">>, 1001}
-                  ,{<<"sub_account_per_minute_call">>, 1002}
-                  ,{<<"feature_activation">>, 2001}
-                  ,{<<"sub_account_feature_activation">>, 2002}
-                  ,{<<"number_activation">>, 2003}
-                  ,{<<"sub_account_number_activation">>, 2004}
-                  ,{<<"manual_addition">>, 3001}
-                  ,{<<"sub_account_manual_addition">>, 3002}
-                  ,{<<"auto_addition">>, 3003}
-                  ,{<<"sub_account_auto_addition">>, 3004}
-                  ,{<<"admin_discretion">>, 3005}
-                  ,{<<"topup">>, 3006}
-                  ,{<<"database_rollup">>, 4000}
-                  ,{<<"unknown">>, 9999}
+-define(REASONS, [{<<"per_minute_call">>, ?CODE_PER_MINUTE_CALL}
+                  ,{<<"sub_account_per_minute_call">>, ?CODE_SUB_ACCOUNT_PER_MINUTE_CALL}
+                  ,{<<"feature_activation">>, ?CODE_FEATURE_ACTIVATION}
+                  ,{<<"sub_account_feature_activation">>, ?CODE_SUB_ACCOUNT_FEATURE_ACTIVATION}
+                  ,{<<"number_activation">>, ?CODE_NUMBER_ACTIVATION}
+                  ,{<<"sub_account_number_activation">>, ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION}
+                  ,{<<"manual_addition">>, ?CODE_MANUAL_ADDITION}
+                  ,{<<"sub_account_manual_addition">>, ?CODE_SUB_ACCOUNT_MANUAL_ADDITION}
+                  ,{<<"auto_addition">>, ?CODE_AUTO_ADDITION}
+                  ,{<<"sub_account_auto_addition">>, ?CODE_SUB_ACCOUNT_AUTO_ADDITION}
+                  ,{<<"admin_discretion">>, ?CODE_ADMIN_DISCRETION}
+                  ,{<<"topup">>, ?CODE_TOPUP}
+                  ,{<<"database_rollup">>, ?CODE_DATABASE_ROLLUP}
+                  ,{<<"recurring">>, ?CODE_RECURRING}
+                  ,{<<"monthly_recurring">>, ?CODE_MONTHLY_RECURRING}
+                  ,{<<"recurring_prorate">>, ?CODE_RECURRING_PRORATE}
+                  ,{<<"mobile">>, ?CODE_MOBILE}
+                  ,{<<"unknown">>, ?CODE_UNKNOWN}
                  ]).
 
 reasons() ->
@@ -71,7 +77,7 @@ reasons(Min, Max, [_ | T], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec dollars_to_units(float() | integer()) -> integer().
+-spec dollars_to_units(text() | number()) -> integer().
 dollars_to_units(Dollars) when is_number(Dollars) ->
     round(Dollars * ?DOLLAR_TO_UNIT);
 dollars_to_units(Dollars) ->
@@ -83,11 +89,17 @@ dollars_to_units(Dollars) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec units_to_dollars(float() | number()) -> float().
+-spec units_to_dollars(number()) -> float().
 units_to_dollars(Units) when is_number(Units) ->
     trunc(Units) / ?DOLLAR_TO_UNIT;
 units_to_dollars(Units) ->
     units_to_dollars(wh_util:to_integer(Units)).
+
+%% @public
+-spec pretty_print_dollars(float()) -> ne_binary().
+pretty_print_dollars(Amount) ->
+    wh_util:to_binary(io_lib:format("$~.2f", [Amount])).
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,7 +158,7 @@ get_balance_from_previous(Account, ViewOptions, Retry) when Retry >= 0 ->
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
     get_balance(Account, VOptions);
 get_balance_from_previous(Account, ViewOptions, _) ->
-    lager:error("3 attempt to find balance in previous modb getting from account", []),
+    lager:warning("3 attempt to find balance in previous modb getting from account", []),
     get_balance_from_account(Account, ViewOptions).
 
 -spec maybe_rollup(ne_binary(), wh_proplist(), integer()) -> integer().
@@ -187,30 +199,32 @@ maybe_rollup_previous_month(Account, Balance) ->
     end.
 
 -spec get_rollup_from_previous(ne_binary()) ->
-                                      {'ok', integer()} | {'error', _}.
+                                      {'ok', integer()} |
+                                      {'error', any()}.
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
-    ViewOptions = [{'year', wh_util:to_binary(Year)}
-                ,{'month', wh_util:pad_month(Month)}
-               ],
-    case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ViewOptions) of
+    ModbOptions = [{'year', wh_util:to_binary(Year)}
+                   ,{'month', wh_util:pad_month(Month)}
+                  ],
+    case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ModbOptions) of
         {'ok', _} ->
             %% NOTE: the previous modb had a rollup, use its balance as
             %%  the value for the current rollup.
-            get_rollup_balance(Account, ViewOptions);
+            get_rollup_balance(Account, ModbOptions);
         {'error', 'not_found'} ->
             %% NOTE: the previous modb did not have a rollup, this must be
             %%   the first rollup of this series, move the balance from the
             %%   account
-            {'ok', get_balance_from_account(Account, ViewOptions)};
+            {'ok', get_balance_from_account(Account, ModbOptions)};
         {'error', _R}=E ->
             lager:warning("unable to get previous monthly_rollup: ~p", [_R]),
             E
     end.
 
 -spec get_rollup_balance(ne_binary(), wh_proplist()) ->
-                                {'ok', integer()} | {'error', _}.
+                                {'ok', integer()} |
+                                {'error', any()}.
 get_rollup_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     case kazoo_modb:get_results(Account, View, ViewOptions) of
@@ -219,9 +233,21 @@ get_rollup_balance(Account, ViewOptions) ->
             {'ok', wh_json:get_integer_value(<<"value">>, ViewRes, 0)};
         {'error', _R}=E ->
             lager:warning("unable to get rollup balance for ~s: ~p"
-                          ,[Account, _R]),
+                          ,[Account, _R]
+                         ),
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec current_account_dollars(ne_binary()) -> float().
+current_account_dollars(Account) ->
+    Units = ?MODULE:current_balance(Account),
+    ?MODULE:units_to_dollars(Units).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -349,8 +375,7 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec default_reason() -> ne_binary().
-default_reason() ->
-    <<"unknown">>.
+default_reason() -> <<"unknown">>.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -368,10 +393,25 @@ is_valid_reason(Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reason_code(ne_binary()) -> integer().
+-spec reason_code(ne_binary()) -> pos_integer().
 reason_code(Reason) ->
-    {_, Code} = lists:keyfind(Reason, 1, ?REASONS),
-    Code.
+    case lists:keyfind(Reason, 1, ?REASONS) of
+        'false' -> ?CODE_UNKNOWN;
+        {_, Code} -> Code
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec code_reason(pos_integer()) -> api_binary().
+code_reason(Code) ->
+    case lists:keyfind(Code, 2, ?REASONS) of
+        'false' -> <<"unknown">>;
+        {Reason, _} -> Reason
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -394,14 +434,14 @@ collapse_call_transactions(Transactions) ->
 %%--------------------------------------------------------------------
 -spec modb(ne_binary()) -> 'ok'.
 modb(AccountMODb) ->
-    Routines = [fun(MoDb) -> kazoo_modb_util:prev_year_month(MoDb) end
+    Routines = [fun kazoo_modb_util:prev_year_month/1
                 ,fun({Year, Month}) -> previous_balance(AccountMODb, Year, Month) end
                 ,fun(Balance) -> rollup(AccountMODb, Balance) end
                ],
     lists:foldl(fun(F, A) -> F(A) end, AccountMODb, Routines).
 
 -spec rollup(wh_transaction:transaction()) -> 'ok'.
--spec rollup(ne_binary(), integer()) -> wh_transaction:transaction().
+-spec rollup(ne_binary(), integer()) -> 'ok'.
 rollup(Transaction) ->
     Transaction1 = wh_transaction:set_reason(<<"database_rollup">>, Transaction),
     Transaction2 = wh_transaction:set_description(<<"monthly rollup">>, Transaction1),
@@ -414,13 +454,12 @@ rollup(Transaction) ->
             lager:debug("monthly rollup transaction success", [])
     end.
 
-rollup(AccountMODb, Balance) when Balance >= 0 ->
+rollup(<<_/binary>> = AccountMODb, Balance) when Balance >= 0 ->
     AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
     rollup(wh_transaction:credit(AccountId, Balance));
-rollup(AccountMODb, Balance) ->
+rollup(<<_/binary>> = AccountMODb, Balance) ->
     AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
     rollup(wh_transaction:debit(AccountId, -1*Balance)).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -433,7 +472,7 @@ rollup(AccountMODb, Balance) ->
 collapse_call_transactions([], Calls, Transactions) ->
     clean_transactions(Transactions ++ dict:to_list(Calls));
 collapse_call_transactions([JObj|JObjs], Calls, Transactions) ->
-    case wh_json:get_integer_value(<<"code">>, JObj) of
+    case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
         Code when Code >= 1000 andalso Code < 2000 ->
             C = collapse_call_transaction(JObj, Calls),
             collapse_call_transactions(JObjs, C, Transactions);

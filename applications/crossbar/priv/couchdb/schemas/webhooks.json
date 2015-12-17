@@ -1,64 +1,64 @@
 {
-  "_id": "webhooks",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Webhook",
-  "description": "Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.",
-  "properties": {
-    "name": {
-      "type": "string",
-      "required": true,
-      "name": "Name",
-      "description": "A friendly name for the webhook"
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "webhooks",
+    "description": "Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.",
+    "name": "Webhook",
+    "properties": {
+        "custom_data": {
+            "additionalProperties": {
+                "required": false,
+                "type": "string"
+            },
+            "description": "These properties will be added to the event and will overwrite existing values.",
+            "name": "Custom Data",
+            "required": false,
+            "type": "object"
+        },
+        "enabled": {
+            "default": true,
+            "description": "Is the webhook enabled and running",
+            "name": "Enabled",
+            "required": false,
+            "type": "boolean"
+        },
+        "hook": {
+            "description": "The trigger event for a request being made to 'callback_uri'.",
+            "required": true,
+            "type": "string"
+        },
+        "http_verb": {
+            "default": "post",
+            "description": "What HTTP method to use when contacting the server",
+            "enum": [
+                "get",
+                "post"
+            ],
+            "name": "Method",
+            "type": "string"
+        },
+        "name": {
+            "description": "A friendly name for the webhook",
+            "name": "Name",
+            "required": true,
+            "type": "string"
+        },
+        "retries": {
+            "default": 2,
+            "description": "Retry the request this many times (if it fails)",
+            "maximum": 4,
+            "minimum": 0,
+            "name": "Retries",
+            "required": false,
+            "type": "integer"
+        },
+        "uri": {
+            "description": "The 3rd party URI to call out to on event",
+            "format": "uri",
+            "name": "URI",
+            "required": true,
+            "type": "string"
+        }
     },
-    "uri": {
-      "type": "string",
-      "required": true,
-      "name": "URI",
-      "description": "The 3rd party URI to call out to on event",
-      "format": "uri"
-    },
-    "http_verb": {
-      "type": "string",
-      "required": true,
-      "name": "Method",
-      "description": "What HTTP method to use when contacting the server",
-      "enum": [
-        "get",
-        "post"
-      ],
-      "default": "post"
-    },
-    "hook": {
-      "type": "string",
-      "required": true,
-      "description": "The trigger event for a request being made to 'callback_uri'.",
-      "enum": [
-        "channel_create",
-        "channel_answer",
-        "channel_destroy",
-        "all"
-      ]
-    },
-    "retries": {
-      "type": "integer",
-      "required": false,
-      "name": "Retries",
-      "description": "Retry the request this many times (if it fails)",
-      "minimum": 0,
-      "maximum": 4,
-      "default": 2
-    },
-    "custom_data": {
-      "type": "object",
-      "required": false,
-      "name": "Custom Data",
-      "description": "These properties will be added to the event and will overwrite existing values.",
-      "additionalProperties": {
-        "type": "string",
-        "required": false
-      }
-    }
-  }
+    "required": true,
+    "type": "object"
 }

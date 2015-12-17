@@ -21,31 +21,34 @@
 
 -include("omnipresence.hrl").
 
--record(state, {subs_pid :: pid()
+-record(state, {subs_pid = 'undefined' :: pid() | 'undefined'
                 ,subs_ref :: reference()
+                ,queue = 'undefined' :: api_binary()
+                ,consuming = 'false' :: boolean()
+                ,sync = 'false' :: boolean()
                }).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   ,{'presence', [{'restrict_to', ['search_req'
-                                                   ,'subscribe'
-                                                   ,'flush'
-                                                  ]}]}
+                   ,{'presence', [{'restrict_to', ['subscribe']}]}
+                   ,{'omnipresence', [{'restrict_to', ['notify']}]}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_search_req'}
-                       ,[{<<"presence">>, <<"search_req">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_subscribe'}
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]
                       }
-                     ,{{'omnip_subscriptions', 'handle_flush'}
-                       ,[{<<"presence">>, <<"flush">>}]
+                     ,{{'omnip_subscriptions', 'handle_sync'}
+                       ,[{<<"presence">>, <<"sync">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_kamailio_notify'}
+                       ,[{<<"presence">>, <<"notify">>}]
                       }
                     ]).
 
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
+
+-define(SUBSCRIPTIONS_SYNC_ENABLED, whapps_config:get_is_true(?CONFIG_CAT, <<"subscriptions_sync_enabled">>, 'false')).
 
 %%%===================================================================
 %%% API
@@ -82,7 +85,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
@@ -122,16 +125,33 @@ handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
             {'noreply', State#state{subs_pid='undefined'}};
         P when is_pid(P) ->
             lager:debug("new subs pid: ~p", [P]),
+            gen_listener:cast(self(), 'send_sync'),
             {'noreply', State#state{subs_pid=P
                                     ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
-handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
+handle_cast({'gen_listener',{'created_queue',Queue}}, State) ->
+    gen_listener:cast(self(), 'send_sync'),
+    {'noreply', State#state{queue=Queue}};
+handle_cast({'gen_listener',{'is_consuming',IsConsuming}}, State) ->
+    gen_listener:cast(self(), 'send_sync'),
+    {'noreply', State#state{consuming=IsConsuming}};
+handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming=IsConsuming} = State)
+  when Pid =:= 'undefined'
+  orelse Queue =:= 'undefined'
+  orelse IsConsuming =:= 'false'  ->
     {'noreply', State};
-handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+handle_cast('send_sync', #state{subs_pid='undefined'}=State) ->
     {'noreply', State};
+handle_cast('send_sync', #state{queue='undefined'}=State) ->
+    {'noreply', State};
+handle_cast('send_sync', #state{consuming='false'}=State) ->
+    {'noreply', State};
+handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming='true', sync='false'} = State) ->
+    maybe_sync_subscriptions(?SUBSCRIPTIONS_SYNC_ENABLED, Queue),
+    erlang:send_after(2 * ?MILLISECONDS_IN_SECOND, Pid, 'check_sync'),
+    {'noreply', State#state{sync='true'}};
 handle_cast(_Msg, State) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -194,3 +214,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec maybe_sync_subscriptions(boolean(), binary()) -> '0k'.
+maybe_sync_subscriptions('false', _) -> 'ok';
+maybe_sync_subscriptions('true', Queue) ->
+    Payload = wh_json:from_list(
+                [{<<"Action">>, <<"Request">>}
+                 | wh_api:default_headers(Queue, ?APP_NAME, ?APP_VERSION)
+                ]),
+    wapi_presence:publish_sync(Payload).

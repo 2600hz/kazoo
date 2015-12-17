@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -20,12 +20,12 @@
 -export([init/1]).
 
 -define(CHILD(Name, Type), fun(N, 'worker'=T) ->
-                                   {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]};
+                                   {N, {N, 'start_link', []}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, T, [N]};
                               (N, 'supervisor'=T) ->
                                    {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]}
                            end(Name, Type)).
 -define(NODE(N, As), {N, {'ecallmgr_fs_node_sup', 'start_link', As}
-                      ,'transient', 50000, 'supervisor', ['ecallmgr_fs_node_sup']
+                      ,'transient', 50 * ?MILLISECONDS_IN_SECOND, 'supervisor', ['ecallmgr_fs_node_sup']
                      }).
 -define(CHILDREN, [{'ecallmgr_fs_pinger_sup', 'supervisor'}
                    ,{'ecallmgr_fs_nodes', 'worker'}
@@ -47,9 +47,9 @@
 start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec add_node(atom(), wh_proplist()) ->
-                      {'error', term()} | 
-                      {'ok','undefined' | pid()} | 
-                      {'ok','undefined' | pid(), term()}.
+                      {'error', any()} |
+                      {'ok', api_pid()} |
+                      {'ok', api_pid(), any()}.
 add_node(Node, Options) -> supervisor:start_child(?SERVER, ?NODE(Node, [Node, Options])).
 
 find_node(Node) -> find_node(supervisor:which_children(?MODULE), Node).

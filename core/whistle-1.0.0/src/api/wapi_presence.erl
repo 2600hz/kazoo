@@ -14,11 +14,14 @@
 -export([subscribe/1, subscribe_v/1]).
 -export([update/1, update_v/1]).
 -export([probe/1, probe_v/1]).
--export([mwi_update/1, mwi_update_v/1]).
--export([mwi_query/1, mwi_query_v/1]).
+-export([mwi_update/1, mwi_update_v/1
+         ,mwi_query/1, mwi_query_v/1
+         ,sync/1, sync_v/1
+        ]).
 -export([register_overwrite/1, register_overwrite_v/1]).
 -export([flush/1, flush_v/1]).
 -export([reset/1, reset_v/1]).
+
 -export([publish_search_req/1
          ,publish_search_resp/2
          ,publish_subscribe/1, publish_subscribe/2
@@ -29,13 +32,17 @@
          ,publish_register_overwrite/1, publish_register_overwrite/2
          ,publish_flush/1, publish_flush/2
          ,publish_reset/1
+         ,publish_sync/1, publish_sync/2
         ]).
+
 -export([subscribe_routing_key/1]).
 -export([presence_states/0]).
 -export([is_valid_state/1]).
+
 -export([bind_q/2
          ,unbind_q/2
         ]).
+
 -export([declare_exchanges/0]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -54,8 +61,8 @@
 -define(SEARCH_REQ_TYPES, []).
 
 %% Search response for active subscriptions
--define(SEARCH_RESP_HEADERS, [<<"Subscriptions">>]).
--define(OPTIONAL_SEARCH_RESP_HEADERS, []).
+-define(SEARCH_RESP_HEADERS, []).
+-define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Subscriptions">>]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"presence">>}
                              ,{<<"Event-Name">>, <<"search_resp">>}
                             ]).
@@ -78,6 +85,7 @@
 -define(OPTIONAL_UPDATE_HEADERS, [<<"To">>, <<"To-Tag">>
                                   ,<<"From">>, <<"From-Tag">>
                                   ,<<"Call-Direction">>, <<"Call-ID">>
+                                  ,<<"Target-Call-ID">>, <<"Switch-URI">>
                                   ,<<"Event-Package">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
@@ -100,19 +108,19 @@
 %% MWI Update
 -define(MWI_REQ_HEADERS, [<<"To">>
                           ,<<"Messages-New">>
-                          ,<<"Messages-Waiting">>
+                          ,<<"Messages-Saved">>
                          ]).
 -define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>
-                                   ,<<"Messages-Urgent-Waiting">>
+                                   ,<<"Messages-Urgent-Saved">>
                                    ,<<"Call-ID">>
                                   ]).
 -define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
                          ,{<<"Event-Name">>, <<"mwi_update">>}
                         ]).
--define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-                        ,{<<"Messages-Waiting">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-                        ,{<<"Messages-Urgent">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-                        ,{<<"Messages-Urgent-Waiting">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
+-define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun is_integer/1}
+                        ,{<<"Messages-Saved">>, fun is_integer/1}
+                        ,{<<"Messages-Urgent">>, fun is_integer/1}
+                        ,{<<"Messages-Urgent-Saved">>, fun is_integer/1}
                        ]).
 
 %% MWI Query
@@ -148,6 +156,15 @@
                        ,{<<"Event-Name">>, <<"reset">>}
                       ]).
 -define(RESET_TYPES, []).
+
+%% Sync presence
+-define(SYNC_HEADERS, [<<"Action">>]).
+-define(OPTIONAL_SYNC_HEADERS, [<<"Event-Package">>]).
+-define(SYNC_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                      ,{<<"Event-Name">>, <<"sync">>}
+                      ,{<<"Action">>, [<<"Request">>, <<"Start">>, <<"End">>]}
+                      ]).
+-define(SYNC_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -459,16 +476,18 @@ publish_reset(Req, ContentType) ->
 -spec reset_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 reset_routing_key(Req) when is_list(Req) ->
     reset_routing_key(props:get_value(<<"Realm">>, Req)
-                      ,props:get_value(<<"Username">>, Req));
+                      ,props:get_value(<<"Username">>, Req)
+                     );
 reset_routing_key(Req) ->
     reset_routing_key(wh_json:get_value(<<"Realm">>, Req)
-                      ,wh_json:get_value(<<"Username">>, Req)).
+                      ,wh_json:get_value(<<"Username">>, Req)
+                     ).
 
 reset_routing_key(Realm, Username) when is_binary(Realm) ->
     list_to_binary([<<"presence.reset.">>
-                      ,amqp_util:encode(Realm)
-                      ,"."
-                      ,amqp_util:encode(Username)
+                    ,amqp_util:encode(Realm)
+                    ,"."
+                    ,amqp_util:encode(Username)
                    ]).
 
 %%--------------------------------------------------------------------
@@ -500,6 +519,30 @@ publish_flush(Req, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec sync(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+sync(Prop) when is_list(Prop) ->
+    case sync_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SYNC_HEADERS, ?OPTIONAL_SYNC_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sync query"}
+    end;
+sync(JObj) -> sync(wh_json:to_proplist(JObj)).
+
+-spec sync_v(api_terms()) -> boolean().
+sync_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SYNC_HEADERS, ?SYNC_VALUES, ?SYNC_TYPES);
+sync_v(JObj) -> sync_v(wh_json:to_proplist(JObj)).
+
+publish_sync(JObj) ->
+    publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_sync(Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SYNC_VALUES, fun ?MODULE:sync/1),
+    amqp_util:presence_publish(<<"sync">>, Payload, ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     RestrictTo = props:get_value('restrict_to', Props),
@@ -513,6 +556,9 @@ bind_q(Queue, ['search_req'|Restrict], Props) ->
     RoutingKey = search_req_routing_key(Realm),
     amqp_util:bind_q_to_presence(Queue, RoutingKey),
     bind_q(Queue, Restrict, Props);
+bind_q(Queue, ['sync'|Restrict], Props) ->
+    amqp_util:bind_q_to_presence(Queue, <<"sync">>),
+    bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['subscribe'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     RoutingKey = subscribe_routing_key(User),
@@ -525,7 +571,7 @@ bind_q(Queue, ['update'|Restrict], Props) ->
     amqp_util:bind_q_to_presence(Queue, RoutingKey),
     bind_q(Queue, Restrict, Props);
 bind_q(Queue, ['probe'|Restrict], Props) ->
-    ProbeType = props:get_value('probe-type', Props, <<"*">>),
+    ProbeType = props:get_value('probe_type', Props, <<"*">>),
     RoutingKey = probe_routing_key(ProbeType),
     amqp_util:bind_q_to_presence(Queue, RoutingKey),
     bind_q(Queue, Restrict, Props);
@@ -570,6 +616,9 @@ unbind_q(Queue, ['search_req'|Restrict], Props) ->
     RoutingKey = search_req_routing_key(Realm),
     amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['sync'|Restrict], Props) ->
+    amqp_util:unbind_q_from_presence(Queue, <<"sync">>),
+    unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['subscribe'|Restrict], Props) ->
     User = props:get_value('user', Props, <<"*">>),
     RoutingKey = subscribe_routing_key(User),
@@ -582,7 +631,7 @@ unbind_q(Queue, ['update'|Restrict], Props) ->
     amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);
 unbind_q(Queue, ['probe'|Restrict], Props) ->
-    ProbeType = props:get_value('probe-type', Props, <<"*">>),
+    ProbeType = props:get_value('probe_type', Props, <<"*">>),
     RoutingKey = probe_routing_key(ProbeType),
     amqp_util:unbind_q_from_presence(Queue, RoutingKey),
     unbind_q(Queue, Restrict, Props);

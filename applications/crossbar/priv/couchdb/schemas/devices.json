@@ -1,333 +1,183 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "devices",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": false,
-    "name": "Device",
     "description": "A device be it a SIP phone or landline number",
+    "name": "Device",
     "properties": {
-        "name": {
-            "type": "string",
-            "required": true,
-            "name": "Name",
-            "description": "A friendly name for the device",
-            "minLength": 1,
-            "maxLength": 128
-        },
-        "outbound_flags": {
-            "type": "array",
-            "required": false,
-            "name": "Outbound Flags",
-            "description": "List of flags (features) this device requires when making outbound calls",
-            "items": {
-                "type": "string",
-                "required": false
-            },
-            "default": []
-        },
-        "suppress_unregister_notifications": {
-            "type": "boolean",
-            "required": false,
-            "name": "Do Not Send Unregister Emails?",
-            "description": "When true disables deregister notifications",
-            "default": false
-        },
-        "owner_id": {
-            "type": "string",
-            "required": false,
-            "name": "Owner ID",
-            "description": "The ID of the user object that 'owns' the device",
-            "minLength": 32,
-            "maxLength": 32
-        },
-        "enabled": {
-            "type": "boolean",
-            "required": false,
-            "name": "Enabled",
-            "description": "Determines if the device is currently enabled",
-            "default": true
-        },
-        "register_overwrite_notify": {
-            "type": "boolean",
-            "required": false,
-            "name": "Send NOTIFY if Register Overwritten?",
-            "description": "When true enables overwrite notifications",
-            "default": false
-        },
-        "device_type": {
-            "type": "string",
-            "required": false,
-            "name": "Device Type",
-            "description": "Arbitrary device type used by the UI and billing system"
-        },
-        "sip": {
-            "type": "object",
-            "required": false,
-            "name": "SIP Parameters",
+        "call_forward": {
+            "description": "The device call forward parameters",
+            "name": "Call Forwarding Parameters",
             "properties": {
-                "method": {
-                    "type": "string",
+                "direct_calls_only": {
+                    "default": false,
+                    "description": "Determines if the calls that are not directly sent to the device should be forwarded",
+                    "name": "Direct Calls Only?",
                     "required": false,
-                    "name": "Authentication Method",
-                    "description": "Method of authentication",
-                    "enum": [
-                        "password",
-                        "ip"
-                    ],
-                    "default": "password"
+                    "type": "boolean"
                 },
-                "invite_format": {
-                    "type": "string",
+                "enabled": {
+                    "default": false,
+                    "description": "Determines if the call forwarding should be used",
+                    "name": "Is Enabled?",
                     "required": false,
-                    "name": "Invite Format",
-                    "description": "The SIP request URI invite format",
-                    "enum": [
-                        "username",
-                        "npan",
-                        "1npan",
-                        "e164",
-                        "route"
-                    ],
-                    "default": "username"
+                    "type": "boolean"
                 },
-                "username": {
-                    "type": "string",
+                "failover": {
+                    "default": false,
+                    "description": "Enable the call-forwarding parameters if the device is offline",
+                    "name": "Use if Device Offline?",
                     "required": false,
-                    "name": "Username",
-                    "description": "SIP authentication username",
-                    "minLength": 2,
-                    "maxLength": 32
-                },
-                "password": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Password",
-                    "description": "SIP authentication password",
-                    "minLength": 5,
-                    "maxLength": 32
-                },
-                "ip": {
-                    "type": "string",
-                    "required": false,
-                    "name": "IP Address",
-                    "description": "IP address for this device"
-                },
-                "static_route": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Static SIP URI",
-                    "description": "Sends all inbound calls to this string (instead of dialed number or username)"
-                },
-                "realm": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Realm",
-                    "description": "The realm this device should use, overriding the account realm. Should rarely be necessary.",
-                    "format": "uri"
-                },
-                "route": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Route SIP URI",
-                    "description": "The SIP URL used if the invite format is 'route'"
-                },
-                "number": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Static Number",
-                    "description": "The number used if the invite format is 1npan, npan, or e164 (if not set the dialed number is used)"
-                },
-                "ignore_completed_elsewhere": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Show Calls Answered Elsewhere as Missed?",
-                    "description": "When set to false the phone should not consider ring group calls answered elsewhere as missed"
-                },
-                "custom_sip_headers": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Custom SIP Headers",
-                    "description": "A property list of SIP headers beging with the prefix 'X-'",
-                    "additionalProperties": {
-                        "type": "string",
-                        "required": false
-                    }
-                },
-                "registration_expiration": {
-                    "type": "integer",
-                    "required": false,
-                    "name": "Minimum Registration (seconds)",
-                    "description": "The time, in seconds, to force registrations to expire",
-                    "default": 300
-                }
-            },
-            "default": {}
-        },
-        "caller_id": {
-            "type": "object",
-            "required": false,
-            "description": "The device caller ID parameters",
-            "properties": {
-                "internal": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Internal Caller-ID",
-                    "description": "The caller ID used when dialing internal extensions if not a property of the device owner",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Name",
-                            "description": "The caller id name used internally",
-                            "maxLength": 30
-                        },
-                        "number": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Number",
-                            "description": "The caller id name used internally",
-                            "maxLength": 15
-                        }
-                    }
-                },
-                "external": {
-                    "type": "object",
-                    "required": false,
-                    "name": "External Caller-ID",
-                    "description": "The caller ID used when dialing external numbers if not a property of the device owner",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Name",
-                            "description": "The caller id name used when dialing outbound",
-                            "maxLength": 30
-                        },
-                        "number": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Number",
-                            "description": "The caller id name used when dialing outbound",
-                            "maxLength": 15
-                        }
-                    }
-                },
-                "emergency": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Default Emergency Caller-ID",
-                    "description": "The caller ID used when a resource is flagged as 'emergency'",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Name",
-                            "description": "The caller id name used when dialing an emergency resource",
-                            "maxLength": 30
-                        },
-                        "number": {
-                            "type": "string",
-                            "required": false,
-                            "name": "Number",
-                            "description": "The caller id name used when dialing an emergency resource",
-                            "maxLength": 15
-                        }
-                    }
-                }
-            },
-            "default": {}
-        },
-        "music_on_hold": {
-            "type": "object",
-            "required": false,
-            "name": "Music on Hold",
-            "description": "The music on hold parameters used if not a property of the device owner",
-            "properties": {
-                "media_id": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Media ID",
-                    "description": "The ID of a media object that should be used as the music on hold",
-                    "maxLength": 128
-                }
-            },
-            "default": {}
-        },
-        "media": {
-            "type": "object",
-            "required": false,
-            "name": "Media Parameters",
-            "description": "The device media parameters",
-            "properties": {
-                "encryption": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Encryption Parameters",
-                    "properties": {
-                        "enforce_security": {
-                            "type": "boolean",
-                            "required": false,
-                            "name": "Is Encryption Enabled?",
-                            "default": false
-                        },
-                        "methods": {
-                            "type": "array",
-                            "required": false,
-                            "name": "Supported Encryption Types",
-                            "items": {
-                                "type": "string",
-                                "required": false,
-                                "enum": [
-                                    "zrtp",
-                                    "srtp"
-                                ]
-                            },
-                            "default": []
-                        }
-                    },
-                    "default": {}
-                },
-                "bypass_media": {
-                    "type": [
-                        "boolean",
-                        "string"
-                    ],
-                    "required": false,
-                    "name": "Is Media Direct?",
-                    "description": "Default bypass media mode",
-                    "warning": "The string type is deprecated, please use this as a boolean",
-                    "enum": [
-                        true,
-                        false,
-                        "auto"
-                    ]
+                    "type": "boolean"
                 },
                 "ignore_early_media": {
-                    "type": "boolean",
-                    "required": false,
+                    "default": true,
+                    "description": "The option to determine if early media from the call forwarded number should ignored",
                     "name": "Ignore Early Media?",
-                    "description": "The option to determine if early media from the device should always be ignored"
-                },
-                "progress_timeout": {
-                    "type": "integer",
                     "required": false,
-                    "name": "Progress Timeout (seconds)",
-                    "description": "The progress timeout to apply to the device"
+                    "type": "boolean"
                 },
+                "keep_caller_id": {
+                    "default": true,
+                    "description": "Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used",
+                    "name": "Keep Original Caller ID?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "number": {
+                    "description": "The number to forward calls to",
+                    "maxLength": 15,
+                    "name": "Number",
+                    "required": false,
+                    "type": "string"
+                },
+                "require_keypress": {
+                    "default": true,
+                    "description": "Determines if the callee is prompted to press 1 to accept the call",
+                    "name": "Require Keypress?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "substitute": {
+                    "default": true,
+                    "description": "Determines if the call forwarding replaces the device",
+                    "name": "Substitute Device?",
+                    "required": false,
+                    "type": "boolean"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "call_restriction": {
+            "additionalProperties": {
+                "properties": {
+                    "action": {
+                        "description": "If set to deny all calls of this type will be rejected.  If set to inherit the user/device rules apply",
+                        "enum": [
+                            "inherit",
+                            "deny"
+                        ],
+                        "name": "Action",
+                        "required": false,
+                        "type": "string"
+                    }
+                },
+                "required": false,
+                "type": "object"
+            },
+            "default": {},
+            "description": "Device level call restrictions for each available number classification",
+            "name": "Call Restrictions",
+            "required": false,
+            "type": "object"
+        },
+        "call_waiting": {
+            "$ref": "call_waiting"
+        },
+        "caller_id": {
+            "$ref": "caller_id",
+            "default": {},
+            "description": "The device caller ID parameters",
+            "required": false,
+            "type": "object"
+        },
+        "contact_list": {
+            "default": {},
+            "name": "Contect List Parameters",
+            "properties": {
+                "exclude": {
+                    "description": "If set to true the device is excluded from the contact list",
+                    "name": "Is Excluded?",
+                    "required": false,
+                    "type": "boolean"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "device_type": {
+            "description": "Arbitrary device type used by the UI and billing system",
+            "name": "Device Type",
+            "required": false,
+            "type": "string"
+        },
+        "dial_plan": {
+            "$ref": "dialplans",
+            "default": {},
+            "description": "A list of rules used to modify dialed numbers",
+            "name": "Dialplan",
+            "required": false,
+            "type": "object"
+        },
+        "do_not_disturb": {
+            "name": "DND Parameters",
+            "properties": {
+                "enabled": {
+                    "description": "Is do-not-disturb enabled for this device?",
+                    "name": "Enabled?",
+                    "required": false,
+                    "type": "boolean"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "enabled": {
+            "default": true,
+            "description": "Determines if the device is currently enabled",
+            "name": "Enabled",
+            "required": false,
+            "type": "boolean"
+        },
+        "exclude_from_queues": {
+            "default": false,
+            "description": "Do not ring this device when calling user/agent in queue",
+            "name": "Exclude from Queues",
+            "required": false,
+            "type": "boolean"
+        },
+        "language": {
+            "description": "The language for the device",
+            "name": "Language",
+            "required": false,
+            "type": "string"
+        },
+        "media": {
+            "default": {},
+            "description": "The device media parameters",
+            "name": "Media Parameters",
+            "properties": {
                 "audio": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Audio Options",
+                    "default": {},
                     "description": "The audio media parameters",
+                    "name": "Audio Options",
                     "properties": {
                         "codecs": {
-                            "type": "array",
-                            "required": false,
-                            "uniqueItems": true,
-                            "name": "Codecs",
+                            "default": [
+                                "PCMU"
+                            ],
                             "description": "A list of audio codecs the device supports",
                             "items": {
-                                "type": "string",
                                 "enum": [
                                     "OPUS",
                                     "CELT@32000h",
@@ -342,289 +192,357 @@
                                     "GSM",
                                     "CELT@48000h",
                                     "CELT@64000h",
-
                                     "G722_16",
                                     "G722_32",
                                     "CELT_48",
                                     "CELT_64",
-                                    "Speex"
-                                ]
+                                    "Speex",
+                                    "speex"
+                                ],
+                                "type": "string"
                             },
-                            "default": [
-                                "PCMU"
-                            ]
+                            "name": "Codecs",
+                            "required": false,
+                            "type": "array",
+                            "uniqueItems": true
                         }
                     },
-                    "default": {}
+                    "required": false,
+                    "type": "object"
+                },
+                "bypass_media": {
+                    "description": "Default bypass media mode",
+                    "enum": [
+                        true,
+                        false,
+                        "auto"
+                    ],
+                    "name": "Is Media Direct?",
+                    "required": false,
+                    "type": [
+                        "boolean",
+                        "string"
+                    ],
+                    "warning": "The string type is deprecated, please use this as a boolean"
+                },
+                "encryption": {
+                    "default": {},
+                    "name": "Encryption Parameters",
+                    "properties": {
+                        "enforce_security": {
+                            "default": false,
+                            "name": "Is Encryption Enabled?",
+                            "required": false,
+                            "type": "boolean"
+                        },
+                        "methods": {
+                            "default": [],
+                            "items": {
+                                "enum": [
+                                    "zrtp",
+                                    "srtp"
+                                ],
+                                "required": false,
+                                "type": "string"
+                            },
+                            "name": "Supported Encryption Types",
+                            "required": false,
+                            "type": "array"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                },
+                "fax_option": {
+                    "description": "Support T.38",
+                    "name": "Is T.38 Supported?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "ignore_early_media": {
+                    "description": "The option to determine if early media from the device should always be ignored",
+                    "name": "Ignore Early Media?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "progress_timeout": {
+                    "description": "The progress timeout to apply to the device",
+                    "name": "Progress Timeout (seconds)",
+                    "required": false,
+                    "type": "integer"
                 },
                 "video": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Video Options",
+                    "default": {},
                     "description": "The video media parameters",
+                    "name": "Video Options",
                     "properties": {
                         "codecs": {
-                            "type": "array",
-                            "required": false,
-                            "uniqueItems": true,
+                            "default": [],
                             "description": "A list of video codecs the device supports",
                             "items": {
-                                "type": "string",
                                 "enum": [
                                     "VP8",
                                     "H264",
                                     "H263",
                                     "H261"
-                                ]
+                                ],
+                                "type": "string"
                             },
-                            "default": []
+                            "required": false,
+                            "type": "array",
+                            "uniqueItems": true
                         }
                     },
-                    "default": {}
-                },
-                "fax_option": {
-                    "type": "boolean",
                     "required": false,
-                    "name": "Is T.38 Supported?",
-                    "description": "Support T.38"
+                    "type": "object"
                 }
             },
-            "default": {}
-        },
-        "call_restriction": {
-            "type": "object",
             "required": false,
-            "name": "Call Restrictions",
-            "description": "Device level call restrictions for each available number classification",
-            "additionalProperties": {
-                "type": "object",
-                "required": false,
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "required": false,
-                        "name": "Action",
-                        "description": "If set to deny all calls of this type will be rejected.  If set to inherit the user/device rules apply",
-                        "enum": [
-                            "inherit",
-                            "deny"
-                        ]
-                    }
-                }
-            },
-            "default": {}
-        },
-        "dial_plan": {
-            "type": "object",
-            "required": false,
-            "name": "Dialplan",
-            "description": "A list of rules used to modify dialed numbers",
-            "additionalProperties": {
-                "type": "object",
-                "required": false,
-                "properties": {
-                    "description": {
-                        "type": "string",
-                        "required": false,
-                        "name": "Name",
-                        "description": "Friendly name for this regex dialplan"
-                    },
-                    "prefix": {
-                        "type": "string",
-                        "required": false,
-                        "name": "Prefix",
-                        "description": "Prefix the prepend to the capture group after applying the regex"
-                    },
-                    "suffix": {
-                        "type": "string",
-                        "required": false,
-                        "name": "Suffix",
-                        "description": "Suffix the append to the capture group after applying the regex"
-                    }
-                }
-            },
-            "default": {}
-        },
-        "do_not_disturb": {
-            "type": "object",
-            "required": false,
-            "name": "DND Parameters",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Enabled?",
-                    "description": "Is do-not-disturb enabled for this device?"
-                }
-            }
-        },
-        "ringtones": {
-            "type": "object",
-            "required": false,
-            "name": "Ringtone Parameters",
-            "properties": {
-                "internal": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Internal",
-                    "description": "The alert info SIP header added when the call is from external sources",
-                    "maxLength": 256
-                },
-                "external": {
-                    "type": "string",
-                    "required": false,
-                    "name": "External",
-                    "description": "The alert info SIP header added when the call is from internal sources",
-                    "maxLength": 256
-                }
-            },
-            "default": {}
-        },
-        "contact_list": {
-            "type": "object",
-            "required": false,
-            "name": "Contect List Parameters",
-            "properties": {
-                "exclude": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Is Excluded?",
-                    "description": "If set to true the device is excluded from the contact list"
-                }
-            },
-            "default": {}
-        },
-        "call_forward": {
-            "type": "object",
-            "required": false,
-            "name": "Call Forwarding Parameters",
-            "description": "The device call forward parameters",
-            "properties": {
-                "enabled": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Is Enabled?",
-                    "description": "Determines if the call forwarding should be used",
-                    "default": false
-                },
-                "number": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Number",
-                    "description": "The number to forward calls to",
-                    "maxLength": 15
-                },
-                "substitute": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Substitute Device?",
-                    "description": "Determines if the call forwarding replaces the device",
-                    "default": true
-                },
-                "require_keypress": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Require Keypress?",
-                    "description": "Determines if the callee is prompted to press 1 to accept the call",
-                    "default": true
-                },
-                "keep_caller_id": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Keep Original Caller ID?",
-                    "description": "Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used",
-                    "default": true
-                },
-                "direct_calls_only": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Direct Calls Only?",
-                    "description": "Determines if the calls that are not directly sent to the device should be forwarded",
-                    "default": false
-                },
-                "ignore_early_media": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Ignore Early Media?",
-                    "description": "The option to determine if early media from the call forwarded number should ignored",
-                    "default": true
-                },
-                "failover": {
-                    "type": "boolean",
-                    "required": false,
-                    "name": "Use if Device Offline?",
-                    "description": "Enable the call-forwarding parameters if the device is offline",
-                    "default": false
-                }
-            }
+            "type": "object"
         },
         "metaflows": {
-            "type": "object",
-            "required": false,
-            "name": "Metaflow Parameters",
-            "description": "The device metaflow parameters",
-            "properties": {
-                "numbers": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Numbers",
-                    "description": "The metaflow numbers"
-                },
-                "patterns": {
-                    "type": "object",
-                    "required": false,
-                    "name": "Patterns",
-                    "description": "The metaflow patterns"
-                },
-                "binding_digit": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Binding Digit",
-                    "description": "What DTMF will trigger the collection and analysis of the subsequent DTMF sequence",
-                    "enum": [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "0",
-                        "*",
-                        "#"
-                    ],
-                    "maxLength": 1,
-                    "minLength": 1,
-                    "default": "*"
-                },
-                "digit_timeout": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Timeout (milliseconds)",
-                    "description": "How long to wait between DTMF presses before processing the collected sequence",
-                    "minimum": 0
-                },
-                "listen_on": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Listen On",
-                    "description": "Which leg(s) of the call to listen for DTMF",
-                    "enum": [
-                        "both",
-                        "self",
-                        "peer"
-                    ]
-                }
-            }
+            "$ref": "metaflows",
+            "description": "The device metaflow parameters"
         },
-        "language": {
-            "type": "string",
+        "music_on_hold": {
+            "default": {},
+            "description": "The music on hold parameters used if not a property of the device owner",
+            "name": "Music on Hold",
+            "properties": {
+                "media_id": {
+                    "description": "The ID of a media object that should be used as the music on hold",
+                    "maxLength": 128,
+                    "name": "Media ID",
+                    "required": false,
+                    "type": "string"
+                }
+            },
             "required": false,
-            "name": "Language",
-            "description": "The language for the device",
-            "default":"en-us"
+            "type": "object"
+        },
+        "mwi_unsolicitated_updates": {
+            "default": true,
+            "description": "When true enables unsolicitated mwi notifications",
+            "name": "Send unsolicitated MWI NOTIFY?",
+            "required": false,
+            "type": "boolean"
+        },
+        "name": {
+            "description": "A friendly name for the device",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Name",
+            "required": true,
+            "type": "string"
+        },
+        "outbound_flags": {
+            "description": "List of flags (features) this device requires when making outbound calls",
+            "items": {
+                "required": false,
+                "type": "string"
+            },
+            "name": "Outbound Flags",
+            "required": false,
+            "type": "array"
+        },
+        "owner_id": {
+            "description": "The ID of the user object that 'owns' the device",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "Owner ID",
+            "required": false,
+            "type": "string"
+        },
+        "provision": {
+            "description": "Provision data",
+            "name": "Provision",
+            "properties": {
+                "feature_keys": {
+                    "name": "Feature Keys",
+                    "patternProperties": {
+                        "^[0-9]+$": {
+                            "properties": {
+                                "type": {
+                                    "description": "Feature key type",
+                                    "enum": [
+                                        "presence",
+                                        "parking",
+                                        "personal_parking",
+                                        "speed_dial"
+                                    ],
+                                    "name": "Type",
+                                    "required": true,
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "description": "Feature key value",
+                                    "maximum": 10,
+                                    "minimum": 1,
+                                    "name": "Value",
+                                    "required": true,
+                                    "type": [
+                                        "string",
+                                        "integer"
+                                    ]
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "register_overwrite_notify": {
+            "default": false,
+            "description": "When true enables overwrite notifications",
+            "name": "Send NOTIFY if Register Overwritten?",
+            "required": false,
+            "type": "boolean"
+        },
+        "ringtones": {
+            "default": {},
+            "name": "Ringtone Parameters",
+            "properties": {
+                "external": {
+                    "description": "The alert info SIP header added when the call is from internal sources",
+                    "maxLength": 256,
+                    "name": "External",
+                    "required": false,
+                    "type": "string"
+                },
+                "internal": {
+                    "description": "The alert info SIP header added when the call is from external sources",
+                    "maxLength": 256,
+                    "name": "Internal",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "sip": {
+            "default": {},
+            "name": "SIP Parameters",
+            "properties": {
+                "custom_sip_headers": {
+                    "additionalProperties": {
+                        "required": false,
+                        "type": "string"
+                    },
+                    "description": "A property list of SIP headers beging with the prefix 'X-'",
+                    "name": "Custom SIP Headers",
+                    "required": false,
+                    "type": "object"
+                },
+                "ignore_completed_elsewhere": {
+                    "description": "When set to false the phone should not consider ring group calls answered elsewhere as missed",
+                    "name": "Show Calls Answered Elsewhere as Missed?",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "invite_format": {
+                    "default": "username",
+                    "description": "The SIP request URI invite format",
+                    "enum": [
+                        "username",
+                        "npan",
+                        "1npan",
+                        "e164",
+                        "route"
+                    ],
+                    "name": "Invite Format",
+                    "required": false,
+                    "type": "string"
+                },
+                "ip": {
+                    "description": "IP address for this device",
+                    "name": "IP Address",
+                    "required": false,
+                    "type": "string"
+                },
+                "method": {
+                    "default": "password",
+                    "description": "Method of authentication",
+                    "enum": [
+                        "password",
+                        "ip"
+                    ],
+                    "name": "Authentication Method",
+                    "required": false,
+                    "type": "string"
+                },
+                "number": {
+                    "description": "The number used if the invite format is 1npan, npan, or e164 (if not set the dialed number is used)",
+                    "name": "Static Number",
+                    "required": false,
+                    "type": "string"
+                },
+                "password": {
+                    "description": "SIP authentication password",
+                    "maxLength": 32,
+                    "minLength": 5,
+                    "name": "Password",
+                    "required": false,
+                    "type": "string"
+                },
+                "realm": {
+                    "description": "The realm this device should use, overriding the account realm. Should rarely be necessary.",
+                    "format": "uri",
+                    "name": "Realm",
+                    "required": false,
+                    "type": "string"
+                },
+                "registration_expiration": {
+                    "default": 300,
+                    "description": "The time, in seconds, to force registrations to expire",
+                    "name": "Minimum Registration (seconds)",
+                    "required": false,
+                    "type": "integer"
+                },
+                "route": {
+                    "description": "The SIP URL used if the invite format is 'route'",
+                    "name": "Route SIP URI",
+                    "required": false,
+                    "type": "string"
+                },
+                "static_route": {
+                    "description": "Sends all inbound calls to this string (instead of dialed number or username)",
+                    "name": "Static SIP URI",
+                    "required": false,
+                    "type": "string"
+                },
+                "username": {
+                    "description": "SIP authentication username",
+                    "maxLength": 32,
+                    "minLength": 2,
+                    "name": "Username",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "suppress_unregister_notifications": {
+            "default": false,
+            "description": "When true disables deregister notifications",
+            "name": "Do Not Send Unregister Emails?",
+            "required": false,
+            "type": "boolean"
+        },
+        "timezone": {
+            "description": "Device's timezone",
+            "name": "Timezone",
+            "required": false,
+            "type": "string"
         }
-    }
+    },
+    "required": false,
+    "type": "object"
 }

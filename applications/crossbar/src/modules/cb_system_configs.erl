@@ -203,14 +203,17 @@ save(Context, Node) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     Doc = cb_context:req_data(Context),
-    case wh_json:get_value(<<"id">>, Doc) of
+    case wh_doc:id(Doc) of
         'undefined' ->
             lager:debug("no id on doc ~p", [Doc]),
-            cb_context:add_validation_error(<<"id">>
-                                            ,<<"required">>
-                                            ,<<"id is required to create a system_config resource">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"id">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"id is required to create a system_config resource">>}
+                 ])
+                ,Context
+            );
         Id ->
             SysDoc = wh_json:from_list([{<<"_id">>, Id}
                                         ,{<<"default">>, wh_json:delete_key(<<"id">>, Doc)}

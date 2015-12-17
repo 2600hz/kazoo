@@ -38,7 +38,7 @@ get_prev_n_month_date_list(Year, Month, NumMonths) ->
     SortDirection = 'DESC',
     DateRange = get_prev_n_months(Year, Month, NumMonths, SortDirection),
     lists:foldl(fun({NextYear, NextMonth}, Acc) ->
-                        build_month_date_list(NextYear, NextMonth, SortDirection, Acc) 
+                        build_month_date_list(NextYear, NextMonth, SortDirection, Acc)
                 end, [], DateRange).
 
 -spec get_next_n_month_date_list(wh_datetime(), pos_integer()) -> wh_proplist().
@@ -49,8 +49,8 @@ get_next_n_month_date_list({{Year, Month, _}, _}, NumMonths) ->
 get_next_n_month_date_list(Year, Month, NumMonths) ->
     SortDirection = 'ASC',
     DateRange = get_next_n_months(Year, Month, NumMonths, SortDirection),
-    lists:foldl(fun({NextYear, NextMonth}, Acc) -> 
-                        build_month_date_list(NextYear, NextMonth, SortDirection, Acc) 
+    lists:foldl(fun({NextYear, NextMonth}, Acc) ->
+                        build_month_date_list(NextYear, NextMonth, SortDirection, Acc)
                 end, [], DateRange).
 
 -spec build_month_date_list(wh_year(), wh_month(), atom(), list()) -> any().
@@ -90,8 +90,8 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
     case get_account_by_realm(AccountRealm) of
         {'ok', AccountDb} ->
             DateRange = get_prev_n_month_date_list(calendar:universal_time(), NumMonths),
-            lists:foreach(fun(Date) -> 
-                                  generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) 
+            lists:foreach(fun(Date) ->
+                                  generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs)
                           end, DateRange);
         {'multiples', AccountDbs} ->
             lager:debug("found multiple DBS for Account Name: ~p", [AccountDbs]),
@@ -101,7 +101,7 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
             {'error', Reason}
     end.
 
--spec get_account_by_realm(ne_binary()) -> 
+-spec get_account_by_realm(ne_binary()) ->
                                   {'ok', account_db()} | {'multiples', any()} | {'error', any()}.
 get_account_by_realm(AccountRealm) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, [{'key', AccountRealm}]) of
@@ -142,7 +142,7 @@ delete_test_accounts() ->
         {'error', _E} -> lager:debug("error retrieving accounts: ~p", [_E]);
         [] -> 'ok';
         Accounts ->
-            [maybe_delete_test_account(AccountDb) || AccountDb <- Accounts],
+            _ = [maybe_delete_test_account(AccountDb) || AccountDb <- Accounts],
             'ok'
     end.
 
@@ -175,8 +175,8 @@ maybe_delete_test_account(AccountDb) ->
             {{CurrentYear, CurrentMonth, _}, _} = calendar:universal_time(),
             Months = get_prev_n_months(CurrentYear, CurrentMonth, NumMonthsToShard),
             AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-            [delete_account_database(AccountId, {Year, Month})
-             || {Year, Month} <- Months],
+            _ = [delete_account_database(AccountId, {Year, Month})
+                 || {Year, Month} <- Months],
             couch_mgr:del_doc(<<"accounts">>, AccountId),
             couch_mgr:db_delete(AccountDb)
     end.

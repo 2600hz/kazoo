@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -40,19 +40,20 @@ send_system_alert(Request) ->
                          ,{<<"Reseller-ID">>, ResellerId}
                          ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
                          ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
-                         |P
+                         | P
                         ]
                 end
                 ,fun(P) -> add_limit_details(AccountId, <<"Account">>, P) end
                 ,fun(P) -> add_limit_details(ResellerId, <<"Reseller">>, P) end
                ],
-    wh_notify:system_alert("blocked ~s to ~s / Account ~s / Reseller ~s"
-                           ,[j5_request:from(Request)
-                             ,j5_request:number(Request)
-                             ,get_account_name(AccountId)
-                             ,get_account_name(ResellerId)
-                            ]
-                           ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)).
+    wh_notify:detailed_alert("blocked ~s to ~s / Account ~s / Reseller ~s"
+                             ,[j5_request:from(Request)
+                               ,j5_request:number(Request)
+                               ,get_account_name(AccountId)
+                               ,get_account_name(ResellerId)
+                              ]
+                             ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)
+                            ).
 
 -spec add_limit_details(api_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
 add_limit_details('undefined', _, Props) -> Props;
@@ -115,7 +116,3 @@ get_account_name(Account) ->
         {'error', _} -> AccountId;
         {'ok', JObj} -> wh_json:get_ne_value(<<"name">>, JObj, AccountId)
     end.
-
-
-
-

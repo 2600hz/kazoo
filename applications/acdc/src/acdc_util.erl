@@ -30,6 +30,7 @@
                                   ,'CHANNEL_DESTROY'
                                   ,'DTMF'
                                   ,'CHANNEL_EXECUTE_COMPLETE'
+                                  ,'usurp_control'
                                  ]).
 
 -spec queue_presence_update(ne_binary(), ne_binary()) -> 'ok'.
@@ -52,8 +53,7 @@ agent_presence_update(AcctId, AgentId) ->
 presence_update(AcctId, PresenceId, State) ->
     presence_update(AcctId, PresenceId, State, 'undefined').
 presence_update(AcctId, PresenceId, State, CallId) ->
-    AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
-    {'ok', AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
+    {'ok', AcctDoc} = kz_account:fetch(AcctId),
     To = <<PresenceId/binary, "@", (wh_json:get_value(<<"realm">>, AcctDoc))/binary>>,
 
     lager:debug("sending presence update '~s' to '~s'", [State, To]),
@@ -80,7 +80,7 @@ send_cdr(Url, JObj, Retries) ->
     end.
 
 %% Returns the list of agents configured for the queue
--spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:json_strings().
+-spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:keys().
 agents_in_queue(AcctDb, QueueId) ->
     case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
         {'ok', []} -> [];
@@ -104,29 +104,25 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), any()} | whapps_call:call()) -> 'ok'.
 bind_to_call_events(Call) ->
     bind_to_call_events(Call, self()).
 
--spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), any()} | whapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId, Pid) ->
-    gen_listener:add_binding(Pid, 'call', [{'callid', CallId}
-                                           ,{'restrict_to', ?CALL_EVENT_RESTRICTIONS}
-                                          ]);
+    gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
 bind_to_call_events(Call, Pid) -> bind_to_call_events(whapps_call:call_id(Call), Pid).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | {api_binary(), any()} | whapps_call:call()) -> 'ok'.
 unbind_from_call_events(Call) ->
     unbind_from_call_events(Call, self()).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | {api_binary(), any()} | whapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _Pid) -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
-    gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}
-                                          ,{'restrict_to', ?CALL_EVENT_RESTRICTIONS}
-                                         ]);
+    gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);
 unbind_from_call_events({CallId, _}, Pid) -> unbind_from_call_events(CallId, Pid);
 unbind_from_call_events(Call, Pid) -> unbind_from_call_events(whapps_call:call_id(Call), Pid).
 

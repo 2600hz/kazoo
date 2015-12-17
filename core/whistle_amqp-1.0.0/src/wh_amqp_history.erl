@@ -167,7 +167,7 @@ is_bound(Consumer, Exchange, Queue, RoutingKey) when is_pid(Consumer) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     _ = ets:new(?TAB, ['named_table'
                        ,{'keypos', #wh_amqp_history.timestamp}
                        ,'protected'

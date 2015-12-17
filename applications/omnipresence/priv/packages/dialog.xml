@@ -13,8 +13,8 @@
         </remote>
     </dialog>
 {% endfor %}{% else %}
-    <dialog direction="initiator"> 
-        <state>terminated</state> 
+    <dialog direction="initiator">
+        <state>terminated</state>
     </dialog>
 {% endif %}
 </dialog-info>

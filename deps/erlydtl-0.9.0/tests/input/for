@@ -1,9 +1,0 @@
-before
-
-<ul>
-{% for iterator in fruit_list %}
-<li>{{ forloop.counter }}. {{ iterator }}</li>
-{% endfor %}
-</ul>
-
-after

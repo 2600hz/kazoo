@@ -60,33 +60,25 @@
 
 -include("kazoo_bindings.hrl").
 
--ifdef(TEST).
-%% PropEr needs to be included before eunit. Both modules create a ?LET macro,
-%% but the PropEr one is the useful one. Also needs to be included before any
-%% function definition because it includes functions.
--include_lib("proper/include/proper.hrl").
-
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue(), <<"foo.bar">>}
 
--type payload() :: term().
+-type payload() :: any().
 
 -record(kz_responder, {module :: atom()
                        ,function :: atom()
-                       ,payload :: term()
+                       ,payload :: any()
                       }).
 -type kz_responder() :: #kz_responder{}.
+-type kz_responders() :: [kz_responder()].
 
--record(kz_binding, {binding :: ne_binary()
-                     ,binding_parts :: ne_binaries()
-                     ,binding_responders = queue:new() :: queue()
+-record(kz_binding, {binding :: ne_binary() | '_'
+                     ,binding_parts :: ne_binaries() | '_'
+                     ,binding_responders = queue:new() :: queue() | '_'
                       %% queue -> [#kz_responder{}]
-                     ,binding_prefix :: api_binary()
+                     ,binding_prefix :: api_binary() | '$1' | '_'
                     }).
 -type kz_binding() :: #kz_binding{}.
--type kz_bindings() :: [kz_binding(),...] | [].
+-type kz_bindings() :: [kz_binding()].
 
 -record(state, {bindings = [] :: kz_bindings()}).
 
@@ -245,7 +237,7 @@ stop() -> gen_server:cast(?MODULE, 'stop').
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
--type bind_results() :: [bind_result(),...] | [].
+-type bind_results() :: [bind_result()].
 -spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
@@ -261,11 +253,11 @@ bind(Binding, Module, Fun, Payload) ->
 
 -type unbind_result() :: {'ok', 'deleted_binding' | 'updated_binding'} |
                          {'error', 'not_found'}.
--type unbind_results() :: [unbind_result(),...] | [].
+-type unbind_results() :: [unbind_result()].
 
 -spec unbind(ne_binary() | ne_binaries(), atom(), atom()) ->
                     unbind_result() | unbind_results().
--spec unbind(ne_binary() | ne_binaries(), atom(), atom(), term()) ->
+-spec unbind(ne_binary() | ne_binaries(), atom(), atom(), any()) ->
                     unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun) ->
     [unbind(Binding, Module, Fun) || Binding <- Bindings];
@@ -288,16 +280,21 @@ flush(Binding) -> gen_server:cast(?MODULE, {'flush', Binding}).
 -spec flush_mod(atom()) -> 'ok'.
 flush_mod(Module) -> gen_server:cast(?MODULE, {'flush_mod', Module}).
 
--type filter_fun() :: fun((ne_binary(), atom(), atom(), term()) -> boolean()).
+-type filter_fun() :: fun((ne_binary(), atom(), atom(), any()) -> boolean()).
 -spec filter(filter_fun()) -> 'ok'.
 filter(Predicate) when is_function(Predicate, 4) ->
     gen_server:cast(?MODULE, {'filter', Predicate}).
 
 -spec modules_loaded() -> atoms().
 modules_loaded() ->
-    ets:foldl(fun(#kz_binding{binding_responders=Responders}, Acc) ->
-                      props:unique([M || #kz_responder{module=M} <- queue:to_list(Responders)]) ++ Acc
-              end, [], table_id()).
+    ets:foldl(fun modules_loaded_fold/2, [], table_id()).
+
+-spec modules_loaded_fold(kz_binding(), atoms()) -> atoms().
+modules_loaded_fold(#kz_binding{binding_responders=Responders}, Acc) ->
+    props:unique([M
+                  || #kz_responder{module=M} <- queue:to_list(Responders)
+                 ])
+        ++ Acc.
 
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE.
@@ -328,7 +325,7 @@ gift_data() -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
 
     lager:debug("starting bindings server"),
 
@@ -359,8 +356,9 @@ handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     lager:debug("maybe rm binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State}.
 
--spec maybe_add_binding(ne_binary(), atom(), atom(), term()) -> 'ok' |
-                                                                {'error', 'exists'}.
+-spec maybe_add_binding(ne_binary(), atom(), atom(), any()) ->
+                               'ok' |
+                               {'error', 'exists'}.
 maybe_add_binding(Binding, Mod, Fun, Payload) ->
     Responder = #kz_responder{module=Mod
                               ,function=Fun
@@ -391,7 +389,7 @@ maybe_add_binding(Binding, Mod, Fun, Payload) ->
             end
     end.
 
--spec maybe_rm_binding(ne_binary(), atom(), atom(), term()) ->
+-spec maybe_rm_binding(ne_binary(), atom(), atom(), any()) ->
                               {'ok', 'deleted_binding' | 'updated_binding'} |
                               {'error', 'not_found'}.
 maybe_rm_binding(Binding, Mod, Fun, Payload) ->
@@ -432,9 +430,9 @@ add_optimized_binding(Binding, Responder, Pieces, Vsn, Action) ->
 -spec add_binding(ne_binary(), kz_responder(), ne_binaries(), api_binary()) -> boolean().
 add_binding(Binding, Responder, Pieces, Prefix) ->
     Bind = #kz_binding{binding=Binding
-                      ,binding_parts=lists:reverse(Pieces)
-                      ,binding_responders=queue:in(Responder, queue:new())
-                      ,binding_prefix=Prefix
+                       ,binding_parts=lists:reverse(Pieces)
+                       ,binding_responders=queue:in(Responder, queue:new())
+                       ,binding_prefix=Prefix
                       },
     ets:insert_new(table_id(), Bind).
 
@@ -489,13 +487,14 @@ filter_bindings(Predicate) ->
     filter_bindings(Predicate, ets:first(table_id()), [], []).
 
 filter_bindings(_Predicate, '$end_of_table', Updates, Deletes) ->
-    [ets:delete(table_id(), DeleteKey) || DeleteKey <- Deletes],
-    [ets:update_element(table_id(), Key, Update) || {Key, Update} <- Updates],
+    _ = [ets:delete(table_id(), DeleteKey) || DeleteKey <- Deletes],
+    _ = [ets:update_element(table_id(), Key, Update) || {Key, Update} <- Updates],
     'ok';
 filter_bindings(Predicate, Key, Updates, Deletes) ->
     [#kz_binding{binding=Binding
                  ,binding_responders=Responders
-                }] = ets:lookup(table_id(), Key),
+                }
+    ] = ets:lookup(table_id(), Key),
     NewResponders = queue:filter(fun(#kz_responder{module=M
                                                    ,function=F
                                                    ,payload=P
@@ -503,8 +502,20 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
                                          Predicate(Binding, M, F, P)
                                  end, Responders),
     case queue:len(NewResponders) of
-        0 -> filter_bindings(Predicate, ets:next(table_id(), Key), Updates, [Key | Deletes]);
-        _Len -> filter_bindings(Predicate, ets:next(table_id(), Key), [{Key, {#kz_binding.binding_responders, NewResponders}} | Updates], Deletes)
+        0 ->
+            filter_bindings(Predicate
+                            ,ets:next(table_id(), Key)
+                            ,Updates
+                            ,[Key | Deletes]
+                           );
+        _Len ->
+            filter_bindings(Predicate
+                            ,ets:next(table_id(), Key)
+                            ,[{Key, {#kz_binding.binding_responders, NewResponders}}
+                              | Updates
+                             ]
+                            ,Deletes
+                           )
     end.
 
 %%--------------------------------------------------------------------
@@ -561,19 +572,22 @@ code_change(_OldVsn, State, _Extra) ->
 %% previous payload being passed to the next invocation.
 %% @end
 %%--------------------------------------------------------------------
--spec fold_bind_results(queue() | kz_bindings(), term(), ne_binary()) -> term().
+-spec fold_bind_results(kz_responders(), any(), ne_binary()) -> any().
 fold_bind_results(_, {'error', _}=E, _) -> [E];
-fold_bind_results(Responders, Payload, Route) when is_list(Responders) ->
-    fold_bind_results(Responders, Payload, Route, length(Responders), []);
+fold_bind_results([], Payload, _Route) -> Payload;
 fold_bind_results(Responders, Payload, Route) ->
-    fold_bind_results(queue:to_list(Responders), Payload, Route, queue:len(Responders), []).
+    fold_bind_results(Responders, Payload, Route, length(Responders), []).
 
--spec fold_bind_results(kz_bindings(), term(), ne_binary(), non_neg_integer(), kz_bindings()) -> term().
+-spec fold_bind_results(kz_responders(), any(), ne_binary(), non_neg_integer(), kz_responders()) -> any().
 fold_bind_results([#kz_responder{module=M
-                                ,function=F
-                                ,payload='undefined'
+                                 ,function=F
+                                 ,payload='undefined'
                                 }=Responder
-                   | Responders], [_|Tokens]=Payload, Route, RespondersLen, ReRunResponders) ->
+                   | Responders]
+                  ,[_|Tokens]=Payload
+                  ,Route
+                  ,RespondersLen
+                  ,ReRunResponders) ->
     try apply_responder(Responder, Payload) of
         'eoq' ->
             lager:debug("putting ~s to eoq", [M]),
@@ -620,15 +634,15 @@ fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
             Payload
     end.
 
--spec apply_responder(kz_responder(), term()) -> term().
+-spec apply_responder(kz_responder(), any()) -> any().
 apply_responder(#kz_responder{module=M
-                             ,function=F
-                             ,payload='undefined'
+                              ,function=F
+                              ,payload='undefined'
                              }, Payload) ->
     apply(M, F, Payload);
 apply_responder(#kz_responder{module=M
-                             ,function=F
-                             ,payload=ResponderPayload
+                              ,function=F
+                              ,payload=ResponderPayload
                              }, Payload) ->
     apply(M, F, [ResponderPayload | Payload]).
 
@@ -662,25 +676,54 @@ map_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
     map_processor(Routing, [Payload], Bindings);
 map_processor(Routing, Payload, Bindings) ->
     RoutingParts = lists:reverse(binary:split(Routing, <<".">>, ['global'])),
-    Map = fun(Responder) ->
-                  apply_responder(Responder, Payload)
-          end,
+    Map = map_responder_fun(Payload),
 
-    lists:foldl(fun(#kz_binding{binding=Binding
-                                ,binding_responders=Responders
-                               }, Acc) when Binding =:= Routing ->
-                        lager:debug("exact match for ~s", [Routing]),
-                        [catch Map(Responder) || Responder <- queue:to_list(Responders)] ++ Acc;
-                   (#kz_binding{binding_parts=BParts
-                                ,binding_responders=Responders
-                               }, Acc) ->
-                        case matches(BParts, RoutingParts) of
-                            'true' ->
-                                lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
-                                [catch Map(Responder) || Responder <- queue:to_list(Responders)] ++ Acc;
-                            'false' -> Acc
-                        end
-                end, [], Bindings).
+    lists:foldl(fun(Binding, Acc) ->
+                        map_processor_fold(Binding, Acc, Map, Routing, RoutingParts)
+                end
+                ,[]
+                ,Bindings
+               ).
+
+-type map_responder_fun() :: fun((kz_responder()) -> any()).
+-spec map_responder_fun(payload()) -> map_responder_fun().
+map_responder_fun(Payload) ->
+    fun(Responder) ->
+            apply_responder(Responder, Payload)
+    end.
+
+-spec map_processor_fold(kz_binding(), list(), map_responder_fun(), ne_binary(), ne_binaries()) -> list().
+map_processor_fold(#kz_binding{binding=Binding
+                               ,binding_responders=Responders
+                              }
+                   ,Acc
+                   ,Map
+                   ,Binding
+                   ,_RoutingParts
+                  ) ->
+    lager:debug("exact match for ~s", [Binding]),
+    map_responders(Acc, Map, Responders);
+map_processor_fold(#kz_binding{binding_parts=BParts
+                               ,binding_responders=Responders
+                              }
+                   ,Acc
+                   ,Map
+                   ,_Routing
+                   ,RoutingParts
+                  ) ->
+    case matches(BParts, RoutingParts) of
+        'false' -> Acc;
+        'true' ->
+            lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
+            map_responders(Acc, Map, Responders)
+    end.
+
+-spec map_responders(list(), map_responder_fun(), queue()) -> list().
+map_responders(Acc, Map, Responders) ->
+    [catch(Map(Responder))
+     || Responder <- queue:to_list(Responders)
+    ]
+    ++ Acc.
 
 -spec fold_processor(ne_binary(), payload(), kz_bindings()) -> fold_results().
 fold_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
@@ -688,173 +731,24 @@ fold_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
 fold_processor(Routing, Payload, Bindings) ->
     RoutingParts = lists:reverse(binary:split(Routing, <<".">>, ['global'])),
 
-    [Reply|_] = lists:foldl(
-                  fun(#kz_binding{binding=Binding
-                                 ,binding_parts=BParts
-                                 ,binding_responders=Responders
-                                 }, Acc) ->
-                          case Binding =:= Routing orelse matches(BParts, RoutingParts) of
-                              'true' ->
-                                  lager:debug("routing ~s matches ~s", [Routing, Binding]),
-                                  fold_bind_results(Responders, Acc, Routing);
-                              'false' -> Acc
-                          end
-                  end, Payload, Bindings),
+    [Reply|_] =
+        lists:foldl(
+          fun(#kz_binding{binding=Binding
+                          ,binding_parts=BParts
+                          ,binding_responders=Responders
+                         }
+              ,Acc
+             ) ->
+                  case Binding =:= Routing
+                      orelse matches(BParts, RoutingParts)
+                  of
+                      'true' ->
+                          lager:debug("routing ~s matches ~s", [Routing, Binding]),
+                          fold_bind_results(queue:to_list(Responders), Acc, Routing);
+                      'false' -> Acc
+                  end
+          end
+          ,Payload
+          ,Bindings
+         ),
     Reply.
-
-%% EUNIT and PropEr TESTING %%
--ifdef(TEST).
--spec binding_matches(ne_binary(), ne_binary()) -> boolean().
-binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
-    matches(lists:reverse(binary:split(B, <<".">>, ['global']))
-            ,lists:reverse(binary:split(R, <<".">>, ['global']))).
-
--define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).
-
--define(BINDINGS, [
-                   {<<"#">>, [true, true, true, true, true, true]}
-                   ,{<<"foo.*.zot">>, [true, true, false, false, false, false]}
-                   ,{<<"foo.#.zot">>, [true, true, true, true, false, false]}
-                   ,{<<"*.bar.#">>, [true, false, true, false, false, false]}
-                   ,{<<"*">>, [false, false, false, false, true, true]}
-                   ,{<<"#.tow">>, [false, false, false, false, false, false]}
-                   ,{<<"#.quux.zot">>, [false, true, true, false, false, false]}
-                   ,{<<"xap.#">>, [false, false, false, false, false, true]}
-                   ,{<<"#.*">>, [true, true, true, true, true, true]}
-                   ,{<<"#.bar.*">>, [true, false, false, false, false, false]}
-                  ]).
-
-bindings_match_test() ->
-    lists:foreach(fun({B, _}=Expected) ->
-                          Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], ?ROUTINGS),
-                          ?assertEqual(Expected, {B, Actual})
-                  end, ?BINDINGS).
-
-weird_bindings_test() ->
-    ?assertEqual(true, binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)),
-    ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo">>)),
-    ?assertEqual(true, binding_matches(<<"#.*">>, <<"foo.bar">>)),
-    ?assertEqual(false, binding_matches(<<"foo.#.*">>, <<"foo">>)),
-    %% ?assertEqual(false, binding_matches(<<"#.*">>, <<>>)),
-    ?assertEqual(true, binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>)),
-    ok.
-
-%%% PropEr tests
-%% Checks that the patterns for paths (a.#.*.c) match or do not
-%% match a given expanded path.
-prop_expands() ->
-    ?FORALL(Paths, expanded_paths(),
-            ?WHENFAIL(io:format("Failed on ~p~n",[Paths]),
-                      lists:all(fun(X) -> X end, %% checks if all true
-                                [binding_matches(Pattern, Expanded) =:= Expected ||
-                                    {Pattern, Expanded, Expected} <- Paths])
-                     )).
-
-%%% GENERATORS
-
-%% Gives a list of paths that were expanded, some of them to fail on purpose,
-%% some of them not to.
-expanded_paths() ->
-    ?LET(P, path(),
-         begin
-             B = list_to_binary(P),
-             ?LET({{Expanded1, IsRight1},{Expanded2, IsRight2}},
-                  {wrong(P), right(P)},
-                  [{B, list_to_binary(Expanded1), IsRight1},
-                   {B, list_to_binary(Expanded2), IsRight2}])
-         end).
-
-%% Tries to make a pattern wrong. Will not always suceed because a pattern
-%% like "#" can be anything at all.
-%%
-%% Returns {Str, ShouldMatchOriginal}.
-wrong(Path) ->
-    ?LET(P, Path, wrong(P, true, [])).
-
-%% Will expand the patterns according to the rules so they should always match
-%%
-%% Returns {Str, ShouldMatchOriginal}.
-right(Path) ->
-    ?LET(P, Path, {right1(P), true}).
-
-%% Here's why some patterns will always succeed even if we try to make them
-%% wrong. In a given strign S, we could add segments, but some subpatterns
-%% would have a chance to fix the problem we created. See a.*.#, which means
-%% 'at least two segments'  but still matches (albeit wrongly) a.b if we drop
-%% a section of the text, replace it by one, or add two of them. It can
-%% technically be done, but we would need a strong lookahead for that.
-%% This is especially the case of .#., which we will have to simply ignore.
-%%
-%% Returns {Str, ShouldMatchOriginal}.
-wrong([], Bool, Acc) ->
-    {lists:reverse(Acc), Bool};
-wrong("*.#." ++ Rest, Bool, Acc) -> %% the # messes stuff up, can't invalidate
-    wrong(Rest, Bool, Acc);
-wrong("*.#", Bool, Acc) ->  %% same as above, end of string
-    {lists:reverse(Acc), Bool};
-wrong("*." ++ Rest, _Bool, Acc) ->
-    wrong(Rest, false, Acc);
-wrong(".*", _Bool, Acc) ->
-    {lists:reverse(Acc), false};
-wrong(".#." ++ Rest, Bool, Acc) -> %% can't make this one wrong
-    wrong(Rest, Bool, [$.|Acc]);
-wrong("#." ++ Rest, Bool, Acc) -> %% same, start of string
-    wrong(Rest, Bool, Acc);
-wrong(".#", Bool, Acc) -> %% same as above, end of string
-    {lists:reverse(Acc), Bool};
-wrong([Char|Rest], Bool, Acc) when Char =/= $*, Char =/= $# ->
-    wrong(Rest, Bool, [Char|Acc]).
-
-%% Returns an expanded string according to the rules
-right1([]) -> [];
-right1("*" ++ Rest) ->
-    ?LET(S, segment(), S++right1(Rest));
-right1(".#" ++ Rest) ->
-    ?LET(X,
-         union([
-                "",
-                ?LAZY(?LET(S, segment(), [$.]++S)),
-                ?LAZY(?LET({A,B}, {segment(), segment()}, [$.]++A++[$.]++B)),
-                ?LAZY(?LET({A,B,C}, {segment(), segment(), segment()}, [$.]++A++[$.]++B++[$.]++C))
-               ]),
-         X ++ right1(Rest));
-right1("#." ++ Rest) ->
-    ?LET(X,
-         union([
-                "",
-                ?LAZY(?LET(S, segment(), S++[$.])),
-                ?LAZY(?LET({A,B}, {segment(), segment()}, A++[$.]++B++[$.])),
-                ?LAZY(?LET({A,B,C}, {segment(), segment(), segment()}, A++[$.]++B++[$.]++C++[$.]))
-               ]),
-         X ++ right1(Rest));
-right1([Char|Rest]) ->
-    [Char|right1(Rest)].
-
-%% Building a basic pattern/path string
-path() ->
-    ?LET(Base, ?LAZY(weighted_union([{3,a()}, {1,b()}])),
-         ?LET({H,T}, {union(["*.","#.",""]), union([".*",".#",""])},
-              H ++ Base ++ T)).
-
-a() ->
-    ?LET({X,Y}, {segment(), ?LAZY(union([b(), markers()]))},
-         X ++ [$.] ++ Y).
-
-b() ->
-    ?LET({X,Y}, {segment(), ?LAZY(union([b(), c()]))},
-         X ++ [$.] ++ Y).
-
-c() ->
-    segment().
-
-segment() ->
-    ?SUCHTHAT(
-       X,
-       list(union([choose($a,$z), choose($A,$Z), choose($0,$9)])),
-       length(X) =/= 0
-      ).
-
-markers() ->
-    ?LET(S, ?LAZY(union([[$#, $., c()], [$*, $., b()]])), lists:flatten(S)).
-
--endif.

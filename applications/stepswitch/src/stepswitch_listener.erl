@@ -74,7 +74,6 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _ = wh_couch_connections:add_change_handler(?RESOURCES_DB),
     lager:debug("starting new stepswitch outbound responder"),
     {ok, #state{}}.
 
@@ -118,20 +117,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'document_changes', <<"_design/", _/binary>>, _}, State) ->
-    {'noreply', State, 'hibernate'};
-handle_info({'document_changes', _, _}, State) ->
-    lager:info("flushing stepswitch cache due to changed offnet document"),
-    _ =  wh_cache:flush_local(?STEPSWITCH_CACHE),
-    {'noreply', State, 'hibernate'};
-handle_info({'document_deleted', <<"_design/", _/binary>>}, State) ->
-    {'noreply', State, 'hibernate'};
-handle_info({'document_deleted', _}, State) ->
-    lager:info("flushing stepswitch cache due to deleted offnet document"),
-    _ =  wh_cache:flush_local(?STEPSWITCH_CACHE),
-    {'noreply', State, 'hibernate'};
-handle_info({'document_deleted', _DocId, 'undefined'}, State) ->
-    {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.

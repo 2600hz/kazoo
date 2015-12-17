@@ -8,11 +8,16 @@
 %%%-------------------------------------------------------------------
 -module(wapi_xmpp).
 
--export([
-          event/1, event_v/1
+-export([event/1, event_v/1
          ,bind_q/2, unbind_q/2
          ,declare_exchanges/0
          ,publish_event/1, publish_event/2
+        ]).
+
+-export([jid_short/1
+         ,jid_username/1
+         ,jid_server/1
+         ,jid_resource/1
         ]).
 
 -include("fax.hrl").
@@ -94,3 +99,19 @@ publish_event(Event, ContentType) ->
     publish_event(wh_json:to_proplist(Event), ContentType).
 
 
+regexp_get(Jid, Regex) ->
+    {match, [ShortJid]} =
+        re:run(Jid, Regex, [{capture, all_but_first, binary}]),
+    ShortJid.
+
+jid_short(JID) ->
+    regexp_get(JID, <<"^([^/]*)">>).
+
+jid_username(JID) ->
+    regexp_get(JID, <<"^([^@]*)">>).
+
+jid_server(JID) ->
+    regexp_get(JID, <<"^[^@]*[@]([^/]*)">>).
+
+jid_resource(JID) ->
+    regexp_get(JID, <<"^[^/]*[/](.*)">>).

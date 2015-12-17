@@ -1,0 +1,23 @@
+{
+    "_id": "d8425e99808ab552de6afcb414a63ed8",
+    "_rev": "1-eddfd7e70f3aaa18bbeeb5e85c103c9b",
+    "custom_data": {},
+    "enabled": true,
+    "hook": "channel_create",
+    "http_verb": "get",
+    "name": "My First Webhook",
+    "pvt_account_db": "webhooks",
+    "pvt_account_id": "940755758b1ea64fed0bc9f9abda73ac",
+    "pvt_created": 63599381413,
+    "pvt_modified": 63599381413,
+    "pvt_request_id": "9475751f9538189de462e0b69afceff7",
+    "pvt_type": "webhook",
+    "pvt_vsn": "1",
+    "retries": "1",
+    "ui_metadata": {
+        "origin": "webhooks",
+        "ui": "monster-ui",
+        "version": "v3.20_s3"
+    },
+    "uri": "http://my.server.com/webhooks/"
+}

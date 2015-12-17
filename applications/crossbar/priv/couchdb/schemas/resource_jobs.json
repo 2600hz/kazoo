@@ -1,33 +1,33 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "resource_jobs",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": true,
-    "name": "Resource Job",
     "description": "Schema for resource jobs (bulk number uploads)",
+    "name": "Resource Job",
     "properties": {
         "name": {
-            "type": "string",
-            "required": false,
-            "name": "Name",
             "description": "A friendly name for the job, if you like",
+            "maxLength": 128,
             "minLength": 1,
-            "maxLength": 128
+            "name": "Name",
+            "required": false,
+            "type": "string"
+        },
+        "numbers": {
+            "description": "The listing of numbers to import to the account",
+            "items": {
+                "description": "The number to import",
+                "type": "string"
+            },
+            "minItems": 1,
+            "required": true,
+            "type": "array"
+        },
+        "resource_id": {
+            "description": "The Resource ID the numbers are coming from",
+            "required": true,
+            "type": "string"
         }
-        ,"numbers":{
-            "type":"array"
-            ,"description":"The listing of numbers to import to the account"
-            ,"minItems":1
-            ,"required":true
-            ,"items":{
-                "type":"string"
-                ,"description":"The number to import"
-            }
-        }
-        ,"resource_id":{
-            "type":"string"
-            ,"description":"The Resource ID the numbers are coming from"
-            ,"required":true
-        }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

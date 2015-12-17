@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -21,39 +21,65 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle(Data, Call) ->
-    case bridge_to_endpoints(Data, Call) of
-        {'ok', _} ->
-            lager:info("completed successful bridge to the device"),
-            doodle_exe:continue(Call);
-        {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
-        {'error', _R} ->
-            lager:info("error bridging to device: ~s"
-                       ,[wh_json:get_value(<<"Error-Message">>, _R)]
-                      ),
-            doodle:continue(Call)
+handle(Data, Call1) ->
+    EndpointId = wh_doc:id(Data),
+    Call2 = whapps_call:kvs_store(<<"target_device_id">>, EndpointId, Call1),
+    case build_endpoint(EndpointId, Data, doodle_util:set_callee_id(EndpointId, Call2)) of
+        {'error', 'do_not_disturb'} = Reason ->
+            maybe_handle_bridge_failure(Reason, Call1);
+        {'error', Reason} ->
+            doodle_exe:continue(doodle_util:set_flow_error(<<"error">>, wh_util:to_binary(Reason), Call1));
+        {Endpoints, Call} ->
+            case whapps_sms_command:b_send_sms(Endpoints, Call) of
+                {'ok', JObj} -> handle_result(JObj, Call);
+                {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call)
+            end
     end.
 
--spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
-maybe_handle_bridge_failure(Reason, Call) ->
-    case cf_util:handle_bridge_failure(Reason, Call) of
-        'not_found' -> doodle_exe:continue(Call);
+-spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_result(JObj, Call) ->
+    Status = doodle_util:sms_status(JObj),
+    Call1 = doodle_util:set_flow_status(Status, Call),
+    handle_result_status(Call1, Status).
+
+-spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
+handle_result_status(Call, <<"pending">>) ->
+    doodle_util:maybe_reschedule_sms(Call);
+handle_result_status(Call, _Status) ->
+    lager:info("completed successful message to the device"),
+    doodle_exe:continue(Call).
+
+-spec maybe_handle_bridge_failure({'error', any()}, whapps_call:call()) -> 'ok'.
+maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
+    case doodle_util:handle_bridge_failure(Reason, Call) of
+        'not_found' ->
+            doodle_util:maybe_reschedule_sms(
+              doodle_util:set_flow_status(<<"pending">>, wh_util:to_binary(R), Call));
         'ok' -> 'ok'
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempts to bridge to the endpoints created to reach this device
+%% Attempts to build the endpoints to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints(wh_json:object(), whapps_call:call()) ->
-                                 any().
-bridge_to_endpoints(Data, Call) ->
-    EndpointId = wh_json:get_value(<<"id">>, Data),
+-spec build_endpoint(ne_binary(), wh_json:object(), whapps_call:call()) ->
+                            {'error', atom() | wh_json:object()} |
+                            {'fail', ne_binary() | wh_json:object()} |
+                            {'ok', wh_json:object()}.
+build_endpoint(EndpointId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
-        {'ok', Endpoints} ->
-            whapps_sms_command:b_send_sms(Endpoints, Call)
+        {'ok', Endpoints} -> maybe_note_owner(Endpoints, Call)
+    end.
+
+-spec maybe_note_owner(wh_json:objects(), whapps_call:call()) ->
+                              {wh_json:objects(), whapps_call:call()}.
+maybe_note_owner([Endpoint]=Endpoints, Call) ->
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Owner-ID">>], Endpoint) of
+        'undefined' -> {Endpoints, Call};
+        OwnerId ->
+            {Endpoints, whapps_call:kvs_store(<<"target_owner_id">>, OwnerId, Call)}
     end.

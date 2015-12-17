@@ -37,6 +37,8 @@
         ,whapps_config:get_integer(?MOD_CONFIG_CAT, <<"job_recovery_threshold_s">>, ?SECONDS_IN_HOUR)
        ).
 
+-define(KEY_SUCCESS, <<"success">>).
+
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'delegate', [{'app_name', ?APP_ROUTING}]}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_job'}
@@ -73,9 +75,8 @@ start_link() ->
 -spec publish_new_job(cb_context:context()) -> 'ok'.
 publish_new_job(Context) ->
     AccountId = cb_context:account_id(Context),
-    JobId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+    JobId = wh_doc:id(cb_context:doc(Context)),
     ReqId = cb_context:req_id(Context),
-
     publish(AccountId, JobId, ReqId).
 
 -spec publish(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
@@ -103,9 +104,7 @@ handle_job(JObj, _Props) ->
 process_job(<<_/binary>> = AccountId, <<_/binary>> = JobId) ->
     JobModb = job_modb(AccountId, JobId),
     {'ok', Job} = couch_mgr:open_cache_doc(JobModb, JobId),
-
     lager:debug("processing job ~s for account ~s", [JobId, AccountId]),
-
     maybe_start_job(Job, wh_json:get_value(<<"pvt_status">>, Job)).
 
 -spec maybe_start_job(wh_json:object(), ne_binary()) -> 'ok'.
@@ -114,7 +113,7 @@ maybe_start_job(_Job, <<"complete">>) ->
 maybe_start_job(Job, <<"pending">>) ->
     lager:debug("job is pending, let's execute it!"),
     start_job(update_status(Job, <<"running">>)
-              ,wh_json:get_value(<<"pvt_account_id">>, Job)
+              ,wh_doc:account_id(Job)
               ,wh_json:get_value(<<"pvt_auth_account_id">>, Job)
               ,select_carrier_module(Job)
               ,wh_json:get_value(<<"numbers">>, Job)
@@ -145,7 +144,7 @@ select_carrier_module(Job) ->
 -spec maybe_create_number(wh_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
                                  wh_json:object().
 maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
-    case wh_json:get_first_defined([[<<"success">>, Number]
+    case wh_json:get_first_defined([[?KEY_SUCCESS, Number]
                                     ,[<<"errors">>, Number]
                                    ], Job)
     of
@@ -168,7 +167,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     of
         {'ok', NumberJObj} ->
             lager:debug("successfully created number ~s for account ~s", [Number, AccountId]),
-            update_status(wh_json:set_value([<<"success">>, Number], NumberJObj, Job)
+            update_status(wh_json:set_value([?KEY_SUCCESS, Number], NumberJObj, Job)
                           ,<<"running">>
                          );
         {Failure, JObj} ->
@@ -213,7 +212,7 @@ build_number_properties(JObj) ->
 
 -spec update_status(wh_json:object(), ne_binary()) -> wh_json:object().
 update_status(Job, Status) ->
-    {'ok', Job1} = couch_mgr:save_doc(wh_json:get_value(<<"pvt_account_db">>, Job)
+    {'ok', Job1} = couch_mgr:save_doc(wh_doc:account_db(Job)
                                       ,wh_json:set_values([{<<"pvt_status">>, Status}
                                                            ,{<<"pvt_node">>, wh_util:to_binary(node())}
                                                           ]
@@ -230,7 +229,7 @@ start_recovery() ->
 
 -spec maybe_recover_jobs(wh_year(), wh_month(), ne_binaries()) -> 'ok'.
 maybe_recover_jobs(Year, Month, Accounts) ->
-    [catch maybe_recover_account_jobs(Year, Month, AccountId) || AccountId <- Accounts],
+    _ = [catch maybe_recover_account_jobs(Year, Month, AccountId) || AccountId <- Accounts],
     lager:debug("finished recovering account jobs").
 
 -spec maybe_recover_account_jobs(wh_year(), wh_month(), ne_binary()) -> 'ok'.
@@ -250,27 +249,24 @@ maybe_recover_account_jobs(Year, Month, AccountId) ->
 
 -spec maybe_recover_incomplete_jobs(wh_json:objects()) -> 'ok'.
 maybe_recover_incomplete_jobs(IncompleteJobs) ->
-    [maybe_recover_incomplete_job(wh_json:get_value(<<"doc">>, Job)) || Job <- IncompleteJobs],
+    _ = [maybe_recover_incomplete_job(wh_json:get_value(<<"doc">>, Job)) || Job <- IncompleteJobs],
     'ok'.
 
 -spec maybe_recover_incomplete_job(wh_json:object()) -> 'ok'.
 maybe_recover_incomplete_job(Job) ->
     Now = wh_util:current_tstamp(),
-
-    case (Now - wh_json:get_integer_value(<<"pvt_modified">>, Job)) > ?RECOVERY_THRESHOLD_S of
+    case (Now - wh_doc:modified(Job)) > ?RECOVERY_THRESHOLD_S of
         'false' -> 'ok';
         'true' ->
             lager:debug("job ~s in ~s is old and incomplete, attempting to restart it"
-                        ,[wh_json:get_value(<<"_id">>, Job)
-                          ,wh_json:get_value(<<"pvt_account_id">>, Job)
-                         ]
+                        ,[wh_doc:id(Job), wh_doc:account_id(Job)]
                        ),
             recover_incomplete_job(Job)
     end.
 
 -spec recover_incomplete_job(wh_json:object()) -> 'ok'.
 recover_incomplete_job(Job) ->
-    Db = wh_json:get_value(<<"pvt_account_db">>, Job),
+    Db = wh_doc:account_db(Job),
     case couch_mgr:save_doc(Db
                             ,wh_json:set_value(<<"pvt_recovering">>, 'true', wh_doc:update_pvt_modified(Job))
                            )
@@ -282,11 +278,9 @@ recover_incomplete_job(Job) ->
 
 -spec republish_job(wh_json:object()) -> 'ok'.
 republish_job(Job) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, Job),
-    JobId = wh_json:get_value(<<"_id">>, Job),
+    JobId = wh_doc:id(Job),
     ReqId = wh_json:get_value(<<"pvt_request_id">>, Job, wh_util:to_binary(?MODULE)),
-
-    publish(AccountId, JobId, ReqId).
+    publish(wh_doc:account_id(Job), JobId, ReqId).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -353,7 +347,7 @@ handle_cast(_Msg, State) ->
 handle_info({'timeout', Ref, ?RECOVERY_MESSAGE}
             ,#state{recovery_ref=Ref}=State
            ) ->
-    _Pid = spawn(?MODULE, 'start_recovery', []),
+    _Pid = wh_util:spawn(fun start_recovery/0),
     lager:debug("starting recovery walker in ~p", [_Pid]),
     {'noreply', State#state{recovery_ref=start_timer()}, 'hibernate'};
 handle_info(_Info, State) ->
@@ -400,14 +394,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec job_modb(ne_binary(), ne_binary()) -> ne_binary().
-job_modb(AccountId, <<Year:4/binary, Month:2/binary, "-", _/binary>>) ->
+job_modb(AccountId, ?MATCH_MODB_PREFIX(Year,Month,_)) ->
     wh_util:format_account_mod_id(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month));
-job_modb(AccountId, <<Year:4/binary, Month:1/binary, "-", _/binary>>) ->
+job_modb(AccountId, ?MATCH_MODB_PREFIX_M1(Year,Month,_)) ->
     wh_util:format_account_mod_id(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)).
 
 -spec start_timer() -> reference().
 start_timer() ->
-    erlang:start_timer(?RECOVERY_TIMEOUT_S * 1000
-                       ,self()
-                       ,?RECOVERY_MESSAGE
-                      ).
+    Time = ?RECOVERY_TIMEOUT_S * ?MILLISECONDS_IN_SECOND,
+    erlang:start_timer(Time, self(), ?RECOVERY_MESSAGE).

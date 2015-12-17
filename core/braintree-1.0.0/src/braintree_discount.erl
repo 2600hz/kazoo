@@ -18,6 +18,12 @@
 
 -include_lib("braintree/include/braintree.hrl").
 
+-export_type([discount/0
+              ,discounts/0
+             ]).
+
+-type discount() :: bt_discount().
+-type discounts() :: bt_discounts().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -33,11 +39,12 @@ xml_to_record(Xml) ->
 
 xml_to_record(Xml, Base) ->
     #bt_discount{id = get_xml_value([Base, "/id/text()"], Xml)
-              ,amount = get_xml_value([Base, "/amount/text()"], Xml)
-              ,never_expires = wh_util:is_true(get_xml_value([Base, "/never-expires/text()"], Xml))
-              ,billing_cycle = get_xml_value([Base, "/current-billing-cycle/text()"], Xml)
-              ,number_of_cycles = get_xml_value([Base, "/number-of-billing-cycles/text()"], Xml)
-              ,quantity = wh_util:to_integer(get_xml_value([Base, "/quantity/text()"], Xml))}.
+                 ,amount = get_xml_value([Base, "/amount/text()"], Xml)
+                 ,never_expires = wh_util:is_true(get_xml_value([Base, "/never-expires/text()"], Xml))
+                 ,billing_cycle = get_xml_value([Base, "/current-billing-cycle/text()"], Xml)
+                 ,number_of_cycles = get_xml_value([Base, "/number-of-billing-cycles/text()"], Xml)
+                 ,quantity = wh_util:to_integer(get_xml_value([Base, "/quantity/text()"], Xml))
+                }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -89,7 +96,7 @@ record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
 -spec json_to_record(api_object()) -> bt_discount() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
-    #bt_discount{id = wh_json:get_binary_value(<<"id">>, JObj)
+    #bt_discount{id = wh_doc:id(JObj)
                  ,amount = wh_json:get_binary_value(<<"amount">>, JObj)
                  ,never_expires = wh_json:get_value(<<"never_expires">>, JObj, 'true')
                  ,billing_cycle = wh_json:get_binary_value(<<"billing_cycle">>, JObj)
@@ -97,4 +104,4 @@ json_to_record(JObj) ->
                  ,quantity = wh_json:get_integer_value(<<"quantity">>, JObj)
                  ,inherited_from = wh_json:get_binary_value(<<"inherited_from">>, JObj)
                  ,existing_id = wh_json:get_binary_value(<<"existing_id">>, JObj)
-    }.
+                }.

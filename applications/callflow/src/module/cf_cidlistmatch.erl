@@ -30,15 +30,54 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CallerIdNumber = whapps_call:caller_id_number(Call),
-    ListEntries = get_list_entries(Data, Call),
-    lager:debug("comparing caller id ~s with match list entries", [CallerIdNumber]),
-    case match_one_of(ListEntries, CallerIdNumber) of
-        {'match', Entry} ->
-            lager:info("matched list ~s entry", [wh_json:get_value(<<"id">>, Entry)]),
-            handle_match(Call);
-        'nomatch' ->
-            handle_no_match(Call)
+    ListId = wh_doc:id(Data),
+    AccountDb = whapps_call:account_db(Call),
+    lager:debug("comparing caller id ~s with match list ~s entries in ~s", [CallerIdNumber, ListId, AccountDb]),
+    case is_matching_prefix(AccountDb, ListId, CallerIdNumber)
+         orelse is_matching_regexp(AccountDb, ListId, CallerIdNumber)
+    of
+        'true' -> handle_match(Call);
+        'false' -> handle_no_match(Call)
     end.
+
+-spec is_matching_prefix(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+is_matching_prefix(AccountDb, ListId, Number) ->
+    NumberPrefixes = build_keys(Number),
+    Keys = [[ListId, X] || X <- NumberPrefixes],
+    case couch_mgr:get_results(AccountDb, <<"lists/match_prefix_in_list">>, [{'keys', Keys}]) of
+        {'ok', [_ | _]} -> 'true';
+        _ -> 'false'
+    end.
+
+-spec is_matching_regexp(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+is_matching_regexp(AccountDb, ListId, Number) ->
+    case couch_mgr:get_results(AccountDb, <<"lists/regexps_in_list">>, [{'key', ListId}]) of
+        {'ok', Regexps} ->
+            Patterns = [wh_json:get_value(<<"value">>, X) || X <- Regexps],
+            match_regexps(Patterns, Number);
+        _ ->
+            'false'
+    end.
+
+-spec match_regexps(binaries(), ne_binary()) -> boolean().
+match_regexps([Pattern | Rest], Number) ->
+    case re:run(Number, Pattern) of
+        {'match', _} -> 'true';
+        'nomatch' -> match_regexps(Rest, Number)
+    end;
+match_regexps([], _Number) -> 'false'.
+
+%% TODO: this function from hon_util, may be place it somewhere in library?
+-spec build_keys(binary()) -> binaries().
+build_keys(<<"+", E164/binary>>) ->
+    build_keys(E164);
+build_keys(<<D:1/binary, Rest/binary>>) ->
+    build_keys(Rest, D, [D]).
+
+-spec build_keys(binary(), binary(), binaries()) -> binaries().
+build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
+    build_keys(Rest, <<Prefix/binary, D/binary>>, [<<Prefix/binary, D/binary>> | Acc]);
+build_keys(<<>>, _, Acc) -> Acc.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -83,38 +122,3 @@ is_callflow_child(Name, Call) ->
             lager:debug("failed to find callflow child"),
             'false'
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check if caller id matches list entry pattern.
-%% @end
-%%--------------------------------------------------------------------
--spec match_one_of(wh_json:objects(), ne_binary()) ->
-                          {'match', wh_json:object()} |
-                          'nomatch'.
-match_one_of([], _CallerIdNumber) -> 'nomatch';
-match_one_of([Entry|Rest], CallerIdNumber) ->
-    Pattern = wh_json:get_value(<<"pattern">>, Entry),
-    case re:run(CallerIdNumber, Pattern) of
-        {'match', _} -> {'match', Entry};
-        'nomatch' -> match_one_of(Rest, CallerIdNumber)
-    end.
-
--spec get_list_entries(wh_json:object(), whapps_call:call()) -> wh_json:objects().
-get_list_entries(Data, Call) ->
-    ListId = wh_json:get_ne_value(<<"id">>, Data),
-    AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, ListId) of
-        {'ok', ListJObj} ->
-            lager:info("match list loaded: ~s", [ListId]),
-            JObj = wh_json:get_ne_value(<<"entries">>, ListJObj),
-            lists:map(fun get_list_entries_map/1, wh_json:to_proplist(JObj));
-        {'error', Reason} ->
-            lager:info("failed to load match list box ~s, ~p", [ListId, Reason]),
-            []
-    end.
-
--spec get_list_entries_map({ne_binary(), wh_json:object()}) -> wh_json:object().
-get_list_entries_map({K, V}) ->
-    wh_json:set_value(<<"id">>, K, V).

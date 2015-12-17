@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -42,7 +42,8 @@ start_link() ->
 -spec sync(ne_binary()) -> wh_std_return().
 sync(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    wh_util:put_callid(<<AccountId/binary, "-sync">>),
+    case wh_services:fetch_services_doc(AccountId, 'true') of
         {'error', _}=E -> E;
         {'ok', ServiceJObj} ->
             sync(AccountId, ServiceJObj)
@@ -54,7 +55,7 @@ clean(Account) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
         {'ok', ServiceJObj} ->
-            immediate_sync(AccountId, wh_json:set_value(<<"pvt_deleted">>, 'true', ServiceJObj))
+            immediate_sync(AccountId, wh_doc:set_soft_deleted(ServiceJObj, 'true'))
     end.
 
 %%%===================================================================
@@ -77,10 +78,14 @@ init([]) ->
     case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, 'false') of
         'false' -> {'ok', #state{}};
         'true' ->
-            ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-            _TRef = erlang:send_after(ScanRate, self(), {'try_sync_service'}),
+            _Ref = start_sync_service_timer(),
             {'ok', #state{}}
     end.
+
+-spec start_sync_service_timer() -> reference().
+start_sync_service_timer() ->
+    ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20 * ?MILLISECONDS_IN_SECOND),
+    erlang:send_after(ScanRate, self(), {'try_sync_service'}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,12 +129,21 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'try_sync_service'}, State) ->
     _ = maybe_sync_service(),
-    ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-    _TRef = erlang:send_after(ScanRate, self(), {'try_sync_service'}),
-    {'noreply', State};
+    _ = maybe_clear_process_dictionary(),
+    _Ref = start_sync_service_timer(),
+    {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
+
+-spec maybe_clear_process_dictionary() -> 'ok'.
+maybe_clear_process_dictionary() ->
+    lists:foreach(fun maybe_clear_dictionary_entry/1, get()).
+
+-spec maybe_clear_dictionary_entry({any(), any()}) -> any().
+maybe_clear_dictionary_entry({{'phone_number_doc', _AccountId}=Key, _Doc}) ->
+    erase(Key);
+maybe_clear_dictionary_entry(_) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -184,11 +198,15 @@ maybe_sync_service() ->
 
 -spec bump_modified(wh_json:object()) -> wh_std_return().
 bump_modified(JObj) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountId = wh_doc:account_id(JObj),
     Services = wh_services:reconcile_only(AccountId),
+    'true' = (Services =/= 'false'),
+
     UpdatedJObj = wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                     ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, JObj)}
-                                     ], wh_services:to_json(Services)),
+                                      ,{<<"_rev">>, wh_doc:revision(JObj)}
+                                     ]
+                                     ,wh_services:to_json(Services)
+                                    ),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'error', _}=E ->
             %% If we conflict or cant save the doc with a new modified timestamp
@@ -198,8 +216,8 @@ bump_modified(JObj) ->
             %% If we can change the timestamp then (since the view requires the
             %% modified time to be x mins in the past) we have gain exclusive
             %% control for x mins.... good luck!
-            [RevNum, _] = binary:split(wh_json:get_value(<<"_rev">>, NewJObj), <<"-">>),
-            put('callid', <<AccountId/binary, "-", RevNum/binary>>),
+            [RevNum, _] = binary:split(wh_doc:revision(NewJObj), <<"-">>),
+            wh_util:put_callid(<<AccountId/binary, "-", RevNum/binary>>),
             lager:debug("start synchronization of services with bookkeepers"),
             maybe_follow_billing_id(AccountId, NewJObj)
     end.
@@ -231,7 +249,7 @@ maybe_sync_services(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
         {'error', 'no_plans'} ->
             lager:debug("no services plans found"),
-            _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
+            _ = mark_clean_and_status(kzd_services:status_good(), ServiceJObj),
             maybe_sync_reseller(AccountId, ServiceJObj);
         {'ok', ServiceItems} ->
             sync_services(AccountId, ServiceJObj, ServiceItems)
@@ -241,8 +259,8 @@ maybe_sync_services(AccountId, ServiceJObj) ->
 sync_services(AccountId, ServiceJObj, ServiceItems) ->
     try sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) of
         'ok' ->
-            _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
-            io:format("synchronization with bookkeeper complete~n", []),
+            _ = mark_clean_and_status(kzd_services:status_good(), ServiceJObj),
+            io:format("synchronization with bookkeeper complete~n"),
             lager:debug("synchronization with bookkeeper complete"),
             maybe_sync_reseller(AccountId, ServiceJObj)
     catch
@@ -251,7 +269,7 @@ sync_services(AccountId, ServiceJObj, ServiceItems) ->
             _ = mark_clean_and_status(wh_util:to_binary(Reason), ServiceJObj),
             maybe_sync_reseller(AccountId, ServiceJObj);
         _E:R ->
-            %% TODO: certain errors (such as no CC or expired, ect) should
+            %% TODO: certain errors (such as no CC or expired, etc) should
             %%    move the account of good standing...
             lager:info("unable to sync services(~p): ~p", [_E, R]),
             {'error', R}
@@ -272,20 +290,7 @@ sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) ->
             end
     end.
 
--spec did_topup_failed(wh_json:objects()) -> boolean().
-did_topup_failed(JObjs) ->
-    lists:foldl(
-        fun(JObj, Acc) ->
-            case wh_json:get_integer_value(<<"code">>, JObj) of
-                3006 -> 'true';
-                _ -> Acc
-            end
-        end
-        ,'false'
-        ,JObjs
-    ).
-
--spec handle_topup_transactions(ne_binary(), wh_json:objects(), wh_json:objects()| integer()) -> 'ok'.
+-spec handle_topup_transactions(ne_binary(), wh_json:objects(), wh_json:objects() | integer()) -> 'ok'.
 handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
     case did_topup_failed(Failed) of
         'true' -> 'ok';
@@ -293,8 +298,8 @@ handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
     end;
 handle_topup_transactions(_, [], _) -> 'ok';
 handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
-    case wh_json:get_integer_value(<<"code">>, JObj) of
-        3006 ->
+    case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
+        ?CODE_TOPUP ->
             Amount = wh_json:get_value(<<"pvt_amount">>, JObj),
             Transaction = wh_transaction:credit(Account, Amount),
             Transaction1 = wh_transaction:set_reason(<<"topup">>, Transaction),
@@ -304,7 +309,8 @@ handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
                     lager:warning("did not write top up transaction for account ~s already exist for today", [Account]);
                 {'error', _E} ->
                     lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p), retrying ~p..."
-                                ,[_E, Account, Amount, Retry]),
+                                ,[_E, Account, Amount, Retry]
+                               ),
                     handle_topup_transactions(Account, [JObj|JObjs], Retry-1)
             end;
         _ -> handle_topup_transactions(Account, JObjs, 3)
@@ -312,9 +318,22 @@ handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
 handle_topup_transactions(Account, _, _) ->
     lager:error("failed to write top up transaction for account ~s too many retries", [Account]).
 
+-spec did_topup_failed(wh_json:objects()) -> boolean().
+did_topup_failed(JObjs) ->
+    lists:foldl(
+        fun(JObj, Acc) ->
+            case wh_json:get_integer_value(<<"pvt_code">>, JObj) of
+                ?CODE_TOPUP -> 'true';
+                _ -> Acc
+            end
+        end
+        ,'false'
+        ,JObjs
+    ).
+
 -spec maybe_sync_reseller(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_sync_reseller(AccountId, ServiceJObj) ->
-    case wh_json:get_ne_value(<<"pvt_reseller_id">>, ServiceJObj, AccountId) of
+    case kzd_services:reseller_id(ServiceJObj, AccountId) of
         AccountId -> {'ok', ServiceJObj};
         ResellerId ->
             lager:debug("marking reseller ~s as dirty", [ResellerId]),
@@ -323,9 +342,9 @@ maybe_sync_reseller(AccountId, ServiceJObj) ->
 
 -spec get_billing_id(ne_binary(), wh_json:object()) -> ne_binary().
 get_billing_id(AccountId, JObj) ->
-    case wh_json:is_true(<<"pvt_reseller">>, JObj) of
+    case kzd_services:is_reseller(JObj) of
         'true' -> AccountId;
-        'false' -> wh_json:get_ne_value(<<"billing_id">>, JObj, AccountId)
+        'false' -> kzd_services:billing_id(JObj, AccountId)
     end.
 
 -spec mark_dirty(ne_binary() | wh_json:object()) -> wh_std_return().
@@ -335,13 +354,17 @@ mark_dirty(AccountId) when is_binary(AccountId) ->
         {'ok', JObj} -> mark_dirty(JObj)
     end;
 mark_dirty(JObj) ->
-    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, 'true'}
-                                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                                           ], JObj)).
+    couch_mgr:save_doc(?WH_SERVICES_DB
+                       ,wh_json:set_values([{<<"pvt_dirty">>, 'true'}
+                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                           ]
+                                           ,JObj
+                                          )
+                      ).
 
 -spec mark_clean(wh_json:object()) -> wh_std_return().
 mark_clean(JObj) ->
-    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"pvt_dirty">>, 'false', JObj)).
+    couch_mgr:save_doc(?WH_SERVICES_DB, kzd_services:set_is_dirty(JObj, 'false')).
 
 -spec mark_clean_and_status(ne_binary(), wh_json:object()) -> wh_std_return().
 mark_clean_and_status(Status, JObj) ->
@@ -354,14 +377,16 @@ mark_clean_and_status(Status, JObj) ->
 maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, BillingId) of
         {'error', _} ->
-            lager:debug("billing id ~s on ~s does not exist anymore, updating to bill self", [BillingId, AccountId]),
-            couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj));
+            lager:debug("billing id ~s on ~s does not exist anymore, updating to bill self"
+                        ,[BillingId, AccountId]),
+            couch_mgr:save_doc(?WH_SERVICES_DB, kzd_services:set_billing_id(ServiceJObj, AccountId));
         {'ok', JObj} ->
-            case wh_json:is_true(<<"pvt_deleted">>, JObj) of
+            case wh_doc:is_soft_deleted(JObj) of
                 'false' -> wh_services:reconcile(BillingId);
                 'true' ->
-                    lager:debug("billing id ~s on ~s was deleted, updating to bill self", [BillingId, AccountId]),
-                    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj))
+                    lager:debug("billing id ~s on ~s was deleted, updating to bill self"
+                                ,[BillingId, AccountId]),
+                    couch_mgr:save_doc(?WH_SERVICES_DB, kzd_services:set_billing_id(ServiceJObj, AccountId))
             end
     end.
 

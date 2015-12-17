@@ -127,7 +127,7 @@ validate(Context) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_util:create_auth_token(Context, wh_util:to_binary(?MODULE)).
+    crossbar_util:create_auth_token(Context, ?MODULE).
 
 %%%===================================================================
 %%% Internal functions
@@ -198,8 +198,9 @@ maybe_add_account_information(UUID, AuthResponse) ->
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
-    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
-                                         ,?UBIQUITI_AUTH_TOKENS
+    case kz_buckets:consume_tokens_until(?APP_NAME
+                                         ,cb_modules_util:bucket_name(Context)
+                                         ,cb_modules_util:token_cost(Context, ?UBIQUITI_AUTH_TOKENS)
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');

@@ -31,7 +31,7 @@ handle(Data, Call) ->
                 cf_acdc_agent:play_not_an_agent(Call);
             {'ok', AgentId} ->
                 Action = wh_json:get_value(<<"action">>, Data),
-                QueueId = wh_json:get_value(<<"id">>, Data),
+                QueueId = wh_doc:id(Data),
                 Status = cf_acdc_agent:find_agent_status(Call, AgentId),
 
                 update_queues(Call, AgentId, QueueId, Action),
@@ -67,7 +67,7 @@ update_status(Call, AgentId, Status) ->
              ,{<<"method">>, <<"callflow">>}
             ],
 
-    {'ok', _D} = acdc_util:update_agent_status(whapps_call:account_id(Call), AgentId, Status, Extra).
+    'ok' = acdc_agent_util:update_status(whapps_call:account_id(Call), AgentId, Status, Extra).
 
 send_agent_message(Call, AgentId, QueueId, PubFun) ->
     Prop = props:filter_undefined(
@@ -78,36 +78,16 @@ send_agent_message(Call, AgentId, QueueId, PubFun) ->
              ]),
     PubFun(Prop).
 
+-spec update_queues(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) ->
+                    {'ok', wh_json:object()}
+                    | couch_mgr:couchbeam_error().
 update_queues(Call, AgentId, QueueId, <<"login">>) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), AgentId) of
-        {'error', _} -> 'ok';
-        {'ok', AgentJObj} ->
-            maybe_add_queue(Call, AgentJObj, QueueId)
-    end;
+    couch_mgr:update_cache_doc(whapps_call:account_db(Call)
+                               ,AgentId
+                               ,fun (JObj) -> kzd_agent:maybe_add_queue(JObj, QueueId, 'skip') end
+                              );
 update_queues(Call, AgentId, QueueId, <<"logout">>) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), AgentId) of
-        {'error', _} -> 'ok';
-        {'ok', AgentJObj} ->
-            maybe_rm_queue(Call, AgentJObj, QueueId)
-    end.
-
-maybe_add_queue(Call, AgentJObj, QueueId) ->
-    Qs = wh_json:get_value(<<"queues">>, AgentJObj, []),
-    case lists:member(QueueId, Qs) of
-        'false' ->
-            save_agent(Call, wh_json:set_value(<<"queues">>, [QueueId | Qs], AgentJObj));
-        'true' -> 'ok'
-    end.
-
-maybe_rm_queue(Call, AgentJObj, QueueId) ->
-    Qs = wh_json:get_value(<<"queues">>, AgentJObj, []),
-    case lists:member(QueueId, Qs) of
-        'true' ->
-            Qs1 = lists:delete(QueueId, Qs),
-            QRemoved = wh_json:set_value(<<"queues">>, Qs1, AgentJObj),
-            save_agent(Call, QRemoved);
-        'false' -> 'ok'
-    end.
-
-save_agent(Call, AgentJObj) ->
-    couch_mgr:save_doc(whapps_call:account_db(Call), AgentJObj).
+    couch_mgr:update_cache_doc(whapps_call:account_db(Call)
+                               ,AgentId
+                               ,fun (JObj) -> kzd_agent:maybe_rm_queue(JObj, QueueId, 'skip') end
+                              ).

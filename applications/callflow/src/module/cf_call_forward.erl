@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action":"activate" | "deactivate" | "update" | "toggle" | "menu"
@@ -116,7 +116,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
 %% not, and disabling it if it is
 %% @end
 %%--------------------------------------------------------------------
--spec cf_toggle(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
+-spec cf_toggle(callfwd(), api_binary(), whapps_call:call()) -> callfwd().
 cf_toggle(#callfwd{enabled='false'
                    ,number=Number
                   }=CF, _, Call) when is_binary(Number), size(Number) > 0 ->
@@ -139,7 +139,7 @@ cf_toggle(CF, _, Call) ->
 %% document to enable call forwarding
 %% @end
 %%--------------------------------------------------------------------
--spec cf_activate(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
+-spec cf_activate(callfwd(), api_binary(), whapps_call:call()) -> callfwd().
 cf_activate(CF1, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     lager:info("activating call forwarding to '~s'", [CaptureGroup]),
     CF2 = #callfwd{number=Number} = cf_update_number(CF1, CaptureGroup, Call),
@@ -180,10 +180,9 @@ cf_deactivate(CF, Call) ->
 %% document with a new number
 %% @end
 %%--------------------------------------------------------------------
--spec cf_update_number(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
-cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call) when is_atom(CaptureGroup)
-                                                                                      ;CaptureGroup =:= <<>>
-                                                                                      ->
+-spec cf_update_number(callfwd(), api_binary(), whapps_call:call()) -> callfwd().
+cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call)
+  when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     EnterNumber = wh_media_util:get_prompt(<<"cf-enter_number">>, Call),
 
     NoopId = whapps_call_command:play(EnterNumber, Call),
@@ -257,23 +256,32 @@ update_callfwd(#callfwd{doc_id=Id
                               callfwd() |
                               {'error', callfwd()}.
 get_call_forward(Call) ->
-    AccountDb = whapps_call:account_db(Call),
     AuthorizingId = whapps_call:authorizing_id(Call),
-    ViewOptions = [{<<"key">>, AuthorizingId}],
-    Id = case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
-             {'ok', [Owner]} -> wh_json:get_value(<<"value">>, Owner, AuthorizingId);
-             _E -> AuthorizingId
-         end,
-    case couch_mgr:open_doc(AccountDb, Id) of
-        {'ok', JObj} ->
-            lager:info("loaded call forwarding object from ~s", [Id]),
-            #callfwd{doc_id = wh_json:get_value(<<"_id">>, JObj)
-                     ,enabled = wh_json:is_true([<<"call_forward">>, <<"enabled">>], JObj)
-                     ,number = wh_json:get_ne_value([<<"call_forward">>, <<"number">>], JObj, <<>>)
-                     ,require_keypress = wh_json:is_true([<<"call_forward">>, <<"require_keypress">>], JObj, 'true')
-                     ,keep_caller_id = wh_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], JObj, 'true')
+
+    OwnerId =
+        case cf_attributes:owner_id(AuthorizingId, Call) of
+            'undefined' -> AuthorizingId;
+            UserId -> UserId
+        end,
+    maybe_get_call_forward(Call, OwnerId).
+
+-spec maybe_get_call_forward(whapps_call:call(), api_binary()) ->
+                                    callfwd() |
+                                    {'error', callfwd()}.
+maybe_get_call_forward(_Call, 'undefined') ->
+    lager:debug("cannot get call forwarding from undefined"),
+    {'error', #callfwd{}};
+maybe_get_call_forward(Call, OwnerId) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), OwnerId) of
+        {'ok', UserJObj} ->
+            lager:info("loaded call forwarding object from ~s", [OwnerId]),
+            #callfwd{doc_id = wh_doc:id(UserJObj)
+                     ,enabled = wh_json:is_true([<<"call_forward">>, <<"enabled">>], UserJObj)
+                     ,number = wh_json:get_ne_value([<<"call_forward">>, <<"number">>], UserJObj, <<>>)
+                     ,require_keypress = wh_json:is_true([<<"call_forward">>, <<"require_keypress">>], UserJObj, 'true')
+                     ,keep_caller_id = wh_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], UserJObj, 'true')
                     };
         {'error', R} ->
-            lager:info("failed to load call forwarding object from ~s, ~w", [Id, R]),
+            lager:info("failed to load call forwarding object from ~s, ~w", [OwnerId, R]),
             {'error', #callfwd{}}
     end.

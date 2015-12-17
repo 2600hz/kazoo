@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% utility functions for Trunkstore
 %%%
@@ -20,6 +20,7 @@
 
 -export([get_call_duration/1
          ,lookup_user_flags/3
+         ,lookup_user_flags/4
          ,lookup_did/2
         ]).
 -export([invite_format/2]).
@@ -44,7 +45,6 @@
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
 -define(VALIDATE_CALLER_ID, whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false')).
--define(VALIDATE_EMERGENCY_ID, whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_emergency_number">>, 'false')).
 
 -spec find_ip(ne_binary() | nonempty_string()) -> nonempty_string().
 find_ip(Domain) when is_binary(Domain) ->
@@ -107,27 +107,30 @@ lookup_did(DID, AccountId) ->
             Resp;
         {'error', 'not_found'} ->
             Options = [{'key', DID}],
+            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(DID), DID}, {'type', <<"number">>}]}],
             case couch_mgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
                 {'ok', []} ->
                     lager:info("cache miss for ~s, no results", [DID]),
                     {'error', 'no_did_found'};
                 {'ok', [ViewJObj]} ->
-                    lager:info("cache miss for ~s, found result with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
+                    lager:info("cache miss for ~s, found result with id ~s", [DID, wh_doc:id(ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
-                    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
+                    Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
                     wh_cache:store_local(?TRUNKSTORE_CACHE
                                          ,{'lookup_did', DID, AccountId}
                                          ,Resp
+                                         ,CacheProps
                                         ),
                     {'ok', Resp};
                 {'ok', [ViewJObj | _Rest]} ->
                     lager:notice("multiple results for did ~s in acct ~s", [DID, AccountId]),
-                    lager:info("cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
+                    lager:info("cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_doc:id(ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
-                    Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
+                    Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
                     wh_cache:store_local(?TRUNKSTORE_CACHE
                                          ,{'lookup_did', DID, AccountId}
                                          ,Resp
+                                         ,CacheProps
                                         ),
                     {'ok', Resp};
                 {'error', _}=E ->
@@ -140,6 +143,35 @@ lookup_did(DID, AccountId) ->
                                {'ok', wh_json:object()} |
                                {'error', atom()}.
 lookup_user_flags(Name, Realm, AccountId) ->
+    lookup_user_flags(Name, Realm, AccountId, 'undefined').
+
+-spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
+                               {'ok', wh_json:object()} |
+                               {'error', atom()}.
+lookup_user_flags('undefined', _, _, 'undefined') ->
+    {'error', 'insufficient_info'};
+lookup_user_flags('undefined', _, AccountId, DID) ->
+    case lookup_did(DID, AccountId) of
+        {'error', _}=E -> E;
+        {'ok', JObj} ->
+            DIDs = wh_json:from_list([{DID, wh_json:get_value(<<"DID_Opts">>, JObj, wh_json:new())}]),
+            Server = wh_json:from_list(
+                       [{<<"DIDs">>, DIDs}
+                       ,{<<"options">>, wh_json:get_value(<<"server">>, JObj, wh_json:new())}
+                       ,{<<"permissions">>, wh_json:new()}
+                       ,{<<"monitor">>, wh_json:from_list([{<<"monitor_enabled">>, 'false'}])}
+                       ,{<<"auth">>, wh_json:get_value(<<"auth">>, JObj, wh_json:new())}
+                       ,{<<"server_name">>, <<>>}
+                       ,{<<"server_type">>, <<>>}
+                       ]),
+            {'ok', wh_json:from_list(
+                     [{<<"server">>, Server}
+                     ,{<<"account">>, wh_json:get_value(<<"account">>, JObj, wh_json:new())}
+                     ,{<<"call_restriction">>, wh_json:new()}
+                     ])
+            }
+    end;
+lookup_user_flags(Name, Realm, AccountId, _) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case wh_cache:fetch_local(?TRUNKSTORE_CACHE
                               ,{'lookup_user_flags', Realm, Name, AccountId}
@@ -159,16 +191,20 @@ lookup_user_flags(Name, Realm, AccountId) ->
                     E;
                 {'ok', []} ->
                     lager:info("cache miss for ~s@~s, no results", [Name, Realm]),
-					{'ok', wh_json:new()};
+                    {'ok', wh_json:new()};
                 {'ok', [User|_]} ->
-                    lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
+                    lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_doc:id(User)]),
                     ValJObj = wh_json:get_value(<<"value">>, User),
-                    JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
+                    JObj = wh_json:set_value(<<"id">>, wh_doc:id(User), ValJObj),
+
+                    {'ok', AccountJObj} = kz_account:fetch(AccountId),
+                    Restriction = wh_json:get_value(<<"call_restriction">>, AccountJObj, wh_json:new()),
+                    FlagsJObj = wh_json:set_value(<<"call_restriction">>, Restriction, JObj),
                     wh_cache:store_local(?TRUNKSTORE_CACHE
                                          ,{'lookup_user_flags', Realm, Name, AccountId}
-                                         ,JObj
+                                         ,FlagsJObj
                                         ),
-                    {'ok', JObj}
+                    {'ok', FlagsJObj}
             end
     end.
 
@@ -298,19 +334,8 @@ maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId) ->
         'true' -> validate_external_cid(CIDNum, FromUser, AccountId);
         'false' -> CIDNum
     end;
-maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, AccountId) ->
-    case ?VALIDATE_EMERGENCY_ID of
-        'true' -> validate_emergency_number(ECIDNum, AccountId);
-        'false' -> ECIDNum
-    end.
-
--spec validate_emergency_number(api_binary(), ne_binary()) -> ne_binary().
-validate_emergency_number(ECIDNum, AccountId) ->
-    lager:info("ensure_valid_emergency_number flag detected; will check whether ECID is legal..."),
-    case wh_number_manager:lookup_account_by_number(ECIDNum) of
-        {'ok', AccountId, _} -> ensure_valid_emergency_number(ECIDNum, AccountId);
-        _Else -> valid_emergency_number(AccountId)
-    end.
+maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, _AccountId) ->
+    ECIDNum.
 
 -spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
@@ -328,45 +353,21 @@ validate_from_user(FromUser, AccountId) ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;
         _NothingLeft ->
-            DefaultCID = whapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, <<"00000000000000">>),
+            DefaultCID = whapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, wh_util:anonymous_caller_id_number()),
             lager:info("no valid caller id identified! Will use default trunkstore caller id: ~s", [DefaultCID]),
             DefaultCID
     end.
 
--spec ensure_valid_emergency_number(api_binary(), ne_binary()) -> ne_binary().
-ensure_valid_emergency_number(ECIDNum, AccountId) ->
-    Numbers = valid_emergency_numbers(AccountId),
-    case lists:member(ECIDNum, Numbers) of
-        'false' -> valid_emergency_number(AccountId);
-        'true' -> ECIDNum
-    end.
-
--spec valid_emergency_numbers(ne_binary()) -> ne_binaries().
-valid_emergency_numbers(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, <<"phone_numbers">>) of
-        {'ok', JObj} ->
-            [Number
-             || Number <- wh_json:get_keys(JObj),
-                lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], JObj, []))
-            ];
-        {'error', _} ->
-            DefaultECID = whapps_config:get_non_empty(<<"trunkstore">>, <<"default_emergency_number">>, <<>>),
-            lager:info("No valid caller id identified! Will use default trunkstore caller id: ~p",[DefaultECID]),
-           DefaultECID
-    end.
-
--spec valid_emergency_number(ne_binary()) -> ne_binary().
-valid_emergency_number(AccountId) ->
-    [H|_] = valid_emergency_numbers(AccountId),
-    H.
-
-maybe_restrict_call(#ts_callflow_state{acctid=AccountId, route_req_jobj=RRObj}, Command) ->
+-spec maybe_restrict_call(ts_callflow:state(), wh_proplist()) -> boolean().
+maybe_restrict_call(#ts_callflow_state{acctid=AccountId
+                                       ,route_req_jobj=RRObj
+                                      }
+                    ,Command) ->
     Number = props:get_value(<<"To-DID">>, Command),
     Classification = wnm_util:classify_number(Number),
     lager:debug("Trunkstore classified number as ~p", [Classification]),
     Username = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Username">>], RRObj),
     Realm = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Realm">>], RRObj),
-    {'ok', Opts} = ts_util:lookup_user_flags(Username, Realm, AccountId),
+    {'ok', Opts} = ?MODULE:lookup_user_flags(Username, Realm, AccountId),
     lager:debug("Trunkstore lookup_user_flag results: ~p", [Opts]),
     wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], Opts) =:= <<"deny">>.

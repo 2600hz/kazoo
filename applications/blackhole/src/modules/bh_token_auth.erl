@@ -33,12 +33,12 @@ init() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(bh_context:context()) ->
-                          'false' |
-                          {'true' | 'halt', bh_context:context()}.
+-spec authenticate(bh_context:context()) -> {'true', bh_context:context()} |
+                                            'false' |
+                                            {'halt', any()}.
 authenticate(Context) ->
     lager:debug("trying to authenticate with token: ~s", [bh_context:auth_token(Context)]),
-    case kz_buckets:consume_token(bucket_name(Context)) of
+    case kz_buckets:consume_token(?APP_NAME, bucket_name(Context)) of
         'true' -> check_auth_token(Context, bh_context:auth_token(Context));
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [bh_context:websocket_session_id(Context)]),
@@ -48,19 +48,16 @@ authenticate(Context) ->
 authenticate(Context, Foo) ->
     lager:debug("wha wha? ~p (~p)", [Context, Foo]).
 
--spec check_auth_token(bh_context:context(), api_binary()) ->
-                              boolean() |
-                              {'true', cb_context:context()}.
+-spec check_auth_token(bh_context:context(), api_binary()) -> {'true', bh_context:context()} |
+                                                              'false'.
 check_auth_token(Context, AuthToken) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
     case couch_mgr:open_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
-            {'true'
-            ,bh_context:set_auth_account_id(Context
-                                           ,wh_json:get_ne_value(<<"account_id">>, JObj)
-                                           )
-            };
+            AccountId = wh_json:get_ne_value(<<"account_id">>, JObj),
+            Context1 = bh_context:set_auth_account_id(Context, AccountId),
+            {'true', Context1};
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'

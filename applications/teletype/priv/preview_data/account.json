@@ -1,0 +1,136 @@
+{
+    "_id": "1760753c8d022d650418fbbe6a1a10e0",
+    "alias": [
+        "realm.com"
+    ],
+    "api_key": "1df9aa0586abe751a12e7987e646d1645a64fec722cf214412dad348bd6439cd",
+    "apps": {
+        "bd16c59184062e7382a21fefc177391f": {
+            "allowed_users": "all",
+            "users": []
+        },
+        "d40a5aaa5994cfc5f26ea4545010d06f": {
+            "allowed_users": "all",
+            "users": []
+        }
+    },
+    "billing_id": "00000000000000000000000000000000",
+    "blacklists": [
+        "dbfc14854a06bab3014898b6b4e1ffa0"
+    ],
+    "call_restriction": {
+        "caribbean": {
+            "action": "inherit"
+        },
+        "did_us": {
+            "action": "inherit"
+        },
+        "emergency": {
+            "action": "inherit"
+        },
+        "international": {
+            "action": "inherit"
+        },
+        "toll_us": {
+            "action": "inherit"
+        },
+        "tollfree_us": {
+            "action": "inherit"
+        },
+        "unknown": {
+            "action": "inherit"
+        }
+    },
+    "caller_id": {},
+    "caller_id_options": {},
+    "created": 63541743088,
+    "descendants_count": 4,
+    "dial_plan": {},
+    "format_from_uri": false,
+    "is_reseller": false,
+    "language": "en-us",
+    "media": {
+        "bypass_media": "auto"
+    },
+    "music_on_hold": {
+        "media_id": "/00000000000000000000000000000000/070b5e165af1343eb87a4c08281dd0c0"
+    },
+    "name": "Demo Account",
+    "notifications": {
+        "deregister": {},
+        "fax_to_email": {},
+        "first_occurrence": {
+            "sent_initial_call": true,
+            "sent_initial_registration": true
+        },
+        "low_balance": {
+            "enabled": true,
+            "sent_low_balance": true
+        },
+        "voicemail_to_email": {}
+    },
+    "prefer_device_caller_id": true,
+    "preflow": {},
+    "provision": {
+        "admin_password": "26r9de3hoh"
+    },
+    "pvt_account_db": "account%2F00%2F00%2F0000000000000000000000000000",
+    "pvt_account_id": "00000000000000000000000000000000",
+    "pvt_api_key": "1df9aa0586abe751a12e7987e646d1645a64fec722cf214412dad348bd6439cd",
+    "pvt_created": 63541743088,
+    "pvt_enabled": true,
+    "pvt_modified": 63590296858,
+    "pvt_notification_preference": "teletype",
+    "pvt_reseller": false,
+    "pvt_superduper_admin": true,
+    "pvt_tree": [
+        "11111111111111111111111111111111"
+    ],
+    "pvt_trial": 0,
+    "pvt_type": "account",
+    "pvt_vsn": "1",
+    "realm": "realm.com",
+    "reseller_id": "11111111111111111111111111111111",
+    "ringtones": {},
+    "timezone": "America/Los_Angeles",
+    "topup": {
+        "amount": 10,
+        "threshold": 10
+    },
+    "ui_metadata": {
+        "origin": "appstore",
+        "ui": "monster-ui",
+        "version": "v3.20_s0"
+    },
+    "ui_restrictions": {
+        "myaccount": {
+            "account": {
+                "show_tab": true
+            },
+            "balance": {
+                "show_credit": true,
+                "show_header": true,
+                "show_minutes": true,
+                "show_tab": true
+            },
+            "billing": {
+                "show_tab": true
+            },
+            "inbound": {
+                "show_tab": true
+            },
+            "outbound": {
+                "show_tab": true
+            },
+            "service_plan": {
+                "show_tab": true
+            },
+            "transactions": {
+                "show_tab": true
+            },
+            "user": {
+                "show_tab": true
+            }
+        }
+    }
+}

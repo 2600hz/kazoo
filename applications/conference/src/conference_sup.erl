@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -15,7 +15,7 @@
 -export([init/1]).
 
 -define(CACHE, {?CONFERENCE_CACHE, {'wh_cache', 'start_link', [?CONFERENCE_CACHE]}
-                ,'permanent', 5000, 'worker', ['wh_cache']
+                ,'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_cache']
                }).
 
 -define(CHILDREN, [?CACHE
@@ -58,7 +58,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    wh_util:set_startup(),
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 

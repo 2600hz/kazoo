@@ -38,7 +38,7 @@
 -define(SERVER, ?MODULE).
 -define(BLACKLIST_REFRESH, 60000).
 
--record(state, {wsdl_model = 'undefined' :: 'undefined' | term()
+-record(state, {wsdl_model = 'undefined' :: 'undefined' | any()
                 ,dth_cdr_url = <<>> :: binary()
                }).
 
@@ -78,7 +78,7 @@ init([]) ->
     URL = props:get_value('dth_cdr_url', Configs),
 
     erlang:send_after(0, self(), 'blacklist_refresh'),
-    
+
     WSDLFile = [code:priv_dir('dth'), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir('dth', 'include'), "/dthsoap.hrl"],
 
@@ -137,7 +137,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('blacklist_refresh', #state{wsdl_model=WSDL}=State) ->
     erlang:send_after(?BLACKLIST_REFRESH, self(), 'blacklist_refresh'),
-    spawn(fun() -> refresh_blacklist(WSDL) end),
+    _ = wh_util:spawn(fun refresh_blacklist/1, [WSDL]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -164,7 +164,7 @@ handle_event(_JObj, #state{dth_cdr_url=Url, wsdl_model=WSDL}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), #state{}) -> 'ok'.
+-spec terminate(any(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("dth: ~p termination", [_Reason]).
 
@@ -182,7 +182,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec refresh_blacklist(_) -> 'ok'.
+-spec refresh_blacklist(any()) -> 'ok'.
 refresh_blacklist(WSDL) ->
     {'ok', _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
     BlockListEntries = get_blocklist_entries(Response),

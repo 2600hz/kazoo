@@ -23,7 +23,7 @@ You can enable that feature by editing the document `crossbar.accounts` in you `
 ````
 ### API
 
-`POST` request on `accounts/ACCOUNT_ID_TO_MOVE/move`
+`POST` request on `accounts/{ACCOUNT_ID_TO_MOVE}/move`
 
 With the following data payload:
 
@@ -32,5 +32,34 @@ With the following data payload:
     "data": {
         "to": "ACCOUNT_ID_DESTINATION"
     }
+}
+`````
+
+## The Account Tree
+
+Since accounts can be the child of 0 or more parent accounts, it is necessary to track each account's lineage. This is tracked in the account document (_id = ID of the account) in the `pvt_tree` array. The order of the list is from most-ancestral to parent.
+
+So given `"pvt_tree":["1", "2", "3"]`, it can be determined that "3" is the parent account, "2" the grand-parent, and "1" is the great-grandparent. `"pvt_tree":[]` indicates the master (or Highlander) account; there should only be one!
+
+## Retrieving Account Tree
+
+### Request
+
+`GET` request on `http://{SERVER}/v2/accounts/{ACCOUNT_ID}/tree`
+
+### Response
+
+`````
+{
+    "data": [
+        {
+            "id": "{JOHN_ACCOUNT_ID}",
+            "name": "John's account"
+        },
+        {
+            "id": "{JANE_ACCOUNT_ID}",
+            "name": "Jane's account"
+        }
+    ]
 }
 `````

@@ -1,57 +1,83 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.collect_dtmf",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": true,
     "description": "Validator for the Collect DTMF callflow element",
     "properties": {
-        "max_digits": {
-            "type": "integer",
+        "collection_name": {
+            "description": "Store collected DTMF in a named key",
+            "name": "Collection Name",
             "required": false,
-            "name": "Max DTMFs",
+            "type": "string"
+        },
+        "interdigit_timeout": {
+            "description": "How long, in milliseconds, to wait for the next DTMF",
+            "minimum": 1,
+            "name": "Interdigit Timeout",
+            "required": false,
+            "type": "integer"
+        },
+        "max_digits": {
+            "default": 1,
             "description": "How many DTMFs to collect from the caller",
-            "minimum":1,
-            "default":1
+            "minimum": 1,
+            "name": "Max DTMFs",
+            "required": false,
+            "type": "integer"
         },
-        "timeout":{
-            "type":"integer",
-            "required":false,
-            "name":"Timeout",
-            "description":"How long, in milliseconds, to wait for the first DTMF",
-            "minimum":1,
-            "default":5000
+        "terminator": {
+            "default": "#",
+            "description": "What DTMF will terminate collection before the timeout occurs",
+            "enum": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9",
+                "0",
+                "#",
+                "*"
+            ],
+            "name": "Terminator",
+            "required": false,
+            "type": "string"
         },
-        "interdigit_timeout":{
-            "type":"integer",
-            "required":false,
-            "name":"Interdigit Timeout",
-            "description":"How long, in milliseconds, to wait for the next DTMF",
-            "minimum":1
-        },
-        "terminator":{
-            "type":"string",
-            "required":false,
-            "name":"Terminator",
-            "description":"What DTMF will terminate collection before the timeout occurs",
-            "enum":["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "#", "*"],
-            "default":"#"
-        },
-        "terminators":{
-            "type":"array",
-            "required":false,
-            "name":"Terminators",
-            "description":"What DTMFs will terminate collection before the timeout occurs",
-            "items":{
-                "type":"string",
-                "enum":["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "#", "*"]
+        "terminators": {
+            "description": "What DTMFs will terminate collection before the timeout occurs",
+            "items": {
+                "enum": [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "0",
+                    "#",
+                    "*"
+                ],
+                "type": "string"
             },
-            "uniqueItems":true
+            "name": "Terminators",
+            "required": false,
+            "type": "array",
+            "uniqueItems": true
         },
-        "collection_name":{
-            "type":"string",
-            "required":false,
-            "name":"Collection Name",
-            "description":"Store collected DTMF in a named key"
+        "timeout": {
+            "default": 5000,
+            "description": "How long, in milliseconds, to wait for the first DTMF",
+            "minimum": 1,
+            "name": "Timeout",
+            "required": false,
+            "type": "integer"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

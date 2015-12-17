@@ -79,6 +79,8 @@ upgrade() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     {'ok', {{'one_for_one', 10, 10}, [?SUPER('crossbar_module_sup')
+                                      ,?CACHE_ARGS(?CROSSBAR_CACHE, [{'origin_bindings', [[{'type', kz_notification:pvt_type()}]]}])
                                       ,?WORKER('crossbar_cleanup')
                                      ]}}.

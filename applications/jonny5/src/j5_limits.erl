@@ -26,6 +26,7 @@
 -export([allow_postpay/1]).
 -export([reserve_amount/1]).
 -export([max_postpay/1]).
+-export([disconnect_active_calls/1]).
 
 -include_lib("jonny5.hrl").
 
@@ -48,6 +49,7 @@
                  ,allotments = wh_json:new() :: wh_json:object()
                  ,soft_limit_inbound = 'false' :: boolean()
                  ,soft_limit_outbound = 'false' :: boolean()
+                 ,disconnect_active_calls = 'false' :: boolean()
                 }).
 
 -type limits() :: #limits{}.
@@ -93,19 +95,18 @@ fetch(Account) ->
                      ,allotments = wh_json:get_value(<<"pvt_allotments">>, JObj, wh_json:new())
                      ,soft_limit_inbound = get_limit_boolean(<<"soft_limit_inbound">>, JObj, 'false')
                      ,soft_limit_outbound = get_limit_boolean(<<"soft_limit_outbound">>, JObj, 'false')
+                     ,disconnect_active_calls = get_limit_boolean(<<"disconnect_active_calls">>, JObj, 'false')
                     },
     CacheProps = [{'origin', {'db', AccountDb}}],
     wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, CacheProps),
     Limits.
 
--spec cached() -> [limits(),...] | [].
+-spec cached() -> [limits()].
 cached() ->
-    [Limit
-     || {_, Limit} <- wh_cache:filter_local(?JONNY5_CACHE
-                                            ,fun(_, #limits{}) -> 'true';
-                                                (_, _) -> 'false'
-                                             end)
-    ].
+    IsLimit = fun (_, #limits{}) -> 'true';
+                  (_, _) -> 'false'
+              end,
+    [Limit || {_, Limit} <- wh_cache:filter_local(?JONNY5_CACHE, IsLimit)].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -264,6 +265,15 @@ reserve_amount(#limits{reserve_amount=ReserveAmount}) -> ReserveAmount.
 max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec disconnect_active_calls(limits()) -> boolean().
+disconnect_active_calls(#limits{disconnect_active_calls=DisconnectActiveCalls}) -> DisconnectActiveCalls.
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
@@ -330,7 +340,7 @@ get_limit_boolean(Key, JObj, Default) ->
     end.
 
 -spec get_public_limit_boolean(ne_binary(), wh_json:object(), boolean()) -> boolean().
-%% NOTE: all other booleans (inbound_soft_limit, allow_postpay, ect) should
+%% NOTE: all other booleans (inbound_soft_limit, allow_postpay, etc) should
 %%  not be made public via this helper.
 get_public_limit_boolean(<<"allow_prepay">> = Key, JObj, Default) ->
     case wh_json:get_value(Key, JObj) of
@@ -410,7 +420,7 @@ get_limit_jobj(AccountDb) ->
             lager:debug("limits doc in account db ~s not found", [AccountDb]),
             create_limit_jobj(AccountDb);
         {'error', _R} ->
-            lager:debug("failed to open limits doc in account db ~s: ~p"
+            lager:debug("failed to open limits doc in account db '~s': ~p"
                         ,[AccountDb, _R]),
             wh_json:new()
     end.
@@ -435,4 +445,3 @@ create_limit_jobj(AccountDb) ->
             lager:debug("failed to create initial limits document in db ~s: ~p", [AccountDb, _R]),
             wh_json:new()
     end.
-

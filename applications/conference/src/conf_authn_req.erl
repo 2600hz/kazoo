@@ -32,7 +32,7 @@ maybe_send_authn_resp(JObj) ->
     end.
 
 -spec send_authn_resp(ne_binary(), wh_json:object()) -> 'ok'.
-send_authn_resp(Password, JObj) -> 
+send_authn_resp(Password, JObj) ->
     Resp = props:filter_undefined(
              [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
               ,{<<"Auth-Password">>, Password}

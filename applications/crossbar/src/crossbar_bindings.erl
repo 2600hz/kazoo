@@ -40,11 +40,12 @@
 -include("crossbar.hrl").
 
 -type payload() :: path_tokens() | % mapping over path tokens in URI
+                   ne_binary() | % crossbar_cleanup
                    [cb_context:context() | path_token() | 'undefined',...] |
                    cb_context:context() |
                    {cb_context:context(), wh_proplist()} | % v1_resource:rest_init/2
                    {'error', _} | % v1_util:execute_request/2
-                   {wh_json:json_strings(), cb_context:context(), path_tokens()} |
+                   {wh_json:keys(), cb_context:context(), path_tokens()} |
                    {wh_datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 
@@ -62,9 +63,10 @@
 -type map_results() :: [boolean() |
                         http_methods() |
                         {boolean() | 'halt', cb_context:context()}
-                        ,...] | [].
+                        ].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
+    lager:debug("mapping ~s", [Routing]),
     kazoo_bindings:map(Routing, Payload).
 
 %%--------------------------------------------------------------------
@@ -77,6 +79,7 @@ map(Routing, Payload) ->
 -type fold_results() :: payload().
 -spec fold(ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
+    lager:debug("folding ~s", [Routing]),
     kazoo_bindings:fold(Routing, Payload).
 
 %%-------------------------------------------------------------------
@@ -95,9 +98,9 @@ all(Res) when is_list(Res) ->
 -spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) ->
     Successes = kazoo_bindings:succeeded(Res, fun filter_out_failed/1),
-    case lists:keyfind('halt', 1, Successes) of
-        'false' -> Successes;
-        {'value', HaltTuple} -> [HaltTuple]
+    case props:get_value('halt', Successes) of
+        'undefined' -> Successes;
+        HaltContext -> [{'halt', HaltContext}]
     end.
 
 -spec failed(map_results()) -> map_results().
@@ -118,7 +121,7 @@ matches([R|Restrictions], Tokens) ->
 %% Helpers for the result set helpers
 %% @end
 %%-------------------------------------------------------------------------
--spec check_bool({boolean(), term()} | boolean()) -> boolean().
+-spec check_bool({boolean(), any()} | boolean()) -> boolean().
 check_bool({'true', _}) -> 'true';
 check_bool('true') -> 'true';
 check_bool(_) -> 'false'.
@@ -128,7 +131,7 @@ check_bool(_) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_failed({boolean() | 'halt', _} | boolean() | term()) -> boolean().
+-spec filter_out_failed({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
 filter_out_failed({'true', _}) -> 'true';
 filter_out_failed('true') -> 'true';
 filter_out_failed({'halt', _}) -> 'true';
@@ -142,7 +145,7 @@ filter_out_failed(Term) -> not wh_util:is_empty(Term).
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', _} | boolean() | term()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
 filter_out_succeeded({'halt', _}) -> 'true';
@@ -153,7 +156,7 @@ filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
--type bind_results() :: [bind_result(),...] | [].
+-type bind_results() :: [bind_result()].
 -spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
@@ -163,7 +166,7 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    [kazoo_bindings:flush_mod(Mod) || Mod <- modules_loaded()],
+    _ = [kazoo_bindings:flush_mod(Mod) || Mod <- modules_loaded()],
     'ok'.
 
 -spec flush(ne_binary()) -> 'ok'.
@@ -179,6 +182,7 @@ modules_loaded() ->
               is_cb_module(Mod)
       ]).
 
+-spec is_cb_module(ne_binary() | atom()) -> boolean().
 is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
@@ -188,29 +192,34 @@ is_cb_module(Mod) -> is_cb_module(wh_util:to_binary(Mod)).
 init() ->
     lager:debug("initializing bindings"),
 
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = [maybe_init_mod(Mod)
-         || Mod <- whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
+         || Mod <- crossbar_config:autoload_modules(?DEFAULT_MODULES)
     ],
     'ok'.
 
-maybe_init_mod(ModBin) ->
-    try (wh_util:to_atom(ModBin, 'true')):init() of
+-spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
+maybe_init_mod(Mod) ->
+    try (wh_util:to_atom(Mod, 'true')):init() of
         _ -> 'ok'
     catch
         _E:_R ->
-            lager:notice("failed to initialize ~s: ~p, ~p. Trying other versions...", [ModBin, _E, _R]),
-            maybe_init_mod_versions(?VERSION_SUPPORTED, ModBin)
+            lager:notice("failed to initialize ~s: ~p (trying other versions)", [Mod, _R]),
+            maybe_init_mod_versions(?VERSION_SUPPORTED, Mod)
     end.
 
+-spec maybe_init_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
 maybe_init_mod_versions([], _) -> 'ok';
-maybe_init_mod_versions([Version|Versions], ModBin) ->
-    Module = <<(wh_util:to_binary(ModBin))/binary
-               , "_", (wh_util:to_binary(Version))/binary>>,
+maybe_init_mod_versions([Version|Versions], Mod) ->
+    Module = <<(wh_util:to_binary(Mod))/binary
+               , "_", (wh_util:to_binary(Version))/binary
+             >>,
     try (wh_util:to_atom(Module, 'true')):init() of
-        _ -> maybe_init_mod_versions(Versions, ModBin)
+        _ ->
+            lager:notice("module ~s version ~s successfully loaded", [Mod, Version]),
+            maybe_init_mod_versions(Versions, Mod)
     catch
         _E:_R ->
-            lager:notice("failed to initialize ~s: ~p, ~p", [Module, _E, _R]),
-            maybe_init_mod_versions(Versions, ModBin)
+            lager:warning("failed to initialize module ~s version ~s: ~p", [Mod, Version, _R]),
+            maybe_init_mod_versions(Versions, Mod)
     end.

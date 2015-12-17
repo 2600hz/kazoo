@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%% Notify-type requests, like MWI updates, received and processed here
 %%% @end
@@ -9,9 +9,10 @@
 -module(ecallmgr_fs_notify).
 
 -behaviour(gen_listener).
+
 -export([start_link/1, start_link/2]).
 -export([presence_probe/2]).
--export([check_sync/2]).
+-export([check_sync_api/2, check_sync/2]).
 -export([mwi_update/2]).
 -export([register_overwrite/2]).
 -export([init/1
@@ -29,23 +30,27 @@
          }).
 
 -define(SERVER, ?MODULE).
--define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
+-define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
 -define(BINDINGS, [{'presence', [{'restrict_to', ['mwi_update'
                                                   ,'register_overwrite'
                                                   ,'probe'
                                                  ]}
-                                 ,{'probe-type', <<"presence">>}
+                                 ,{'probe_type', <<"presence">>}
                                 ]}
+                   ,{'switch', [{'restrict_to', ['check_sync']}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'presence_probe'}
                       ,[{<<"presence">>, <<"probe">>}]
                      }
                      ,{{?MODULE, 'mwi_update'}
-                      ,[{<<"presence">>, <<"mwi_update">>}]
-                     }
+                       ,[{<<"presence">>, <<"mwi_update">>}]
+                      }
                      ,{{?MODULE, 'register_overwrite'}
                        ,[{<<"presence">>, <<"register_overwrite">>}]
+                      }
+                     ,{{?MODULE, 'check_sync_api'}
+                       ,[{<<"switch_event">>, <<"check_sync">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
@@ -53,6 +58,7 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -include_lib("ecallmgr.hrl").
+-include_lib("nksip/include/nksip.hrl").
 
 %%%===================================================================
 %%% API
@@ -96,32 +102,48 @@ resp_to_probe(State, User, Realm) ->
     PresenceId = <<User/binary, "@", Realm/binary>>,
     PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                       ,{<<"State">>, State}
-                      ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
+                      ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, PresenceId))}
                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
-    io:format("resp_to_probe: ~p~n", [PresenceUpdate]),
     wh_amqp_worker:cast(PresenceUpdate, fun wapi_presence:publish_update/1).
+
+-spec check_sync_api(wh_json:object(), wh_proplist()) -> 'ok'.
+check_sync_api(JObj, _Props) ->
+    'true' = wapi_switch:check_sync_v(JObj),
+    wh_util:put_callid(JObj),
+    check_sync(wapi_switch:check_sync_username(JObj)
+               ,wapi_switch:check_sync_realm(JObj)
+              ).
 
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
 check_sync(Username, Realm) ->
     lager:info("looking up registration information for ~s@~s", [Username, Realm]),
-    case ecallmgr_registrar:lookup_contact(Realm, Username) of
+    case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->
             lager:warning("failed to find contact for ~s@~s, not sending check-sync", [Username, Realm]);
-        {'ok', Contact} ->
+        {'ok', Registration} ->
+            Contact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
             [Node|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
             lager:info("calling check sync on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
-            send_check_sync(Node, Username, Realm, Contact)
+            case ensure_contact_user(Contact, Username, Realm) of
+                'undefined' ->
+                    lager:error("invalid contact : ~p : ~p", [Contact, Registration]);
+                Valid -> send_check_sync(Node, Username, Realm, Valid)
+            end
     end.
 
 -spec send_check_sync(atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_check_sync(Node, Username, Realm, Contact) ->
+    To = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
+    From = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
+    AOR = nksip_unparse:ruri(#uri{user=Username, domain=Realm}),
+    SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-               ,{"contact", Contact}
-               ,{"to-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
-               ,{"from-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
+               ,{"contact-uri", Contact}
+               ,{"extra-headers", SIPHeaders}
+               ,{"to-uri", To}
+               ,{"from-uri", From}
                ,{"event-string", "check-sync"}
-               ,{"content-type", "application/simple-message-summary"}
               ],
     Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
     lager:info("send check-sync to '~s@~s' via ~s: ~p", [Username, Realm, Node, Resp]).
@@ -136,53 +158,68 @@ mwi_update(JObj, Props) ->
             lager:warning("failed to find registration for ~s@~s, dropping MWI update", [Username, Realm]);
         {'ok', Registration} ->
             Node = props:get_value('node', Props),
-            send_mwi_update(JObj, Node, Registration)
+            send_mwi_update(JObj, Username, Realm, Node, Registration)
     end.
 
--spec send_mwi_update(wh_json:object(), atom(), wh_json:object()) -> 'ok'.
-send_mwi_update(JObj, Node, Registration) ->
+-spec send_mwi_update(wh_json:object(), ne_binary(), ne_binary(), atom(), wh_json:object()) -> 'ok'.
+send_mwi_update(JObj, Username, Realm, Node, Registration) ->
+    ToURI = #uri{user=wh_json:get_value(<<"To-User">>, Registration, Username)
+                 ,domain=wh_json:get_value(<<"To-Host">>, Registration, Realm)
+                },
+    To = nksip_unparse:uri(ToURI),
+    ToAccount = nksip_unparse:ruri(ToURI),
+    From = nksip_unparse:uri(#uri{user=wh_json:get_value(<<"From-User">>, Registration, Username)
+                                  ,domain=wh_json:get_value(<<"From-Host">>, Registration, Realm)
+                                 }),
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
-                                     ,wh_json:get_value(<<"To">>, JObj)
+                                     ,ToAccount
                                      ,NewMessages
-                                     ,wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0)
+                                     ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
                                      ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
-                                     ,wh_json:get_integer_value(<<"Messages-Urgent-Waiting">>, JObj, 0)
+                                     ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
                                     ]),
-
-    Contact = wh_json:get_value(<<"Contact">>, Registration),
-    To = list_to_binary([<<"sip:">>, wh_json:get_value(<<"To-User">>, Registration)
-                         ,<<"@">>, wh_json:get_value(<<"To-Host">>, Registration)
-                        ]),
-    From = list_to_binary([<<"sip:">>, wh_json:get_value(<<"From-User">>, Registration)
-                         ,<<"@">>, wh_json:get_value(<<"From-Host">>, Registration)
-                        ]),
-    Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-               ,{"contact", Contact}
-               ,{"to-uri", To}
-               ,{"from-uri", From}
-               ,{"event-str", "message-summary"}
-               ,{"content-type", "application/simple-message-summary"}
-               ,{"content-length", wh_util:to_list(length(Body))}
-               ,{"body", lists:flatten(Body)}
-              ],
-    Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-    lager:debug("sent MWI update to '~s' via ~s: ~p", [Contact, Node, Resp]).
+    RegistrationContact = wh_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
+    case ensure_contact_user(RegistrationContact, Username, Realm) of
+        'undefined' ->
+            lager:error("invalid contact : ~p : ~p", [RegistrationContact, Registration]);
+        Contact ->
+            SIPHeaders = <<"X-KAZOO-AOR : ", ToAccount/binary, "\r\n">>,
+            Headers = [{"profile", ?DEFAULT_FS_PROFILE}
+                       ,{"contact-uri", Contact}
+                       ,{"extra-headers", SIPHeaders}
+                       ,{"to-uri", To}
+                       ,{"from-uri", From}
+                       ,{"event-string", "message-summary"}
+                       ,{"content-type", "application/simple-message-summary"}
+                       ,{"content-length", wh_util:to_list(length(Body))}
+                       ,{"body", lists:flatten(Body)}
+                      ],
+            Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
+            lager:debug("sent MWI update to '~s' via ~s: ~p", [Contact, Node, Resp])
+    end.
 
 -spec register_overwrite(wh_json:object(), wh_proplist()) -> no_return().
 register_overwrite(JObj, Props) ->
     Node = props:get_value('node', Props),
-    PrevContact = wh_json:get_value(<<"Previous-Contact">>, JObj),
-    NewContact = wh_json:get_value(<<"Contact">>, JObj),
-    SipUri = <<"sip:"
-               ,(wh_json:get_binary_value(<<"Username">>, JObj))/binary
-               ,"@"
-               ,(wh_json:get_binary_value(<<"Realm">>, JObj))/binary
-             >>,
-    PrevBody = wh_util:to_list(<<"Replaced-By:", NewContact/binary>>),
-    NewBody = wh_util:to_list(<<"Overwrote:", PrevContact/binary>>),
+    Username = wh_json:get_binary_value(<<"Username">>, JObj, <<"unknown">>),
+    Realm = wh_json:get_binary_value(<<"Realm">>, JObj, <<"unknown">>),
+    PrevContact = ensure_contact_user(
+                    wh_json:get_value(<<"Previous-Contact">>, JObj)
+                    ,Username
+                    ,Realm
+                   ),
+    NewContact = ensure_contact_user(
+                   wh_json:get_value(<<"Contact">>, JObj)
+                   ,Username
+                   ,Realm
+                  ),
+    SipUri = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
+    PrevBody = wh_util:to_list(<<"Replaced-By:", (wh_util:to_binary(NewContact))/binary>>),
+    NewBody = wh_util:to_list(<<"Overwrote:", (wh_util:to_binary(PrevContact))/binary>>),
     PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
                           ,{"contact", PrevContact}
+                          ,{"contact-uri", PrevContact}
                           ,{"to-uri", SipUri}
                           ,{"from-uri", SipUri}
                           ,{"event-str", "registration-overwrite"}
@@ -192,6 +229,7 @@ register_overwrite(JObj, Props) ->
                          ],
     NewContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
                          ,{"contact", NewContact}
+                         ,{"contact-uri", NewContact}
                          ,{"to-uri", SipUri}
                          ,{"from-uri", SipUri}
                          ,{"event-str", "registration-overwrite"}
@@ -199,13 +237,27 @@ register_overwrite(JObj, Props) ->
                          ,{"content-length", wh_util:to_list(length(NewBody))}
                          ,{"body", NewBody}
                         ],
-    _ = freeswitch:sendevent(Node, 'NOTIFY', PrevContactHeaders),
-    _ = freeswitch:sendevent(Node, 'NOTIFY', NewContactHeaders),
+    case PrevContact of
+        'undefined' ->
+            lager:error("previous contact is invalid : ~p : ~p", [PrevContact, JObj]);
+        _ ->
+            freeswitch:sendevent(Node, 'NOTIFY', PrevContactHeaders)
+    end,
+    case NewContact of
+        'undefined' ->
+            lager:error("new contact is invalid : ~p : ~p", [NewContact, JObj]);
+        _ ->
+            freeswitch:sendevent(Node, 'NOTIFY', NewContactHeaders)
+    end,
     lager:debug("sent registration overwrite update of old '~s' new '~s' via '~s'"
                 ,[PrevContact
                   ,NewContact
                   ,Node
                  ]).
+
+-spec ensure_contact_user(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
+ensure_contact_user(OriginalContact, Username, Realm) ->
+    ecallmgr_util:fix_contact(OriginalContact, Username, Realm).
 
 %%%===================================================================
 %%% gen_server callbacks

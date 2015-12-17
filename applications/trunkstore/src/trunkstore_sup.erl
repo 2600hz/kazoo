@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -21,6 +21,7 @@
 -define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
                           ,[{'type', <<"connectivity">>}]
                           ,[{'type', <<"sys_info">>}]
+                          ,[{'type', <<"number">>}]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
@@ -37,6 +38,7 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
+    wh_util:set_startup(),
     {'ok', { {'one_for_one', 5, 10}
              ,[?SUPER('ts_onnet_sup') %% handles calls originating on-net (customer)
                ,?WORKER('ts_offnet_sup') %% handles calls originating off-net (carrier)

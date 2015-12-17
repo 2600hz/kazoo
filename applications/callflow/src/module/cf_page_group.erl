@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -45,10 +45,11 @@ attempt_page(Endpoints, Data, Call) ->
 -spec get_endpoints(wh_json:objects(), whapps_call:call()) -> wh_json:objects().
 get_endpoints(Members, Call) ->
     S = self(),
-    Builders = [spawn(fun() ->
-                              put('callid', whapps_call:call_id(Call)),
-                              S ! {self(), catch cf_endpoint:build(EndpointId, Member, Call)}
-                      end)
+    Builders = [wh_util:spawn(
+                  fun() ->
+                          wh_util:put_callid(whapps_call:call_id(Call)),
+                          S ! {self(), catch cf_endpoint:build(EndpointId, Member, Call)}
+                  end)
                 || {EndpointId, Member} <- resolve_endpoint_ids(Members, Call)
                ],
     lists:foldl(fun(Pid, Acc) ->
@@ -61,8 +62,7 @@ get_endpoints(Members, Call) ->
                         end
                 end, [], Builders).
 
--spec resolve_endpoint_ids(wh_json:objects(), whapps_call:call()) ->
-                                  [] | [{ne_binary(), wh_json:object()},...].
+-spec resolve_endpoint_ids(wh_json:objects(), whapps_call:call()) -> [{ne_binary(), wh_json:object()}].
 resolve_endpoint_ids(Members, Call) ->
     [{Id, wh_json:set_value(<<"source">>, ?MODULE, Member)}
      || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Call)
@@ -71,13 +71,13 @@ resolve_endpoint_ids(Members, Call) ->
     ].
 
 -type endpoint_intermediate() :: {ne_binary(), ne_binary(), api_object()}.
--type endpoint_intermediates() :: [] | [endpoint_intermediate(),...].
+-type endpoint_intermediates() :: [endpoint_intermediate()].
 -spec resolve_endpoint_ids(wh_json:objects(), endpoint_intermediates(), whapps_call:call()) ->
                                   endpoint_intermediates().
 resolve_endpoint_ids([], EndpointIds, _) ->
     EndpointIds;
 resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
-    Id = wh_json:get_value(<<"id">>, Member),
+    Id = wh_doc:id(Member),
     Type = wh_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
     case wh_util:is_empty(Id)
         orelse lists:keymember(Id, 2, EndpointIds)

@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(braintree_address).
 
@@ -18,8 +18,8 @@
 -export([json_to_record/1]).
 -export([record_to_json/1]).
 
--import(braintree_util, [make_doc_xml/2]).
--import(wh_util, [get_xml_value/2]).
+-import('braintree_util', [make_doc_xml/2]).
+-import('wh_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -29,8 +29,8 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url/1 :: (ne_binary()) -> string().
--spec url/2 :: (ne_binary(), ne_binary()) -> string().
+-spec url(ne_binary()) -> string().
+-spec url(ne_binary(), ne_binary()) -> string().
 
 url(CustomerId) ->
     lists:append(["/customers/", wh_util:to_list(CustomerId), "/addresses"]).
@@ -44,7 +44,7 @@ url(CustomerId, AddressId) ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) -> bt_address().
+-spec find(ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) -> bt_address().
 find(CustomerId, AddressId) ->
     Url = url(CustomerId, AddressId),
     Xml = braintree_request:get(Url),
@@ -56,12 +56,12 @@ find(CustomerId, AddressId) ->
 %% Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (bt_address()) -> bt_address().
--spec create/2 :: (nonempty_string() | ne_binary(), bt_address()) -> bt_address().
+-spec create(bt_address()) -> bt_address().
+-spec create(nonempty_string() | ne_binary(), bt_address()) -> bt_address().
 
 create(#bt_address{customer_id=CustomerId}=Address) ->
     Url = url(CustomerId),
-    Request = record_to_xml(Address, true),
+    Request = record_to_xml(Address, 'true'),
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
@@ -74,10 +74,12 @@ create(CustomerId, Address) ->
 %% Updates a customer with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (bt_address()) -> bt_address().
-update(#bt_address{id=AddressId, customer_id=CustomerId}=Address) ->
+-spec update(bt_address()) -> bt_address().
+update(#bt_address{id=AddressId
+                   ,customer_id=CustomerId
+                  }=Address) ->
     Url = url(CustomerId, AddressId),
-    Request = record_to_xml(Address#bt_address{id=undefined}, true),
+    Request = record_to_xml(Address#bt_address{id='undefined'}, 'true'),
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
@@ -87,10 +89,12 @@ update(#bt_address{id=AddressId, customer_id=CustomerId}=Address) ->
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (bt_address()) -> bt_address().
--spec delete/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->  bt_address().
+-spec delete(bt_address()) -> bt_address().
+-spec delete(ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->  bt_address().
 
-delete(#bt_address{customer_id=CustomerId, id=AddressId}) ->
+delete(#bt_address{customer_id=CustomerId
+                   ,id=AddressId
+                  }) ->
     delete(CustomerId, AddressId).
 
 delete(CustomerId, AddressId) ->
@@ -104,8 +108,8 @@ delete(CustomerId, AddressId) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> bt_address().
--spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> bt_address().
+-spec xml_to_record(bt_xml()) -> bt_address().
+-spec xml_to_record(bt_xml(), wh_deeplist()) -> bt_address().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
@@ -126,7 +130,8 @@ xml_to_record(Xml, Base) ->
                 ,country_code = get_xml_value([Base, "/country-code-numeric/text()"], Xml)
                 ,country_name = get_xml_value([Base, "/country-name/text()"], Xml)
                 ,created_at = get_xml_value([Base, "/created-at/text()"], Xml)
-                ,updated_at = get_xml_value([Base, "/updated-at/text()"], Xml)}.
+                ,updated_at = get_xml_value([Base, "/updated-at/text()"], Xml)
+               }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,16 +139,16 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (bt_address()) -> wh_proplist() | bt_xml().
--spec record_to_xml/2 :: (bt_address(), boolean()) -> wh_proplist() | bt_xml().
+-spec record_to_xml(bt_address()) -> wh_proplist() | bt_xml() | 'undefined'.
+-spec record_to_xml(bt_address(), boolean()) -> wh_proplist() | bt_xml() | 'undefined'.
 
 record_to_xml(Address) ->
-    record_to_xml(Address, false).
+    record_to_xml(Address, 'false').
 
+record_to_xml('undefined', _ToString) -> 'undefined';
 record_to_xml(Address, ToString) ->
     Props = [{'first-name', Address#bt_address.first_name}
              ,{'last-name', Address#bt_address.last_name}
-%%             ,{'id', Address#bt_address.id}
              ,{'company', Address#bt_address.company}
              ,{'street-address', Address#bt_address.street_address}
              ,{'extended-address', Address#bt_address.extended_address}
@@ -156,12 +161,12 @@ record_to_xml(Address, ToString) ->
              ,{'country-name', Address#bt_address.country_name}
             ],
     Props1 = case Address#bt_address.update_existing of
-                 true -> [{'options', [{'update-existing', true}]}|Props];
+                 'true' -> [{'options', [{'update-existing', 'true'}]}|Props];
                  _ -> Props
              end,
     case ToString of
-        true -> make_doc_xml(Props1, 'address');
-        false -> Props1
+        'true' -> make_doc_xml(Props1, 'address');
+        'false' -> Props1
     end.
 
 %%--------------------------------------------------------------------
@@ -170,8 +175,8 @@ record_to_xml(Address, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record/1 :: ('undefined' | wh_json:object()) -> bt_address().
-json_to_record(undefined) -> undefined;
+-spec json_to_record(api_object()) -> bt_address() | 'undefined'.
+json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_address{id = create_or_get_json_id(JObj)
                 ,first_name = wh_json:get_value(<<"first_name">>, JObj)
@@ -195,7 +200,8 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (bt_address()) -> wh_json:object().
+-spec record_to_json(bt_address() | 'undefined') -> api_object().
+record_to_json('undefined') -> 'undefined';
 record_to_json(#bt_address{}=Address) ->
     Props = [{<<"id">>, Address#bt_address.id}
              ,{<<"customer_id">>, Address#bt_address.customer_id}
@@ -223,9 +229,9 @@ record_to_json(#bt_address{}=Address) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id/1 :: (wh_json:object()) ->  api_binary().
+-spec create_or_get_json_id(wh_json:object()) ->  api_binary().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"street_address">>, JObj) of
-        undefined -> wh_json:get_value(<<"id">>, JObj);
-        _ -> wh_json:get_value(<<"id">>, JObj, wh_util:rand_hex_binary(16))
+        'undefined' -> wh_doc:id(JObj);
+        _Address -> wh_doc:id(JObj, wh_util:rand_hex_binary(16))
     end.

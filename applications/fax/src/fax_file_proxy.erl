@@ -18,10 +18,10 @@
                   {'ok', cowboy_req:req(), 'undefined'} |
                   {'shutdown', cowboy_req:req(), 'undefined'}.
 init({_Any, 'http'}, Req0, _Opts) ->
-    put('callid', wh_util:rand_hex_binary(16)),
+    wh_util:put_callid(wh_util:rand_hex_binary(16)),
     {'ok', Req0, 'undefined'};
 init({_Any, _Prot}, Req0, _Opts) ->
-    put('callid', wh_util:rand_hex_binary(16)),
+    wh_util:put_callid(wh_util:rand_hex_binary(16)),
     {'shutdown', Req0, 'undefined'}.
 
 -spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.
@@ -46,5 +46,5 @@ handle(Req0, State) ->
             {'ok', Req1, State}
     end.
 
--spec terminate(term(), cowboy_req:req(), term()) -> 'ok'.
+-spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
 terminate(_Reason, _Req, _State) -> 'ok'.

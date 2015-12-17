@@ -12,6 +12,8 @@
 %%%   GET: statuses for each agents
 %%% /agents/AID
 %%%   GET: agent details
+%%% /agents/AID/queue_status
+%%%   POST: login/logout agent to/from queue
 %%%
 %%% /agents/AID/status
 %%%   GET: last 10 status updates
@@ -41,6 +43,7 @@
 -define(CB_LIST, <<"agents/crossbar_listing">>).
 -define(STATS_PATH_TOKEN, <<"stats">>).
 -define(STATUS_PATH_TOKEN, <<"status">>).
+-define(QUEUE_STATUS_PATH_TOKEN, <<"queue_status">>).
 
 %%%===================================================================
 %%% API
@@ -77,7 +80,8 @@ allowed_methods(?STATS_PATH_TOKEN) -> [?HTTP_GET];
 allowed_methods(_) -> [?HTTP_GET].
 
 allowed_methods(?STATUS_PATH_TOKEN, _) -> [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
+allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
+allowed_methods(_, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,7 +98,8 @@ allowed_methods(_, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, ?STATUS_PATH_TOKEN) -> 'true';
-resource_exists(?STATUS_PATH_TOKEN, _) -> 'true'.
+resource_exists(?STATUS_PATH_TOKEN, _) -> 'true';
+resource_exists(_, ?QUEUE_STATUS_PATH_TOKEN) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,7 +125,8 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
             cb_context:add_content_types_provided(Context, CTPs)
     end.
 content_types_provided(Context, ?STATUS_PATH_TOKEN, _) -> Context;
-content_types_provided(Context, _, ?STATUS_PATH_TOKEN) -> Context.
+content_types_provided(Context, _, ?STATUS_PATH_TOKEN) -> Context;
+content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -158,8 +164,42 @@ validate_agent_action(Context, AgentId, ?STATUS_PATH_TOKEN, ?HTTP_POST) ->
     validate_status_change(read(AgentId, Context));
 validate_agent_action(Context, AgentId, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     fetch_agent_status(AgentId, Context);
+validate_agent_action(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN, ?HTTP_POST) ->
+    OnSuccess = fun (C) -> maybe_queues_change(read(AgentId, C)) end,
+    cb_context:validate_request_data(<<"queue_update">>, Context, OnSuccess);
+validate_agent_action(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN, ?HTTP_GET) ->
+    fetch_agent_queues(read(AgentId, Context));
 validate_agent_action(Context, ?STATUS_PATH_TOKEN, AgentId, ?HTTP_GET) ->
     fetch_agent_status(AgentId, Context).
+
+-spec maybe_queues_change(cb_context:context()) -> cb_context:context().
+maybe_queues_change(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            handle_queue_update(Context);
+        _ ->
+            Context
+    end.
+
+-spec handle_queue_update(cb_context:context()) -> cb_context:context().
+handle_queue_update(Context) ->
+    QueueID = cb_context:req_value(Context, <<"queue_id">>),
+    Updater = case cb_context:req_value(Context, <<"action">>) of
+                  <<"login">> -> fun(Doc) -> kzd_agent:maybe_add_queue(Doc, QueueID) end;
+                  <<"logout">> -> fun(Doc) -> kzd_agent:maybe_rm_queue(Doc, QueueID) end
+              end,
+    cb_context:update_doc(Context, Updater).
+
+-spec fetch_agent_queues(cb_context:context()) -> cb_context:context().
+fetch_agent_queues(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Doc = cb_context:doc(Context),
+            Queues = wh_json:get_value(<<"queues">>, Doc),
+            cb_context:set_resp_data(Context, Queues);
+        _ ->
+            Context
+    end.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, AgentId, ?STATUS_PATH_TOKEN) ->
@@ -169,7 +209,35 @@ post(Context, AgentId, ?STATUS_PATH_TOKEN) ->
         <<"pause">> -> publish_update(Context, AgentId, fun wapi_acdc_agent:publish_pause/1);
         <<"resume">> -> publish_update(Context, AgentId, fun wapi_acdc_agent:publish_resume/1)
     end,
-    crossbar_util:response(<<"status update sent">>, Context).
+    crossbar_util:response(<<"status update sent">>, Context);
+post(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN) ->
+    publish_action(Context, AgentId),
+
+    Context1 = crossbar_doc:save(Context),
+
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Queues = wh_json:get_value(<<"queues">>, cb_context:doc(Context), []),
+            cb_context:set_resp_data(Context1, Queues);
+        _Status ->
+            Context1
+    end.
+
+-spec publish_action(cb_context:context(), ne_binary()) -> 'ok'.
+publish_action(Context, AgentId) ->
+    Publisher = case cb_context:req_value(Context, <<"action">>) of
+                    <<"logout">> -> fun wapi_acdc_agent:publish_logout_queue/1;
+                    <<"login">> -> fun wapi_acdc_agent:publish_login_queue/1
+                end,
+
+    Props = props:filter_undefined(
+              [{<<"Account-ID">>, cb_context:account_id(Context)}
+               ,{<<"Agent-ID">>, AgentId}
+               ,{<<"Queue-ID">>, cb_context:req_value(Context, <<"queue_id">>)}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ]),
+
+    wh_amqp_worker:cast(Props, Publisher).
 
 -spec publish_update(cb_context:context(), api_binary(), function()) -> 'ok'.
 publish_update(Context, AgentId, PubFun) ->
@@ -181,7 +249,7 @@ publish_update(Context, AgentId, PubFun) ->
                 ,{<<"Presence-State">>, cb_context:req_value(Context, <<"presence_state">>)}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    PubFun(Update).
+    wh_amqp_worker:cast(Update, PubFun).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -272,9 +340,15 @@ fetch_ranged_agent_stats(Context, StartRange) ->
     case wh_util:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
-            cb_context:add_validation_error(<<"end_range">>, <<"maximum">>
-                                            ,<<"value is greater than start_range">>, Context
-                                           );
+            cb_context:add_validation_error(
+                <<"end_range">>
+                ,<<"maximum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"value is greater than start_range">>}
+                    ,{<<"cause">>, To}
+                 ])
+                ,Context
+            );
         F when F < MaxFrom ->
             %% Range is too big
             fetch_ranged_agent_stats(Context, MaxFrom, To, MaxFrom >= Past);
@@ -304,10 +378,10 @@ fetch_ranged_agent_stats(Context, From, To, 'false') ->
 
 -spec fetch_stats_from_amqp(cb_context:context(), wh_proplist()) -> cb_context:context().
 fetch_stats_from_amqp(Context, Req) ->
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_acdc_stats:publish_current_calls_req/1
-                                       ,fun wapi_acdc_stats:current_calls_resp_v/1
-                                      )
+    case wh_amqp_worker:call(Req
+                             ,fun wapi_acdc_stats:publish_current_calls_req/1
+                             ,fun wapi_acdc_stats:current_calls_resp_v/1
+                            )
     of
         {'error', E} ->
             crossbar_util:response('error', <<"stat request had errors">>, 400
@@ -317,16 +391,24 @@ fetch_stats_from_amqp(Context, Req) ->
         {'ok', Resp} -> format_stats(Context, Resp)
     end.
 
--spec format_stats(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec format_stats(cb_context:context(), wh_json:object()) ->
+                          cb_context:context().
 format_stats(Context, Resp) ->
-    Stats = wh_json:get_value(<<"Handled">>, Resp, []) ++
-        wh_json:get_value(<<"Abandoned">>, Resp, []) ++
-        wh_json:get_value(<<"Waiting">>, Resp, []) ++
-        wh_json:get_value(<<"Processed">>, Resp, []),
+    Stats = wh_json:get_value(<<"Handled">>, Resp, [])
+        ++ wh_json:get_value(<<"Abandoned">>, Resp, [])
+        ++ wh_json:get_value(<<"Waiting">>, Resp, [])
+        ++ wh_json:get_value(<<"Processed">>, Resp, []),
 
-    crossbar_util:response(lists:foldl(fun format_stats_fold/2, wh_json:new(), Stats), Context).
+    crossbar_util:response(
+      lists:foldl(fun format_stats_fold/2
+                  ,wh_json:new()
+                  ,Stats
+                 )
+      ,Context
+     ).
 
--spec format_stats_fold(wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec format_stats_fold(wh_json:object(), wh_json:object()) ->
+                               wh_json:object().
 format_stats_fold(Stat, Acc) ->
     QueueId = wh_json:get_value(<<"queue_id">>, Stat),
 
@@ -345,15 +427,17 @@ format_stats_fold(Stat, Acc) ->
                              ,wh_json:set_values([{TotalsK, Totals + 1}
                                                   ,{QTotalsK, QTotals + 1}
                                                   | AnsweredData
-                                                 ], Acc)
+                                                 ]
+                                                 ,Acc
+                                                )
                              ,QueueId
                             )
     end.
 
 -spec maybe_add_answered(wh_json:object(), wh_json:object()) ->
-                                [{wh_json:key(), non_neg_integer()},...] | [].
+                                [{wh_json:key(), non_neg_integer()}].
 -spec maybe_add_answered(wh_json:object(), wh_json:object(), api_binary()) ->
-                                [{wh_json:key(), non_neg_integer()},...] | [].
+                                [{wh_json:key(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc) ->
     maybe_add_answered(Stat, Acc, wh_json:get_value(<<"status">>, Stat)).
 maybe_add_answered(Stat, Acc, <<"handled">>) ->
@@ -388,7 +472,10 @@ maybe_add_misses(Stat, Acc, QueueId) ->
         Misses ->
             lists:foldl(fun(Miss, AccJObj) ->
                                 add_miss(Miss, AccJObj, QueueId)
-                        end, Acc, Misses)
+                        end
+                        ,Acc
+                        ,Misses
+                       )
     end.
 
 -spec add_miss(wh_json:object(), wh_json:object(), ne_binary()) -> wh_json:object().
@@ -410,7 +497,9 @@ add_miss(Miss, Acc, QueueId) ->
                         ,{QMissesK, QMisses + 1}
                         ,{TotalsK, Totals + 1}
                         ,{QTotalsK, QTotals + 1}
-                       ], Acc).
+                       ]
+                       ,Acc
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -420,7 +509,8 @@ add_miss(Miss, Acc, QueueId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+summary(Context) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -428,10 +518,11 @@ summary(Context) -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec normalize_view_results(wh_json:object(), wh_json:objects()) ->
+                                    wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:set_value(<<"id">>
-                       ,wh_json:get_value(<<"id">>, JObj)
+                       ,wh_doc:id(JObj)
                        ,wh_json:get_value(<<"value">>, JObj)
                       )
      | Acc
@@ -449,36 +540,71 @@ validate_status_change(Context) ->
     end.
 
 -define(STATUS_CHANGES, [<<"login">>, <<"logout">>, <<"pause">>, <<"resume">>]).
--spec validate_status_change(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_status_change(cb_context:context(), api_binary()) ->
+                                    cb_context:context().
 validate_status_change(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
         'true' -> validate_status_change_params(Context, S);
         'false' ->
             lager:debug("status ~s not valid", [S]),
-            cb_context:add_validation_error(<<"status">>, <<"enum">>, <<"value is not a valid status">>, Context)
+            cb_context:add_validation_error(
+              <<"status">>
+              ,<<"enum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value is not a valid status">>}
+                  ,{<<"cause">>, S}
+                 ])
+              ,Context
+             )
     end.
 
--spec check_for_status_error(cb_context:context(), api_binary()) -> cb_context:context().
+-spec check_for_status_error(cb_context:context(), api_binary()) ->
+                                    cb_context:context().
 check_for_status_error(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
         'true' -> Context;
         'false' ->
             lager:debug("status ~s not found", [S]),
-            cb_context:add_validation_error(<<"status">>, <<"enum">>, <<"value is not a valid status">>, Context)
+            cb_context:add_validation_error(
+              <<"status">>
+              ,<<"enum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value is not a valid status">>}
+                  ,{<<"cause">>, S}
+                 ])
+              ,Context
+             )
     end.
 
 -spec validate_status_change_params(cb_context:context(), ne_binary()) ->
                                            cb_context:context().
 validate_status_change_params(Context, <<"pause">>) ->
-    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>)) of
+    Value = cb_context:req_value(Context, <<"timeout">>),
+    try wh_util:to_integer(Value) of
         N when N >= 0 -> cb_context:set_resp_status(Context, 'success');
-        _N ->
-            lager:debug("bad int for pause: ~p", [_N]),
-            cb_context:add_validation_error(<<"timeout">>, <<"minimum">>, <<"value must be at least greater than or equal to 0">>, Context)
+        N ->
+            lager:debug("bad int for pause: ~p", [N]),
+            cb_context:add_validation_error(
+              <<"timeout">>
+              ,<<"minimum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value must be at least greater than or equal to 0">>}
+                  ,{<<"cause">>, N}
+                 ])
+              ,Context
+             )
     catch
-        _:_ ->
-            lager:debug("bad int for pause"),
-            cb_context:add_validation_error(<<"timeout">>, <<"type">>, <<"value must be an integer greater than or equal to 0">>, Context)
+        _E:_R ->
+            lager:debug("bad int for pause: ~s: ~p", [_E, _R]),
+            cb_context:add_validation_error(
+              <<"timeout">>
+              ,<<"type">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"value must be an integer greater than or equal to 0">>}
+                  ,{<<"cause">>, Value}
+                 ])
+              ,Context
+             )
     end;
 validate_status_change_params(Context, _S) ->
     lager:debug("great success for ~s", [_S]),

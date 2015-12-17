@@ -1,191 +1,210 @@
 {
-  "_id": "vmboxes",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Voicemail Box",
-  "description": "Schema for a voicemail box",
-  "properties": {
-    "name": {
-      "type": "string",
-      "required": true,
-      "name": "Name",
-      "description": "A friendly name for the voicemail box",
-      "minLength": 1,
-      "maxLength": 128
-    },
-    "mailbox": {
-      "type": "string",
-      "required": true,
-      "description": "The voicemail box number",
-      "minLength": 2,
-      "maxLength": 30
-    },
-    "require_pin": {
-      "type": "boolean",
-      "required": false,
-      "name": "Require Pin?",
-      "description": "Determines if a pin is required to check the voicemail from the users devices",
-      "default": false
-    },
-    "check_if_owner": {
-      "type": "boolean",
-      "required": false,
-      "name": "Check if Owner?",
-      "description": "Determines if when the user calls their own voicemail they should be prompted to sign in",
-      "default": true
-    },
-    "pin": {
-      "type": "string",
-      "required": false,
-      "name": "Pin",
-      "description": "The pin number for the voicemail box",
-      "minLength": 4,
-      "maxLength": 15
-    },
-    "media": {
-      "type": "object",
-      "required": false,
-      "name": "Media Parameters",
-      "description": "The media (prompt) parameters",
-      "properties": {
-        "unavailable": {
-          "type": "string",
-          "required": false,
-          "name": "Media ID",
-          "description": "The ID of a media object that should be used as the unavailable greeting",
-          "minLength": 32,
-          "maxLength": 32
-        }
-      },
-      "default": {}
-    },
-    "owner_id": {
-      "type": "string",
-      "required": false,
-      "name": "Owner ID",
-      "description": "The ID of the user object that 'owns' the voicemail box",
-      "minLength": 32,
-      "maxLength": 32
-    },
-    "timezone": {
-      "type": "string",
-      "required": false,
-      "name": "Timezone",
-      "description": "The default timezone",
-      "minLength": 5,
-      "maxLength": 32
-    },
-    "is_setup": {
-      "type": "boolean",
-      "required": false,
-      "name": "Is Setup?",
-      "description": "Determines if the user has completed the initial configuration",
-      "default": false
-    },
-    "not_configurable": {
-      "type": "boolean",
-      "required": false,
-      "name": "Is configurable?",
-      "description": "Determines if the user can configure this voicemail.",
-      "default": false
-    },
-    "skip_greeting": {
-      "type": "boolean",
-      "required": false,
-      "name": "Skip Greeting?",
-      "description": "Determines if the greeting should be skipped",
-      "default": false
-    },
-    "skip_instructions": {
-      "type": "boolean",
-      "required": false,
-      "name": "Skip Instructions?",
-      "description": "Determines if the instructions after the greeting and prior to composing a message should be played",
-      "default": false
-    },
-    "delete_after_notify": {
-      "type": "boolean",
-      "required": false,
-      "name": "Delete after Notify?",
-      "description": "Delete the voicemail after the notification has been sent",
-      "warning": "Voicemail is not stored in the database if this option is selected",
-      "default": false
-    },
-    "messages": {
-      "type": "array",
-      "required": false,
-      "name": "Messages",
-      "description": "The messages that have been left in the voicemail box",
-      "items": {
-        "type": "object",
-        "required": false,
-        "properties": {
-          "timestamp": {
-            "type": "integer",
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "vmboxes",
+    "description": "Schema for a voicemail box",
+    "name": "Voicemail Box",
+    "properties": {
+        "check_if_owner": {
+            "default": true,
+            "description": "Determines if when the user calls their own voicemail they should be prompted to sign in",
+            "name": "Check if Owner?",
             "required": false,
-            "name": "Timestamp",
-            "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on"
-          },
-          "from": {
-            "type": "string",
+            "type": "boolean"
+        },
+        "delete_after_notify": {
+            "default": false,
+            "description": "Delete the voicemail after the notification has been sent",
+            "name": "Delete after Notify?",
             "required": false,
-            "name": "From",
-            "description": "The SIP from header"
-          },
-          "to": {
-            "type": "string",
+            "type": "boolean",
+            "warning": "Voicemail is not stored in the database if this option is selected"
+        },
+        "is_setup": {
+            "default": false,
+            "description": "Determines if the user has completed the initial configuration",
+            "name": "Is Setup?",
             "required": false,
-            "name": "To",
-            "description": "The SIP to header"
-          },
-          "caller_id_number": {
-            "type": "string",
+            "type": "boolean"
+        },
+        "mailbox": {
+            "description": "The voicemail box number",
+            "maxLength": 30,
+            "minLength": 1,
+            "required": true,
+            "type": "string"
+        },
+        "media": {
+            "default": {},
+            "description": "The media (prompt) parameters",
+            "name": "Media Parameters",
+            "properties": {
+                "unavailable": {
+                    "description": "The ID of a media object that should be used as the unavailable greeting",
+                    "maxLength": 32,
+                    "minLength": 32,
+                    "name": "Media ID",
+                    "required": false,
+                    "type": "string"
+                }
+            },
             "required": false,
-            "name": "Caller ID Number",
-            "description": "The reported caller id number",
-            "maxLength": 35
-          },
-          "caller_id_name": {
-            "type": "string",
+            "type": "object"
+        },
+        "messages": {
+            "default": [],
+            "description": "The messages that have been left in the voicemail box",
+            "items": {
+                "properties": {
+                    "call_id": {
+                        "description": "The SIP call-id",
+                        "name": "Call ID",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "caller_id_name": {
+                        "description": "The reported caller id name",
+                        "maxLength": 35,
+                        "name": "Caller ID Name",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "caller_id_number": {
+                        "description": "The reported caller id number",
+                        "maxLength": 35,
+                        "name": "Caller ID Number",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "folder": {
+                        "description": "The folder the message belongs to",
+                        "enum": [
+                            "deleted",
+                            "saved",
+                            "new"
+                        ],
+                        "name": "Folder",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "from": {
+                        "description": "The SIP from header",
+                        "name": "From",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "length": {
+                        "name": "Length",
+                        "required": false,
+                        "type": "integer"
+                    },
+                    "media_id": {
+                        "description": "The ID of the message media object",
+                        "maxLength": 32,
+                        "minLength": 32,
+                        "name": "Media ID",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
+                        "name": "Timestamp",
+                        "required": false,
+                        "type": "integer"
+                    },
+                    "to": {
+                        "description": "The SIP to header",
+                        "name": "To",
+                        "required": false,
+                        "type": "string"
+                    }
+                },
+                "required": false,
+                "type": "object"
+            },
+            "name": "Messages",
             "required": false,
-            "name": "Caller ID Name",
-            "description": "The reported caller id name",
-            "maxLength": 35
-          },
-          "call_id": {
-            "type": "string",
+            "type": "array"
+        },
+        "name": {
+            "description": "A friendly name for the voicemail box",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Name",
+            "required": true,
+            "type": "string"
+        },
+        "not_configurable": {
+            "default": false,
+            "description": "Determines if the user can configure this voicemail.",
+            "name": "Is configurable?",
             "required": false,
-            "name": "Call ID",
-            "description": "The SIP call-id"
-          },
-          "folder": {
-            "type": "string",
+            "type": "boolean"
+        },
+        "notify_email_addresses": {
+            "default": [],
+            "description": "List of email addresses to send notifications to (in addition to owner's email, if any)",
+            "items": {
+                "format": "email",
+                "type": "string"
+            },
+            "name": "Email Addresses",
             "required": false,
-            "name": "Folder",
-            "description": "The folder the message belongs to",
-            "enum": [
-              "deleted",
-              "saved",
-              "new"
-            ]
-          },
-          "length": {
-            "type": "integer",
-            "required": false,
-            "name": "Length"
-          },
-          "media_id": {
-            "type": "string",
-            "required": false,
-            "name": "Media ID",
-            "description": "The ID of the message media object",
+            "type": "array"
+        },
+        "owner_id": {
+            "description": "The ID of the user object that 'owns' the voicemail box",
+            "maxLength": 32,
             "minLength": 32,
-            "maxLength": 32
-          }
+            "name": "Owner ID",
+            "required": false,
+            "type": "string"
+        },
+        "pin": {
+            "description": "The pin number for the voicemail box",
+            "maxLength": 15,
+            "minLength": 4,
+            "name": "Pin",
+            "required": false,
+            "type": "string"
+        },
+        "require_pin": {
+            "default": false,
+            "description": "Determines if a pin is required to check the voicemail from the users devices",
+            "name": "Require Pin?",
+            "required": false,
+            "type": "boolean"
+        },
+        "save_after_notify": {
+            "default": false,
+            "description": "Save the voicemail after the notification has been sent",
+            "name": "Save after Notify?",
+            "required": false,
+            "type": "boolean",
+            "warning": "This setting will override delete_after_notify"
+        },
+        "skip_greeting": {
+            "default": false,
+            "description": "Determines if the greeting should be skipped",
+            "name": "Skip Greeting?",
+            "required": false,
+            "type": "boolean"
+        },
+        "skip_instructions": {
+            "default": false,
+            "description": "Determines if the instructions after the greeting and prior to composing a message should be played",
+            "name": "Skip Instructions?",
+            "required": false,
+            "type": "boolean"
+        },
+        "timezone": {
+            "description": "The default timezone",
+            "maxLength": 32,
+            "minLength": 5,
+            "name": "Timezone",
+            "required": false,
+            "type": "string"
         }
-      },
-      "default": []
-    }
-  }
+    },
+    "required": true,
+    "type": "object"
 }

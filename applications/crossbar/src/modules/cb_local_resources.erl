@@ -67,11 +67,14 @@ check_if_peer(ResourceId, Context) ->
         {'true', 'true'} ->
             check_if_gateways_have_ip(ResourceId, Context);
         {'true', 'false'} ->
-            C = cb_context:add_validation_error([<<"peer">>]
-                                                ,<<"forbidden">>
-                                                ,<<"Peers are currently disabled, please contact the system admin">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                    [<<"peer">>]
+                    ,<<"forbidden">>
+                    ,wh_json:from_list([
+                        {<<"message">>, <<"Peers are currently disabled, please contact the system admin">>}
+                     ])
+                    ,Context
+                ),
             check_resource_schema(ResourceId, C);
         {_, _} ->
             check_resource_schema(ResourceId, Context)
@@ -91,11 +94,15 @@ validate_gateway_ips([], _, _, ResourceId, Context, 'error') ->
 validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
     check_resource_schema(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
 validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
-    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
-                                        ,<<"required">>
-                                        ,<<"Gateway server must be an IP when peering with the resource">>
-                                        ,Context
-                                       ),
+    C = cb_context:add_validation_error(
+            [<<"gateways">>, Idx, <<"server">>]
+            ,<<"required">>
+            ,wh_json:from_list([
+                {<<"message">>, <<"Gateway server must be an IP when peering with the resource">>}
+                ,{<<"cause">>, Idx}
+             ])
+            ,Context
+        ),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C));
 validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
     case wh_network_utils:is_ipv4(ServerIP) of
@@ -104,11 +111,15 @@ validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, Resource
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
-                    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
-                                                        ,<<"unique">>
-                                                        ,<<"Gateway server ip is already in use">>
-                                                        ,Context
-                                                       ),
+                    C = cb_context:add_validation_error(
+                            [<<"gateways">>, Idx, <<"server">>]
+                            ,<<"unique">>
+                            ,wh_json:from_list([
+                                {<<"message">>, <<"Gateway server ip is already in use">>}
+                                ,{<<"cause">>, Idx}
+                             ])
+                            ,Context
+                        ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
@@ -121,10 +132,15 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
                 'true' ->
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
-                    C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"inbound_ip">>]
-                                                        ,<<"unique">>
-                                                        ,<<"Gateway inbound ip is already in use">>
-                                                        ,Context),
+                    C = cb_context:add_validation_error([
+                            <<"gateways">>, Idx, <<"inbound_ip">>]
+                            ,<<"unique">>
+                            ,wh_json:from_list([
+                                {<<"message">>, <<"Gateway inbound ip is already in use">>}
+                                ,{<<"cause">>, Idx}
+                             ])
+                            ,Context
+                        ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
@@ -133,14 +149,12 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
 
 -spec check_resource_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_resource_schema(ResourceId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(ResourceId, C) end,
-    cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
+    %% This has been validated in cb_resources already!
+    on_successful_validation(ResourceId, Context).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, <<"resource">>, cb_context:doc(Context))
-                      );
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
@@ -158,11 +172,11 @@ maybe_aggregate_resource(Context) ->
 maybe_aggregate_resource(Context, 'success') ->
     case wh_util:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
-            ResourceId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+            ResourceId = wh_doc:id(cb_context:doc(Context)),
             maybe_remove_aggregate(ResourceId, Context);
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             'true'
@@ -193,20 +207,19 @@ maybe_remove_aggregate(_ResourceId, _Context, _Status) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -type sip_auth_ip() :: {ne_binary(), ne_binary()}.
--type sip_auth_ips() :: [sip_auth_ip(),...] | [].
+-type sip_auth_ips() :: [sip_auth_ip()].
 
 -spec get_all_sip_auth_ips() -> sip_auth_ips().
 get_all_sip_auth_ips() ->
     ViewOptions = [],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
-        {'ok', JObjs} ->
-            lists:foldr(fun(JObj, IPs) ->
-                                IP = wh_json:get_value(<<"key">>, JObj),
-                                ID = wh_json:get_value(<<"id">>, JObj),
-                                [{IP, ID}|IPs]
-                        end, [], JObjs);
+        {'ok', JObjs} -> lists:foldr(fun get_sip_auth_ip/2, [], JObjs);
         {'error', _} -> []
     end.
+
+-spec get_sip_auth_ip(wh_json:object(), sip_auth_ips()) -> sip_auth_ips().
+get_sip_auth_ip(JObj, IPs) ->
+    [{wh_json:get_value(<<"key">>, JObj), wh_doc:id(JObj)} | IPs].
 
 -type acl_ips() :: ne_binaries().
 -spec get_all_acl_ips() -> acl_ips().
@@ -231,17 +244,19 @@ get_all_acl_ips() ->
 
 -spec extract_all_ips(wh_json:object()) -> acl_ips().
 extract_all_ips(JObj) ->
-    lists:foldr(fun(K, IPs) ->
-                        case wh_json:get_value([K, <<"cidr">>], JObj) of
-                            'undefined' -> IPs;
-                            CIDR ->
-                                AuthorizingId = wh_json:get_value([K, <<"authorizing_id">>], JObj),
-                                [{CIDR, AuthorizingId} | IPs]
-                        end
-                end, [], wh_json:get_keys(JObj)).
+    wh_json:foldl(fun extract_ips_fold/3, [], JObj).
+
+-spec extract_ips_fold(wh_json:key(), wh_json:object(), acl_ips()) -> acl_ips().
+extract_ips_fold(_K, JObj, IPs) ->
+    case wh_json:get_value(<<"cidr">>, JObj) of
+        'undefined' -> IPs;
+        CIDR ->
+            AuthorizingId = wh_json:get_value(<<"authorizing_id">>, JObj),
+            [{CIDR, AuthorizingId} | IPs]
+    end.
 
 -type gateway_ip() :: {non_neg_integer(), api_binary(), api_binary()}.
--type gateway_ips() :: [gateway_ip(),...] | [].
+-type gateway_ips() :: [gateway_ip()].
 -spec extract_gateway_ips(wh_json:objects(), non_neg_integer(), gateway_ips()) -> gateway_ips().
 extract_gateway_ips([], _, IPs) -> IPs;
 extract_gateway_ips([Gateway|Gateways], Idx, IPs) ->
@@ -278,7 +293,7 @@ maybe_aggregate_resources([Resource|Resources]) ->
     of
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Resource)),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Resource)),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             maybe_aggregate_resources(Resources);
@@ -294,8 +309,7 @@ maybe_aggregate_resources([Resource|Resources]) ->
 -spec maybe_remove_aggregates(wh_json:objects()) -> 'ok'.
 maybe_remove_aggregates([]) -> 'ok';
 maybe_remove_aggregates([Resource|Resources]) ->
-    ResourceId = wh_json:get_first_defined([<<"_id">>, <<"id">>], Resource),
-    case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
+    case couch_mgr:open_doc(?WH_SIP_DB, wh_doc:id(Resource)) of
         {'ok', JObj} ->
             couch_mgr:del_doc(?WH_SIP_DB, JObj),
             _ = wapi_switch:publish_reload_gateways(),

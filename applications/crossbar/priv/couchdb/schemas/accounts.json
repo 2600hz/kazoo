@@ -1,316 +1,169 @@
 {
-  "_id": "accounts",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Account",
-  "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
-  "properties": {
-    "name": {
-      "type": "string",
-      "required": true,
-      "name": "Name",
-      "description": "A friendly name for the account",
-      "minLength": 1,
-      "maxLength": 128
-    },
-    "realm": {
-      "type": "string",
-      "required": false,
-      "name": "Realm",
-      "description": "The realm of the account, ie: 'account1.2600hz.com'",
-      "minLength": 4,
-      "maxLength": 253,
-      "pattern": "^([.\\w_-]+)$",
-      "format": "uri"
-    },
-    "timezone": {
-      "type": "string",
-      "required": false,
-      "name": "Default Timezone",
-      "description": "The default timezone",
-      "minLength": 5,
-      "maxLength": 32,
-      "default": "America/Los_Angeles"
-    },
-    "enabled": {
-      "type": "boolean",
-      "required": false,
-      "name": "Is Enabled?",
-      "description": "Determines if the account is currently enabled",
-      "default": true
-    },
-    "caller_id": {
-      "type": "object",
-      "required": false,
-      "name": "Default Caller ID",
-      "description": "The account default caller ID parameters",
-      "properties": {
-        "internal": {
-          "type": "object",
-          "required": false,
-          "name": "Internal",
-          "description": "The default caller ID used when dialing internal extensions",
-          "properties": {
-            "name": {
-              "type": "string",
-              "required": false,
-              "name": "Name",
-              "description": "The caller id name for the object type",
-              "maxLength": 35
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "accounts",
+    "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
+    "name": "Account",
+    "properties": {
+        "call_restriction": {
+            "additionalProperties": {
+                "properties": {
+                    "action": {
+                        "description": "If set to deny all calls of this type will be rejected.  If set to inherit the user/device rules apply",
+                        "enum": [
+                            "inherit",
+                            "deny"
+                        ],
+                        "name": "Action",
+                        "required": false,
+                        "type": "string"
+                    }
+                },
+                "required": false,
+                "type": "object"
             },
-            "number": {
-              "type": "string",
-              "required": false,
-              "name": "Number",
-              "description": "The caller id name for the object type",
-              "maxLength": 35
-            }
-          }
+            "default": {},
+            "description": "Account level call restrictions for each available number classification",
+            "name": "Call Restrictions",
+            "required": false,
+            "type": "object"
         },
-        "external": {
-          "type": "object",
-          "required": false,
-          "name": "External",
-          "description": "The default caller ID used when dialing external numbers",
-          "properties": {
-            "name": {
-              "type": "string",
-              "required": false,
-              "name": "Name",
-              "description": "The caller id name for the object type",
-              "maxLength": 35
-            },
-            "number": {
-              "type": "string",
-              "required": false,
-              "name": "Number",
-              "description": "The caller id name for the object type",
-              "maxLength": 35
-            }
-          }
+        "call_waiting": {
+            "$ref": "call_waiting"
         },
-        "emergency": {
-          "type": "object",
-          "required": false,
-          "name": "Emergency",
-          "description": "The caller ID used when a resource is flagged as 'emergency'",
-          "properties": {
-            "name": {
-              "type": "string",
-              "required": false,
-              "name": "Name",
-              "description": "The caller id name for the object type",
-              "maxLength": 35
+        "caller_id": {
+            "$ref": "caller_id",
+            "default": {},
+            "description": "The account default caller ID parameters",
+            "name": "Default Caller ID",
+            "required": false,
+            "type": "object"
+        },
+        "dial_plan": {
+            "$ref": "dialplans",
+            "default": {},
+            "description": "A list of default rules used to modify dialed numbers",
+            "name": "Default Dialplan",
+            "required": false,
+            "type": "object"
+        },
+        "do_not_disturb": {
+            "name": "DND Parameters",
+            "properties": {
+                "enabled": {
+                    "description": "The default value for do-not-disturb",
+                    "name": "Enabled?",
+                    "required": false,
+                    "type": "boolean"
+                }
             },
-            "number": {
-              "type": "string",
-              "required": false,
-              "name": "Number",
-              "description": "The caller id name for the object type",
-              "maxLength": 35
-            }
-          }
-        }
-      },
-      "default": {}
-    },
-    "music_on_hold": {
-      "type": "object",
-      "required": false,
-      "name": "Music on Hold",
-      "description": "The default music on hold parameters",
-      "properties": {
-        "media_id": {
-          "type": "string",
-          "required": false,
-          "name": "Media ID",
-          "description": "The ID of a media object that should be used as the default music on hold",
-          "maxLength": 128
-        }
-      },
-      "default": {}
-    },
-    "call_restriction": {
-      "type": "object",
-      "required": false,
-      "name": "Call Restrictions",
-      "description": "Account level call restrictions for each available number classification",
-      "additionalProperties": {
-        "type": "object",
-        "required": false,
-        "properties": {
-          "action": {
-            "type": "string",
             "required": false,
-            "name": "Action",
-            "description": "If set to deny all calls of this type will be rejected.  If set to inherit the user/device rules apply",
-            "enum": [
-              "inherit",
-              "deny"
-            ]
-          }
-        }
-      },
-      "default": {}
-    },
-    "dial_plan": {
-      "type": "object",
-      "required": false,
-      "name": "Default Dialplan",
-      "description": "A list of default rules used to modify dialed numbers",
-      "additionalProperties": {
-        "type": "object",
-        "required": false,
-        "properties": {
-          "description": {
-            "type": "string",
-            "required": false,
-            "name": "Name",
-            "description": "Friendly name for this regex dialplan"
-          },
-          "prefix": {
-            "type": "string",
-            "required": false,
-            "name": "Prefix",
-            "description": "Prefix the prepend to the capture group after applying the regex"
-          },
-          "suffix": {
-            "type": "string",
-            "required": false,
-            "name": "Suffix",
-            "description": "Suffix the append to the capture group after applying the regex"
-          }
-        }
-      },
-      "default": {}
-    },
-    "do_not_disturb": {
-      "type": "object",
-      "required": false,
-      "name": "DND Parameters",
-      "properties": {
+            "type": "object"
+        },
         "enabled": {
-          "type": "boolean",
-          "required": false,
-          "name": "Enabled?",
-          "description": "The default value for do-not-disturb"
-        }
-      }
-    },
-    "ringtones": {
-      "type": "object",
-      "required": false,
-      "name": "Ringtone Parameters",
-      "properties": {
-        "internal": {
-          "type": "string",
-          "required": false,
-          "name": "Internal",
-          "description": "The alert info SIP header added when the call is from external sources",
-          "maxLength": 256
-        },
-        "external": {
-          "type": "string",
-          "required": false,
-          "name": "External",
-          "description": "The alert info SIP header added when the call is from internal sources",
-          "maxLength": 256
-        }
-      },
-      "default": {}
-    },
-    "metaflows": {
-      "type": "object",
-      "required": false,
-      "name": "Metaflow Parameters",
-      "description": "The device metaflow parameters",
-      "properties": {
-        "numbers": {
-          "type": "array",
-          "required": false,
-          "name": "Numbers",
-          "description": "The metaflow numbers",
-          "itmes": {
-            "type": "string",
-            "required": false
-          }
-        },
-        "patterns": {
-          "type": "array",
-          "required": false,
-          "name": "Patterns",
-          "description": "The metaflow patterns",
-          "itmes": {
-            "type": "string",
-            "required": false
-          }
-        },
-        "binding_digit": {
-          "type": "string",
-          "required": false,
-          "name": "Binding Digit",
-          "description": "What DTMF will trigger the collection and analysis of the subsequent DTMF sequence",
-          "enum": [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "0",
-            "*",
-            "#"
-          ],
-          "maxLength": 1,
-          "minLength": 1,
-          "default": "*"
-        },
-        "digit_timeout": {
-          "type": "string",
-          "required": false,
-          "name": "Timeout (milliseconds)",
-          "description": "How long to wait between DTMF presses before processing the collected sequence",
-          "minimum": 0
-        },
-        "listen_on": {
-          "type": "string",
-          "required": false,
-          "name": "Listen On",
-          "description": "Which leg(s) of the call to listen for DTMF",
-          "enum": [
-            "both",
-            "self",
-            "peer"
-          ]
-        }
-      }
-    },
-    "preflow": {
-      "type": "object",
-      "required": false,
-      "name": "Preflows",
-      "description": "Each property provides functionality that can be applied to calls using the callflow application",
-      "additionalProperties": false,
-      "properties": {
-        "always": {
-          "type": "string",
-          "required": false,
-          "name": "Callflow ID",
-          "description": "The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request"
-        }
-      },
-      "default": {}
-    },
-        "language": {
-            "type": "string",
+            "default": true,
+            "description": "Determines if the account is currently enabled",
+            "name": "Is Enabled?",
             "required": false,
-            "name": "Language",
+            "type": "boolean"
+        },
+        "language": {
+            "default": "en-us",
             "description": "The language for this account",
-            "default":"en-us"
+            "name": "Language",
+            "required": false,
+            "type": "string"
+        },
+        "metaflows": {
+            "$ref": "metaflows"
+        },
+        "music_on_hold": {
+            "default": {},
+            "description": "The default music on hold parameters",
+            "name": "Music on Hold",
+            "properties": {
+                "media_id": {
+                    "description": "The ID of a media object that should be used as the default music on hold",
+                    "maxLength": 128,
+                    "name": "Media ID",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "name": {
+            "description": "A friendly name for the account",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Name",
+            "required": true,
+            "type": "string"
+        },
+        "org": {
+            "description": "Full legal name of the organization",
+            "name": "Organizational name",
+            "required": false,
+            "type": "string"
+        },
+        "preflow": {
+            "additionalProperties": false,
+            "default": {},
+            "description": "Each property provides functionality that can be applied to calls using the callflow application",
+            "name": "Preflows",
+            "properties": {
+                "always": {
+                    "description": "The ID of a callflow to always execute prior to processing the callflow with numbers/patterns matching the request",
+                    "name": "Callflow ID",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "realm": {
+            "description": "The realm of the account, ie: 'account1.2600hz.com'",
+            "format": "uri",
+            "maxLength": 253,
+            "minLength": 4,
+            "name": "Realm",
+            "pattern": "^([.\\w_-]+)$",
+            "required": false,
+            "type": "string"
+        },
+        "ringtones": {
+            "default": {},
+            "name": "Ringtone Parameters",
+            "properties": {
+                "external": {
+                    "description": "The alert info SIP header added when the call is from internal sources",
+                    "maxLength": 256,
+                    "name": "External",
+                    "required": false,
+                    "type": "string"
+                },
+                "internal": {
+                    "description": "The alert info SIP header added when the call is from external sources",
+                    "maxLength": 256,
+                    "name": "Internal",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "timezone": {
+            "default": "America/Los_Angeles",
+            "description": "The default timezone",
+            "maxLength": 32,
+            "minLength": 5,
+            "name": "Default Timezone",
+            "required": false,
+            "type": "string"
         }
-  }
+    },
+    "required": true,
+    "type": "object"
 }

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,6 +9,7 @@
 -module(registrar_maintenance).
 
 -export([device_by_ip/1]).
+-export([set_listeners/1]).
 
 -include("reg.hrl").
 
@@ -29,3 +30,10 @@ pretty_print_device_by_ip([]) -> 'ok';
 pretty_print_device_by_ip([{Key, Value}|Props]) ->
     io:format("~-39s: ~s~n", [Key, wh_util:to_binary(Value)]),
     pretty_print_device_by_ip(Props).
+
+-spec set_listeners(integer() | binary()) -> 'ok'.
+set_listeners(Count) when is_binary(Count) ->
+    set_listeners(wh_util:to_integer(Count));
+set_listeners(Count) ->
+    whapps_config:set(?CONFIG_CAT, <<"listeners">>, Count),
+    registrar_shared_listener_sup:set_listeners(Count).

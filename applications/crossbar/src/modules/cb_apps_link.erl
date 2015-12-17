@@ -48,9 +48,13 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> 'false'.
-authorize(#cb_context{req_nouns=[{<<"apps_link">>, _}]}) ->
-    'true'.
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize_nouns(cb_context:req_nouns(Context)).
+
+-spec authorize_nouns(req_nouns()) -> boolean().
+authorize_nouns([{<<"apps_link">>, _}]) -> 'true';
+authorize_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -87,13 +91,54 @@ resource_exists(?AUTHORIZE) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{auth_doc=Doc}=Context, ?AUTHORIZE) ->
-    RequestNouns = cb_context:req_nouns(Context),
-    RequestedAccountId = case props:get_value(<<"accounts">>, RequestNouns) of
-                    'undefined' -> wh_json:get_value(<<"account_id">>, Doc, <<>>);
-                    [Else] -> Else
-                end,
-    AccountId = wh_json:get_value(<<"account_id">>, Doc),
-    JObj = wh_json:set_value(<<"account_id">>, RequestedAccountId, Doc),
-    crossbar_util:response(crossbar_util:response_auth(JObj, AccountId), Context).
+validate(Context, ?AUTHORIZE) ->
+    JObj = wh_json:from_list(
+             [{<<"auth_token">>, auth_info(Context)}
+              ,{<<"account">>, account_info(Context)}
+             ]
+            ),
+    crossbar_util:response(JObj, Context).
 
+-spec account_info(cb_context:context()) -> wh_json:object().
+account_info(Context) ->
+    AccountId = get_request_account(Context),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    wh_json:from_list(
+      [{<<"account_id">>, AccountId}
+      ,{<<"account_name">>, whapps_util:get_account_name(AccountId)}
+      ,{<<"language">>, crossbar_util:get_language(AccountId)}
+      ,{<<"is_reseller">>, wh_services:is_reseller(AccountId)}
+      ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+      ,{<<"is_master">>, AccountId =:= MasterAccountId}
+      ]
+     ).
+
+-spec auth_info(cb_context:context()) -> wh_json:object().
+auth_info(Context) ->
+    JObj = cb_context:auth_doc(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"account_id">>, AccountId}
+        ,{<<"owner_id">>, OwnerId}
+        ,{<<"account_name">>, whapps_util:get_account_name(AccountId)}
+        ,{<<"method">>, wh_json:get_value(<<"method">>, JObj)}
+        ,{<<"created">>, wh_doc:created(JObj)}
+        ,{<<"language">>, crossbar_util:get_language(AccountId, OwnerId)}
+        ,{<<"is_reseller">>, wh_services:is_reseller(AccountId)}
+        ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+        ,{<<"apps">>, crossbar_util:load_apps(AccountId, OwnerId)}
+        ,{<<"is_master">>, AccountId =:= MasterAccountId}
+        ]
+       )
+     ).
+
+-spec get_request_account(cb_context:context()) -> ne_binary().
+get_request_account(Context) ->
+    RequestNouns = cb_context:req_nouns(Context),
+    case props:get_value(<<"accounts">>, RequestNouns) of
+        'undefined' -> cb_context:auth_account_id(Context);
+        [Else] -> Else
+    end.

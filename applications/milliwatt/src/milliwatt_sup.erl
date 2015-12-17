@@ -10,15 +10,12 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("milliwatt.hrl").
 
 -export([start_link/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{milliwatt_shared_listener, worker}]).
+-define(CHILDREN, [?WORKER('milliwatt_listener')]).
 
 %% ===================================================================
 %% API functions
@@ -32,7 +29,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -49,11 +46,11 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    wh_util:set_startup(),
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -46,12 +46,11 @@ start_link(#wh_couch_connection{}=Connection) ->
 -spec config() -> couch_connection().
 config() -> config('undefined').
 
--spec config('undefined' | string()) -> couch_connection().
+-spec config(api_string()) -> couch_connection().
 config('undefined') -> #wh_couch_connection{};
 config(URI) -> config(URI, #wh_couch_connection{}).
 
--spec config(string(), integer() | string() | couch_connection()) ->
-                    couch_connection().
+-spec config(string(), integer() | string() | couch_connection()) -> couch_connection().
 config(URI, #wh_couch_connection{}=Connection) ->
     case http_uri:parse(URI) of
         {'error', 'no_scheme'} ->
@@ -132,8 +131,8 @@ set_admin(IsAdmin, #wh_couch_connection{}=Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Connection]) ->
-    self() ! maintain_connection,
-    {ok, Connection}.
+    self() ! 'maintain_connection',
+    {'ok', Connection}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -150,7 +149,7 @@ init([Connection]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, Connection) ->
-    {reply, {error, not_implemented}, Connection}.
+    {'reply', {'error', 'not_implemented'}, Connection}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -163,7 +162,7 @@ handle_call(_Request, _From, Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, Connection) ->
-    {noreply, Connection}.
+    {'noreply', Connection}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,32 +174,32 @@ handle_cast(_Msg, Connection) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(maintain_connection, #wh_couch_connection{connected = false}=Connection) ->
+handle_info('maintain_connection', #wh_couch_connection{connected = 'false'}=Connection) ->
     case maybe_reconnect(Connection) of
-        {error, _} ->
-            erlang:send_after(1000, self(), maintain_connection),
-            {noreply, Connection};
-        {ok, C} ->
-            self() ! maintain_connection,
-            {noreply, connection_established(C)}
+        {'error', _} ->
+            erlang:send_after(?MILLISECONDS_IN_SECOND, self(), 'maintain_connection'),
+            {'noreply', Connection};
+        {'ok', C} ->
+            self() ! 'maintain_connection',
+            {'noreply', connection_established(C)}
     end;
-handle_info(maintain_connection, #wh_couch_connection{ready = Ready
-                                                      ,server = Server
-                                                     }=Connection) ->
+handle_info('maintain_connection', #wh_couch_connection{ready = Ready
+                                                        ,server = Server
+                                                       }=Connection) ->
     case couch_util:server_info(Server) of
-        {ok, _} when not Ready ->
-            erlang:send_after(5000, self(), maintain_connection),
-            {noreply, connection_ready(Connection)};
-        {ok, _} ->
-            erlang:send_after(5000, self(), maintain_connection),
-            {noreply, Connection};
+        {'ok', _} when not Ready ->
+            erlang:send_after(5 * ?MILLISECONDS_IN_SECOND, self(), 'maintain_connection'),
+            {'noreply', connection_ready(Connection)};
+        {'ok', _} ->
+            erlang:send_after(5 * ?MILLISECONDS_IN_SECOND, self(), 'maintain_connection'),
+            {'noreply', Connection};
         _Else ->
-            erlang:send_after(1000, self(), maintain_connection),
-            {noreply, reset_connection(Connection)}
+            erlang:send_after(?MILLISECONDS_IN_SECOND, self(), 'maintain_connection'),
+            {'noreply', reset_connection(Connection)}
     end;
 handle_info(_Info, Connection) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, Connection}.
+    {'noreply', Connection}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -232,7 +231,7 @@ code_change(_OldVsn, Connection, _Extra) ->
 %%%===================================================================
 -spec maybe_reconnect(couch_connection()) ->
                              {'ok', couch_connection()} |
-                             {'error', _}.
+                             {'error', any()}.
 maybe_reconnect(#wh_couch_connection{host=Host
                                      ,port=Port
                                      ,username=User
@@ -240,26 +239,48 @@ maybe_reconnect(#wh_couch_connection{host=Host
                                     }=Connection) ->
     try couch_util:get_new_connection(Host, Port, User, Pass) of
         #server{}=Server ->
-            {'ok', Connection#wh_couch_connection{server = Server}}
+            {'ok', Connection#wh_couch_connection{server = Server}};
+        Error ->
+            handle_error(Connection, Error)
     catch
-        'error':{'badmatch',{'error',{'conn_failed',{'error','econnrefused'}}}} ->
-            lager:info("connection to BigCouch at ~s:~p refused. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
-            {'error', 'conn_failed'};
-        'error':{'badmatch',{'error',{'conn_failed',{'error','timeout'}}}} ->
-            lager:info("network error connecting to BigCouch at ~s:~p. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
-            {'error', 'conn_failed'};
-        'error':{'badmatch',{'error',{'ok',"401",_,_}}} ->
-            lager:info("401 unauthorized using username ~s to authenticate to ~s: ~p", [User, Host, Connection]),
-            {'error', 'bad_status'};
-        'error':{'badmatch',{'error',{'ok',Status,_,_}}} ->
-            lager:info("received HTTP error ~p from BigCouch/HAProxy at ~s:~p.", [Status, Host, Port]),
-            {'error', 'bad_status'};
-        _:Reason ->
-            ST = erlang:get_stacktrace(),
-            lager:info("failed to connect to BigCouch/HAProxy at ~s:~p: ~p", [Host, Port, Reason]),
-            _ = [lager:debug("st: ~p", [S]) || S <- ST],
-            {'error', Reason}
+        _:Error -> handle_error(Connection, Error)
     end.
+
+-spec handle_error(couch_connection(), tuple()) -> {'error', any()}.
+handle_error(Connection, {'badmatch',Error}) ->
+    handle_error(Connection, Error);
+handle_error(#wh_couch_connection{host=Host
+                                  ,port=Port
+                                 }
+             ,{'error',{'conn_failed',{'error','econnrefused'}}}) ->
+    lager:error("connection to BigCouch at ~s:~p refused. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
+    {'error', 'conn_failed'};
+handle_error(#wh_couch_connection{host=Host
+                                  ,port=Port
+                                 }
+             ,{'error',{'conn_failed',{'error','timeout'}}}) ->
+    lager:info("network error connecting to BigCouch at ~s:~p. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port]),
+    {'error', 'conn_failed'};
+handle_error(#wh_couch_connection{username=User
+                                  ,host=Host
+                                 }
+             ,{'error',{'ok',"401",_,_}}) ->
+    lager:info("401 unauthorized using username ~s to authenticate to ~s", [User, Host]),
+    {'error', 'bad_status'};
+handle_error(#wh_couch_connection{host=Host
+                                  ,port=Port
+                                 }
+             ,{'error',{'ok',Status,_,_}}) ->
+    lager:info("received HTTP error ~p from BigCouch/HAProxy at ~s:~p.", [Status, Host, Port]),
+    {'error', 'bad_status'};
+handle_error(#wh_couch_connection{host=Host
+                                  ,port=Port
+                                 }
+             ,Reason) ->
+    ST = erlang:get_stacktrace(),
+    lager:info("failed to connect to BigCouch/HAProxy at ~s:~p: ~p", [Host, Port, Reason]),
+    _ = [lager:debug("st: ~p", [S]) || S <- ST],
+    {'error', Reason}.
 
 -spec split_user_info(string()) -> {string(), string()}.
 split_user_info([]) -> {"", ""};

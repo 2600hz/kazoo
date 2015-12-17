@@ -19,7 +19,7 @@
         ]).
 
 -include("camper.hrl").
--include_lib("rabbitmq_server/plugins-src/rabbitmq-erlang-client/include/amqp_client.hrl").
+-include_lib("rabbitmq_client/include/amqp_client.hrl").
 
 -behaviour(gen_listener).
 
@@ -27,11 +27,13 @@
 -export([handle_camper_req/3]).
 
 -define(RESPONDERS, [{{'camper_request_listener', 'handle_camper_req'}
-                     ,[{<<"delegate">>, <<"job">>}]
+                      ,[{<<"delegate">>, <<"job">>}]
                      }
                     ]).
 -define(BINDINGS, [{'delegate', [{'app_name', ?APP_NAME}
-                                  ,{'route_key', <<"*">>}]}]).
+                                 ,{'route_key', <<"*">>}
+                                ]}
+                  ]).
 -define(QUEUE_NAME, <<"camper_requests">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).

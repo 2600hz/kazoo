@@ -1,52 +1,72 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.conference",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": true,
     "description": "Validator for the Conference callflow element",
     "properties": {
-        "id": {
-            "type": "string",
+        "config": {
+            "$schema": "conferences.json",
+            "description": "Build an ad-hoc conference using the conferences JSON schema",
+            "name": "Ad-Hoc Config",
             "required": false,
-            "name": "Conference ID",
+            "type": "object"
+        },
+        "id": {
             "description": "Kazoo ID of the conference",
-            "minLength":32,
-            "maxLength":32
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "Conference ID",
+            "required": false,
+            "type": "string"
         },
-        "moderator":{
-            "type":"boolean",
-            "required":false,
-            "default":false,
-            "name":"Moderator",
-            "description":"Is the caller entering the conference as a moderator"
+        "moderator": {
+            "default": false,
+            "description": "Is the caller entering the conference as a moderator",
+            "name": "Moderator",
+            "required": false,
+            "type": "boolean"
         },
-        "welcome_prompt":{
-            "type":"object",
-            "required":false,
-            "name":"Welcome Prompt",
-            "description":"Describes how the caller is greeted on entering a conference",
-            "properties":{
-                "play":{
-                    "type":"boolean",
-                    "required":false,
-                    "default":true,
-                    "name":"Play Welcome Prompt",
-                    "description":"Should the Welcome Prompt be played"
-                },
-                "media_id":{
-                    "type": "string",
-                    "required": true,
+        "play_entry_tone": {
+            "default": true,
+            "description": "Should the Entry Tone be played",
+            "name": "Play Entry Tone",
+            "required": false,
+            "type": [
+                "boolean",
+                "string"
+            ]
+        },
+        "play_exit_tone": {
+            "default": true,
+            "description": "Should the Exit Tone be played",
+            "name": "Play Exit Tone",
+            "required": false,
+            "type": [
+                "boolean",
+                "string"
+            ]
+        },
+        "welcome_prompt": {
+            "description": "Describes how the caller is greeted on entering a conference",
+            "name": "Welcome Prompt",
+            "properties": {
+                "media_id": {
+                    "description": "Media to play, either Kazoo media ID or URL",
                     "name": "Media",
-                    "description": "Media to play, either Kazoo media ID or URL"
+                    "required": true,
+                    "type": "string"
+                },
+                "play": {
+                    "default": true,
+                    "description": "Should the Welcome Prompt be played",
+                    "name": "Play Welcome Prompt",
+                    "required": false,
+                    "type": "boolean"
                 }
-            }
-        },
-        "config":{
-            "type":"object",
-            "$schema":"conferences.json",
-            "required":false,
-            "name":"Ad-Hoc Config",
-            "description":"Build an ad-hoc conference using the conferences JSON schema"
+            },
+            "required": false,
+            "type": "object"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

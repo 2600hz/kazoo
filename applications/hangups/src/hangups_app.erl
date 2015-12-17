@@ -20,7 +20,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
+-spec start(any(), any()) -> {'ok', pid()} | {'error', startlink_err()}.
 start(_, _) -> hangups:start_link().
 
 %%--------------------------------------------------------------------
@@ -29,5 +29,5 @@ start(_, _) -> hangups:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_) -> hangups:stop().

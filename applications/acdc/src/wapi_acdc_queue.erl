@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(wapi_acdc_queue).
 
@@ -60,11 +61,13 @@
 %% Member Call
 %%------------------------------------------------------------------------------
 -define(MEMBER_CALL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CALL_HEADERS, []).
+-define(OPTIONAL_MEMBER_CALL_HEADERS, [<<"Member-Priority">>]).
 -define(MEMBER_CALL_VALUES, [{<<"Event-Category">>, <<"member">>}
                              ,{<<"Event-Name">>, <<"call">>}
                             ]).
--define(MEMBER_CALL_TYPES, [{<<"Queue-ID">>, fun erlang:is_binary/1}]).
+-define(MEMBER_CALL_TYPES, [{<<"Queue-ID">>, fun erlang:is_binary/1}
+                            ,{<<"Member-Priority">>, fun is_integer/1}
+                           ]).
 
 -spec member_call(api_terms()) ->
                          {'ok', iolist()} |
@@ -614,9 +617,13 @@ declare_exchanges() ->
 -spec publish_member_call(api_terms(), ne_binary()) -> 'ok'.
 publish_member_call(JObj) ->
     publish_member_call(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_call(Props, ContentType) when is_list(Props) ->
+    publish_member_call(wh_json:from_list(Props), ContentType);
 publish_member_call(API, ContentType) ->
+    Priority = wh_json:get_integer_value(<<"Member-Priority">>, API),
+    Props = props:filter_undefined([{'priority', Priority}]),
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
-    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API), Props).
 
 -spec publish_member_call_cancel(api_terms()) -> 'ok'.
 -spec publish_member_call_cancel(api_terms(), ne_binary()) -> 'ok'.
@@ -626,6 +633,9 @@ publish_member_call_cancel(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_CANCEL_VALUES, fun member_call_cancel/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
 
+-spec publish_shared_member_call(wh_json:object()) -> 'ok'.
+-spec publish_shared_member_call(ne_binary(), ne_binary(), api_terms()) -> 'ok'.
+-spec publish_shared_member_call(ne_binary(), ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_shared_member_call(JObj) ->
     publish_shared_member_call(wh_json:get_value(<<"Account-ID">>, JObj)
                                ,wh_json:get_value(<<"Queue-ID">>, JObj)
@@ -633,9 +643,15 @@ publish_shared_member_call(JObj) ->
                               ).
 publish_shared_member_call(AcctId, QueueId, JObj) ->
     publish_shared_member_call(AcctId, QueueId, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_shared_member_call(AcctId, QueueId, API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
-    amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType, [{'mandatory', 'true'}]).
+publish_shared_member_call(AcctId, QueueId, Props, ContentType) when is_list(Props) ->
+    publish_shared_member_call(AcctId, QueueId, wh_json:from_list(Props), ContentType);
+publish_shared_member_call(AcctId, QueueId, JObj, ContentType) ->
+    Priority = wh_json:get_integer_value(<<"Member-Priority">>, JObj),
+    Props = props:filter_undefined([{'priority', Priority}
+                                    ,{'mandatory', 'true'}
+                                   ]),
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?MEMBER_CALL_VALUES, fun member_call/1),
+    amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType, Props).
 
 -spec publish_member_call_failure(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_member_call_failure(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

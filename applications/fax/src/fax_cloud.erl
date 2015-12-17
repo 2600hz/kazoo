@@ -10,8 +10,7 @@
 
 -export([handle_job_notify/2
         ,handle_push/2
-        ,handle_faxbox_created/2
-        ,handle_faxbox_deleted/2
+        ,handle_faxbox_created/2, handle_faxbox_edited/2, handle_faxbox_deleted/2
         ,maybe_process_job/2
         ,check_registration/3
         ,get_printer_oauth_credentials/1
@@ -38,8 +37,9 @@ handle_job_notify(JObj, _Props) ->
     end,
 
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
-    {'ok', FaxJObj} = couch_mgr:open_doc(?WH_FAXES, JobId),
-    lager:debug("Checking if JobId ~s is a cloud printer job",[JobId]),
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+    lager:debug("Checking if JobId ~s in db ~s is a cloud printer job",[JobId, AccountDb]),
+    {'ok', FaxJObj} = couch_mgr:open_doc(AccountDb, JobId),
     case wh_json:get_value(<<"cloud_job_id">>, FaxJObj) of
         'undefined' ->
             lager:debug("JobId ~s is not a cloud printer job",[JobId]);
@@ -76,11 +76,11 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
                 {'ok', "200", _RespHeaders, RespBody} ->
                     JObj = wh_json:decode(RespBody),
                     JObjs = wh_json:get_value(<<"jobs">>, JObj, []),
-                    _P = spawn(?MODULE, 'maybe_process_job', [JObjs, Authorization]),
+                    _P = wh_util:spawn(fun maybe_process_job/2, [JObjs, Authorization]),
                     lager:debug("maybe processing job in ~p", [_P]);
                 {'ok', "403", _RespHeaders, _RespBody} ->
                     lager:debug("something wrong with oauth credentials"),
-                    [lager:debug("resp header: ~p", [_RespHeader]) || _RespHeader <- _RespHeaders],
+                    _ = [lager:debug("resp header: ~p", [_RespHeader]) || _RespHeader <- _RespHeaders],
                     lager:debug("body: ~s", [_RespBody]);
                 _Other ->
                     lager:debug("unexpected response from gcp ~p", [_Other])
@@ -94,7 +94,7 @@ handle_push_event(JID, AppName, AppEvent, AppData) ->
 -spec maybe_process_job(wh_json:objects(), ne_binary()) -> 'ok'.
 maybe_process_job([], _Authorization) -> 'ok';
 maybe_process_job([JObj | JObjs], Authorization) ->
-    JobId = wh_json:get_value(<<"id">>, JObj),
+    JobId = wh_doc:id(JObj),
     TicketObj = fetch_ticket(JobId, Authorization),
     TicketItem = wh_json:get_value([<<"print">>,<<"vendor_ticket_item">>], TicketObj, []),
     NumberObj = lists:foldl(fun(A,B) -> maybe_fax_number(A,B) end, wh_json:new(),TicketItem),
@@ -111,10 +111,13 @@ maybe_process_job([JObj | JObjs], Authorization) ->
 
 -spec maybe_fax_number(wh_json:object(), wh_json:object()) -> wh_json:object().
 maybe_fax_number(A, B) ->
-    case wh_json:get_value(<<"id">>, A) of
+    case wh_doc:id(A) of
         <<"fax_number">> ->
-            Number = wh_json:get_value(<<"value">>, A),
-            wh_json:set_value(<<"Fax-Number">>, Number, B);
+            Number = fax_util:filter_numbers(wh_json:get_value(<<"value">>, A)),
+            case wh_util:is_empty(Number) of
+                'true' -> lager:debug("fax number is empty");
+                'false' -> wh_json:set_value(<<"Fax-Number">>, Number, B)
+            end;
         _Other -> B
     end.
 
@@ -194,21 +197,29 @@ download_file(URL, Authorization) ->
         {'ok', "200", RespHeaders, RespBody} ->
             CT = wh_util:to_binary(props:get_value("Content-Type", RespHeaders)),
             Ext = fax_util:content_type_to_extension(CT),
-            FileName = <<"/tmp/fax_printer_",(wh_util:to_binary(wh_util:current_tstamp()))/binary,".",Ext/binary>>,
-            file:write_file(FileName,RespBody),
-            {'ok', CT, RespBody};
+            FileName = <<"/tmp/fax_printer_"
+                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
+                         ,"."
+                         ,Ext/binary
+                       >>,
+            case file:write_file(FileName,RespBody) of
+                'ok' -> {'ok', CT, RespBody};
+                {'error', _}=Error ->
+                    lager:debug("error writing file ~s from ~s : ~p", [URL, FileName, Error]),
+                    Error
+            end;
         Response ->
             lager:debug("error downloading file ~s : ~p",[URL, Response]),
             {'error', Response}
     end.
 
--spec maybe_save_fax_document(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec maybe_save_fax_document(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
     case save_fax_document(Job, JobId, PrinterId, FaxNumber) of
         {'ok', JObj} ->
             maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL );
         {'error', 'conflict'} ->
-            lager:debug("got conflict saving fax job ~s", [JobId]);
+            lager:debug("cloud job ~s already exists, skipping", [JobId]);
         {'error', _E} ->
             lager:debug("got error saving fax job ~s : ~p", [JobId, _E])
     end.
@@ -237,9 +248,12 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
 save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     {'ok', FaxBoxDoc} = get_faxbox_doc(PrinterId),
 
-    AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
+    AccountId = wh_doc:account_id(FaxBoxDoc),
+    AccountDb = ?WH_FAXES_DB,
+    ResellerId = case kzd_services:reseller_id(FaxBoxDoc) of
+                     'undefined' -> wh_services:find_reseller_id(AccountId);
+                     TheResellerId -> TheResellerId
+                 end,
     OwnerId = wh_json:get_value(<<"ownerId">>, Job),
     FaxBoxUserEmail = wh_json:get_value(<<"owner_email">>, FaxBoxDoc),
 
@@ -265,18 +279,19 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     Props = props:filter_undefined(
               [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
                ,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
-               ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_identity_name">>, FaxBoxDoc)}
-               ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity_number">>, FaxBoxDoc)}
-               ,{<<"fax_timezone">>, wh_json:get_value(<<"fax_timezone">>, FaxBoxDoc)}
+               ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_header">>, FaxBoxDoc)}
+               ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
+               ,{<<"fax_timezone">>, kzd_fax_box:timezone(FaxBoxDoc)}
                ,{<<"to_name">>,FaxNumber}
                ,{<<"to_number">>,FaxNumber}
                ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
                ,{<<"notifications">>, Notify }
-               ,{<<"faxbox_id">>, wh_json:get_value(<<"_id">>,FaxBoxDoc)}
+               ,{<<"faxbox_id">>, wh_doc:id(FaxBoxDoc)}
                ,{<<"folder">>, <<"outbox">>}
                ,{<<"cloud_printer_id">>, PrinterId}
                ,{<<"cloud_job_id">>, JobId}
                ,{<<"cloud_job">>, Job}
+               ,{<<"_id">>, JobId}
               ]),
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
                               ,{<<"pvt_job_status">>, <<"queued">>}
@@ -288,7 +303,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                              ]
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),
-    couch_mgr:save_doc(?WH_FAXES, Doc).
+    couch_mgr:save_doc(?WH_FAXES_DB, Doc).
 
 -spec get_faxbox_doc(ne_binary()) ->
                             {'ok', wh_json:object()} |
@@ -297,33 +312,44 @@ get_faxbox_doc(PrinterId) ->
     case wh_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
         {'ok', _Doc}=OK -> OK;
         {'error', _} ->
-            ViewOptions = [{'key', PrinterId}, 'include_docs'],
-            case couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>, ViewOptions) of
-                {'ok', JObjs} ->
-                    [Doc] = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-                    FaxBoxDoc = maybe_get_faxbox_owner_email(Doc),
-                    wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc),
-                    {'ok', FaxBoxDoc};
-                {'error', _}=E -> E
-            end
+            fetch_faxbox_doc(PrinterId)
+    end.
+
+-spec fetch_faxbox_doc(ne_binary()) ->
+                              {'ok', wh_json:object()} |
+                              {'error', any()}.
+fetch_faxbox_doc(PrinterId) ->
+    ViewOptions = [{'key', PrinterId}, 'include_docs'],
+    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>, ViewOptions) of
+        {'error', _}=E -> E;
+        {'ok', [JObj]} ->
+            Doc = wh_json:get_value(<<"doc">>, JObj),
+            FaxBoxDoc = maybe_get_faxbox_owner_email(Doc),
+            CacheProps = [{'origin', [{'db', ?WH_FAXES_DB, wh_doc:id(Doc)}] }],
+            wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc, CacheProps),
+            {'ok', FaxBoxDoc}
     end.
 
 -spec maybe_get_faxbox_owner_email(wh_json:object()) -> wh_json:object().
 maybe_get_faxbox_owner_email(FaxBoxDoc) ->
     case wh_json:get_value(<<"owner_id">>, FaxBoxDoc) of
         'undefined' -> FaxBoxDoc;
-        OwnerId ->
-            AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
-            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
-                {'ok', OwnerDoc} ->
-                    case wh_json:get_value(<<"email">>, OwnerDoc) of
-                        'undefined' -> FaxBoxDoc;
-                        OwnerEmail -> wh_json:set_value(<<"owner_email">>, OwnerEmail, FaxBoxDoc)
-                    end;
-                _ ->
-                    FaxBoxDoc
-            end
+        OwnerId -> get_faxbox_owner_email(FaxBoxDoc, OwnerId)
+    end.
+
+-spec get_faxbox_owner_email(wh_json:object(), ne_binary()) ->
+                                    wh_json:object().
+get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
+    AccountId = wh_doc:account_id(FaxBoxDoc),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', OwnerDoc} ->
+            case wh_json:get_value(<<"email">>, OwnerDoc) of
+                'undefined' -> FaxBoxDoc;
+                OwnerEmail -> wh_json:set_value(<<"owner_email">>, OwnerEmail, FaxBoxDoc)
+            end;
+        _ ->
+            FaxBoxDoc
     end.
 
 -spec get_printer_oauth_credentials(ne_binary()) ->
@@ -333,27 +359,37 @@ get_printer_oauth_credentials(PrinterId) ->
     case wh_cache:peek_local(?FAX_CACHE, {'gcp', PrinterId }) of
         {'ok', _Auth}=OK -> OK;
         {'error', _} ->
-            case get_faxbox_doc(PrinterId) of
-                {'ok', JObj} ->
-                    {'ok',App} = kazoo_oauth_util:get_oauth_app(wh_json:get_value(<<"pvt_cloud_oauth_app">>, JObj)),
-                    RefreshToken = #oauth_refresh_token{token = wh_json:get_value(<<"pvt_cloud_refresh_token">>, JObj)},
-                    {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
-                    Auth = wh_util:to_list(kazoo_oauth_util:authorization_header(Token)),
-                    wh_cache:store_local(?FAX_CACHE, {'gcp', PrinterId }, Auth, [{'expires', Expires }]),
-                    {'ok', Auth};
-                {'error', _}=E -> E
-            end
+            fetch_printer_oauth_credentials(PrinterId)
     end.
+
+-spec fetch_printer_oauth_credentials(ne_binary()) ->
+                                             {'ok', ne_binary()} |
+                                             {'error', any()}.
+fetch_printer_oauth_credentials(PrinterId) ->
+    case get_faxbox_doc(PrinterId) of
+        {'error', _}=E -> E;
+        {'ok', JObj} ->
+            {'ok',App} = kazoo_oauth_util:get_oauth_app(wh_json:get_value(<<"pvt_cloud_oauth_app">>, JObj)),
+            RefreshToken = #oauth_refresh_token{token = wh_json:get_value(<<"pvt_cloud_refresh_token">>, JObj)},
+            {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
+            Auth = wh_util:to_list(kazoo_oauth_util:authorization_header(Token)),
+            wh_cache:store_local(?FAX_CACHE, {'gcp', PrinterId}, Auth, [{'expires', Expires}]),
+            {'ok', Auth}
+    end.
+
+-spec handle_faxbox_edited(wh_json:object(), wh_proplist()) -> pid().
+handle_faxbox_edited(JObj, Props) ->
+    handle_faxbox_created(JObj, Props).
 
 -spec handle_faxbox_created(wh_json:object(), wh_proplist()) -> pid().
 handle_faxbox_created(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     ID = wh_json:get_value(<<"ID">>, JObj),
-    {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
+    {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES_DB, ID),
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
+    ResellerId = kzd_services:reseller_id(Doc),
     AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
-    spawn(?MODULE, check_registration, [AppId, State, Doc]).
+    wh_util:spawn(fun check_registration/3, [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
 check_registration('undefined', _, _JObj) -> 'ok';
@@ -370,19 +406,21 @@ check_registration(AppId, <<"registered">>, JObj) ->
             process_registration_result(Result, AppId, JObj,JObjPool );
         _A ->
             lager:debug("unexpected result checking registration of printer ~s: ~p", [PrinterId, _A])
-    end.
+    end;
+check_registration(_, _, _JObj) -> 'ok'.
 
 -spec process_registration_result(boolean(), ne_binary(), wh_json:object(), wh_json:object() ) -> any().
 process_registration_result('true', AppId, JObj, Result) ->
-    _AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    _AccountId = wh_doc:account_id(JObj),
     _PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
-    FaxBoxId = wh_json:get_value(<<"_id">>, JObj),
+    FaxBoxId = wh_doc:id(JObj),
     Scope = wh_json:get_value(<<"pvt_cloud_oauth_scope">>, JObj),
     {'ok', App } = kazoo_oauth_util:get_oauth_app(AppId),
     AuthorizationCode = wh_json:get_value(<<"authorization_code">>, Result),
     JID = wh_json:get_value(<<"xmpp_jid">>, Result),
     UserEmail = wh_json:get_value(<<"user_email">>, Result),
-    {'ok', Token} = kazoo_oauth_util:refresh_token(App, Scope, AuthorizationCode, [?GPC_PROXY_HEADER],'oob'),
+    {'ok', Token} = kazoo_oauth_util:refresh_token(App, Scope, AuthorizationCode, [?GPC_PROXY_HEADER], <<"oob">>),
+
     RefreshToken = wh_json:get_value(<<"refresh_token">>, Token),
     update_printer(
       wh_json:set_values(
@@ -396,7 +434,7 @@ process_registration_result('true', AppId, JObj, Result) ->
         ,JObj
        )),
 
-    timer:sleep(15000),
+    timer:sleep(15 * ?MILLISECONDS_IN_SECOND),
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"start">>}
                  ,{<<"Application-Name">>, <<"fax">>}
@@ -409,9 +447,11 @@ process_registration_result('true', AppId, JObj, Result) ->
 process_registration_result('false', AppId, JObj, _Result) ->
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
     TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
-    CreatedTime = wh_json:get_integer_value(<<"pvt_created">>, JObj),
+    UnixTS = wh_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),
+    CreatedTime = wh_util:unix_timestamp_to_gregorian_seconds(UnixTS),
     InviteUrl = wh_json:get_value(<<"pvt_cloud_connector_claim_url">>, JObj),
-    Elapsed = wh_util:elapsed_s(CreatedTime), 
+    Elapsed = wh_util:elapsed_s(CreatedTime),
+
     case Elapsed > TokenDuration of
         'true' ->
             lager:debug("Token expired before printer ~s was claimed at ~s",[PrinterId,InviteUrl]),
@@ -420,35 +460,35 @@ process_registration_result('false', AppId, JObj, _Result) ->
               wh_json:set_values(
                 [{<<"pvt_cloud_state">>, <<"expired">>}]
                 ,wh_json:delete_keys(Keys, JObj)
-               ));
-        _ ->
+               )
+             );
+        'false' ->
             SleepTime = whapps_config:get_integer(?CONFIG_CAT, <<"cloud_registration_pool_interval">>, ?DEFAULT_CLOUD_REG_SLEEP),
-            lager:debug("Printer ~s not claimed at ~s. sleeping for ~p seconds, Elapsed/Duration (~p/~p)."
-                        ,[PrinterId,InviteUrl,SleepTime, Elapsed, TokenDuration]),
+            lager:debug("Printer ~s not claimed at ~s. sleeping for ~B seconds, Elapsed/Duration (~p/~p)."
+                        ,[PrinterId,InviteUrl, SleepTime div 1000 , Elapsed, TokenDuration]
+                       ),
             timer:sleep(SleepTime),
             check_registration(AppId, <<"registered">>, JObj)
     end.
 
-
-
 -spec update_printer(wh_json:object()) -> 'ok'.
 update_printer(JObj) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-    couch_mgr:ensure_saved(AccountDb, JObj),
-    couch_mgr:ensure_saved(?WH_FAXES, JObj).
-    
+    AccountDb = wh_doc:account_db(JObj),
+    {'ok', _} = couch_mgr:ensure_saved(AccountDb, JObj),
+    {'ok', _} = couch_mgr:ensure_saved(?WH_FAXES_DB, JObj),
+    'ok'.
+
 -spec handle_faxbox_deleted(wh_json:object(), wh_proplist()) -> any().
 handle_faxbox_deleted(JObj, _Props) ->
     lager:debug("faxbox_deleted ~p",[JObj]),
     'true' = wapi_conf:doc_update_v(JObj),
-    lager:debug("faxbox_deleted ~p",[JObj]),
     ID = wh_json:get_value(<<"ID">>, JObj),
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"stop">>}
-                ,{<<"Application-Name">>, <<"fax">>}
-                ,{<<"Application-Event">>, <<"deleted">>}
-                ,{<<"Application-Data">>, ID}
-                ,{<<"JID">>, ID}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 ,{<<"Application-Name">>, <<"fax">>}
+                 ,{<<"Application-Event">>, <<"deleted">>}
+                 ,{<<"Application-Data">>, ID}
+                 ,{<<"JID">>, ID}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     wapi_xmpp:publish_event(Payload).

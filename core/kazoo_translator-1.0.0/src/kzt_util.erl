@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -53,11 +53,6 @@
          ,set_chat_permissions/2, get_chat_permissions/1
         ]).
 
--ifdef(TEST).
--export([test/0]).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -include("kzt.hrl").
 
 -define(DEFAULT_HTTP_METHOD, 'post').
@@ -110,7 +105,8 @@ offnet_req(Data, Call) ->
            ,{<<"Ringback">>, props:get_value(<<"ringback">>, Data)}
            | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
           ] ++ Data,
-    wapi_offnet_resource:publish_req(Req).
+
+    wh_amqp_worker:cast(Req, fun wapi_offnet_resource:publish_req/1).
 
 -spec update_call_status(ne_binary(), whapps_call:call()) -> whapps_call:call().
 -spec get_call_status(whapps_call:call()) -> api_binary().
@@ -119,7 +115,7 @@ update_call_status(Status, Call) ->
 get_call_status(Call) ->
     whapps_call:kvs_fetch(<<"call_status">>, Call).
 
--spec add_error(whapps_call:call(), ne_binary(), term()) -> whapps_call:call().
+-spec add_error(whapps_call:call(), ne_binary(), any()) -> whapps_call:call().
 add_error(Call, K, V) ->
     case whapps_call:kvs_fetch(<<"response_errors">>, Call) of
         'undefined' ->
@@ -272,8 +268,10 @@ get_media_meta(Call) -> whapps_call:kvs_fetch(<<"media_meta">>, Call).
 set_amqp_listener(Pid, Call) -> whapps_call:kvs_store(<<"amqp_listener">>, Pid, Call).
 get_amqp_listener(Call) -> whapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
--spec set_gather_pidref({pid(), reference()} | 'undefined', whapps_call:call()) -> whapps_call:call().
--spec get_gather_pidref(whapps_call:call()) -> {pid(), reference()} | 'undefined'.
+-spec set_gather_pidref(pid_ref() | 'undefined', whapps_call:call()) ->
+                               whapps_call:call().
+-spec get_gather_pidref(whapps_call:call()) ->
+                               pid_ref() | 'undefined'.
 set_gather_pidref('undefined', Call) ->
     whapps_call:kvs_store(<<"gather_pidref">>, 'undefined', Call);
 set_gather_pidref({_, _}=PidRef, Call) ->
@@ -281,30 +279,45 @@ set_gather_pidref({_, _}=PidRef, Call) ->
     whapps_call:kvs_store(<<"gather_pidref">>, PidRef, Call).
 get_gather_pidref(Call) -> whapps_call:kvs_fetch(<<"gather_pidref">>, Call).
 
--spec set_conference_profile(wh_json:object(), whapps_call:call()) -> whapps_call:call().
--spec get_conference_profile(whapps_call:call()) -> wh_json:object().
-set_conference_profile(JObj, Call) -> whapps_call:kvs_store(<<"conference_profile">>, JObj, Call).
-get_conference_profile(Call) -> whapps_call:kvs_fetch(<<"conference_profile">>, Call).
+-spec set_conference_profile(wh_json:object(), whapps_call:call()) ->
+                                    whapps_call:call().
+-spec get_conference_profile(whapps_call:call()) ->
+                                    wh_json:object().
+set_conference_profile(JObj, Call) ->
+    whapps_call:kvs_store(<<"conference_profile">>, JObj, Call).
+get_conference_profile(Call) ->
+    whapps_call:kvs_fetch(<<"conference_profile">>, Call).
 
--spec set_caller_controls(wh_json:object(), whapps_call:call()) -> whapps_call:call().
--spec get_caller_controls(whapps_call:call()) -> wh_json:object().
-set_caller_controls(JObj, Call) -> whapps_call:kvs_store(<<"caller_controls">>, JObj, Call).
-get_caller_controls(Call) -> whapps_call:kvs_fetch(<<"caller_controls">>, Call).
+-spec set_caller_controls(wh_json:object(), whapps_call:call()) ->
+                                 whapps_call:call().
+-spec get_caller_controls(whapps_call:call()) ->
+                                 wh_json:object().
+set_caller_controls(JObj, Call) ->
+    whapps_call:kvs_store(<<"caller_controls">>, JObj, Call).
+get_caller_controls(Call) ->
+    whapps_call:kvs_fetch(<<"caller_controls">>, Call).
 
--spec set_advertise(wh_json:object(), whapps_call:call()) -> whapps_call:call().
--spec get_advertise(whapps_call:call()) -> wh_json:object().
-set_advertise(JObj, Call) -> whapps_call:kvs_store(<<"advertise">>, JObj, Call).
-get_advertise(Call) -> whapps_call:kvs_fetch(<<"advertise">>, Call).
+-spec set_advertise(wh_json:object(), whapps_call:call()) ->
+                           whapps_call:call().
+-spec get_advertise(whapps_call:call()) ->
+                           wh_json:object().
+set_advertise(JObj, Call) ->
+    whapps_call:kvs_store(<<"advertise">>, JObj, Call).
+get_advertise(Call) ->
+    whapps_call:kvs_fetch(<<"advertise">>, Call).
 
--spec set_chat_permissions(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+-spec set_chat_permissions(wh_json:object(), whapps_call:call()) ->
+                                  whapps_call:call().
 -spec get_chat_permissions(whapps_call:call()) -> wh_json:object().
-set_chat_permissions(JObj, Call) -> whapps_call:kvs_store(<<"chat_permissions">>, JObj, Call).
-get_chat_permissions(Call) -> whapps_call:kvs_fetch(<<"chat_permissions">>, Call).
+set_chat_permissions(JObj, Call) ->
+    whapps_call:kvs_store(<<"chat_permissions">>, JObj, Call).
+get_chat_permissions(Call) ->
+    whapps_call:kvs_fetch(<<"chat_permissions">>, Call).
 
 -spec get_request_vars(whapps_call:call()) -> wh_json:object().
 get_request_vars(Call) ->
     wh_json:from_list(
-      props:filter_empty(
+      props:filter_undefined(
         [{<<"Digits">>, get_digits_collected(Call)}
          ,{<<"RecordingUrl">>, get_recording_url(Call)}
          ,{<<"RecordingDuration">>, get_recording_duration(Call)}
@@ -313,8 +326,6 @@ get_request_vars(Call) ->
          ,{<<"DialCallDuration">>, get_dial_call_duration(Call)}
          ,{<<"QueueSid">>, get_queue_sid(Call)}
          ,{<<"CallStatus">>, get_call_status(Call)}
-        ])).
-
--ifdef(TEST).
-
--endif.
+        ]
+       )
+     ).

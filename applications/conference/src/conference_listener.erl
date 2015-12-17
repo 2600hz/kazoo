@@ -27,7 +27,6 @@
                    ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'conf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{'conf_route_win', [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
 -define(QUEUE_NAME, <<"">>).
 -define(QUEUE_OPTIONS, []).

@@ -65,7 +65,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link([term()]) -> startlink_ret().
+-spec start_link([any()]) -> startlink_ret().
 start_link(Args) ->
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
@@ -91,7 +91,7 @@ init([JObj]) ->
 
     {'ok', StopTimerRef} = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
 
-    Moh = case couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)) of
+    Moh = case kz_account:fetch(whapps_call:account_id(Call)) of
               {'ok', JObj} ->
                   wh_media_util:media_path(
                     wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)
@@ -195,14 +195,14 @@ handle_cast({'parked', <<_/binary>> = CallId}, #state{moh=MOH
     {'noreply', State#state{parked_call = CallId}};
 handle_cast('wait', #state{try_after = Time} = State) ->
     lager:debug("wait before next try"),
-    timer:apply_after(Time, 'gen_listener', 'cast', [self(), 'count']),
+    {'ok', _TimerRef} = timer:apply_after(Time, 'gen_listener', 'cast', [self(), 'count']),
     {'noreply', State};
 handle_cast('stop_campering', #state{stop_timer = 'undefined'} = State) ->
     lager:debug("stopping"),
     {'stop', 'normal', State};
 handle_cast('stop_campering', #state{stop_timer = Timer} = State) ->
     lager:debug("stopping"),
-    timer:cancel(Timer),
+    _ = timer:cancel(Timer),
     {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -312,7 +312,7 @@ build_bridge_request(ParkedCallId, Call, Q) ->
                             ,{<<"Presence-ID">>, PresenceId}
                             ,{<<"Account-ID">>, AcctId}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-                            ,{<<"Timeout">>, 10000}
+                            ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
                             ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}
                             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                            ]).
@@ -361,7 +361,7 @@ build_offnet_request(Exten, Call, Q) ->
                             ,{<<"Account-ID">>, AcctId}
                             ,{<<"Call-ID">>, CallId}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-                            ,{<<"Timeout">>, 10000}
+                            ,{<<"Timeout">>, 10 * ?MILLISECONDS_IN_SECOND}
                             ,{<<"To-DID">>, Exten}
                             ,{<<"Format-From-URI">>, <<"true">>}
                             ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}

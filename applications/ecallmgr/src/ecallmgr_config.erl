@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,8 +18,8 @@
          ,is_true/1, is_true/2, is_true/3
          ,get_default/1, get_default/2
         ]).
--export([fetch/1, fetch/2, fetch/3]).
--export([set/2
+-export([fetch/1, fetch/2, fetch/3, fetch/4
+         ,set/2
          ,set_default/2
          ,set_node/2
         ]).
@@ -30,7 +30,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -spec flush() -> 'ok'.
--spec flush(wh_json:key()) -> 'ok' | {'error', _}.
+-spec flush(wh_json:key()) -> 'ok' | {'error', any()}.
 
 flush() ->
     wh_cache:flush_local(?ECALLMGR_UTIL_CACHE),
@@ -154,6 +154,7 @@ is_true(Key, Default, Node) ->
 -spec fetch(wh_json:key()) -> wh_json:json_term() | 'undefined'.
 -spec fetch(wh_json:key(), Default) -> wh_json:json_term() | Default.
 -spec fetch(wh_json:key(), Default, wh_json:key() | atom()) -> wh_json:json_term() | Default.
+-spec fetch(wh_json:key(), Default, wh_json:key() | atom(), pos_integer()) -> wh_json:json_term() | Default.
 
 fetch(Key) ->
     fetch(Key, 'undefined').
@@ -167,7 +168,12 @@ fetch(Key, Default, Node) when not is_binary(Key) ->
     fetch(wh_util:to_binary(Key), Default, Node);
 fetch(Key, Default, Node) when not is_binary(Node) ->
     fetch(Key, Default, wh_util:to_binary(Node));
-fetch(Key, Default, Node) ->
+fetch(Key, Default, <<_/binary>> = Node) ->
+    fetch(Key, Default, Node, ?DEFAULT_FETCH_TIMEOUT);
+fetch(Key, Default, Timeout) when is_integer(Timeout) ->
+    fetch(Key, Default, wh_util:to_binary(node()), Timeout).
+
+fetch(Key, Default, Node, RequestTimeout) ->
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, Key}
            ,{<<"Default">>, Default}
@@ -179,6 +185,7 @@ fetch(Key, Default, Node) ->
     ReqResp = wh_amqp_worker:call(props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_get_req/1
                                   ,fun wapi_sysconf:get_resp_v/1
+                                  ,RequestTimeout - 100
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -190,7 +197,7 @@ fetch(Key, Default, Node) ->
             Value
     end.
 
--spec maybe_cache_resp(ne_binary(), ne_binary(), term()) -> 'ok'.
+-spec maybe_cache_resp(ne_binary(), ne_binary(), any()) -> 'ok'.
 maybe_cache_resp(_, _ , 'undefined') -> 'ok';
 maybe_cache_resp(_, _ , 'null') -> 'ok';
 maybe_cache_resp(_, _ , <<"undefined">>) -> 'ok';
@@ -237,7 +244,7 @@ set(Key, Value, Node, Opt) ->
             lager:debug("set config for key '~s' failed: ~p", [Key, _R])
     end.
 
--spec get_response_value(wh_json:object(), term()) -> term().
+-spec get_response_value(wh_json:object(), any()) -> any().
 get_response_value(JObj, Default) ->
     case wh_json:get_value(<<"Value">>, JObj) of
         'undefined' -> Default;
@@ -247,6 +254,6 @@ get_response_value(JObj, Default) ->
         Value -> Value
     end.
 
--spec cache_key(term(), atom() | ne_binary()) ->
-                       {?MODULE, term(), atom() | ne_binary()}.
-cache_key(K, Node) -> {?MODULE, K, Node}.
+-spec cache_key(any(), atom() | ne_binary()) -> {?MODULE, any(), atom() | ne_binary()}.
+cache_key(K, Node) ->
+    {?MODULE, K, Node}.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Devices module
 %%%
@@ -13,44 +13,54 @@
 -module(cb_devices_v2).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/3
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,validate_resource/1, validate_resource/2
          ,billing/1
          ,authenticate/1
          ,authorize/1
-         ,validate/1, validate/2, validate/4
+         ,validate/1, validate/2, validate/3, validate/4
          ,put/1
-         ,post/2
+         ,post/2, post/3
          ,delete/2
          ,lookup_regs/1
         ]).
 
 -include("../crossbar.hrl").
 
--define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
--define(QUICKCALL_URL, [{<<"devices">>, [_, ?QUICKCALL_PATH_TOKEN, _]}
-                        ,{?WH_ACCOUNTS_DB, [_]}
-                       ]).
+-define(STATUS_PATH_TOKEN, <<"status">>).
+-define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
+-define(OWNER_LIST, <<"devices/listing_by_owner">>).
 -define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
+
+-define(KEY_MAC_ADDRESS, <<"mac_address">>).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.devices">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.devices">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.devices">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.devices">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.devices">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.devices">>, ?MODULE, 'delete'),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.*.devices">>, 'cb_modules_util', 'reconcile_services').
+    Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
+                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
+                ,{<<"v2_resource.authenticate">>, 'authenticate'}
+                ,{<<"v2_resource.authorize">>, 'authorize'}
+                ,{<<"v2_resource.billing">>, 'billing'}
+                ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
+                ,{<<"v2_resource.validate.devices">>, 'validate'}
+                ,{<<"v2_resource.execute.put.devices">>, 'put'}
+                ,{<<"v2_resource.execute.post.devices">>, 'post'}
+                ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
+               ],
+    cb_modules_util:bind(?MODULE, Bindings),
+
+    crossbar_bindings:bind(
+      <<"v2_resource.finish_request.*.devices">>
+      ,'crossbar_services'
+      ,'reconcile'
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -61,17 +71,24 @@ init() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
-
+-spec allowed_methods() ->
+                             http_methods().
+-spec allowed_methods(path_token()) ->
+                             http_methods().
+-spec allowed_methods(path_token(), path_token()) ->
+                             http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token()) ->
+                             http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(<<"status">>) ->
+allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    [?HTTP_POST].
 
 allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
     [?HTTP_GET].
@@ -86,10 +103,15 @@ allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
+
 resource_exists(_) -> 'true'.
+
+resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
+
 resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -103,11 +125,19 @@ billing(Context) ->
 
 billing(Context, ?HTTP_GET, [{<<"devices">>, _}|_]) ->
     Context;
-billing(Context, _ReqVerb, [{<<"devices">>, _}|_]) ->
+billing(Context, _ReqVerb, [{<<"devices">>, _}|_Nouns]) ->
     try wh_services:allow_updates(cb_context:account_id(Context)) of
-        'true' -> Context
+        'true' ->
+            lager:debug("allowing service updates"),
+            Context
     catch
         'throw':{Error, Reason} ->
+            lager:debug("account ~s is not allowed to make billing updates: ~s: ~p"
+                        ,[props:get_value(<<"accounts">>, _Nouns)
+                          ,Error
+                          ,Reason
+                         ]
+                       ),
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context, _ReqVerb, _Nouns) -> Context.
@@ -141,6 +171,35 @@ authorize(_Verb, _Nouns) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% If valid, updates Context with deviceId
+%%
+%% Failure here returns 404
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_resource(cb_context:context()) -> cb_context:context().
+validate_resource(Context) -> Context.
+
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+validate_resource(Context, ?STATUS_PATH_TOKEN) -> Context;
+validate_resource(Context, DeviceId) -> validate_device_id(Context, DeviceId).
+
+-spec validate_device_id(cb_context:context(), api_binary()) -> cb_context:context().
+validate_device_id(Context, DeviceId) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
+        {'ok', _} -> cb_context:set_device_id(Context, DeviceId);
+        {'error', 'not_found'} ->
+            cb_context:add_system_error(
+              'bad_identifier'
+              ,wh_json:from_list([{<<"cause">>, DeviceId}])
+              ,Context
+             );
+        {'error', _R} -> crossbar_util:response_db_fatal(Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -149,6 +208,8 @@ authorize(_Verb, _Nouns) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_devices(Context, cb_context:req_verb(Context)).
 
@@ -160,7 +221,7 @@ validate_devices(Context, ?HTTP_PUT) ->
 validate(Context, PathToken) ->
     validate_device(Context, PathToken, cb_context:req_verb(Context)).
 
-validate_device(Context, <<"status">>, ?HTTP_GET) ->
+validate_device(Context, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     load_device_status(Context);
 validate_device(Context, DeviceId, ?HTTP_GET) ->
     load_device(DeviceId, Context);
@@ -169,8 +230,11 @@ validate_device(Context, DeviceId, ?HTTP_POST) ->
 validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
-validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
-    Context1 = maybe_validate_quickcall(load_device(DeviceId, Context)),
+validate(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    load_device(DeviceId, Context).
+
+validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _ToDial) ->
+    Context1 = crossbar_util:maybe_validate_quickcall(load_device(DeviceId, Context)),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
         'false' ->
@@ -179,75 +243,54 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
+    _ = wh_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
     case changed_mac_address(Context) of
         'true' ->
-            Context1 = crossbar_doc:save(Context),
-            _ = maybe_aggregate_device(DeviceId, Context1),
-            _ = registration_update(Context),
-            _ = provisioner_util:maybe_provision(Context1),
+            _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
+            Context1 = cb_modules_util:take_sync_field(Context),
+            Context2 = crossbar_doc:save(Context1),
+            _ = maybe_aggregate_device(DeviceId, Context2),
+            _ = wh_util:spawn(
+                  fun() ->
+                          _ = provisioner_util:maybe_provision(Context2),
+                          _ = provisioner_util:maybe_sync_sip_data(Context1, 'device')
+                  end),
             Context1;
         'false' ->
             error_used_mac_address(Context)
     end.
 
+-spec post(cb_context:context(), path_token(), path_token()) ->
+                  cb_context:context().
+post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
+    lager:debug("publishing check_sync for ~s", [DeviceId]),
+    Context1 = cb_context:store(Context, 'sync', 'force'),
+    _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
+    crossbar_util:response_202(<<"sync request sent">>, Context).
+
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context), 'false')),
-    put_resp(DryRun, Context).
-
-put_resp('true', Context) ->
-    RespJObj = dry_run(Context),
-    case wh_json:is_empty(RespJObj) of
-        'false' -> crossbar_util:response_402(RespJObj, Context);
-        'true' ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, cb_context:req_json(Context)),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj))
-    end;
-put_resp('false', Context) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = maybe_aggregate_device('undefined', Context1),
-    _ = provisioner_util:maybe_provision(Context1),
-    Context1.
-
--spec dry_run(cb_context:context()) -> wh_json:object().
-dry_run(Context) ->
-    JObj = cb_context:doc(Context),
-    AccountId = cb_context:account_id(Context),
-
-    DeviceType = wh_json:get_value(<<"device_type">>, JObj),
-
-    Services = wh_services:fetch(AccountId),
-    UpdateServices = wh_service_devices:reconcile(Services, DeviceType),
-
-    Charges = wh_services:activation_charges(<<"devices">>, DeviceType, Services),
-
-    case Charges > 0 of
-        'false' -> wh_services:calculate_charges(UpdateServices, []);
-        'true' ->
-            Transaction = wh_transaction:debit(AccountId, wht_util:dollars_to_units(Charges)),
-            Desc = <<"activation charges for "
-                     ,DeviceType/binary
-                     ," "
-                     ,(wh_json:get_value(<<"name">>, JObj))/binary
-                   >>,
-            Transaction2 = wh_transaction:set_description(Desc, Transaction),
-            wh_services:calculate_charges(UpdateServices, [Transaction2])
-    end.
+    Callback =
+        fun() ->
+            Context1 = crossbar_doc:save(Context),
+            _ = maybe_aggregate_device('undefined', Context1),
+            _ = wh_util:spawn(fun provisioner_util:maybe_provision/1, [Context1]),
+            Context1
+        end,
+    crossbar_services:maybe_dry_run(Context, Callback).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
+    _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
-    _ = registration_update(Context),
-    _ = provisioner_util:maybe_delete_provision(Context),
+    _ = crossbar_util:flush_registration(Context),
+    _ = wh_util:spawn(fun provisioner_util:maybe_delete_provision/1, [Context]),
     _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec registration_update(cb_context:context()) -> 'ok'.
-registration_update(Context) ->
-    cb_devices_v1:registration_update(Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -256,9 +299,29 @@ registration_update(Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary(cb_context:context()) -> cb_context:context().
+-spec load_device_summary(cb_context:context()) ->
+                                 cb_context:context().
+-spec load_device_summary(cb_context:context(), req_nouns()) ->
+                                 cb_context:context().
 load_device_summary(Context) ->
+    load_device_summary(Context, cb_context:req_nouns(Context)).
+
+load_device_summary(Context, [{<<"devices">>, []}
+                              ,{<<"users">>, [UserId]}
+                             |_]
+                   ) ->
+    load_users_device_summary(Context, UserId);
+load_device_summary(Context, _ReqNouns) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
+-spec load_users_device_summary(cb_context:context(), ne_binary()) ->
+                                       cb_context:context().
+load_users_device_summary(Context, UserId) ->
+    crossbar_doc:load_view(?OWNER_LIST
+                           ,[{'key', UserId}]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -274,38 +337,43 @@ validate_request(DeviceId, Context) ->
 
 -spec changed_mac_address(cb_context:context()) -> boolean().
 changed_mac_address(Context) ->
-    NewAddress = cb_context:req_value(Context, <<"mac_address">>),
-    OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
+    NewAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
+    OldAddress = wh_json:get_ne_value(?KEY_MAC_ADDRESS, cb_context:fetch(Context, 'db_doc')),
     case NewAddress =:= OldAddress of
         'true' -> 'true';
         'false' ->
-            unique_mac_address(NewAddress, cb_context:account_db(Context))
+            unique_mac_address(NewAddress, Context)
     end.
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
 check_mac_address(DeviceId, Context) ->
-    case unique_mac_address(cb_context:req_value(Context, <<"mac_address">>)
-                            ,cb_context:account_db(Context)
-                           )
-    of
+    MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
+    case unique_mac_address(MacAddress, Context) of
         'true' ->
             prepare_outbound_flags(DeviceId, Context);
         'false' ->
-           error_used_mac_address(Context)
+            error_used_mac_address(Context)
     end.
 
--spec unique_mac_address(api_binary(), ne_binary()) -> boolean().
-unique_mac_address('undefined', _) -> 'true';
-unique_mac_address(MacAddress, DbName) ->
-    not(lists:member(MacAddress, get_mac_addresses(DbName))).
+-spec unique_mac_address(api_binary(), cb_context:context()) -> boolean().
+unique_mac_address('undefined', _Context) -> 'true';
+unique_mac_address(MacAddress, Context) ->
+    DbName = cb_context:account_db(Context),
+    not lists:member(MacAddress, get_mac_addresses(DbName))
+        andalso not provisioner_util:is_mac_address_in_use(Context, MacAddress).
 
 -spec error_used_mac_address(cb_context:context()) -> cb_context:context().
 error_used_mac_address(Context) ->
-    cb_context:add_validation_error(<<"mac_address">>
-                                    ,<<"unique">>
-                                    ,<<"mac address already in use">>
-                                    ,Context
-                                   ).
+    MacAddress = cb_context:req_value(Context, ?KEY_MAC_ADDRESS),
+    cb_context:add_validation_error(
+      ?KEY_MAC_ADDRESS
+      ,<<"unique">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Mac address already in use">>}
+          ,{<<"cause">>, MacAddress}
+         ])
+      ,Context
+     ).
 
 -spec get_mac_addresses(ne_binary()) -> ne_binaries().
 get_mac_addresses(DbName) ->
@@ -317,6 +385,7 @@ get_mac_addresses(DbName) ->
 -spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_outbound_flags(DeviceId, Context) ->
     JObj = case cb_context:req_value(Context, <<"outbound_flags">>) of
+               'undefined' -> cb_context:req_data(Context);
                [] -> cb_context:req_data(Context);
                Flags when is_list(Flags) ->
                    OutboundFlags = [wh_util:strip_binary(Flag)
@@ -330,7 +399,7 @@ prepare_outbound_flags(DeviceId, Context) ->
 
 -spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_device_realm(DeviceId, Context) ->
-    AccountRealm = crossbar_util:get_account_realm(Context),
+    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
         'true' ->
@@ -340,19 +409,24 @@ prepare_device_realm(DeviceId, Context) ->
             validate_device_creds(Realm, DeviceId, cb_context:store(Context, 'aggregate_device', 'true'))
     end.
 
--spec validate_device_creds(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_device_creds(api_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 validate_device_creds(Realm, DeviceId, Context) ->
     case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
-        <<"password">> -> validate_device_password(Realm, DeviceId, Context);
+        <<"password">> ->
+            validate_device_password(Realm, DeviceId, Context);
         <<"ip">> ->
             IP = cb_context:req_value(Context, [<<"sip">>, <<"ip">>]),
             validate_device_ip(IP, DeviceId, Context);
-        _Else ->
-            C = cb_context:add_validation_error([<<"sip">>, <<"method">>]
-                                               ,<<"enum">>
-                                               ,<<"SIP authentication method is invalid">>
-                                               ,Context
-                                               ),
+        Else ->
+            C = cb_context:add_validation_error(
+                  [<<"sip">>, <<"method">>]
+                  ,<<"enum">>
+                  ,wh_json:from_list([{<<"message">>, <<"SIP authentication method is invalid">>}
+                                      ,{<<"target">>, [<<"password">>, <<"ip">>]}
+                                      ,{<<"cause">>, Else}
+                                     ])
+                  ,Context
+                 ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
@@ -362,36 +436,51 @@ validate_device_password(Realm, DeviceId, Context) ->
     case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
         'true' -> check_emergency_caller_id(DeviceId, Context);
         'false' ->
-            C = cb_context:add_validation_error([<<"sip">>, <<"username">>]
-                                                ,<<"unique">>
-                                                ,<<"SIP credentials already in use">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                  [<<"sip">>, <<"username">>]
+                  ,<<"unique">>
+                  ,wh_json:from_list([{<<"message">>, <<"SIP credentials already in use">>}
+                                      ,{<<"cause">>, Username}
+                                     ])
+                  ,Context
+                 ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
--spec validate_device_ip(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_device_ip(ne_binary(), api_binary(), cb_context:context()) ->
+                                cb_context:context().
 validate_device_ip(IP, DeviceId, Context) ->
     case wh_network_utils:is_ipv4(IP) of
-        'true' -> validate_device_ip_unique(IP, DeviceId, Context);
+        'true' ->
+            validate_device_ip_unique(IP, DeviceId, Context);
         'false' ->
-            C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
-                                                ,<<"type">>
-                                                ,<<"Must be a valid IPv4 RFC 791">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                  [<<"sip">>, <<"ip">>]
+                  ,<<"type">>
+                  ,wh_json:from_list([{<<"message">>, <<"Must be a valid IPv4 RFC 791">>}
+                                      ,{<<"cause">>, IP}
+                                     ])
+                  ,Context
+                 ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
+-spec validate_device_ip_unique(ne_binary(), api_binary(), cb_context:context()) ->
+                                       cb_context:context().
 validate_device_ip_unique(IP, DeviceId, Context) ->
     case cb_devices_utils:is_ip_unique(IP, DeviceId) of
         'true' ->
             check_emergency_caller_id(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
-            C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
-                                                ,<<"unique">>
-                                                ,<<"SIP IP already in use">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                  [<<"sip">>, <<"ip">>]
+                  ,<<"unique">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"SIP IP already in use">>}
+                      ,{<<"cause">>, IP}
+                     ])
+                  ,Context
+                 ),
             check_emergency_caller_id(DeviceId, C)
     end.
 
@@ -400,31 +489,20 @@ check_emergency_caller_id(DeviceId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
     check_device_schema(DeviceId, Context1).
 
+-spec check_device_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
-    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"devices">>
+                                     ,Context
+                                     ,OnSuccess
+                                    ).
 
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, Context) ->
     crossbar_doc:load_merge(DeviceId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-maybe_validate_quickcall(Context) ->
-    maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
-maybe_validate_quickcall(Context, 'success') ->
-    case (not wh_util:is_empty(cb_context:auth_token(Context)))
-        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anoymous_quickcalls">>))
-    of
-        'false' -> cb_context:add_system_error('invalid_credentials', Context);
-        'true' -> Context
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -445,7 +523,7 @@ load_device(DeviceId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_device_status(cb_context:context()) -> cb_context:context().
 load_device_status(Context) ->
-    AccountRealm = crossbar_util:get_account_realm(Context),
+    AccountRealm = wh_util:get_account_realm(cb_context:account_id(Context)),
     RegStatuses = lookup_regs(AccountRealm),
     lager:debug("reg statuses: ~p", [RegStatuses]),
     crossbar_util:response(RegStatuses, Context).
@@ -526,19 +604,19 @@ is_creds_locally_unique(AccountDb, Username, DeviceId) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Username)}],
     case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DeviceId;
+        {'ok', [JObj]} -> wh_doc:id(JObj) =:= DeviceId;
         {'error', 'not_found'} -> 'true';
         _ -> 'false'
     end.
 
 is_creds_global_unique(Realm, Username, DeviceId) ->
     ViewOptions = [{<<"key">>, [wh_util:to_lower_binary(Realm)
-                                , wh_util:to_lower_binary(Username)
+                                ,wh_util:to_lower_binary(Username)
                                ]
                    }],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DeviceId;
+        {'ok', [JObj]} -> wh_doc:id(JObj) =:= DeviceId;
         {'error', 'not_found'} -> 'true';
         _ -> 'false'
     end.
@@ -561,7 +639,7 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
-            {'ok', _} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
+            {'ok', _} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(cb_context:doc(Context))),
             whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
             'true'
     end;

@@ -25,6 +25,9 @@
 -export([destroy/2]).
 -export([update/3
          ,updates/2
+         ,cleanup_old_channels/0, cleanup_old_channels/1
+         ,max_channel_uptime/0
+         ,set_max_channel_uptime/1, set_max_channel_uptime/2
         ]).
 -export([match_presence/1]).
 -export([count/0]).
@@ -34,6 +37,8 @@
 -export([handle_query_account_channels/2]).
 -export([handle_query_channels/2]).
 -export([handle_channel_status/2]).
+
+-export([has_channels_for_owner/1]).
 
 -export([init/1
          ,handle_call/3
@@ -70,7 +75,8 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--record(state, {}).
+-define(CALL_PARK_FEATURE, "*3").
+-record(state, {max_channel_cleanup_ref :: reference()}).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -151,7 +157,7 @@ new(#channel{}=Channel) ->
 destroy(UUID, Node) ->
     gen_server:cast(?MODULE, {'destroy_channel', UUID, Node}).
 
--spec update(ne_binary(), pos_integer(), _) -> 'ok'.
+-spec update(ne_binary(), pos_integer(), any()) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
 
@@ -257,12 +263,19 @@ handle_query_channels(JObj, _Props) ->
     'true' = wapi_call:query_channels_req_v(JObj),
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-
-    Resp = [{<<"Channels">>, query_channels(Fields, CallId)}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    wapi_call:publish_query_channels_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+    Channels = query_channels(Fields, CallId),
+    case wh_util:is_empty(Channels) and
+        wh_json:is_true(<<"Active-Only">>, JObj, 'false')
+    of
+        'true' ->
+            lager:debug("not sending query_channels resp due to active-only=true");
+        'false' ->
+            Resp = [{<<"Channels">>, Channels}
+                   ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_call:publish_query_channels_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+    end.
 
 -spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
@@ -285,6 +298,9 @@ handle_channel_status(JObj, _Props) ->
                    ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
                    ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
                    ,{<<"Other-Leg-Call-ID">>, wh_json:get_value(<<"other_leg">>, Channel)}
+                   ,{<<"Realm">>, wh_json:get_value(<<"realm">>, Channel)}
+                   ,{<<"Username">>, wh_json:get_value(<<"username">>, Channel)}
+                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel))}
                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ]
@@ -325,7 +341,7 @@ send_empty_channel_resp(CallId, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs channels"),
     _ = ets:new(?CHANNELS_TBL, ['set'
@@ -333,7 +349,15 @@ init([]) ->
                                 ,'named_table'
                                 ,{'keypos', #channel.uuid}
                                ]),
-    {'ok', #state{}}.
+    {'ok', #state{max_channel_cleanup_ref=start_cleanup_ref()}}.
+
+-define(CLEANUP_TIMEOUT
+        ,ecallmgr_config:get_integer(<<"max_channel_cleanup_timeout_ms">>, ?MILLISECONDS_IN_MINUTE)
+       ).
+
+-spec start_cleanup_ref() -> reference().
+start_cleanup_ref() ->
+    erlang:start_timer(?CLEANUP_TIMEOUT, self(), 'ok').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -368,7 +392,7 @@ handle_call(_, _, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> {'noreply', state()}.
+-spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'destroy_channel', UUID, Node}, State) ->
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
@@ -423,7 +447,7 @@ handle_cast({'flush_node', Node}, State) ->
         [] ->
             lager:debug("no locally handled channels");
         LocalChannels ->
-            _P = spawn(fun() -> handle_channels_disconnected(LocalChannels) end),
+            _P = wh_util:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
             lager:debug("sending channel disconnecteds for local channels: ~p", [LocalChannels])
     end,
 
@@ -451,6 +475,9 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'timeout', Ref, _Msg}, #state{max_channel_cleanup_ref=Ref}=State) ->
+    maybe_cleanup_old_channels(),
+    {'noreply', State#state{max_channel_cleanup_ref=start_cleanup_ref()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -510,6 +537,19 @@ find_by_auth_id(AuthorizingId) ->
                            ]}
     end.
 
+-spec has_channels_for_owner(ne_binary()) -> boolean().
+has_channels_for_owner(OwnerId) ->
+    MatchSpec = [{#channel{owner_id = '$1'
+                           ,_ = '_'
+                          }
+                  ,[]
+                  ,[{'=:=', '$1', {const, OwnerId}}]
+                 }
+                ],
+    Count = ets:select_count(?CHANNELS_TBL, MatchSpec),
+    lager:info("Found ~p channels", [Count]),
+    Count > 0.
+
 -spec find_by_authorizing_id(ne_binaries()) -> [] | wh_proplist().
 -spec find_by_authorizing_id(ne_binaries(), wh_proplist()) -> [] | wh_proplist().
 find_by_authorizing_id(AuthIds) ->
@@ -537,6 +577,18 @@ find_by_user_realm('undefined', Realm) ->
         Channels ->
             [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
               || Channel <- Channels
+            ]
+    end;
+find_by_user_realm(<<?CALL_PARK_FEATURE, _/binary>>=Username, Realm) ->
+    Pattern = #channel{destination=wh_util:to_lower_binary(Username)
+                      ,realm=wh_util:to_lower_binary(Realm)
+                      ,other_leg='undefined'
+                      ,_='_'},
+    case ets:match_object(?CHANNELS_TBL, Pattern) of
+        [] -> [];
+        Channels ->
+            [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
+                || Channel <- Channels
             ]
     end;
 find_by_user_realm(Usernames, Realm) when is_list(Usernames) ->
@@ -601,7 +653,7 @@ query_channels(Fields, CallId) ->
                    ,wh_json:new()
                   ).
 
--spec query_channels({[channel()], ets:continuation()}, ne_binary() | ne_binaries(), wh_json:object()) ->
+-spec query_channels({[channel()], ets:continuation()} | '$end_of_table', ne_binary() | ne_binaries(), wh_json:object()) ->
                             wh_json:object().
 query_channels('$end_of_table', _, Channels) -> Channels;
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
@@ -738,3 +790,68 @@ connection_ccvs(#channel{account_id=AccountId
          ,{<<"Bridge-ID">>, BridgeId}
          ,{<<"Owner-ID">>, OwnerId}
         ])).
+
+-define(MAX_CHANNEL_UPTIME_KEY, <<"max_channel_uptime_s">>).
+
+-spec max_channel_uptime() -> non_neg_integer().
+max_channel_uptime() ->
+    ecallmgr_config:get_integer(?MAX_CHANNEL_UPTIME_KEY, 0).
+
+-spec set_max_channel_uptime(non_neg_integer()) -> 'ok'.
+-spec set_max_channel_uptime(non_neg_integer(), boolean()) -> 'ok'.
+set_max_channel_uptime(MaxAge) ->
+    set_max_channel_uptime(MaxAge, 'true').
+
+set_max_channel_uptime(MaxAge, 'true') ->
+    ecallmgr_config:set_default(?MAX_CHANNEL_UPTIME_KEY, wh_util:to_integer(MaxAge));
+set_max_channel_uptime(MaxAge, 'false') ->
+    ecallmgr_config:set(?MAX_CHANNEL_UPTIME_KEY, wh_util:to_integer(MaxAge)).
+
+-spec maybe_cleanup_old_channels() -> 'ok'.
+maybe_cleanup_old_channels() ->
+    case max_channel_uptime() of
+        N when N =< 0 -> 'ok';
+        MaxAge ->
+            _P = wh_util:spawn(fun cleanup_old_channels/1, [MaxAge]),
+            'ok'
+    end.
+
+-spec cleanup_old_channels() -> non_neg_integer().
+-spec cleanup_old_channels(non_neg_integer()) -> non_neg_integer().
+cleanup_old_channels() ->
+    cleanup_old_channels(max_channel_uptime()).
+cleanup_old_channels(MaxAge) ->
+    NoOlderThan = wh_util:current_tstamp() - MaxAge,
+
+    MatchSpec = [{#channel{uuid='$1'
+                           ,node='$2'
+                           ,timestamp='$3'
+                           ,handling_locally='true'
+                           ,_ = '_'
+                          }
+                  ,[{'<', '$3', NoOlderThan}]
+                  ,[['$1', '$2', '$3']]
+                 }],
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
+        [] -> 0;
+        OldChannels ->
+            N = length(OldChannels),
+            lager:debug("~p channels over ~p seconds old", [N, MaxAge]),
+            hangup_old_channels(OldChannels),
+            N
+    end.
+
+-type old_channel() :: [ne_binary() | atom() | gregorian_seconds()].
+-type old_channels() :: [old_channel(),...].
+
+-spec hangup_old_channels(old_channels()) -> 'ok'.
+hangup_old_channels(OldChannels) ->
+    _ = [hangup_old_channel(C) || C <- OldChannels],
+    'ok'.
+
+-spec hangup_old_channel(old_channel()) -> 'ok'.
+hangup_old_channel([UUID, Node, Started]) ->
+    lager:debug("killing channel ~s on ~s, started ~s"
+                ,[UUID, Node, wh_util:pretty_print_datetime(Started)]
+               ),
+    freeswitch:api(Node, 'uuid_kill', UUID).

@@ -20,19 +20,20 @@
 -include("whapps_call_command.hrl").
 -include("whistle_apps.hrl").
 
--define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-                          ,[{'db', ?WH_CONFIG_DB}]
+-define(ORIGIN_BINDINGS, [[{'type', <<"account">>}
+                          ]
                          ]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
--define(CHILDREN, [?WORKER('wh_nodes')
+-define(CACHE_GETBY_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
+-define(CHILDREN, [?CACHE_ARGS(?WHAPPS_GETBY_CACHE, ?CACHE_GETBY_PROPS)
+                   ,?WORKER('wh_nodes')
                    ,?WORKER('wh_hooks_listener')
                    ,?WORKER('wh_cache')
-                   ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
                    ,?WORKER('whistle_apps_init')
-                   ,?CACHE_ARGS(?WHAPPS_CALL_CACHE, ?CACHE_PROPS)
                    ,?WORKER('whapps_controller')
                    ,?SUPER('whistle_services_sup')
+                   ,?SUPER('whistle_number_manager_sup')
                   ]).
 
 %% ===================================================================
@@ -49,9 +50,9 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec initialize_whapps(atoms()) -> {'error', term()} |
-                                    {'ok','undefined' | pid()} |
-                                    {'ok','undefined' | pid(), term()}.
+-spec initialize_whapps(atoms()) -> {'error', any()} |
+                                    {'ok', api_pid()} |
+                                    {'ok', api_pid(), any()}.
 initialize_whapps(Whapps) ->
     supervisor:start_child(?MODULE, ?SUPER_ARGS('whapps_sup', Whapps)).
 

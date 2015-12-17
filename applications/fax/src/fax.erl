@@ -25,7 +25,7 @@ start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
     Dispatch = cowboy_router:compile([
-                                      %% {HostMatch, list({PathMatch, Handler, Opts})}
+                                      %% :: {HostMatch, [{PathMatch, Handler, Opts}]}
                                       {'_', [{<<"/fax/[...]">>, 'fax_file_proxy', []}]}
                                      ]),
 
@@ -44,7 +44,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     application:start(?MODULE).
 
@@ -56,7 +56,8 @@ start() ->
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
 stop() ->
-    exit(whereis('fax_sup'), 'shutdown'),
+    _ = exit(whereis('fax_sup'), 'shutdown'),
+    'ok' = cowboy:stop_listener('fax_file'),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -75,6 +76,7 @@ start_deps() ->
                                                 ,'whistle_couch'
                                                 ,'ranch'
                                                 ,'cowboy'
+                                                ,'escalus'
                                                ]],
     'ok'.
 

@@ -10,6 +10,8 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
+-export([start_listener/0]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -33,13 +35,17 @@
                                                ,'CHANNEL_DESTROY'
                                                ,'CHANNEL_CONNECTED'
                                                ,'CHANNEL_DISCONNECTED'
-                                              ]}
+                                              ]
+                              }
                               ,'federate'
                              ]}
                    ,{'presence', [{'restrict_to', ['update'
                                                    ,'mwi_update'
                                                    ,'reset'
-                                                  ]}
+                                                   ,'flush'
+                                                   ,'search_req'
+                                                  ]
+                                  }
                                   ,'federate'
                                  ]}
                    ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
@@ -56,17 +62,33 @@
                      ,{{'omnip_subscriptions', 'handle_reset'}
                        ,[{<<"presence">>, <<"reset">>}]
                       }
+                     ,{{'omnip_subscriptions', 'handle_flush'}
+                       ,[{<<"presence">>, <<"flush">>}]
+                      }
                      ,{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]
+                      }
+                     ,{{'omnip_subscriptions', 'handle_search_req'}
+                       ,[{<<"presence">>, <<"search_req">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
+-define(LISTENER_PARAMS, [{'bindings', ?BINDINGS}
+                          ,{'responders', ?RESPONDERS}
+                          ,{'queue_name', ?QUEUE_NAME}
+                          ,{'queue_options', ?QUEUE_OPTIONS}
+                          ,{'consume_options', ?CONSUME_OPTIONS}
+                         ]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec start_listener() -> 'ok'.
+start_listener() ->
+    gen_listener:cast(?MODULE, {'ready'}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -76,12 +98,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -99,7 +116,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
@@ -148,6 +165,9 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
+handle_cast({'ready'}, State) ->
+    gen_listener:start_listener(self(), ?LISTENER_PARAMS),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -169,9 +189,6 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
-handle_info(?HOOK_EVT(_, EventName, JObj), State) ->
-    _ = spawn('omnip_subscriptions', 'handle_channel_event', [EventName, JObj]),
-    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.

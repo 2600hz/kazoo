@@ -1,7 +1,7 @@
 {
-    "_id": "_design/services"
-    ,"language": "javascript"
-    ,"views": {
+    "_id": "_design/services",
+    "language": "javascript",
+    "views": {
         "devices": {
             "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted || doc.enabled == false) return; emit(doc.device_type || 'sip_device', 1); }",
             "reduce": "_sum"

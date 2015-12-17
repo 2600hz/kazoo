@@ -25,10 +25,6 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    maybe_start_recording(Data, Call).
-
--spec maybe_start_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
-maybe_start_recording(Data, Call) ->
     Url = wh_json:get_value(<<"url">>, Data),
     case wh_media_recording:should_store_recording(Url) of
         'false' ->

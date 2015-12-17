@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Given a rate_req, find appropriate rate for the call
 %%% @end
@@ -20,13 +20,32 @@ handle_req(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("valid rating request"),
     case get_rate_data(JObj) of
-        {'error', 'no_rate_found'} -> 'ok';
+        {'error', 'no_rate_found'} ->
+            maybe_publish_no_rate_found(JObj);
         {'ok', Resp} ->
             wapi_rate:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
                                    ,props:filter_undefined(Resp)
                                   ),
             wapi_rate:broadcast_resp(props:filter_undefined(Resp))
     end.
+
+-spec maybe_publish_no_rate_found(wh_json:object()) -> 'ok'.
+maybe_publish_no_rate_found(JObj) ->
+    case wh_json:is_true(<<"Send-Empty">>, JObj, 'false') of
+        'true' -> publish_no_rate_found(JObj);
+        'false' -> 'ok'
+    end.
+
+-spec publish_no_rate_found(wh_json:object()) -> 'ok'.
+publish_no_rate_found(JObj) ->
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+
+    Resp = [{<<"Msg-ID">>, MsgId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    lager:debug("publishing empty rate resp for ~s(~s)", [ServerId, MsgId]),
+    wh_amqp_worker:cast(Resp, fun(P) -> wapi_rate:publish_resp(ServerId, P) end).
 
 -spec get_rate_data(wh_json:object()) ->
                            {'ok', wh_proplist()} |
@@ -42,31 +61,47 @@ get_rate_data(JObj) ->
         {'error', _E} ->
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
             lager:debug("rate lookup error for ~s to ~s: ~p"
-                       ,[FromDID, ToDID, _E]),
+                        ,[FromDID, ToDID, _E]
+                       ),
             {'error', 'no_rate_found'};
         {'ok', Rates} ->
-            RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
-            Direction = wh_json:get_value(<<"Direction">>, JObj),
-            Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
-            case hon_util:sort_rates(Matching) of
-                [] ->
-                    wh_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
-                    lager:debug("no rates left for ~s to ~s after filter"
-                               ,[FromDID, ToDID]),
-                    {'error', 'no_rate_found'};
-                [Rate|_] ->
-                    lager:debug("using rate ~s for ~s to ~s"
-                               ,[wh_json:get_value(<<"rate_name">>, Rate)
-                                ,FromDID
-                                ,ToDID
-                                ]),
-                    {'ok', rate_resp(Rate, JObj)}
-            end
+            get_rate_data(JObj, ToDID, FromDID, Rates)
+    end.
+
+-spec get_rate_data(wh_json:object(), ne_binary(), api_binary(), wh_json:objects()) ->
+                           {'ok', api_terms()} |
+                           {'error', 'no_rate_found'}.
+get_rate_data(JObj, ToDID, FromDID, Rates) ->
+    lager:debug("candidate rates found, filtering"),
+    RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
+    RouteFlags   = wh_json:get_value(<<"Outbound-Flags">>, JObj, []),
+    Direction    = wh_json:get_value(<<"Direction">>, JObj),
+    Matching     = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions++RouteFlags),
+
+    case hon_util:sort_rates(Matching) of
+        [] ->
+            wh_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
+            lager:debug("no rates left for ~s to ~s after filter"
+                        ,[FromDID, ToDID]
+                       ),
+            {'error', 'no_rate_found'};
+        [Rate|_] ->
+            lager:debug("using rate ~s for ~s to ~s"
+                        ,[wh_json:get_value(<<"rate_name">>, Rate)
+                          ,FromDID
+                          ,ToDID
+                         ]
+                       ),
+            {'ok', rate_resp(Rate, JObj)}
     end.
 
 -spec maybe_get_rate_discount(wh_json:object()) -> api_binary().
+-spec maybe_get_rate_discount(wh_json:object(), api_binary()) -> api_binary().
 maybe_get_rate_discount(JObj) ->
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    maybe_get_rate_discount(JObj, wh_json:get_value(<<"Account-ID">>, JObj)).
+
+maybe_get_rate_discount(_JObj, 'undefined') -> 'undefined';
+maybe_get_rate_discount(JObj, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, <<"limits">>) of
         {'error', _R} ->
@@ -93,7 +128,9 @@ rate_resp(Rate, JObj) ->
      ,{<<"Rate-Minimum">>, wh_util:to_binary(RateMinimum)}
      ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
      ,{<<"Surcharge">>, wh_util:to_binary(RateSurcharge)}
+     ,{<<"Prefix">>, wh_json:get_binary_value(<<"prefix">>, Rate)}
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
+     ,{<<"Rate-Description">>, wh_json:get_binary_value(<<"description">>, Rate)}
      ,{<<"Rate-ID">>, wh_json:get_binary_value(<<"rate_id">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
      ,{<<"Pvt-Cost">>, wh_util:to_binary(PrivateCost)}
@@ -129,8 +166,7 @@ maybe_update_callee_id(JObj) ->
 
 -spec update_callee_id(wh_json:object()) -> boolean().
 update_callee_id(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', AccountDoc} ->
             wh_json:is_true([<<"caller_id_options">>, <<"show_rate">>], AccountDoc, 'false');
         {'error', _R} ->

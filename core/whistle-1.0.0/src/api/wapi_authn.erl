@@ -34,7 +34,7 @@
                             ,<<"Auth-User">>, <<"Auth-Realm">>
                            ]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
-                                     ,<<"Orig-IP">>, <<"Call-ID">>
+                                     ,<<"Orig-IP">>, <<"Orig-Port">>, <<"Call-ID">>
                                      ,<<"Auth-Nonce">>, <<"Auth-Response">>
                                      ,<<"User-Agent">>, <<"Expires">>
                                      ,<<"Custom-SIP-Headers">>
@@ -45,6 +45,7 @@
 -define(AUTHN_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
                           ,{<<"Orig-IP">>, fun is_binary/1}
+                          ,{<<"Orig-Port">>, fun is_binary/1}
                           ,{<<"Auth-User">>, fun is_binary/1}
                           ,{<<"Auth-Realm">>, fun is_binary/1}
                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
@@ -205,6 +206,9 @@ get_authn_req_routing(Realm) when is_binary(Realm) ->
 get_authn_req_routing(Req) ->
     get_authn_req_routing(get_auth_realm(Req)).
 
+
+-define(AUTH_DEFAULT_USERATDOMAIN, <<"nouser@nodomain">>).
+
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
@@ -212,11 +216,15 @@ get_authn_req_routing(Req) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_auth_user(wh_json:object()) -> api_binary().
-get_auth_user(ApiJObj) -> 
-    case wh_json:get_value(<<"Auth-User">>, ApiJObj) of
-        'undefined' -> 'undefined';
-         Username -> wh_util:to_lower_binary(Username)
-    end.
+get_auth_user(ApiJObj) ->
+    AuthUser = case wh_json:get_value(<<"Auth-User">>, ApiJObj, <<"unknown">>) of
+                   <<"unknown">> ->
+                       To = wh_json:get_value(<<"To">>, ApiJObj, ?AUTH_DEFAULT_USERATDOMAIN),
+                       [ToUser, _ToDomain] = binary:split(To, <<"@">>),
+                       ToUser;
+                   Username -> Username
+               end,
+    wh_util:to_lower_binary(AuthUser).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -228,12 +236,14 @@ get_auth_user(ApiJObj) ->
 -spec get_auth_realm(wh_json:object() | wh_proplist()) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     AuthRealm = props:get_value(<<"Auth-Realm">>, ApiProp, <<"missing.realm">>),
-    case wh_network_utils:is_ipv4(AuthRealm) 
-        orelse wh_network_utils:is_ipv6(AuthRealm) 
-    of
-        'false' -> wh_util:to_lower_binary(AuthRealm);
-        'true' ->
-            [_ToUser, ToDomain] = binary:split(props:get_value(<<"To">>, ApiProp), <<"@">>),
-            wh_util:to_lower_binary(ToDomain)
-    end;
+    Realm = case wh_network_utils:is_ipv4(AuthRealm)
+                orelse wh_network_utils:is_ipv6(AuthRealm)
+            of
+                'false' -> AuthRealm;
+                'true' ->
+                    To = props:get_value(<<"To">>, ApiProp, ?AUTH_DEFAULT_USERATDOMAIN),
+                    [_ToUser, ToDomain] = binary:split(To, <<"@">>),
+                    ToDomain
+            end,
+    wh_util:to_lower_binary(Realm);
 get_auth_realm(ApiJObj) -> get_auth_realm(wh_json:to_proplist(ApiJObj)).

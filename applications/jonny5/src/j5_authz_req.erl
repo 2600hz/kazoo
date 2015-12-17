@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -26,6 +26,28 @@ maybe_determine_account_id(Request) ->
 
 -spec determine_account_id(j5_request:request()) -> 'ok'.
 determine_account_id(Request) ->
+    case j5_request:caller_network_address(Request) of
+        'undefined' -> determine_account_id_from_number(Request);
+        IP -> determine_account_id_from_ip(Request, IP)
+    end.
+
+-spec determine_account_id_from_ip(j5_request:request(), ne_binary()) -> 'ok'.
+determine_account_id_from_ip(Request, IP) ->
+    case whapps_util:get_ccvs_by_ip(IP) of
+        {'ok', AccountCCVs} ->
+            lager:debug("found account auth'd by IP ~s: ~s"
+                        ,[IP, props:get_value(<<"Account-ID">>, AccountCCVs)]
+                       ),
+            maybe_account_limited(
+              j5_request:from_ccvs(Request, AccountCCVs)
+             );
+        {'error', 'not_found'} ->
+            lager:debug("auth for IP ~s not found, trying number", [IP]),
+            determine_account_id_from_number(Request)
+    end.
+
+-spec determine_account_id_from_number(j5_request:request()) -> 'ok'.
+determine_account_id_from_number(Request) ->
     Number = j5_request:number(Request),
     case wh_number_manager:lookup_account_by_number(Number) of
         {'ok', AccountId, Props} ->
@@ -37,32 +59,53 @@ determine_account_id(Request) ->
               j5_request:deny_account(<<"disabled">>, R)
              );
         {'error', _R} ->
-            lager:debug("unable to determine account id for ~s: ~p", [Number, _R]),
+            lager:debug("unable to determine account id for ~s: ~p"
+                        ,[Number, _R]
+                       ),
             'ok'
     end.
 
 -spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
 maybe_local_resource(AccountId, Props, Request) ->
-    %% TODO: we need to check system_config to determine if we authz local
     case wh_number_properties:is_local_number(Props) of
+        'true' -> maybe_authz_local_resource(AccountId, Request);
         'false' ->
             maybe_account_limited(
               j5_request:set_account_id(AccountId, Request)
-             );
-        'true' ->
-            Number = j5_request:number(Request),
-            lager:debug("number ~s is a local number for account ~s, allowing"
-                       ,[Number, AccountId]),
-            Routines = [fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
-                       ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
-                       ,fun(R) -> j5_request:set_account_id(AccountId, R) end
-                       ,fun(R) ->
-                                ResellerId = wh_services:find_reseller_id(AccountId),
-                                j5_request:set_reseller_id(ResellerId, R)
-                        end
-                       ],
-            send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines))
+             )
     end.
+
+-spec maybe_authz_local_resource(ne_binary(), j5_request:request()) -> 'ok'.
+maybe_authz_local_resource(AccountId, Request) ->
+    case should_authz_local(Request) of
+        'false' -> allow_local_resource(AccountId, Request);
+        'true' ->
+            lager:debug("authz_local_resources enabled, applying limits for local numbers"),
+            maybe_account_limited(
+              j5_request:set_account_id(AccountId, Request)
+             )
+    end.
+
+-spec allow_local_resource(ne_binary(), j5_request:request()) -> 'ok'.
+allow_local_resource(AccountId, Request) ->
+    Number = j5_request:number(Request),
+    lager:debug("number ~s is a local number for account ~s, allowing"
+                ,[Number, AccountId]
+               ),
+    Routines = [fun(R) -> j5_request:set_account_id(AccountId, R) end
+                ,fun(R) ->
+                         ResellerId = wh_services:find_reseller_id(AccountId),
+                         j5_request:set_reseller_id(ResellerId, R)
+                 end
+                ,fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
+                ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
+               ],
+    send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines)).
+
+-spec should_authz_local(j5_request:request()) -> boolean().
+should_authz_local(Request) ->
+    Node = j5_request:node(Request),
+    whapps_config:get_is_true(<<"ecallmgr">>, <<"authz_local_resources">>, 'false', Node).
 
 -spec maybe_account_limited(j5_request:request()) -> 'ok'.
 maybe_account_limited(Request) ->
@@ -70,11 +113,12 @@ maybe_account_limited(Request) ->
     Limits = j5_limits:get(AccountId),
     R = maybe_authorize(Request, Limits),
     case j5_request:is_authorized(R, Limits) of
+        'true' -> maybe_determine_reseller_id(R);
         'false' ->
             lager:debug("account ~s is not authorized to create this channel"
-                        ,[AccountId]),
-            send_response(R);
-        'true' -> maybe_determine_reseller_id(R)
+                        ,[AccountId]
+                       ),
+            send_response(R)
     end.
 
 -spec maybe_determine_reseller_id(j5_request:request()) -> 'ok'.
@@ -97,29 +141,33 @@ maybe_reseller_limited(Request) ->
     ResellerId = j5_request:reseller_id(Request),
     case j5_request:account_id(Request) =:= ResellerId of
         'true' ->
-            lager:debug("channel belongs to reseller, ignoring reseller billing", []),
+            lager:debug("channel belongs to reseller, ignoring reseller billing"),
             send_response(
               j5_request:authorize_reseller(<<"limits_disabled">>, Request)
              );
         'false' ->
-            Limits = j5_limits:get(ResellerId),
-            R = maybe_authorize(Request, Limits),
-            case j5_request:is_authorized(R, Limits) of
-                'false' ->
-                    lager:debug("reseller ~s is not authorized to create this channel"
-                                ,[ResellerId]),
-                    send_response(R);
-                'true' -> send_response(R)
-            end
+            check_reseller_limits(Request, ResellerId)
     end.
 
--spec maybe_authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
+-spec check_reseller_limits(j5_request:request(), ne_binary()) -> 'ok'.
+check_reseller_limits(Request, ResellerId) ->
+    Limits = j5_limits:get(ResellerId),
+    R = maybe_authorize(Request, Limits),
+    (not j5_request:is_authorized(R, Limits))
+        andalso lager:debug("reseller ~s is not authorized to create this channel"
+                            ,[ResellerId]
+                           ),
+    send_response(R).
+
+-spec maybe_authorize(j5_request:request(), j5_limits:limits()) ->
+                             j5_request:request().
 maybe_authorize(Request, Limits) ->
     case j5_limits:enabled(Limits) of
         'true' -> maybe_authorize_exception(Request, Limits);
         'false' ->
             lager:debug("limits are disabled for account ~s"
-                        ,[j5_limits:account_id(Limits)]),
+                        ,[j5_limits:account_id(Limits)]
+                       ),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits)
     end.
 
@@ -128,10 +176,10 @@ maybe_authorize_exception(Request, Limits) ->
     CallDirection = j5_request:call_direction(Request),
     case j5_request:classification(Request) of
         <<"emergency">> ->
-            lager:debug("allowing emergency call", []),
+            lager:debug("allowing emergency call"),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits);
         <<"tollfree_us">> when CallDirection =:= <<"outbound">> ->
-            lager:debug("allowing outbound tollfree call", []),
+            lager:debug("allowing outbound tollfree call"),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits);
         _Else -> maybe_hard_limit(Request, Limits)
     end.
@@ -156,8 +204,12 @@ authorize(Request, Limits) ->
                               'false' -> F(R, Limits);
                               'true' -> R
                           end
-                  end, Request, Routines)
-      ,Limits).
+                  end
+                  ,Request
+                  ,Routines
+                 )
+      ,Limits
+     ).
 
 -spec maybe_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_soft_limit(Request, Limits) ->
@@ -175,7 +227,7 @@ maybe_outbound_soft_limit(Request, Limits) ->
     case j5_limits:soft_limit_outbound(Limits) of
         'false' -> Request;
         'true' ->
-            lager:debug("outbound channel authorization is not enforced (soft limit)", []),
+            lager:debug("outbound channel authorization is not enforced (soft limit)"),
             j5_request:set_soft_limit(Request)
     end.
 
@@ -184,13 +236,41 @@ maybe_inbound_soft_limit(Request, Limits) ->
     case j5_limits:soft_limit_inbound(Limits) of
         'false' -> Request;
         'true' ->
-            lager:debug("inbound channel authorization is not enforced (soft limit)", []),
+            lager:debug("inbound channel authorization is not enforced (soft limit)"),
             j5_request:set_soft_limit(Request)
+    end.
+
+-define(AUTZH_TYPES_FOR_OUTBOUND, [<<"account">>, <<"user">>, <<"device">>]).
+
+-spec maybe_get_outbound_flags(api_binary(), api_binary(), ne_binary()) -> api_binary().
+maybe_get_outbound_flags('undefined', _AuthId, _AccountDb) -> 'undefined';
+maybe_get_outbound_flags(_AuthType, 'undefined', _AccountDb) -> 'undefined';
+maybe_get_outbound_flags(AuthType, AuthId, AccountDb) ->
+    case lists:member(AuthType, ?AUTZH_TYPES_FOR_OUTBOUND) andalso
+             cf_endpoint:get(AuthId, AccountDb)
+    of
+        {'ok', Endpoint} -> wh_json:get_value(<<"outbound_flags">>, Endpoint);
+        _ -> 'undefined'
     end.
 
 -spec send_response(j5_request:request()) -> 'ok'.
 send_response(Request) ->
-    ServerId = j5_request:server_id(Request),
+    ServerId  = j5_request:server_id(Request),
+    AccountDb = wh_util:format_account_id(j5_request:account_id(Request), 'encoded'),
+    AuthType  = wh_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
+    AuthId    = wh_json:get_value(<<"Authorizing-ID">>, j5_request:ccvs(Request)),
+
+    OutboundFlags = maybe_get_outbound_flags(AuthType, AuthId, AccountDb),
+
+    CCVs = wh_json:from_list(
+             props:filter_undefined(
+               [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
+                ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
+                ,{<<"Outbound-Flags">>, OutboundFlags}
+               ]
+              )
+            ),
+
     Resp = props:filter_undefined(
              [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
               ,{<<"Account-ID">>, j5_request:account_id(Request)}
@@ -202,12 +282,25 @@ send_response(Request) ->
               ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
               ,{<<"Msg-ID">>, j5_request:message_id(Request)}
               ,{<<"Call-ID">>, j5_request:call_id(Request)}
+              ,{<<"Custom-Channel-Vars">>, CCVs}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
+
     wapi_authz:publish_authz_resp(ServerId, Resp),
     case j5_request:is_authorized(Request) of
+        'false' -> j5_util:send_system_alert(Request);
         'true' ->
             wapi_authz:broadcast_authz_resp(Resp),
-            j5_channels:authorized(wh_json:from_list(Resp));
-        'false' -> j5_util:send_system_alert(Request)
+            j5_channels:authorized(wh_json:from_list(Resp))
     end.
+
+%% @private
+-spec trunk_usage(ne_binary()) -> ne_binary().
+trunk_usage(Id) ->
+    Limits = j5_limits:get(Id),
+    <<
+      (wh_util:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/",
+      (wh_util:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/",
+      (wh_util:to_binary(j5_limits:twoway_trunks(Limits)))/binary, "/",
+      (wh_util:to_binary(j5_limits:burst_trunks(Limits)))/binary
+    >>.

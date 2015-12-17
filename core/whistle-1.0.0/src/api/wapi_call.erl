@@ -76,6 +76,7 @@
                                       ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
                                       ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
                                       ,<<"Other-Leg-Call-ID">> %% BRIDGE
+                                      ,<<"Target-Call-ID">> %% TRANSFEREE
                                       ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
                                       ,<<"Terminator">>, <<"Disposition">>
                                       ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
@@ -94,6 +95,9 @@
                                       ,<<"Custom-SIP-Headers">>, <<"Fax-Info">>
                                       ,<<"From-Tag">>, <<"To-Tag">>
                                       ,<<"Intercepted-By">>
+                                      ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                      ,<<"Switch-URL">>, <<"Switch-URI">>
+                                      ,<<"Parking-Slot">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
@@ -183,11 +187,13 @@
 
 %% Query Channels Req
 -define(QUERY_CHANNELS_REQ_HEADERS, []).
--define(OPTIONAL_QUERY_CHANNELS_REQ_HEADERS, [<<"Fields">>, <<"Call-ID">>]).
+-define(OPTIONAL_QUERY_CHANNELS_REQ_HEADERS, [<<"Fields">>, <<"Call-ID">>
+                                              ,<<"Active-Only">>
+                                             ]).
 -define(QUERY_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                     ,{<<"Event-Name">>, <<"query_channels_req">>}
                                    ]).
--define(QUERY_CHANNELS_REQ_TYPES, []).
+-define(QUERY_CHANNELS_REQ_TYPES, [{<<"Active-Only">>, fun wh_util:is_boolean/1}]).
 
 %% Query Channels Resp
 -define(QUERY_CHANNELS_RESP_HEADERS, [<<"Channels">>]).

@@ -21,6 +21,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('blackhole_cache')
                    ,?WORKER('blackhole_listener')
+                   ,?WORKER('blackhole_tracking')
                   ]).
 
 %% ===================================================================
@@ -44,6 +45,7 @@ start_link() ->
                                                                           ,{'callback', 'blackhole_socket_callback'}
                                                                           ,{'protocol', 'socketio_data_protocol'}
                                                                           ])]}
+                                            ,{"/", 'blackhole_default_handler', []}
                                             ]
                                       }
                                      ]),
@@ -67,10 +69,11 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    
+
     {'ok', {SupFlags, ?CHILDREN}}.

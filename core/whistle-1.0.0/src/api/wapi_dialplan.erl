@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Dialplan API commands
 %%% @end
@@ -38,6 +38,7 @@
          ,echo/1, echo_v/1
          ,privacy/1, privacy_v/1
          ,hold/1, hold_v/1
+         ,soft_hold/1, soft_hold_v/1
          ,park/1, park_v/1
          ,play_and_collect_digits/1, play_and_collect_digits_v/1
          ,call_pickup/1, call_pickup_v/1
@@ -57,6 +58,8 @@
          ,originate_execute/1, originate_execute_v/1
          ,metaflow/1, metaflow_v/1
          ,fax_detection/1, fax_detection_v/1
+         ,store_vm/1, store_vm_v/1
+         ,b_leg_events_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -84,8 +87,10 @@
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
--include("wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+
+-include("wapi_dialplan.hrl").
 
 -spec optional_bridge_req_headers() -> ne_binaries().
 optional_bridge_req_headers() ->
@@ -312,7 +317,7 @@ tones_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES);
 tones_v(JObj) -> tones_v(wh_json:to_proplist(JObj)).
 
--spec tone_timeout_v(term()) -> boolean().
+-spec tone_timeout_v(any()) -> boolean().
 tone_timeout_v(Timeout) ->
     %% <<"+123">> converts to 123, so yay!
     try wh_util:to_integer(Timeout) of
@@ -620,6 +625,21 @@ hangup_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?HANGUP_REQ_HEADERS, ?HANGUP_REQ_VALUES, ?HANGUP_REQ_TYPES);
 hangup_v(JObj) ->
     hangup_v(wh_json:to_proplist(JObj)).
+
+-spec soft_hold(api_terms()) -> api_formatter_return().
+soft_hold(Prop) when is_list(Prop) ->
+    case soft_hold_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SOFT_HOLD_REQ_HEADERS, ?OPTIONAL_SOFT_HOLD_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for hold_req"}
+    end;
+soft_hold(JObj) ->
+    soft_hold(wh_json:to_proplist(JObj)).
+
+-spec soft_hold_v(api_terms()) -> boolean().
+soft_hold_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SOFT_HOLD_REQ_HEADERS, ?SOFT_HOLD_REQ_VALUES, ?SOFT_HOLD_REQ_TYPES);
+soft_hold_v(JObj) ->
+    soft_hold_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Hold a call - see wiki
@@ -1049,8 +1069,8 @@ publish_error(CallID, JObj) ->
     publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(CallID, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
-                                                     | ?ERROR_RESP_VALUES
-                                                    ], fun ?MODULE:error/1),
+                                                       | ?ERROR_RESP_VALUES
+                                                      ], fun ?MODULE:error/1),
     amqp_util:callevt_publish(wapi_call:event_routing_key(<<"diaplan">>, CallID), Payload, ContentType).
 
 -spec publish_originate_ready(ne_binary(), api_terms()) -> 'ok'.
@@ -1091,7 +1111,7 @@ metaflow_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?METAFLOW_HEADERS, ?METAFLOW_VALUES, ?METAFLOW_TYPES);
 metaflow_v(JObj) -> metaflow_v(wh_json:to_proplist(JObj)).
 
--spec metaflow_digit_timeout_v(term()) -> boolean().
+-spec metaflow_digit_timeout_v(any()) -> boolean().
 metaflow_digit_timeout_v(X) ->
     is_integer(wh_util:to_integer(X)).
 
@@ -1145,10 +1165,10 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 -spec local_store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
 local_store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
-    MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaId = wh_doc:id(JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
 
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    Rev = wh_doc:revision(JObj),
     list_to_binary([wh_couch_connections:get_url(), AccountDb
                     ,"/", MediaId
                     ,"/", MediaName
@@ -1177,3 +1197,18 @@ fax_detection(JObj) -> fax_detection(wh_json:to_proplist(JObj)).
 fax_detection_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?FAX_DETECTION_REQ_HEADERS, ?FAX_DETECTION_REQ_VALUES, ?FAX_DETECTION_REQ_TYPES);
 fax_detection_v(JObj) -> fax_detection_v(wh_json:to_proplist(JObj)).
+
+-spec store_vm(api_terms()) ->
+                   {'ok', wh_proplist()} |
+                   {'error', string()}.
+store_vm(Prop) when is_list(Prop) ->
+    case store_vm_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?STORE_VM_REQ_HEADERS, ?OPTIONAL_STORE_VM_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for store_vm"}
+    end;
+store_vm(JObj) -> store_vm(wh_json:to_proplist(JObj)).
+
+-spec store_vm_v(api_terms()) -> boolean().
+store_vm_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STORE_VM_REQ_HEADERS, ?STORE_VM_REQ_VALUES, ?STORE_VM_REQ_TYPES);
+store_vm_v(JObj) -> store_vm_v(wh_json:to_proplist(JObj)).

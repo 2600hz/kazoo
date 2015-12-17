@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -12,15 +12,12 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("whistle_transactions.hrl").
-
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, []).
+-include("../include/whistle_transactions.hrl").
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
+-define(CHILDREN, []).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,9 +25,9 @@
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -47,11 +44,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

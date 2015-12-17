@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -53,14 +53,14 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     Config= get_config(),
     %% TODO: for the time being just maintain backward compatability
     wh_couch_connections:add(create_connection(Config)),
     wh_couch_connections:add(create_admin_connection(Config)),
     [AutoCmpt|_] = wh_config:get('bigcouch', 'compact_automatically', ['true']),
     CacheProps = [{'expires', 'infinity'}
-                  ,{'origin', {'db', ?WH_CONFIG_DB, <<"whistle_couch">>}}
+                  ,{'origin', {'db', ?WH_CONFIG_DB, ?CONFIG_CAT}}
                  ],
     wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, AutoCmpt, CacheProps),
     [Cookie|_] = wh_config:get_atom('bigcouch', 'cookie', ['monster']),
@@ -144,7 +144,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -type couch_config_tuple() :: {string(), inet:port_number(), string(), string(), inet:port_number()}.
--type couch_config_proplist() :: [{'default_couch_host', couch_config_tuple()},...] | [].
+-type couch_config_proplist() :: [{'default_couch_host', couch_config_tuple()}].
 -spec get_config() -> couch_config_proplist().
 get_config() ->
     [IP|_] = wh_config:get('bigcouch', 'ip', ["localhost"]),

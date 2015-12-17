@@ -1,0 +1,12 @@
+{application, wsecli,
+ [
+  {description, "A WebSocket Erlang Client"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { wsecli_app, []}},
+  {env, []}
+ ]}.

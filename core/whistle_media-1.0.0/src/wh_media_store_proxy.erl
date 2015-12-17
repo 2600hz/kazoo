@@ -15,11 +15,11 @@
 
 -include("whistle_media.hrl").
 
--spec init({_, _}, cowboy_req:req(), wh_proplist()) ->
+-spec init({any(), any()}, cowboy_req:req(), wh_proplist()) ->
                   {'ok', cowboy_req:req(), ne_binaries()} |
                   {'shutdown',  cowboy_req:req(), 'ok'}.
 init({_Transport, _Proto}, Req0, _Opts) ->
-    put('callid', wh_util:rand_hex_binary(16)),
+    wh_util:put_callid(wh_util:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
         {[_, _, _]=PathTokens, Req1} ->
             is_authentic(PathTokens, Req1);
@@ -104,7 +104,7 @@ credentials(Req0) ->
 
 -spec credentials_from_header(ne_binary()) -> {api_binary(), api_binary()}.
 credentials_from_header(AuthorizationHeader) ->
-    case binary:split(AuthorizationHeader, <<$ >>) of
+    case binary:split(AuthorizationHeader, <<$\s>>) of
         [<<"Basic">>, EncodedCredentials] ->
             decoded_credentials(EncodedCredentials);
         _ ->
@@ -212,7 +212,7 @@ try_to_store(Db, Id, Attachment, CT, Req0) ->
 -spec maybe_resolve_conflict(ne_binary(), ne_binary(), ne_binary(), binary(), wh_proplist(), cowboy_req:req()) ->
                                     {'ok', cowboy_req:req(), 'ok'}.
 maybe_resolve_conflict(DbName, Id, Attachment, Contents, Options, Req0) ->
-    timer:sleep(5000),
+    timer:sleep(5 * ?MILLISECONDS_IN_SECOND),
     lager:debug("putting ~s onto ~s(~s): ~-800p", [Attachment, Id, DbName, Options]),
     case couch_mgr:put_attachment(DbName, Id, Attachment, Contents, Options) of
         {'ok', JObj} ->
@@ -232,14 +232,14 @@ success(JObj, Req0) ->
     {'ok', Req2} = cowboy_req:reply(200, Req1),
     Req2.
 
--spec failure(term(), cowboy_req:req()) -> cowboy_req:req().
+-spec failure(any(), cowboy_req:req()) -> cowboy_req:req().
 failure(Reason, Req0) ->
     Body = io_lib:format("~p~n", [Reason]),
     Req1 = cowboy_req:set_resp_body(Body, Req0),
     {'ok', Req2} = cowboy_req:reply(500, Req1),
     Req2.
 
--spec terminate(_, cowboy_req:req(), _) -> cowboy_req:req().
+-spec terminate(any(), cowboy_req:req(), any()) -> cowboy_req:req().
 terminate(_Reason, Req, _State) ->
     lager:debug("terminating store proxy: ~p", [_Reason]),
     Req.

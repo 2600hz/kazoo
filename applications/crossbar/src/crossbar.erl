@@ -51,7 +51,7 @@ api_version_constraint(_NotVersion) ->
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = start_deps(),
     _ = declare_exchanges(),
 
@@ -163,7 +163,8 @@ on_request(Req0) ->
         _ -> Req1
     end.
 
--spec on_response(cowboy_http:status(), cowboy_http:headers(), text(), cowboy_req:req()) -> cowboy_req:req().
+-spec on_response(cowboy:http_status(), cowboy:http_headers(), text(), cowboy_req:req()) ->
+                         cowboy_req:req().
 on_response(_Status, _Headers, _Body, Req0) ->
     {Method, Req1} = cowboy_req:method(Req0),
     case Method of
@@ -177,7 +178,7 @@ maybe_start_plaintext(Dispatch) ->
         'false' -> lager:info("plaintext api support not enabled");
         'true' ->
             Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
-            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
+            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
@@ -191,7 +192,9 @@ maybe_start_plaintext(Dispatch) ->
                                    ]
                                  ) of
                 {'ok', _} ->
-                    lager:info("started plaintext API server")
+                    lager:info("started plaintext API server");
+                {'error', {'already_started', _P}} ->
+                    lager:info("already started plaintext API server at ~p", [_P])
             catch
                 _E:_R ->
                     lager:warning("crashed starting API server: ~s: ~p", [_E, _R])
@@ -210,8 +213,9 @@ start_ssl(Dispatch) ->
     try ssl_opts(code:lib_dir('crossbar')) of
         SSLOpts ->
             lager:debug("trying to start SSL API server"),
-            ssl:start(),
-            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
+            _SslStarted = ssl:start(),
+            lager:debug("starting SSL : ~p", [_SslStarted]),
+            ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
             Workers = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
             try cowboy:start_https('api_resource_ssl', Workers
@@ -225,7 +229,11 @@ start_ssl(Dispatch) ->
                                   )
             of
                 {'ok', _} ->
-                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)])
+                    lager:info("started SSL API server on port ~b", [props:get_value('port', SSLOpts)]);
+                {'error', {'already_started', _P}} ->
+                    lager:info("already started SSL API server on port ~b at ~p"
+                               ,[props:get_value('port', SSLOpts), _P]
+                              )
             catch
                 'throw':{'invalid_file', _File} ->
                     lager:info("SSL disabled: failed to find ~s", [_File]);

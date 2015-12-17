@@ -36,15 +36,19 @@ init() ->
         {'error', {'already_started', _P}} -> lager:debug("fprof pid: ~p", [_P]);
         {'error', _R} -> lager:debug("failed to start fprof: ~p", [_R])
     end,
-
     _ = crossbar_bindings:bind(<<"*.init">>, ?MODULE, 'req_init'),
     _ = crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'req_finish').
 
 -spec req_init({cb_context:context(), cowboy_req:req()}) ->
                       {cb_context:context(), cowboy_req:req()}.
-req_init({#cb_context{profile_id='undefined'}, _}=InitArgs) ->
+-spec req_init(api_binary(), {cb_context:context(), cowboy_req:req()}) ->
+                         {cb_context:context(), cowboy_req:req()}.
+req_init({Context, _} = InitArgs) ->
+    req_init(cb_context:profile_id(Context), InitArgs).
+
+req_init('undefined', InitArgs) ->
     InitArgs;
-req_init({#cb_context{profile_id=ProfileId}, _}=InitArgs) ->
+req_init(ProfileId, InitArgs) ->
     File = list_to_binary([?TRACE_PATH, ProfileId, ".trace"]),
     case fprof:trace(['start'
                       ,'verbose'
@@ -59,12 +63,14 @@ req_init({#cb_context{profile_id=ProfileId}, _}=InitArgs) ->
     end,
     InitArgs.
 
--spec req_finish(cb_context:context()) -> any().
-req_finish(#cb_context{profile_id='undefined'}) -> 'ok';
-req_finish(#cb_context{profile_id=ProfileId}) ->
+-spec req_finish(cb_context:context() | api_binary()) -> any().
+req_finish('undefined') -> 'ok';
+req_finish(ProfileId) when is_binary(ProfileId) ->
     File = list_to_binary([?TRACE_PATH, ProfileId, ".trace"]),
     lager:debug("now run: erlgrind ~s", [File]),
     lager:debug("then run kcachegrind on the .cgrind file created"),
     fprof:trace(['stop'
                  ,{'file', wh_util:to_list(File)}
-                ]).
+                ]);
+req_finish(Context) ->
+    req_finish(cb_context:profile_id(Context)).

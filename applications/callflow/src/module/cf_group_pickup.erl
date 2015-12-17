@@ -189,18 +189,22 @@ pickup_event(Call, _Type, _Evt) ->
 find_channels(DeviceIds) ->
     lager:debug("finding channels for devices ids ~p", [DeviceIds]),
     Req = [{<<"Authorizing-IDs">>, DeviceIds}
-           ,{<<"Active-Only">>, 'true'}
+           ,{<<"Active-Only">>, 'false'}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_request(Req
+    case whapps_util:amqp_pool_collect(Req
                                        ,fun wapi_call:publish_query_user_channels_req/1
-                                       ,fun wapi_call:query_user_channels_resp_v/1
+                                       ,{'ecallmgr', 'true'}
                                       )
     of
-        {'ok', Resp} -> wh_json:get_value(<<"Channels">>, Resp, []);
         {'error', _E} ->
             lager:debug("failed to get channels: ~p", [_E]),
-            []
+            [];
+        {_, JObjs} ->
+            lists:foldl(fun(JObj, Channels) ->
+                                wh_json:get_value(<<"Channels">>, JObj, [])
+                                    ++ Channels
+                        end, [], JObjs)
     end.
 
 -spec find_sip_endpoints(wh_json:object(), whapps_call:call()) ->
@@ -225,7 +229,7 @@ find_group_endpoints(GroupId, Call) ->
     GroupsJObj = cf_attributes:groups(Call),
     case [wh_json:get_value(<<"value">>, JObj)
           || JObj <- GroupsJObj,
-             wh_json:get_value(<<"id">>, JObj) =:= GroupId
+             wh_doc:id(JObj) =:= GroupId
          ]
     of
         [] -> [];

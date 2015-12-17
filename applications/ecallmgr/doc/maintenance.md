@@ -58,6 +58,8 @@ These will be your Kamailio IP addresses most of the time
 
 * `sync_channels [NodeName]`: Reconcile ecallmgr's list of channels against known channels on the FreeSWITCH servers. Useful during disconnect/reconnect scenarios if the list isn't reflecting the actual channels up.
 * `sync_conferences [NodeName]`: Reconcile ecallmgr's list of conferences against known conferences on the FreeSWITCH servers. Useful during disconnect/reconnect scenarios if the list isn't reflecting the actual conferences up.
+* `hangup_long_running_channels [MaxAge]`: Search known channels and hang any up that have been on longer than `MaxAge` seconds.
+    * `limit_channel_uptime MaxAge [AsDefault]`: Limit the max age of channels. Set to 0 to disable the check (default).
 
 ## Flushing Things
 

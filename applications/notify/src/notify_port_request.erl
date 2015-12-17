@@ -44,15 +44,15 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:port_request_v(JObj),
-    whapps_util:put_callid(JObj),
+    wh_util:put_callid(JObj),
 
     lager:debug("a port change has been requested, sending email notification"),
 
     {'ok', AccountDoc} = notify_util:get_account_doc(JObj),
     AccountJObj = wh_doc:public_fields(AccountDoc),
 
-    lager:debug("creating port change notice for ~s(~s)", [wh_json:get_value(<<"name">>, AccountJObj)
-                                                           ,wh_json:get_value(<<"pvt_account_id">>, AccountDoc)
+    lager:debug("creating port change notice for ~s(~s)", [kz_account:name(AccountJObj)
+                                                           ,wh_doc:account_id(AccountDoc)
                                                           ]),
 
     Version = wh_json:get_value(<<"Version">>, JObj),
@@ -72,7 +72,7 @@ handle_req(JObj, _Props) ->
 
     EmailAttachments = get_attachments(JObj),
 
-    case notify_util:get_rep_email(AccountJObj) of
+    case notify_util:get_rep_email(AccountDoc) of
         'undefined' ->
             SysAdminEmail = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>),
             build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props, EmailAttachments);
@@ -99,13 +99,13 @@ create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     Request = [{<<"port">>
                 ,[{<<"service_provider">>, wh_json:get_value(<<"carrier">>, PortDoc)}
                   ,{<<"billing_name">>, wh_json:get_value([<<"bill">>, <<"name">>], PortDoc)}
-                  ,{<<"billing_account_id">>, wh_json:get_value(<<"pvt_account_id">>, PortDoc)}
+                  ,{<<"billing_account_id">>, wh_doc:account_id(PortDoc)}
                   ,{<<"billing_street_address">>, wh_json:get_value([<<"bill">>, <<"address">>], PortDoc)}
                   ,{<<"billing_locality">>, wh_json:get_value([<<"bill">>, <<"locality">>], PortDoc)}
                   ,{<<"billing_postal_code">>, wh_json:get_value([<<"bill">>, <<"postal_code">>], PortDoc)}
                   ,{<<"billing_telephone_number">>, wh_json:get_value([<<"bill">>, <<"phone_number">>], PortDoc)}
                   ,{<<"requested_port_date">>, wh_json:get_value(<<"transfer_date">>, PortDoc)}
-                  ,{<<"requested_port_date">>, wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
+                  ,{<<"customer_contact">>, wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
                  ]
                }
                ,{<<"number">>, NumberString}
@@ -200,10 +200,10 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
     From = props:get_value(<<"send_from">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[{<<"From">>, From}
-                   ,{<<"To">>, To}
-                   ,{<<"Subject">>, Subject}
-                  ]
+             ,[{<<"From">>, From}
+               ,{<<"To">>, To}
+               ,{<<"Subject">>, Subject}
+              ]
              ,[]
              ,[{<<"multipart">>, <<"alternative">>, [], []
                 ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
@@ -223,7 +223,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
 %% @end
 %%--------------------------------------------------------------------
 -type attachment() :: {ne_binary(), ne_binary(), wh_proplist(), wh_proplist(), ne_binary()}.
--type attachments() :: [attachment(),...] | [].
+-type attachments() :: [attachment()].
 
 -spec get_attachments(wh_json:object()) -> attachments().
 get_attachments(JObj) ->
@@ -238,7 +238,7 @@ get_number_attachments(JObj) ->
     NumberDb = wnm_util:number_to_db_name(Number),
     case couch_mgr:open_doc(NumberDb, Number) of
         {'ok', NumberJObj} ->
-            Attachments = wh_json:get_value(<<"_attachments">>, NumberJObj, wh_json:new()),
+            Attachments = wh_doc:attachments(NumberJObj, wh_json:new()),
             fetch_attachments(wh_json:to_proplist(Attachments), NumberDb, Number);
         _ -> []
     end.
@@ -247,7 +247,7 @@ get_number_attachments(JObj) ->
 get_port_attachments(PortRequestId) ->
     case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortJObj} ->
-            Attachments = wh_json:get_value(<<"_attachments">>, PortJObj, wh_json:new()),
+            Attachments = wh_doc:attachments(PortJObj, wh_json:new()),
             fetch_attachments(wh_json:to_proplist(Attachments), ?KZ_PORT_REQUESTS_DB, PortRequestId);
         _ -> []
     end.

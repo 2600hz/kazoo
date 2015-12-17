@@ -25,14 +25,14 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
-save(#number{current_state = <<"port_in">>
-             ,state = <<"in_service">>
+save(#number{current_state = ?NUMBER_STATE_PORT_IN
+             ,state = ?NUMBER_STATE_IN_SERVICE
              ,number_doc=JObj
             }=Number) ->
     Port = wh_json:get_ne_value(<<"port">>, JObj, wh_json:new()),
     _ = publish_ported(Port, Number),
     Number;
-save(#number{state = <<"port_in">>}=Number) ->
+save(#number{state = ?NUMBER_STATE_PORT_IN}=Number) ->
     Routines = [fun maybe_port_feature/1
                 ,fun maybe_activate_feature/1
                ],

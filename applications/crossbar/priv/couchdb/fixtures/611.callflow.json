@@ -1,15 +1,13 @@
 {
-   "numbers": [
-       "611"
-   ],
-   "realms": [
-   ],
-   "flow": {
-       "module": "device",
-       "data": {
-           "id": ""
-       },
-       "children": {
-       }
-   }
+    "flow": {
+        "children": {},
+        "data": {
+            "id": ""
+        },
+        "module": "device"
+    },
+    "numbers": [
+        "611"
+    ],
+    "realms": []
 }

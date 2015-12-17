@@ -72,7 +72,7 @@ resource_exists() -> 'true'.
 authenticate(Context) ->
     authenticate_nouns(Context, cb_context:req_nouns(Context)).
 
--spec authenticate_nouns(cb_context:context(), ne_binary()) ->
+-spec authenticate_nouns(cb_context:context(), req_nouns()) ->
                                 'false' | 'true' | {'true', cb_context:context()}.
 authenticate_nouns(_Context, [{<<"ip_auth">>, _}]) ->
     lager:debug("request is for the ip_auth module", []),
@@ -87,7 +87,10 @@ authenticate_ip(Context, IpKey) ->
     ViewOptions = [{'key', IpKey}],
     lager:debug("attemping to authenticate ip ~s", [IpKey]),
     case wh_json:is_empty(IpKey)
-        orelse crossbar_doc:load_view(?AGG_VIEW_IP, ViewOptions, cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB))
+        orelse crossbar_doc:load_view(?AGG_VIEW_IP
+                                      ,ViewOptions
+                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     )
     of
         'true' ->
             lager:debug("client ip address is empty"),
@@ -159,7 +162,10 @@ on_successful_validation(Context) ->
     IpKey = cb_context:client_ip(Context),
     ViewOptions = [{'key', IpKey}],
     case wh_json:is_empty(IpKey)
-        orelse crossbar_doc:load_view(?AGG_VIEW_IP, ViewOptions, cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB))
+        orelse crossbar_doc:load_view(?AGG_VIEW_IP
+                                      ,ViewOptions
+                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     )
     of
         'true' ->
             cb_context:add_system_error('invalid_credentials', Context);

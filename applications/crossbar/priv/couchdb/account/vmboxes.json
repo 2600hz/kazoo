@@ -1,15 +1,15 @@
 {
-    "_id": "_design/vmboxes"
-    ,"language": "javascript"
-    ,"views": {
+    "_id": "_design/vmboxes",
+    "filters": {
+        "export": "function(doc, req) { return ( doc.pvt_type == 'vmbox' ); }"
+    },
+    "language": "javascript",
+    "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'mailbox': doc.mailbox, 'owner_id': doc.owner_id}); }"
-        }
-        ,"listing_by_mailbox": {
+            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return; var messges_count = doc.messages ? doc.messages.length || 0 : 0; emit(doc.name, { 'id': doc._id, 'name': doc.name, 'mailbox': doc.mailbox, 'owner_id': doc.owner_id, 'messages': messges_count }); }"
+        },
+        "listing_by_mailbox": {
             "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return; emit(parseInt(doc.mailbox, 10), null); }"
         }
-    }
-    ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'vmbox' ); }"
     }
 }

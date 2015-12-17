@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% The basic flow of a directory call:
 %%% 1) Prompt: Please enter the first few letters of the person's
@@ -55,43 +55,43 @@
 -define(TIMEOUT_DTMF, 2000).
 -define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT_S).
 
--define(PROMPT_ENTER_PERSON_LASTNAME, <<"system_media/dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
--define(PROMPT_ENTER_PERSON_FIRSTNAME, <<"system_media/dir-enter_person_firstname">>). %% Please enter the first few letters of the person's firstname
--define(PROMPT_FIRSTNAME, <<"system_media/dir-first_name">>). %% first name
--define(PROMPT_LASTNAME, <<"system_media/dir-last_name">>). %% last name
--define(PROMPT_SPECIFY_MINIMUM, <<"system_media/dir-specify_minimum">>). %% You need to specify a minimum of two digits
--define(PROMPT_LETTERS_OF_NAME, <<"system_media/dir-letters_of_person_name">>). %% letters of the person's name
--define(PROMPT_NO_RESULTS_FOUND, <<"system_media/dir-no_results_found">>). %% No match found
--define(PROMPT_NO_MORE_RESULTS, <<"system_media/dir-no_more_results">>). %% no more results
--define(PROMPT_CONFIRM_MENU, <<"system_media/dir-confirm_menu">>). %% press 1. to start over press 3
--define(PROMPT_FOUND, <<"system_media/dir-found">>). %% One match found. To connect to
--define(PROMPT_INVALID_KEY, <<"system_media/dir-invalid_key">>). %% invalid key pressed
--define(PROMPT_RESULT_NUMBER, <<"system_media/dir-result_number">>). %% To call
--define(PROMPT_RESULT_MENU, <<"system_media/dir-result_menu">>). %% press one. For the next result press two. To start over press three
+-define(PROMPT_ENTER_PERSON_LASTNAME, <<"dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
+-define(PROMPT_ENTER_PERSON_FIRSTNAME, <<"dir-enter_person_firstname">>). %% Please enter the first few letters of the person's firstname
+-define(PROMPT_FIRSTNAME, <<"dir-first_name">>). %% first name
+-define(PROMPT_LASTNAME, <<"dir-last_name">>). %% last name
+-define(PROMPT_SPECIFY_MINIMUM, <<"dir-specify_minimum">>). %% You need to specify a minimum of two digits
+-define(PROMPT_LETTERS_OF_NAME, <<"dir-letters_of_person_name">>). %% letters of the person's name
+-define(PROMPT_NO_RESULTS_FOUND, <<"dir-no_results_found">>). %% No match found
+-define(PROMPT_NO_MORE_RESULTS, <<"dir-no_more_results">>). %% no more results
+-define(PROMPT_CONFIRM_MENU, <<"dir-confirm_menu">>). %% press 1. to start over press 3
+-define(PROMPT_FOUND, <<"dir-found">>). %% One match found. To connect to
+-define(PROMPT_INVALID_KEY, <<"dir-invalid_key">>). %% invalid key pressed
+-define(PROMPT_RESULT_NUMBER, <<"dir-result_number">>). %% To call
+-define(PROMPT_RESULT_MENU, <<"dir-result_menu">>). %% press one. For the next result press two. To start over press three
 
 %%------------------------------------------------------------------------------
 %% Records
 %%------------------------------------------------------------------------------
 -record(directory_user, {
           first_name :: ne_binary()
-         ,last_name :: ne_binary()
-         ,full_name :: ne_binary()
-         ,first_last_keys :: ne_binary() % DTMF-version of first, last
-         ,last_first_keys :: ne_binary() % DTMF-version of last, first
-         ,callflow_id :: ne_binary() % what callflow to use on match
-         ,name_audio_id :: api_binary() % pre-recorded audio of user's name
+          ,last_name :: ne_binary()
+          ,full_name :: ne_binary()
+          ,first_last_keys :: ne_binary() % DTMF-version of first, last
+          ,last_first_keys :: ne_binary() % DTMF-version of last, first
+          ,callflow_id :: ne_binary() % what callflow to use on match
+          ,name_audio_id :: api_binary() % pre-recorded audio of user's name
          }).
 -type directory_user() :: #directory_user{}.
--type directory_users() :: [directory_user(),...] | [].
+-type directory_users() :: [directory_user()].
 
 -record(directory, {
-          sort_by :: 'first' | 'last'
-         ,min_dtmf :: pos_integer()
-         ,max_dtmf :: non_neg_integer()
-         ,confirm_match :: boolean()
-         ,digits_collected :: binary()
-         ,users :: directory_users()
-         ,curr_users = [] :: directory_users()
+          sort_by = 'last' :: 'first' | 'last'
+          ,min_dtmf :: pos_integer()
+          ,max_dtmf :: non_neg_integer()
+          ,confirm_match = 'false' :: boolean()
+          ,digits_collected = <<>> :: binary()
+          ,users = [] :: directory_users()
+          ,curr_users = [] :: directory_users()
          }).
 -type directory() :: #directory{}.
 
@@ -107,19 +107,24 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    {'ok', DirJObj} = couch_mgr:open_doc(whapps_call:account_db(Call), wh_json:get_value(<<"id">>, Data)),
+    {'ok', DirJObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+                                               ,wh_doc:id(Data)
+                                              ),
     whapps_call_command:answer(Call),
 
-    case get_directory_listing(whapps_call:account_db(Call), wh_json:get_value(<<"_id">>, DirJObj)) of
+    case get_directory_listing(whapps_call:account_db(Call)
+                               ,wh_doc:id(DirJObj)
+                              )
+    of
         {'ok', Users} ->
             State = #directory{
-              sort_by = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>))
-              ,min_dtmf = wh_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3)
-              ,max_dtmf = wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0)
-              ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, 'false')
-              ,digits_collected = <<>>
-              ,users = Users
-             },
+                       sort_by = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>))
+                       ,min_dtmf = wh_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3)
+                       ,max_dtmf = wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0)
+                       ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, 'false')
+                       ,digits_collected = <<>>
+                       ,users = Users
+                      },
             _ = log(Users),
             directory_start(Call, State, Users);
         {'error', 'no_users_in_directory'} ->
@@ -134,18 +139,27 @@ handle(Data, Call) ->
 -spec directory_start(whapps_call:call(), directory(), directory_users()) -> 'ok'.
 directory_start(Call, State, CurrUsers) ->
     _ = whapps_call_command:flush_dtmf(Call),
-    {'ok', DTMF} = play_directory_instructions(Call, sort_by(State)),
-    case whapps_call_command:collect_digits(100, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call) of
-        {'error', _E} ->
-            lager:error("failed to collect digits: ~p", [_E]),
-            cf_exe:stop(Call);
-        {'ok', <<>>} ->
-            whapps_call_command:audio_macro([{'play', ?PROMPT_SPECIFY_MINIMUM}], Call),
-            directory_start(Call, State, CurrUsers);
-        {'ok', DTMFS} ->
-            maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
+    case play_directory_instructions(Call, sort_by(State)) of
+	{'ok', DTMF} -> collect_digits(Call, State, CurrUsers, DTMF);
+	{'error', _Error} ->
+	    lager:error("failed to collect digits: ~p", [_Error]),
+	    cf_exe:stop(Call)
     end.
 
+-spec collect_digits(whapps_call:call(), directory(), directory_users(), binary()) -> 'ok'.
+collect_digits(Call, State, CurrUsers, DTMF) ->
+    case whapps_call_command:collect_digits(100, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call) of
+	{'error', _E} ->
+	    lager:error("failed to collect digits: ~p", [_E]),
+	    cf_exe:stop(Call);
+	{'ok', <<>>} ->
+	    whapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
+	    directory_start(Call, State, CurrUsers);
+	{'ok', DTMFS} ->
+	    maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
+    end.
+
+-spec maybe_match(whapps_call:call(), directory(), directory_users()) -> 'ok'.
 maybe_match(Call, State, CurrUsers) ->
     case filter_users(CurrUsers, dtmf_collected(State), sort_by(State)) of
         [] ->
@@ -171,6 +185,7 @@ maybe_match(Call, State, CurrUsers) ->
 matches_menu(Call, State, Users) ->
     maybe_match_users(Call, save_current_users(State, Users), Users, 1).
 
+-spec maybe_match_users(whapps_call:call(), directory(), directory_users(), pos_integer()) -> 'ok'.
 maybe_match_users(Call, State, [], _) ->
     lager:info("failed to match any users, back to the beginning"),
     _ = play_no_users(Call),
@@ -193,11 +208,7 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
 
 -spec maybe_match_user(whapps_call:call(), directory_user(), pos_integer()) -> dtmf_action().
 maybe_match_user(Call, U, MatchNum) ->
-    UserName = case media_name(U) of
-                   'undefined' -> {'tts', <<39, (full_name(U))/binary, 39>>}; % 39 is ascii '
-                   MediaID ->
-                       {'play', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
-               end,
+    UserName = username_audio_macro(Call, U),
     lager:info("playing username with: ~p", [UserName]),
 
     case play_user(Call, UserName, MatchNum) of
@@ -225,6 +236,7 @@ maybe_confirm_match(Call, User, 'true') ->
         _ -> 'false'
     end.
 
+-spec route_to_match(whapps_call:call(), 'fail' | wh_json:object()) -> 'ok'.
 route_to_match(Call, 'fail') -> cf_exe:continue(Call);
 route_to_match(Call, Callflow) ->
     cf_exe:branch(wh_json:get_value(<<"flow">>, Callflow), Call).
@@ -232,47 +244,71 @@ route_to_match(Call, Callflow) ->
 %%------------------------------------------------------------------------------
 %% Audio Prompts
 %%------------------------------------------------------------------------------
+-spec play_user(whapps_call:call(), whapps_call_command:audio_macro_prompt(), any()) ->
+                       {'ok', binary()}.
 play_user(Call, UsernameTuple, _MatchNum) ->
-    play_and_collect(Call, [{'play', ?PROMPT_RESULT_NUMBER}
+    play_and_collect(Call, [{'prompt', ?PROMPT_RESULT_NUMBER}
                             ,UsernameTuple
-                            ,{'play', ?PROMPT_RESULT_MENU}
+                            ,{'prompt', ?PROMPT_RESULT_MENU}
                            ]).
 
+-spec play_invalid(whapps_call:call()) -> ne_binary().
 play_invalid(Call) ->
-    whapps_call_command:audio_macro([{'play', ?PROMPT_INVALID_KEY}], Call).
+    whapps_call_command:audio_macro([{'prompt', ?PROMPT_INVALID_KEY}], Call).
 
+-spec play_confirm_match(whapps_call:call(), directory_user()) -> {'ok', binary()}.
 play_confirm_match(Call, User) ->
-    UserName =
-        case media_name(User) of
-            'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; %% 39 is ascii '
-            MediaID -> {'play', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
-        end,
+    UserName = username_audio_macro(Call, User),
     lager:info("playing confirm_match with username: ~p", [UserName]),
 
-    play_and_collect(Call, [{'play', ?PROMPT_FOUND}
+    play_and_collect(Call, [{'prompt', ?PROMPT_FOUND}
                             ,UserName
-                            ,{'play', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
+                            ,{'prompt', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
 
+-spec username_audio_macro(whapps_call:call(), directory_user()) -> whapps_call_command:audio_macro_prompt().
+username_audio_macro(Call, User) ->
+    case media_name(User) of
+        'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ascii '
+        MediaID     -> maybe_play_media(Call, User, MediaID)
+    end.
+
+-spec maybe_play_media(whapps_call:call(), directory_user(), api_binary()) ->
+                              whapps_call_command:audio_macro_prompt().
+maybe_play_media(Call, User, MediaId) ->
+    AccountDb = whapps_call:account_db(Call),
+
+    case couch_mgr:open_cache_doc(AccountDb, MediaId) of
+	{'ok', Doc}    ->
+	    case wh_doc:attachments(Doc) of
+		'undefined'  -> {'tts', <<39, (full_name(User))/binary, 39>>};
+		_ValidAttach -> {'play', <<$/, AccountDb/binary, $/, MediaId/binary>>}
+	    end;
+	{'error', _} -> {'tts', <<39, (full_name(User))/binary, 39>>}
+    end.
+
 -spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) ->
-                                         {'ok', binary()}.
+                                         {'ok', binary()} |
+					 {'error', atom()}.
 play_directory_instructions(Call, 'first') ->
-    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
+    play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->
-    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_LASTNAME}]).
+    play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_LASTNAME}]).
 
 -spec play_no_users(whapps_call:call()) -> ne_binary(). % noop id
 play_no_users(Call) ->
-    whapps_call_command:audio_macro([{'play', ?PROMPT_NO_MORE_RESULTS}], Call).
+    whapps_call_command:audio_macro([{'prompt', ?PROMPT_NO_MORE_RESULTS}], Call).
 
 -spec play_no_users_found(whapps_call:call()) -> ne_binary(). % noop id
 play_no_users_found(Call) ->
-    whapps_call_command:audio_macro([{'play', ?PROMPT_NO_RESULTS_FOUND}], Call).
+    whapps_call_command:audio_macro([{'prompt', ?PROMPT_NO_RESULTS_FOUND}], Call).
 
 -spec play_and_collect(whapps_call:call(), whapps_call_command:audio_macro_prompts()) ->
-                              {'ok', binary()}.
+                              {'ok', binary()} |
+			      {'error', atom()}.
 -spec play_and_collect(whapps_call:call(), whapps_call_command:audio_macro_prompts(), non_neg_integer()) ->
-                              {'ok', binary()}.
+                              {'ok', binary()} |
+			      {'error', atom()}.
 play_and_collect(Call, AudioMacro) ->
     play_and_collect(Call, AudioMacro, 1).
 play_and_collect(Call, AudioMacro, NumDigits) ->
@@ -323,7 +359,7 @@ get_sort_by(_) -> 'last'.
 
 -spec get_directory_listing(ne_binary(), ne_binary()) ->
                                    {'ok', directory_users()} |
-                                   {'error', term()}.
+                                   {'error', any()}.
 get_directory_listing(Db, DirId) ->
     case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{'key', DirId}, 'include_docs']) of
         {'ok', []} ->

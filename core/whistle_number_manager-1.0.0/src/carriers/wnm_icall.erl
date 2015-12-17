@@ -26,7 +26,7 @@
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'error', 'not_available'}.
 find_numbers(_Number, _Quanity, _Opts) ->
-    {'error', 'non_available'}.
+    {'error', 'not_available'}.
 
 -spec is_number_billable(wnm_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.

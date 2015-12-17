@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "bookkeepers",
+    "description": "The bookkeeper modules provided by Kazoo",
+    "name": "Bookkeepers",
+    "properties": {
+        "braintree": {
+            "type": "object"
+        },
+        "local": {
+            "type": "object"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

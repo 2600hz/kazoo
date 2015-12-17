@@ -2,8 +2,8 @@
 Section: Crossbar
 Title: Notifications
 Language: en-US
+Version: 3.19
 */
-
 
 Allow managing templates for notification emails.
 
@@ -11,33 +11,35 @@ Allow managing templates for notification emails.
 
 The structure is really simple:
 
-Ex:
-```
- "to": {
-     "type": "admins",
-     "email_addresses": [
-         "peter@email.com"
-     ]
- },
- "from": "peter@email.com",
- "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
- "enabled": true,
- "template_charset": "utf-8",
- "macros": {
-     "user.first_name": {
-         "i18n_label": "first_name",
-         "friendly_name": "First Name",
-         "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
-     },
-     "user.last_name": {
-         "i18n_label": "last_name",
-         "friendly_name": "Last Name",
-         "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
+Example:
+
+    {"to":{
+         "type": "admins"
+         ,"email_addresses": [
+             "peter@email.com"
+         ]
      }
- }
-```
+     ,"from": "peter@email.com"
+     ,"subject": "Hello {{user.first_name}}, you received a new voicemail!"
+     ,"enabled": true
+     ,"template_charset": "utf-8"
+     ,"macros": {
+         "user.first_name": {
+             "i18n_label": "first_name"
+              ,"friendly_name": "First Name"
+              ,"description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
+          }
+          ,"user.last_name": {
+              "i18n_label": "last_name"
+              ,"friendly_name": "Last Name"
+              ,"description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
+          }
+      }
+    }
 
 In addition to the JSON data, templates in various formats can be uploaded (such as from a WYSIWYG tool). Currently supported are plaintext and HTML documents.
+
+The `macros` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
 
 ## Crossbar
 
@@ -63,9 +65,23 @@ This is the first request to make to see what templates exist on the system to o
     {
         "auth_token": "{AUTH_TOKEN},
         "data": [
-            "{NOTIFICATION_ID}",
-            ...
-        ],
+            {"id": "voicemail_to_email"
+             ,"macros": {
+                 "call_id": {
+                     "description": "Call ID of the caller"
+                     ,"friendly_name": "Call ID"
+                     ,"i18n_label": "call_id"
+                     }
+                 ,"caller_id.name": {
+                     "description": "Caller ID Name"
+                     ,"friendly_name": "Caller ID Name"
+                     ,"i18n_label": "caller_id_name"
+                 }
+                 ,...
+             }
+            }
+            ,{...}
+        ]
         "request_id": "{REQUEST_ID}",
         "revision": "undefined",
         "status": "success"
@@ -77,13 +93,30 @@ To see what notification templates an account over-rides, include the account ID
     {
         "auth_token": "{AUTH_TOKEN},
         "data": [
+            {"id": "voicemail_to_email"
+             ,"macros": {
+                 "call_id": {
+                     "description": "Call ID of the caller"
+                     ,"friendly_name": "Call ID"
+                     ,"i18n_label": "call_id"
+                     }
+                 ,"caller_id.name": {
+                     "description": "Caller ID Name"
+                     ,"friendly_name": "Caller ID Name"
+                     ,"i18n_label": "caller_id_name"
+                 }
+                 ,...
+             }
+             ,"account_overridden":true
+            }
+            ,{...}
         ],
         "request_id": "{REQUEST_ID}",
         "revision": "undefined",
         "status": "success"
     }
 
-In this case, the account overrides none of the default system templates.
+The key `account_overridden` will exist on any templates that are account-specific.
 
 #### GET - Fetch a notification's configuration
 
@@ -93,14 +126,23 @@ Using the ID from the system listing above, get the template JSON. This document
     {
         "auth_token": "{AUTH_TOKEN}",
         "data": {
-            "id": "{NOTIFICATION_ID}",
-            "templates",["text/html"]
-            ...
+            "id": "{NOTIFICATION_ID}"
+            ,"macros":{...}
+            ,"templates": {
+                "text/html": {
+                    "length": 600
+                }
+                ,"text/plain": {
+                    "length": 408
+                }
+            }
         },
         "request_id": "{REQUEST_ID}",
         "revision": "1-ad99c4dc5353792aed7be6e77b2d9d9a",
         "status": "success"
     }
+
+Performing a GET with an account ID will return the notification object, again with the `account_overridden` flag added if it is account-specific; lack of the key indicates it is the system default notification.
 
 #### PUT - Create a notification template
 
@@ -116,19 +158,7 @@ Now that you've fetched the system default template, modify and PUT it back to t
         "from": "reseller@resellerdomain.com",
         "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
         "enabled": true,
-        "template_charset": "utf-8",
-        "macros": {
-            "user.first_name": {
-                "i18n_label": "first_name",
-                "friendly_name": "First Name",
-                "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
-            },
-            "user.last_name": {
-                "i18n_label": "last_name",
-                "friendly_name": "Last Name",
-                "description": "If the voicemail box has an owner id, this is the last name of that user.  Not always present"
-            }
-        }
+        "template_charset": "utf-8"
     }}'
     {
         "auth_token": "{AUTH_TOKEN}",
@@ -211,7 +241,7 @@ Similar to the PUT, POST will update an existing config:
 
 Omit `/accounts/{ACCOUNT_ID}` to update the system's version.
 
-#### Delete - remove a notification template
+#### DELETE - remove a notification template
 
     curl -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type:application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -231,15 +261,40 @@ When you GET a notification config (`Accept` of `application/json`), get a `temp
 
 Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a non-existent Accept MIME type, expect to receive a `406 Not Acceptable` error.
 
+For clients that do not support setting the `Accept` header, a querystring parameter can be included (eg `http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template.
+
 #### POST - Update notification template:
 
 ```
 curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID} -d '
 <div>
-  <p>Some Html</p>
+  <p>Some Html and {{macro.key}} replaced on render</p>
 </div>'
 ```
 
 ```
 curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain"  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/text -d 'some plain text template code'
+```
+
+#### _POST_ - Preview a new template
+
+It can be helpful to preview the resulting email when modifying templates, but before actually saving the template.
+
+    curl -H "Content-Type:application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview' -d '{"data":{"to":{"email_addresses":["me@2600hz.com"]},"from":"kazoo@2600hz.com","subject":"Testing NOTIFICATION","html":"SSUyNTIwJTI1dTI2NjElMjUyMFVuaWNvZGUlMjUyMQ==","plain":"You just recieved an email! It was sent to {{user.email}}","enabled":true}}'
+
+* `html` is the base64 encoded HTML template
+* `plain` is the plain-text template
+
+# Operations considerations
+
+In versions Kazoo prior to 3.19, notification templates were managed and processed by the `notify` app.
+
+All accounts will continue to be processed by the `notify` app until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding App in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` app to ignore processing and instructs the `teletype` app to process it instead. This allows admins to run both `notify` and `teletyple` concurrently without sending multiple copies of each notification.
+
+## Logs
+
+* GET - Gets the notification(s) SMTP log.
+
+```
+curl -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 ```

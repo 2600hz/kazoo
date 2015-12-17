@@ -2,7 +2,7 @@
 %%% @author Stephen Gibberd <stephen.gibberd@2600hz.com>
 %%% This process runs on each node in the Kazoo cluster. It collects information
 %%% on each node, and regularly sends the information the stats application.
-%%% For ecallmgr nodes, it also collects ecallmgr information, and 
+%%% For ecallmgr nodes, it also collects ecallmgr information, and
 %%% sip events statistics.
 %%%-------------------------------------------------------------------
 -module(whistle_stats).
@@ -25,8 +25,11 @@
          ,getdb/0
         ]).
 
--define(SERVER, ?MODULE). 
--define(SEND_INTERVAL, 10000).
+-include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+
+-define(SERVER, ?MODULE).
+-define(SEND_INTERVAL, 10 * ?MILLISECONDS_IN_SECOND).
 
 -record(state, {variables=[]
                 ,sip=[]
@@ -228,14 +231,14 @@ get_ecallmgr_values(VarList) ->
 
 get_ecallmgr_values2(VarList) ->
     RegFail = case {props:get_value("register-attempt",VarList),
-                    props:get_value("register-success",VarList)} 
+                    props:get_value("register-success",VarList)}
               of
                   {'undefined', _} -> 0;
                   {_, 'undefined'} -> 0;
                   {Reg, RegSucc} -> lists:max([Reg-RegSucc, 0])
               end,
     %% Sums the total reductions for all ecallmgr processes.
-    Procs = [process_info(X) || 
+    Procs = [process_info(X) ||
                 {_, X, _ ,_} <- supervisor:which_children('ecallmgr_sup')
                     ,is_pid(X)
             ],
@@ -245,7 +248,7 @@ get_ecallmgr_values2(VarList) ->
                           ]),
     [{'reduction',Reduction}
      ,{'register-fail',RegFail}
-     ,{'processes', length(processes())} 
+     ,{'processes', length(processes())}
     ].
 
 send(RawPayload) ->
@@ -255,16 +258,15 @@ send(RawPayload) ->
     amqp_util:targeted_publish(<<"statistics">>,Payload).
 
 %% Prepares nested proplists to convert to JSON
--spec recursive_from_proplist(term()) -> wh_json:object().
+-spec recursive_from_proplist(any()) -> wh_json:object().
 recursive_from_proplist([]) -> wh_json:new();
 recursive_from_proplist(List) when is_list(List) ->
     case lists:all(fun is_integer/1, List) of
         'true' -> List;
         'false' ->
             wh_json:from_list([{wh_util:to_binary(K)
-                                ,recursive_from_proplist(V)} 
+                                ,recursive_from_proplist(V)}
                                || {K,V} <- List
                               ])
     end;
 recursive_from_proplist(Other) -> Other.
-

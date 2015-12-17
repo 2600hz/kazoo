@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -46,7 +46,7 @@
 
 -include_lib("wh_couch.hrl").
 
--record(state, {cookie = change_me}).
+-record(state, {cookie = 'change_me'}).
 
 %%%===================================================================
 %%% API
@@ -61,30 +61,33 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec update(couch_connection()) -> 'ok'.
 update(#wh_couch_connection{}=Connection) ->
-    gen_server:cast(?MODULE, {update_connection, Connection}).
+    gen_server:cast(?MODULE, {'update_connection', Connection}).
 
 -spec add(couch_connection()) -> 'ok'.
 add(#wh_couch_connection{}=Connection) ->
-    gen_server:cast(?MODULE, {add_connection, Connection}).
+    gen_server:cast(?MODULE, {'add_connection', Connection}).
 
 -spec wait_for_connection() -> 'ok'.
 wait_for_connection() ->
     try test_conn() of
-        _ -> ok
+        _ -> 'ok'
     catch
-        error:{badmatch,'$end_of_table'} ->
-            timer:sleep(random:uniform(1000) + 100),
+        'error':{'badmatch','$end_of_table'} ->
+            timer:sleep(random:uniform(?MILLISECONDS_IN_SECOND) + 100),
             wait_for_connection()
     end.
 
 -spec get_host() -> string().
 get_host() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,host = '$3', _ = '_'}
+    MatchSpec = [{#wh_couch_connection{ready = '$1'
+                                       ,admin = '$2'
+                                       ,host = '$3'
+                                       ,_ = '_'
+                                      }
                   ,['$1', {'not','$2'}]
                   ,['$3']
                  }],
@@ -93,8 +96,11 @@ get_host() ->
 
 -spec get_port() -> integer().
 get_port() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,port = '$3', _ = '_'}
+    MatchSpec = [{#wh_couch_connection{ready = '$1'
+                                       ,admin = '$2'
+                                       ,port = '$3'
+                                       ,_ = '_'
+                                      }
                   ,['$1', {'not','$2'}]
                   ,['$3']
                  }],
@@ -103,8 +109,11 @@ get_port() ->
 
 -spec get_admin_port() -> integer().
 get_admin_port() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,port = '$3', _ = '_'}
+    MatchSpec = [{#wh_couch_connection{ready = '$1'
+                                       ,admin = '$2'
+                                       ,port = '$3'
+                                       ,_ = '_'
+                                      }
                   ,['$1', '$2']
                   ,['$3']
                  }],
@@ -113,9 +122,12 @@ get_admin_port() ->
 
 -spec get_creds() -> {string(), string()}.
 get_creds() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,username = '$3', password = '$4'
-                                       ,_ = '_'}
+    MatchSpec = [{#wh_couch_connection{ready = '$1'
+                                       ,admin = '$2'
+                                       ,username = '$3'
+                                       ,password = '$4'
+                                       ,_ = '_'
+                                      }
                   ,['$1', {'not','$2'}]
                   ,[{{'$3', '$4'}}]
                  }],
@@ -124,8 +136,11 @@ get_creds() ->
 
 -spec get_server() -> #server{}.
 get_server() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,server = '$3', _ = '_'}
+    MatchSpec = [{#wh_couch_connection{ready = '$1'
+                                       ,admin = '$2'
+                                       ,server = '$3'
+                                       ,_ = '_'
+                                      }
                   ,['$1', {'not','$2'}]
                   ,['$3']
                  }],
@@ -134,8 +149,11 @@ get_server() ->
 
 -spec get_admin_server() -> #server{}.
 get_admin_server() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,server = '$3', _ = '_'}
+    MatchSpec = [{#wh_couch_connection{ready = '$1'
+                                       ,admin = '$2'
+                                       ,server = '$3'
+                                       ,_ = '_'
+                                      }
                   ,['$1', '$2']
                   ,['$3']
                  }],
@@ -144,10 +162,14 @@ get_admin_server() ->
 
 -spec get_url() -> api_binary().
 get_url() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,host = '$3', port = '$4'
-                                       ,username = '$5', password = '$6'
-                                       ,_ = '_'}
+    MatchSpec = [{#wh_couch_connection{ready = '$1'
+                                       ,admin = '$2'
+                                       ,host = '$3'
+                                       ,port = '$4'
+                                       ,username = '$5'
+                                       ,password = '$6'
+                                       ,_ = '_'
+                                      }
                   ,['$1', {'not','$2'}]
                   ,[{{'$3', '$4', '$5', '$6'}}]
                  }],
@@ -156,18 +178,26 @@ get_url() ->
 
 -spec get_admin_url() -> api_binary().
 get_admin_url() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1', admin = '$2'
-                                       ,host = '$3', port = '$4'
-                                       ,username = '$5', password = '$6'
-                                       ,_ = '_'}
+    MatchSpec = [{#wh_couch_connection{ready = '$1'
+                                       ,admin = '$2'
+                                       ,host = '$3'
+                                       ,port = '$4'
+                                       ,username = '$5'
+                                       ,password = '$6'
+                                       ,_ = '_'
+                                      }
                   ,['$1', '$2']
                   ,[{{'$3', '$4', '$5', '$6'}}]
                  }],
     {[{Host, Port, Username, Password}], _} = ets:select(?MODULE, MatchSpec, 1),
     get_url(Host, Port, Username, Password).
 
+-spec test_conn() -> {'ok', wh_json:object()} |
+                     {'error', any()}.
 test_conn() -> couch_util:server_info(get_server()).
 
+-spec test_admin_conn() -> {'ok', wh_json:object()} |
+                           {'error', any()}.
 test_admin_conn() -> couch_util:server_info(get_admin_server()).
 
 -spec add_change_handler(ne_binary()) -> 'ok'.
@@ -184,12 +214,12 @@ add_change_handler(DbName, Pid, DocId) ->
     lager:debug("add change listener ~p for ~s/~s", [Pid, DbName, DocId]),
     ServerName = wh_gen_changes:server_name(DbName),
     case catch wh_change_handler:add_listener(ServerName, Pid, DocId) of
-        {'EXIT', {noproc, {gen_server, call, _}}} ->
+        {'EXIT', {'noproc', {'gen_server', 'call', _}}} ->
             Db = couch_util:get_db(get_server(), DbName),
-            {ok, _} = wh_change_handler_sup:start_handler(Db, []),
+            {'ok', _} = wh_change_handler_sup:start_handler(Db, []),
             add_change_handler(DbName, Pid, DocId);
-        added -> ok;
-        exists -> ok
+        'added' -> 'ok';
+        'exists' -> 'ok'
     end.
 
 -spec rm_change_handler(ne_binary()) -> 'ok'.
@@ -209,17 +239,17 @@ rm_change_handler(DbName, Pid, DocId) ->
 
 -spec get_node_cookie() -> atom().
 get_node_cookie() ->
-    Default = gen_server:call(?MODULE, node_cookie),
+    Default = gen_server:call(?MODULE, 'node_cookie'),
     try whapps_config:get(?CONFIG_CAT, <<"bigcouch_cookie">>, Default) of
-        Cookie -> wh_util:to_atom(Cookie, true)
+        Cookie -> wh_util:to_atom(Cookie, 'true')
     catch
-        _:_ -> wh_util:to_atom(Default, true)
+        _:_ -> wh_util:to_atom(Default, 'true')
     end.
 
 -spec set_node_cookie(atom()) -> 'ok'.
 set_node_cookie(Cookie) when is_atom(Cookie) ->
     _ = (catch whapps_config:set(?CONFIG_CAT, <<"bigcouch_cookie">>, wh_util:to_binary(Cookie))),
-    gen_server:cast(?MODULE, {node_cookie, Cookie}).
+    gen_server:cast(?MODULE, {'node_cookie', Cookie}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -237,14 +267,14 @@ set_node_cookie(Cookie) when is_atom(Cookie) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    process_flag(trap_exit, true),
-    put(callid, ?LOG_SYSTEM_ID),
-    _ = ets:new(?MODULE, [ordered_set
-                          ,{read_concurrency, true}
-                          ,{keypos, #wh_couch_connection.id}
-                          ,named_table
+    process_flag('trap_exit', 'true'),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
+    _ = ets:new(?MODULE, ['ordered_set'
+                          ,{'read_concurrency', 'true'}
+                          ,{'keypos', #wh_couch_connection.id}
+                          ,'named_table'
                          ]),
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -260,10 +290,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(node_cookie, _From, #state{cookie=Cookie}=State) ->
-    {reply, Cookie, State};
+handle_call('node_cookie', _From, #state{cookie=Cookie}=State) ->
+    {'reply', Cookie, State};
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -275,16 +305,16 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({add_connection, #wh_couch_connection{}=Connection}, State) ->
+handle_cast({'add_connection', #wh_couch_connection{}=Connection}, State) ->
     maybe_start_new_connection(Connection),
-    {noreply, State};
-handle_cast({update_connection, #wh_couch_connection{}=Connection}, State) ->
-    true = ets:insert(?MODULE, Connection),
-    {noreply, State};
-handle_cast({node_cookie, Cookie}, State) ->
-    {noreply, State#state{cookie=Cookie}};
+    {'noreply', State};
+handle_cast({'update_connection', #wh_couch_connection{}=Connection}, State) ->
+    'true' = ets:insert(?MODULE, Connection),
+    {'noreply', State};
+handle_cast({'node_cookie', Cookie}, State) ->
+    {'noreply', State#state{cookie=Cookie}};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -297,7 +327,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled msg: ~p", [_Info]),
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -322,7 +353,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions

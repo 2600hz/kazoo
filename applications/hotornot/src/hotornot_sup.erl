@@ -46,6 +46,7 @@ upgrade() ->
 %% ===================================================================
 
 init([]) ->
+    wh_util:set_startup(),
     {'ok', { {'one_for_one', 2, 5}
              ,[
                ?CACHE('hotornot_cache')

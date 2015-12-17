@@ -5,9 +5,10 @@
 -define(WH_MEDIA_DB, <<"system_media">>).
 -define(WH_SIP_DB, <<"sip_auth">>).
 -define(WH_ACCOUNTS_DB, <<"accounts">>).
+-define(WH_ALERTS_DB, <<"alerts">>).
 -define(WH_RATES_DB, <<"ratedeck">>).
 -define(WH_PROVISIONER_DB, <<"global_provisioner">>).
--define(WH_FAXES, <<"faxes">>).
+-define(WH_FAXES_DB, <<"faxes">>).
 -define(WH_SERVICES_DB, <<"services">>).
 -define(WH_OFFNET_DB, <<"offnet">>).
 -define(WH_DEDICATED_IP_DB, <<"dedicated_ips">>).
@@ -21,6 +22,8 @@
 
 -define(KZ_ACDC_DB, <<"acdc">>).
 
+-define(KZ_CCCPS_DB, <<"cccps">>).
+
 -define(KZ_PORT_REQUESTS_DB, <<"port_requests">>).
 
 -define(KZ_OAUTH_DB,<<"oauth">>).
@@ -32,7 +35,7 @@
                         ,?WH_ACCOUNTS_DB
                         ,?WH_RATES_DB
                         ,?WH_PROVISIONER_DB
-                        ,?WH_FAXES
+                        ,?WH_FAXES_DB
                         ,?WH_SERVICES_DB
                         ,?WH_OFFNET_DB
                         ,?WH_ANONYMOUS_CDR_DB
@@ -40,6 +43,9 @@
                         ,?WH_DEDICATED_IP_DB
                         ,?KZ_ACDC_DB
                         ,?KZ_OAUTH_DB
+                        ,?KZ_WEBHOOKS_DB
+                        ,?KZ_TOKEN_DB
+                        ,?WH_ALERTS_DB
                        ]).
 
 -define(WH_DATABASES_HRL, 'true').

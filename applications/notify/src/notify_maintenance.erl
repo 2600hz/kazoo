@@ -33,7 +33,7 @@
 %% Returns whether an account's initial call notification has been sent
 %% @end
 %%--------------------------------------------------------------------
--spec check_initial_call(text()) -> 'ok'.
+-spec check_initial_call(ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
@@ -52,7 +52,7 @@ check_initial_call(Account) when is_binary(Account) ->
 %% Returns wether the initial_registration notification has been sent
 %% @end
 %%--------------------------------------------------------------------
--spec check_initial_registration(text()) -> 'ok'.
+-spec check_initial_registration(ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
@@ -201,7 +201,7 @@ template_ids() ->
     {'ok', JObjs} =  couch_mgr:all_docs(?SYSTEM_CONFIG_DB),
     lists:foldl(
         fun(JObj, Acc) ->
-           case wh_json:get_value(<<"id">>, JObj) of
+           case wh_doc:id(JObj) of
                 <<"notify.", _/binary>>=Id ->
                     [Id|Acc];
                 _ ->
@@ -296,7 +296,7 @@ compare_template_system_config([{FileId, Id}|Match]) ->
     end.
 
 compare_template_system_config([], JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     case couch_mgr:save_doc(?SYSTEM_CONFIG_DB, JObj) of
         {'ok', _} -> io:format("doc ~s updated~n", [Id]);
         {'error', Reason} ->
@@ -304,7 +304,7 @@ compare_template_system_config([], JObj) ->
     end;
 compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
     BinKey = wh_util:to_binary(Key),
-    <<"notify.", Id/binary>> = wh_json:get_value(<<"_id">>, JObj),
+    <<"notify.", Id/binary>> = wh_doc:id(JObj),
     DefaultTemplates = props:get_value(Key, props:get_value(Id, ?NOTIFY_TEMPLATES, [])),
     case wh_json:get_value([<<"default">>, BinKey], JObj) of
         'undefined' ->
@@ -388,6 +388,6 @@ open_system_config(Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {error, _}.
+-spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {error, any()}.
 update_smtp_client_document(Key, Value) ->
     whapps_config:set(?SMTP_CLIENT_DOC, Key, Value).

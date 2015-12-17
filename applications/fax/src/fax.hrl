@@ -1,7 +1,6 @@
 -ifndef(FAX_HRL).
 
 %% Typical includes needed
--include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -29,6 +28,41 @@
          }).
 -type fax_storage() :: #fax_storage{}.
 
+-define(FAX_OUTGOING, <<"outgoing">>).
+-define(FAX_INCOMING, <<"incoming">>).
+
+-define(FAX_START, <<"start">>).
+-define(FAX_PREPARE, <<"prepare">>).
+-define(FAX_SEND, <<"send">>).
+-define(FAX_RECEIVE, <<"receive">>).
+-define(FAX_END, <<"end">>).
+-define(FAX_ERROR, <<"error">>).
+
+-define(FAX_STATE_LIST, [?FAX_START, ?FAX_PREPARE, ?FAX_SEND, ?FAX_RECEIVE, ?FAX_END, ?FAX_ERROR]).
+
+-define(OPENXML_MIME_PREFIX, "application/vnd.openxmlformats-officedocument.").
+-define(OPENOFFICE_MIME_PREFIX, "application/vnd.oasis.opendocument.").
+-define(OPENOFFICE_COMPATIBLE(CT), (
+                                CT =:= <<"application/msword">>
+                                orelse CT =:= <<"application/vnd.ms-excel">>
+                                orelse CT =:= <<"application/vnd.ms-powerpoint">>
+                               )).
+
+-define(DEFAULT_ALLOWED_CONTENT_TYPES, [
+                                        <<"application/pdf">>
+                                        ,<<"image/tiff">>
+                                        ,{[{<<"prefix">>, <<"image">>}]}
+                                        ,{[{<<"prefix">>, <<?OPENXML_MIME_PREFIX>>}]}
+                                        ,{[{<<"prefix">>, <<?OPENOFFICE_MIME_PREFIX>>}]}
+                                        ,<<"application/msword">>
+                                        ,<<"application/vnd.ms-excel">>
+                                        ,<<"application/vnd.ms-powerpoint">>
+                                       ]).
+
+-define(SMTP_MSG_MAX_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_max_msg_size">>, 10485670)).
+-define(SMTP_EXTENSIONS, [{"SIZE", wh_util:to_list(?SMTP_MSG_MAX_SIZE)}]).
+-define(SMTP_CALLBACK_OPTIONS, {'callbackoptions', ['extensions', ?SMTP_EXTENSIONS]}).
+-define(SMTP_PORT, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)).
 
 -define(FAX_HRL, 'true').
 -endif.

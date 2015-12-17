@@ -61,7 +61,7 @@ hotload_app(App) when is_atom(App) ->
     case application:get_key(App, 'modules') of
         {'ok', Modules} ->
             io:format("found ~b modules to reload for ~s~n", [length(Modules), App]),
-            [hotload(Module) || Module <- Modules],
+            _ = [hotload(Module) || Module <- Modules],
             io:format("app ~s modules reloaded~n", [App]);
         'undefined' ->
             io:format("app ~s not found (is it running? typo?)~n", [App])

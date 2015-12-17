@@ -42,7 +42,7 @@ start_link() ->
 new(Call, JObj) ->
     supervisor:start_child(?MODULE, [Call, JObj]).
 
--spec workers() -> [pid(),...] | [].
+-spec workers() -> [pid()].
 workers() ->
     [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
 

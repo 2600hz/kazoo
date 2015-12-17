@@ -19,8 +19,8 @@
 -include("../wnm.hrl").
 
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'ok', wh_json:objects()} |
-                          {'error', _}.
+                          {'ok', wh_json:object()} |
+                          {'error', any()}.
 find_numbers(_Prefix, _Quantity, _Options) ->
     {'ok', wh_json:new()}.
 

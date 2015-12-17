@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Mostly a drop-in replacement and extension of the proplists module,
 %%% but using the lists module to implement
@@ -24,7 +24,7 @@
          ,get_all_values/2, get_values/2
          ,set_values/2
          ,set_value/3
-         ,insert_value/3
+         ,insert_value/2, insert_value/3, insert_values/2
          ,unique/1
          ,filter/2
          ,filter_empty/1
@@ -49,17 +49,28 @@ set_values([{K, V}|KVs], Props) ->
 set_value(K, V, Props) ->
     [{K, V} | [KV || {Key, _}=KV <- Props, K =/= Key]].
 
+-spec insert_value({wh_proplist_key(), wh_proplist_value()} | wh_proplist_key(), wh_proplist()) ->
+                          wh_proplist().
 -spec insert_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
                        wh_proplist().
+insert_value({K, V}, Props) ->
+    insert_value(K, V, Props);
+insert_value(K, Props) ->
+    insert_value(K, 'true', Props).
+
 insert_value(K, V, Props) ->
     case get_value(K, Props) of
         'undefined' -> [{K, V} | Props];
         _Value -> Props
     end.
 
+-spec insert_values(wh_proplist(), wh_proplist()) -> wh_proplist().
+insert_values(KVs, Props) ->
+    lists:foldl(fun insert_value/2, Props, KVs).
+
 -type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
 -spec filter(filter_fun(), wh_proplist()) -> wh_proplist();
-            (wh_proplist(), term()) -> wh_proplist().
+            (wh_proplist(), any()) -> wh_proplist().
 filter(Fun, Props) when is_function(Fun, 1), is_list(Props) ->
     [P || P <- Props, Fun(P)];
 filter(Props, Term) when is_list(Props) ->
@@ -83,12 +94,20 @@ filter_undefined(Props) ->
            end
     ].
 
--spec get_value(wh_proplist_key(), wh_proplist()) -> term().
--spec get_value(wh_proplist_key(), wh_proplist(), Default) -> Default | term().
+-spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist()) -> any().
+-spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist(), Default) ->
+                       Default | any().
 get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
-get_value(_Key, [], Def) -> Def;
+get_value(_Key, [], Default) -> Default;
+get_value([Key], Props, Default) when is_binary(Key) orelse is_atom(Key) ->
+    get_value(Key, Props, Default);
+get_value([Key|Keys], Props, Default) when is_binary(Key) orelse is_atom(Key) ->
+    case get_value(Key, Props) of
+        'undefined' -> Default;
+        SubProps -> get_value(Keys, SubProps, Default)
+    end;
 get_value(Key, Props, Default) when is_list(Props) ->
     case lists:keyfind(Key, 1, Props) of
         'false' ->
@@ -101,8 +120,8 @@ get_value(Key, Props, Default) when is_list(Props) ->
     end.
 
 %% Given a list of keys, find the first one defined
--spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> 'undefined' | term().
--spec get_first_defined(wh_proplist_keys(), wh_proplist(), Default) -> Default | term().
+-spec get_first_defined(wh_proplist_keys(), wh_proplist()) -> 'undefined' | any().
+-spec get_first_defined(wh_proplist_keys(), wh_proplist(), Default) -> Default | any().
 get_first_defined(Keys, Props) -> get_first_defined(Keys, Props, 'undefined').
 
 get_first_defined([], _Props, Default) -> Default;
@@ -194,7 +213,7 @@ get_keys(Props) -> [K || {K,_} <- Props].
 get_all_values(Key, Props) -> get_values(Key, Props).
 get_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].
 
--spec delete(ne_binary() | atom(), wh_proplist()) -> wh_proplist().
+-spec delete(wh_proplist_key(), wh_proplist()) -> wh_proplist().
 delete(K, Props) ->
     case lists:keyfind(K, 1, Props) of
         {K, _} -> lists:keydelete(K, 1, Props);
@@ -209,7 +228,7 @@ delete_keys([_|_]=Ks, Props) -> lists:foldl(fun ?MODULE:delete/2, Props, Ks).
 is_defined(Key, Props) ->
     case lists:keyfind(Key, 1, Props) of
         {Key,_} -> 'true';
-        _ -> 'false'
+        'false' -> lists:member(Key, Props)
     end.
 
 -spec unique(wh_proplist()) -> wh_proplist().
@@ -249,19 +268,19 @@ to_querystring(Props, Prefix) ->
 %% foreach key/value pair, encode the key/value with the prefix and prepend the &
 %% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
 %% and reverse the list (putting the key/value at the end of the list)
--spec fold_kvs(ne_binaries(), term(), binary() | iolist(), iolist()) -> iolist().
+-spec fold_kvs(ne_binaries(), any(), binary() | iolist(), iolist()) -> iolist().
 fold_kvs([], [], _, Acc) -> Acc;
 fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
 fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
     fold_kvs(Ks, Vs, Prefix, [<<"&">>, encode_kv(Prefix, K, V) | Acc]).
 
--spec encode_kv(iolist() | binary(), ne_binary(), term()) -> iolist().
+-spec encode_kv(iolist() | binary(), ne_binary(), any()) -> iolist().
 %% If a list of values, use the []= as a separator between the key and each value
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
     encode_kv(Prefix, wh_util:to_binary(K), Vs, <<"[]=">>, []);
 %% if the value is a "simple" value, just encode it (url-encoded)
 encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
-    encode_kv(Prefix, K, <<"=">>, mochiweb_util:quote_plus(V));
+    encode_kv(Prefix, K, <<"=">>, kz_http:urlencode(V));
 
 % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
@@ -273,65 +292,12 @@ encode_kv(Prefix, K, [_|_]=Props) -> to_querystring(Props, [Prefix, <<"[">>, wh_
 encode_kv(<<>>, K, Sep, V) -> [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
 encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>, Sep, wh_util:to_binary(V)].
 
--spec encode_kv(iolist() | binary(), ne_binary(), [string(),...] | [], ne_binary(), iolist()) -> iolist().
+-spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
-    lists:reverse([ encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+    lists:reverse([ encode_kv(Prefix, K, Sep, kz_http:urlencode(V)) | Acc]);
 encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
-    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, kz_http:urlencode(V)) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
-
--include_lib("eunit/include/eunit.hrl").
--ifdef(TEST).
-
-filter_test() ->
-    Fun = fun({_, V}) -> V < 5 end,
-    ?assertEqual([], filter(Fun, [])),
-    ?assertEqual([], filter(Fun, [{a, 10}, {b, 8}, {c, 6}])),
-    ?assertEqual([{z, 1}], filter(Fun, [{a, 10}, {b, 8}, {c, 6}, {z, 1}])).
-
-filter_empty_test() ->
-    ?assertEqual([], filter_empty([])),
-    ?assertEqual([{a, 10}, {b, 8}, {c, 6}], filter_empty([{a, 10}, {b, 8}, {c, 6}])),
-    ?assertEqual([], filter_empty([{a, 0}, {b, []}, {c, <<>>}, {z, undefined}])),
-    ?assertEqual(['a'], filter_empty(['a'])),
-    ?assertEqual(['a'], filter_empty(['a', {'b', 0}])).
-
-filter_undefined_test() ->
-    ?assertEqual(['a'], filter_undefined(['a'])),
-
-    ?assertEqual([], filter_undefined([])),
-    ?assertEqual([{a, 10}, {b, 8}, {c, 6}], filter_undefined([{a, 10}, {b, 8}, {c, 6}])),
-    ?assertEqual([{a, 0}, {b, []}, {c, <<>>}], filter_undefined([{a, 0}, {b, []}, {c, <<>>}, {z, undefined}])).
-
-unique_test() ->
-    L = [{a, b}, {a, b}, {a, c}, {b,c}, {b,d}],
-    ?assertEqual([{a, b}, {b, c}], unique(L)).
-
-delete_test() ->
-    L = [{a, 1}, {b, 2}, c, {d, 3}],
-    ?assertEqual(L, delete(foo, L)),
-    ?assertEqual([{a, 1}, {b, 2}, {d, 3}]
-                 ,delete(c, L)),
-    ?assertEqual([{a, 1}, c, {d, 3}]
-                 ,delete(b, L)).
-
-to_querystring_test() ->
-    Tests = [{[], <<>>}
-             ,{[{<<"foo">>, <<"bar">>}], <<"foo=bar">>}
-             ,{[{<<"foo">>, <<"bar">>}, {<<"fizz">>, <<"buzz">>}], <<"foo=bar&fizz=buzz">>}
-             ,{[{'foo', <<"bar">>}
-                ,{<<"fizz">>, <<"buzz">>}
-                ,{<<"arr">>, [1,3,5]}
-               ], <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
-             ,{[{<<"Msg-ID">>, <<"123-abc">>}], <<"Msg-ID=123-abc">>}
-             ,{[{<<"url">>, <<"http://user:pass@host:port/">>}], <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
-            ],
-    lists:foreach(fun({Props, QS}) ->
-                          QS1 = wh_util:to_binary(to_querystring(Props)),
-                          ?assertEqual(QS, QS1)
-                  end, Tests).
-
--endif.
 
 -spec to_log(wh_proplist()) -> 'ok'.
 to_log(Props) ->
@@ -339,9 +305,9 @@ to_log(Props) ->
 
 -spec to_log(wh_proplist(), ne_binary()) -> 'ok'.
 to_log(Props, Header) ->
-  Keys = props:get_keys(Props),
+  Keys = ?MODULE:get_keys(Props),
   K = wh_util:rand_hex_binary(4),
   lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
-  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,props:get_value(A,Props)]) end,Keys),
+  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,?MODULE:get_value(A,Props)]) end,Keys),
   lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
   'ok'.

@@ -1,9 +1,9 @@
 {
-    "_id":"_design/numbers"
-    ,"language":"javascript"
-    ,"views": {
+    "_id": "_design/numbers",
+    "language": "javascript",
+    "views": {
         "status": {
-            "map":"function(doc) { emit([doc.pvt_number_state, doc._id], null); }"
+            "map": "function(doc) { emit([doc.pvt_number_state, doc._id], null); }"
         }
     }
 }

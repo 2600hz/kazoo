@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "ledgers",
+    "description": "ledgers document",
+    "name": "ledgers",
+    "properties": {
+        "amount": {
+            "description": "Ledger amount",
+            "minimum": 1,
+            "name": "amount",
+            "required": true,
+            "type": "integer"
+        },
+        "description": {
+            "description": "Useful description for ledger",
+            "name": "Description",
+            "required": false,
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

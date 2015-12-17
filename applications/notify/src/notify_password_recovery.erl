@@ -43,7 +43,7 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:pwd_recovery_v(JObj),
-    whapps_util:put_callid(JObj),
+    wh_util:put_callid(JObj),
 
     lager:debug("password has been reset, sending email notification"),
 
@@ -89,7 +89,7 @@ create_template_props(Event, Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) ->
-                                  'ok' | {'error', _}.
+                                  'ok' | {'error', any()}.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->

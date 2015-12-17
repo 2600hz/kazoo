@@ -72,8 +72,11 @@ resource_exists() -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
-authorize(#cb_context{req_nouns=[{<<"api_auth">>, _}]}) -> 'true';
-authorize(_) -> 'false'.
+authorize(Context) ->
+    authorize_nouns(cb_context:req_nouns(Context)).
+
+authorize_nouns([{<<"api_auth">>, []}]) -> 'true';
+authorize_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,8 +84,11 @@ authorize(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
-authenticate(#cb_context{req_nouns=[{<<"api_auth">>, []}]}) -> 'true';
-authenticate(_) -> 'false'.
+authenticate(Context) ->
+    authenticate_nouns(cb_context:req_nouns(Context)).
+
+authenticate_nouns([{<<"api_auth">>, []}]) -> 'true';
+authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,7 +96,7 @@ authenticate(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate(Context) ->
     Context1 = consume_tokens(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -103,6 +109,7 @@ validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_util:create_auth_token(Context, ?MODULE).
 
@@ -120,29 +127,57 @@ put(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
-on_successful_validation(#cb_context{doc=JObj}=Context) ->
-    ApiKey = wh_json:get_value(<<"api_key">>, JObj),
-    ViewOptions = [{'key', ApiKey}],
-    case wh_json:is_empty(ApiKey)
-        orelse crossbar_doc:load_view(?AGG_VIEW_API, ViewOptions, Context#cb_context{db_name=?WH_ACCOUNTS_DB})
-    of
+on_successful_validation(Context) ->
+    ApiKey = wh_json:get_value(<<"api_key">>, cb_context:doc(Context)),
+
+    case wh_json:is_empty(ApiKey) of
         'true' -> cb_context:add_system_error('invalid_credentials', Context);
-        #cb_context{resp_status='success', doc=[Doc|_]}->
-            lager:debug("found more account with ~s, using ~s", [ApiKey, wh_json:get_value(<<"id">>, Doc)]),
-            Context#cb_context{resp_status='success', doc=wh_json:get_value(<<"value">>, Doc)};
-        #cb_context{resp_status='success', doc=Doc} ->
-            lager:debug("found API key belongs to account ~s", [wh_json:get_value(<<"id">>, Doc)]),
-            Context#cb_context{resp_status='success', doc=wh_json:get_value(<<"value">>, Doc)};
-        Else -> Else
+        'false' -> validate_by_api_key(Context, ApiKey)
     end.
+
+-spec validate_by_api_key(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_by_api_key(cb_context:context(), ne_binary(), wh_json:object() | wh_json:objects()) ->
+                                 cb_context:context().
+validate_by_api_key(Context, ApiKey) ->
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_API
+                                      ,[{'key', ApiKey}]
+                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     ),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            validate_by_api_key(Context1, ApiKey, cb_context:doc(Context1));
+        _Status -> Context1
+    end.
+
+validate_by_api_key(Context, ApiKey, []) ->
+    lager:debug("api key '~s' not associated with any accounts"
+                ,[ApiKey]
+               ),
+    crossbar_util:response_bad_identifier(ApiKey, Context);
+validate_by_api_key(Context, ApiKey, [Doc]) ->
+    validate_by_api_key(Context, ApiKey, Doc);
+validate_by_api_key(Context, ApiKey, [Doc|_]) ->
+    lager:debug("found multiple accounts with api key '~s', using '~s'"
+                ,[ApiKey, wh_doc:id(Doc)]
+               ),
+    validate_by_api_key(Context, ApiKey, Doc);
+validate_by_api_key(Context, ApiKey, Doc) ->
+    lager:debug("found API key '~s' belongs to account ~s", [ApiKey, wh_doc:id(Doc)]),
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_doc/2, wh_json:get_value(<<"value">>, Doc)}
+                        ]
+                      ).
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
-    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
+    case kz_buckets:consume_tokens_until(?APP_NAME
+                                         ,cb_modules_util:bucket_name(Context)
                                          ,?API_AUTH_TOKENS
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
+            lager:debug("client has no tokens left"),
             cb_context:add_system_error('too_many_requests', Context)
     end.

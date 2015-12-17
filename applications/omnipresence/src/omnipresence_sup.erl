@@ -30,6 +30,7 @@
                    ,?WORKER('omnipresence_listener')
                    ,?WORKER('omnipresence_shared_listener')
                    ,?SUPER('omnip_sup')
+                   | maybe_start_sip_proxy()
                   ]).
 
 %% ===================================================================
@@ -68,6 +69,7 @@ subscriptions_srv() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
@@ -75,3 +77,13 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     {'ok', {SupFlags, ?CHILDREN}}.
+
+-spec maybe_start_sip_proxy() -> list().
+maybe_start_sip_proxy() ->
+    maybe_start_sip_proxy(whapps_config:get_is_true(?CONFIG_CAT, <<"start_sip_proxy">>, 'false')).
+
+-spec maybe_start_sip_proxy(boolean()) -> list().
+maybe_start_sip_proxy('true') ->
+    [?WORKER('omnipresence_proxy')];
+maybe_start_sip_proxy('false') ->
+    [].

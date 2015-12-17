@@ -1,248 +1,248 @@
 {
-  "_id": "faxes",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Fax",
-  "description": "Faxes API allows you to update and access fax jobs for both sending and receiving",
-  "properties": {
-    "retries": {
-      "type": "integer",
-      "required": false,
-      "name": "Retries",
-      "description": "The number of times to retry",
-      "minimum": 0,
-      "maximum": 4,
-      "default": 1
-    },
-    "attempts": {
-      "type": "integer",
-      "required": false,
-      "name": "Attempts",
-      "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
-      "minimum": 0,
-      "maximum": 4,
-      "default": 0
-    },
-    "from_name": {
-      "type": "string",
-      "required": false,
-      "name": "Sender Name",
-      "description": "The sender name for the fax"
-    },
-    "from_number": {
-      "type": "string",
-      "required": false,
-      "name": "Sender Number",
-      "description": "The sender number for the fax"
-    },
-    "to_name": {
-      "type": "string",
-      "required": false,
-      "name": "Recipient Name",
-      "description": "The recipient name for the fax"
-    },
-    "to_number": {
-      "type": "string",
-      "required": false,
-      "name": "Recipient Number",
-      "description": "The recipient number for the fax"
-    },
-    "document": {
-      "type": "object",
-      "required": false,
-      "description": "Parameters related to the storage of a fax document",
-      "properties": {
-        "url": {
-          "type": "string",
-          "required": false,
-          "name": "Document URL",
-          "description": "The url of the fax document"
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "faxes",
+    "description": "Faxes API allows you to update and access fax jobs for both sending and receiving",
+    "name": "Fax",
+    "properties": {
+        "attempts": {
+            "default": 0,
+            "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+            "maximum": 4,
+            "minimum": 0,
+            "name": "Attempts",
+            "required": false,
+            "type": "integer"
         },
-        "method": {
-          "type": "string",
-          "required": false,
-          "name": "Method",
-          "description": "The method that should be used to reteive the document",
-          "enum": [
-            "get",
-            "post"
-          ],
-          "default": "get"
+        "callback": {
+            "description": "A URL to send results to",
+            "properties": {
+                "method": {
+                    "description": "The HTTP method used for the callback",
+                    "enum": [
+                        "post",
+                        "put"
+                    ],
+                    "name": "Method",
+                    "required": false,
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The content-type used for the body of the callback",
+                    "enum": [
+                        "json",
+                        "www-url-form-encoded"
+                    ],
+                    "name": "Content-Type",
+                    "required": false,
+                    "type": "string"
+                },
+                "url": {
+                    "description": "The URL to call back with the results",
+                    "name": "URL",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
         },
-        "host": {
-          "type": "string",
-          "required": false,
-          "name": "HTTP Host",
-          "description": "The host header to be used when fetching for transmission"
+        "document": {
+            "default": {},
+            "description": "Parameters related to the storage of a fax document",
+            "properties": {
+                "content": {
+                    "description": "The content provided in the body when fetching for transmission as a post",
+                    "maxLength": 256,
+                    "name": "HTTP Body",
+                    "required": false,
+                    "type": "string"
+                },
+                "content_type": {
+                    "description": "The content type header to be used when fetching for transmission as a post",
+                    "name": "HTTP Content-Type",
+                    "required": false,
+                    "type": "string"
+                },
+                "host": {
+                    "description": "The host header to be used when fetching for transmission",
+                    "name": "HTTP Host",
+                    "required": false,
+                    "type": "string"
+                },
+                "method": {
+                    "default": "get",
+                    "description": "The method that should be used to reteive the document",
+                    "enum": [
+                        "get",
+                        "post"
+                    ],
+                    "name": "Method",
+                    "required": false,
+                    "type": "string"
+                },
+                "referer": {
+                    "description": "The referer header to be used when fetching for transmission",
+                    "name": "HTTP Referer",
+                    "required": false,
+                    "type": "string"
+                },
+                "url": {
+                    "description": "The url of the fax document",
+                    "name": "Document URL",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
         },
-        "referer": {
-          "type": "string",
-          "required": false,
-          "name": "HTTP Referer",
-          "description": "The referer header to be used when fetching for transmission"
+        "from_name": {
+            "description": "The sender name for the fax",
+            "name": "Sender Name",
+            "required": false,
+            "type": "string"
         },
-        "content_type": {
-          "type": "string",
-          "required": false,
-          "name": "HTTP Content-Type",
-          "description": "The content type header to be used when fetching for transmission as a post"
+        "from_number": {
+            "description": "The sender number for the fax",
+            "name": "Sender Number",
+            "required": false,
+            "type": "string"
         },
-        "content": {
-          "type": "string",
-          "required": false,
-          "name": "HTTP Body",
-          "description": "The content provided in the body when fetching for transmission as a post",
-          "maxLength": 256
+        "notifications": {
+            "description": "Status notifications",
+            "properties": {
+                "email": {
+                    "description": "Email notifications",
+                    "properties": {
+                        "send_to": {
+                            "description": "A list or string of email recipent(s)",
+                            "format": "email",
+                            "items": {
+                                "format": "email",
+                                "required": false,
+                                "type": "string"
+                            },
+                            "name": "Email Address",
+                            "required": false,
+                            "type": [
+                                "string",
+                                "array"
+                            ]
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                },
+                "sms": {
+                    "description": "SMS notifications",
+                    "properties": {
+                        "send_to": {
+                            "description": "A list or string of sms recipent(s)",
+                            "items": {
+                                "required": false,
+                                "type": "string"
+                            },
+                            "name": "SMS Number",
+                            "required": false,
+                            "type": [
+                                "string",
+                                "array"
+                            ]
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
+        "retries": {
+            "default": 1,
+            "description": "The number of times to retry",
+            "maximum": 4,
+            "minimum": 0,
+            "name": "Retries",
+            "required": false,
+            "type": "integer"
+        },
+        "to_name": {
+            "description": "The recipient name for the fax",
+            "name": "Recipient Name",
+            "required": false,
+            "type": "string"
+        },
+        "to_number": {
+            "description": "The recipient number for the fax",
+            "name": "Recipient Number",
+            "required": false,
+            "type": "string"
+        },
+        "tx_result": {
+            "default": {},
+            "description": "The result of a transmission attempt",
+            "properties": {
+                "error_message": {
+                    "default": "",
+                    "description": "A description of any error that occured",
+                    "name": "Error Message",
+                    "required": false,
+                    "type": "string"
+                },
+                "fax_bad_rows": {
+                    "default": 0,
+                    "description": "The number of bad rows",
+                    "name": "Bad Rows",
+                    "required": false,
+                    "type": "integer"
+                },
+                "fax_error_correction": {
+                    "default": false,
+                    "description": "True if fax error correction was used",
+                    "name": "Error Correction",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "fax_receiver_id": {
+                    "default": "",
+                    "description": "The receiver id reported by the remote fax device",
+                    "name": "Reciever ID",
+                    "required": false,
+                    "type": "string"
+                },
+                "fax_speed": {
+                    "default": 0,
+                    "description": "The speed achieved during transmission",
+                    "name": "Baud Rate",
+                    "required": false,
+                    "type": "integer"
+                },
+                "pages_sent": {
+                    "default": 0,
+                    "description": "The number of pages transmitted",
+                    "name": "Pages Sent",
+                    "required": false,
+                    "type": "integer"
+                },
+                "success": {
+                    "default": false,
+                    "description": "True if the fax transmission was successful",
+                    "name": "Success",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "time_elapsed": {
+                    "default": 0,
+                    "description": "The amount of time from submition to completion",
+                    "name": "Elapsed Time",
+                    "required": false,
+                    "type": "integer"
+                }
+            },
+            "required": false,
+            "type": "object"
         }
-      },
-      "default": {}
     },
-    "notifications": {
-      "type": "object",
-      "required": false,
-      "description": "Status notifications",
-      "properties": {
-        "email": {
-          "type": "object",
-          "required": false,
-          "description": "Email notifications",
-          "properties": {
-            "send_to": {
-              "type": [
-                "string",
-                "array"
-              ],
-              "required": false,
-              "name": "Email Address",
-              "description": "A list or string of email recipent(s)",
-              "items": {
-                "type": "string",
-                "required": false,
-                "format": "email"
-              },
-              "format": "email"
-            }
-          }
-        },
-        "sms": {
-          "type": "object",
-          "required": false,
-          "description": "SMS notifications",
-          "properties": {
-            "send_to": {
-              "type": [
-                "string",
-                "array"
-              ],
-              "required": false,
-              "name": "SMS Number",
-              "description": "A list or string of sms recipent(s)",
-              "items": {
-                "type": "string",
-                "required": false
-              }
-            }
-          }
-        }
-      }
-    },
-    "tx_result": {
-      "type": "object",
-      "required": false,
-      "description": "The result of a transmission attempt",
-      "properties": {
-        "success": {
-          "type": "boolean",
-          "required": false,
-          "name": "Success",
-          "description": "True if the fax transmission was successful",
-          "default": false
-        },
-        "error_message": {
-          "type": "string",
-          "required": false,
-          "name": "Error Message",
-          "description": "A description of any error that occured",
-          "default": ""
-        },
-        "pages_sent": {
-          "type": "integer",
-          "required": false,
-          "name": "Pages Sent",
-          "description": "The number of pages transmitted",
-          "default": 0
-        },
-        "time_elapsed": {
-          "type": "integer",
-          "required": false,
-          "name": "Elapsed Time",
-          "description": "The amount of time from submition to completion",
-          "default": 0
-        },
-        "fax_bad_rows": {
-          "type": "integer",
-          "required": false,
-          "name": "Bad Rows",
-          "description": "The number of bad rows",
-          "default": 0
-        },
-        "fax_speed": {
-          "type": "integer",
-          "required": false,
-          "name": "Baud Rate",
-          "description": "The speed achieved during transmission",
-          "default": 0
-        },
-        "fax_receiver_id": {
-          "type": "string",
-          "required": false,
-          "name": "Reciever ID",
-          "description": "The receiver id reported by the remote fax device",
-          "default": ""
-        },
-        "fax_error_correction": {
-          "type": "boolean",
-          "required": false,
-          "name": "Error Correction",
-          "description": "True if fax error correction was used",
-          "default": false
-        }
-      },
-      "default": {}
-    },
-    "callback": {
-      "type": "object",
-      "required": false,
-      "description": "A URL to send results to",
-      "properties": {
-        "url": {
-          "type": "string",
-          "required": false,
-          "name": "URL",
-          "description": "The URL to call back with the results"
-        },
-        "method": {
-          "type": "string",
-          "required": false,
-          "name": "Method",
-          "description": "The HTTP method used for the callback",
-          "enum": [
-            "post",
-            "put"
-          ]
-        },
-        "type": {
-          "type": "string",
-          "required": false,
-          "name": "Content-Type",
-          "description": "The content-type used for the body of the callback",
-          "enum": [
-            "json",
-            "www-url-form-encoded"
-          ]
-        }
-      }
-    }
-  }
+    "required": true,
+    "type": "object"
 }

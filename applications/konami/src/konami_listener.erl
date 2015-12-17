@@ -12,6 +12,7 @@
 -export([start_link/0
          ,handle_metaflow/2
          ,handle_channel_create/2
+         ,handle_route_req/2
         ]).
 
 -export([init/1
@@ -28,12 +29,17 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'dialplan', ['metaflow']}]).
+-define(BINDINGS, [{'dialplan', ['metaflow']}
+                   ,{'route', []}
+                  ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
                       ,[{<<"call">>, <<"command">>}]
                      }
                      ,{{?MODULE, 'handle_channel_create'}
                        ,[{<<"call_event">>, <<"CHANNEL_CREATE">>}]
+                      }
+                     ,{{?MODULE, 'handle_route_req'}
+                       ,[{<<"dialplan">>, <<"route_req">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"konami_listener">>).
@@ -77,24 +83,35 @@ handle_metaflow(JObj, Props) ->
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug("failed to run FSM: ~s: ~p", [_E, _R]),
-            wh_util:log_stacktrace(ST),
-            konami_tracker:untrack()
+            wh_util:log_stacktrace(ST)
     end.
+
+handle_route_req(JObj, _Props) ->
+    'true' = wapi_route:req_v(JObj),
+    wh_util:put_callid(JObj),
+    Call = whapps_call:from_route_req(JObj),
+
+    maybe_start_metaflows(whapps_call:account_id(Call)
+                          ,whapps_call:authorizing_type(Call)
+                          ,whapps_call:authorizing_id(Call)
+                          ,whapps_call:owner_id(Call)
+                          ,Call
+                         ).
 
 -spec handle_channel_create(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_create(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
+    Call = whapps_call:from_json(JObj),
 
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    maybe_start_metaflows(wh_json:get_value(<<"Account-ID">>, CCVs)
-                          ,wh_json:get_value(<<"Authorizing-Type">>, CCVs)
-                          ,wh_json:get_value(<<"Authorizing-ID">>, CCVs)
-                          ,wh_json:get_value(<<"Owner-ID">>, CCVs)
-                          ,wh_json:get_value(<<"Call-ID">>, JObj)
+    maybe_start_metaflows(whapps_call:account_id(Call)
+                          ,whapps_call:authorizing_type(Call)
+                          ,whapps_call:authorizing_id(Call)
+                          ,whapps_call:owner_id(Call)
+                          ,Call
                          ).
 
--spec maybe_start_metaflows(api_binary(), api_binary(), api_binary(), api_binary(), api_binary()) -> 'ok'.
+-spec maybe_start_metaflows(api_binary(), api_binary(), api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 maybe_start_metaflows('undefined', _AuthorizingType, _AuthorizingId, _OwnerId, _CallId) ->
     lager:debug("no account id for ~s(~s) owned by ~s", [_AuthorizingId, _AuthorizingType, _OwnerId]);
 maybe_start_metaflows(AccountId, <<"device">>, DeviceId, OwnerId, CallId) ->
@@ -105,27 +122,28 @@ maybe_start_metaflows(AccountId, 'undefined', DeviceId, OwnerId, CallId) ->
     maybe_start_user_metaflows(AccountId, OwnerId, CallId);
 maybe_start_metaflows(_AccountId, _AuthorizingType, _AuthorizingId, _OwnerId, _CallId) ->
     lager:debug("unhandled channel for account ~s: ~s(~s) owned by ~s"
-                ,[_AccountId, _AuthorizingId, _AuthorizingType, _OwnerId]).
+                ,[_AccountId, _AuthorizingId, _AuthorizingType, _OwnerId]
+               ).
 
--spec maybe_start_device_metaflows(ne_binary(), api_binary(), api_binary()) -> 'ok'.
-maybe_start_device_metaflows(_AccountId, 'undefined', _CallId) -> 'ok';
-maybe_start_device_metaflows(AccountId, DeviceId, CallId) ->
-    {'ok', Endpoint} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+-spec maybe_start_device_metaflows(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+maybe_start_device_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
+maybe_start_device_metaflows(AccountId, DeviceId, Call) ->
+    {'ok', Endpoint} = couch_mgr:open_cache_doc(whapps_call:account_db(Call)
                                                 ,DeviceId
                                                ),
-    maybe_start_metaflows(AccountId, CallId, wh_json:get_value(<<"metaflows">>, Endpoint)).
+    maybe_start_metaflows(AccountId, Call, wh_json:get_value(<<"metaflows">>, Endpoint)).
 
--spec maybe_start_user_metaflows(ne_binary(), api_binary(), api_binary()) -> 'ok'.
-maybe_start_user_metaflows(_AccountId, 'undefined', _CallId) -> 'ok';
-maybe_start_user_metaflows(AccountId, UserId, CallId) ->
-    {'ok', User} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+-spec maybe_start_user_metaflows(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+maybe_start_user_metaflows(_AccountId, 'undefined', _Call) -> 'ok';
+maybe_start_user_metaflows(AccountId, UserId, Call) ->
+    {'ok', User} = couch_mgr:open_cache_doc(whapps_call:account_db(Call)
                                             ,UserId
                                            ),
-    maybe_start_metaflows(AccountId, CallId, wh_json:get_value(<<"metaflows">>, User)).
+    maybe_start_metaflows(AccountId, Call, wh_json:get_value(<<"metaflows">>, User)).
 
--spec maybe_start_metaflows(ne_binary(), api_binary(), api_object()) -> 'ok'.
-maybe_start_metaflows(_AccountId, _CallId, 'undefined') -> 'ok';
-maybe_start_metaflows(_AccountId, _CallId, Metaflows) ->
+-spec maybe_start_metaflows(ne_binary(), whapps_call:call(), api_object()) -> 'ok'.
+maybe_start_metaflows(_AccountId, _Call, 'undefined') -> 'ok';
+maybe_start_metaflows(_AccountId, _Call, Metaflows) ->
     lager:debug("starting ~p", [Metaflows]).
 
 %%%===================================================================

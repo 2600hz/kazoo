@@ -46,7 +46,7 @@ wait_for_teardown(UUID, OriginalNode) ->
         ?CHANNEL_MOVE_RELEASED_MSG(_Node, UUID, _Evt) ->
             lager:debug("recv move_released for node ~s, expecting ~s", [_Node, OriginalNode]),
             wait_for_teardown(UUID, OriginalNode)
-    after 5000 ->
+    after 5 * ?MILLISECONDS_IN_SECOND ->
             {'error', 'timeout'}
     end.
 
@@ -100,7 +100,7 @@ wait_for_completion(UUID, NewNode) ->
         ?CHANNEL_MOVE_COMPLETE_MSG(_Node, _UUID, _Evt) ->
             lager:debug("recv move_complete from unexpected node ~s: ~s", [_Node, _UUID]),
             wait_for_completion(UUID, NewNode)
-    after 5000 ->
+    after 5 * ?MILLISECONDS_IN_SECOND ->
             lager:debug("timed out waiting for move to complete"),
             'false'
     end.

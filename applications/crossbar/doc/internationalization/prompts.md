@@ -23,7 +23,7 @@ L'amélioration des différents messages vocaux multilingues a été rendu possi
 
 The first step, on a new installation or existing installtions prior to v3.14, is to import the existing system prompts that come with Kazoo. They are the default English prompts and can be imported via SUP:
 
-    sup whistle_media_maintenance import_prompts /path/to/kazoo/system_media/
+    sup whistle_media_maintenance import_prompts /path/to/kazoo/system_media/en-us/
 
 This will take a while to run and be a bit taxing on the BigCouch nodes, so it is advisable to run this during minimal traffic loads.
 
@@ -33,13 +33,13 @@ The default language associated with these prompts will be "en-us".
 
 As new prompts enter the system, you can selectively add them (to minimize load on the system):
 
-    sup whistle_media_maintenance import_prompt /path/to/kazoo/system_media/prompt_id.mp3
+    sup whistle_media_maintenance import_prompt /path/to/kazoo/system_media/en-us/prompt_id.mp3
 
 ### Alternative Languages
 
 For those that need translated versions of the prompts, there are a few steps required.
 
-Create the media file and name it after the prompt-id it should represent. For instance, the prompt `menu-transferring_call` is represented in English under `$KAZOO/system_media/menu-transferring_call.wav`. You can create another version, perhaps in French, and import it thusly:
+Create the media file and name it after the prompt-id it should represent. For instance, the prompt `menu-transferring_call` is represented in English under `$KAZOO/system_media/en-us/menu-transferring_call.wav`. You can create another version, perhaps in French, and import it thusly:
 
     sup whistle_media_maintenance import_prompt /path/to/french/media/menu-transferring_call.wav fr-fr
 
@@ -49,6 +49,12 @@ This will add the French version of the prompt to the system_media database. If 
     sup whistle_media_maintenance import_prompts /path/to/spanish/media/ es
 
 Now, when the `menu-transferring_call` prompt is played, if the call's or account's language is set to `fr-fr`, that version of the prompt will be played for the caller.
+
+### Cluster Default Language
+
+To set your cluster's default language to something other than "en-us":
+
+    sup whapps_config set_default media default_language ab-cd
 
 ### Per-Account Prompts
 

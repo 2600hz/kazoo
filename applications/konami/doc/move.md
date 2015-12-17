@@ -15,6 +15,7 @@ Alice is talking with Bob on her mobile phone while she walks to the office. Onc
 
 The *move* module should be placed under the "numbers" key in the "metaflows" object.
 
+```JSON
     "metaflows":{
         "numbers":{
             "8":{
@@ -25,3 +26,5 @@ The *move* module should be placed under the "numbers" key in the "metaflows" ob
         ,"patterns":{...}
         ,"binding_key":"*"
     }
+```
+`owner_id` optional. If not set it will use device owner id.

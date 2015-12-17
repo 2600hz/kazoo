@@ -1,11 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%
+%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(whapps_call_command).
 
@@ -35,6 +37,7 @@
         ]).
 -export([redirect/2
          ,redirect/3
+         ,redirect_to_node/3
         ]).
 -export([answer/1, answer_now/1
          ,hangup/1, hangup/2
@@ -51,7 +54,7 @@
          ,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
-         ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7
+         ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8
          ,unbridge/1, unbridge/2, unbridge/3
         ]).
 -export([page/2, page/3, page/4, page/5, page/6]).
@@ -60,6 +63,9 @@
          ,b_hold/1, b_hold/2, b_hold/3
          ,park/1
          ,park_command/1
+        ]).
+-export([soft_hold/1, soft_hold/2
+         ,soft_hold_command/2, soft_hold_command/4, soft_hold_command/5
         ]).
 -export([play/2, play/3, play/4
          ,play_command/2, play_command/3, play_command/4
@@ -75,8 +81,10 @@
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([record_call/2, record_call/3, record_call/4, record_call/5
          ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5
+         ,start_record_call/2, start_record_call/3, start_record_call/4
+         ,stop_record_call/2
         ]).
--export([store/3, store/4, store/5
+-export([store/3, store/4, store/5, store/6
          ,store_fax/2, store_fax/3
         ]).
 -export([tones/2]).
@@ -97,11 +105,11 @@
 
 -export([conference/2, conference/3
          ,conference/4, conference/5
-         ,conference/6
+         ,conference/6, conference/7
         ]).
 -export([b_conference/2, b_conference/3
          ,b_conference/4, b_conference/5
-         ,b_conference/6
+         ,b_conference/6, b_conference/7
         ]).
 
 -export([noop/1]).
@@ -120,8 +128,9 @@
 
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
--export([b_store/3, b_store/4, b_store/5
+-export([b_store/3, b_store/4, b_store/5, b_store/6
          ,b_store_fax/2
+         ,b_store_vm/6
         ]).
 -export([b_prompt_and_collect_digit/2]).
 -export([b_prompt_and_collect_digits/4, b_prompt_and_collect_digits/5
@@ -182,7 +191,7 @@
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
-                              {'prompt', binary()} | {'prompt', binary(), binary()} |
+                              {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} |
                               {'say', binary(), binary(), binary(), binary()} |
@@ -190,17 +199,19 @@
                               {'tts', ne_binary()} |
                               {'tts', ne_binary(), ne_binary()} |
                               {'tts', ne_binary(), ne_binary(), ne_binary()}.
--type audio_macro_prompts() :: [audio_macro_prompt(),...] | [].
--export_type([audio_macro_prompt/0]).
+-type audio_macro_prompts() :: [audio_macro_prompt()].
+-export_type([audio_macro_prompt/0
+              ,audio_macro_prompts/0
+             ]).
 
 -define(CONFIG_CAT, <<"call_command">>).
 
--define(DEFAULT_COLLECT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"collect_timeout">>, 5000)).
--define(DEFAULT_DIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"digit_timeout">>, 3000)).
--define(DEFAULT_INTERDIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"interdigit_timeout">>, 2000)).
+-define(DEFAULT_COLLECT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"collect_timeout">>, 5 * ?MILLISECONDS_IN_SECOND)).
+-define(DEFAULT_DIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"digit_timeout">>, 3 * ?MILLISECONDS_IN_SECOND)).
+-define(DEFAULT_INTERDIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"interdigit_timeout">>, 2 * ?MILLISECONDS_IN_SECOND)).
 
--define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5000)).
--define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500000)).
+-define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5 * ?MILLISECONDS_IN_SECOND)).
+-define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500 * ?MILLISECONDS_IN_SECOND)).
 
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
@@ -342,7 +353,7 @@ channel_status_filter([JObj|JObjs]) ->
 %%      for them in the receive blocks below.
 %% @end
 %%--------------------------------------------------------------------
--type relay_fun() :: fun((pid() | atom(), term()) -> any()).
+-type relay_fun() :: fun((pid() | atom(), any()) -> any()).
 -spec relay_event(pid(), wh_json:object()) -> any().
 -spec relay_event(pid(), wh_json:object(), relay_fun()) -> any().
 relay_event(Pid, JObj) ->
@@ -355,7 +366,7 @@ relay_event(Pid, JObj, RelayFun) ->
                            {'error', 'timeout'}.
 -spec receive_event(wh_timeout(), boolean()) ->
                            {'ok', wh_json:object()} |
-                           {'other', wh_json:object() | term()} |
+                           {'other', wh_json:object() | any()} |
                            {'error', 'timeout'}.
 receive_event(Timeout) -> receive_event(Timeout, 'true').
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
@@ -436,9 +447,7 @@ response(Code, Call) ->
 response(Code, Cause, Call) ->
     response(Code, Cause, 'undefined', Call).
 response(Code, Cause, Media, Call) ->
-    CallId = whapps_call:call_id(Call),
-    CtrlQ = whapps_call:control_queue(Call),
-    wh_call_response:send(CallId, CtrlQ, Code, Cause, Media).
+    wh_call_response:send(Call, Code, Cause, Media).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -608,7 +617,24 @@ redirect(Contact, Server, Call) ->
                ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),
-    timer:sleep(2000),
+    timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a redirect request to Node
+%% @end
+%%--------------------------------------------------------------------
+-spec redirect_to_node(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+redirect_to_node(Contact, Node, Call) ->
+    lager:debug("redirect ~s to ~s", [Contact, Node]),
+    Command = [{<<"Redirect-Contact">>, Contact}
+               ,{<<"Redirect-Node">>, Node}
+               ,{<<"Application-Name">>, <<"redirect">>}
+              ],
+    send_command(Command, Call),
+    timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -902,6 +928,7 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
 -spec bridge(wh_json:objects(), integer(), api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call()) -> 'ok'.
+-spec bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), whapps_call:call()) -> 'ok'.
 
 -spec b_bridge(wh_json:objects(), whapps_call:call()) ->
                       whapps_api_bridge_return().
@@ -915,18 +942,22 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
                       whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call()) ->
                       whapps_api_bridge_return().
+-spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), api_binary(), whapps_call:call()) ->
+                      whapps_api_bridge_return().
 
 bridge_command(Endpoints, Call) ->
     bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
 bridge_command(Endpoints, Timeout, Call) ->
     bridge_command(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
 bridge_command(Endpoints, Timeout, Strategy, Call) ->
-    bridge_command(Endpoints, Timeout, Strategy, 'true', Call).
+    bridge_command(Endpoints, Timeout, Strategy, <<"true">>, Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Endpoints">>, Endpoints}
      ,{<<"Timeout">>, Timeout}
@@ -934,6 +965,7 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
      ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
      ,{<<"Dial-Endpoint-Method">>, Strategy}
      ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+     ,{<<"Ignore-Forward">>, IgnoreFoward}
     ].
 
 bridge(Endpoints, Call) ->
@@ -954,6 +986,9 @@ bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     send_command(Command, Call).
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call),
+    send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
     bridge(Endpoints, Call),
@@ -973,10 +1008,13 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     b_bridge_wait(Timeout, Call).
+b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call),
+    b_bridge_wait(Timeout, Call).
 
 -spec b_bridge_wait(pos_integer(), whapps_call:call()) -> whapps_api_bridge_return().
 b_bridge_wait(Timeout, Call) ->
-    wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call).
+    wait_for_bridge((wh_util:to_integer(Timeout) * ?MILLISECONDS_IN_SECOND) + (10 * ?MILLISECONDS_IN_SECOND) , Call).
 
 -spec unbridge(whapps_call:call()) -> 'ok'.
 -spec unbridge(whapps_call:call(), ne_binary()) -> 'ok'.
@@ -1003,6 +1041,40 @@ unbridge_command(Call, Leg, Insert) ->
      ,{<<"Insert-At">>, Insert}
      ,{<<"Leg">>, Leg}
      ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+    ].
+
+-spec soft_hold(whapps_call:call()) -> 'ok'.
+-spec soft_hold(whapps_call:call(), api_binary()) -> 'ok'.
+soft_hold(Call) ->
+    soft_hold(Call, <<"1">>).
+soft_hold(Call, UnholdKey) ->
+    Command = soft_hold_command(whapps_call:call_id(Call), UnholdKey),
+    send_command(Command, Call).
+
+-spec soft_hold_command(ne_binary(), ne_binary()) ->
+                               wh_proplist().
+-spec soft_hold_command(ne_binary(), ne_binary(), api_binary(), api_binary()) ->
+                               wh_proplist().
+-spec soft_hold_command(ne_binary(), ne_binary(), api_binary(), api_binary(), ne_binary()) ->
+                               wh_proplist().
+soft_hold_command(CallId, UnholdKey) ->
+    soft_hold_command(CallId, UnholdKey, 'undefined', 'undefined').
+soft_hold_command(CallId, UnholdKey, AMOH, BMOH) ->
+    soft_hold_command(CallId, UnholdKey, AMOH, BMOH, <<"now">>).
+soft_hold_command(CallId, UnholdKey, AMOH, BMOH, InsertAt) ->
+    props:filter_undefined([{<<"Application-Name">>, <<"soft_hold">>}
+                            ,{<<"Call-ID">>, CallId}
+                            ,{<<"Insert-At">>, InsertAt}
+                            ,{<<"Unhold-Key">>, UnholdKey}
+                            | build_moh_keys(AMOH, BMOH)
+                           ]).
+
+-spec build_moh_keys(api_binary(), api_binary()) ->
+                            wh_proplist_kv(ne_binary(), api_binary()).
+build_moh_keys('undefiend', _) -> [];
+build_moh_keys(AMOH, BMOH) ->
+    [{<<"A-MOH">>, AMOH}
+     ,{<<"B-MOH">>, BMOH}
     ].
 
 %%--------------------------------------------------------------------
@@ -1106,11 +1178,11 @@ b_prompt(Prompt, Lang, Call) ->
 -spec play(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
                   ne_binary().
 
--spec play_command(ne_binary(), whapps_call:call()) ->
+-spec play_command(ne_binary(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
--spec play_command(ne_binary(), api_binaries(), whapps_call:call()) ->
+-spec play_command(ne_binary(), api_binaries(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
--spec play_command(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
+-spec play_command(ne_binary(), api_binaries(), api_binary(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
 
 -spec b_play(ne_binary(), whapps_call:call()) ->
@@ -1124,15 +1196,17 @@ play_command(Media, Call) ->
     play_command(Media, ?ANY_DIGIT, Call).
 play_command(Media, Terminators, Call) ->
     play_command(Media, Terminators, 'undefined', Call).
-play_command(Media, Terminators, Leg, Call) ->
+play_command(Media, Terminators, Leg, <<_/binary>> = CallId) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"play">>}
          ,{<<"Media-Name">>, Media}
          ,{<<"Terminators">>, play_terminators(Terminators)}
          ,{<<"Leg">>, play_leg(Leg)}
-         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-        ])).
+         ,{<<"Call-ID">>, CallId}
+        ]));
+play_command(Media, Terminators, Leg, Call) ->
+    play_command(Media, Terminators, Leg, whapps_call:call_id(Call)).
 
 -spec play_terminators(api_binaries()) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
@@ -1307,7 +1381,25 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
     b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
-    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
+    wait_for_headless_application(<<"record">>
+                                  ,{<<"RECORD_START">>, <<"RECORD_STOP">>}
+                                  ,<<"call_event">>
+                                  ,'infinity'
+                                 ).
+
+-spec start_record_call(wh_proplist(), whapps_call:call()) -> 'ok'.
+-spec start_record_call(wh_proplist(), api_binary() | pos_integer(), whapps_call:call()) -> 'ok'.
+-spec start_record_call(wh_proplist(), api_binary() | pos_integer(), ne_binaries(), whapps_call:call()) -> 'ok'.
+start_record_call(Media, Call) ->
+    record_call(Media, <<"start">>, Call).
+start_record_call(Media, TimeLimit, Call) ->
+    record_call(Media, <<"start">>, TimeLimit, Call).
+start_record_call(Media, TimeLimit, Terminators, Call) ->
+    record_call(Media, <<"start">>, TimeLimit, Terminators, Call).
+
+-spec stop_record_call(wh_proplist(), whapps_call:call()) -> 'ok'.
+stop_record_call(Media, Call) ->
+    record_call(Media, <<"stop">>, Call).
 
 -spec record_call(wh_proplist(), whapps_call:call()) -> 'ok'.
 -spec record_call(wh_proplist(), ne_binary(), whapps_call:call()) -> 'ok'.
@@ -1325,6 +1417,8 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
     Destination = props:get_value(<<"Media-Transfer-Destination">>, Media),
     Headers = props:get_value(<<"Additional-Headers">>, Media),
     Limit = props:get_value(<<"Time-Limit">>, Media, wh_util:to_binary(TimeLimit)),
+    SampleRate = props:get_value(<<"Record-Sample-Rate">>, Media),
+    RecordMinSec = props:get_value(<<"Record-Min-Sec">>, Media),
 
     Command = props:filter_undefined(
                 [{<<"Application-Name">>, <<"record_call">>}
@@ -1336,7 +1430,10 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
                  ,{<<"Media-Transfer-Method">>, Method}
                  ,{<<"Media-Transfer-Destination">>, Destination}
                  ,{<<"Additional-Headers">>, Headers}
+                 ,{<<"Record-Sample-Rate">>, SampleRate}
+                 ,{<<"Record-Min-Sec">>, RecordMinSec}
                 ]),
+
     send_command(Command, Call).
 
 -spec b_record_call(wh_proplist(), whapps_call:call()) ->
@@ -1371,22 +1468,27 @@ b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
 -spec store(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec store(ne_binary(), api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec store(ne_binary(), api_binary(), api_binary(), wh_json:objects(), whapps_call:call()) -> 'ok'.
+-spec store(ne_binary(), api_binary(), api_binary(), wh_json:objects(), boolean(), whapps_call:call()) -> 'ok'.
 
 -spec b_store(ne_binary(), ne_binary(), whapps_call:call()) -> b_store_return().
 -spec b_store(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_store_return().
 -spec b_store(ne_binary(), ne_binary(), ne_binary(), wh_json:objects(), whapps_call:call()) -> b_store_return().
+-spec b_store(ne_binary(), ne_binary(), ne_binary(), wh_json:objects(), boolean(), whapps_call:call()) -> b_store_return().
 
 store(MediaName, Transfer, Call) ->
     store(MediaName, Transfer, <<"put">>, Call).
 store(MediaName, Transfer, Method, Call) ->
     store(MediaName, Transfer, Method, [wh_json:new()], Call).
 store(MediaName, Transfer, Method, Headers, Call) ->
+    store(MediaName, Transfer, Method, Headers, 'false', Call).
+store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
     Command = [{<<"Application-Name">>, <<"store">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Media-Transfer-Method">>, Method}
                ,{<<"Media-Transfer-Destination">>, Transfer}
                ,{<<"Additional-Headers">>, Headers}
                ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Suppress-Error-Report">>, SuppressReport}
               ],
     send_command(Command, Call).
 
@@ -1395,8 +1497,23 @@ b_store(MediaName, Transfer, Call) ->
 b_store(MediaName, Transfer, Method, Call) ->
     b_store(MediaName, Transfer, Method, [wh_json:new()], Call).
 b_store(MediaName, Transfer, Method, Headers, Call) ->
-    store(MediaName, Transfer, Method, Headers, Call),
+    b_store(MediaName, Transfer, Method, Headers, 'false', Call).
+b_store(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
+    store(MediaName, Transfer, Method, Headers, SuppressReport, Call),
     wait_for_headless_application(<<"store">>).
+
+b_store_vm(MediaName, Transfer, Method, Headers, SuppressReport, Call) ->
+    Command = [{<<"Application-Name">>, <<"store_vm">>}
+               ,{<<"Media-Name">>, MediaName}
+               ,{<<"Media-Transfer-Method">>, Method}
+               ,{<<"Media-Transfer-Destination">>, Transfer}
+               ,{<<"Additional-Headers">>, Headers}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Suppress-Error-Report">>, SuppressReport}
+              ],
+    send_command(Command, Call),
+    wait_for_headless_application(<<"store_vm">>).
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1506,7 +1623,7 @@ prompt_and_collect_digit(Prompt, Call) ->
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, 1,  Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
-    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, 3000, Call).
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, 3 * ?MILLISECONDS_IN_SECOND, Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, 'undefined', Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
@@ -1610,7 +1727,7 @@ play_and_collect_digit(Media, Call) ->
 play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, 1,  Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, 3000, Call).
+    play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, 3 * ?MILLISECONDS_IN_SECOND, Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, Call) ->
     play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, 'undefined', Call).
 play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) ->
@@ -1773,13 +1890,15 @@ wait_for_say(Call) ->
 -spec conference(ne_binary(), boolean(), whapps_call:call()) -> 'ok'.
 -spec conference(ne_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
 -spec conference(ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
--spec conference(ne_binary(), boolean(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+-spec conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), boolean(), whapps_call:call()) -> 'ok'.
 
 -spec b_conference(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_conference(ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
--spec b_conference(ne_binary(), boolean(), boolean(), boolean(), boolean(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference(ne_binary(), boolean(), boolean(), boolean(), ne_binary(), boolean(), whapps_call:call()) -> whapps_api_std_return().
 
 conference(ConfId, Call) ->
     conference(ConfId, 'false', Call).
@@ -1788,13 +1907,16 @@ conference(ConfId, Mute, Call) ->
 conference(ConfId, Mute, Deaf, Call) ->
     conference(ConfId, Mute, Deaf, 'false', Call).
 conference(ConfId, Mute, Deaf, Moderator, Call) ->
-    conference(ConfId, Mute, Deaf, Moderator, 'false', Call).
-conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call) ->
+    conference(ConfId, Mute, Deaf, Moderator, <<"undefined">>, Call).
+conference(ConfId, Mute, Deaf, Moderator, ProfileName, Call) ->
+    conference(ConfId, Mute, Deaf, Moderator, ProfileName, 'false', Call).
+conference(ConfId, Mute, Deaf, Moderator, ProfileName, Reinvite, Call) ->
     Command = [{<<"Application-Name">>, <<"conference">>}
                ,{<<"Conference-ID">>, ConfId}
                ,{<<"Mute">>, Mute}
                ,{<<"Deaf">>, Deaf}
                ,{<<"Moderator">>, Moderator}
+               ,{<<"Profile">>, ProfileName}
                ,{<<"Reinvite">>, Reinvite}
               ],
     send_command(Command, Call).
@@ -1806,9 +1928,11 @@ b_conference(ConfId, Mute, Call) ->
 b_conference(ConfId, Mute, Deaf, Call) ->
     b_conference(ConfId, Mute, Deaf, 'false', Call).
 b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
-    b_conference(ConfId, Mute, Deaf, Moderator, 'false', Call).
-b_conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call) ->
-    conference(ConfId, Mute, Deaf, Moderator, Reinvite, Call),
+    b_conference(ConfId, Mute, Deaf, Moderator, <<"default">>, Call).
+b_conference(ConfId, Mute, Deaf, Moderator, Profile, Call) ->
+    b_conference(ConfId, Mute, Deaf, Moderator, Profile, 'false', Call).
+b_conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call) ->
+    conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call),
     wait_for_message(Call, <<"conference">>, <<"CHANNEL_EXECUTE">>).
 
 %%--------------------------------------------------------------------
@@ -2011,13 +2135,13 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                                         {'noop_complete'} |
                                         {'continue'} |
                                         {'decrement'} |
-                                        {'error', _}.
+                                        {'error', any()}.
 -spec handle_collect_digit_event(wh_json:object(), api_binary(), {ne_binary(), ne_binary(), ne_binary()}) ->
                                         {'dtmf', ne_binary()} |
                                         {'noop_complete'} |
                                         {'continue'} |
                                         {'decrement'} |
-                                        {'error', _}.
+                                        {'error', any()}.
 handle_collect_digit_event(JObj, NoopId) ->
     handle_collect_digit_event(JObj, NoopId, get_event_type(JObj)).
 
@@ -2086,7 +2210,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s", [Application]),
-                    {'error', 'channel_destroy'};
+                    {'error', 'channel_hungup'};
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
@@ -2148,15 +2272,22 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
 %% is only interested in events for the application.
 %% @end
 %%--------------------------------------------------------------------
+-type headless_event() :: ne_binary() | %% STOP EVENT
+                          {ne_binary(), ne_binary()}. %% {START, STOP}
+
 -type wait_for_headless_application_return() :: {'error', 'timeout' | wh_json:object()} |
                                                 {'ok', wh_json:object()}.
 -spec wait_for_headless_application(ne_binary()) ->
                                            wait_for_headless_application_return().
--spec wait_for_headless_application(ne_binary(), ne_binary()) ->
+-spec wait_for_headless_application(ne_binary(), headless_event()) ->
                                            wait_for_headless_application_return().
--spec wait_for_headless_application(ne_binary(), ne_binary(), ne_binary()) ->
+-spec wait_for_headless_application(ne_binary(), headless_event(), ne_binary()) ->
                                            wait_for_headless_application_return().
--spec wait_for_headless_application(ne_binary(), ne_binary(), ne_binary(), wh_timeout()) ->
+-spec wait_for_headless_application(ne_binary()
+                                    ,headless_event()
+                                    ,ne_binary()
+                                    ,wh_timeout()
+                                   ) ->
                                            wait_for_headless_application_return().
 
 wait_for_headless_application(Application) ->
@@ -2166,27 +2297,48 @@ wait_for_headless_application(Application, Event) ->
 wait_for_headless_application(Application, Event, Type) ->
     wait_for_headless_application(Application, Event, Type, ?DEFAULT_APPLICATION_TIMEOUT).
 
+wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Timeout) ->
+    Start = os:timestamp(),
+    case receive_event(Timeout) of
+        {'ok', JObj} ->
+            case get_event_type(JObj) of
+                {<<"error">>, _, Application} ->
+                    lager:debug("channel execution error while waiting for ~s: ~s"
+                                ,[Application, wh_json:encode(JObj)]
+                               ),
+                    {'error', JObj};
+                {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
+                    lager:debug("channel has gone down before app ~s started", [Application]),
+                    {'error', 'channel_hungup'};
+                {Type, StartEv, Application} ->
+                    lager:debug("start event ~s has been received for ~s", [StartEv, Application]),
+                    wait_for_headless_application(Application, StopEv, Type, wh_util:decr_timeout(Timeout, Start));
+                {Type, StopEv, Application} ->
+                    {'ok', JObj};
+                _T ->
+                    lager:debug("ignore ~p", [_T]),
+                    wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
+            end;
+        {'error', _E}=E -> E
+    end;
 wait_for_headless_application(Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event(Timeout) of
+        {'ok', JObj} ->
             case get_event_type(JObj) of
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("destroy occurred, waiting 60000 ms for ~s event", [Application]),
-                    wait_for_headless_application(Application, Event, Type, 60000);
-                { Type, Event, Application } ->
+                    wait_for_headless_application(Application, Event, Type, 60 * ?MILLISECONDS_IN_SECOND);
+                {Type, Event, Application} ->
                     {'ok', JObj};
                 _T ->
                     lager:debug("ignore ~p", [_T]),
                     wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end;
-        _ ->
-            wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
-    after
-        Timeout -> {'error', 'timeout'}
+        {'error', _E}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -2196,16 +2348,16 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_dtmf(wh_timeout()) ->
-                           {'error', 'channel_hungup' | wh_json:object()} |
+                           {'error', 'channel_hungup' | 'timeout' | wh_json:object()} |
                            {'ok', binary()}.
 wait_for_dtmf(Timeout) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event(Timeout) of
+        {'ok', JObj} ->
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
-                    {'error', 'channel_destroy'};
+                    {'error', 'channel_hungup'};
                 {<<"error">>, _} ->
                     lager:debug("channel execution error while waiting for DTMF: ~s", [wh_json:encode(JObj)]),
                     {'error', JObj};
@@ -2214,13 +2366,9 @@ wait_for_dtmf(Timeout) ->
                 _ ->
                     wait_for_dtmf(wh_util:decr_timeout(Timeout, Start))
             end;
-        _E ->
-            lager:debug("unexpected ~p", [_E]),
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            wait_for_dtmf(wh_util:decr_timeout(Timeout, Start))
-    after
-        Timeout -> {'ok', <<>>}
+        {'error', 'timeout'}=E ->
+            lager:debug("timed out after ~p ms waiting for DTMF", [Timeout]),
+            E
     end.
 
 %%--------------------------------------------------------------------
@@ -2240,48 +2388,47 @@ wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
     {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
-            Disposition = wh_json:get_value(<<"Disposition">>, JObj),
-            Cause = wh_json:get_first_defined([<<"Application-Response">>
-                                               ,<<"Hangup-Cause">>
-                                              ], JObj, <<"UNSPECIFIED">>),
-            Result = case Disposition =:= <<"SUCCESS">>
-                         orelse Cause =:= <<"SUCCESS">>
-                     of
-                         'true' -> 'ok';
-                         'false' -> 'fail'
-                     end,
-            case get_event_type(JObj) of
-                {<<"error">>, _, <<"bridge">>} ->
-                    lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
-                    {'error', JObj};
-                {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-                    CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-                    lager:debug("channel bridged to ~s", [CallId]),
-                    case is_function(Fun, 1) of
-                        'false' -> 'ok';
-                        'true' -> Fun(JObj)
-                    end,
-                    wait_for_bridge('infinity', Fun, Call);
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    %% TODO: reduce log level if no issue is found with
-                    %%    basing the Result on Disposition
-                    lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
-                    {Result, JObj};
-                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    %% TODO: reduce log level if no issue is found with
-                    %%    basing the Result on Disposition
-                    lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
-                    {Result, JObj};
-                _ ->
-                    wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
-            end;
-        %% dont let the mailbox grow unbounded if
-        %%   this process hangs around...
-        _ -> wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
-    after
-        Timeout -> {'error', 'timeout'}
+
+    lager:debug("waiting for bridge for ~p ms", [Timeout]),
+    wait_for_bridge(Timeout, Fun, Call, Start, receive_event(Timeout)).
+
+wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
+wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
+    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+    Cause = wh_json:get_first_defined([<<"Application-Response">>
+                                       ,<<"Hangup-Cause">>
+                                      ], JObj, <<"UNSPECIFIED">>),
+    Result = case Disposition =:= <<"SUCCESS">>
+                 orelse Cause =:= <<"SUCCESS">>
+             of
+                 'true' -> 'ok';
+                 'false' -> 'fail'
+             end,
+    case get_event_type(JObj) of
+        {<<"error">>, _, <<"bridge">>} ->
+            lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
+            {'error', JObj};
+        {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
+            CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            lager:debug("channel bridged to ~s", [CallId]),
+            case is_function(Fun, 1) of
+                'false' -> 'ok';
+                'true' -> Fun(JObj)
+            end,
+            wait_for_bridge('infinity', Fun, Call);
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+            %% TODO: reduce log level if no issue is found with
+            %%    basing the Result on Disposition
+            lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
+            {Result, JObj};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
+            %% TODO: reduce log level if no issue is found with
+            %%    basing the Result on Disposition
+            lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
+            {Result, JObj};
+        _E ->
+            lager:debug("unhandled event type: ~p", [_E]),
+            wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -2328,8 +2475,8 @@ wait_for_channel_unbridge() ->
 %%--------------------------------------------------------------------
 -spec wait_for_channel_bridge() -> {'ok', wh_json:object()}.
 wait_for_channel_bridge() ->
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event('infinity') of
+        {'ok', JObj} ->
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>} -> {'ok', JObj};
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
@@ -2412,7 +2559,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
-                    {'error', 'channel_destroy'};
+                    {'error', 'channel_hungup'};
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting ~s or DTMF: ~s", [Application, wh_json:encode(JObj)]),
                     {'error', JObj};
@@ -2426,7 +2573,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 -type wait_for_fax_ret() :: {'ok', wh_json:object()} |
                             {'error', 'timeout' | wh_json:object()}.
 
--define(WAIT_FOR_FAX_TIMEOUT, whapps_config:get_integer(<<"fax">>, <<"wait_for_fax_timeout_ms">>, 3600000)).
+-define(WAIT_FOR_FAX_TIMEOUT, whapps_config:get_integer(<<"fax">>, <<"wait_for_fax_timeout_ms">>, ?MILLISECONDS_IN_HOUR)).
 
 -spec wait_for_fax() -> wait_for_fax_ret().
 -spec wait_for_fax(wh_timeout()) -> wait_for_fax_ret().
@@ -2447,7 +2594,7 @@ wait_for_fax(Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     %% NOTE:
                     lager:debug("channel hungup but no end of fax, maybe its coming next..."),
-                    wait_for_fax(5000);
+                    wait_for_fax(5 * ?MILLISECONDS_IN_SECOND);
                 _ -> wait_for_fax(wh_util:decr_timeout(Timeout, Start))
             end
     end.
@@ -2665,7 +2812,7 @@ stop_fax_detection(Call) ->
 -spec fax_detection(ne_binary(), integer(), whapps_call:call()) -> 'true' | 'false'.
 fax_detection(Direction, Duration, Call) ->
     start_fax_detection(Direction, Duration, Call),
-    Result = case wait_for_fax_detection((Duration + 2) * 1000, Call) of
+    Result = case wait_for_fax_detection((Duration + 2) * ?MILLISECONDS_IN_SECOND, Call) of
                  {'error', 'timeout'} -> 'false';
                  {'ok', _JObj} -> 'true'
              end,
@@ -2710,7 +2857,10 @@ wait_for_unparked_call(Call, Timeout) ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for unparked call"),
-                    {'error', 'channel_destroy'};
+                    {'error', 'channel_hungup'};
+                {<<"call_event">>, <<"CHANNEL_DISCONNECTED">>, _} ->
+                    lager:debug("channel was disconnected while waiting for unparked call"),
+                    {'error', 'channel_disconnected'};
                 {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
                     lager:debug("channel was intercepted while waiting for unparked call"),
                     {'ok', JObj};

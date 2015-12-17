@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -25,9 +25,8 @@
          ,code_change/3
         ]).
 
-
 -include("fax.hrl").
-
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(NOTIFY_RESTRICT, ['outbound_fax'
                           ,'outbound_fax_error'
@@ -47,10 +46,13 @@
                        ,[{<<"xmpp_event">>, <<"push">>}]
                       }
                      ,{{'fax_cloud', 'handle_faxbox_created'}
-                       ,[{<<"configuration">>, <<"doc_created">>}]
+                       ,[{<<"configuration">>, ?DOC_CREATED}]
+                      }
+                     ,{{'fax_cloud', 'handle_faxbox_edited'}
+                       ,[{<<"configuration">>, ?DOC_EDITED}]
                       }
                      ,{{'fax_cloud', 'handle_faxbox_deleted'}
-                       ,[{<<"configuration">>, <<"doc_deleted">>}]
+                       ,[{<<"configuration">>, ?DOC_DELETED}]
                       }
                      ,{{?MODULE, 'new_request'}
                        ,[{<<"dialplan">>, <<"fax_req">>}]
@@ -174,7 +176,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("fax listener terminating: ~p", [_Reason]).
+    lager:debug("fax shared listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

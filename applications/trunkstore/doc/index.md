@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Trunkstore
 Title: Trunkstore
 Language: en-US

@@ -1,12 +1,9 @@
 {
-    "_id": "_design/apps_store"
-    ,"language": "javascript"
-    ,"views": {
+    "_id": "_design/apps_store",
+    "language": "javascript",
+    "views": {
         "crossbar_listing": {
-            "map": "function (doc) {if (doc.pvt_type != 'app' || doc.pvt_deleted) return;emit(doc._id, {id: doc._id,name: doc.name,'i18n': doc['i18n'],tags: doc.tags,api_url: doc.api_url,source_url: doc.source_url, published: doc.published});}"
+            "map": "function (doc) {if (doc.pvt_type != 'app' || doc.pvt_deleted) return;emit(doc.name, {id: doc._id,name: doc.name,'i18n': doc['i18n'],tags: doc.tags,api_url: doc.api_url,source_url: doc.source_url, published: doc.published});}"
         }
-    }
-    ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'app' ); }"
     }
 }

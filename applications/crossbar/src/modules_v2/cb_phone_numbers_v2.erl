@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -35,9 +35,11 @@
 -define(PORT, <<"port">>).
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
+
 -define(CLASSIFIERS, <<"classifiers">>).
 -define(IDENTIFY, <<"identify">>).
 -define(COLLECTION, <<"collection">>).
+-define(FIX, <<"fix">>).
 -define(MIME_TYPES, [{<<"application">>, <<"pdf">>}
                      ,{<<"application">>, <<"x-gzip">>}
                      ,{<<"application">>, <<"zip">>}
@@ -48,8 +50,36 @@
                      ,{<<"application">>, <<"base64">>}
                      ,{<<"application">>, <<"x-base64">>}
                     ]).
+
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
--define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 10}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
+
+-define(FIND_NUMBER_PREFIX
+        ,wh_json:from_list([{<<"required">>, 'true'}
+                            ,{<<"type">>, <<"string">>}
+                            ,{<<"minLength">>, 3}
+                            ,{<<"maxLength">>, 10}
+                           ])
+       ).
+-define(FIND_NUMBER_QUANTITY
+        ,wh_json:from_list([{<<"default">>, 1}
+                            ,{<<"type">>, <<"integer">>}
+                            ,{<<"minimum">>, 1}
+                           ])
+       ).
+
+-define(FIND_NUMBER_PROPERTIES
+        ,wh_json:from_list([{<<"prefix">>, ?FIND_NUMBER_PREFIX}
+                            ,{<<"quantity">>, ?FIND_NUMBER_QUANTITY}
+                           ])
+       ).
+
+-define(FIND_NUMBER_SCHEMA
+        ,wh_json:from_list([{<<"$schema">>, <<"http://json-schema.org/draft-03/schema#">>}
+                            ,{<<"id">>, <<"find_number">>}
+                            ,{<<"properties">>, ?FIND_NUMBER_PROPERTIES}
+                           ])
+       ).
+
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(FREE_URL, <<"phonebook_url">>).
 -define(PAYED_URL, <<"phonebook_url_premium">>).
@@ -74,7 +104,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"v2_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -111,9 +140,9 @@ authenticate(Context) ->
                       ).
 
 -spec maybe_authenticate(http_method(), req_nouns()) -> boolean().
-maybe_authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) ->
+maybe_authenticate(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, []}]) ->
     'true';
-maybe_authenticate(?HTTP_GET, [{<<"phone_numbers">>, [?PREFIX]}]) ->
+maybe_authenticate(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, [?PREFIX]}]) ->
     'true';
 maybe_authenticate(_Verb, _Nouns) ->
     'false'.
@@ -131,9 +160,9 @@ authorize(Context) ->
                     ,cb_context:req_nouns(Context)
                    ).
 
-maybe_authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) ->
+maybe_authorize(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC,[]}]) ->
     'true';
-maybe_authorize(?HTTP_GET, [{<<"phone_numbers">>, [?PREFIX]}]) ->
+maybe_authorize(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, [?PREFIX]}]) ->
     'true';
 maybe_authorize(_Verb, _Nouns) ->
     'false'.
@@ -154,6 +183,8 @@ maybe_authorize(_Verb, _Nouns) ->
 allowed_methods() ->
     [?HTTP_GET].
 
+allowed_methods(?FIX) ->
+    [?HTTP_POST];
 allowed_methods(?CLASSIFIERS) ->
     [?HTTP_GET];
 allowed_methods(?COLLECTION) ->
@@ -199,6 +230,7 @@ allowed_methods(_, ?PORT_DOCS, _) ->
 -spec resource_exists(path_token(), path_token(), path_token()) -> boolean().
 resource_exists() -> 'true'.
 
+resource_exists(?FIX) -> 'true';
 resource_exists(?PREFIX) -> 'true';
 resource_exists(?LOCALITY) -> 'true';
 resource_exists(?CHECK) -> 'true';
@@ -227,9 +259,9 @@ billing(Context) ->
     maybe_allow_updates(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec maybe_allow_updates(cb_context:context(), req_nouns(), http_method()) -> cb_context:context().
-maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], ?HTTP_GET) ->
+maybe_allow_updates(Context, [{?WNM_PHONE_NUMBER_DOC, _}|_], ?HTTP_GET) ->
     Context;
-maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], _Verb) ->
+maybe_allow_updates(Context, [{?WNM_PHONE_NUMBER_DOC, _}|_], _Verb) ->
     try wh_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
@@ -281,6 +313,11 @@ validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
     summary(Context).
 
+validate(Context, ?FIX) ->
+    cb_context:set_resp_data(
+        cb_context:set_resp_status(Context, 'success')
+        ,wh_json:new()
+    );
 validate(Context, ?PREFIX) ->
     find_prefix(Context);
 validate(Context, ?COLLECTION) ->
@@ -384,20 +421,36 @@ validate_port_docs(Context, Number, Name, _Verb) ->
                                        cb_context:context().
 validate_port_docs_upload(Context, _Number, _Name, []) ->
     lager:debug("No files in request to save attachment"),
-    Message = <<"please provide an port document">>,
-    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"required">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide an port document">>}
+         ])
+        ,Context
+    );
 validate_port_docs_upload(Context, Number, Name, [{_, FileObj}]) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
     read(Number, cb_context:set_req_files(Context, [{FileName, FileObj}]));
 validate_port_docs_upload(Context, _Name, _Number, _Files) ->
     lager:debug("Multiple files in request to save attachment"),
-    Message = <<"please provide a single port document per request">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+    cb_context:add_validation_error(
+        <<"file">>
+        ,<<"maxItems">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"Please provide a single port document per request">>}
+         ])
+        ,Context
+    ).
 
 -spec post(cb_context:context(), path_token()) ->
                   cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) ->
                   cb_context:context().
+post(Context, ?FIX) ->
+    AccountId = cb_context:account_id(Context),
+    _ = wh_number_fix:fix_account_numbers(AccountId),
+    summary(Context);
 post(Context, ?COLLECTION) ->
     post_collection(Context, cb_context:req_json(Context));
 post(Context, Number) ->
@@ -563,11 +616,11 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 summary(Context) ->
     Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
     case cb_context:resp_error_code(Context1) of
-        404 -> crossbar_util:response(wh_json:new(), Context1);
+        404 -> Context1;
         _Code ->
             Context2 = cb_context:set_resp_data(Context1, clean_summary(Context1)),
             case cb_context:resp_status(Context2) of
-                'success' ->  maybe_update_locality(Context2);
+                'success' -> maybe_update_locality(Context2);
                 _Status -> Context2
             end
     end.
@@ -576,7 +629,6 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% resource.
 %% @end
 %%--------------------------------------------------------------------
 -spec clean_summary(cb_context:context()) -> wh_json:object().
@@ -585,9 +637,14 @@ clean_summary(Context) ->
     Routines = [fun(JObj) -> wh_json:delete_key(<<"id">>, JObj) end
                 ,fun(JObj) -> wh_json:set_value(<<"numbers">>, JObj, wh_json:new()) end
                 ,fun(JObj) ->
-                         Service = wh_services:fetch(AccountId),
-                         Quantity = wh_services:cascade_category_quantity(<<"phone_numbers">>, [], Service),
-                         wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
+                    Service = wh_services:fetch(AccountId),
+                    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
+                    wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
+                 end
+                ,fun(JObj) ->
+                    QS = wh_json:to_proplist(cb_context:query_string(Context)),
+                    Numbers = wh_json:get_value(<<"numbers">>, JObj),
+                    wh_json:set_value(<<"numbers">>, apply_filters(QS, Numbers), JObj)
                  end
                ],
     lists:foldl(fun(F, JObj) -> F(JObj) end
@@ -598,25 +655,66 @@ clean_summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_filters(wh_proplist(), wh_json:object()) -> wh_json:object().
+apply_filters([], Numbers) -> Numbers;
+apply_filters([{<<"filter_", Key/binary>>, Value}|QS], Numbers) ->
+    Numbers1 = apply_filter(Key, Value, Numbers),
+    apply_filters(QS, Numbers1);
+apply_filters([{Key, _}|QS], Numbers) ->
+    lager:debug("unknown key ~s, ignoring", [Key]),
+    apply_filters(QS, Numbers).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_filter(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+apply_filter(Key, Value, Numbers) ->
+    wh_json:foldl(
+        fun(Number, JObj, Acc) ->
+            case wh_json:get_value(Key, JObj) of
+                Value -> Acc;
+                _Else -> wh_json:delete_key(Number, Acc)
+            end
+        end
+        ,Numbers
+        ,Numbers
+    ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
-    AccountId = cb_context:auth_account_id(Context),
-    JObj = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
+    JObj = get_find_numbers_req(Context),
     Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
-    Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
+    Quantity = wh_json:get_integer_value(<<"quantity">>, JObj, 1),
     OnSuccess = fun(C) ->
                         cb_context:setters(C
                                            ,[{fun cb_context:set_resp_data/2, wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(JObj))}
                                              ,{fun cb_context:set_resp_status/2, 'success'}
                                             ])
                 end,
-    cb_context:validate_request_data(wh_json:decode(?FIND_NUMBER_SCHEMA)
+
+    cb_context:validate_request_data(?FIND_NUMBER_SCHEMA
                                      ,cb_context:set_req_data(Context, JObj)
                                      ,OnSuccess
                                     ).
+
+-spec get_find_numbers_req(cb_context:context()) -> wh_json:object().
+get_find_numbers_req(Context) ->
+    JObj = cb_context:query_string(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    Quantity = wh_util:to_integer(cb_context:req_value(Context, <<"quantity">>, 1)),
+    wh_json:set_values([{<<"quantity">>, Quantity}
+                       ,{<<"Account-ID">>, AccountId}
+                       ], JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -654,17 +752,23 @@ find_prefix(Context) ->
 find_locality(Context) ->
     case cb_context:req_value(Context, <<"numbers">>) of
         'undefined' ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"required">>
-                                            ,<<"list of numbers missing">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"list of numbers missing">>}
+                 ])
+                ,Context
+            );
         [] ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"minimum">>
-                                            ,<<"minimum 1 number required">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"minimum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"minimum 1 number required">>}
+                 ])
+                ,Context
+            );
         Numbers when is_list(Numbers) ->
             Url = get_url(cb_context:req_value(Context, <<"quality">>)),
             case get_locality(Numbers, Url) of
@@ -677,11 +781,14 @@ find_locality(Context) ->
                      )
             end;
         _E ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"type">>
-                                            ,<<"numbers must be a list">>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"numbers must be a list">>}
+                 ])
+                ,Context
+            )
     end.
 
 %%--------------------------------------------------------------------
@@ -694,28 +801,38 @@ find_locality(Context) ->
 check_number(Context) ->
     case cb_context:req_value(Context, <<"numbers">>) of
         'undefined' ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"required">>
-                                            ,<<"list of numbers missing">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"list of numbers missing">>}
+                 ])
+                ,Context
+            );
         [] ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"minimum">>
-                                            ,<<"minimum 1 number required">>
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"minimum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"minimum 1 number required">>}
+                 ])
+                ,Context
+            );
         Numbers when is_list(Numbers) ->
             cb_context:set_resp_data(
               cb_context:set_resp_status(Context, 'success')
               ,wh_number_manager:check(Numbers)
              );
-        _E ->
-            cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"type">>
-                                            ,<<"numbers must be a list">>
-                                            ,Context
-                                           )
+        E ->
+            cb_context:add_validation_error(
+                <<"numbers">>
+                ,<<"type">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"numbers must be a list">>}
+                    ,{<<"cause">>, E}
+                 ])
+                ,Context
+            )
     end.
 
 -spec get_url(any()) -> binary().
@@ -790,9 +907,7 @@ update_locality(Context, Numbers) ->
         {'error', <<"missing phonebook url">>} -> Context;
         {'error', _} -> Context;
         {'ok', Localities} ->
-            _ = spawn(fun() ->
-                              update_phone_numbers_locality(Context, Localities)
-                      end),
+            _ = wh_util:spawn(fun update_phone_numbers_locality/2, [Context, Localities]),
             update_context_locality(Context, Localities)
     end.
 
@@ -828,10 +943,10 @@ update_context_locality_fold(Key, Value, JObj) ->
 %%--------------------------------------------------------------------
 -spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
                                            {'ok', wh_json:object()} |
-                                           {'error', _}.
+                                           {'error', any()}.
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
-    DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context), <<"phone_numbers">>),
+    DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             J = wh_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
@@ -913,7 +1028,11 @@ handle_locality_resp(Resp) ->
 identify(Context, Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {'error', 'not_reconcilable'} ->
-            cb_context:add_system_error('bad_identifier', [{'details', Number}], Context);
+            cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, Number}])
+                ,Context
+            );
         {'error', E} ->
             Fun = fun() -> Context end,
             set_response({wh_util:to_binary(E), <<>>}, Number, Context, Fun);
@@ -968,7 +1087,7 @@ add_porting_email(Context) ->
     end.
 
 check_phone_number_schema(Context) ->
-    cb_context:validate_request_data(<<"phone_numbers">>, Context).
+    cb_context:validate_request_data(?WNM_PHONE_NUMBER_DOC, Context).
 
 get_auth_user_email(Context) ->
     JObj = cb_context:auth_doc(Context),
@@ -1067,9 +1186,14 @@ set_response({'dry_run', ?COLLECTION, Doc}, _, Context, Fun) ->
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
 set_response({'error', Data}, _, Context, _) ->
+    lager:debug("error: ~p", [Data]),
     crossbar_util:response_400(<<"client error">>, Data, Context);
+set_response({'invalid', Reason}, _, Context, _) ->
+    lager:debug("invalid: ~p", [Reason]),
+    cb_context:add_validation_error(<<"address">>, <<"invalid">>, Reason, Context);
 set_response({Error, Reason}, _, Context, _) ->
-    crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context);
+    lager:debug("~p: ~p", [Error, Reason]),
+    cb_context:add_system_error(Error, Reason, Context);
 set_response(_Else, _, Context, _) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
@@ -1082,8 +1206,12 @@ set_response(_Else, _, Context, _) ->
 %%--------------------------------------------------------------------
 -spec dry_run_response(wh_proplist()) -> wh_json:object().
 -spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
-dry_run_response([{'services', Services}, {'activation_charges', Charges}]) ->
-    wh_services:calculate_charges(Services, Charges).
+dry_run_response(Props) ->
+    case props:get_value('services', Props) of
+        'undefined' -> wh_json:new();
+        Services ->
+            wh_services:dry_run(Services)
+    end.
 
 dry_run_response(?COLLECTION, JObj) ->
     case wh_json:get_value(<<"error">>, JObj) of
@@ -1092,41 +1220,16 @@ dry_run_response(?COLLECTION, JObj) ->
     end.
 
 -spec accumulate_resp(wh_json:object()) -> wh_json:object().
--spec accumulate_resp(wh_json:objects(), {integer(), ne_binaries()}) -> wh_json:object().
 accumulate_resp(JObj) ->
-    L = wh_json:foldl(
-        fun(_, Value, Acc) ->
-            [dry_run_response(Value)|Acc]
-        end
-        ,[]
-        ,JObj
-    ),
-    accumulate_resp(lists:reverse(L), {0, []}).
-
-accumulate_resp([JObj], {0, D}) ->
-    case wh_json:is_empty(JObj) of
-        'true' -> wh_json:new();
-        'false' ->
-            ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
-            Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
-            wh_json:set_values([{<<"activation_charges">>, ActivationCharges}
-                                ,{<<"activation_charges_description">>, [Description|D]}
-                       ], JObj)
-    end;
-accumulate_resp([JObj], {AC, D}) ->
-    ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
-    Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
-    wh_json:set_values([{<<"activation_charges">>, ActivationCharges+AC}
-                        ,{<<"activation_charges_description">>, [Description|D]}
-                       ], JObj);
-accumulate_resp([JObj|JObjs], {AC, D}=Acc) ->
-    case wh_json:is_empty(JObj) of
-        'true' -> accumulate_resp(JObjs, Acc);
-        'false' ->
-            ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
-            Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
-            accumulate_resp(JObjs, {ActivationCharges+AC, [Description|D]})
-    end.
+    [Resp|_] =
+        wh_json:foldl(
+            fun(_, Value, Acc) ->
+                [dry_run_response(Value)|Acc]
+            end
+            ,[]
+            ,JObj
+        ),
+    Resp.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1150,6 +1253,8 @@ collection_process(Context, ?ACTIVATE) ->
     Result = collection_process(Context, Numbers, ?ACTIVATE),
     collection_process_result(Context, Result).
 
+-spec collection_process(cb_context:context(), ne_binaries(), api_binary()) ->
+                                wh_json:object().
 collection_process(Context, Numbers, Action) ->
     lists:foldl(
       fun(Number, Acc) ->
@@ -1168,8 +1273,8 @@ collection_process(Context, Numbers, Action) ->
      ).
 
 -spec collection_process_result(cb_context:context(), wh_json:object()) ->
-                                operation_return() |
-                                {'dry_run', ne_binary(), wh_json:object()}.
+                                       operation_return() |
+                                       {'dry_run', ne_binary(), wh_json:object()}.
 collection_process_result(Context, JObj) ->
     ReqJObj = cb_context:req_json(Context),
     case wh_json:get_value(<<"error">>, JObj) of
@@ -1192,10 +1297,7 @@ collection_process_result(Context, JObj) ->
                                operation_return() |
                                {'dry_run', wh_json:object()}.
 collection_action(Context, Number, ?ACTIVATE) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>
-                                  ,cb_context:req_json(Context)
-                                  ,'false'
-                                 )),
+    DryRun = not(cb_context:accepting_charges(Context)),
     case wh_number_manager:assign_number_to_account(Number
                                                     ,cb_context:account_id(Context)
                                                     ,cb_context:auth_account_id(Context)
@@ -1247,7 +1349,11 @@ number_action(Context, Number, ?HTTP_DELETE) ->
 has_tokens(Context) -> has_tokens(Context, 1).
 has_tokens(Context, Count) ->
     Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
-    case kz_buckets:consume_tokens(Name, Count) of
+    case kz_buckets:consume_tokens(?APP_NAME
+                                   ,Name
+                                   ,cb_modules_util:token_cost(Context, Count)
+                                  )
+    of
         'true' -> 'true';
         'false' ->
             lager:warning("rate limiting activation limit reached, rejecting"),

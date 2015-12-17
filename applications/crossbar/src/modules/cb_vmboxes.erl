@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% VMBoxes module
 %%%
@@ -19,8 +19,11 @@
          ,content_types_provided/5
          ,put/1
          ,post/2, post/4
+         ,patch/2
          ,delete/2, delete/4
          ,cleanup_heard_voicemail/1
+
+         ,migrate/1
         ]).
 
 -include("../crossbar.hrl").
@@ -41,6 +44,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.vmboxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.vmboxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), ?MODULE, 'cleanup_heard_voicemail').
 
@@ -62,7 +66,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_VMBoxID) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
     [?HTTP_GET].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
@@ -135,6 +139,8 @@ validate_vmbox(Context, DocId, ?HTTP_GET) ->
     load_vmbox(DocId, Context);
 validate_vmbox(Context, DocId, ?HTTP_POST) ->
     validate_request(DocId, Context);
+validate_vmbox(Context, DocId, ?HTTP_PATCH) ->
+    validate_patch(load_vmbox(DocId, Context), DocId);
 validate_vmbox(Context, DocId, ?HTTP_DELETE) ->
     load_vmbox(DocId, Context).
 
@@ -193,6 +199,10 @@ delete(Context, _DocID, ?MESSAGES_RESOURCE, _MediaID) ->
     C = crossbar_doc:save(Context),
     update_mwi(C).
 
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _Id) ->
+    crossbar_doc:save(Context).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -214,6 +224,8 @@ load_vmbox_summary(Context) ->
 validate_request(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context).
 
+-spec validate_unique_vmbox(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_unique_vmbox(api_binary(), cb_context:context(), api_binary()) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context, cb_context:account_db(Context)).
 
@@ -223,23 +235,54 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
     case check_uniqueness(VMBoxId, Context) of
         'true' -> check_vmbox_schema(VMBoxId, Context);
         'false' ->
-            C = cb_context:add_validation_error(<<"mailbox">>
-                                                ,<<"unique">>
-                                                ,<<"Invalid mailbox number or already exists">>
-                                                ,Context
-                                               ),
+            C = cb_context:add_validation_error(
+                  <<"mailbox">>
+                  ,<<"unique">>
+                  ,wh_json:from_list([{<<"message">>, <<"Invalid mailbox number or already exists">>}])
+                  ,Context
+                 ),
             check_vmbox_schema(VMBoxId, C)
     end.
 
+-spec check_vmbox_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_vmbox_schema(VMBoxId, Context) ->
+    Context1 = maybe_migrate_notification_emails(Context),
     OnSuccess = fun(C) -> on_successful_validation(VMBoxId, C) end,
-    cb_context:validate_request_data(<<"vmboxes">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"vmboxes">>, Context1, OnSuccess).
 
+-spec maybe_migrate_notification_emails(cb_context:context()) -> cb_context:context().
+maybe_migrate_notification_emails(Context) ->
+    ReqData = cb_context:req_data(Context),
+    case maybe_migrate_vm_box(ReqData) of
+        {'true', ReqData1} ->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_req_data/2, ReqData1}
+                                 ,{fun cb_context:add_resp_header/3
+                                   ,<<"Warning">>
+                                   ,<<"214 Transformation applied: attribute notify_email_address replaced">>
+                                  }
+                                ]
+                              );
+        'false' -> Context
+    end.
+
+-spec on_successful_validation(api_binary(), cb_context:context()) ->
+                                      cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, <<"vmbox">>}],
+    Props = [{<<"pvt_type">>, kzd_voicemail_box:type()}],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(VMBoxId, Context) ->
     crossbar_doc:load_merge(VMBoxId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%  Support PATCH - merge vmbox document with request data
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(cb_context:context(), ne_binary()) -> cb_context:context().
+validate_patch(Context, DocId)->
+    crossbar_doc:patch_and_validate(DocId, Context, fun validate_request/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -294,30 +337,47 @@ load_message(DocId, MediaId, UpdateJObj, Context) ->
     Context1 = crossbar_doc:load(DocId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Messages = wh_json:get_value(<<"messages">>, cb_context:doc(Context1), []),
-            case get_message_index(MediaId, Messages) of
-                'false' -> {'false', cb_context:add_system_error('bad_identifier', [{'details', DocId}], Context)};
-                Index ->
-                    CurrentMetaData = wh_json:get_value([<<"messages">>, Index], cb_context:doc(Context1), wh_json:new()),
-                    CurrentFolder = wh_json:get_value(<<"folder">>, CurrentMetaData, <<"new">>),
-
-                    RequestedFolder = cb_context:req_value(Context
-                                                           ,<<"folder">>
-                                                           ,wh_json:get_value(<<"folder">>, UpdateJObj, CurrentFolder)
-                                                          ),
-                    lager:debug("ensuring message is in folder ~s", [RequestedFolder]),
-                    MetaData = wh_json:merge_jobjs(wh_json:set_value(<<"folder">>, RequestedFolder, UpdateJObj)
-                                                   ,CurrentMetaData
-                                                  ),
-                    {CurrentFolder =/= RequestedFolder
-                     ,cb_context:set_resp_data(
-                        cb_context:set_doc(Context1, wh_json:set_value([<<"messages">>, Index], MetaData, cb_context:doc(Context1)))
-                        ,MetaData
-                       )}
-            end;
+            load_message_from_messages(DocId, MediaId, UpdateJObj, Context1);
         _Status ->
             {'false', Context1}
     end.
+
+-spec load_message_from_messages(ne_binary(), ne_binary(), api_object(), cb_context:context()) ->
+                                        {boolean(), cb_context:context()}.
+-spec load_message_from_messages(api_object(), cb_context:context(), pos_integer()) ->
+                                        {boolean(), cb_context:context()}.
+load_message_from_messages(DocId, MediaId, UpdateJObj, Context) ->
+    Messages = wh_json:get_value(<<"messages">>, cb_context:doc(Context), []),
+    case get_message_index(MediaId, Messages) of
+        'false' ->
+            {'false'
+             ,cb_context:add_system_error(
+                'bad_identifier'
+                ,wh_json:from_list([{<<"cause">>, DocId}])
+                ,Context
+               )
+            };
+        Index ->
+            load_message_from_messages(UpdateJObj, Context, Index)
+    end.
+
+load_message_from_messages(UpdateJObj, Context, Index) ->
+    CurrentMetaData = wh_json:get_value([<<"messages">>, Index], cb_context:doc(Context), wh_json:new()),
+    CurrentFolder = wh_json:get_value(<<"folder">>, CurrentMetaData, <<"new">>),
+
+    RequestedFolder = cb_context:req_value(Context
+                                           ,<<"folder">>
+                                           ,wh_json:get_value(<<"folder">>, UpdateJObj, CurrentFolder)
+                                          ),
+    lager:debug("ensuring message is in folder ~s", [RequestedFolder]),
+    MetaData = wh_json:merge_jobjs(wh_json:set_value(<<"folder">>, RequestedFolder, UpdateJObj)
+                                   ,CurrentMetaData
+                                  ),
+    {CurrentFolder =/= RequestedFolder
+     ,cb_context:set_resp_data(
+        cb_context:set_doc(Context, wh_json:set_value([<<"messages">>, Index], MetaData, cb_context:doc(Context)))
+        ,MetaData
+       )}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -327,50 +387,69 @@ load_message(DocId, MediaId, UpdateJObj, Context) ->
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) -> {boolean(), cb_context:context()}.
+-spec load_message_binary(ne_binary(), ne_binary(), cb_context:context()) ->
+                                 {boolean(), cb_context:context()}.
 load_message_binary(DocId, MediaId, Context) ->
     {Update, Context1} = load_message(DocId, MediaId, 'undefined', Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            VMMetaJObj = cb_context:resp_data(Context1),
-            Doc = cb_context:doc(Context1),
-
-            case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
-                {'error', 'not_found'} ->
-                    cb_context:add_system_error('bad_identifier', [{'details', MediaId}], Context1);
-                {'error', _E} ->
-                    cb_context:add_system_error('datastore_fault', Context1);
-                {'ok', Media} ->
-                    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, Media),
-                    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
-                                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
-                                                   ,filename:extension(AttachmentId)
-                                                   ,wh_json:get_value(<<"timezone">>, Doc)
-                                                  ),
-                    case couch_mgr:fetch_attachment(cb_context:account_db(Context1), MediaId, AttachmentId) of
-                        {'error', 'db_not_reachable'} ->
-                            {'false', cb_context:add_system_error('datastore_unreachable', Context1)};
-                        {'error', 'not_found'} ->
-                            {'false', cb_context:add_system_error('bad_identifier', [{'details', MediaId}], Context1)};
-                        {'ok', AttachBin} ->
-                            lager:debug("Sending file with filename ~s", [Filename]),
-                            {Update
-                             ,cb_context:set_resp_data(
-                                cb_context:set_resp_etag(
-                                  cb_context:add_resp_headers(Context1
-                                                              ,[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], Doc)}
-                                                                ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-                                                                ,{<<"Content-Length">>, wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], Doc))}
-                                                               ]
-                                                             )
-                                  ,'undefined'
-                                 )
-                                ,AttachBin
-                                )}
-                    end
-            end;
+            load_message_binary_from_message(MediaId, Context1, Update);
         _Status -> {Update, Context1}
     end.
+
+-spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean()) ->
+                                              {boolean(), cb_context:context()}.
+-spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean(), wh_json:object()) ->
+                                              {boolean(), cb_context:context()}.
+load_message_binary_from_message(MediaId, Context, Update) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
+        {'error', 'not_found'} ->
+            {'false', set_bad_media_identifier(Context, MediaId)};
+        {'error', _E} ->
+            {'false', cb_context:add_system_error('datastore_fault', Context)};
+        {'ok', Media} ->
+            load_message_binary_from_message(MediaId, Context, Update, Media)
+    end.
+
+load_message_binary_from_message(MediaId, Context, Update, Media) ->
+    VMMetaJObj = cb_context:resp_data(Context),
+    Doc = cb_context:doc(Context),
+
+    [AttachmentId] = wh_doc:attachment_names(Media),
+    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
+                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
+                                   ,filename:extension(AttachmentId)
+                                   ,kzd_voicemail_box:timezone(Doc)
+                                  ),
+    case couch_mgr:fetch_attachment(cb_context:account_db(Context), MediaId, AttachmentId) of
+        {'error', 'db_not_reachable'} ->
+            {'false', cb_context:add_system_error('datastore_unreachable', Context)};
+        {'error', 'not_found'} ->
+            {'false', set_bad_media_identifier(Context, MediaId)};
+        {'ok', AttachBin} ->
+            lager:debug("Sending file with filename ~s", [Filename]),
+            {Update
+             ,cb_context:setters(Context
+                                 ,[{fun cb_context:set_resp_data/2, AttachBin}
+                                   ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                                   ,{fun cb_context:add_resp_headers/2
+                                     ,[{<<"Content-Type">>, wh_doc:attachment_content_type(Doc, AttachmentId)}
+                                       ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+                                       ,{<<"Content-Length">>, wh_doc:attachment_length(Doc, AttachmentId)}
+                                      ]
+                                    }
+                                  ]
+                                )
+            }
+    end.
+
+-spec set_bad_media_identifier(cb_context:context(), ne_binary()) -> cb_context:context().
+set_bad_media_identifier(Context, MediaId) ->
+    cb_context:add_system_error(
+      'bad_identifier'
+      ,wh_json:from_list([{<<"cause">>, MediaId}])
+      ,Context
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -396,7 +475,9 @@ get_message_index(MediaId, Messages) ->
 %% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
 %%--------------------------------------------------------------------
--spec generate_media_name(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec generate_media_name(api_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
+    generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
 
@@ -407,10 +488,7 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 
     Date = wh_util:pretty_print_datetime(LocalTime),
 
-    case CallerId of
-        'undefined' -> list_to_binary(["unknown_", Date, Ext]);
-        _ -> list_to_binary([CallerId, "_", Date, Ext])
-    end.
+    list_to_binary([CallerId, "_", Date, Ext]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -419,24 +497,32 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec check_uniqueness(api_binary(), cb_context:context()) -> boolean().
+-spec check_uniqueness(api_binary(), cb_context:context(), pos_integer()) -> boolean().
 check_uniqueness(VMBoxId, Context) ->
     try wh_json:get_integer_value(<<"mailbox">>, cb_context:req_data(Context)) of
         Mailbox ->
-            ViewOptions = [{'key', Mailbox}],
-            case couch_mgr:get_results(cb_context:account_db(Context), <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
-                {'ok', []} -> 'true';
-                {'ok', [VMBox]} ->
-                    VMBoxId =:= wh_json:get_value(<<"id">>, VMBox);
-                {'ok', _} ->
-                    lager:debug("found multiple mailboxs for '~p'", [Mailbox]),
-                    'false';
-                {'error', _E} ->
-                    lager:debug("failed to load listing_by_mailbox view: ~p", [_E]),
-                    'false'
-            end
+            check_uniqueness(VMBoxId, Context, Mailbox)
     catch
         _:_ ->
             lager:debug("can't convert mailbox number to integer", []),
+            'false'
+    end.
+
+check_uniqueness(VMBoxId, Context, Mailbox) ->
+    ViewOptions = [{'key', Mailbox}],
+    case couch_mgr:get_results(cb_context:account_db(Context)
+                               ,<<"vmboxes/listing_by_mailbox">>
+                               ,ViewOptions
+                              )
+    of
+        {'ok', []} -> 'true';
+        {'ok', [VMBox]} ->
+            VMBoxId =:= wh_doc:id(VMBox);
+        {'ok', _} ->
+            lager:warning("found multiple mailboxs for '~p'", [Mailbox]),
+            'false';
+        {'error', _E} ->
+            lager:debug("failed to load listing_by_mailbox view: ~p", [_E]),
             'false'
     end.
 
@@ -456,9 +542,9 @@ update_mwi(Context, 'success') ->
 update_mwi(Context, _Status) ->
     Context.
 
--spec cleanup_heard_voicemail(ne_binary()) -> any().
--spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> any().
--spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> any().
+-spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> 'ok'.
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> 'ok'.
 cleanup_heard_voicemail(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case whapps_account_config:get_global(AccountDb
@@ -475,11 +561,10 @@ cleanup_heard_voicemail(Account) ->
 
 cleanup_heard_voicemail(AccountDb, Duration) ->
     Today = wh_util:current_tstamp(),
-    DurationS = Duration * ?SECONDS_IN_DAY, % duration in seconds
-    case couch_mgr:get_results(AccountDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
+    DurationS = Duration * ?SECONDS_IN_DAY,
+    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
         {'ok', View} ->
-            lager:debug("cleaning up ~b voicemail boxes in ~s", [length(View), AccountDb]),
             cleanup_heard_voicemail(AccountDb
                                     ,Today - DurationS
                                     ,[{wh_json:get_value(<<"doc">>, V)
@@ -487,14 +572,17 @@ cleanup_heard_voicemail(AccountDb, Duration) ->
                                       }
                                       || V <- View
                                      ]
-                                   );
+                                   ),
+            lager:debug("cleaned up ~b voicemail boxes in ~s", [length(View), AccountDb]);
         {'error', _E} ->
             lager:debug("failed to get voicemail boxes in ~s: ~p", [AccountDb, _E])
     end.
-cleanup_heard_voicemail(AccountDb, Timestamp, Boxes) ->
-    [cleanup_voicemail_box(AccountDb, Timestamp, Box) || Box <- Boxes].
 
--spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> any().
+cleanup_heard_voicemail(AccountDb, Timestamp, Boxes) ->
+    _ = [cleanup_voicemail_box(AccountDb, Timestamp, Box) || Box <- Boxes],
+    'ok'.
+
+-spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> 'ok'.
 cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
     case lists:partition(fun(Msg) ->
                                  %% must be old enough, and not in the NEW folder
@@ -502,7 +590,10 @@ cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
                                      andalso wh_json:get_value(<<"folder">>, Msg) =/= <<"new">>
                          end, Msgs)
     of
-        {[], _} -> lager:debug("there are no old messages to remove from ~s", [wh_json:get_value(<<"_id">>, Box)]);
+        {[], _} ->
+            lager:debug("there are no old messages to remove from ~s"
+                        ,[wh_doc:id(Box)]
+                       );
         {Older, Newer} ->
             lager:debug("there are ~b old messages to remove", [length(Older)]),
 
@@ -511,7 +602,7 @@ cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
 
             Box1 = wh_json:set_value(<<"messages">>, Newer, Box),
             {'ok', Box2} = couch_mgr:save_doc(AccountDb, Box1),
-            lager:debug("updated messages in voicemail box ~s", [wh_json:get_value(<<"_id">>, Box2)])
+            lager:debug("updated messages in voicemail box ~s", [wh_doc:id(Box2)])
     end.
 
 -spec delete_media(ne_binary(), ne_binary()) ->
@@ -519,4 +610,52 @@ cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
                           {'error', _}.
 delete_media(AccountDb, MediaId) ->
     {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, MediaId),
-    couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj)).
+    couch_mgr:ensure_saved(AccountDb
+                           ,wh_doc:set_soft_deleted(JObj, 'true')
+                          ).
+
+-spec maybe_migrate_vm_box(kzd_voicemail_box:doc()) ->
+                                  {'true', kzd_voicemail_box:doc()} |
+                                  'false'.
+maybe_migrate_vm_box(Box) ->
+    case wh_json:get_value(<<"notify_email_address">>, Box) of
+        'undefined' -> 'false';
+        Emails ->
+            {'true', kzd_voicemail_box:set_notification_emails(Box, Emails)}
+    end.
+
+-spec migrate(ne_binary()) -> 'ok'.
+migrate(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+        {'ok', []} -> 'ok';
+        {'error', _E} -> io:format("failed to check account ~s for voicemail boxes: ~p~n", [Account, _E]);
+        {'ok', Boxes} ->
+            maybe_migrate_boxes(AccountDb, Boxes)
+    end.
+
+-spec maybe_migrate_boxes(ne_binary(), wh_json:objects()) -> 'ok'.
+maybe_migrate_boxes(AccountDb, Boxes) ->
+    ToUpdate =
+        lists:foldl(fun(View, Acc) ->
+                            Box = wh_json:get_value(<<"doc">>, View),
+                            case maybe_migrate_vm_box(Box) of
+                                'false' -> Acc;
+                                {'true', Box1} -> [Box1 | Acc]
+                            end
+                    end
+                    ,[]
+                    ,Boxes
+                   ),
+
+    io:format("migrating ~p out of ~p boxes~n", [length(ToUpdate), length(Boxes)]),
+
+    maybe_update_boxes(AccountDb, ToUpdate).
+
+-spec maybe_update_boxes(ne_binary(), wh_json:objects()) -> 'ok'.
+maybe_update_boxes(_AccountDb, []) -> 'ok';
+maybe_update_boxes(AccountDb, Boxes) ->
+    case couch_mgr:save_docs(AccountDb, Boxes) of
+        {'ok', _Saved} -> io:format("  updated ~p boxes in ~s~n", [length(_Saved), AccountDb]);
+        {'error', _E}-> io:format("  failed to update boxes: ~p~n", [_E])
+    end.

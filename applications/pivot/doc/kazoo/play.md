@@ -10,7 +10,7 @@ It is pretty easy to play files, either hosted in your account or accessible via
 
 # Play sample
 
-The initial Kazoo JSON to collect DTMF could look something like:
+The initial Kazoo JSON to play a file could look something like:
 
     <?php
 

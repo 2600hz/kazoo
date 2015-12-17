@@ -23,7 +23,7 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) -> {'error', _}.
+-spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) -> {'error', any()}.
 find_numbers(_Number, _Quanity, _Opts) ->
     {'error', 'non_available'}.
 

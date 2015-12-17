@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Listener for route requests that can be fulfilled by callflows
 %%% @end
@@ -29,7 +29,7 @@
                    },
                    {'presence'
                     ,[{'restrict_to', ['probe', 'mwi_query']}
-                      ,{'probe-type', <<"dialog">>}
+                      ,{'probe_type', <<"dialog">>}
                      ]
                    }
                    ,{'self', []}
@@ -154,7 +154,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), term()) -> 'ok'.
+-spec terminate(any(), any()) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("callflow shared queue server ~p termination", [_Reason]).
 

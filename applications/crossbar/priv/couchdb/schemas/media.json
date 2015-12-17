@@ -1,57 +1,107 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "media",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": true,
-    "name": "Media",
     "description": "Schema for media",
+    "name": "Media",
     "properties": {
-        "name": {
-            "type": "string",
-            "required": true,
-            "name": "Name",
-            "description": "A friendly name for the media",
-            "minLength": 1,
-            "maxLength": 128
+        "content_length": {
+            "description": "Length, in bytes, of the file",
+            "maximum": 5242880,
+            "minimum": 1,
+            "name": "Content Length",
+            "required": false,
+            "type": "integer"
+        },
+        "content_type": {
+            "description": "Used to override the automatic upload type",
+            "enum": [
+                "audio/mp3",
+                "audio/mpeg",
+                "audio/mpeg3",
+                "audio/x-wav",
+                "audio/wav",
+                "audio/ogg"
+            ],
+            "name": "Content Type",
+            "required": false,
+            "type": "string"
         },
         "description": {
-            "type": "string",
-            "required": false,
-            "name": "Description",
             "description": "A breif description of the media update, usally the original file name",
+            "maxLength": 128,
             "minLength": 1,
-            "maxLength": 128
+            "name": "Description",
+            "required": false,
+            "type": "string"
         },
         "language": {
-            "type": "string",
-            "required": false,
-            "name": "Language",
+            "default": "en-us",
             "description": "The language of the media file or text",
-            "default":"en-us"
+            "name": "Language",
+            "required": false,
+            "type": "string"
+        },
+        "media_source": {
+            "default": "upload",
+            "description": "Defines the source of the media",
+            "enum": [
+                "recording",
+                "upload",
+                "tts"
+            ],
+            "name": "Media Source",
+            "required": false,
+            "type": "string"
+        },
+        "name": {
+            "description": "A friendly name for the media",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Name",
+            "required": true,
+            "type": "string"
         },
         "prompt_id": {
-            "type": "string",
-            "required": false,
+            "description": "The prompt this media file represents",
             "name": "Prompt ID",
-            "description": "The prompt this media file represents"
+            "required": false,
+            "type": "string"
+        },
+        "source_id": {
+            "description": "If the media was generated from a callflow module, this is ID of the properties",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "Source ID",
+            "required": false,
+            "type": "string"
+        },
+        "source_type": {
+            "description": "If the media was generated from a callflow module, this is the module name",
+            "name": "Source Type",
+            "required": false,
+            "type": "string"
+        },
+        "streamable": {
+            "default": true,
+            "description": "Determines if the media can be streamed",
+            "name": "Streamable",
+            "required": false,
+            "type": "boolean"
         },
         "tts": {
-            "type": "object",
-            "required": false,
-            "name": "TTS Parameters",
+            "default": {},
             "description": "Text-to-speech options used to create audio files from text",
+            "name": "TTS Parameters",
             "properties": {
                 "text": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Text TTS",
                     "description": "The text to be converted into audio",
-                    "minLength": 1
+                    "minLength": 1,
+                    "name": "Text TTS",
+                    "required": false,
+                    "type": "string"
                 },
                 "voice": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Voice TTS",
+                    "default": "female/en-US",
                     "description": "The voice to be used during the conversion",
                     "enum": [
                         "female/en-US",
@@ -96,67 +146,24 @@
                         "female/hu-HU",
                         "female/cs-CZ",
                         "female/tr-TR",
-                        "male/tr-TR"
+                        "male/tr-TR",
+                        "male/ru-RU/Vladimir",
+                        "female/ru-RU/Julia",
+                        "female/ru-RU/Anna",
+                        "female/ru-RU/Viktoria",
+                        "male/ru-RU/Alexander",
+                        "female/ru-RU/Maria",
+                        "female/ru-RU/Lidia"
                     ],
-                    "default": "female/en-US"
+                    "name": "Voice TTS",
+                    "required": false,
+                    "type": "string"
                 }
             },
-            "default": {}
-        },
-        "content_length": {
-            "type": "integer",
             "required": false,
-            "name": "Content Length",
-            "description": "Length, in bytes, of the file",
-            "minimum": 1,
-            "maximum": 5242880
-        },
-        "content_type": {
-            "type": "string",
-            "required": false,
-            "name": "Content Type",
-            "description": "Used to override the automatic upload type",
-            "enum": [
-                "audio/mp3",
-                "audio/mpeg",
-                "audio/mpeg3",
-                "audio/x-wav",
-                "audio/wav",
-                "audio/ogg"
-            ]
-        },
-        "media_source": {
-            "type": "string",
-            "required": false,
-            "name": "Media Source",
-            "description": "Defines the source of the media",
-            "enum": [
-                "recording",
-                "upload",
-                "tts"
-            ],
-            "default": "upload"
-        },
-        "source_type": {
-            "type": "string",
-            "required": false,
-            "name": "Source Type",
-            "description": "If the media was generated from a callflow module, this is the module name"
-        },
-        "source_id": {
-            "type": "string",
-            "required": false,
-            "name": "Source ID",
-            "description": "If the media was generated from a callflow module, this is ID of the properties",
-            "minLength": 32,
-            "maxLength": 32
-        },
-        "streamable": {
-            "type": "boolean",
-            "required": false,
-            "name": "Streamable",
-            "description": "Determines if the media can be streamed",
-            "default": true
+            "type": "object"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

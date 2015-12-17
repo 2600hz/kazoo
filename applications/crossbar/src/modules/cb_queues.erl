@@ -12,7 +12,8 @@
 %%%
 %%% /queues/QID
 %%%   GET: queue details
-%%%   POST: edit queue details
+%%%   POST: replace queue details
+%%%   PATCH: patch queue details
 %%%   DELETE: delete a queue
 %%%
 %%% /queues/QID/stats
@@ -43,6 +44,7 @@
          ,validate/1, validate/2, validate/3
          ,put/1, put/2, put/3
          ,post/2, post/3
+         ,patch/2
          ,delete/2, delete/3
          ,delete_account/2
         ]).
@@ -99,6 +101,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.queues">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.queues">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.queues">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.queues">>, ?MODULE, 'patch'),
 
     _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account'),
 
@@ -122,7 +125,7 @@ allowed_methods(?STATS_PATH_TOKEN) ->
 allowed_methods(?EAVESDROP_PATH_TOKEN) ->
     [?HTTP_PUT];
 allowed_methods(_QID) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
@@ -199,6 +202,8 @@ validate_queue(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_queue(Context, Id, ?HTTP_POST) ->
     validate_request(Id, Context);
+validate_queue(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(Id, Context);
 validate_queue(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
@@ -244,88 +249,132 @@ all_true(Fs) ->
                    (_, Acc) -> Acc
                 end, 'true', Fs).
 
+-spec is_valid_mode(cb_context:context(), wh_json:object()) ->
+                           'true' |
+                           {'false', cb_context:context()}.
 is_valid_mode(Context, Data) ->
-    case wapi_resource:is_valid_mode(wh_json:get_value(<<"mode">>, Data, <<"listen">>)) of
+    Mode = wh_json:get_value(<<"mode">>, Data, <<"listen">>),
+    case wapi_resource:is_valid_mode(Mode) of
         'true' -> 'true';
         'false' ->
             {'false'
-             ,cb_context:add_validation_error(<<"mode">>, <<"enum">>
-                                              ,<<"enum:Value not found in enumerated list of values">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                <<"mode">>
+                ,<<"enum">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Value not found in enumerated list of values">>}
+                    ,{<<"cause">>, Mode}
+                   ])
+                ,Context
+               )
             }
     end.
 
+-spec is_valid_call(cb_context:context(), wh_json:object()) ->
+                           'true' |
+                           {'false', cb_context:context()}.
 is_valid_call(Context, Data) ->
     case wh_json:get_binary_value(<<"call_id">>, Data) of
         'undefined' ->
             {'false'
-             ,cb_context:add_validation_error(<<"call_id">>, <<"required">>
-                                              ,<<"required:Field is required but missing">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                <<"call_id">>
+                ,<<"required">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Field is required but missing">>}]
+                  )
+                ,Context
+               )
             };
         CallId ->
-            case whapps_call_command:b_channel_status(CallId) of
-                {'error', _E} ->
-                    lager:debug("is not valid call: ~p", [_E]),
-                    {'false'
-                     ,cb_context:add_validation_error(<<"call_id">>, <<"not_found">>
-                                                      ,<<"not_found:Call was not found">>
-                                                      ,Context
-                                                     )
-                    };
-                {'ok', _} -> 'true'
-            end
+            is_active_call(Context, CallId)
     end.
 
-is_valid_queue(Context, ?NE_BINARY = QueueId) ->
+-spec is_active_call(cb_context:context(), ne_binary()) ->
+                            'true' |
+                            {'false', cb_context:context()}.
+is_active_call(Context, CallId) ->
+    case whapps_call_command:b_channel_status(CallId) of
+        {'error', _E} ->
+            lager:debug("is not valid call: ~p", [_E]),
+            {'false'
+             ,cb_context:add_validation_error(
+                <<"call_id">>
+                ,<<"not_found">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Call was not found">>}
+                    ,{<<"cause">>, CallId}
+                   ])
+                ,Context
+               )
+            };
+        {'ok', _} -> 'true'
+    end.
+
+is_valid_queue(Context, <<_/binary>> = QueueId) ->
     AcctDb = cb_context:account_db(Context),
     case couch_mgr:open_cache_doc(AcctDb, QueueId) of
         {'ok', QueueJObj} -> is_valid_queue(Context, QueueJObj);
         {'error', _} ->
             {'false'
-             ,cb_context:add_validation_error(<<"queue_id">>, <<"not_found">>
-                                              ,<<"not_found:Queue was not found">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                <<"queue_id">>
+                ,<<"not_found">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Queue was not found">>}
+                    ,{<<"cause">>, QueueId}
+                   ])
+                ,Context
+               )
             }
     end;
 is_valid_queue(Context, QueueJObj) ->
-    case wh_json:get_value(<<"pvt_type">>, QueueJObj) of
+    case wh_doc:type(QueueJObj) of
         <<"queue">> -> 'true';
         _ ->
             {'false'
-             ,cb_context:add_validation_error(<<"queue_id">>, <<"type">>
-                                              ,<<"type:Id did not represent a queue">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                <<"queue_id">>
+                ,<<"type">>
+                ,wh_json:from_list([{<<"message">>, <<"Id did not represent a queue">>}])
+                ,Context
+               )
             }
     end.
 
 is_valid_endpoint(Context, DataJObj) ->
     AcctDb = cb_context:account_db(Context),
-    Id = wh_json:get_value(<<"id">>, DataJObj),
-
+    Id = wh_doc:id(DataJObj),
     case couch_mgr:open_cache_doc(AcctDb, Id) of
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
             {'false'
-             ,cb_context:add_validation_error(<<"id">>, <<"not_found">>
-                                              ,<<"not_found:Id was not found">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                <<"id">>
+                ,<<"not_found">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Id was not found">>}
+                    ,{<<"cause">>, Id}
+                   ])
+                ,Context
+               )
             }
     end.
+
 is_valid_endpoint_type(Context, CallMeJObj) ->
-    case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
+    case wh_doc:type(CallMeJObj) of
         <<"device">> -> 'true';
-        _ ->
+        Type ->
             {'false'
-             ,cb_context:add_validation_error(<<"id">>, <<"type">>
-                                              ,<<"type:Id did not represent a valid endpoint">>
-                                              ,Context
-                                             )
+             ,cb_context:add_validation_error(
+                <<"id">>
+                ,<<"type">>
+                ,wh_json:from_list(
+                   [{<<"message">>, <<"Id did not represent a valid endpoint">>}
+                    ,{<<"cause">>, Type}
+                   ])
+                ,Context
+               )
             }
     end.
 
@@ -372,15 +421,16 @@ eavesdrop_req(Context, Prop) ->
     case whapps_util:amqp_pool_request(props:filter_undefined(Prop)
                                        ,fun wapi_resource:publish_eavesdrop_req/1
                                        ,fun wapi_resource:eavesdrop_resp_v/1
-                                       ,2000
+                                       ,2 * ?MILLISECONDS_IN_SECOND
                                       )
     of
         {'ok', Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
         {'error', 'timeout'} ->
-            cb_context:add_system_error('timeout'
-                                        ,[{'details', <<"eavesdrop failed to start">>}]
-                                        ,Context
-                                       );
+            cb_context:add_system_error(
+              'timeout'
+              ,wh_json:from_list([{<<"cause">>, <<"eavesdrop failed to start">>}])
+              ,Context
+             );
         {'error', E} -> crossbar_util:response('error', <<"error">>, 500, E, Context)
     end.
 
@@ -413,6 +463,15 @@ post(Context, Id, ?ROSTER_PATH_TOKEN) ->
     activate_account_for_acdc(Context),
     read(Id, crossbar_doc:save(Context)).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, Id) ->
+    post(Context, Id).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -461,6 +520,16 @@ read(Id, Context) ->
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(QueueId, Context) ->
     check_queue_schema(QueueId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(QueueId, Context) ->
+    crossbar_doc:patch_and_validate(QueueId, Context, fun validate_request/2).
 
 check_queue_schema(QueueId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(QueueId, C) end,
@@ -545,7 +614,7 @@ maybe_add_queue_to_agent(Id, A) ->
                  end;
              _ -> [Id]
          end,
-    lager:debug("agent ~s adding queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
+    lager:debug("agent ~s adding queues: ~p", [wh_doc:id(A), Qs]),
     wh_json:set_value(<<"queues">>, Qs, A).
 
 -spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:keys()) -> cb_context:context().
@@ -641,9 +710,15 @@ fetch_ranged_queue_stats(Context, StartRange) ->
     case wh_util:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
-            cb_context:add_validation_error(<<"end_range">>, <<"maximum">>
-                                            ,<<"value is greater than start_range">>, Context
-                                           );
+            cb_context:add_validation_error(
+                <<"end_range">>
+                ,<<"maximum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"value is greater than start_range">>}
+                    ,{<<"cause">>, StartRange}
+                 ])
+                ,Context
+            );
         F when F < MaxFrom ->
             %% Range is too big
             fetch_ranged_queue_stats(Context, MaxFrom, To, MaxFrom >= Past);
@@ -691,7 +766,11 @@ fetch_from_amqp(Context, Req) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST
+                           ,[]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -704,7 +783,7 @@ normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 normalize_agents_results(JObj, Acc) ->
-    [wh_json:get_value(<<"id">>, JObj) | Acc].
+    [wh_doc:id(JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -9,7 +9,9 @@
 
 -export([flush/0]).
 -export([remove_callid/1]).
--export([authz_summary/0]).
+-export([authz_summary/0
+         ,authz_summary/1
+        ]).
 -export([authz_details/1]).
 -export([limits_summary/0
          ,limits_summary/1
@@ -32,11 +34,14 @@ authz_summary() ->
             io:format("no channels found~n", []),
             'no_return';
         Accounts ->
-            io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
-            io:format("| Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |~n"),
-            io:format("+==================================+=======+================+============+================+=================+============+~n"),
+            print_authz_summary_header(),
             authz_summary(Accounts)
     end.
+
+print_authz_summary_header() ->
+    io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
+    io:format("| Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |~n"),
+    io:format("+==================================+=======+================+============+================+=================+============+~n").
 
 -spec authz_summary(ne_binaries()) -> 'no_return'.
 authz_summary([]) -> 'no_return';
@@ -51,7 +56,10 @@ authz_summary([AccountId|AccountIds]) ->
                 ,j5_channels:per_minute(AccountId)
                ]),
     io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
-    authz_summary(AccountIds).
+    authz_summary(AccountIds);
+authz_summary(<<_/binary>> = AccountId) ->
+    print_authz_summary_header(),
+    authz_summary([AccountId]).
 
 -spec authz_details(j5_channels:channels() | ne_binary()) -> 'no_return'.
 authz_details([]) ->
@@ -114,7 +122,7 @@ limits_summary() ->
             limits_summary(Limits)
     end.
 
--spec limits_summary([j5_limits:limits(),...] | [] | ne_binary()) -> 'no_return'.
+-spec limits_summary([j5_limits:limits()] | ne_binary()) -> 'no_return'.
 limits_summary([]) -> 'no_return';
 limits_summary([Limit|Limits]) ->
     case j5_limits:enabled(Limit) of

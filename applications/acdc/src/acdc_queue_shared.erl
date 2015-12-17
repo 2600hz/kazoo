@@ -1,17 +1,18 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_shared).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3
+-export([start_link/4
          ,ack/2
          ,nack/2
          ,deliveries/1
@@ -33,18 +34,20 @@
                 ,deliveries = [] :: deliveries()
                }).
 
--define(SHARED_BINDING_OPTIONS, [{'consume_options', [{'no_ack', 'false'}
-                                                      ,{'exclusive', 'false'}
-                                                     ]}
-                                 ,{'basic_qos', 1}
-                                 ,{'queue_options', [{'exclusive', 'false'}
-                                                     ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
-                                                                     ,{<<"x-max-length">>, 1000}
-                                                                    ]
-                                                      }
-                                                    ]
-                                  }
-                                ]).
+-define(SHARED_BINDING_OPTIONS(Priority)
+        ,[{'consume_options', [{'no_ack', 'false'}
+                               ,{'exclusive', 'false'}
+                              ]}
+          ,{'basic_qos', 1}
+          ,{'queue_options', [{'exclusive', 'false'}
+                              ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
+                                              ,{<<"x-max-length">>, 1000}
+                                              ,{<<"x-max-priority">>, Priority}
+                                             ]
+                               }
+                             ]
+           }
+         ]).
 
 -define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{'self', []}]).
 
@@ -64,23 +67,23 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(server_ref(), ne_binary(), ne_binary()) -> startlink_ret().
-start_link(FSMPid, AcctId, QueueId) ->
+-spec start_link(server_ref(), ne_binary(), ne_binary(), api_integer()) -> startlink_ret().
+start_link(FSMPid, AcctId, QueueId, Priority) ->
     gen_listener:start_link(?MODULE
                             ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', wapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
-                              | ?SHARED_BINDING_OPTIONS
+                              | ?SHARED_BINDING_OPTIONS(Priority)
                              ]
                             ,[FSMPid]
                            ).
 
--spec ack(server_ref(), delivery()) -> 'ok'.
+-spec ack(server_ref(), gen_listener:basic_deliver()) -> 'ok'.
 ack(Srv, Delivery) ->
     gen_listener:ack(Srv, Delivery),
     gen_listener:cast(Srv, {'ack', Delivery}).
 
--spec nack(server_ref(), delivery()) -> 'ok'.
+-spec nack(server_ref(), gen_listener:basic_deliver()) -> 'ok'.
 nack(Srv, Delivery) ->
     gen_listener:nack(Srv, Delivery),
     gen_listener:cast(Srv, {'noack', Delivery}).
@@ -105,7 +108,7 @@ deliveries(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([FSMPid]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
 
     lager:debug("shared queue proc started, sending messages to FSM ~p", [FSMPid]),
     {'ok', #state{fsm_pid=FSMPid}}.

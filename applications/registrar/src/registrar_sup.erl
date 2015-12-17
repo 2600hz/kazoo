@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -15,7 +15,8 @@
 -export([init/1]).
 
 -define(CHILDREN, [?CACHE(?REG_CACHE)
-                   ,?WORKER('registrar_shared_listener')
+                   ,?WORKER('registrar_init')
+                   ,?SUPER('registrar_shared_listener_sup')
                   ]).
 
 %% ===================================================================
@@ -47,6 +48,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
