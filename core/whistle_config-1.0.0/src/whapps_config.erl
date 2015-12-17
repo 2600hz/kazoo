@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -21,14 +21,22 @@
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 -export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
 
--export([set/3, set/4, set_default/3, set_node/4]).
+-export([set/3, set/4, set_default/3, set_node/4
+         ,update_default/3, update_default/4
+        ]).
 -export([flush/0, flush/1, flush/2, flush/3]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
 
+-type update_option() :: {'node_specific', boolean()} |
+                         {'pvt_fields', api_object()}.
+-type update_options() :: [update_option()].
+
 -type fetch_ret() :: {'ok', wh_json:object()} |
                      {'error', 'not_found'}.
+
+-define(KEY_DEFAULT, <<"default">>).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -169,9 +177,9 @@ get_is_true(Category, Key, Default, Node) ->
 %% get a configuration key for a given category and cast it as a is_true
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_non_empty(config_category(), config_key()) -> term() | 'undefined'.
--spec get_non_empty(config_category(), config_key(), Default) -> term() | Default.
--spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> term() | Default.
+-spec get_non_empty(config_category(), config_key()) -> _ | 'undefined'.
+-spec get_non_empty(config_category(), config_key(), Default) -> _ | Default.
+-spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> _ | Default.
 get_non_empty(Category, Key) ->
     get_non_empty(Category, Key, 'undefined').
 
@@ -208,9 +216,9 @@ get_ne_binary(Category, Key, Default, Node) ->
 %% node but if there is not then use the default value.
 %% @end
 %%-----------------------------------------------------------------------------
--spec get(config_category(), config_key()) -> term() | 'undefined'.
--spec get(config_category(), config_key(), Default) -> term() | Default.
--spec get(config_category(), config_key(), Default, ne_binary() | atom()) -> term() | Default.
+-spec get(config_category(), config_key()) -> any() | 'undefined'.
+-spec get(config_category(), config_key(), Default) -> any() | Default.
+-spec get(config_category(), config_key(), Default, ne_binary() | atom()) -> any() | Default.
 
 get(Category, Key) ->
     get(Category, Key, 'undefined').
@@ -219,7 +227,7 @@ get(Category, Key, Default) ->
     get(Category, Key, Default, node()).
 
 get(Category, Key, Default, 'undefined') ->
-    get(Category, Key, Default, <<"default">>);
+    get(Category, Key, Default, ?KEY_DEFAULT);
 get(Category, Key, Default, Node) when not is_list(Key) ->
     get(Category, [wh_util:to_binary(Key)], Default, Node);
 get(Category, Keys, Default, Node) when not is_binary(Category) ->
@@ -236,21 +244,31 @@ get(Category, Keys, Default, Node) ->
     end.
 
 -spec get_value(config_category(), config_key(), config_key(), Default, wh_json:object()) ->
-                         Default | term().
-get_value(Category, <<"default">>, Keys, Default, JObj) ->
+                         Default | any().
+get_value(Category, ?KEY_DEFAULT, Keys, Default, JObj) ->
     get_default_value(Category, Keys, Default, JObj);
 get_value(Category, Node, Keys, Default, JObj) ->
     case wh_json:get_value([Node | Keys], JObj) of
+        'undefined' -> get_zone_value(Category, Node, Keys, Default, JObj);
+        Else -> Else
+    end.
+
+-spec get_zone_value(config_category(), config_key(), config_key(), Default, wh_json:object()) ->
+                         Default | any().
+get_zone_value(Category, _Node, Keys, Default, JObj) ->
+    Zone = wh_util:to_binary(wh_nodes:local_zone()),
+    case wh_json:get_value([Zone | Keys], JObj) of
         'undefined' -> get_default_value(Category, Keys, Default, JObj);
         Else -> Else
     end.
 
 -spec get_default_value(config_category(), config_key(), Default, wh_json:object()) ->
-                                 Default | term().
+                                 Default | _.
 get_default_value(Category, Keys, Default, JObj) ->
-    case wh_json:get_value([<<"default">> | Keys], JObj) of
+    case wh_json:get_value([?KEY_DEFAULT | Keys], JObj) of
         'undefined' ->
-            _ = set(Category, Keys, Default),
+            lager:debug("setting default for ~s ~p: ~p", [Category, Keys, Default]),
+            _ = set_default(Category, Keys, Default),
             Default;
         Else -> Else
     end.
@@ -277,7 +295,7 @@ get_all_kvs(Node, JObj) ->
 
 -spec get_all_default_kvs(wh_json:object()) -> wh_proplist().
 get_all_default_kvs(JObj) ->
-    case wh_json:get_value(<<"default">>, JObj) of
+    case wh_json:get_value(?KEY_DEFAULT, JObj) of
         'undefined' -> [];
         DefJObj -> wh_json:to_proplist(DefJObj)
     end.
@@ -288,66 +306,96 @@ get_all_default_kvs(JObj) ->
 %% set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
--spec set(config_category(), config_key(), term()) ->
+-spec set(config_category(), config_key(), any()) ->
                  {'ok', wh_json:object()}.
 set(Category, Key, Value) ->
     set(Category, Key, Value, node()).
 
--spec set(config_category(), config_key(), term(), ne_binary() | atom()) ->
+-spec set(config_category(), config_key(), any(), ne_binary() | atom()) ->
                  {'ok', wh_json:object()}.
 set(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, []).
 
--spec set_default(config_category(), config_key(), term()) ->
-                         {'ok', wh_json:object()} | 'ok'.
+-spec set_default(config_category(), config_key(), any()) ->
+                         {'ok', wh_json:object()} | 'ok' |
+                         {'error', any()}.
 set_default(Category, Key, Value) ->
-    update_category(Category, Key, Value, <<"default">>, []).
+    update_category(Category, Key, Value, ?KEY_DEFAULT, []).
 
--spec set_node(config_category(), config_key(), term(), ne_binary() | atom()) ->
+-spec update_default(config_category(), config_key(), wh_json:json_term()) ->
+                            {'ok', wh_json:object()} | 'ok' |
+                            {'error', any()}.
+-spec update_default(config_category(), config_key(), wh_json:json_term(), update_options()) ->
+                            {'ok', wh_json:object()} | 'ok' |
+                            {'error', any()}.
+update_default(Category, Key, Value) ->
+    update_default(Category, Key, Value, []).
+update_default(Category, Key, Value, Options) ->
+    update_category(Category, Key, Value, ?KEY_DEFAULT, Options).
+
+-spec set_node(config_category(), config_key(), any(), ne_binary() | atom()) ->
                       {'ok', wh_json:object()}.
 set_node(Category, _, _, 'undefined') -> get_category(Category);
 set_node(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
 
--spec update_category(config_category(), config_key(), term(), ne_binary() | atom(), wh_proplist()) ->
-                             {'ok', wh_json:object()}.
+-spec update_category(config_category(), config_key(), any(), ne_binary() | atom(), update_options()) ->
+                             {'ok', wh_json:object()} |
+                             {'error', any()}.
 update_category('undefined', _, _, _, _) -> 'ok';
 update_category(_, 'undefined', _, _, _) -> 'ok';
 update_category(_, _, 'undefined', _, _) -> 'ok';
-update_category(Category, Key, Value, 'undefined', Opts) ->
-    update_category(Category, Key, Value, <<"default">>, Opts);
-update_category(Category, Key, Value, Node, Opts) when not is_list(Key) ->
-    update_category(Category, [wh_util:to_binary(Key)], Value, Node, Opts);
-update_category(Category, Key, Value, Node, Opts) when not is_binary(Category) ->
-    update_category(wh_util:to_binary(Category), Key, Value, Node, Opts);
-update_category(Category, Key, Value, Node, Opts) when not is_binary(Node) ->
-    update_category(Category, Key, Value, wh_util:to_binary(Node), Opts);
-update_category(Category, Keys, Value, Node, Opts) ->
+update_category(Category, Key, Value, 'undefined', Options) ->
+    update_category(Category, Key, Value, ?KEY_DEFAULT, Options);
+update_category(Category, Key, Value, Node, Options) when not is_list(Key) ->
+    update_category(Category, [wh_util:to_binary(Key)], Value, Node, Options);
+update_category(Category, Key, Value, Node, Options) when not is_binary(Category) ->
+    update_category(wh_util:to_binary(Category), Key, Value, Node, Options);
+update_category(Category, Key, Value, Node, Options) when not is_binary(Node) ->
+    update_category(Category, Key, Value, wh_util:to_binary(Node), Options);
+update_category(Category, Keys, Value, Node, Options) ->
     lager:debug("setting ~s(~p): ~p", [Category, Keys, Value]),
-    case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
-        {'ok', JObj} -> update_category(Category, Keys, Value, Node, Opts, JObj);
+    case couch_mgr:open_cache_doc(?WH_CONFIG_DB, Category) of
+        {'ok', JObj} ->
+            lager:debug("updating category ~s(~s).~s to ~p", [Category
+                                                              ,Node
+                                                              ,wh_util:join_binary(Keys)
+                                                              ,Value
+                                                             ]),
+            update_category(Category, Keys, Value, Node, Options, JObj);
         {'error', 'not_found'} ->
-            update_category(Category, Keys, Value, Node, Opts, wh_json:new());
-        {'error', _Reason} ->
-            lager:warning("failed to find ~s in system config (just updating cache): ~p", [Category, _Reason]),
-            case wh_cache:peek_local(?WHAPPS_CONFIG_CACHE, category_key(Category)) of
-                {'error', 'not_found'}=E -> E;
-                {'ok', JObj} -> update_category(Category, Keys, Value, Node, Opts, JObj)
-            end
+            lager:debug("config ~s not found, using empty for now", [Category]),
+            update_category(Category, Keys, Value, Node, Options, wh_json:new());
+        {'error', _Reason}=E ->
+            lager:debug("failed to update category ~s: ~p", [Category, couch_util:format_error(_Reason)]),
+            E
     end.
 
--spec update_category(config_category(), config_key(), term(), ne_binary(), wh_proplist(), wh_json:object()) ->
-                             {'ok', wh_json:object()}.
-update_category(Category, Keys, Value, Node, Opts, JObj) ->
+-spec update_category(config_category(), config_key(), any(), ne_binary(), update_options(), wh_json:object())
+                     -> {'ok', wh_json:object()}.
+update_category(Category, Keys, Value, Node, Options, JObj) ->
+    PvtFields = props:get_value('pvt_fields', Options),
+
     case wh_json:get_value([Node | Keys], JObj) =/= 'undefined'
-        orelse props:is_true('node_specific', Opts, 'false')
+        orelse props:is_true('node_specific', Options, 'false')
     of
         'true' ->
-            J = wh_json:set_value([Node | Keys], Value, JObj),
-            maybe_save_category(Category, J);
+            update_category(Category, wh_json:set_value([Node | Keys], Value, JObj), PvtFields);
         'false' ->
-            J = wh_json:set_value([<<"default">> | Keys], Value, JObj),
-            maybe_save_category(Category, J)
+            update_category(Category, wh_json:set_value([?KEY_DEFAULT | Keys], Value, JObj), PvtFields)
+    end.
+
+-spec update_category(config_category(), wh_json:object(), api_object()) ->
+                             {'ok', wh_json:object()}.
+update_category(Category, JObj, PvtFields) ->
+    case maybe_save_category(Category, JObj, PvtFields) of
+        {'ok', _}=OK -> OK;
+        {'error', 'conflict'} ->
+            lager:debug("conflict saving ~s, merging and saving", [Category]),
+            {'ok', Updated} = couch_mgr:open_doc(?WH_CONFIG_DB, Category),
+            Merged = wh_json:merge_jobjs(Updated, wh_json:public_fields(JObj)),
+            lager:debug("updating from ~s to ~s", [wh_doc:revision(JObj), wh_doc:revision(Merged)]),
+            update_category(Category, Merged, PvtFields)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -356,33 +404,49 @@ update_category(Category, Keys, Value, Node, Opts, JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec maybe_save_category(ne_binary(), wh_json:object()) ->
-                                 {'ok', wh_json:object()}.
--spec maybe_save_category(ne_binary(), wh_json:object(), boolean()) ->
-                                 {'ok', wh_json:object()}.
-maybe_save_category(Category, JObj) ->
-    maybe_save_category(Category, JObj, 'false').
+-spec maybe_save_category(ne_binary(), wh_json:object(), api_object()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'conflict'}.
+-spec maybe_save_category(ne_binary(), wh_json:object(), api_object(), boolean()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'conflict'}.
+maybe_save_category(Category, JObj, PvtFields) ->
+    maybe_save_category(Category, JObj, PvtFields, 'false').
 
-maybe_save_category(Category, JObj, Looped) ->
-    lager:debug("updating configuration category ~s", [Category]),
-    JObj1 =
-        wh_doc:update_pvt_parameters(
-          wh_json:set_value(<<"_id">>, Category, JObj)
-          ,?WH_CONFIG_DB
-          ,[{'type', <<"config">>}]
-         ),
+maybe_save_category(Category, JObj, PvtFields, Looped) ->
+    lager:debug("updating configuration category ~s(~s)"
+                ,[Category, wh_doc:revision(JObj)]
+               ),
+
+    JObj1 = update_pvt_fields(Category, JObj, PvtFields),
+
     case couch_mgr:save_doc(?WH_CONFIG_DB, JObj1) of
         {'ok', SavedJObj} ->
-            lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
-            cache_jobj(Category, SavedJObj);
+            lager:debug("saved cat ~s to db ~s (~s)", [Category, ?WH_CONFIG_DB, wh_doc:revision(SavedJObj)]),
+            couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, SavedJObj),
+            {'ok', SavedJObj};
         {'error', 'not_found'} when not Looped ->
             lager:debug("attempting to create ~s DB", [?WH_CONFIG_DB]),
             couch_mgr:db_create(?WH_CONFIG_DB),
-            maybe_save_category(Category, JObj, 'true');
+            maybe_save_category(Category, JObj, PvtFields, 'true');
+        {'error', 'conflict'}=E -> E;
         {'error', _R} ->
             lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
-            cache_jobj(Category, JObj1)
+            couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, JObj1),
+            {'ok', JObj1}
     end.
+
+-spec update_pvt_fields(config_category(), wh_json:object(), api_object()) ->
+                               wh_json:object().
+update_pvt_fields(Category, JObj, 'undefined') ->
+    wh_doc:update_pvt_parameters(
+      wh_doc:set_id(JObj, Category)
+      ,?WH_CONFIG_DB
+      ,[{'type', <<"config">>}]
+     );
+update_pvt_fields(Category, JObj, PvtFields) ->
+    Base = update_pvt_fields(Category, JObj, 'undefined'),
+    wh_json:merge_jobjs(Base, PvtFields).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -392,19 +456,19 @@ maybe_save_category(Category, JObj, Looped) ->
 %%-----------------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() ->
-    wh_cache:flush_local(?WHAPPS_CONFIG_CACHE).
+    couch_mgr:flush_cache_docs(?WH_CONFIG_DB).
 
 -spec flush(ne_binary()) -> 'ok'.
 flush(Category) ->
-    wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, category_key(Category)).
+    couch_mgr:flush_cache_doc(?WH_CONFIG_DB, Category).
 
 -spec flush(ne_binary(), ne_binary()) -> 'ok'.
 -spec flush(ne_binary(), ne_binary() | ne_binaries(), atom() | ne_binary()) -> 'ok'.
 flush(Category, Key) ->
-    flush(Category, Key, <<"default">>).
+    flush(Category, Key, ?KEY_DEFAULT).
 
 flush(Category, Key, 'undefined') ->
-    flush(Category, Key, <<"default">>);
+    flush(Category, Key, ?KEY_DEFAULT);
 flush(Category, Key, Node) when not is_list(Key) ->
     flush(Category, [Key], Node);
 flush(Category, Keys, Node) when not is_binary(Category) ->
@@ -416,7 +480,7 @@ flush(Category, Keys, Node) ->
         {'error', _} -> 'ok';
         {'ok', JObj} ->
             J = wh_json:delete_key([Node | Keys], JObj),
-            _ = cache_jobj(Category, J),
+            _ = couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, J),
             'ok'
     end.
 
@@ -431,52 +495,4 @@ flush(Category, Keys, Node) ->
 %%-----------------------------------------------------------------------------
 -spec get_category(ne_binary()) -> fetch_ret().
 get_category(Category) ->
-    Routines = [fun get_config_cache/1
-                ,fun get_db_config/1
-               ],
-    lists:foldl(fun(_, {'ok', _}=Acc) -> Acc;
-                   (F, _) -> F(Category)
-                end, {'error', 'not_found'}, Routines).
-
--spec get_config_cache(ne_binary()) -> fetch_ret().
-get_config_cache(Category) ->
-    wh_cache:peek_local(?WHAPPS_CONFIG_CACHE, category_key(Category)).
-
--spec get_db_config(ne_binary()) -> fetch_ret().
-get_db_config(Category) ->
-    lager:debug("fetch db config for ~s", [Category]),
-    case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
-        {'ok', JObj} -> cache_jobj(Category, JObj);
-        {'error', _R}=E ->
-            lager:debug("could not fetch config ~s from db: ~p", [Category, _R]),
-            E
-    end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
--spec cache_jobj(ne_binary(), wh_json:object()) ->
-                        {'ok', wh_json:object()}.
-cache_jobj(Category, JObj) ->
-    lager:debug("stored ~s into whapps config cache", [Category]),
-    CacheProps = [{'expires', 'infinity'}
-                  ,{'origin', {'db', ?WH_CONFIG_DB, Category}}
-                 ],
-    wh_cache:store_local(?WHAPPS_CONFIG_CACHE
-                         ,category_key(Category)
-                         ,JObj
-                         ,CacheProps),
-    {'ok', JObj}.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%-----------------------------------------------------------------------------
--spec category_key(Cat) -> {?MODULE, Cat}.
-category_key(Category) ->
-    {?MODULE, Category}.
+    couch_mgr:open_cache_doc(?WH_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]).

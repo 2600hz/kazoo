@@ -1,24 +1,37 @@
-{"_id":"rates"
- ,"US48":{
-    "routes":["^\+1([2-7]\d\d)\d{7}$","^\+1(9\d\d)\d{7}$"]
-    ,"direction":["inbound","outbound"]
-    ,"weight":100
-    ,"rate_cost":0.01
-    ,"rate_increment":60
-    ,"rate_minimum":60
-    ,"options":{
-       "CNAM":true
-       ,"CallerID":true
-      }
-    ,"flatrate":true
-   }
- ,"Vixii-911":{
-    "routes":["^911$"]
-    ,"direction":["outbound"]
-    ,"weight":100
-    ,"rate_cost":0
-    ,"rate_increment":60
-    ,"rate_minimum":60
-    ,"options":{"E911":true}
-   }
+{
+    "US48": {
+        "direction": [
+            "inbound",
+            "outbound"
+        ],
+        "flatrate": true,
+        "options": {
+            "CNAM": true,
+            "CallerID": true
+        },
+        "rate_cost": 0.01,
+        "rate_increment": 60,
+        "rate_minimum": 60,
+        "routes": [
+            "^\\+1([2-7]\\d\\d)\\d{7}$",
+            "^\\+1(9\\d\\d)\\d{7}$"
+        ],
+        "weight": 100
+    },
+    "Vixii-911": {
+        "direction": [
+            "outbound"
+        ],
+        "options": {
+            "E911": true
+        },
+        "rate_cost": 0,
+        "rate_increment": 60,
+        "rate_minimum": 60,
+        "routes": [
+            "^911$"
+        ],
+        "weight": 100
+    },
+    "_id": "rates"
 }

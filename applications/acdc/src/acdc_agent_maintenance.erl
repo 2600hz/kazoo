@@ -16,6 +16,7 @@
          ,agent_status/2
         ]).
 
+-include("acdc.hrl").
 status() -> acdc_agents_sup:status().
 
 acct_status(AcctId) when not is_binary(AcctId) ->
@@ -25,7 +26,7 @@ acct_status(AcctId) ->
         [] -> lager:info("no agents with account id ~s available", [AcctId]);
         As ->
             lager:info("Agent Statuses in ~s", [AcctId]),
-            [acdc_agent_sup:status(Sup) || Sup <- As],
+            _ = [acdc_agent_sup:status(Sup) || Sup <- As],
             'ok'
     end.
 
@@ -44,7 +45,7 @@ acct_restart(AcctId) ->
         [] -> lager:info("no agents with account id ~s available", [AcctId]);
         As ->
             lager:debug("Terminating existing agent processes in ~s", [AcctId]),
-            [exit(Sup, 'kill') || Sup <- As],
+            _ = [exit(Sup, 'kill') || Sup <- As],
             lager:info("Restarting agents in ~s", [AcctId]),
             acdc_init:init_acct_agents(AcctId),
             'ok'

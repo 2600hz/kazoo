@@ -1,7 +1,6 @@
 -ifndef(DTH_HRL).
 
 -include_lib("detergent/include/detergent.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 

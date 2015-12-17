@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -23,6 +23,7 @@
         ]).
 
 -include("webhooks.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -record(state, {}).
 -type state() :: #state{}.
@@ -39,9 +40,7 @@
                       ,[{<<"configuration">>, <<"*">>}]
                      }
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -58,9 +57,6 @@ start_link() ->
     gen_listener:start_link(?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
-                              ,{'queue_name', ?QUEUE_NAME}
-                              ,{'queue_options', ?QUEUE_OPTIONS}
-                              ,{'consume_options', ?CONSUME_OPTIONS}
                              ]
                             ,[]
                            ).
@@ -68,27 +64,41 @@ start_link() ->
 -spec handle_config(wh_json:object(), wh_proplist()) -> 'ok'.
 -spec handle_config(wh_json:object(), pid(), ne_binary()) -> 'ok'.
 handle_config(JObj, Props) ->
+    'true' = wapi_conf:doc_update_v(JObj),
     handle_config(JObj
                   ,props:get_value('server', Props)
-                  ,wh_json:get_value(<<"Event-Name">>, JObj)
+                  ,wh_api:event_name(JObj)
                  ).
 
-handle_config(JObj, Srv, <<"doc_created">>) ->
+handle_config(JObj, Srv, ?DOC_CREATED) ->
     case wapi_conf:get_doc(JObj) of
         'undefined' -> find_and_add_hook(JObj, Srv);
         Hook -> webhooks_util:load_hook(Srv, Hook)
     end;
-handle_config(JObj, Srv, <<"doc_edited">>) ->
-    case wapi_conf:get_doc(JObj) of
+handle_config(JObj, Srv, ?DOC_EDITED) ->
+    case wapi_conf:get_id(JObj) of
         'undefined' -> find_and_update_hook(JObj, Srv);
-        Hook ->
-            gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)})
+        HookId ->
+            {'ok', Hook} = couch_mgr:open_doc(?KZ_WEBHOOKS_DB, HookId),
+            case (not wapi_conf:get_is_soft_deleted(JObj))
+                andalso kzd_webhook:is_enabled(Hook)
+
+            of
+                'true' ->
+                    gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
+                'false' ->
+                    gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
+            end,
+            webhooks_disabler:flush_failures(wapi_conf:get_account_id(JObj), HookId)
     end;
-handle_config(JObj, Srv, <<"doc_deleted">>) ->
+handle_config(JObj, Srv, ?DOC_DELETED) ->
     case wapi_conf:get_doc(JObj) of
         'undefined' -> find_and_remove_hook(JObj, Srv);
         Hook ->
-            gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)})
+            gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)}),
+            webhooks_disabler:flush_failures(wapi_conf:get_account_id(JObj)
+                                             ,wh_doc:id(JObj)
+                                            )
     end.
 
 -spec find_and_add_hook(wh_json:object(), pid()) -> 'ok'.
@@ -111,16 +121,11 @@ find_and_update_hook(JObj, Srv) ->
 
 -spec find_and_remove_hook(wh_json:object(), pid()) -> 'ok'.
 find_and_remove_hook(JObj, Srv) ->
-    case find_hook(JObj) of
-        {'ok', Hook} ->
-            gen_listener:cast(Srv, {'remove_hook', webhooks_util:jobj_to_rec(Hook)});
-        {'error', _E} ->
-            lager:debug("failed to remove hook ~s: ~p", [webhooks_util:hook_id(JObj), _E])
-    end.
+    gen_listener:cast(Srv, {'remove_hook', webhooks_util:hook_id(JObj)}).
 
 -spec find_hook(wh_json:object()) ->
                        {'ok', wh_json:object()} |
-                       {'error', _}.
+                       {'error', any()}.
 find_hook(JObj) ->
     couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB
                              ,wapi_conf:get_id(JObj)
@@ -176,14 +181,18 @@ handle_call(_Request, _From, State) ->
 handle_cast({'add_hook', #webhook{id=_Id}=Hook}, State) ->
     lager:debug("adding hook ~s", [_Id]),
     ets:insert_new(webhooks_util:table_id(), Hook),
+    maybe_add_shared_bindings(Hook),
     {'noreply', State};
 handle_cast({'update_hook', #webhook{id=_Id}=Hook}, State) ->
     lager:debug("updating hook ~s", [_Id]),
-    ets:insert(webhooks_util:table_id(), Hook),
+    _ = ets:insert(webhooks_util:table_id(), Hook),
+    maybe_add_shared_bindings(Hook),
     {'noreply', State};
 handle_cast({'remove_hook', #webhook{id=Id}}, State) ->
+    handle_cast({'remove_hook', Id}, State);
+handle_cast({'remove_hook', <<_/binary>> = Id}, State) ->
     lager:debug("removing hook ~s", [Id]),
-    ets:delete(webhooks_util:table_id(), Id),
+    maybe_remove_shared_bindings(Id),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
@@ -207,11 +216,12 @@ handle_cast(_Msg, State) ->
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:info("write access to table '~p' available", [_TblId]),
     Self = self(),
-    _ = spawn(fun() ->
-                      wh_util:put_callid(?MODULE),
-                      webhooks_util:load_hooks(Self),
-                      webhooks_util:init_mods()
-              end),
+    _ = wh_util:spawn(
+          fun() ->
+                  wh_util:put_callid(?MODULE),
+                  webhooks_util:load_hooks(Self),
+                  webhooks_util:init_webhooks()
+          end),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -256,3 +266,46 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec maybe_add_shared_bindings(webhook()) -> 'ok'.
+maybe_add_shared_bindings(#webhook{hook_event = <<"object">>
+                                   ,account_id=AccountId
+                                  }) ->
+    lager:debug("adding doc bindings for ~s", [AccountId]),
+    webhooks_shared_listener:add_object_bindings(AccountId);
+maybe_add_shared_bindings(_Hook) -> 'ok'.
+
+-spec maybe_remove_shared_bindings(ne_binary()) -> 'true'.
+maybe_remove_shared_bindings(Id) ->
+    case ets:lookup(webhooks_util:table_id(), Id) of
+        [Hook] -> remove_shared_bindings(Hook);
+        _ -> 'ok'
+    end,
+    lager:debug("deleting hook ~s", [Id]),
+    ets:delete(webhooks_util:table_id(), Id).
+
+-spec remove_shared_bindings(webhook()) -> 'ok'.
+remove_shared_bindings(#webhook{account_id = AccountId
+                                ,id = Id
+                               }
+                      ) ->
+    lager:debug("account ~s removed an doc hook, seeing if others exist"
+                ,[AccountId]
+               ),
+    case ets:select(webhooks_util:table_id(), object_account_ms(AccountId, Id)) of
+        [] ->
+            lager:debug("no other doc bindings, removing ~s", [AccountId]),
+            webhooks_shared_listener:remove_object_bindings(AccountId);
+        _ ->
+            lager:debug("account ~s has other doc bindings", [AccountId])
+    end.
+
+-spec object_account_ms(ne_binary(), ne_binary()) -> ets:match_spec().
+object_account_ms(AccountId, Id) ->
+    [{#webhook{account_id=AccountId
+               ,hook_event='$1'
+               ,hook_id=Id
+               ,_='_'
+              }
+      ,[{'=:=', '$1', {'const', <<"object">>}}]
+      ,['$_']
+     }].

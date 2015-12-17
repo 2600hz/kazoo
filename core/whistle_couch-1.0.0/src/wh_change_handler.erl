@@ -35,7 +35,7 @@
           ,doc = <<>> :: binary()
          }).
 -type listener() :: #listener{}.
--type listeners() :: [listener(),...] | [].
+-type listeners() :: [listener()].
 
 -record(state, {
           listeners = [] :: listeners()
@@ -89,7 +89,7 @@ rm_listener(Srv, Pid, Doc) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([DbName]) ->
-    _ = put('callid', list_to_binary([<<"changes_">>, DbName])),
+    _ = wh_util:put_callid(list_to_binary([<<"changes_">>, DbName])),
     lager:debug("starting change handler for ~s", [DbName]),
     {'ok', #state{db=DbName}}.
 
@@ -121,7 +121,7 @@ handle_call({'add_listener', Pid, Doc}, _From, #state{listeners=Ls}=State) ->
             }
     end;
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {'reply', 'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -137,9 +137,9 @@ handle_cast({'rm_listener', Pid, Doc}, #state{listeners=Ls}=State) ->
     lager:debug("remove listener(~p) for ~s", [Pid, case Doc of <<>> -> <<"_all_docs">>; Else -> Else end]),
     case [ V || V <- Ls, keep_listener(V, Doc, Pid)] of
         [] ->
-            {stop, normal, State#state{listeners=[]}};
+            {'stop', 'normal', State#state{listeners=[]}};
         Ls1 ->
-            {noreply, State#state{listeners=Ls1}, hibernate}
+            {'noreply', State#state{listeners=Ls1}, 'hibernate'}
     end.
 
 %%--------------------------------------------------------------------
@@ -156,16 +156,16 @@ handle_info({'DOWN', _Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
     lager:debug("change listener(~p) went down: ~p", [Pid, Info]),
     case [ V || V <- Ls, keep_listener(V, Pid)] of
         [] ->
-            {stop, normal, State#state{listeners=[]}};
+            {'stop', 'normal', State#state{listeners=[]}};
         Ls1 ->
-            {noreply, State#state{listeners=Ls1}, hibernate}
+            {'noreply', State#state{listeners=Ls1}, 'hibernate'}
     end;
-handle_info({error, {_, connection_closed}}, State) ->
+handle_info({'error', {_, 'connection_closed'}}, State) ->
     lager:debug("connection closed on us, so sad"),
-    {stop, connection_closed, State};
+    {'stop', 'connection_closed', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -178,12 +178,12 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_change(_JObj, #state{listeners=[]}=State) ->
-    {noreply, State};
-handle_change({done, _}, State) ->
-    {noreply, State};
+    {'noreply', State};
+handle_change({'done', _}, State) ->
+    {'noreply', State};
 handle_change(JObj, #state{listeners=Ls}=State) ->
-    spawn(?MODULE, alert_listeners, [JObj, Ls]),
-    {noreply, State, hibernate}.
+    _ = wh_util:spawn(fun alert_listeners/2, [JObj, Ls]),
+    {'noreply', State, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -199,8 +199,8 @@ handle_change(JObj, #state{listeners=Ls}=State) ->
 terminate(_Reason, #state{listeners=Ls, db=DbName}) ->
     lager:debug("going down, down, down for ~s(~p)", [DbName, _Reason]),
     lists:foreach(fun(#listener{pid=Pid, monitor_ref=Ref, doc=Doc}) ->
-                          Pid ! {change_handler_terminating, DbName, Doc},
-                          erlang:demonitor(Ref, [flush])
+                          Pid ! {'change_handler_terminating', DbName, Doc},
+                          erlang:demonitor(Ref, ['flush'])
                   end, Ls).
 
 %%--------------------------------------------------------------------
@@ -212,26 +212,26 @@ terminate(_Reason, #state{listeners=Ls, db=DbName}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 -spec keep_listener(listener(), pid()) -> boolean().
 keep_listener(#listener{pid=Pid, monitor_ref=Ref}, Pid) ->
-    erlang:demonitor(Ref, [flush]),
+    erlang:demonitor(Ref, ['flush']),
     'false';
 keep_listener(_, _) -> 'true'.
 
 -spec keep_listener(listener(), binary(), pid()) -> boolean().
 keep_listener(#listener{pid=Pid, doc=Doc, monitor_ref=Ref}, Doc, Pid) ->
-    erlang:demonitor(Ref, [flush]),
+    erlang:demonitor(Ref, ['flush']),
     'false';
 keep_listener(_, _, _) -> 'true'.
 
 -spec alert_listeners(wh_json:object(), listeners()) -> 'ok'.
 alert_listeners(JObj, Ls) ->
-    DocID = wh_json:get_value(<<"id">>, JObj),
+    DocID = wh_doc:id(JObj),
     Msg = case wh_json:is_true(<<"deleted">>, JObj, 'false') of
               'false' ->
                   {'document_changes', DocID, [wh_json:to_proplist(C)

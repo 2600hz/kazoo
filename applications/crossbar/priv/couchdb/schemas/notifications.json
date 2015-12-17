@@ -1,103 +1,161 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "notifications",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": true,
-    "name": "Notifications",
     "description": "Notifications templates",
+    "name": "Notifications",
     "properties": {
-        "to": {
-            "type": "object",
-            "required": true,
-            "name": "To",
-            "description": "To email field",
-            "properties": {
-                "type": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Type",
-                    "description": "",
-                    "minLength": 2,
-                    "maxLength": 253
-                },
-                "email_addresses": {
-                    "type": "array",
-                    "required": true,
-                    "name": "Email Addresses",
-                    "description": "",
-                    "minItems":1,
-                    "items": {
-                        "type": "string",
-                        "format": "email",
-                        "required": false
-                    }
-                }
-            }
-        },
         "bcc": {
-            "type": "object",
-            "required": false,
-            "name": "Bcc",
             "description": "Bcc email field",
+            "name": "Bcc",
             "properties": {
-                "type": {
-                    "type": "string",
-                    "required": false,
-                    "name": "Type",
-                    "description": "",
-                    "minLength": 2,
-                    "maxLength": 253
-                },
                 "email_addresses": {
-                    "type": "string",
-                    "required": true,
-                    "name": "Email Addresses",
                     "description": "",
                     "itmes": {
-                        "type": "string",
                         "format": "email",
-                        "required": false
-                    }
+                        "required": false,
+                        "type": "string"
+                    },
+                    "name": "BCC Email Addresses",
+                    "required": false,
+                    "type": "array"
+                },
+                "type": {
+                    "description": "",
+                    "enum": [
+                        "original",
+                        "specified",
+                        "admins"
+                    ],
+                    "maxLength": 253,
+                    "minLength": 2,
+                    "name": "Type",
+                    "required": false,
+                    "type": "string"
                 }
-            }
+            },
+            "required": false,
+            "type": "object"
         },
-        "from": {
-            "type": "string",
-            "required": true,
-            "name": "From",
-            "description": "From: email address",
-            "format": "email"
-        },
-        "subject": {
-            "type": "string",
-            "required": true,
-            "name": "Subject",
-            "description": "Email subject",
+        "category": {
+            "description": "Category of the template, for grouping purposes",
             "minLength": 1,
-            "maxLength": 78
+            "required": false,
+            "type": "string"
+        },
+        "cc": {
+            "description": "CC email field",
+            "name": "Cc",
+            "properties": {
+                "email_addresses": {
+                    "description": "",
+                    "items": {
+                        "format": "email",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "name": "CC Email Addresses",
+                    "required": false,
+                    "type": "array"
+                },
+                "type": {
+                    "description": "",
+                    "enum": [
+                        "original",
+                        "specified",
+                        "admins"
+                    ],
+                    "name": "Type",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
         },
         "enabled": {
-            "type": "boolean",
-            "required": true,
-            "name": "Enabled",
+            "default": true,
             "description": "Enable notification",
-            "default": false
+            "name": "Enabled",
+            "required": false,
+            "type": "boolean"
         },
-        "template_charset": {
-            "type": "string",
+        "friendly_name": {
+            "description": "Friendly name of the template",
+            "minLength": 1,
+            "required": false,
+            "type": "string"
+        },
+        "from": {
+            "description": "From: email address",
+            "format": "email",
+            "name": "From",
             "required": true,
-            "name": "Template charset",
-            "description": "",
-            "default": "utf-8",
-            "minLength": 1
+            "type": "string"
         },
         "macros": {
-            "type": "object",
-            "required": false,
-            "name": "Macros",
+            "default": {},
             "description": "",
+            "name": "Macros",
             "properties": {},
-            "default": {}
+            "required": false,
+            "type": "object"
+        },
+        "reply_to": {
+            "description": "Reply-To: email address",
+            "format": "email",
+            "name": "Reply-To",
+            "required": false,
+            "type": "string"
+        },
+        "subject": {
+            "description": "Email subject",
+            "maxLength": 200,
+            "minLength": 1,
+            "name": "Subject",
+            "required": true,
+            "type": "string"
+        },
+        "template_charset": {
+            "default": "utf-8",
+            "description": "",
+            "minLength": 1,
+            "name": "Template charset",
+            "required": false,
+            "type": "string"
+        },
+        "to": {
+            "description": "To email field",
+            "name": "To",
+            "properties": {
+                "email_addresses": {
+                    "description": "",
+                    "items": {
+                        "format": "email",
+                        "required": false,
+                        "type": "string"
+                    },
+                    "name": "Email Addresses",
+                    "required": false,
+                    "type": "array"
+                },
+                "type": {
+                    "description": "",
+                    "enum": [
+                        "original",
+                        "specified",
+                        "admins"
+                    ],
+                    "maxLength": 253,
+                    "minLength": 2,
+                    "name": "Type",
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

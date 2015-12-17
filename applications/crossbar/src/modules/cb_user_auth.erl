@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% User auth module
 %%% @end
@@ -23,8 +23,10 @@
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
 -define(USERNAME_LIST, <<"users/list_by_username">>).
--define(DEFAULT_LANGUAGE, <<"en-US">>).
+-define(DEFAULT_LANGUAGE, <<"en-us">>).
 -define(USER_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"user_auth_tokens">>, 35)).
+
+-define(RECOVERY, <<"recovery">>).
 
 %%%===================================================================
 %%% API
@@ -50,7 +52,8 @@ init() ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() -> [?HTTP_PUT].
-allowed_methods(<<"recovery">>) -> [?HTTP_PUT].
+allowed_methods(?RECOVERY) -> [?HTTP_PUT];
+allowed_methods(_) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,8 +66,8 @@ allowed_methods(<<"recovery">>) -> [?HTTP_PUT].
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_tokens()) -> boolean().
 resource_exists() -> 'true'.
-resource_exists(<<"recovery">>) -> 'true';
-resource_exists(_) -> 'false'.
+resource_exists(?RECOVERY) -> 'true';
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -87,8 +90,8 @@ authorize_nouns(_) -> 'false'.
 authenticate(Context) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
 
-authenticate_nouns([{<<"user_auth">>, _}]) -> 'true';
-authenticate_nouns([{<<"user_auth">>, [<<"recovery">>]}]) -> 'true';
+authenticate_nouns([{<<"user_auth">>, []}]) -> 'true';
+authenticate_nouns([{<<"user_auth">>, [?RECOVERY]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -110,8 +113,11 @@ validate(Context) ->
         _Status -> Context1
     end.
 
-validate(Context, <<"recovery">>) ->
-    cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1).
+validate(Context, ?RECOVERY) ->
+    cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1);
+validate(Context, Token) ->
+    Context1 = cb_context:set_account_db(Context, ?KZ_TOKEN_DB),
+    maybe_get_auth_token(Context1, Token).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -119,13 +125,46 @@ put(Context) ->
     _ = cb_context:put_reqid(Context),
     crossbar_util:create_auth_token(Context, ?MODULE).
 
-put(Context, <<"recovery">>) ->
+put(Context, ?RECOVERY) ->
     _ = cb_context:put_reqid(Context),
     reset_users_password(Context).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_get_auth_token(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_get_auth_token(Context, Token) ->
+    Context1 = crossbar_doc:load(Token, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            AuthAccountId = cb_context:auth_account_id(Context),
+            AccountId = cb_context:account_id(Context),
+            create_auth_resp(Context1, Token, AccountId, AuthAccountId);
+        _ -> Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_auth_resp(cb_context:context(), ne_binary(), ne_binary(),  ne_binary()) -> cb_context:context().
+create_auth_resp(Context, Token, AccountId, AccountId) ->
+    lager:debug("account ~s is same as auth account", [AccountId]),
+    RespData = cb_context:resp_data(Context),
+    crossbar_util:response(
+      crossbar_util:response_auth(RespData)
+      ,cb_context:set_auth_token(Context, Token)
+     );
+create_auth_resp(Context, _AccountId, _Token, _AuthAccountId) ->
+    lager:debug("forbidding token for account ~s and auth account ~s", [_AccountId, _AuthAccountId]),
+    cb_context:add_system_error('forbidden', Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,9 +191,8 @@ normalize_account_name(AccountName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
--spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), wh_json:key() | wh_json:keys()) ->
+-spec maybe_authenticate_user(cb_context:context(), ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
                                      cb_context:context().
-
 maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
     Credentials = wh_json:get_value(<<"credentials">>, JObj),
@@ -166,20 +204,13 @@ maybe_authenticate_user(Context) ->
         {'error', _} ->
             lager:debug("failed to find account DB from realm ~s", [AccountRealm]),
             cb_context:add_system_error('invalid_credentials', Context);
-        {'ok', Account} ->
-            maybe_account_is_enabled(Context, Credentials, Method, Account)
+        {'ok', <<_/binary>> = Account} ->
+            maybe_auth_account(Context, Credentials, Method, Account);
+        {'ok', Accounts} ->
+            maybe_auth_accounts(Context, Credentials, Method, Accounts)
     end.
 
-maybe_authenticate_user(Context, _, _, []) ->
-    lager:debug("no account(s) specified"),
-    cb_context:add_system_error('invalid_credentials', Context);
-maybe_authenticate_user(Context, Credentials, Method, [Account|Accounts]) ->
-    Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
-    case cb_context:resp_status(Context1) of
-        'success' -> Context1;
-        _ -> maybe_authenticate_user(Context1, Credentials, Method, Accounts)
-    end;
-maybe_authenticate_user(Context, Credentials, <<"md5">>, Account) when is_binary(Account) ->
+maybe_authenticate_user(Context, Credentials, <<"md5">>, <<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
 
     Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
@@ -192,7 +223,7 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, Account) when is_binary
             lager:debug("credentials do not belong to any user: ~s: ~p", [_Status, cb_context:doc(Context1)]),
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
-maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
+maybe_authenticate_user(Context, Credentials, <<"sha">>, <<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Context1 = crossbar_doc:load_view(?ACCT_SHA1_LIST
                                       ,[{'key', Credentials}]
@@ -202,47 +233,85 @@ maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
         'success' -> load_sha1_results(Context1, cb_context:doc(Context1));
         _Status ->
             lager:debug("credentials do not belong to any user"),
-
             cb_context:add_system_error('invalid_credentials', Context)
     end;
-maybe_authenticate_user(Context, _, _, _) ->
-    lager:debug("invalid creds"),
-
+maybe_authenticate_user(Context, _Creds, _Method, _Account) ->
+    lager:debug("invalid creds by method ~s", [_Method]),
     cb_context:add_system_error('invalid_credentials', Context).
 
--spec maybe_account_is_enabled(cb_context:context(), ne_binary(), ne_binary(), wh_json:key() | wh_json:keys()) ->
-                                      cb_context:context().
-maybe_account_is_enabled(Context, Credentials, Method, Account) ->
+-spec maybe_auth_account(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
+                                     cb_context:context().
+maybe_auth_account(Context, Credentials, Method, Account) ->
+    Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            maybe_account_is_expired(Context1, Account);
+        _Status -> Context1
+    end.
+
+-spec maybe_auth_accounts(cb_context:context(), ne_binary(), ne_binary(), ne_binaries()) ->
+                                     cb_context:context().
+maybe_auth_accounts(Context, _, _, []) ->
+    lager:debug("no account(s) specified"),
+    cb_context:add_system_error('invalid_credentials', Context);
+maybe_auth_accounts(Context, Credentials, Method, [Account|Accounts]) ->
+    Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            maybe_account_is_expired(Context1, Account);
+        _Status ->
+            maybe_auth_accounts(Context, Credentials, Method, Accounts)
+    end.
+
+-spec maybe_account_is_expired(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_account_is_expired(Context, Account) ->
+    case wh_util:is_account_expired(Account) of
+        'false' -> maybe_account_is_enabled(Context, Account);
+        {'true', Expired} ->
+            _ = wh_util:spawn(fun wh_util:maybe_disable_account/1, [Account]),
+            Cause =
+                wh_json:from_list(
+                  [{<<"message">>, <<"account expired">>}
+                   ,{<<"cause">>, Expired}
+                  ]
+                 ),
+            cb_context:add_validation_error(<<"account">>, <<"expired">>, Cause, Context)
+    end.
+
+-spec maybe_account_is_enabled(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_account_is_enabled(Context, Account) ->
     case wh_util:is_account_enabled(Account) of
-        'true' ->
-            maybe_authenticate_user(Context, Credentials, Method, Account);
+        'true' -> Context;
         'false' ->
             lager:debug("account ~p is disabled", [Account]),
-            Props = [{'details', <<"account_disabled">>}],
-            cb_context:add_system_error('forbidden', Props, Context)
+            Cause =
+                wh_json:from_list(
+                  [{<<"message">>, <<"account disabled">>}]
+                 ),
+            cb_context:add_validation_error(<<"account">>, <<"disabled">>, Cause, Context)
     end.
 
 -spec load_sha1_results(cb_context:context(), wh_json:objects() | wh_json:object()) ->
                                cb_context:context().
 load_sha1_results(Context, [JObj|_]) ->
-    lager:debug("found more that one user with SHA1 creds, using ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("found more that one user with SHA1 creds, using ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj));
 load_sha1_results(Context, []) ->
     cb_context:add_system_error('invalid_credentials', Context);
 load_sha1_results(Context, JObj) ->
-    lager:debug("found SHA1 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("found SHA1 credentials belong to user ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj)).
 
 -spec load_md5_results(cb_context:context(), wh_json:objects() | wh_json:object()) ->
                               cb_context:context().
 load_md5_results(Context, [JObj|_]) ->
-    lager:debug("found more that one user with MD5 creds, using ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("found more that one user with MD5 creds, using ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj));
 load_md5_results(Context, []) ->
     lager:debug("failed to find a user with MD5 creds"),
     cb_context:add_system_error('invalid_credentials', Context);
 load_md5_results(Context, JObj) ->
-    lager:debug("found MD5 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
+    lager:debug("found MD5 credentials belong to user ~s", [wh_doc:id(JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj)).
 
 %%--------------------------------------------------------------------
@@ -256,8 +325,7 @@ maybe_recover_user_password(Context) ->
     JObj = cb_context:doc(Context),
     AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
     PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
-    AccountRealm = wh_json:get_value(<<"account_realm">>, JObj
-                                     ,wh_json:get_value(<<"realm">>, JObj)),
+    AccountRealm = wh_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', C} -> C;
         {'ok', [Account|_]} -> maybe_load_username(Account, Context);
@@ -274,7 +342,7 @@ maybe_recover_user_password(Context) ->
 maybe_load_username(Account, Context) ->
     JObj = cb_context:doc(Context),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    lager:debug("attempting to load username in db: ~s", [AccountDb]),
+    lager:debug("attempting to load user name in db: ~s", [AccountDb]),
     Username = wh_json:get_value(<<"username">>, JObj),
     ViewOptions = [{'key', Username}
                    ,'include_docs'
@@ -283,25 +351,33 @@ maybe_load_username(Account, Context) ->
         {'ok', [User]} ->
             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->
-                    lager:debug("the username '~s' was found and is not disabled, continue", [Username]),
+                    lager:debug("the user name '~s' was found and is not disabled, continue", [Username]),
                     cb_context:setters(Context, [{fun cb_context:set_account_db/2, Account}
                                                  ,{fun cb_context:set_doc/2, wh_json:get_value(<<"doc">>, User)}
                                                  ,{fun cb_context:set_resp_status/2, 'success'}
                                                 ]);
                 'true' ->
-                    lager:debug("the username '~s' was found but is disabled", [Username]),
-                    cb_context:add_validation_error(<<"username">>
-                                                    ,<<"forbidden">>
-                                                    ,<<"The provided username is disabled">>
-                                                    ,Context
-                                                   )
+                    lager:debug("the user name '~s' was found but is disabled", [Username]),
+                    cb_context:add_validation_error(
+                      <<"username">>
+                      ,<<"forbidden">>
+                      ,wh_json:from_list(
+                         [{<<"message">>, <<"The provided user name is disabled">>}
+                          ,{<<"cause">>, Username}
+                         ])
+                      ,Context
+                     )
             end;
         _ ->
-            cb_context:add_validation_error(<<"username">>
-                                            ,<<"not_found">>
-                                            ,<<"The provided username was not found">>
-                                            ,Context
-                                           )
+            cb_context:add_validation_error(
+              <<"username">>
+              ,<<"not_found">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"The provided user name was not found">>}
+                  ,{<<"cause">>, Username}
+                 ])
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -333,8 +409,8 @@ reset_users_password(Context) ->
                       ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, JObj)}
                       ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, JObj)}
                       ,{<<"Password">>, Password}
-                      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-                      ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+                      ,{<<"Account-ID">>, wh_doc:account_id(JObj)}
+                      ,{<<"Account-DB">>, wh_doc:account_db(JObj)}
                       ,{<<"Request">>, wh_json:delete_key(<<"username">>, cb_context:req_data(Context))}
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
@@ -356,13 +432,6 @@ find_account('undefined', 'undefined', 'undefined', Context) ->
     {'error', Context};
 find_account('undefined', 'undefined', AccountName, Context) ->
     case whapps_util:get_accounts_by_name(AccountName) of
-        {'ok', 'undefined'} ->
-            lager:debug("failed to find account ~s by name", [AccountName]),
-            C = cb_context:add_validation_error(<<"account_name">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided account name could not be found">>
-                                                ,Context),
-            find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by name '~s': ~s", [AccountName, AccountDb]),
             {'ok', AccountDb};
@@ -370,20 +439,30 @@ find_account('undefined', 'undefined', AccountName, Context) ->
             lager:debug("the account name returned multiple results"),
             {'ok', AccountDbs};
         {'error', _} ->
-            C = cb_context:add_validation_error(<<"account_name">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided account name could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                  <<"account_name">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account name could not be found">>}
+                      ,{<<"cause">>, AccountName}
+                     ])
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', 'undefined', C)
     end;
 find_account('undefined', AccountRealm, AccountName, Context) ->
     case whapps_util:get_account_by_realm(AccountRealm) of
         {'ok', 'undefined'} ->
             lager:debug("failed to find account ~s by name", [AccountName]),
-            C = cb_context:add_validation_error(<<"account_name">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided account name could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                  <<"account_name">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account name could not be found">>}
+                      ,{<<"cause">>, AccountName}
+                     ])
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', 'undefined', C);
         {'ok', AccountDb} ->
             lager:debug("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
@@ -392,10 +471,15 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
             lager:debug("the account realm returned multiple results"),
             {'ok', AccountDbs};
         {'error', _} ->
-            C = cb_context:add_validation_error(<<"account_realm">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided account realm could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                  <<"account_realm">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided account realm could not be found">>}
+                      ,{<<"cause">>, AccountRealm}
+                     ])
+                  ,Context
+                 ),
             find_account('undefined', 'undefined', AccountName, C)
     end;
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
@@ -405,17 +489,23 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
             {'ok', AccountDb};
         {'error', _} ->
-            C = cb_context:add_validation_error(<<"phone_number">>
-                                                ,<<"not_found">>
-                                                ,<<"The provided phone number could not be found">>
-                                                ,Context),
+            C = cb_context:add_validation_error(
+                  <<"phone_number">>
+                  ,<<"not_found">>
+                  ,wh_json:from_list(
+                     [{<<"message">>, <<"The provided phone number could not be found">>}
+                      ,{<<"cause">>, PhoneNumber}
+                     ])
+                  ,Context
+                 ),
             find_account('undefined', AccountRealm, AccountName, C)
     end.
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
-    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
-                                         ,?USER_AUTH_TOKENS
+    case kz_buckets:consume_tokens_until(?APP_NAME
+                                         ,cb_modules_util:bucket_name(Context)
+                                         ,cb_modules_util:token_cost(Context, ?USER_AUTH_TOKENS)
                                         )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');

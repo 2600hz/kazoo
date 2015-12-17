@@ -31,8 +31,8 @@
 
 -define(DEFAULT_LISTEN_ON, 'a').
 
--type default_fun() :: fun(() -> term()).
--type formatter_fun() :: fun((term()) -> term()).
+-type default_fun() :: fun(() -> any()).
+-type formatter_fun() :: fun((any()) -> any()).
 
 -spec numbers() -> wh_json:object().
 -spec numbers(ne_binary()) -> wh_json:object().
@@ -111,8 +111,8 @@ constrain_listen_on(_) -> ?DEFAULT_LISTEN_ON.
 -spec identity(X) -> X.
 identity(X) -> X.
 
--spec get_attribute(wh_json:object(), ne_binary(), default_fun()) -> term().
--spec get_attribute(wh_json:object(), ne_binary(), default_fun(), formatter_fun()) -> term().
+-spec get_attribute(wh_json:object(), ne_binary(), default_fun()) -> any().
+-spec get_attribute(wh_json:object(), ne_binary(), default_fun(), formatter_fun()) -> any().
 get_attribute(JObj, K, DefaultFun) ->
     get_attribute(JObj, K, DefaultFun, fun identity/1).
 
@@ -124,15 +124,11 @@ get_attribute(JObj, K, DefaultFun, FormatterFun) ->
 
 -spec konami_doc(ne_binary()) -> api_object().
 konami_doc(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(Account) of
         {'ok', JObj} -> wh_json:get_value(<<"metaflows">>, JObj);
         {'error', 'not_found'} -> 'undefined';
         {'error', _E} ->
-            lager:debug("failed to open account(~s)'s konami doc: ~p", [wh_util:format_account_id(AccountDb, 'raw')
-                                                                        ,_E
-                                                                       ]),
+            AccountId = wh_util:format_account_id(Account, 'raw'),
+            lager:debug("failed to open account(~s)'s konami doc: ~p", [AccountId, _E]),
             'undefined'
     end.

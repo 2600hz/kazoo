@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Receive route(dialplan) requests from FS, request routes and respond
 %%% @end
@@ -28,6 +28,20 @@
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: wh_proplist()
                }).
+
+-define(CALLER_PRIVACY(Props)
+        ,props:is_true(<<"Caller-Screen-Bit">>, Props, 'false')
+       ).
+
+-define(CALLER_PRIVACY_NUMBER(Props)
+        ,?CALLER_PRIVACY(Props)
+        andalso props:is_true(<<"Caller-Privacy-Hide-Number">>, Props, 'false')
+       ).
+
+-define(CALLER_PRIVACY_NAME(Props)
+        ,?CALLER_PRIVACY(Props)
+        andalso props:is_true(<<"Caller-Privacy-Hide-Name">>, Props, 'false')
+       ).
 
 %%%===================================================================
 %%% API
@@ -63,7 +77,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put('callid', Node),
+    wh_util:put_callid(Node),
     lager:info("starting new fs route listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_dialplan'),
     gen_server:cast(self(), 'bind_to_chatplan'),
@@ -124,6 +138,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'fetch', 'chatplan', Something, Key, Value, Id, ['undefined' | Data]}, State) ->
+    MsgId = wh_util:rand_hex_binary(16),
+    handle_info({'fetch', 'chatplan', Something, Key, Value, Id, [MsgId, {<<"Unique-ID">>, MsgId} | Data]}, State);
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Data]}, #state{node=Node}=State) ->
     lager:warning("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p Id: ~s"
                   ,[Node, _Section, _Something, _Key, _Value, Id]),
@@ -140,22 +157,22 @@ handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #st
         {'dialplan', <<"REQUEST_PARAMS">>, _SubClass, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing dialplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
-            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, FSData]),
+            _ = wh_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, FSData]),
             {'noreply', State, 'hibernate'};
         {'chatplan', <<"CUSTOM">>, <<"KZ::", _/binary>>, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
-            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
+            _ = wh_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, init_message_props(FSData)]),
             {'noreply', State, 'hibernate'};
         {'chatplan', <<"REQUEST_PARAMS">>, _SubClass, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
-            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
+            _ = wh_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, init_message_props(FSData)]),
             {'noreply', State, 'hibernate'};
         {'chatplan', <<"MESSAGE">>, _SubClass, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
-            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
+            _ = wh_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, init_message_props(FSData)]),
             {'noreply', State, 'hibernate'};
         {_, _Other, _, _Context} ->
             lager:debug("ignoring ~s event ~s in context ~s from ~s", [Section, _Other, _Context, Node]),
@@ -195,7 +212,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec should_expand_var(term()) -> boolean().
+-spec should_expand_var(any()) -> boolean().
 should_expand_var({<<?CHANNEL_VAR_PREFIX, _/binary>>, _}) -> 'true';
 should_expand_var({<<"sip_", _/binary>>, _}) -> 'true';
 should_expand_var(_) -> 'false'.
@@ -209,9 +226,15 @@ init_message_props(Props) ->
 
 -spec add_message_missing_props(wh_proplist()) -> wh_proplist().
 add_message_missing_props(Props) ->
-    lists:foldl(fun(A,B) -> [A | B] end, Props,
+    lists:foldl(fun({K, _V}= A,B) ->
+                        case props:get_value(K, Props) of
+                            'undefined' -> [A | B];
+                            _Else -> B
+                        end
+                end, Props,
                 [{<<"Call-Direction">>, <<"outbound">>}
                  ,{<<"Resource-Type">>,<<"sms">>}
+                 ,{<<"Message-ID">>, wh_util:rand_hex_binary(16)}
                  ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
                  ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
                 ]).
@@ -229,7 +252,7 @@ expand_message_vars(Props) ->
 
 -spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 process_route_req(Section, Node, FetchId, CallId, Props) ->
-    put('callid', CallId),
+    wh_util:put_callid(CallId),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'false' -> search_for_route(Section, Node, FetchId, CallId, Props);
         'true' ->
@@ -243,10 +266,8 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
 
 -spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 search_for_route(Section, Node, FetchId, CallId, Props) ->
-    _ = spawn('ecallmgr_fs_authz', 'authorize', [props:set_value(<<"Call-Setup">>, <<"true">>, Props)
-                                                 ,CallId
-                                                 ,Node
-                                                ]),
+    SetupCall = props:set_value(<<"Call-Setup">>, <<"true">>, Props),
+    _ = wh_util:spawn(fun ecallmgr_fs_authz:authorize/3, [SetupCall, CallId, Node]),
     ReqResp = wh_amqp_worker:call(route_req(CallId, FetchId, Props, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1
@@ -298,7 +319,7 @@ reply_forbidden(Section, Node, FetchId) ->
                                                   ,{<<"Fetch-Section">>, wh_util:to_binary(Section)}
                                                  ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-    case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3000) of
+    case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         'ok' -> lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]);
         {'error', Reason} -> lager:debug("node ~s rejected our ~s route unauthz: ~p", [Node, Section, Reason])
     end.
@@ -308,7 +329,7 @@ reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-    case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3000) of
+    case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
         'ok' ->
             lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]),
@@ -319,7 +340,7 @@ reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
 -spec maybe_start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
     case wh_json:get_value(<<"Method">>, JObj) of
-        <<"error">> -> 'ok';
+        <<"error">> -> lager:debug("sent error response to ~s, not starting call handling", [Node]);
         <<"sms">> -> start_message_handling(Node, FetchId, CallId, JObj);
         _Else -> start_call_handling(Node, FetchId, CallId, JObj)
     end.
@@ -327,9 +348,18 @@ maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
 -spec start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_call_handling(Node, FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    _ = ecallmgr_call_sup:start_event_process(Node, CallId),
-    _ = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
+    CCVs =
+        wh_json:set_values(
+          [{<<"Application-Name">>, wh_json:get_value(<<"App-Name">>, JObj)}
+           ,{<<"Application-Node">>, wh_json:get_value(<<"Node">>, JObj)}
+          ]
+          ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
+         ),
+    _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
+    _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
+
+    lager:debug("started event ~p and control ~p processes", [_Evt, _Ctl]),
+
     ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)).
 
 -spec start_message_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -340,38 +370,36 @@ start_message_handling(_Node, _FetchId, CallId, JObj) ->
            ,{<<"Call-ID">>, CallId}
            ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
            ,{<<"Custom-Channel-Vars">>, CCVs}
-           | wh_api:default_headers(ServerQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+           | wh_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ServerQ]),
-    wapi_route:publish_win(ServerQ, Win).
+    wh_amqp_worker:cast(Win, fun(Payload)-> wapi_route:publish_win(ServerQ, Payload) end).
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FetchId, Props, Node) ->
+    SwitchURL = ecallmgr_fs_node:sip_url(Node),
+    [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
+    SwitchURI = <<"sip:", SwitchURIHost/binary>>,
     [{<<"Msg-ID">>, FetchId}
      ,{<<"Call-ID">>, CallId}
      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-     ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
-                                                      ,<<"Caller-Caller-ID-Name">>
-                                                     ], Props, <<"Unknown">>)}
-     ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
-                                                        ,<<"Caller-Caller-ID-Number">>
-                                                       ], Props, <<"0000000000">>)}
-     ,{<<"From-Network-Addr">>, props:get_first_defined([<<"variable_sip_h_X-AUTH-IP">>
-                                                         ,<<"variable_sip_received_ip">>
-                                                        ], Props)}
-     ,{<<"User-Agent">>, props:get_first_defined([<<"variable_sip_user_agent">>
-                                                  ,<<"sip_user_agent">>
-                                                 ], Props)}
+     ,{<<"Caller-ID-Name">>, caller_id_name(Props)}
+     ,{<<"Caller-ID-Number">>, caller_id_number(Props)}
+     ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
+     ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
+     ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"Body">>, props:get_value(<<"body">>, Props)}
+     ,{<<"Body">>, get_body(Props) }
      ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
      ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+     ,{<<"Switch-URL">>, SwitchURL}
+     ,{<<"Switch-URI">>, SwitchURI}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(route_req_ccvs(FetchId, Props))}
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
-     ,{<<"Resource-Type">>, props:get_value(<<"Resource-Type">>, Props, <<"audio">>)}
+     ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
      ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -385,9 +413,19 @@ route_req_ccvs(FetchId, Props) ->
       [{<<"Fetch-ID">>, FetchId}
        ,{<<"Redirected-By">>, RedirectedBy}
        ,{<<"Redirected-Reason">>, RedirectedReason}
+       ,{<<"Caller-Privacy-Number">>, ?CALLER_PRIVACY_NUMBER(Props)}
+       ,{<<"Caller-Privacy-Name">>, ?CALLER_PRIVACY_NAME(Props)}
        | ecallmgr_util:custom_channel_vars(Props)
       ]
      ).
+
+%% TODO
+%% check content-type and decode properly
+%% some sip clients send text/html with entities encoded
+%% some other use application/vnd.3gpp.sms
+-spec get_body(wh_proplist()) -> api_binary().
+get_body(Props) ->
+    props:get_value(<<"body">>, Props).
 
 -spec get_redirected(wh_proplist()) ->
                             {api_binary(), api_binary()}.
@@ -402,3 +440,23 @@ get_redirected(Props) ->
             end;
         _ -> {'undefined' , 'undefined'}
     end.
+
+-spec caller_id_name(wh_proplist()) -> ne_binary().
+caller_id_name(Props) ->
+    caller_id_name(?CALLER_PRIVACY_NAME(Props), Props).
+
+-spec caller_id_name(boolean(), wh_proplist()) -> ne_binary().
+caller_id_name('true', _Props) ->
+    wh_util:anonymous_caller_id_name();
+caller_id_name('false', Props) ->
+    kzd_freeswitch:caller_id_name(Props, wh_util:anonymous_caller_id_name()).
+
+-spec caller_id_number(wh_proplist()) -> ne_binary().
+caller_id_number(Props) ->
+    caller_id_number(?CALLER_PRIVACY_NUMBER(Props), Props).
+
+-spec caller_id_number(boolean(), wh_proplist()) -> ne_binary().
+caller_id_number('true', _Props) ->
+    wh_util:anonymous_caller_id_number();
+caller_id_number('false', Props) ->
+    kzd_freeswitch:caller_id_number(Props, wh_util:anonymous_caller_id_number()).

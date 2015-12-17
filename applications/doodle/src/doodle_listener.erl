@@ -27,7 +27,6 @@
                    ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'doodle_route_req', [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{'doodle_route_win', [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).

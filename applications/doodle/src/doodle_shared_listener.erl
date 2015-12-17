@@ -20,15 +20,24 @@
         ]).
 
 -include("doodle.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -record(state, {}).
 
+
+
 -define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
-                   ,{'registration',[{'restrict_to', ['reg_success']}]}
+                   ,{'registration', [{'restrict_to', ['reg_success']}]}
+                   ,{'conf',[{'keys', [ [{'action', 'created'}, {'doc_type', <<"sms">>}]
+                                        ,[{'doc_type', <<"device">>}]
+                                        ,[{'doc_type', <<"user">>}]
+                                      ]}]}
                    ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
-                     ,{'doodle_notify_handler',[{<<"directory">>, <<"reg_success">>}]}
+                     ,{'doodle_notify_handler', [{<<"directory">>, <<"reg_success">>}]}
+                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_CREATED}]}
+                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_EDITED}]}
                     ]).
 -define(QUEUE_NAME, <<"doodle_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -46,14 +55,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
-                                     ], []).
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                             ]
+                            ,[]
+                           ).
 
 %%%===================================================================
 %%% gen_server callbacks

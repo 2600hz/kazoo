@@ -1,0 +1,9 @@
+{application, base16,
+ [
+  {description, "Base16 encoding and decoding"},
+  {vsn, git},
+  {registered, []},
+  {applications, [kernel,
+                  stdlib]},
+  {env, []}
+ ]}.

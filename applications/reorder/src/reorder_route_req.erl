@@ -46,7 +46,7 @@ get_dest_number(JObj) ->
             lager:debug("converted number to e164: ~s", [Number]),
             Number
     end.
-    
+
 -spec assume_e164(ne_binary()) -> ne_binary().
 assume_e164(<<$+, _/binary>> = Number) -> Number;
 assume_e164(Number) -> <<$+, Number/binary>>.

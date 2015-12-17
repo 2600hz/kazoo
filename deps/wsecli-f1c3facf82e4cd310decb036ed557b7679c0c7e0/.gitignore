@@ -1,0 +1,4 @@
+dialyzer/
+doc/
+deps/
+ebin/

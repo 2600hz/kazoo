@@ -62,7 +62,7 @@ start_link(TableId, TableOptions) ->
 %%--------------------------------------------------------------------
 init([TableId, TableOptions]) ->
     process_flag('trap_exit', 'true'),
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
     lager:debug("started etsmgr for stats for ~s", [TableId]),
@@ -131,7 +131,7 @@ handle_info({'ETS-TRANSFER', Tbl, Etssrv, Data}, #state{table_id=Tbl
                                                         ,etssrv=Etssrv
                                                         ,give_away_ref='undefined'
                                                        }=State) ->
-    lager:debug("ets table ~p transfered back to ourselves", [Tbl]),
+    lager:debug("ets table ~p transferred back to ourselves", [Tbl]),
     {'noreply', State#state{etssrv='undefined'
                             ,give_away_ref=send_give_away_retry(Tbl, Data, 0)
                            }};

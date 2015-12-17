@@ -32,19 +32,18 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:fax_inbound_v(JObj),
 
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     FaxId = wh_json:get_value(<<"Fax-ID">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, FaxId]),
     {'ok', FaxDoc} = kazoo_modb:open_doc(AccountId, FaxId),
 
     Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
-    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AcctObj} = kz_account:fetch(AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
 
@@ -93,7 +92,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
     DateCalled = wh_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
     Timezone = wh_util:to_list(wh_json:get_value([<<"rx_result">>,<<"timezone">>], FaxDoc, <<"UTC">>)),
-    ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),    
+    ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
      ,{<<"fax">>, [{<<"caller_id_number">>, wnm_util:pretty_print(CIDNum)}
@@ -111,7 +110,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                    | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
                   ]}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, FaxDoc)}
+     ,{<<"account_db">>, wh_doc:account_db(FaxDoc)}
     ].
 
 fax_values(Event) ->

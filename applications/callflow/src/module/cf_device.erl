@@ -34,7 +34,7 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
+-spec maybe_handle_bridge_failure(any(), whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
     case cf_util:handle_bridge_failure(Reason, Call) of
         'not_found' -> cf_exe:continue(Call);
@@ -50,13 +50,12 @@ maybe_handle_bridge_failure(Reason, Call) ->
 -spec bridge_to_endpoints(wh_json:object(), whapps_call:call()) ->
                                  cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
-    EndpointId = wh_json:get_value(<<"id">>, Data),
+    EndpointId = wh_doc:id(Data),
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
         {'ok', Endpoints} ->
             Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-            cf_util:maybe_start_metaflows(Call, Endpoints),
             whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
     end.

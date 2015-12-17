@@ -1,9 +1,9 @@
 {
-    "_id": "_design/hotdesks"
-    ,"language": "javascript"
-    ,"views": {
-       "crossbar_listing" : {
-           "map": "function (doc) {if (doc.pvt_deleted || !doc.hotdesk || !doc.hotdesk.users || doc.pvt_type != 'device') return;for (var idx in doc.hotdesk.users) {emit(idx, {'device_name': doc.name,'device_id': doc._id});}}"
-       }
+    "_id": "_design/hotdesks",
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": "function(doc) { if (doc.pvt_deleted || !doc.hotdesk || !doc.hotdesk.users || doc.pvt_type != 'device') return; for (user_id in doc.hotdesk.users) {emit(user_id, {'device_id': doc._id, 'device_name': doc.name});} }"
+        }
     }
 }

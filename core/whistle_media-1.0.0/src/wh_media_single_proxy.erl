@@ -16,7 +16,7 @@
 -include("whistle_media.hrl").
 
 init({_Transport, _Proto}, Req0, _Opts) ->
-    put('callid', wh_util:rand_hex_binary(16)),
+    wh_util:put_callid(wh_util:rand_hex_binary(16)),
     case cowboy_req:path_info(Req0) of
         {[<<"tts">>, Id], Req1} ->
             init_from_tts(maybe_strip_extension(Id), Req1);

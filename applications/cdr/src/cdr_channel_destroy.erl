@@ -7,38 +7,58 @@
 %%%   James Aimonetti
 %%%   Edouard Swiac
 %%%   Ben Wann
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(cdr_channel_destroy).
 
 -include("cdr.hrl").
+
+-define(IGNORED_APP, whapps_config:get(?CONFIG_CAT, <<"ignore_apps">>, [<<"milliwatt">>])).
 
 -export([handle_req/2]).
 
 handle_req(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     _ = wh_util:put_callid(JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj),
-    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
+    couch_mgr:suppress_change_notice(),
+    maybe_ignore(JObj).
+
+-spec maybe_ignore(wh_json:object()) -> 'ok'.
+maybe_ignore(JObj) ->
+    AppName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Application-Name">>], JObj),
+    case lists:member(AppName, ?IGNORED_APP) of
+        'false'-> handle_req(JObj);
+        'true' ->
+            lager:debug("ignoring cdr request from ~s", [AppName])
+    end.
+
+-spec handle_req(wh_json:object()) -> 'ok'.
+handle_req(JObj) ->
+    AccountId = kz_call_event:account_id(JObj),
+    Timestamp = kz_call_event:timestamp(JObj),
     prepare_and_save(AccountId, Timestamp, JObj).
 
--spec prepare_and_save(account_id(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec prepare_and_save(account_id(), gregorian_seconds(), wh_json:object()) -> 'ok'.
 prepare_and_save(AccountId, Timestamp, JObj) ->
-    Routines = [fun normalize/3
-                ,fun update_pvt_parameters/3
+    Routines = [fun update_pvt_parameters/3
                 ,fun update_ccvs/3
                 ,fun set_doc_id/3
                 ,fun set_recording_url/3
+                ,fun set_call_priority/3
+                ,fun maybe_set_e164_destination/3
+                ,fun is_conference/3
                 ,fun save_cdr/3
                ],
+
     lists:foldl(fun(F, J) ->
                         F(AccountId, Timestamp, J)
-                end, JObj, Routines).
+                end
+                ,wh_json:normalize_jobj(JObj)
+                ,Routines
+               ),
+    'ok'.
 
--spec normalize(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
-normalize(_, _, JObj) ->
-    wh_json:normalize_jobj(JObj).
-
--spec update_pvt_parameters(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec update_pvt_parameters(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 update_pvt_parameters('undefined', _, JObj) ->
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
@@ -52,7 +72,7 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
             ],
     wh_doc:update_pvt_parameters(JObj, AccountMODb, Props).
 
--spec update_ccvs(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec update_ccvs(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 update_ccvs(_, _, JObj) ->
     CCVs = wh_json:get_value(<<"custom_channel_vars">>, JObj, wh_json:new()),
     {UpdatedJobj, UpdatedCCVs} =
@@ -63,35 +83,60 @@ update_ccvs(_, _, JObj) ->
         ),
     wh_json:set_value(<<"custom_channel_vars">>, UpdatedCCVs, UpdatedJobj).
 
--spec update_ccvs_foldl(ne_binary(), any(), {wh_json:object(), wh_json:object()}) -> {wh_json:object(), wh_json:object()}.
+-spec update_ccvs_foldl(wh_json:key(), wh_json:json_term(), {wh_json:object(), wh_json:object()}) ->
+                               {wh_json:object(), wh_json:object()}.
 update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
     case wh_json:is_private_key(Key) of
         'false' -> Acc;
         'true' ->
             {wh_json:set_value(Key, Value, JObj)
-             ,wh_json:delete_key(Key, CCVs)}
+             ,wh_json:delete_key(Key, CCVs)
+            }
     end.
 
-
--spec set_doc_id(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec set_doc_id(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_doc_id(_, Timestamp, JObj) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
-    wh_json:set_value(<<"_id">>, DocId, JObj).
+    wh_doc:set_id(JObj, DocId).
 
--spec set_recording_url(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
-set_recording_url(_, _, JObj) ->
-    case wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj) of
+-spec set_call_priority(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+set_call_priority(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"call_priority">>).
+
+-spec set_recording_url(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+set_recording_url(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"recording_url">>).
+
+-spec maybe_set_e164_destination(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+maybe_set_e164_destination(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"e164_destination">>).
+
+-spec is_conference(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
+is_conference(_AccountId, _Timestamp, JObj) ->
+    maybe_leak_ccv(JObj, <<"is_conference">>, {fun wh_json:is_true/3, 'false'}).
+
+-spec maybe_leak_ccv(wh_json:object(), wh_json:key()) -> wh_json:object().
+-spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), any()}) -> wh_json:object().
+maybe_leak_ccv(JObj, Key) ->
+    maybe_leak_ccv(JObj, Key, {fun wh_json:get_value/3, 'undefined'}).
+
+maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
+    CCVKey = [<<"custom_channel_vars">>, Key],
+    case GetFun(CCVKey, JObj, Default) of
         'undefined' -> JObj;
-        Url -> wh_json:set_value(<<"recording_url">>, Url, JObj)
+        Default -> JObj;
+        Value -> wh_json:set_value(Key
+                                   ,Value
+                                   ,wh_json:delete_key(CCVKey, JObj)
+                                  )
     end.
 
--spec save_cdr(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+-spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->
-    CDRDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    CDRDb = wh_doc:account_db(JObj),
     case cdr_util:save_cdr(CDRDb, JObj) of
         {'error', 'max_retries'} ->
             lager:error("write failed to ~s, too many retries", [CDRDb]);
         'ok' -> 'ok'
     end.
-

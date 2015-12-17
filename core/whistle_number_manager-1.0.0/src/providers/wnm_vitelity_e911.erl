@@ -26,11 +26,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
-save(#number{state = <<"port_in">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_PORT_IN} = Number) ->
     maybe_update_e911(Number);
-save(#number{state = <<"reserved">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_RESERVED} = Number) ->
     maybe_update_e911(Number);
-save(#number{state = <<"in_service">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_IN_SERVICE} = Number) ->
     maybe_update_e911(Number);
 save(Number) -> delete(Number).
 
@@ -47,13 +47,13 @@ delete(#number{features=Features
                ,current_number_doc=CurrentDoc
                ,number_doc=Doc
               }=Number) ->
-    case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
+    case wh_json:get_ne_value(?VITELITY_KEY, CurrentDoc) of
         'undefined' -> Number;
         _Else ->
             lager:debug("removing e911 information"),
             _ = remove_number(Num),
-            Number#number{features=sets:del_element(<<"dash_e911">>, Features)
-                          ,number_doc=wh_json:delete_key(<<"dash_e911">>, Doc)
+            Number#number{features=sets:del_element(?VITELITY_KEY, Features)
+                          ,number_doc=wh_json:delete_key(?VITELITY_KEY, Doc)
                          }
     end.
 
@@ -63,43 +63,43 @@ maybe_update_e911(#number{current_number_doc=CurrentJObj
                           ,number_doc=JObj
                           ,dry_run='true'
                          }=N) ->
-    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
-    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    CurrentE911 = wh_json:get_ne_value(?VITELITY_KEY, CurrentJObj),
+    E911 = wh_json:get_ne_value(?VITELITY_KEY, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("dry run: remove vitelity e911 information"),
-            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:del_element(?VITELITY_KEY, Features)};
         'false' when NotChanged  ->
-            N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:add_element(?VITELITY_KEY, Features)};
         'false' ->
             lager:debug("dry run: change vitelity e911 information: ~s", [wh_json:encode(E911)]),
-            wnm_number:activate_feature(<<"dash_e911">>, N)
+            wnm_number:activate_feature(?VITELITY_KEY, N)
     end;
 maybe_update_e911(#number{current_number_doc=CurrentJObj
                           ,features=Features
                           ,number=Number
                           ,number_doc=JObj
                          }=N) ->
-    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
-    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    CurrentE911 = wh_json:get_ne_value(?VITELITY_KEY, CurrentJObj),
+    E911 = wh_json:get_ne_value(?VITELITY_KEY, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("vitelity e911 information has been removed, updating vitelity"),
             _ = remove_number(Number),
-            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:del_element(?VITELITY_KEY, Features)};
         'false' when NotChanged  ->
-            N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:add_element(?VITELITY_KEY, Features)};
         'false' ->
             lager:debug("vitelity e911 information has been changed: ~s", [wh_json:encode(E911)]),
-            N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
-            N1#number{number_doc=wh_json:set_value(<<"dash_e911">>, update_e911(N1, E911), JObj)}
+            N1 = wnm_number:activate_feature(?VITELITY_KEY, N),
+            N1#number{number_doc=wh_json:set_value(?VITELITY_KEY, update_e911(N1, E911), JObj)}
     end.
 
 -spec remove_number(ne_binary()) ->
                            {'ok', _} |
-                           {'error', _}.
+                           {'error', any()}.
 remove_number(DID) ->
     case query_vitelity(wnm_vitelity_util:build_uri(remove_e911_options(DID))) of
         {'error', _}=E -> E;
@@ -118,7 +118,7 @@ remove_e911_options(DID) ->
 
 -spec get_location(ne_binary() | wnm_number()) ->
                           {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'error', any()}.
 get_location(#number{number=DID}) -> get_location(DID);
 get_location(DID) ->
     case query_vitelity(wnm_vitelity_util:build_uri(get_location_options(DID))) of
@@ -140,8 +140,10 @@ get_location_options(DID) ->
 update_e911(Number, Address) ->
     query_vitelity(Number, wnm_vitelity_util:build_uri(e911_options(Number, Address))).
 
--spec e911_options(ne_binary(), wh_json:object()) -> list().
-e911_options(#number{number=Number, assigned_to=AccountId}, AddressJObj) ->
+-spec e911_options(wnm_number(), wh_json:object()) -> list().
+e911_options(#number{number=Number
+                     ,assigned_to=AccountId
+                    }, AddressJObj) ->
     State = wnm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     {UnitType, UnitNumber} = get_unit(wh_json:get_value(<<"extended_address">>, AddressJObj)),
     [{'qs', props:filter_undefined(
@@ -171,12 +173,11 @@ get_unit(ExtendedAddress) ->
 
 -spec get_account_name(ne_binary()) -> api_binary().
 get_account_name(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _Error} ->
-            lager:error('error opening ~p in ~p', [AccountId, AccountDb]),
+            lager:error('error opening account doc ~s', [AccountId]),
             'undefined';
-        {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
+        {'ok', JObj} -> kz_account:name(JObj)
     end.
 
 -spec is_valid_location(wh_json:object()) ->
@@ -214,7 +215,7 @@ query_vitelity(N, URI) ->
 
 -spec query_vitelity(ne_binary()) ->
                             {'ok', text()} |
-                            {'error', _}.
+                            {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of

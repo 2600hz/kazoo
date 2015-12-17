@@ -1,114 +1,114 @@
 {
-  "_id": "rates",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Rate",
-  "description": "Defines a rate for a given prefix",
-  "properties": {
-    "prefix": {
-      "type": "integer",
-      "required": true,
-      "name": "Prefix",
-      "description": "E.164 prefix (ignoring the +)"
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "rates",
+    "description": "Defines a rate for a given prefix",
+    "name": "Rate",
+    "properties": {
+        "carrier": {
+            "description": "Friendly name for the carrier providing this rate",
+            "name": "Carrier Name",
+            "required": false,
+            "type": "string"
+        },
+        "description": {
+            "description": "Friendly description of the rate",
+            "name": "Description",
+            "required": false,
+            "type": "string"
+        },
+        "internal_rate_cost": {
+            "description": "The per-min rate charged by the upstream provider",
+            "minimum": 0,
+            "name": "Internal Cost",
+            "required": false,
+            "type": "number"
+        },
+        "iso_country_code": {
+            "description": "Country code this rate applies to",
+            "name": "Country Code",
+            "required": false,
+            "type": "string"
+        },
+        "options": {
+            "description": "List of options this rate is good for, to be matched against a customer's options",
+            "items": {
+                "required": false,
+                "type": "string"
+            },
+            "name": "Options",
+            "required": false,
+            "type": "array"
+        },
+        "prefix": {
+            "description": "E.164 prefix (ignoring the +)",
+            "name": "Prefix",
+            "required": true,
+            "type": "integer"
+        },
+        "rate_cost": {
+            "description": "The per-min rate charged to the downstream customer",
+            "minimum": 0,
+            "name": "Cost",
+            "required": true,
+            "type": "number"
+        },
+        "rate_increment": {
+            "default": 60,
+            "description": "The time slice, in seconds, to bill in.",
+            "minimum": 10,
+            "name": "Increment (seconds)",
+            "required": false,
+            "type": "integer"
+        },
+        "rate_minimum": {
+            "default": 60,
+            "description": "The minimum time slice, in seconds to bill a call",
+            "minimum": 10,
+            "name": "Minimum Increment (seconds)",
+            "required": false,
+            "type": "integer"
+        },
+        "rate_name": {
+            "description": "Friendly name of the rate",
+            "name": "Name",
+            "required": false,
+            "type": "string"
+        },
+        "rate_nocharge_time": {
+            "default": 0,
+            "description": "If the call duration is shorter than this threshold, the call is not billed",
+            "minimum": 0,
+            "name": "No Charge Time (seconds)",
+            "required": false,
+            "type": "integer"
+        },
+        "rate_surcharge": {
+            "default": 0,
+            "description": "The upfront cost of connecting the call",
+            "minimum": 0,
+            "name": "Surcharge",
+            "required": false,
+            "type": "number"
+        },
+        "routes": {
+            "description": "List of regexs that match valid DIDs for this rate",
+            "items": {
+                "required": false,
+                "type": "string"
+            },
+            "name": "Routes",
+            "required": false,
+            "type": "array"
+        },
+        "weight": {
+            "description": "Ordering against other rates, 1 being most preferred, 100 being least preferred",
+            "maximum": 100,
+            "minimum": 1,
+            "name": "Weight",
+            "required": false,
+            "type": "integer"
+        }
     },
-    "carrier": {
-      "type": "string",
-      "required": false,
-      "name": "Carrier Name",
-      "description": "Friendly name for the carrier providing this rate"
-    },
-    "iso_country_code": {
-      "type": "string",
-      "required": false,
-      "name": "Country Code",
-      "description": "Country code this rate applies to"
-    },
-    "description": {
-      "type": "string",
-      "required": false,
-      "name": "Description",
-      "description": "Friendly description of the rate"
-    },
-    "rate_name": {
-      "type": "string",
-      "required": false,
-      "name": "Name",
-      "description": "Friendly name of the rate"
-    },
-    "internal_rate_cost": {
-      "type": "number",
-      "required": false,
-      "name": "Internal Cost",
-      "description": "The per-min rate charged by the upstream provider",
-      "minimum": 0
-    },
-    "rate_cost": {
-      "type": "number",
-      "required": true,
-      "name": "Cost",
-      "description": "The per-min rate charged to the downstream customer",
-      "minimum": 0
-    },
-    "rate_increment": {
-      "type": "integer",
-      "required": false,
-      "name": "Increment (seconds)",
-      "description": "The time slice, in seconds, to bill in.",
-      "minimum": 10,
-      "default": 60
-    },
-    "rate_minimum": {
-      "type": "integer",
-      "required": false,
-      "name": "Minimum Increment (seconds)",
-      "description": "The minimum time slice, in seconds to bill a call",
-      "minimum": 10,
-      "default": 60
-    },
-    "rate_nocharge_time": {
-      "type": "integer",
-      "required": false,
-      "name": "No Charge Time (seconds)",
-      "description": "If the call duration is shorter than this threshold, the call is not billed",
-      "minimum": 0,
-      "default": 0
-    },
-    "rate_surcharge": {
-      "type": "number",
-      "required": false,
-      "name": "Surcharge",
-      "description": "The upfront cost of connecting the call",
-      "minimum": 0,
-      "default": 0
-    },
-    "routes": {
-      "type": "array",
-      "required": false,
-      "name": "Routes",
-      "description": "List of regexs that match valid DIDs for this rate",
-      "items": {
-        "type": "string",
-        "required": false
-      }
-    },
-    "weight": {
-      "type": "integer",
-      "required": false,
-      "name": "Weight",
-      "description": "Ordering against other rates, 1 being most preferred, 100 being least preferred",
-      "minimum": 1,
-      "maximum": 100
-    },
-    "options": {
-      "type": "array",
-      "required": false,
-      "name": "Options",
-      "description": "List of options this rate is good for, to be matched against a customer's options",
-      "items": {
-        "type": "string",
-        "required": false
-      }
-    }
-  }
+    "required": true,
+    "type": "object"
 }

@@ -20,15 +20,15 @@
         ]).
 -export([show_calls/0]).
 -export([flush/0]).
--export([account_set_classifier_allow/2
+-export([account_set_classifier_inherit/2
          ,account_set_classifier_deny/2
-         ,all_accounts_set_classifier_allow/1
+         ,all_accounts_set_classifier_inherit/1
          ,all_accounts_set_classifier_deny/1
-         ,device_classifier_allow/2
          ,device_classifier_inherit/2
          ,device_classifier_deny/2
          ,list_account_restrictions/1
         ]).
+-export([update_feature_codes/0, update_feature_codes/1]).
 
 -include("callflow.hrl").
 
@@ -53,8 +53,7 @@ lookup_endpoint(Username, Realm) ->
                     {'ok', EndpointId} ->
                         Endpoint = cf_endpoint:get(EndpointId, AccountDb),
                         io:format("~p~n", [Endpoint]);
-                    _Else -> io:format("unable to find username ~s in ~s~n"
-                                       ,[Username, AccountDb])
+                    _Else -> io:format("unable to find username ~s in ~s~n", [Username, AccountDb])
                 end;
             _Else -> io:format("unable to find account with realm ~s~n", [Realm])
         end,
@@ -110,11 +109,7 @@ blocking_refresh() ->
 %%--------------------------------------------------------------------
 -spec refresh() -> 'started'.
 refresh() ->
-    spawn(fun() ->
-                  lists:foreach(fun(AccountDb) ->
-                                        refresh(AccountDb)
-                                end, whapps_util:get_all_accounts())
-          end),
+    _ = wh_util:spawn(fun blocking_refresh/0),
     'started'.
 
 -spec refresh(binary() | string()) -> 'ok'.
@@ -157,7 +152,7 @@ migrate_recorded_name(Db) ->
 -spec do_recorded_name_migration(ne_binary(), wh_json:object()) -> any().
 -spec do_recorded_name_migration(ne_binary(), wh_json:object(), api_binary()) -> any().
 do_recorded_name_migration(Db, VMBox) ->
-    VMBoxId = wh_json:get_value(<<"_id">>, VMBox),
+    VMBoxId = wh_doc:id(VMBox),
     case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of
         'undefined' -> lager:info("vm box ~s has no recorded name to migrate", [VMBoxId]);
         MediaId ->
@@ -209,8 +204,8 @@ migrate_menus(Account) ->
 
 do_menu_migration(Menu, Db) ->
     Doc = wh_json:get_value(<<"doc">>, Menu),
-    MenuId = wh_json:get_value(<<"_id">>, Doc),
-    VSN = wh_json:get_integer_value(<<"pvt_vsn">>, Doc, 1),
+    MenuId = wh_doc:id(Doc),
+    VSN = wh_doc:vsn(Doc, 1),
     case couch_mgr:fetch_attachment(Db, MenuId, <<"prompt.mp3">>) of
         {'ok', _} when VSN =/= 1 ->
             lager:info("menu ~s in ~s already migrated", [MenuId, Db]);
@@ -242,7 +237,7 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
              ,{<<"streamable">>, 'true'}],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
-    wh_json:get_value(<<"_id">>, JObj).
+    wh_doc:id(JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -269,26 +264,26 @@ update_doc(Key, Value, Id, Db) ->
 %% @public
 %% @doc
 %%        Set call_restriction flag on account level
-%%        Usage: sup callflow_maintenance account_set_classifier_allow international accountname
+%%        Usage: sup callflow_maintenance account_set_classifier_inherit international accountname
 %%        Usage: sup callflow_maintenance account_set_classifier_deny international accountname
-%%        Usage: sup callflow_maintenance all_accounts_set_classifier_allow international
+%%        Usage: sup callflow_maintenance all_accounts_set_classifier_inherit international
 %%        Usage: sup callflow_maintenance all_accounts_set_classifier_deny international
 %% @end
 %%--------------------------------------------------------------------
 
--spec account_set_classifier_allow(ne_binary(), ne_binary()) -> 'ok'.
-account_set_classifier_allow(Classifier, Account) ->
+-spec account_set_classifier_inherit(ne_binary(), ne_binary()) -> 'ok'.
+account_set_classifier_inherit(Classifier, Account) ->
     {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
-    set_account_classifier_action(<<"allow">>, Classifier, AccountDb).
+    set_account_classifier_action(<<"inherit">>, Classifier, AccountDb).
 
 -spec account_set_classifier_deny(ne_binary(), ne_binary()) -> 'ok'.
 account_set_classifier_deny(Classifier, Account) ->
     {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
     set_account_classifier_action(<<"deny">>, Classifier, AccountDb).
 
--spec all_accounts_set_classifier_allow(ne_binary()) -> 'ok'.
-all_accounts_set_classifier_allow(Classifier) ->
-    all_accounts_set_classifier(<<"allow">>, Classifier).
+-spec all_accounts_set_classifier_inherit(ne_binary()) -> 'ok'.
+all_accounts_set_classifier_inherit(Classifier) ->
+    all_accounts_set_classifier(<<"inherit">>, Classifier).
 
 -spec all_accounts_set_classifier_deny(ne_binary()) -> 'ok'.
 all_accounts_set_classifier_deny(Classifier) ->
@@ -324,27 +319,21 @@ all_accounts_set_classifier(Action, Classifier) ->
 
 -spec get_account_name_by_db(ne_binary()) -> ne_binary() | 'undefined'.
 get_account_name_by_db(AccountDb) ->
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountDb) of
         {'error', _Error} ->
-            lager:error('error opening ~p in ~p', [AccountId, AccountDb]),
+            lager:error('error opening account doc ~p', [AccountDb]),
             'undefined';
-        {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
+        {'ok', JObj} -> kz_account:name(JObj)
     end.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%        Set call_restriction flag on device level
-%%        Usage: sup callflow_maintenance device_classifier_allow international  username@realm.tld
 %%        Usage: sup callflow_maintenance device_classifier_inherit international  username@realm.tld
 %%        Usage: sup callflow_maintenance device_classifier_deny international username@realm.tld
 %% @end
 %%--------------------------------------------------------------------
-
--spec device_classifier_allow(ne_binary(), ne_binary()) -> 'ok'.
-device_classifier_allow(Classifier, Uri) ->
-    set_device_classifier_action(<<"allow">>, Classifier, Uri).
 
 -spec device_classifier_inherit(ne_binary(), ne_binary()) -> 'ok'.
 device_classifier_inherit(Classifier, Uri) ->
@@ -367,7 +356,7 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     {'ok', AccountDb} = whapps_util:get_account_by_realm(Realm),
     Options = [{'key', User}],
     {'ok', [DeviceDoc]} = couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
-    DeviceId = wh_json:get_first_defined([<<"_id">>, <<"id">>], DeviceDoc),
+    DeviceId = wh_doc:id(DeviceDoc),
     couch_mgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
     cf_endpoint:flush(AccountDb, DeviceId).
 
@@ -441,7 +430,7 @@ print_users_level_call_restrictions(DbName) ->
             io:format("\n\nUser level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("\nUsername: ~s\n\n", [wh_json:get_value([<<"value">>,<<"username">>],UserObj)]),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
+                             print_call_restrictions(DbName, wh_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -455,7 +444,7 @@ print_devices_level_call_restrictions(DbName) ->
             io:format("\n\nDevice level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("\nDevice: ~s\n\n", [wh_json:get_value([<<"value">>,<<"name">>],UserObj)]),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
+                             print_call_restrictions(DbName, wh_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -469,9 +458,56 @@ print_trunkstore_call_restrictions(DbName) ->
             io:format("\n\nTrunkstore classifiers:\n\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("Trunk: ~s@~s\n\n", lists:reverse(wh_json:get_value(<<"key">>,UserObj))),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
+                             print_call_restrictions(DbName, wh_doc:id(UserObj))
                           end,
                           JObj);
         {'error', E} ->
             io:format("An error occurred: ~p", [E])
     end.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Update certain patterns matching feature codes (see KAZOO-3122)
+%% @end
+%%--------------------------------------------------------------------
+
+-spec update_feature_codes() -> 'ok'.
+update_feature_codes() ->
+    lists:foreach(fun update_feature_codes/1, whapps_util:get_all_accounts()).
+
+-spec update_feature_codes(ne_binary()) -> 'ok'.
+update_feature_codes(Account)
+  when not is_binary(Account) ->
+    update_feature_codes(wh_util:to_binary(Account));
+update_feature_codes(Account) ->
+    AccountDb = wh_util:format_account_db(Account),
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_PATTERN, ['include_docs']) of
+        {'error', _Reason} ->
+            io:format("error listing feature code patterns: ~p\n", [_Reason]);
+        {'ok', Patterns} ->
+            AccountId = wh_util:format_account_id(Account, 'raw'),
+            io:format("~s : looking through patterns...\n", [AccountId]),
+            maybe_update_feature_codes(AccountDb, Patterns)
+    end.
+
+maybe_update_feature_codes(Db, []) ->
+    io:format("~s : feature codes up to date\n", [wh_util:format_account_id(Db, 'raw')]);
+maybe_update_feature_codes(Db, [Pattern|Patterns]) ->
+    DocId = wh_doc:id(Pattern),
+    Regex = wh_json:get_value(<<"key">>, Pattern),
+    case Regex of
+        <<"^\\*5([0-9]*)$">> ->
+            NewRegex = <<"^\\*5(|[0-9]{2,})$">>,
+            case couch_mgr:update_doc(Db, DocId, [{<<"patterns">>, [NewRegex]}]) of
+                {'error', _Reason} ->
+                    io:format("failed to update doc ~s with new patterns\n", [DocId]);
+                {'ok', _} ->
+                    io:format("successfully updated patterns for doc ~s (~p -> ~p)\n",
+                              [DocId, Regex, NewRegex])
+            end;
+        _OtherRegex ->
+            io:format("skipping pattern ~p\n", [_OtherRegex])
+    end,
+    maybe_update_feature_codes(Db, Patterns).

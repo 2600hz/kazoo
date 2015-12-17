@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -53,16 +53,15 @@
         ]).
 
 -include("wh_couch.hrl").
--include_lib("whistle/include/wh_databases.hrl").
 
 -define(SLEEP_BETWEEN_COMPACTION
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60000)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_compaction">>, 60 * ?MILLISECONDS_IN_SECOND)
        ).
 -define(SLEEP_BETWEEN_POLL
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3000)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_poll">>, 3 * ?MILLISECONDS_IN_SECOND)
        ).
 -define(SLEEP_BETWEEN_VIEWS
-        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2000)
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"sleep_between_views">>, 2 * ?MILLISECONDS_IN_SECOND)
        ).
 -define(MAX_COMPACTING_SHARDS
         ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_shards">>, 2)
@@ -71,13 +70,13 @@
         ,whapps_config:get_integer(?CONFIG_CAT, <<"max_compacting_views">>, 2)
        ).
 -define(MAX_WAIT_FOR_COMPACTION_PIDS
-        ,case whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360000) of
+        ,case whapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360 * ?MILLISECONDS_IN_SECOND) of
              <<"infinity">> -> 'infinity';
              N -> wh_util:to_integer(N)
          end
        ).
 
--define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60000)).
+-define(AUTOCOMPACTION_CHECK_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"autocompaction_check">>, 60 * ?MILLISECONDS_IN_SECOND)).
 
 -define(MIN_RATIO, whapps_config:get_float(?CONFIG_CAT, <<"min_ratio">>, 1.2)).
 -define(MIN_DATA, whapps_config:get_integer(?CONFIG_CAT, <<"min_data_size">>, 131072)). % 128Kb
@@ -96,7 +95,7 @@
 -type compactor_heuristic() :: ?HEUR_NONE | ?HEUR_RATIO.
 
 -type node_with_options() :: {ne_binary(), wh_proplist()}.
--type nodes_with_options() :: [node_with_options(),...] | [].
+-type nodes_with_options() :: [node_with_options()].
 -record(state, {
           nodes :: ne_binaries() | nodes_with_options()
           ,dbs :: ne_binaries()
@@ -273,8 +272,8 @@ current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _ = random:seed(erlang:now()),
-    put('callid', ?MODULE),
+    _ = random:seed(wh_util:now()),
+    wh_util:put_callid(?MODULE),
     self() ! '$maybe_start_auto_compaction_job',
     {'ok', 'ready', #state{conn='undefined'
                            ,admin_conn='undefined'
@@ -859,10 +858,11 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[]
     };
 
 compact({'rebuild_views', N, D, DDs}, #state{conn=Conn}=State) ->
-    _P = spawn(fun() ->
-                       put('callid', N),
-                       ?MODULE:rebuild_design_docs(Conn, encode_db(D), DDs)
-               end),
+    _P = wh_util:spawn(
+           fun() ->
+                   wh_util:put_callid(N),
+                   ?MODULE:rebuild_design_docs(Conn, encode_db(D), DDs)
+           end),
     lager:debug("rebuilding views in ~p", [_P]),
     gen_fsm:send_event(self(), {'compact_db', N, D, [], DDs}),
     {'next_state', 'compact', State};
@@ -1186,7 +1186,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 -spec get_nodes() -> ne_binaries().
 get_nodes() ->
     {'ok', Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
-    shuffle([wh_json:get_value(<<"id">>, Node) || Node <- Nodes]).
+    shuffle([wh_doc:id(Node) || Node <- Nodes]).
 
 -spec get_nodes(ne_binary()) -> ne_binaries().
 get_nodes(Database) ->
@@ -1207,7 +1207,7 @@ get_admin_nodes(Database) ->
         'true' ->
             lager:debug("database '~s' is an admin DB", [Database]),
             {'ok', NodesJObj} = couch_mgr:admin_all_docs(<<"nodes">>),
-            shuffle([wh_json:get_value(<<"id">>, NodeJObj) || NodeJObj <- NodesJObj]);
+            shuffle([wh_doc:id(NodeJObj) || NodeJObj <- NodesJObj]);
         'false' -> []
     end.
 
@@ -1225,7 +1225,7 @@ encode_design_doc(Design) ->
 -spec node_dbs(server()) -> {'ok', ne_binaries()}.
 node_dbs(AdminConn) ->
     {'ok', Dbs} = couch_util:all_docs(AdminConn, <<"dbs">>, []),
-    {'ok', shuffle([<<"dbs">> | [wh_json:get_value(<<"id">>, Db) || Db <- Dbs]])}.
+    {'ok', shuffle([<<"dbs">> | [wh_doc:id(Db) || Db <- Dbs]])}.
 
 -spec db_shards(server(), ne_binary(), ne_binary()) -> ne_binaries().
 db_shards(AdminConn, N, D) ->
@@ -1256,7 +1256,7 @@ db_admin(AdminConn, D) ->
 -spec db_design_docs(server(), ne_binary()) -> ne_binaries().
 db_design_docs(Conn, D) ->
     case couch_util:all_design_docs(Conn, encode_db(D), []) of
-        {'ok', Designs} -> [encode_design_doc(wh_json:get_value(<<"id">>, Design)) || Design <- Designs];
+        {'ok', Designs} -> [encode_design_doc(wh_doc:id(Design)) || Design <- Designs];
         {'error', _} -> []
     end.
 
@@ -1288,7 +1288,7 @@ rebuild_design_doc(Conn, D, DD, DesignDoc) ->
 -spec rebuild_views(server(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 -spec rebuild_view(server(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 rebuild_views(Conn, D, DD, Views) ->
-    [rebuild_view(Conn, D, DD, V) || V <- Views],
+    _ = [rebuild_view(Conn, D, DD, V) || V <- Views],
     'ok'.
 
 rebuild_view(Conn, D, DD, View) ->
@@ -1307,7 +1307,7 @@ rebuild_view(Conn, D, DD, View) ->
 -spec compact_shards(server(), server(), list(), list(), list()) -> pid_ref().
 compact_shards(Conn, AdminConn, Node, Ss, DDs) ->
     PR = spawn_monitor(fun() ->
-                               put('callid', Node),
+                               wh_util:put_callid(Node),
                                Ps = [spawn_monitor(?MODULE, 'compact_shard', [Conn, AdminConn, Shard, DDs])
                                      || Shard <- Ss
                                     ],
@@ -1335,7 +1335,7 @@ wait_for_pids(MaxWait, [{P,Ref}|Ps]) ->
 
 -spec compact_shard(server(), server(), ne_binary(), ne_binaries()) -> 'ok'.
 compact_shard(Conn, AdminConn, S, DDs) ->
-    put('callid', 'compact_shard'),
+    wh_util:put_callid('compact_shard'),
 
     wait_for_compaction(AdminConn, S),
 
@@ -1432,6 +1432,10 @@ wait_for_compaction(AdminConn, S) ->
 
 wait_for_compaction(_AdminConn, _S, {'error', 'db_not_found'}) ->
     lager:debug("shard '~s' wasn't found", [_S]);
+wait_for_compaction(AdminConn, S, {'error', 'timeout'}) ->
+    lager:warning("timed out querying db status; that seems irregular!"),
+    'ok' = timer:sleep(?SLEEP_BETWEEN_POLL * 2),
+    wait_for_compaction(AdminConn, S);
 wait_for_compaction(AdminConn, S, {'error', _E}) ->
     lager:debug("failed to query db status: ~p", [couch_util:format_error(_E)]),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
@@ -1508,11 +1512,11 @@ get_node_connections(Host, Port, User, Pass, AdminPort, Retries) ->
             lager:warning("connection refused when connecting to ~s (on either ~p or ~p)"
                           ,[Host, Port, AdminPort]
                          ),
-            BCCookie = whapps_config:get(<<"whistle_couch">>, <<"bigcouch_cookie">>),
+            BCCookie = whapps_config:get(?CONFIG_CAT, <<"bigcouch_cookie">>),
             lager:warning("check that those ports are correct and the bigcouch_cookie(~s) is correct"
                           ,[BCCookie]
                          ),
-            lager:warning("'sup whapps_config set_default bigcouch_cookie <cookie>' if needed"),
+            lager:warning("'sup whapps_config set_default whistle_couch bigcouch_cookie <cookie>' if needed"),
             get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
         _E:_R ->
             lager:warning("failed to connect to ~s: ~s: ~p", [Host, _E, _R]),
@@ -1525,11 +1529,11 @@ get_ports(Node, Cookie) ->
     case net_adm:ping(Node) =:= 'pong' andalso get_ports(Node) of
         'false' ->
             lager:warning("failed to ping '~s' using cookie '~s'", [Node, Cookie]),
-            BCCookie = whapps_config:get(<<"whistle_couch">>, <<"bigcouch_cookie">>),
+            BCCookie = whapps_config:get(?CONFIG_CAT, <<"bigcouch_cookie">>),
             lager:warning("check that the configured bigcouch_cookie(~s) is correct"
                           ,[BCCookie]
                          ),
-            lager:warning("'sup whapps_config set_default bigcouch_cookie <cookie>' if needed"),
+            lager:warning("'sup whapps_config set_default whistle_couch bigcouch_cookie <cookie>' if needed"),
             {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()};
         Ports -> Ports
     end.
@@ -1550,7 +1554,7 @@ get_ports(Node) ->
             {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()}
     end.
 
--spec get_port(atom(), list(string()), fun(() -> pos_integer())) -> pos_integer().
+-spec get_port(atom(), [string()], fun(() -> pos_integer())) -> pos_integer().
 get_port(Node, Key, DefaultFun) ->
     case rpc:call(Node, 'couch_config', 'get', Key) of
         {'badrpc', _} -> DefaultFun();
@@ -1569,18 +1573,29 @@ maybe_send_update(P, Ref, Update) when is_pid(P) ->
 maybe_send_update(_,_,_) -> 'ok'.
 
 -spec maybe_start_auto_compaction_job() -> 'ok'.
+-spec maybe_start_auto_compaction_job(boolean()) -> 'ok'.
 maybe_start_auto_compaction_job() ->
-    case compact_automatically() andalso
-        (catch wh_couch_connections:test_admin_conn())
-    of
+    maybe_start_auto_compaction_job(compact_automatically()).
+maybe_start_auto_compaction_job('false') ->
+    start_auto_compaction_check_timer(),
+    'ok';
+maybe_start_auto_compaction_job('true') ->
+    try wh_couch_connections:test_admin_conn() of
         {'ok', _} ->
             lager:debug("sending compact after timeout"),
             gen_fsm:send_event_after(?AUTOCOMPACTION_CHECK_TIMEOUT, 'compact');
-        _ ->
-            lager:debug("starting timer for autocompaction"),
-            erlang:send_after(?AUTOCOMPACTION_CHECK_TIMEOUT, self(), '$maybe_start_auto_compaction_job'),
-            'ok'
+        {'error', _E} ->
+            start_auto_compaction_check_timer(),
+            lager:debug("failed to test admin conn: ~p", [_E])
+    catch
+        _E:_R ->
+
+            lager:debug("~s when testing admin conn: ~p", [_E, _R])
     end.
+
+-spec start_auto_compaction_check_timer() -> reference().
+start_auto_compaction_check_timer() ->
+    erlang:send_after(?AUTOCOMPACTION_CHECK_TIMEOUT, self(), '$maybe_start_auto_compaction_job').
 
 -spec queued_jobs_status(queue()) -> 'none' | [wh_proplist(),...].
 queued_jobs_status(Jobs) ->
@@ -1605,7 +1620,7 @@ compact_automatically() ->
 compact_automatically(Boolean) ->
     _ = (catch whapps_config:set(?CONFIG_CAT, <<"compact_automatically">>, Boolean)),
     CacheProps = [{'expires', 'infinity'}
-                  ,{'origin', {'db', ?WH_CONFIG_DB, <<"whistle_couch">>}}
+                  ,{'origin', {'db', ?WH_CONFIG_DB, ?CONFIG_CAT}}
                  ],
     wh_cache:store_local(?WH_COUCH_CACHE, <<"compact_automatically">>, Boolean, CacheProps).
 
@@ -1637,7 +1652,7 @@ get_db_disk_and_data(Conn, Encoded, N) ->
             };
         {'error', {'conn_failed',{'error','timeout'}}} ->
             lager:debug("timed out asking for info, waiting and trying again"),
-            'ok' = timer:sleep(1000),
+            'ok' = timer:sleep(?MILLISECONDS_IN_SECOND),
             get_db_disk_and_data(Conn, Encoded, N+1);
         {'error', 'not_found'} ->
             lager:debug("db '~s' not found, skipping", [Encoded]),

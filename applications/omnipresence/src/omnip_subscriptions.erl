@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -15,6 +15,7 @@
          ,handle_reset/2
          ,handle_subscribe/2
          ,handle_kamailio_subscribe/2
+         ,handle_kamailio_notify/2
          ,handle_mwi_update/2
          ,handle_presence_update/2
          ,handle_channel_event/2
@@ -24,12 +25,15 @@
          ,find_subscriptions/1
          ,find_subscriptions/2
          ,find_user_subscriptions/2
-         ,get_subscriptions/2
+         ,get_subscriptions/2, get_subscriptions/3
+         ,get_stalkers/2
          ,search_for_subscriptions/2
          ,search_for_subscriptions/3
          ,subscription_to_json/1
          ,subscriptions_to_json/1
          ,cached_terminated_callids/0
+         ,handle_sync/2
+         ,proxy_subscribe/1
         ]).
 -export([init/1
          ,handle_call/3
@@ -42,7 +46,7 @@
 -include("omnipresence.hrl").
 -include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
 
--define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, 1000)).
+-define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, ?MILLISECONDS_IN_SECOND)).
 -define(EXPIRES_FUDGE, whapps_config:get_integer(?CONFIG_CAT, <<"expires_fudge_s">>, 20)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
 -define(DEFAULT_EVENT, ?BLF_EVENT).
@@ -50,7 +54,10 @@
 
 -record(state, {
           expire_ref :: reference(),
-          ready = 'false' :: boolean()
+          ready = 'false' :: boolean(),
+          sync = 'false'  :: boolean(),
+          sync_nodes = [] :: list(),
+          other_nodes_count = 0 :: integer()
          }).
 
 %%%===================================================================
@@ -69,32 +76,21 @@ start_link() ->
 
 -spec handle_search_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_req(JObj, _Props) ->
-    'true' = wapi_presence:search_req_v(JObj),
-    case wh_json:get_value(<<"Node">>, JObj) =:= wh_util:to_binary(node()) of
-        'true' -> 'ok';
-        'false' ->
-            Event = wh_json:get_value(<<"Event-Package">>, JObj, '_'),
-            Username = wh_json:get_value(<<"Username">>, JObj, '_'),
-            Realm = wh_json:get_value(<<"Realm">>, JObj),
-            lager:debug("searching for subs for ~s@~s", [Username, Realm]),
-            case search_for_subscriptions(Event, Realm, Username) of
-                [] -> 'ok';
-                Subs ->
-                    Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}
-                            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                           ],
-                    wapi_presence:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
-            end
-    end.
+    Event = wh_json:get_value(<<"Event-Package">>, JObj, '_'),
+    Username = wh_json:get_value(<<"Username">>, JObj, '_'),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    lager:debug("searching for subs for ~s@~s", [Username, Realm]),
+    Subs = search_for_subscriptions(Event, Realm, Username),
+    Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_presence:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec handle_reset(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
-    case find_subscriptions(JObj) of
-        {'error', 'not_found'} -> 'ok';
-        {'ok', Subscriptions} -> publish_flush(Subscriptions)
-    end.
+    notify_packages({'omnipresence', {'presence_reset', JObj}}).
 
 %% Subscribes work like this:
 %%   Subscribe comes into shared queue, gets round-robined to next omni whapp
@@ -117,25 +113,48 @@ handle_kamailio_subscribe(JObj, _Props) ->
     'true' = wapi_omnipresence:subscribe_v(JObj),
     case gen_server:call(?MODULE, {'subscribe', JObj}) of
         'invalid' -> 'ok';
-        {'unsubscribe', _} ->
-            distribute_subscribe(JObj);
-        {'resubscribe', Subscription} ->
+        {Count, {'unsubscribe', _}} ->
+            distribute_subscribe(Count, JObj);
+        {Count, {'resubscribe', Subscription}} ->
             _ = resubscribe_notify(Subscription),
-            distribute_subscribe(JObj);
-        {'subscribe', Subscription} ->
+            distribute_subscribe(Count, JObj);
+        {Count, {'subscribe', Subscription}} ->
             _ = subscribe_notify(Subscription),
-            distribute_subscribe(JObj)
+            distribute_subscribe(Count, JObj)
     end.
+
+-spec proxy_subscribe(wh_proplist()) -> 'ok'.
+proxy_subscribe(Props) ->
+    case gen_server:call(?MODULE, {'subscribe', Props}) of
+        'invalid' -> 'ok';
+        {_, {'resubscribe', Subscription}} ->
+            _ = resubscribe_notify(Subscription);
+        {_, {'subscribe', Subscription}} ->
+            _ = subscribe_notify(Subscription);
+        _ -> 'ok'
+    end.
+
+-spec handle_kamailio_notify(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_kamailio_notify(JObj, _Props) ->
+    'true' = wapi_omnipresence:notify_v(JObj),
+    gen_server:call(?MODULE, {'notify', JObj}).
+
+-spec handle_sync(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_sync(JObj, _Props) ->
+    'true' = wapi_presence:sync_v(JObj),
+    Action = wh_json:get_value(<<"Action">>, JObj),
+    Node = wh_json:get_value(<<"Node">>, JObj),
+    gen_server:cast(?MODULE, {'sync', {Action, Node}}).
 
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
     'true' = wapi_presence:mwi_update_v(JObj),
-    gen_server:cast(?MODULE, {'mwi_update', JObj}).
+    notify_packages({'omnipresence', {'mwi_update', JObj}}).
 
 -spec handle_presence_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_presence_update(JObj, _Props) ->
     'true' = wapi_presence:update_v(JObj),
-    gen_server:cast(?MODULE, {'presence_update', JObj}).
+    notify_packages({'omnipresence', {'presence_update', JObj}}).
 
 -define(CACHE_TERMINATED_CALLID, whapps_config:get_integer(?CONFIG_CAT, <<"cache_terminated_callid_s">>, 60)).
 
@@ -172,7 +191,7 @@ maybe_handle_event(JObj, _CallId, _EventName) ->
 
 -spec handle_the_event(wh_json:object()) -> 'ok'.
 handle_the_event(JObj) ->
-    gen_server:cast(?MODULE, {'channel_event', JObj}).
+    notify_packages({'omnipresence', {'channel_event', JObj}}).
 
 -spec terminated_cache_key(CallId) -> {'terminated', CallId}.
 terminated_cache_key(CallId) ->
@@ -187,8 +206,8 @@ table_id() -> 'omnipresence_subscriptions'.
 
 -spec table_config() -> wh_proplist().
 table_config() ->
-    ['protected', 'named_table', 'bag'
-     ,{'keypos', #omnip_subscription.user}
+    ['protected', 'named_table', 'set'
+     ,{'keypos', #omnip_subscription.call_id}
     ].
 
 %%%===================================================================
@@ -207,7 +226,7 @@ table_config() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     {'ok', #state{expire_ref=start_expire_ref()}}.
 
 %%--------------------------------------------------------------------
@@ -224,13 +243,15 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'subscribe', #omnip_subscription{}=Sub}, _From, State) ->
-    SubscribeResult = subscribe(Sub),
+handle_call({'subscribe', #omnip_subscription{}=Sub}, _From,  #state{other_nodes_count=Count} = State) ->
+    SubscribeResult = {Count, subscribe(Sub)},
     {'reply', SubscribeResult, State};
 handle_call({'subscribe', Props}, _From, State) when is_list(Props) ->
     handle_call({'subscribe', wh_json:from_list(Props)}, _From, State);
 handle_call({'subscribe', JObj}, _From, State) ->
     handle_call({'subscribe', subscribe_to_record(JObj)}, _From, State);
+handle_call({'notify', JObj}, _From, State) ->
+    {'reply', notify_update(JObj), State};
 handle_call(_Request, _From, State) ->
     lager:debug("omnipresence subscriptions unhandled call : ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -246,35 +267,11 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_cast({'subscribe_notify', #omnip_subscription{event=Package
-                                                     ,user=User
-                                                    }=Subscription}, State) ->
-    Msg = {'omnipresence', {'subscribe_notify', Package, User, Subscription}},
-    notify_packages(Msg),
-    {'noreply', State};
-handle_cast({'resubscribe_notify', #omnip_subscription{event=Package
-                                                       ,user=User
-                                                      }=Subscription}, State) ->
-    Msg = {'omnipresence', {'resubscribe_notify', Package, User, Subscription}},
-    notify_packages(Msg),
-    {'noreply', State};
-handle_cast({'distribute_subscribe', JObj}, State) ->
-    distribute_subscribe(JObj),
-    {'noreply', State};
-handle_cast({'channel_event', JObj}, State) ->
-    Msg = {'omnipresence', {'channel_event', JObj}},
-    notify_packages(Msg),
-    {'noreply', State};
-handle_cast({'mwi_update', JObj}, State) ->
-    Msg = {'omnipresence', {'mwi_update', JObj}},
-    notify_packages(Msg),
-    {'noreply', State};
-handle_cast({'presence_update', JObj}, State) ->
-    Msg = {'omnipresence', {'presence_update', JObj}},
-    notify_packages(Msg),
-    {'noreply', State};
+handle_cast({'sync', {<<"Start">>, Node}}, #state{sync_nodes=Nodes}=State) ->
+    {'noreply', State#state{sync_nodes=[Node | Nodes]}};
+handle_cast({'sync', {<<"End">>, Node}}, #state{sync_nodes=Nodes} = State) ->
+    {'noreply', State#state{sync_nodes=Nodes -- [Node]}};
 handle_cast(_Msg, State) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -292,12 +289,22 @@ handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='
         0 -> 'ok';
         _N -> lager:debug("expired ~p subscriptions", [_N])
     end,
-    {'noreply', State#state{expire_ref=start_expire_ref()}};
+    {'noreply', State#state{expire_ref=start_expire_ref()
+                            ,other_nodes_count=wh_nodes:whapp_count(?APP_NAME)
+                           }};
 handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='false'}=State) ->
-    {'noreply', State#state{expire_ref=start_expire_ref()}};
+    {'noreply', State#state{expire_ref=start_expire_ref()
+                            ,other_nodes_count=wh_nodes:whapp_count(?APP_NAME)
+                           }};
 handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
     {'noreply', State#state{ready='true'}, 'hibernate'};
+handle_info('check_sync', #state{sync_nodes=[]} = State) ->
+    omnipresence_shared_listener:start_listener(),
+    {'noreply', State};
+handle_info('check_sync', State) ->
+    erlang:send_after(5 * ?MILLISECONDS_IN_SECOND, self(), 'check_sync'),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -335,7 +342,7 @@ code_change(_OldVsn, State, _Extra) ->
 notify_packages(Msg) ->
     _ = [gen_server:cast(Pid, Msg)
          || {_, Pid, _, _} <- supervisor:which_children('omnip_sup'),
-            Pid =/= 'restarting'
+            is_pid(Pid)
         ],
     'ok'.
 
@@ -359,12 +366,14 @@ subscribe_notify(#omnip_subscription{event=Package
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec distribute_subscribe(wh_json:object()) -> 'ok'.
-distribute_subscribe(JObj) ->
+-spec distribute_subscribe(integer(), wh_json:object()) -> 'ok'.
+distribute_subscribe(Count, JObj)
+  when Count > 1 ->
     whapps_util:amqp_pool_send(
       wh_json:delete_key(<<"Node">>, JObj)
       ,fun wapi_presence:publish_subscribe/1
-     ).
+     );
+distribute_subscribe(_Count, _JObj) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -425,6 +434,9 @@ subscription_to_json(#omnip_subscription{user=User
                                          ,subscription_id=SubId
                                          ,proxy_route=ProxyRoute
                                          ,version=Version
+                                         ,last_sequence=Sequence
+                                         ,last_reply=Reply
+                                         ,last_body=Body
                                         }) ->
     wh_json:from_list(
       props:filter_undefined(
@@ -442,35 +454,17 @@ subscription_to_json(#omnip_subscription{user=User
          ,{<<"subscription_id">>, SubId}
          ,{<<"proxy_route">>, ProxyRoute}
          ,{<<"version">>, Version}
+         ,{<<"notify">>, wh_json:from_list([{<<"sequence">>, Sequence}
+                                            ,{<<"reply">>, Reply}
+                                            ,{<<"body">>, Body}
+                                           ])}
         ])).
-
--spec subscription_from_json(wh_json:object()) -> subscription().
-subscription_from_json(JObj) ->
-    User = wh_json:get_value(<<"user">>, JObj),
-    From = wh_json:get_value(<<"from">>, JObj),
-    #omnip_subscription{user=User
-                        ,from=From
-                        ,normalized_user=wh_util:to_lower_binary(User)
-                        ,normalized_from=wh_util:to_lower_binary(From)
-                        ,stalker=wh_json:get_value(<<"stalker">>, JObj)
-                        ,expires=wh_json:get_value(<<"expires">>, JObj)
-                        ,timestamp=wh_json:get_value(<<"timestamp">>, JObj)
-                        ,protocol=wh_json:get_value(<<"protocol">>, JObj)
-                        ,username=wh_json:get_value(<<"username">>, JObj)
-                        ,realm=wh_json:get_value(<<"realm">>, JObj)
-                        ,event=wh_json:get_value(<<"event">>, JObj)
-                        ,contact=wh_json:get_value(<<"contact">>, JObj)
-                        ,call_id=wh_json:get_value(<<"call_id">>, JObj)
-                        ,subscription_id=wh_json:get_value(<<"subscription_id">>, JObj)
-                        ,proxy_route=wh_json:get_value(<<"proxy_route">>, JObj)
-                        ,version=wh_json:get_value(<<"version">>, JObj)
-                       }.
 
 -spec start_expire_ref() -> reference().
 start_expire_ref() ->
     erlang:start_timer(?EXPIRE_SUBSCRIPTIONS, self(), ?EXPIRE_MESSAGE).
 
--spec expire_old_subscriptions() -> integer().
+-spec expire_old_subscriptions() -> non_neg_integer().
 expire_old_subscriptions() ->
     Now = wh_util:current_tstamp(),
     ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
@@ -487,32 +481,13 @@ expire_old_subscriptions() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_subscription(subscription()) ->
+-spec find_subscription(ne_binary()) ->
                                {'ok', subscription()} |
                                {'error', 'not_found'}.
-find_subscription(#omnip_subscription{normalized_user=U
-                                      ,normalized_from=F
-                                      ,stalker=S
-                                      ,event=Event
-                                     }) ->
-    MatchSpec = #omnip_subscription{normalized_user=U
-                                    ,normalized_from=F
-                                    ,stalker=S
-                                    ,event=Event
-                                    ,_='_'
-                                   },
-    case ets:match_object(table_id(), MatchSpec) of
+find_subscription(CallId) ->
+    case ets:lookup(table_id(), CallId) of
         [] -> {'error', 'not_found'};
-        [#omnip_subscription{}=Sub] -> {'ok', Sub};
-        Subs ->
-            {#omnip_subscription{}=Sub, _} =
-                lists:foldl(fun(#omnip_subscription{timestamp=T}=SubT, {_, Tc}=Acc) ->
-                                    case T > Tc of
-                                        'true' -> {SubT, T};
-                                        'false' -> Acc
-                                    end
-                            end, {'ok', 0}, Subs),
-            {'ok', Sub}
+        [#omnip_subscription{}=Sub] -> {'ok', Sub}
     end.
 
 -spec find_subscriptions(ne_binary() | wh_json:object()) ->
@@ -562,32 +537,50 @@ find_user_subscriptions(Event, User) when is_binary(User) ->
         Subs -> {'ok', Subs}
     end.
 
+-spec get_stalkers(ne_binary(), ne_binary()) ->
+                               {'ok', binaries()} |
+                               {'error', 'not_found'}.
+get_stalkers(Event, User) ->
+    U = wh_util:to_lower_binary(User),
+    MatchSpec = [{#omnip_subscription{normalized_user='$1'
+                                      ,stalker='$2'
+                                      ,event=Event
+                                      ,_='_'
+                                     }
+                  ,[{'=:=', '$1', {'const', U}}]
+                  ,['$2']
+                 }],
+    case ets:select(table_id(), MatchSpec) of
+        [] -> {'error', 'not_found'};
+        Subs -> {'ok', lists:usort(Subs)}
+    end.
+
 -spec get_subscriptions(ne_binary(), ne_binary()) ->
                                {'ok', subscriptions()} |
                                {'error', 'not_found'}.
 get_subscriptions(Event, User) ->
-    case find_subscriptions(Event, User) of
+    U = wh_util:to_lower_binary(User),
+    case find_subscriptions(Event, U) of
         {'ok', Subs} -> {'ok', Subs};
-        {'error', 'not_found'} ->
-            [Username, Realm] = binary:split(User, <<"@">>),
-            Payload = [{<<"Realm">>, Realm}
-                       ,{<<"Username">>, Username}
-                       ,{<<"Event-Package">>, Event}
-                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                      ],
-            Resp = wh_amqp_worker:call(Payload
-                                       ,fun wapi_presence:publish_search_req/1
-                                       ,fun wapi_presence:search_resp_v/1
-                                       ,500
-                                      ),
-            case Resp of
-                {'ok', JObj} ->
-                    Subs = [subscription_from_json(WSub)
-                            || WSub <- wh_json:get_value(<<"Subscriptions">>, JObj, [])
-                           ],
-                    {'ok', Subs};
-                _ ->   {'error', 'not_found'}
-            end
+        {'error', _}=Err -> Err
+    end.
+
+-spec get_subscriptions(ne_binary(), ne_binary(), non_neg_integer()) ->
+                               {'ok', subscriptions()} |
+                               {'error', 'not_found'}.
+get_subscriptions(Event, User, Version) ->
+    U = wh_util:to_lower_binary(User),
+    MatchSpec = [{#omnip_subscription{normalized_user='$1'
+                                      ,event=Event
+                                      ,version=Version
+                                      ,_='_'
+                                     }
+                  ,[{'=:=', '$1', {'const', U}}]
+                  ,['$_']
+                 }],
+    case ets:select(table_id(), MatchSpec) of
+        [] -> {'error', 'not_found'};
+        Subs -> {'ok', dedup(Subs)}
     end.
 
 -spec dedup(subscriptions()) -> subscriptions().
@@ -634,6 +627,8 @@ search_for_subscriptions(Event, Realm) ->
                            },
     ets:match_object(table_id(), MatchSpec).
 
+search_for_subscriptions(Event, Realm, '_') ->
+    search_for_subscriptions(Event, Realm);
 search_for_subscriptions(Event, Realm, Username) ->
     MatchSpec =
         #omnip_subscription{username=wh_util:to_lower_binary(Username)
@@ -642,26 +637,6 @@ search_for_subscriptions(Event, Realm, Username) ->
                             ,_='_'
                            },
     ets:match_object(table_id(), MatchSpec).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec publish_flush(subscriptions()) -> 'ok'.
-publish_flush([]) -> 'ok';
-publish_flush([#omnip_subscription{stalker=Q, user=User, event=Event}
-               | Subscriptions
-              ]) ->
-    Props = [{<<"Type">>, <<"id">>}
-             ,{<<"Event-Package">>, Event}
-             ,{<<"User">>, <<"sip:", User/binary>>}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    lager:debug("sending flush for ~s to ~s", [User, Q]),
-    whapps_util:amqp_pool_send(Props, fun(P) -> wapi_presence:publish_flush(Q, P) end),
-    publish_flush(Subscriptions).
 
 -spec subscribe(subscription()) -> 'invalid' |
                                    {'subscribe', subscription()} |
@@ -674,9 +649,10 @@ subscribe(#omnip_subscription{expires=E
                               ,user=_U
                               ,from=_F
                               ,stalker=_S
+                              ,call_id=CallId
                              }=S)
   when E =< 0 ->
-    case find_subscription(S) of
+    case find_subscription(CallId) of
         {'error', 'not_found'} -> {'unsubscribe', S};
         {'ok', #omnip_subscription{timestamp=_T
                                    ,expires=_E
@@ -687,20 +663,49 @@ subscribe(#omnip_subscription{expires=E
     end;
 subscribe(#omnip_subscription{user=_U
                               ,from=_F
-                              ,expires=_E1
-                              ,stalker=_S
+                              ,expires=E1
+                              ,timestamp=T1
+                              ,call_id=CallId
                              }=S) ->
-    case find_subscription(S) of
+    case find_subscription(CallId) of
         {'ok', #omnip_subscription{timestamp=_T
                                    ,expires=_E2
-                                  }=O} ->
-            lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
-                        ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
-            ets:delete_object(table_id(), O),
-            ets:insert(table_id(), S),
-            {'resubscribe', S};
+                                  }=O
+        } ->
+            lager:debug("re-subscribe ~s/~s/~s expires in ~ps(prior remaing ~ps)"
+                        ,[_U, _F, CallId, E1, _E2 - wh_util:elapsed_s(_T)]
+                       ),
+            ets:update_element(table_id(), CallId,
+                               [{#omnip_subscription.timestamp, T1}
+                                ,{#omnip_subscription.expires, E1}
+                               ]),
+            {'resubscribe', O#omnip_subscription{timestamp=T1
+                                                 ,expires=E1
+                                                }};
         {'error', 'not_found'} ->
-            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
+            lager:debug("subscribe ~s/~s/~s expires in ~ps", [_U, _F, CallId, E1]),
             ets:insert(table_id(), S),
             {'subscribe', S}
+    end.
+
+-spec notify_update(wh_json:object()) -> 'ok' | {'error', any()}.
+notify_update(JObj) ->
+    Sequence = wh_json:get_integer_value(<<"Sequence">>, JObj),
+    Reply = wh_json:get_integer_value(<<"Reply">>, JObj),
+    Body = wh_json:get_ne_binary_value(<<"Body">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    case find_subscription(CallId) of
+        {'ok', #omnip_subscription{from = From
+                                   ,user = User
+                                   ,event = Event
+                                  }} ->
+            lager:debug("received notify reply ~B for ~s subscription (~s) of ~s to ~s", [Reply, Event, CallId, From, User]),
+            ets:update_element(table_id(), CallId,
+                               [{#omnip_subscription.last_sequence, Sequence}
+                                ,{#omnip_subscription.last_reply, Reply}
+                                ,{#omnip_subscription.last_body, Body}
+                               ]);
+        {'error', _} = E ->
+            lager:debug("notify received for unexistent subscription ~s", [CallId]),
+            E
     end.

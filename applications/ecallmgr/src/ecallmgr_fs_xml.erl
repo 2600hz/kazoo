@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Generate the XML for various FS responses
 %%% @end
@@ -19,9 +19,14 @@
          ,conference_resp_xml/1
         ]).
 
+-export([config_el/2, config_el/3]).
+-export([section_el/2, section_el/3]).
+-export([params_el/1, param_el/2, maybe_param_el/2]).
+-export([xml_attrib/2]).
+
 -include("ecallmgr.hrl").
 
--define(DEFAULT_USER_CACHE_TIME_IN_MS, 3600000). %% 1 hour
+-define(DEFAULT_USER_CACHE_TIME_IN_MS, ?MILLISECONDS_IN_HOUR). %% 1 hour
 
 -spec acl_xml(wh_json:object()) -> {'ok', iolist()}.
 acl_xml(AclsJObj) ->
@@ -44,13 +49,11 @@ sip_profiles_xml(JObj) ->
 
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
+-spec sip_channel_xml(wh_proplist()) -> {'ok', iolist()}.
 sip_channel_xml(Props) ->
     ParamsEl = params_el([param_el(K, V) || {K, V} <- Props]),
-
     ChannelEl = channel_el(props:get_value(<<"uuid">>, Props), ParamsEl),
-
     SectionEl = section_el(<<"channels">>, ChannelEl),
-
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 -spec authn_resp_xml(api_terms()) -> {'ok', iolist()}.
@@ -68,12 +71,15 @@ authn_resp_xml(JObj) ->
         {'ok', Elements} ->
             Number = wh_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
             Expires = ecallmgr_util:maybe_add_expires_deviation_ms(
-                        wh_json:get_value(<<"Expires">>,JObj)),
+                        wh_json:get_value(<<"Expires">>,JObj)
+                       ),
             Username = wh_json:get_value(<<"Auth-Username">>, JObj, UserId),
             UserEl = user_el([{'number-alias', Number}
                               ,{'cacheable', Expires}
-                             | user_el_default_props(Username) ]
-                             ,Elements),
+                              | user_el_default_props(Username)
+                             ]
+                             ,Elements
+                            ),
             DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
             {'ok', xmerl:export([SectionEl], 'fs_xml')}
@@ -164,8 +170,9 @@ conference_resp_xml([_|_]=Resp) ->
     ConfigurationEl = config_el(<<"conference.conf">>, <<"Built by Kazoo">>
                                 ,[AdvertiseEl, ProfilesEl, CallerControlsEl, ChatPermsEl]
                                ),
+    SectionEl = section_el(<<"configuration">>, ConfigurationEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-    {'ok', xmerl:export([ConfigurationEl], 'fs_xml')};
 conference_resp_xml(Resp) -> conference_resp_xml(wh_json:to_proplist(Resp)).
 
 conference_profiles_xml(Profiles) when is_list(Profiles) ->
@@ -216,36 +223,45 @@ route_resp_xml(RespJObj) ->
                   ).
 
 %% Prop = Route Response
--type route_resp_fold_acc() :: {non_neg_integer(), xml_els()}.
--spec route_resp_fold(wh_json:object(), route_resp_fold_acc()) -> route_resp_fold_acc().
+-type route_resp_fold_acc() :: {pos_integer(), xml_els()}.
+-spec route_resp_fold(wh_json:object(), route_resp_fold_acc()) ->
+                             route_resp_fold_acc().
+-spec route_resp_fold(wh_json:object(), route_resp_fold_acc(), ne_binary()) ->
+                             route_resp_fold_acc().
 route_resp_fold(RouteJObj, {Idx, Acc}) ->
     case ecallmgr_util:build_channel(RouteJObj) of
         {'error', _} -> {Idx+1, Acc};
-        {'ok', Route} ->
-            BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
-                              <<"bypass">> -> "true";
-                              _ -> "false" %% default to not bypassing media
-                          end,
-            RouteJObj1 =
-                case wh_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
-                    'undefined' ->
-                        wh_json:set_value(<<"Progress-Timeout">>, <<"6">>, RouteJObj);
-                    I when is_integer(I) ->
-                        wh_json:set_value(<<"Progress-Timeout">>, integer_to_list(I), RouteJObj);
-                    _ -> RouteJObj
-                end,
+        {'ok', Channel} ->
+            route_resp_fold(RouteJObj, {Idx, Acc}, Channel)
+    end.
 
-            ChannelVars = get_channel_vars(wh_json:to_proplist(RouteJObj1)),
+route_resp_fold(RouteJObj, {Idx, Acc}, Channel) ->
+    RouteJObj1 =
+        case wh_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
+            'undefined' ->
+                wh_json:set_value(<<"Progress-Timeout">>, <<"6">>, RouteJObj);
+            I when is_integer(I) ->
+                wh_json:set_value(<<"Progress-Timeout">>, integer_to_list(I), RouteJObj);
+            _ -> RouteJObj
+        end,
 
-            BPEl = action_el(<<"set">>, [<<"bypass_media=">>, BypassMedia]),
-            HangupEl = action_el(<<"set">>, <<"hangup_after_bridge=true">>),
-            FailureEl = action_el(<<"set">>, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
-            BridgeEl = action_el(<<"set">>, [ChannelVars, Route]),
+    ChannelVars = get_channel_vars(wh_json:to_proplist(RouteJObj1)),
 
-            ConditionEl = condition_el([BPEl, HangupEl, FailureEl, BridgeEl]),
-            ExtEl = extension_el([<<"match_">>, Idx+$0], <<"true">>, [ConditionEl]),
+    BPEl = action_el(<<"set">>, [<<"bypass_media=">>, should_bypass_media(RouteJObj)]),
+    HangupEl = action_el(<<"set">>, <<"hangup_after_bridge=true">>),
+    FailureEl = action_el(<<"set">>, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+    BridgeEl = action_el(<<"set">>, [ChannelVars, Channel]),
 
-            {Idx+1, [ExtEl | Acc]}
+    ConditionEl = condition_el([BPEl, HangupEl, FailureEl, BridgeEl]),
+    ExtEl = extension_el([<<"match_">>, Idx+$0], <<"true">>, [ConditionEl]),
+
+    {Idx+1, [ExtEl | Acc]}.
+
+-spec should_bypass_media(wh_json:object()) -> string().
+should_bypass_media(RouteJObj) ->
+    case wh_json:get_value(<<"Media">>, RouteJObj) of
+        <<"bypass">> -> "true";
+        _ -> "false" %% default to not bypassing media
     end.
 
 -spec route_resp_xml(ne_binary(), wh_json:objects(), wh_json:object()) -> {'ok', iolist()}.
@@ -271,7 +287,7 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
              ,route_resp_ringback(JObj)
              ,route_resp_transfer_ringback(JObj)
              ,route_resp_pre_park_action(JObj)
-             ,action_el(<<"park">>)
+             | route_resp_ccvs(JObj) ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
     ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ParkExtEl]),
@@ -355,6 +371,18 @@ route_resp_ringback(JObj) ->
             Stream = ecallmgr_util:media_path(Media, 'extant', MsgId, JObj),
             action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(Stream))/binary>>)
     end.
+
+-spec route_resp_ccvs(wh_json:object()) -> xml_els().
+route_resp_ccvs(JObj) ->
+    case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
+        'undefined' -> [];
+        CCVs ->
+            wh_json:foldl(fun route_resp_ccv/3, [], CCVs)
+    end.
+
+-spec route_resp_ccv(wh_json:key(), wh_json:json_term(), xml_els()) -> xml_els().
+route_resp_ccv(Key, Value, Els) ->
+    [action_el(<<"set">>, ecallmgr_util:get_fs_kv(Key, Value)) | Els].
 
 -spec route_resp_transfer_ringback(wh_json:object()) -> xml_el().
 route_resp_transfer_ringback(JObj) ->
@@ -458,6 +486,12 @@ get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
 get_channel_vars({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">> | Vars];
 
+get_channel_vars({<<"Confirm-File">>, V}, Vars) ->
+    [list_to_binary(["group_confirm_file='"
+        ,wh_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), wh_json:new()))
+        ,"'"
+    ]) | Vars];
+
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
@@ -468,12 +502,19 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
 get_channel_vars(_, Vars) -> Vars.
 
 -spec sip_headers_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
+sip_headers_fold(<<"Diversions">>, Vs, Vars0) ->
+    diversion_headers_fold(Vs, Vars0);
 sip_headers_fold(K, <<_/binary>> = V, Vars0) ->
-    [ list_to_binary(["sip_h_", K, "=", V]) | Vars0];
-sip_headers_fold(<<"Diversion">> = K, V, Vars0) ->
-    lager:debug("setting diversion to ~s", [kzsip_diversion:to_binary(V)]),
-    [ list_to_binary(["sip_h_", K, "=", kzsip_diversion:to_binary(V)]) | Vars0].
+    [list_to_binary(["sip_h_", K, "=", V]) | Vars0].
 
+-spec diversion_headers_fold(ne_binaries(), iolist()) -> iolist().
+diversion_headers_fold(Vs, Vars0) ->
+    lists:foldl(fun diversion_header_fold/2, Vars0, Vs).
+
+-spec diversion_header_fold(ne_binary(), iolist()) -> iolist().
+diversion_header_fold(<<_/binary>> = V, Vars0) ->
+    lager:debug("setting diversion ~s on the channel", [V]),
+    [list_to_binary(["sip_h_Diversion=", V]) | Vars0].
 
 -spec get_channel_vars_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
 get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->
@@ -514,24 +555,24 @@ escape(V, C) ->
 encode(C, C) -> [$\\, C];
 encode(C, _) -> C.
 
--spec get_channel_params(wh_json:object()) -> wh_json:json_proplist().
+-spec get_channel_params(wh_json:object() | wh_proplist()) -> wh_proplist().
+get_channel_params(Props) when is_list(Props) ->
+    [get_channel_params_fold(K, V) || {K, V} <- Props];
 get_channel_params(JObj) ->
-    CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of
-              'undefined' -> [];
-              TID -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID}]
-          end,
+    Props = wh_json:to_proplist(
+              wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())
+             ),
+    get_channel_params(Props).
 
-    CV1 = case wh_json:get_value(<<"Access-Group">>, JObj) of
-              'undefined' -> CV0;
-              AG -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG} | CV0]
-          end,
-
-    Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-    lists:foldl(fun({<<"variable_", K/binary>>,V}, CV) ->
-                        [{K, V} | CV];
-                   ({K,V}, CV) ->
-                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
-                end, CV1, Custom).
+-spec get_channel_params_fold(ne_binary(), ne_binary()) ->
+                                     {ne_binary(), ne_binary()}.
+get_channel_params_fold(Key, Val) ->
+    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
+        'false' ->
+            {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
+        {_Key, Prefix} ->
+            {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
+    end.
 
 -spec get_custom_sip_headers(wh_json:object()) -> wh_json:json_proplist().
 get_custom_sip_headers(JObj) ->
@@ -595,9 +636,12 @@ config_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
+-spec channel_el(api_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
+channel_el('undefined', Content) -> Content;
 channel_el(UUID, Content) ->
     channel_el(UUID, <<"channel ", (wh_util:to_binary(UUID))/binary, " tracked by kazoo">>, Content).
 
+-spec channel_el(ne_binary(), ne_binary(), xml_el() | xml_els()) -> xml_el().
 channel_el(UUID, Desc, #xmlElement{}=Content) ->
     channel_el(UUID, Desc, [Content]);
 channel_el(UUID, Desc, Content) ->
@@ -675,7 +719,14 @@ params_el(Children) ->
 
 -spec param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 param_el(<<"moh-sound">> = Name, MediaName) ->
-    Value = ecallmgr_util:media_path(MediaName, get('callid'), wh_json:new()),
+    Value = ecallmgr_util:media_path(MediaName, wh_util:get_callid(), wh_json:new()),
+    #xmlElement{name='param'
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('value', Value)
+                            ]
+               };
+param_el(<<"max-members-sound">> = Name, MediaName) ->
+    Value = ecallmgr_util:media_path(MediaName, wh_util:get_callid(), wh_json:new()),
     #xmlElement{name='param'
                 ,attributes=[xml_attrib('name', Name)
                              ,xml_attrib('value', Value)
@@ -687,6 +738,13 @@ param_el(Name, Value) ->
                              ,xml_attrib('value', Value)
                             ]
                }.
+
+-spec maybe_param_el(xml_attrib_value(), xml_attrib_value()) -> xml_el() | 'undefined'.
+maybe_param_el(Name, Value) ->
+    case wh_util:is_empty(Value) of
+        'true' -> 'undefined';
+        'false' -> param_el(Name, Value)
+    end.
 
 profile_el(Name, Children) ->
     #xmlElement{name='profile'

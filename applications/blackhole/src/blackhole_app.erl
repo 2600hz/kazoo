@@ -19,7 +19,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
+-spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_Type, _Args) ->
@@ -31,7 +31,7 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) ->
     cowboy:stop_listener('blackhole'),
     blackhole:stop().

@@ -108,16 +108,16 @@ build_pickup_params(_, Other, _) ->
                               {'ok', wh_proplist()} |
                               {'error', ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
-    EndpointId = wh_json:get_value(<<"id">>,Data),
+    EndpointId = wh_doc:id(Data),
     {'ok', [{<<"user_id">>, EndpointId}]};
 params_from_data(<<"device">>, Data, _Call) ->
-    EndpointId = wh_json:get_value(<<"id">>, Data),
+    EndpointId = wh_doc:id(Data),
     {'ok', [{<<"device_id">>, EndpointId}]};
 params_from_data(<<"ring_group">>, Data, _Call) ->
     [Endpoint |_Endpoints] = wh_json:get_value(<<"endpoints">>, Data, []),
     EndpointType = wh_json:get_value(<<"endpoint_type">>, Endpoint),
     {'ok', [{<<EndpointType/binary,"_id">>
-             ,wh_json:get_value(<<"id">>, Endpoint)}
+             ,wh_doc:id(Endpoint)}
            ]};
 params_from_data(<<"page_group">>, Data, _Call) ->
     params_from_data(<<"ring_group">>, Data, _Call);

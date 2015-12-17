@@ -52,7 +52,10 @@ print_matching(Matching) ->
     [Winning|Sorted] = hon_util:sort_rates(Matching),
     Name = wh_json:get_value(<<"rate_name">>, Winning),
 
-    [print_rate(R) || R <- [wh_json:set_value(<<"rate_name">>, <<"* ", Name/binary>>, Winning) | Sorted]],
+    _ = [print_rate(R)
+         || R <- [wh_json:set_value(<<"rate_name">>, <<"* ", Name/binary>>, Winning)
+                  | Sorted]
+        ],
     'ok'.
 
 -spec rates_between(ne_binary(), ne_binary()) -> 'ok'.
@@ -66,7 +69,7 @@ rates_between(Pre, Post) ->
         {'ok', Rates} ->
             io:format("Rates between:~n", []),
             ?LOCAL_SUMMARY_HEADER,
-            [print_rate(wh_json:get_value(<<"value">>, R)) || R <- Rates],
+            _ = [print_rate(wh_json:get_value(<<"value">>, R)) || R <- Rates],
             'ok'
     end.
 

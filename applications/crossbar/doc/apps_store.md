@@ -2,28 +2,14 @@
 Section: Crossbar
 Title: Apps Store
 Language: en-US
+Version: 3.19
 */
 
-Apps Store allow to list the "master apps", get the icons/screenshots.
-Apps Store local is an api that allow to install/uninstall apps on an Account but also to modify which user can access these apps.
+# Apps Store
 
-## Local Structure
+Apps Store list apps allowed  by your service plan.
 
-The structure is really simple:
-
-* `all`: Apply to all users on the account (`true`/`false`).
-* `users`: A list of user to allow the app to (`all` needs to be set to `false`).
-
-Ex:
-```
-"all": false,
-"users": [
-    "452d5706f66377970996b2ec1c0fc04a",
-    "b771eb3eee6ea48f4321e3cc31c050ab"
-]
-```
-
-## Master apps Structure
+## Apps Structure
 
 Cannot be modified, only accesible by GET requests.
 
@@ -41,8 +27,8 @@ Ex:
     },
     "tags": ["reseller", "developer"],
     "icon": "NumberManager_app.png",
-    "api_url": "http://server:8000/v2/",
-    "source_url": "http://server/monster-apps/numbers",
+    "api_url": "http://{{SERVER}}:8000/v2/",
+    "source_url": "http://{{SERVER}}/monster-apps/numbers",
     "author": "2600Hz",
     "version": "1.0",
     "license": "-",
@@ -56,7 +42,54 @@ Ex:
 }
 ```
 
-## Crossbar (Local)
+### Install Master applications
+
+Assuming you've installed your Monster applications to `/path/to/monster-ui/apps`, you can run the following SUP command on the {{SERVER}}:
+
+    sup crossbar_maintenance init_apps '/path/to/monster-ui/apps' 'http://your.api.{{SERVER}}:8000/v2'
+
+This will load the apps (and let you know which apps it couldn't automatically load) into the master account (including icons, if present). For any apps that failed to be loaded automatically, you can follow the manual instructions below.
+
+If you want to install a single Monster application:
+
+    sup crossbar_maintenance init_app '/path/to/monster-ui/apps/{{APP}}' 'http://{{SERVER}}:8000/v2'
+
+
+## App Permission
+
+This is located on the account document.
+
+```
+{
+    "apps": {
+        "{{application_id}}": {
+            "allowed_users": "specific",
+            "users": []
+        },
+        "{{application_id}}": {
+            "allowed_users": "specific",
+            "users": [{
+                "id": {{user_id}}
+            }]
+        },
+        "{{application_id}}": {
+            "allowed_users": "admins"
+        },
+        "{{application_id}}": {
+            "allowed_users": "all"
+        }
+    }
+}
+```
+
+| Allowed Users  | To | key |
+| ------------- | ------------- | ------------- |
+| Specific with **no user**  | No one  | specific
+| Specific with **user(s)**  | Only listed users  | specific
+| All  | Everyone in the account  | all
+| Admins | Only Admins  | admins
+
+## Crossbar
 
 Using Crossbar to modify Apps is very simple:
 
@@ -65,50 +98,201 @@ Using Crossbar to modify Apps is very simple:
 * POST - Updates an app.
 * DELETE - Uninstall an app.
 
-### Apps Store Local URIs
+`/v2/accounts/{{ACCOUNT_ID}}/apps_store`
 
-`/v1/accounts/{ACCOUNT_ID}/apps_store`
+### Fetch App(s):
 
-#### GET - Fetch App(s):
+#### Request
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store
+`GET` request on:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
+`http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store`
 
-#### PUT - Install App:
+or
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID} -d '{"data": {"all": false,"users": ["452d5706f66377970996b2ec1c0fc04a","b771eb3eee6ea48f4321e3cc31c050ab"]}}'
+`http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
 
-#### POST - Update App:
+```
+curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID} -d '{"data": {"all": true,"users": []}}'
+curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}
+```
 
-#### DELETE - Uninstall App:
+#### Response
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
+```
+{
+    "data": [{{APPS}}],
+    "status": "success"
+}
+```
+
+### PUT - Install App:
+
+Install app on your account.
+
+#### Request
+
+`PUT` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
 
 
-## Crossbar (Master apps)
+```
+{
+    "data": {
+        "name": "accounts",
+        "allowed_users": "specific",
+        "users": []
+    }
+}
+```
 
-Using Crossbar to modify Apps is very simple:
+```
+curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}} -d '{"data": {"allowed_users": "specific","users": []}}'
+```
 
-* GET - Gets the app(s)/icon/screenshots.
+#### Response
 
-### Apps Store Master apps URIs
+```
+{
+    "data": {
+        "name": "accounts",
+        "allowed_users": "specific",
+        "users": []
+    },
+    "status": "success"
+}
+```
 
-`/v1/apps_store`
 
-#### GET - Fetch App(s):
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/apps_store
+### POST - Update an App permission:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/apps_store/{APP_ID}
+Update app permission on your account.
 
-#### GET - Fetch Icon:
+#### Request
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/apps_store/{APP_ID}/icon
+`POST` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
 
-#### GET - Fetch screenshots(s):
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/apps_store/{APP_ID}/screenshot/{NUMBER}
+```
+{
+    "data": {
+        "allowed_users": "all"
+    }
+}
+```
 
+```
+curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}} -d '{"data": {"allowed_users": "all"}}'
+```
+
+#### Response
+
+```
+{
+    "data": {
+        "allowed_users": "all"
+    },
+    "status": "success"
+}
+```
+
+### DELETE - Uninstall an App:
+
+Uninstall app on your account (remove permission for all users).
+
+#### Request
+
+`DELETE` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}`
+
+
+```
+curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}
+```
+
+#### Response
+
+```
+{
+    "data": {},
+    "status": "success"
+}
+```
+
+### Fetch App icon
+
+#### Request
+
+`GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}/icon`
+
+
+```
+curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/apps_store/accounts/{{ACCOUNT_ID}}/{{APP_ID}}/icon
+```
+
+#### Response
+
+Application Icon
+
+
+### Fetch App screen shots
+
+#### Request
+
+`GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/{{APP_ID}}/screenshot/{{NUMBER}}`
+
+
+```
+curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://{{SERVER}}:8000/v2/apps_store/accounts/{{ACCOUNT_ID}}/{{APP_ID}}/screenshot/{{NUMBER}}
+```
+
+#### Response
+
+Application Screen shot
+
+### Get Blacklist
+
+Need to be reseller
+
+#### Request
+
+`GET` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/blacklist`
+
+#### Response
+
+```json
+{
+    "data": {
+        "blacklist": ["{{APP_1}}", "{{APP_2}}"]
+    },
+    "status": "success"
+}
+```
+
+### Update Blacklist
+
+Need to be reseller
+
+#### Request
+
+`POST` request on: `http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/apps_store/blacklist`
+
+```json
+{
+    "data": {
+        "blacklist": ["{{APP_1}}", "{{APP_2}}", "{{APP_3}}"]
+    },
+    "status": "success"
+}
+```
+
+#### Response
+
+```json
+{
+    "data": {
+        "blacklist": ["{{APP_1}}", "{{APP_2}}", "{{APP_3}}"]
+    },
+    "status": "success"
+}
+```

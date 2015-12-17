@@ -11,10 +11,17 @@
 -include("omnipresence.hrl").
 
 -export([current_subscriptions/0, current_subscriptions/1, current_subscriptions/2
+         ,count_current_subscriptions/0
          ,subscribe/2
          ,send_mwi_update/3
          ,list_terminated_callids/0
         ]).
+
+-spec count_current_subscriptions() -> 'no_return'.
+count_current_subscriptions() ->
+    CurrentSubscriptions = ets:tab2list(omnip_subscriptions:table_id()),
+    io:format("~p\n", [length(CurrentSubscriptions)]),
+    'no_return'.
 
 -define(SUBSCRIPTION_FORMAT_STR, " ~50.s | ~50.s | ~10.s | ~20.s |~n").
 
@@ -43,7 +50,7 @@ print_subscriptions(Ss) ->
     io:format(?SUBSCRIPTION_FORMAT_STR
               ,[<<"Username@Realm">>, <<"From">>, <<"Expires">>, <<"Event">>]
              ),
-    [print_subscription(S, Now) || S <- Ss],
+    _ = [print_subscription(S, Now) || S <- Ss],
     'ok'.
 
 print_subscription(JObj, Now) ->
@@ -81,13 +88,13 @@ subscribe(Realm, User) ->
     end.
 
 -spec send_mwi_update(ne_binary(), ne_binary() | integer(), ne_binary() | integer() ) -> 'ok'.
-send_mwi_update(User, New, Waiting) when is_binary(New) ->
-  send_mwi_update(User, wh_util:to_integer(New), Waiting);
-send_mwi_update(User, New, Waiting) when is_binary(Waiting) ->
-  send_mwi_update(User, New, wh_util:to_integer(Waiting));
-send_mwi_update(User, New, Waiting) ->
+send_mwi_update(User, New, Saved) when is_binary(New) ->
+  send_mwi_update(User, wh_util:to_integer(New), Saved);
+send_mwi_update(User, New, Saved) when is_binary(Saved) ->
+  send_mwi_update(User, New, wh_util:to_integer(Saved));
+send_mwi_update(User, New, Saved) ->
     Command = [{<<"Messages-New">>, New}
-               ,{<<"Messages-Waiting">>, Waiting}
+               ,{<<"Messages-Saved">>, Saved}
                ,{<<"Call-ID">>, wh_util:rand_hex_binary(16) }
                ,{<<"To">>, User}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

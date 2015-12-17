@@ -1,0 +1,17 @@
+{application, escalus,
+ [
+  {description, ""},
+  {vsn, git},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  ssl,
+                  exml
+                 ]},
+  {mod, { escalus_app, []}},
+  {env, [%% Set config_file in case of using Escalus without Common Test
+         %% (i.e. common_test is false).
+         {common_test, true},
+         {config_file, "priv/escalus.config"}]}
+ ]}.

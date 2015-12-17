@@ -75,6 +75,12 @@ Some clients do not support the full range of HTTP verbs, and are typically limi
 1. As part of the [request envelope](#request_envelope): `{"data":{...},"verb":"PUT"}`
 1. As a query string parameter: `/v1/accounts/{ACCOUNT_ID}/resources?verb=PUT`
 
+#### Tunneling the Accept Header
+
+Some clients do not support the ability to set the [Accept header](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html) in the request, meaning they will not necessarily receive the response in the format they wish. Clients can append `accept=text/html` to the request body or query string to indicate they'd like the response processed as if the Accept header was `text/html`.
+
+*Note*: `accept=csv` is retained for backwards-compatibility but it is encouraged to use a proper media type going forward.
+
 ### Authentication Tokens
 
 Most APIs require the client to have authenticated and received a token usable on subsequent requests. Crossbar provides a couple ways to receive an authentication token:

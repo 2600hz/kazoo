@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz INC
+%%% @copyright (C) 2014-2015, 2600Hz INC
 %%% @doc
 %%% Diversion SIP header manipulation
 %%% @end
@@ -22,6 +22,10 @@
          ,user/1, set_user/2
          ,new/0
         ]).
+
+-ifdef(TEST).
+-export([parse_name_addr_header/1]).
+-endif.
 
 -define(PARAM_REASON, <<"reason">>).
 -define(PARAM_COUNTER, <<"counter">>).
@@ -92,7 +96,6 @@ set_reason(JObj, Reason) ->
     wh_json:set_value(?PARAM_REASON, Reason, JObj).
 set_counter(JObj, Counter) ->
     wh_json:set_value(?PARAM_COUNTER, Counter, JObj).
-
 
 -spec from_binary(ne_binary()) -> wh_json:object().
 from_binary(<<"Diversion:", Header/binary>>) ->
@@ -250,7 +253,7 @@ parse_param_value(Param, []) ->
 -spec parse_token_param(ne_binary(), iolist()) -> binary().
 parse_token_param(Token) ->
     parse_token_param(Token, []).
-parse_token_param(<<$ , _/binary>>, Acc) ->
+parse_token_param(<<$\s, _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
 parse_token_param(<<$\n, _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
@@ -339,73 +342,3 @@ encode_param(Param, Literals) ->
 
 -spec quote_param(ne_binary()) -> ne_binary().
 quote_param(Param) -> <<"\"", Param/binary, "\"">>.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-from_binary_test() ->
-    Header = <<"<sip:2134445555@1.2.3.4>;reason=unavailable;counter=3">>,
-    JObj = from_binary(Header),
-
-    ?assertEqual(<<"<sip:2134445555@1.2.3.4>">>, address(JObj)),
-    ?assertEqual(<<"unavailable">>, reason(JObj)),
-    ?assertEqual(3, counter(JObj)),
-    ?assertEqual('undefined', privacy(JObj)).
-
-to_from_binary_test() ->
-    Header = <<"<sip:2134445555@1.2.3.4>;reason=unavailable;counter=3">>,
-    ?assertEqual(Header, to_binary(from_binary(Header))).
-
-parse_name_addr_test() ->
-    Header = <<"<sip:2134445555@1.2.3.4>;reason=unavailable">>,
-    {Rest, Name} = parse_name_addr_header(Header),
-    ?assertEqual(<<"<sip:2134445555@1.2.3.4>">>, Name),
-    ?assertEqual(<<"reason=unavailable">>, Rest).
-
-from_binary_endline_test() ->
-    Header = <<" <sip:WeSellFlowers@p4.isp.com>\n    ;reason=time-of-day    ;privacy=\"foo\"">>,
-    JObj = from_binary(Header),
-
-    ?assertEqual(<<"<sip:WeSellFlowers@p4.isp.com>">>, address(JObj)),
-    ?assertEqual(<<"time-of-day">>, reason(JObj)),
-    ?assertEqual(0, counter(JObj)),
-    ?assertEqual(<<"foo">>, privacy(JObj)).
-
-from_binary_spaced_header_names_test() ->
-    Header = <<"<sip:+12345556543@192.168.47.68:5060>;privacy=off; reason=unconditional; counter=1">>,
-    JObj = from_binary(Header),
-
-    ?assertEqual(<<"<sip:+12345556543@192.168.47.68:5060>">>, address(JObj)),
-    ?assertEqual(<<"off">>, privacy(JObj)),
-    ?assertEqual(<<"unconditional">>, reason(JObj)),
-    ?assertEqual(1, counter(JObj)).
-
-from_binary_extensions_test() ->
-    Header = <<"<sip:+12345556543@192.168.47.68:5060>;privacy=off;reason=unconditional;counter=1;some_extension;other_extension=foo">>,
-
-    JObj = from_binary(Header),
-    Extensions = extensions(JObj),
-
-    ?assertEqual('true', is_list(Extensions)),
-    ?assertEqual(<<"foo">>, props:get_value(<<"other_extension">>, Extensions)),
-    ?assertEqual('true', props:get_value(<<"some_extension">>, Extensions)),
-    ?assertEqual(Header, to_binary(JObj)).
-
-to_binary_fix_address_test() ->
-    Header = <<"sip:0123456789@1.22.133.4;counter=1 ">>,
-    NewHeader = to_binary(from_binary(Header)),
-    ?assertEqual(<<"<sip:0123456789@1.22.133.4>;counter=1">>, NewHeader).
-
-user_test() ->
-    Header = <<"<sip:0123456789@1.22.133.4>;counter=1">>,
-    D = from_binary(Header),
-    ?assertEqual(<<"0123456789">>, user(D)).
-
-set_user_test() ->
-    Header = <<"<sip:0123456789@1.22.133.4>;counter=1">>,
-    D = set_user(from_binary(Header), <<"12345556789">>),
-
-    ?assertEqual(<<"12345556789">>, user(D)),
-    ?assertEqual(<<"<sip:12345556789@1.22.133.4>">>, address(D)).
-
--endif.

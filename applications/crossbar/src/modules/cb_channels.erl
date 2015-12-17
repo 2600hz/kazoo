@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -134,24 +134,27 @@ post(Context, _) ->
 read(Context, CallId) ->
     Req = [{<<"Call-ID">>, CallId}
            ,{<<"Fields">>, <<"all">>}
+           ,{<<"Active-Only">>, 'true'}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_amqp_worker:call(Req
-                             ,fun wapi_call:publish_query_channels_req/1
-                             ,fun wapi_call:query_channels_resp_v/1
-                            )
+    case wh_amqp_worker:call_collect(Req
+                                     ,fun wapi_call:publish_query_channels_req/1
+                                     ,{'ecallmgr', fun wapi_call:query_channels_resp_v/1}
+                                    )
     of
-        {'ok', StatusJObj} ->
-            Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
-            case wh_json:get_value(<<"Account-ID">>, Channel) =:= cb_context:account_id(Context) of
-                'true' ->
-                    crossbar_util:response(normalize_channel(Channel), Context);
-                'false' ->
+        {'ok', []} ->
+            lager:debug("no channel resp for ~s", [CallId]),
+            crossbar_util:response_bad_identifier(CallId, Context);
+        {'ok', StatusJObjs} ->
+            case find_channel(cb_context:account_id(Context), CallId, StatusJObjs) of
+                'undefined' ->
                     lager:warning("trying to get info about a channel ~s not in the account ~s", [CallId, cb_context:account_id(Context)]),
-                    crossbar_util:response_bad_identifier(CallId, Context)
+                    crossbar_util:response_bad_identifier(CallId, Context);
+                Channel ->
+                    crossbar_util:response(normalize_channel(Channel), Context)
             end;
-        {'returned', JObj} ->
-            lager:debug("return: ~p", [JObj]),
+        {'returned', JObj, _BR} ->
+            lager:debug("return: ~p", [_BR]),
             crossbar_util:response(JObj, Context);
         {'timeout', _Resp} ->
             lager:debug("timeout: ~p", [_Resp]),
@@ -159,6 +162,15 @@ read(Context, CallId) ->
         {'error', _E} ->
             lager:debug("error: ~p", [_E]),
             crossbar_util:response_datastore_timeout(Context)
+    end.
+
+-spec find_channel(ne_binary(), ne_binary(), wh_json:objects()) -> api_object().
+find_channel(_AccountId, _CallId, []) -> 'undefined';
+find_channel(AccountId, CallId, [StatusJObj|JObjs]) ->
+    Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
+    case wh_json:get_value(<<"Account-ID">>, Channel) of
+        AccountId -> Channel;
+        _AccountId -> find_channel(AccountId, CallId, JObjs)
     end.
 
 %%--------------------------------------------------------------------
@@ -184,6 +196,10 @@ maybe_execute_command(Context, CallId) ->
 
 maybe_execute_command(Context, Transferor, <<"transfer">>) ->
     maybe_transfer(Context, Transferor);
+maybe_execute_command(Context, CallId, <<"hangup">>) ->
+    maybe_hangup(Context, CallId);
+maybe_execute_command(Context, CallId, <<"callflow">>) ->
+    maybe_callflow(Context, CallId);
 maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
@@ -283,14 +299,17 @@ account_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context(), wh_json:objects(), function()) -> cb_context:context().
 get_channels(Context, Devices, PublisherFun) ->
-    Realm = crossbar_util:get_account_realm(cb_context:account_id(Context)),
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
 
     Usernames = [Username
                  || JObj <- Devices,
                     (Username = wh_json:get_first_defined(
                                   [[<<"doc">>, <<"sip">>, <<"username">>]
                                    ,[<<"sip">>, <<"username">>]
-                                  ], JObj))
+                                  ]
+                                  ,JObj
+                                 )
+                    )
                         =/= 'undefined'
                 ],
 
@@ -302,10 +321,10 @@ get_channels(Context, Devices, PublisherFun) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    case whapps_util:amqp_pool_collect(Req
-                                       ,PublisherFun
-                                       ,{'ecallmgr', 'true'}
-                                      )
+    case wh_amqp_worker:call_collect(Req
+                                     ,PublisherFun
+                                     ,{'ecallmgr', 'true'}
+                                    )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
@@ -359,11 +378,7 @@ delete_keys(JObj) ->
                          ,<<"fetch_id">>
                         ], JObj).
 
--spec normalize_channel(api_object() | wh_json:objects()) -> api_object() | wh_json:objects().
-normalize_channel('undefined') -> [];
-normalize_channel([]) -> [];
-normalize_channel([_|_]=JObjs) ->
-    [normalize_channel(JObj) || JObj <- JObjs];
+-spec normalize_channel(wh_json:object()) -> wh_json:object().
 normalize_channel(JObj) ->
     delete_keys(
       wh_json:normalize(JObj)
@@ -374,11 +389,17 @@ normalize_channel(JObj) ->
 -spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor) ->
     Channel = cb_context:resp_data(Context),
-
     case wh_json:get_value(<<"other_leg_call_id">>, Channel) of
         'undefined' ->
             lager:debug("no transferee leg found"),
-            cb_context:add_validation_error(<<"other_leg_call_id">>, <<"required">>, <<"Channel is not bridged">>, Context);
+            cb_context:add_validation_error(
+                <<"other_leg_call_id">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Channel is not bridged">>}
+                 ])
+                ,Context
+            );
         Transferee ->
             maybe_transfer(Context, Transferor, Transferee)
     end.
@@ -387,7 +408,14 @@ maybe_transfer(Context, Transferor, Transferee) ->
     case cb_context:req_value(Context, <<"target">>) of
         'undefined' ->
             lager:debug("no target destination"),
-            cb_context:add_validation_error(<<"target">>, <<"required">>, <<"No target destination specified">>, Context);
+            cb_context:add_validation_error(
+                <<"target">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"No target destination specified">>}
+                 ])
+                ,Context
+            );
         Target ->
             maybe_transfer(Context, Transferor, Transferee, Target)
     end.
@@ -404,5 +432,35 @@ maybe_transfer(Context, Transferor, _Transferee, Target) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
+    lager:debug("attempting to transfer ~s to ~s by ~s", [_Transferee, Target, Transferor]),
     wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
     crossbar_util:response_202(<<"transfer initiated">>, Context).
+
+-spec maybe_hangup(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_hangup(Context, CallId) ->
+    API = [{<<"Call-ID">>, CallId}
+           ,{<<"Action">>, <<"hangup">>}
+           ,{<<"Data">>, wh_json:new()}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("attempting to hangup ~s", [CallId]),
+    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"hangup initiated">>, Context).
+
+-spec maybe_callflow(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_callflow(Context, CallId) ->
+    CallflowId = cb_context:req_value(Context, <<"id">>),
+    API = [{<<"Call-ID">>, CallId}
+           ,{<<"Action">>, <<"callflow">>}
+           ,{<<"Data">>, wh_json:from_list(
+                           [{<<"id">>, CallflowId}
+                            ,{<<"captures">>, cb_context:req_value(Context, <<"captures">>)}
+                            ,{<<"collected">>, cb_context:req_value(Context, <<"collected">>)}
+                           ])
+            }
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    lager:debug("attempting to running callflow ~s on ~s", [CallflowId, CallId]),
+    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"callflow initiated">>, Context).

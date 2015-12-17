@@ -9,6 +9,7 @@
 -module(milliwatt).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -export([start_link/0
          ,start/0
@@ -33,7 +34,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     application:start(?MODULE).
 
@@ -73,7 +74,7 @@ start_deps() ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     _ = wapi_route:declare_exchanges(),
-    _ = wapi_call:declare_exchanges(),    
+    _ = wapi_call:declare_exchanges(),
     _ = wapi_dialplan:declare_exchanges(),
-    _ = wapi_notifications:declare_exchanges(), 
+    _ = wapi_notifications:declare_exchanges(),
     wapi_self:declare_exchanges().

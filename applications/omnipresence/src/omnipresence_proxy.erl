@@ -81,12 +81,12 @@ sip_authorize(_Method, Auth, Req, _Call) ->
 
 sip_subscribe(Req, _Call) ->
     {'ok', ReqId} = nksip_request:get_handle(Req),
-    spawn(fun() -> update_manager(ReqId) end),
+    _ = wh_util:spawn(fun update_manager/1, [ReqId]),
     'noreply'.
 
 sip_resubscribe(Req, _Call) ->
     {'ok', ReqId} = nksip_request:get_handle(Req),
-    spawn(fun() -> update_manager(ReqId) end),
+    _ = wh_util:spawn(fun update_manager/1, [ReqId]),
     'noreply'.
 
 sip_dialog_update({'subscription_status', State, _Subs}, _Dialog, _Call) ->
@@ -107,7 +107,7 @@ handle_call(_Info, _From, State) ->
 
 %% @doc SipApp Callback: Asynchronous user cast.
 handle_cast({'omnipresence_link', Props}, #state{subs_pid=Pid}=State) ->
-    gen_server:call(Pid, {'proxy_subscribe', Props}),
+    gen_server:call(Pid, {'subscribe', Props}),
     {'noreply', State};
 handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
     case omnipresence_sup:subscriptions_srv() of
@@ -154,14 +154,13 @@ auth_req(User, Realm) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec update_manager(nksip:request()|nksip:handle()) -> 'ok'.
+-spec update_manager(nksip:request()|nksip:handle()) -> pid().
 update_manager(Request) ->
     {'ok', [{'from', From}
             ,{'to_user', ToUser}
             ,{'to', To}
             ,{'subscription_handle', SubscriptionId}
             ,{'call_id', CallId}
-            ,{'app_id', AppId}
             ,{{'header', <<"record-route">>}, RecordRoutes}
             ,{'expires', Expires}
             ,{'aor', AOR}
@@ -170,7 +169,6 @@ update_manager(Request) ->
                                      ,'to'
                                      ,'subscription_handle'
                                      ,'call_id'
-                                     ,'app_id'
                                      ,{'header', <<"record-route">>}
                                      ,'expires'
                                      ,'aor'
@@ -193,11 +191,10 @@ update_manager(Request) ->
              ,{<<"From">>, nksip_unparse:uri(From)}
              ,{<<"User">>, nksip_unparse:uri(To)}
              ,{<<"Proxy-Route">>, nksip_unparse:uri(FirstContact)}
-%%           ,{<<"Contact">>, nksip_unparse:uri(To)}
              ,{<<"Contact">>, nksip_unparse:uri(ProxyContact)}
              ,{<<"Expires">>, wh_util:to_integer(Expires)}
              ,{<<"AOR">>, AOR}
             ],
-    gen_server:cast(AppId, {'omnipresence_link', Props}).
+    wh_util:spawn(fun omnip_subscriptions:proxy_subscribe/1, [Props]).
 
 %%%%%%%%%%%%%%%%%%%%%%%  Utilities %%%%%%%%%%%%%%%%%%%%%%%%

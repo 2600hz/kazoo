@@ -100,14 +100,13 @@ maybe_find_attachment_in_db(Db, Id) ->
 
 maybe_find_attachment(Db, Id, JObj) ->
     lager:debug("trying to find first attachment on doc ~s in db ~s", [Id, Db]),
-    case wh_json:get_value(<<"_attachments">>, JObj, []) of
+    case wh_doc:attachment_names(JObj) of
         [] ->
             lager:debug("media doc ~s in ~s has no attachments", [Id, Db]),
             {'error', 'no_data'};
-        Attachments ->
-            {Attachment, _} = hd(wh_json:to_proplist(Attachments)),
-            lager:debug("found first attachment ~s on ~s in ~s", [Attachment, Id, Db]),
-            {'ok', {Db, cow_qs:urlencode(Id), Attachment}}
+        [AttachmentName | _] ->
+            lager:debug("found first attachment ~s on ~s in ~s", [AttachmentName, Id, Db]),
+            {'ok', {Db, cow_qs:urlencode(Id), AttachmentName}}
     end.
 
 -spec maybe_local_haproxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->

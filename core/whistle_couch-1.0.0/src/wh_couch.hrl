@@ -2,9 +2,10 @@
 -include_lib("whistle/include/wh_types.hrl"). % get the whistle types
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("whistle/include/kz_system_config.hrl").
 -include_lib("couchbeam/include/couchbeam.hrl").
 
--define(TIMEOUT, 1000 * 60 * 60). %% check every hour
+-define(TIMEOUT, ?MILLISECONDS_IN_HOUR). %% check every hour
 
 -define(COMPACT_THRESHOLD, 500).
 -define(MIN_DISK_SIZE, 131072).
@@ -19,7 +20,7 @@
 
 -define(FIXTURES_FOLDER, "fixtures").
 
--define(CONFIG_CAT, <<"whistle_couch">>).
+-define(CONFIG_CAT, ?SYSCONFIG_COUCH).
 
 -type couchbeam_errors() :: 'not_found' | 'conflict' | 'failed' |
                             'precondition_failed' | 'db_not_reachable' |
@@ -27,11 +28,11 @@
                             'unknown_req_id' | 'retry_later' |
                             'req_timedout' | 'sel_conn_closed' |
                             'invalid_view_name' | 'gateway_timeout' |
-                            {integer(), term()} | % {error_code, body}
+                            {integer(), _} | % {error_code, body}
                             integer() |
-                            {'EXIT', term()} |
-                            {'url_parsing_failed', term()} |
-                            {'conn_failed', term()} |
+                            {'EXIT', _} |
+                            {'url_parsing_failed', _} |
+                            {'conn_failed', _} |
                             {'ok', string(), _, _}.
 -type couchbeam_error() :: {'error', couchbeam_errors()}.
 

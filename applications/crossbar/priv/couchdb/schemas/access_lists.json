@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "access_lists",
+    "additionalProperties": true,
+    "description": "Access Control List entries for device or account",
+    "name": "ACL Entry",
+    "properties": {
+        "cidrs": {
+            "description": "Classless Inter-Domain Routing IP notation for use on the access lists",
+            "items": {
+                "description": "CIDR IP to use on access lists",
+                "type": "string"
+            },
+            "name": "CIDR",
+            "required": true,
+            "type": "array"
+        },
+        "order": {
+            "description": "Allow-Deny or Deny-Allow?",
+            "enum": [
+                "allow,deny",
+                "deny,allow"
+            ],
+            "name": "order",
+            "required": true,
+            "type": "string"
+        },
+        "user_agent": {
+            "description": "RegExp to match valid user agent strings",
+            "name": "User-Agent",
+            "required": false,
+            "type": "string"
+        }
+    },
+    "required": false,
+    "type": "object"
+}

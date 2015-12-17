@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -25,7 +25,7 @@
 -spec init({atom(), 'http'}, cowboy_req:req(), wh_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'}.
 init({_Any, 'http'}, Req0, HandlerOpts) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
 
     {Path, Req1} = cowboy_req:path(Req0),
 
@@ -77,7 +77,6 @@ get_magic_token_from_path([]) -> 'undefined';
 get_magic_token_from_path([<<>>|Paths]) -> get_magic_token_from_path(Paths);
 get_magic_token_from_path([Path|Paths]) ->
     try whapps_util:from_magic_hash(Path) of
-        'undefined' -> get_magic_token_from_path(Paths);
         Token -> Token
     catch
         _:_ -> get_magic_token_from_path(Paths)
@@ -92,5 +91,5 @@ handle(Req, State) ->
     {'ok', Req1} = cowboy_req:reply(200, Headers, Bytes, Req),
     {'ok', Req1, State}.
 
--spec terminate(term(), cowboy_req:req(), term()) -> 'ok'.
+-spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
 terminate(_Reason, _Req, _State) -> 'ok'.

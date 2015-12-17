@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Metaflow requests, responses, and errors
 %%% @end
@@ -22,6 +22,7 @@
 -define(OPTIONAL_METAFLOW_REQ_HEADERS, [<<"Data">>]).
 -define(METAFLOW_REQ_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
                               ,{<<"Event-Name">>, <<"req">>}
+                              ,{<<"Action">>, [<<"transfer">>, <<"hangup">>, <<"callflow">>]}
                              ]).
 -define(METAFLOW_REQ_TYPES, []).
 

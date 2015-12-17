@@ -39,11 +39,11 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.killio">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.killio">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.killio">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.killio">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.killio">>, ?MODULE, post).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.killio">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.killio">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.killio">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.killio">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.killio">>, ?MODULE, 'post').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -66,7 +66,7 @@ allowed_methods(?TOKEN_CALL) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists(?TOKEN_CALL) -> true.
+resource_exists(?TOKEN_CALL) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -78,21 +78,22 @@ resource_exists(?TOKEN_CALL) -> true.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), http_method(), path_token()) -> cb_context:context().
+validate(Context, PathToken) ->
+    validate(Context, cb_context:req_verb(Context), PathToken).
 
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?TOKEN_CALL) ->
-    setup_call(Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?TOKEN_CALL) ->
-    setup_call(Context).
+validate(Context, ?HTTP_PUT, ?TOKEN_CALL) -> setup_call(Context);
+validate(Context, ?HTTP_POST, ?TOKEN_CALL) -> setup_call(Context).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put(#cb_context{}, path_token()) -> #cb_context{}.
-put(#cb_context{}=Context, ?TOKEN_CALL) ->
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, ?TOKEN_CALL) ->
     start_call(Context).
 
 %%--------------------------------------------------------------------
@@ -102,13 +103,12 @@ put(#cb_context{}=Context, ?TOKEN_CALL) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
-post(#cb_context{}=Context, ?TOKEN_CALL) ->
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, ?TOKEN_CALL) ->
     start_call(Context).
 
-setup_call(#cb_context{req_data=_Req}=Context) ->
-    Context#cb_context{resp_status=success}.
-
+setup_call(Context) ->
+    cb_context:set_resp_status(Context, 'success').
 
 start_call(Context) ->
-    Context#cb_context{resp_status=success}.
+    cb_context:set_resp_status(Context, 'success').

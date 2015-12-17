@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -25,10 +25,10 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILD(Name, Id, Doc, Attachment), {Name, {'wh_media_file_cache', 'start_link', [Id, Doc, Attachment]}
-                                           ,'temporary', 5000, 'worker', ['wh_media_file_cache']}
+                                           ,'temporary', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_media_file_cache']}
        ).
 -define(CHILD(Name, Text, JObj), {Name, {'wh_media_tts_cache', 'start_link', [Text, JObj]}
-                                  ,'temporary', 5000, 'worker', ['wh_media_tts_cache']}
+                                  ,'temporary', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_media_tts_cache']}
        ).
 
 %%%===================================================================
@@ -57,7 +57,7 @@ find_file_server(Id, Doc, Attachment) ->
 
 -spec start_file_server(ne_binary(), ne_binary(), ne_binary()) ->
                                {'ok', pid()} |
-                               {'error', _}.
+                               {'error', any()}.
 start_file_server(Id, Doc, Attachment) ->
     Name = [Id, Doc, Attachment],
     start_file_server(Id, Doc, Attachment, Name).
@@ -71,15 +71,24 @@ start_file_server(Id, Doc, Attachment, Name) ->
         {'error', _}=E -> E
     end.
 
+-spec find_tts_server(any()) -> {'ok', pid()} |
+                                {'error', 'no_file_server'}.
 find_tts_server(Id) ->
     case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Id, is_pid(P)] of
         [] -> {'error', 'no_file_server'};
         [P] -> {'ok', P}
     end.
 
+-spec find_tts_server(ne_binary(), wh_json:object()) ->
+                             {'ok', pid()} |
+                             {'error', any()}.
+-spec find_tts_server(ne_binary(), wh_json:object(), ne_binary()) ->
+                             {'ok', pid()} |
+                             {'error', any()}.
 find_tts_server(Text, JObj) ->
-    Id =  wh_util:binary_md5(Text),    
+    Id = wh_util:binary_md5(Text),
     find_tts_server(Text, JObj, Id).
+
 find_tts_server(Text, JObj, Id) ->
     case supervisor:start_child(?MODULE, ?CHILD(Id, Text, JObj)) of
         {'ok', _Pid}=OK -> OK;

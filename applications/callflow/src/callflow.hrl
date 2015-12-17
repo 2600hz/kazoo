@@ -1,9 +1,10 @@
 -ifndef(CALLFLOW_HRL).
 -include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("whistle_apps/src/whapps_call_command_types.hrl").
+-include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -type cf_exe_response() :: {'stop'} |
                            {'continue'} |
@@ -36,7 +37,6 @@
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT_S, 20).
--define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
 
 -define(CF_CONFIG_CAT, <<"callflow">>).
 
@@ -46,6 +46,10 @@
 
 -define(CF_ATTR_LOWER_KEY, <<109,108,112,112>>).
 -define(CF_ATTR_UPPER_KEY, <<109,097,120,095,112,114,101,099,101,100,101,110,099,101>>).
+
+-define(DEFAULT_TIMEZONE
+        ,whapps_config:get(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
+       ).
 
 -define(CALLFLOW_HRL, 'true').
 -endif.

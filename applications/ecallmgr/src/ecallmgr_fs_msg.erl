@@ -10,7 +10,6 @@
 
 -behaviour(gen_listener).
 
-
 -export([start_link/1, start_link/2]).
 
 -export([init/1
@@ -32,19 +31,23 @@
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [{'sms', []}
-                   ,{'self', []}
-                  ]).
--define(RESPONDERS, [
-                     {{?MODULE, 'handle_message_route'}, [{<<"message">>, <<"route">>}]}
+-define(BINDINGS(Node), [{'sms', [{'route_id', Node}
+                                  ,{'restrict_to', ['route']}
+                                 ]
+                         }
+                         ,{'self', []}
+                        ]).
+-define(RESPONDERS, [{{?MODULE, 'handle_message_route'}
+                      ,[{<<"message">>, <<"route">>}]
+                     }
                     ]).
 
--define(QUEUE_NAME, <<"ecallmgr_fs_msg">>).
+-define(QUEUE_NAME(N), <<"ecallmgr_fs_msg_", N/binary>>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--include("ecallmgr.hrl").
 -include_lib("nksip/include/nksip.hrl").
+-include("ecallmgr.hrl").
 
 %%%===================================================================
 %%% API
@@ -62,10 +65,11 @@ start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
+    NodeBin = wh_util:to_binary(Node),
     gen_listener:start_link(?MODULE
                             ,[{'responders', ?RESPONDERS}
-                              ,{'bindings', ?BINDINGS}
-                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'bindings', ?BINDINGS(NodeBin)}
+                              ,{'queue_name', ?QUEUE_NAME(NodeBin)}
                               ,{'queue_options', ?QUEUE_OPTIONS}
                               ,{'consume_options', ?CONSUME_OPTIONS}
                              ]
@@ -135,7 +139,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', Props}, #state{node=Node}=State) ->
-    spawn(?MODULE, 'process_fs_event', [Node, Props]),
+    _ = wh_util:spawn(fun process_fs_event/2, [Node, Props]),
     {'noreply', State, 'hibernate'};
 handle_info({'EXIT', _, _}, State) ->
     {'noreply', State};
@@ -183,9 +187,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-
-
-
 -spec handle_message_route(wh_json:object(), wh_proplist()) -> no_return().
 handle_message_route(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
@@ -205,39 +206,45 @@ send_message(JObj, Props, [Endpoint]) ->
             send_error(Node, JObj, E);
         {'ok', EndpointProps} ->
             lager:debug("sending sms message ~s to freeswitch", [wh_json:get_value(<<"Call-ID">>, JObj)]),
-            EvtProps = lists:append(build_message_headers(JObj), EndpointProps),
+            EvtProps = lists:append(build_message_headers(JObj, Endpoint), EndpointProps),
             freeswitch:sendevent_custom(Node, 'SMS::SEND_MESSAGE', EvtProps)
     end.
 
--spec build_message_headers(wh_json:object()) -> wh_proplist().
-build_message_headers(JObj) ->
-    _From = wh_json:get_value(<<"From">>, JObj),
+-spec build_message_headers(wh_json:object(), wh_json:object()) -> wh_proplist().
+build_message_headers(JObj, Endpoint) ->
     Body = wh_json:get_value(<<"Body">>, JObj),
     MessageId = wh_json:get_value(<<"Message-ID">>, JObj),
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
-    _ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     CIDNumber = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    ToRealm = wh_json:get_value(<<"To-Realm">>, Endpoint),
 
-    FromURI = get_uri(wh_json:get_value(<<"From-URI">>,CCVs)),
-    [#uri{user=_FromUser
-          ,domain=_FromDomain
-         }=_FromContact
-    ] = nksip_parse:uris(FromURI),
+    FromURI = get_uri(wh_json:get_value(<<"From-URI">>, CCVs)),
+    Realm = wh_json:get_value(<<"Account-Realm">>, CCVs),
 
+    FromFull = case {ToRealm, FromURI} of
+                   {'undefined', 'undefined'} ->
+                       <<"sip:", CIDNumber/binary, "@", Realm/binary>>;
+                   {'undefined', FromURI} ->
+                       FromURI;
+                   {ToRealm, _} ->
+                       <<"sip:", CIDNumber/binary, "@", ToRealm/binary>>
+               end,
     Header = props:filter_undefined(
                [{"sip_profile", ?DEFAULT_FS_PROFILE}
                 ,{"proto", "sip"}
                 ,{"blocking", "true"}
                 ,{"dest_proto", "sip"}
                 ,{"from", wh_util:to_list(CIDNumber)}
-                ,{"from_full", wh_util:to_list(FromURI)}
+                ,{"from_full", wh_util:to_list(FromFull)}
                 ,{"content-length", wh_util:to_list(size(Body))}
                 ,{"type", "text/plain"}
                 ,{"body", Body}
                 ,{"Call-ID", wh_util:to_list(CallId)}
                 ,{"Unique-ID", wh_util:to_list(CallId)}
+                ,{"Server-ID", wh_util:to_list(ServerId)}
                 ,{"Message-ID", wh_util:to_list(MessageId)}
                 ,{"Msg-ID", wh_util:to_list(MsgId)}
                 ,{"sip_h_X-Kazoo-Bounce", wh_util:to_list(wh_util:rand_hex_binary(12))}
@@ -256,6 +263,7 @@ get_uri(Uri) -> <<"<sip:", Uri/binary, ">">>.
 
 -spec send_error(atom(), wh_json:object(), any()) -> any().
 send_error(Node, JObj, Err) ->
+    ServerId =  wh_json:get_value(<<"Server-ID">>, JObj),
     Payload =
         [{<<"Error-Description">>, wh_util:to_binary(Err)}
          ,{<<"Status">>, <<"Error">>}
@@ -269,7 +277,7 @@ send_error(Node, JObj, Err) ->
          ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
              | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
         ],
-    wapi_sms:publish_delivery( Payload ).
+    wh_amqp_worker:cast(Payload, fun(A) -> wapi_sms:publish_targeted_delivery(ServerId, A) end).
 
 -spec format_endpoint(wh_json:object(), wh_proplist(), wh_json:object()) ->
                              {'ok', wh_proplist()} |
@@ -294,7 +302,7 @@ format_endpoint(Endpoint, Props, JObj, <<"route">>) ->
 format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
     Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
     Username = wh_json:get_value(<<"To-Username">>, Endpoint),
-    ToURI = wh_json:get_value(<<"Presence-ID">>, Endpoint),
+    ToURI = <<Username/binary, "@", Realm/binary>>,
     case ecallmgr_registrar:lookup_original_contact(Realm, Username) of
         {'ok', Contact} ->
             [#uri{user=_ToUser
@@ -356,7 +364,7 @@ process_fs_event(Node, Props) ->
 process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
     process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props);
 process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
-    _ServerID =  props:get_value(<<"Server-ID">>, Props),
+    ServerId =  props:get_value(<<"Server-ID">>, Props),
     CallId = props:get_value(<<"Call-ID">>, Props),
     BaseProps = props:filter_empty(props:filter_undefined(
         [{<<"Call-ID">>, CallId}
@@ -370,9 +378,9 @@ process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
          ,{<<"Status">>, props:get_value(<<"Status">>, Props)}
              | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
         ])),
-    lager:debug("Recieved delivery event for message ~s",[CallId]),
+    lager:debug("received delivery event for message ~s",[CallId]),
     EventProps = get_event_uris(Props, BaseProps),
-    wapi_sms:publish_delivery( EventProps );
+    wh_amqp_worker:cast(EventProps, fun(A) -> wapi_sms:publish_targeted_delivery(ServerId, A) end);
 
 process_fs_event(_EventName, _SubClass, _Node, _Props) ->
     lager:debug("Event ~s/~s not processed on node ~s",[_EventName, _SubClass, _Node]).

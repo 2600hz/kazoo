@@ -22,19 +22,26 @@
                                                   ,{'worker_module', 'fax_worker'}
                                                   ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
                                                   ,{'max_overflow', 0}
-                                                 ]]}
-                   ,'permanent', 5000, 'worker', ['poolboy']}).
+                                                 ], []
+                                                ]}
+                   ,'permanent', 'infinity', 'worker', ['poolboy']}).
 
--define(CHILDREN, [?POOL('fax_worker_pool')
-                   ,?CACHE('fax_cache')
-                   ,?WORKER('fax_jobs')
+-define(ORIGIN_BINDINGS, [[{'db', ?WH_FAXES_DB}, {'type', <<"faxbox">>}]]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
+-define(SMTP_ARGS, ['fax_smtp' ,[[{'port', ?SMTP_PORT}
+%% in case we want to make the settings constant per execution
+%%                                  ,{'sessionoptions', [?SMTP_CALLBACK_OPTIONS]}
+                                ]]]).
+
+-define(CHILDREN, [?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
+                   ,?POOL('fax_worker_pool')
                    ,?SUPER('fax_requests_sup')
                    ,?SUPER('fax_xmpp_sup')
+                   ,?WORKER('fax_jobs')
                    ,?WORKER('fax_shared_listener')
                    ,?WORKER('fax_listener')
-                   ,?WORKER_ARGS('gen_smtp_server',['fax_smtp'
-                                                    ,[[{'port', whapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)}]]
-                                                   ])
+                   ,?WORKER_ARGS('gen_smtp_server', ?SMTP_ARGS)
                   ]).
 
 %% ===================================================================
@@ -61,7 +68,7 @@ listener_proc() ->
                 Mod =:= 'fax_listener'],
     {'ok', P}.
 
--spec smtp_sessions() -> any().
+-spec smtp_sessions() -> non_neg_integer().
 smtp_sessions() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
                 Mod =:= 'gen_smtp_server'],
@@ -83,10 +90,9 @@ smtp_sessions() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
-
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
     {'ok', {SupFlags, ?CHILDREN}}.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -14,6 +14,7 @@
 -export([start_link/2
          ,single/1
          ,continuous/1
+         ,stop/1
         ]).
 
 %% gen_server callbacks
@@ -26,10 +27,13 @@
         ]).
 
 -include("whistle_media.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
--define(TIMEOUT_LIFETIME, 600000).
+-define(TIMEOUT_LIFETIME
+        ,whapps_config:get_integer(?CONFIG_CAT, <<"tts_cache">>, ?MILLISECONDS_IN_HOUR)
+       ).
 -define(TIMEOUT_MESSAGE, {'$wh_media_tts_cache', 'tts_timeout'}).
 
 -record(state, {
@@ -37,9 +41,10 @@
           ,contents = <<>> :: binary()
           ,status :: 'streaming' | 'ready'
           ,ibrowse_req_id :: ibrowse_req_id()
-          ,reqs :: [{pid(), reference()},...] | []
+          ,reqs :: [{pid(), reference()}]
           ,meta :: wh_json:object()
           ,timer_ref :: reference()
+          ,id :: ne_binary() %% used in publishing doc_deleted
          }).
 
 %%%===================================================================
@@ -57,9 +62,14 @@
 start_link(Text, JObj) ->
     gen_server:start_link(?MODULE, [Text, JObj], []).
 
+-spec single(pid()) -> {wh_json:object(), ne_binary()}.
 single(Srv) -> gen_server:call(Srv, 'single').
 
 continuous(Srv) -> gen_server:call(Srv, 'continuous').
+
+-spec stop(pid()) -> 'ok'.
+stop(Srv) ->
+    gen_server:cast(Srv, 'stop').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -77,7 +87,7 @@ continuous(Srv) -> gen_server:call(Srv, 'continuous').
 %% @end
 %%--------------------------------------------------------------------
 init([Text, JObj]) ->
-    put('callid', wh_util:binary_md5(Text)),
+    wh_util:put_callid(wh_util:binary_md5(Text)),
 
     Voice = list_to_binary([wh_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
                             ,get_language(wh_json:get_value(<<"Language">>, JObj, <<"en-us">>))
@@ -88,8 +98,11 @@ init([Text, JObj]) ->
 
     {'ok', ReqID} = whapps_speech:create(Engine, Text, Voice, Format, [{'stream_to', self()}]),
 
+    MediaName = wh_util:binary_md5(Text),
+    lager:debug("text '~s' has id '~s'", [Text, MediaName]),
+
     Meta = wh_json:from_list([{<<"content_type">>, wh_mime_types:from_extension(Format)}
-                              ,{<<"media_name">>, wh_util:to_hex_binary(Text)}
+                              ,{<<"media_name">>, MediaName}
                              ]),
 
     {'ok', #state{ibrowse_req_id = ReqID
@@ -98,6 +111,7 @@ init([Text, JObj]) ->
                   ,contents = <<>>
                   ,reqs = []
                   ,timer_ref = start_timer()
+                  ,id = MediaName
                  }}.
 
 -spec get_language(ne_binary()) -> ne_binary().
@@ -146,6 +160,9 @@ handle_call('continuous', _From, #state{}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('stop', State) ->
+    lager:debug("asked to stop, going down"),
+    {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -200,28 +217,28 @@ handle_info({'ibrowse_async_headers', ReqID, Bin}, #state{ibrowse_req_id=ReqID
     {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>}};
 
 handle_info({'ibrowse_async_response_end', ReqID}, #state{ibrowse_req_id=ReqID
+                                                          ,contents = <<>>
+                                                          ,timer_ref=TRef
+                                                         }=State) ->
+    _ = stop_timer(TRef),
+    lager:debug("no tts contents were received, going down"),
+    {'stop', 'normal', State};
+handle_info({'ibrowse_async_response_end', ReqID}, #state{ibrowse_req_id=ReqID
                                                           ,contents=Contents
                                                           ,meta=Meta
                                                           ,reqs=Reqs
                                                           ,timer_ref=TRef
                                                          }=State) ->
     _ = stop_timer(TRef),
-    case Contents of
-        <<>> ->
-            lager:debug("no tts contents were received, going down"),
-            {'stop', 'normal', State};
-        _ ->
-            Res = {Meta, Contents},
-            _ = [gen_server:reply(From, Res) || From <- Reqs],
+    Res = {Meta, Contents},
+    _ = [gen_server:reply(From, Res) || From <- Reqs],
 
-            lager:debug("finished receiving file contents"),
-            {'noreply', State#state{status=ready
-                                    ,timer_ref=start_timer()
-                                   }
-            ,'hibernate'
-            }
-    end;
-
+    lager:debug("finished receiving file contents"),
+    {'noreply', State#state{status=ready
+                            ,timer_ref=start_timer()
+                           }
+     ,'hibernate'
+    };
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, 'hibernate'}.
@@ -237,8 +254,9 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("media tts going down: ~p", [_Reason]).
+terminate(_Reason, #state{id=Id}) ->
+    publish_doc_update(Id),
+    lager:debug("media tts ~s going down: ~p", [Id, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -254,11 +272,29 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec kv_to_bin(wh_proplist()) -> wh_proplist().
 kv_to_bin(L) ->
     [{wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- L].
 
+-spec start_timer() -> reference().
 start_timer() ->
     erlang:start_timer(?TIMEOUT_LIFETIME, self(), ?TIMEOUT_MESSAGE).
+
+-spec stop_timer(reference() | _) -> 'ok'.
 stop_timer(Ref) when is_reference(Ref) ->
-    erlang:cancel_timer(Ref);
+    _ = erlang:cancel_timer(Ref),
+    'ok';
 stop_timer(_) -> 'ok'.
+
+-spec publish_doc_update(ne_binary()) -> 'ok'.
+publish_doc_update(Id) ->
+    API =
+        [{<<"ID">>, Id}
+         ,{<<"Type">>, Type = <<"media">>}
+         ,{<<"Database">>, Db = <<"tts">>}
+         ,{<<"Rev">>, <<"0">>}
+         | wh_api:default_headers(<<"configuration">>, ?DOC_DELETED, ?APP_NAME, ?APP_VERSION)
+        ],
+    wh_amqp_worker:cast(API
+                        ,fun(P) -> wapi_conf:publish_doc_update('deleted', Db, Type, Id, P) end
+                       ).

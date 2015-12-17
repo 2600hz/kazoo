@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%% Track the FreeSWITCH channel information, and provide accessors
 %%% @end
@@ -22,16 +22,15 @@
          ,set_account_id/2
          ,fetch/1, fetch/2
          ,renew/2
+         ,channel_data/2
          ,get_other_leg/2
         ]).
 -export([to_json/1
          ,to_props/1
+         ,channel_ccvs/1
         ]).
 -export([to_api_json/1
          ,to_api_props/1
-        ]).
--export([handle_channel_req/3
-         ,handle_channel_req/4
         ]).
 -export([process_event/3
          ,process_event/4
@@ -48,6 +47,7 @@
 -compile([{'no_auto_import', [node/1]}]).
 
 -include("ecallmgr.hrl").
+-include_lib("nksip/include/nksip.hrl").
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: wh_proplist()
@@ -122,7 +122,7 @@ set_node(Node, UUID) ->
 
 -spec former_node(ne_binary()) ->
                          {'ok', atom()} |
-                         {'error', _}.
+                         {'error', any()}.
 former_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', former_node = '$2', _ = '_'}
                   ,[{'=:=', '$1', {'const', UUID}}]
@@ -141,8 +141,8 @@ is_bridged(UUID) ->
                   ,['$2']}
                 ],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
-        ['undefined'] -> lager:debug("not bridged: undefined"), 'false';
-        [Bin] when is_binary(Bin) -> lager:debug("bridged: ~s", [Bin]), 'true';
+        ['undefined'] -> lager:debug("channel is not bridged"), 'false';
+        [Bin] when is_binary(Bin) -> lager:debug("is bridged to: ~s", [Bin]), 'true';
         _E -> lager:debug("not bridged: ~p", [_E]), 'false'
     end.
 
@@ -167,11 +167,19 @@ set_account_id(UUID, Value) ->
                    {'ok', channel()} |
                    {'error', 'timeout' | 'badarg'}.
 renew(Node, UUID) ->
-    case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-        {'ok', Dump} ->
-            Props = ecallmgr_util:eventstr_to_proplist(Dump),
+    case channel_data(Node, UUID) of
+        {'ok', Props} ->
             {'ok', props_to_record(Props, Node)};
         {'error', _}=E -> E
+    end.
+
+-spec channel_data(atom(), ne_binary()) -> {'ok', wh_proplist()} |
+                                           {'error', 'timeout' | 'badarg'}.
+channel_data(Node, UUID) ->
+    case freeswitch:api(Node, 'uuid_dump', UUID) of
+        {'error', _}=E -> E;
+        {'ok', Dump} ->
+            {'ok', ecallmgr_util:eventstr_to_proplist(Dump)}
     end.
 
 -spec to_json(channel()) -> wh_json:object().
@@ -207,6 +215,7 @@ to_props(Channel) ->
        ,{<<"other_leg">>, Channel#channel.other_leg}
        ,{<<"handling_locally">>, Channel#channel.handling_locally}
        ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
+       ,{<<"switch_nodename">>, Channel#channel.node}
        ,{<<"to_tag">>, Channel#channel.to_tag}
        ,{<<"from_tag">>, Channel#channel.from_tag}
        ,{<<"elapsed_s">>, wh_util:elapsed_s(Channel#channel.timestamp)}
@@ -249,6 +258,44 @@ to_api_props(Channel) ->
        ,{<<"Elapsed-Seconds">>, wh_util:elapsed_s(Channel#channel.timestamp)}
       ]).
 
+-spec channel_ccvs(channel() | wh_json:object() | wh_proplist()) -> wh_proplist().
+channel_ccvs(#channel{}=Channel) ->
+    props:filter_undefined(
+      [{<<"Account-ID">>, Channel#channel.account_id}
+       ,{<<"Account-Billing">>, Channel#channel.account_billing}
+       ,{<<"Authorizing-ID">>, Channel#channel.authorizing_id}
+       ,{<<"Authorizing-Type">>, Channel#channel.authorizing_type}
+       ,{<<"Owner-ID">>, Channel#channel.owner_id}
+       ,{<<"Resource-ID">>, Channel#channel.resource_id}
+       ,{<<"Presence-ID">>, Channel#channel.presence_id}
+       ,{<<"Fetch-ID">>, Channel#channel.fetch_id}
+       ,{<<"Bridge-ID">>, Channel#channel.bridge_id}
+       ,{<<"Precedence">>, Channel#channel.precedence}
+       ,{<<"Reseller-ID">>, Channel#channel.reseller_id}
+       ,{<<"Reseller-Billing">>, Channel#channel.reseller_billing}
+       ,{<<"Realm">>, Channel#channel.realm}
+       ,{<<"Username">>, Channel#channel.username}
+      ]);
+channel_ccvs([_|_]=Props) ->
+    props:filter_undefined(
+      [{<<"Account-ID">>, props:get_value(<<"account_id">>, Props)}
+       ,{<<"Account-Billing">>, props:get_value(<<"account_billing">>, Props)}
+       ,{<<"Authorizing-ID">>, props:get_value(<<"authorizing_id">>, Props)}
+       ,{<<"Authorizing-Type">>, props:get_value(<<"authorizing_type">>, Props)}
+       ,{<<"Owner-ID">>, props:get_value(<<"owner_id">>, Props)}
+       ,{<<"Resource-ID">>, props:get_value(<<"resource_id">>, Props)}
+       ,{<<"Presence-ID">>, props:get_value(<<"presence_id">>, Props)}
+       ,{<<"Fetch-ID">>, props:get_value(<<"fetch_id">>, Props)}
+       ,{<<"Bridge-ID">>, props:get_value(<<"bridge_id">>, Props)}
+       ,{<<"Precedence">>, props:get_value(<<"precedence">>, Props)}
+       ,{<<"Reseller-ID">>, props:get_value(<<"reseller_id">>, Props)}
+       ,{<<"Reseller-Billing">>, props:get_value(<<"reseller_billing">>, Props)}
+       ,{<<"Realm">>, props:get_value(<<"realm">>, Props)}
+       ,{<<"Username">>, props:get_value(<<"username">>, Props)}
+      ]);
+channel_ccvs(JObj) ->
+    channel_ccvs(wh_json:to_proplist(JObj)).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -265,7 +312,7 @@ to_api_props(Channel) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put('callid', Node),
+    wh_util:put_callid(Node),
     lager:info("starting new fs channel listener for ~s", [Node]),
     gen_server:cast(self(), 'bind_to_events'),
     {'ok', #state{node=Node, options=Options}}.
@@ -325,10 +372,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
-    _ = spawn(?MODULE, 'process_event', [UUID, Props, Node, self()]),
+    _ = wh_util:spawn(fun process_event/4, [UUID, Props, Node, self()]),
     {'noreply', State};
 handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
-    spawn(?MODULE, 'handle_channel_req', [UUID, FetchId, Node, self()]),
+    _ = wh_util:spawn(fun handle_channel_req_legacy/4, [UUID, FetchId, Node, self()]),
+    {'noreply', State};
+handle_info({'fetch', 'channels', _, _, _, FetchId, Props}, #state{node=Node}=State) ->
+    UUID = props:get_value(<<"replaces-call-id">>, Props),
+    _ = wh_util:spawn(fun handle_channel_req/5, [UUID, FetchId, Props, Node, self()]),
     {'noreply', State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
@@ -378,22 +429,67 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_channel_req(ne_binary(), ne_binary(), atom()) -> 'ok'.
-handle_channel_req(UUID, FetchId, Node) ->
-    handle_channel_req(UUID, FetchId, Node, self()).
 
--spec handle_channel_req(ne_binary(), ne_binary(), atom(), pid()) -> 'ok'.
-handle_channel_req(UUID, FetchId, Node, Pid) ->
+-spec handle_channel_req_legacy(ne_binary(), ne_binary(), atom(), pid()) -> 'ok'.
+handle_channel_req_legacy(UUID, FetchId, Node, Pid) ->
     wh_amqp_channel:consumer_pid(Pid),
-    case ecallmgr_fs_channel:fetch(UUID, 'proplist') of
-        {'error', 'not_found'} -> fetch_channel(UUID, FetchId, Node);
-        {'ok', Props} ->
-            ChannelNode = props:get_value(<<"node">>, Props),
-            URL = ecallmgr_fs_nodes:sip_url(ChannelNode),
+    case fetch_channel(UUID) of
+        'undefined' -> channel_not_found(Node, FetchId);
+        Channel ->
+            URL = props:get_value(<<"switch_url">>, Channel),
             try_channel_resp(FetchId, Node, [{<<"sip-url">>, URL}
                                              ,{<<"uuid">>, UUID}
                                             ])
     end.
+
+-spec handle_channel_req(ne_binary(), ne_binary(), wh_proplist(), atom(), pid()) -> 'ok'.
+handle_channel_req(UUID, FetchId, Props, Node, Pid) ->
+    wh_amqp_channel:consumer_pid(Pid),
+    ForUUID = props:get_value(<<"refer-for-channel-id">>, Props),
+    {'ok', ForChannel} = fetch(ForUUID, 'proplist'),
+    case fetch_channel(UUID) of
+        'undefined' -> channel_not_found(Node, FetchId);
+        Channel ->
+            [Uri] = nksip_parse_uri:uris(props:get_value(<<"switch_url">>, Channel)),
+            URL = nksip_unparse:ruri(
+                    #uri{user= props:get_value(<<"refer-to-user">>, Props)
+                         ,domain= props:get_value(<<"realm">>, Channel)
+                         ,opts=[{<<"fs_path">>, nksip_unparse:ruri(Uri#uri{user= <<>>})}]
+                        }),
+            build_channel_resp(FetchId, Props, Node, URL, ForChannel, channel_ccvs(Channel))
+    end.
+
+-spec build_channel_resp(ne_binary(), wh_proplist(), atom(), ne_binary(), wh_proplist(), wh_proplist()) -> 'ok'.
+build_channel_resp(FetchId, Props, Node, URL, Channel, ChannelVars) ->
+%% NOTE
+%% valid properties to return are
+%% sip-url , dial-prefix, absolute-dial-string, sip-profile (defaulted to current channel profile)
+%% freeswitch formats the dial string with the following logic
+%% if absolute-dial-string => %s%s [dial-prefix, absolute-dial-string]
+%% else => %ssofia/%s/%s [dial-prefix, sip-profile, sip-url]
+    Resp = props:filter_undefined(
+             [{<<"sip-url">>, URL}
+              ,{<<"dial-prefix">>, channel_resp_dialprefix(Props, Channel, ChannelVars)}
+             ]),
+    try_channel_resp(FetchId, Node, Resp).
+
+-spec channel_resp_dialprefix(wh_proplist(), wh_proplist(), wh_proplist()) -> ne_binary().
+channel_resp_dialprefix(ReqProps, _Channel, ChannelVars) ->
+    Props = props:filter_undefined(
+              [{<<"sip_invite_domain">>, props:get_value(<<"Realm">>, ChannelVars)}
+               ,{<<"sip_h_X-Core-UUID">>, props:get_value(<<"Core-UUID">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_replaces-call-id">>, props:get_value(<<"replaces-call-id">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_refer-from-channel-id">>, props:get_value(<<"refer-from-channel-id">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_refer-for-channel-id">>, props:get_value(<<"refer-for-channel-id">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_Account-ID">>, props:get_value(<<"Account-ID">>, ChannelVars)}
+               ,{<<"sip_h_X-ecallmgr_Realm">>, props:get_value(<<"Realm">>, ChannelVars)}
+              ]),
+    fs_props_to_binary(Props).
+
+-spec fs_props_to_binary(wh_proplist()) -> ne_binary().
+fs_props_to_binary([{Hk,Hv}|T]) ->
+    Rest = << <<",", K/binary, "='", (wh_util:to_binary(V))/binary, "'">> || {K,V} <- T >>,
+    <<"[", Hk/binary, "='", (wh_util:to_binary(Hv))/binary, "'", Rest/binary, "]">>.
 
 -spec try_channel_resp(ne_binary(), atom(), wh_proplist()) -> 'ok'.
 try_channel_resp(FetchId, Node, Props) ->
@@ -407,8 +503,15 @@ try_channel_resp(FetchId, Node, Props) ->
             channel_not_found(Node, FetchId)
     end.
 
--spec fetch_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
-fetch_channel(UUID, FetchId, Node) ->
+-spec fetch_channel(ne_binary()) -> wh_proplist() | 'undefined'.
+fetch_channel(UUID) ->
+    case fetch(UUID, 'proplist') of
+        {'error', 'not_found'} -> fetch_remote(UUID);
+        {'ok', Channel} -> Channel
+    end.
+
+-spec fetch_remote(ne_binary()) -> api_object().
+fetch_remote(UUID) ->
     Command = [{<<"Call-ID">>, UUID}
                ,{<<"Active-Only">>, <<"true">>}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -418,13 +521,11 @@ fetch_channel(UUID, FetchId, Node) ->
                              ,fun wapi_call:channel_status_resp_v/1
                             )
     of
-        {'error', _} -> channel_not_found(Node, FetchId);
+        {'error', _} -> 'undefined';
         {'ok', JObj} ->
-            URL = wh_json:get_value(<<"Switch-URL">>, JObj),
-            Props = [{<<"sip-url">>, URL}
-                     ,{<<"uuid">>, UUID}
-                    ],
-            try_channel_resp(FetchId, Node, Props)
+            Props = wh_json:recursive_to_proplist(wh_json:normalize(JObj)),
+            CCVs = props:get_value(<<"custom_channel_vars">>, Props, []),
+            Props ++ CCVs
     end.
 
 -spec channel_not_found(atom(), ne_binary()) -> 'ok'.
@@ -478,9 +579,13 @@ maybe_publish_channel_state(Props, _Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
     %%   becomes disconnected any calls it previsouly controlled will not produce
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
-    case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'false') of
-        'false' -> ecallmgr_call_events:process_channel_event(Props);
-        'true' -> maybe_publish_restricted(Props)
+    case ecallmgr_config:get_boolean(<<"publish_channel_state">>, 'true') of
+        'false' -> 'ok';
+        'true' ->
+            case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'false') of
+                'false' -> ecallmgr_call_events:process_channel_event(Props);
+                'true' -> maybe_publish_restricted(Props)
+            end
     end.
 
 -spec maybe_publish_restricted(wh_proplist()) -> 'ok'.

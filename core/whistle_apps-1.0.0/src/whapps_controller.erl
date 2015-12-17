@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,6 +12,7 @@
 %% API
 -export([start_link/0
          ,start_app/1
+         ,start_default_apps/0
          ,stop_app/1
          ,restart_app/1
          ,running_apps/0, running_apps/1
@@ -32,8 +33,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    spawn(fun() -> put('callid', ?LOG_SYSTEM_ID), initialize_whapps() end),
+    _ = wh_util:spawn(fun initialize_whapps/0),
     'ignore'.
+
+start_default_apps() ->
+    [{App, start_app(App)} || App <- ?DEFAULT_WHAPPS].
 
 -spec start_app(atom() | nonempty_string() | ne_binary()) ->
                        'ok' | 'error' | 'exists'.
@@ -41,12 +45,13 @@ start_app(App) when not is_atom(App) ->
     start_app(wh_util:to_atom(App, 'true'));
 start_app(App) ->
     case lists:keyfind(App, 1, application:which_applications()) of
-        {App, _, _} ->
-            lager:info("Kazoo app ~s already running", [App]),
+        {App, _Desc, _Ver} ->
+            lager:info("Kazoo app ~s already running (~s)", [App, _Ver]),
             'exists';
         'false' ->
             case application:start(App) of
-                'ok' -> lager:info("Kazoo app ~s is now running", [App]);
+                'ok' ->
+                    lager:info("Kazoo app ~s is now running", [App]);
                 {'error', _R} ->
                     lager:error("Kazoo app ~s failed to start: ~p", [App, _R]),
                     'error'
@@ -58,26 +63,43 @@ start_app(App) ->
 stop_app(App) when not is_atom(App) ->
     stop_app(wh_util:to_atom(App));
 stop_app(App) ->
-    _ = application:stop(App),
-    lager:info("stopped kazoo application ~s", [App]).
+    case application:stop(App) of
+        'ok' -> lager:info("stopped kazoo application ~s", [App]);
+        {'error', {'not_started', App}} ->
+            lager:error("~s is not currently running", [App]);
+        {'error', _E}=Err ->
+            lager:error("error stopping applicaiton ~s: ~p", [App, _E]),
+            Err
+    end.
 
 -spec restart_app(atom() | nonempty_string() | ne_binary()) ->
-                         {'ok', pid() | 'undefined'} |
-                         {'ok', pid() | 'undefined', term()} |
-                         {'error', term()}.
+                         'ok' | 'error' | 'exists'.
 restart_app(App) when not is_atom(App) ->
-    restart_app(wh_util:to_atom(App));
+    restart_app(wh_util:to_atom(App, 'true'));
 restart_app(App) when is_atom(App) ->
     lager:info("restarting whistle application ~s", [App]),
-    application:stop(App),
-    application:start(App).
+    _ = stop_app(App),
+    start_app(App).
 
--define(HIDDEN_APPS, ['kernel', 'stdlib', 'ibrowse', 'cowboy', 'ranch', 'crypto'
-                      ,'inets', 'ssl', 'public_key', 'whistle_apps', 'whistle_couch'
-                      ,'whistle_amqp', 'whistle_stats', 'sasl', 'lager', 'gproc'
-                      ,'amqp_client', 'syslog', 'asn1', 'folsom', 'kazoo_token_buckets'
-                      ,'socketio', 'kazoo_bindings', 'cowlib', 'xmerl'
-                     ]).
+-define(HIDDEN_APPS
+        ,['amqp_client','asn1'
+          ,'cowboy','cowlib','crypto'
+          ,'folsom'
+          ,'gproc'
+          ,'ibrowse','inets'
+          ,'kazoo_bindings','kazoo_caches','kazoo_token_buckets','kernel'
+          ,'lager'
+          ,'nksip'
+          ,'public_key'
+          ,'ranch'
+          ,'sasl','socketio','ssl','stdlib','syslog'
+          ,'webseq'
+          ,'whistle_amqp','whistle_apps','whistle_couch','whistle_stats'
+          ,'xmerl'
+          ,'goldrush'
+          ,'compiler', 'syntax_tools'
+         ]).
+
 -spec running_apps() -> atoms() | string().
 -spec running_apps(boolean()) -> atoms() | string().
 running_apps() ->
@@ -89,6 +111,7 @@ running_apps(Verbose) ->
         'false' -> running_apps_list()
     end.
 
+-spec running_apps_verbose() -> atoms() | string().
 running_apps_verbose() ->
     case [wh_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
           || {App, Desc, Vsn} <- application:which_applications(),
@@ -99,6 +122,7 @@ running_apps_verbose() ->
         Resp -> Resp
     end.
 
+-spec running_apps_list() -> atoms() | string().
 running_apps_list() ->
     case [App
           || {App, _, _} <- application:which_applications(),
@@ -109,18 +133,20 @@ running_apps_list() ->
         Resp -> Resp
     end.
 
+-spec initialize_whapps() -> 'ok'.
 initialize_whapps() ->
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
         'false' -> whapps_maintenance:refresh();
         'true' -> 'ok'
     end,
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, ?DEFAULT_WHAPPS),
     StartWhApps = [wh_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
-    %_ = whistle_apps_sup:initialize_whapps([]),
-    [?MODULE:start_app(A) || A <- StartWhApps],
+
+    _ = [?MODULE:start_app(A) || A <- StartWhApps],
     lager:notice("auto-started whapps ~p", [StartWhApps]).
 
--spec list_apps() -> [atom(),...] | [].
+-spec list_apps() -> atoms().
 list_apps() ->
     case [App
           || {App, _, _} <- application:which_applications(),

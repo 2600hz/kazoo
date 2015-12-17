@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -8,7 +8,7 @@
 -module(wh_service_items).
 
 -export([empty/0]).
--export([get_udapted_items/2]).
+-export([get_updated_items/2]).
 -export([to_list/1]).
 -export([public_json/1]).
 -export([find/3]).
@@ -35,28 +35,28 @@ empty() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_udapted_items(items(), items()) -> items().
--spec get_udapted_items(any(), wh_service_item:item(), items(), items()) -> items().
-get_udapted_items(Items1, Items2) ->
+-spec get_updated_items(items(), items()) -> items().
+-spec get_updated_items(any(), wh_service_item:item(), items(), items()) -> items().
+get_updated_items(UpdatedItems, ExistingItems) ->
     dict:fold(
-        fun(Key, Item1, Acc) ->
-            get_udapted_items(Key, Item1, Items2, Acc)
-        end
-        ,dict:new()
-        ,Items1
-    ).
+      fun(Key, UpdatedItem, DifferingItems) ->
+              get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems)
+      end
+      ,dict:new()
+      ,UpdatedItems
+     ).
 
-get_udapted_items(Key, Item1, Items2, NewItem) ->
-    case get_item(Key, Items2) of
-        'error' -> NewItem;
-        Item2 ->
-            case compare(Item1, Item2) of
-                'true' -> NewItem;
-                'false' -> dict:store(Key, Item1, NewItem)
+get_updated_items(Key, UpdatedItem, ExistingItems, DifferingItems) ->
+    case get_item(Key, ExistingItems) of
+        'error' -> DifferingItems;
+        ExistingItem ->
+            case compare(UpdatedItem, ExistingItem) of
+                'true' -> DifferingItems;
+                'false' -> dict:store(Key, UpdatedItem, DifferingItems)
             end
     end.
 
--spec get_item(any(), items()) -> wh_service_item:item().
+-spec get_item(any(), items()) -> wh_service_item:item() | 'error'.
 get_item(Key, Items) ->
     case dict:find(Key, Items) of
         'error' -> 'error';
@@ -73,9 +73,7 @@ compare(Item1, Item2) ->
 -spec compare_quantity(wh_service_item:item(), wh_service_item:item()) -> boolean().
 compare_quantity(Item1, Item2) ->
     wh_service_item:quantity(Item1) =:= 0
-        orelse
-        wh_service_item:quantity(Item1) 
-        =:= wh_service_item:quantity(Item2).
+        orelse wh_service_item:quantity(Item1) =:= wh_service_item:quantity(Item2).
 
 -spec compare_rate(wh_service_item:item(), wh_service_item:item()) -> boolean().
 compare_rate(Item1, _) ->
@@ -90,7 +88,7 @@ compare_rate(Item1, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec to_list(items()) -> [wh_service_item:item(),...] | [].
+-spec to_list(items()) -> wh_service_item:items().
 to_list(ServiceItems) ->
     [ServiceItem || {_, ServiceItem} <- dict:to_list(ServiceItems)].
 
@@ -100,21 +98,23 @@ to_list(ServiceItems) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec public_json(items()) -> wh_json:objects().
+-spec public_json(items()) -> wh_json:object().
 public_json(ServiceItems) ->
-    lists:foldl(fun({_, ServiceItem}, JObj) ->
-                        ItemJObj = wh_service_item:public_json(ServiceItem),
-                        Category = wh_service_item:category(ServiceItem),
-                        Item = wh_service_item:item(ServiceItem),
-                        case wh_json:get_value(Category, JObj) of
-                            'undefined' ->
-                                TJObj = wh_json:set_value(Item, ItemJObj, wh_json:new()),
-                                wh_json:set_value(Category, TJObj, JObj);
-                            VJObj ->
-                                TJObj = wh_json:set_value(Item, ItemJObj, VJObj),
-                                wh_json:set_value(Category, TJObj, JObj)
-                        end
-                end, wh_json:new(), dict:to_list(ServiceItems)).
+    lists:foldl(fun public_json_fold/2, wh_json:new(), dict:to_list(ServiceItems)).
+
+-spec public_json_fold({_, wh_service_item:item()}, wh_json:object()) -> wh_json:object().
+public_json_fold({_, ServiceItem}, JObj) ->
+    ItemJObj = wh_service_item:public_json(ServiceItem),
+    Category = wh_service_item:category(ServiceItem),
+    Item = wh_service_item:item(ServiceItem),
+    case wh_json:get_value(Category, JObj) of
+        'undefined' ->
+            TJObj = wh_json:set_value(Item, ItemJObj, wh_json:new()),
+            wh_json:set_value(Category, TJObj, JObj);
+        VJObj ->
+            TJObj = wh_json:set_value(Item, ItemJObj, VJObj),
+            wh_json:set_value(Category, TJObj, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -136,7 +136,7 @@ find(Category, Item, ServiceItems) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update(wh_service_item:item(), items()) -> wh_service_item:items().
+-spec update(wh_service_item:item(), items()) -> items().
 update(ServiceItem, ServiceItems) ->
     _ = log_update(ServiceItem),
     Key = {wh_service_item:category(ServiceItem), wh_service_item:item(ServiceItem)},
@@ -172,7 +172,8 @@ log_update_cumulative_discount(Category, Item, ServiceItem) ->
         'true' -> 'ok';
         CumulativeRate ->
             lager:debug("set '~s/~s' cumulative discount with quantity ~p @ $~p"
-                        ,[Category, Item, CumulativeDiscount, CumulativeRate])
+                        ,[Category, Item, CumulativeDiscount, CumulativeRate]
+                       )
     end.
 
 -spec log_update_single_discount(ne_binary(), ne_binary(), wh_service_item:item()) -> 'ok'.
@@ -183,5 +184,6 @@ log_update_single_discount(Category, Item, ServiceItem) ->
         'false' -> 'ok';
         SingleRate ->
             lager:debug("set '~s/~s' single discount for $~p"
-                        ,[Category, Item, SingleRate])
+                        ,[Category, Item, SingleRate]
+                       )
     end.

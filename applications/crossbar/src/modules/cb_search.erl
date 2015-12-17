@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -11,14 +11,20 @@
 -module(cb_search).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
+         ,allowed_methods/0 ,allowed_methods/1
+         ,resource_exists/0 ,resource_exists/1
+         ,validate/1 ,validate/2
+         ,authorize/1, authorize/2
         ]).
 
 -include("../crossbar.hrl").
 
 -define(QUERY_TPL, <<"search/search_by_">>).
+-define(MULTI, <<"multi">>).
+
+-define(SEARCHABLE, [<<"account">>, <<"user">>, <<"callflow">>, <<"devices">>]).
+-define(ACCOUNT_QUERY_OPTIONS, [<<"name">>, <<"number">>, <<"name_and_number">>]).
+-define(ACCOUNTS_QUERY_OPTIONS, [<<"name">>, <<"realm">>, <<"id">>]).
 
 %%%===================================================================
 %%% API
@@ -34,8 +40,8 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.search">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.search">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.authorize.search">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.search">>, ?MODULE, 'validate').
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,7 +51,11 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
+    [?HTTP_GET].
+
+allowed_methods(?MULTI) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -58,7 +68,23 @@ allowed_methods() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+resource_exists(?MULTI) -> 'true'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context) ->
+    cb_context:auth_account_id(Context) =/= 'undefined'.
+
+authorize(Context, ?MULTI) ->
+    cb_context:auth_account_id(Context) =/= 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -71,6 +97,7 @@ resource_exists() -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     Type = cb_context:req_value(Context, <<"t">>),
     Ctx = case cb_context:account_id(Context) of
@@ -79,24 +106,189 @@ validate(Context) ->
           end,
     validate_search(Ctx, Type).
 
+
+validate(Context, ?MULTI) ->
+    Type = cb_context:req_value(Context, <<"t">>),
+    Ctx = case cb_context:account_id(Context) of
+              'undefined' -> cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB);
+              _AccountId -> Context
+          end,
+    validate_multi(Ctx, Type).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec validate_search(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_search(cb_context:context(), ne_binary(), api_binary()) ->
+                             cb_context:context().
+-spec validate_search(cb_context:context(), ne_binary(), ne_binary(), api_binary()) ->
+                             cb_context:context().
 validate_search(Context, 'undefined') ->
-    cb_context:add_validation_error(<<"t">>, <<"required">>, <<"search needs to know what to look for">>, Context);
+    cb_context:add_validation_error(
+      <<"t">>
+      ,<<"required">>
+      ,wh_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
+      ,Context
+     );
 validate_search(Context, Type) ->
-    validate_search(Context, cb_context:req_value(Context, <<"q">>), Type).
+    validate_search(Context, Type, cb_context:req_value(Context, <<"q">>)).
 
 
--spec validate_search(cb_context:context(), api_binary(), ne_binary()) -> cb_context:context().
-validate_search(Context, 'undefined', _) ->
-    cb_context:add_validation_error(<<"q">>, <<"required">>, <<"search needs to know what to look for">>, Context);
-validate_search(Context, Q, T) ->
-    validate_search(Context, cb_context:req_value(Context, <<"v">>), Q, T).
+validate_search(Context, _Type, 'undefined') ->
+    Context1 = cb_context:add_validation_error(
+                 <<"q">>
+                 ,<<"required">>
+                 ,wh_json:from_list([{<<"message">>, <<"Search needs a view to search in">>}])
+                 ,Context
+                ),
+    cb_context:add_validation_error(
+      <<"q">>
+      ,<<"enum">>
+      ,wh_json:from_list(
+         [{<<"message">>, <<"Value not found in enumerated list of values">>}
+          ,{<<"target">>, query_options(cb_context:account_db(Context1))}
+         ])
+      ,Context1
+     );
+validate_search(Context, Type, Query) ->
+    Context1 = validate_query(Context, Query),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            validate_search(Context, Type, Query, cb_context:req_value(Context, <<"v">>));
+        _Status ->
+            Context1
+    end.
 
--spec validate_search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
-validate_search(Context, 'undefined', _, _) ->
-    cb_context:add_validation_error(<<"v">>, <<"required">>, <<"search needs to know what to look for">>, Context);
-validate_search(Context, V, Q, T) ->
-    search(Context, V, Q, T).
+validate_search(Context, _Type, _Query, 'undefined') ->
+    cb_context:add_validation_error(
+      <<"v">>
+      ,<<"required">>
+      ,wh_json:from_list([{<<"message">>, <<"Search needs a value to search with">>}])
+      ,Context
+     );
+validate_search(Context, Type, Query, <<_/binary>> = Value) ->
+    search(Context, Type, Query, Value);
+validate_search(Context, Type, Query, Value) ->
+    case wh_util:is_true(Value) of
+        'true' -> validate_search(Context, Type, Query, <<>>);
+        'false' -> validate_search(Context, Type, Query, 'undefined')
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_multi(cb_context:context(), api_binary()) -> cb_context:context().
+-spec validate_multi(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
+validate_multi(Context, 'undefined') ->
+    cb_context:add_validation_error(
+        <<"t">>
+        ,<<"required">>
+        ,wh_json:from_list([{<<"message">>, <<"Search needs a document type to search on">>}])
+        ,Context
+    );
+validate_multi(Context, Type) ->
+    case wh_json:to_proplist(cb_context:query_string(Context)) of
+        [_|_]=Props -> validate_multi(Context, Type, Props);
+        _Other ->
+            cb_context:add_validation_error(
+                <<"multi">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Multi Search needs something to search like a doc type">>}
+                    ,{<<"target">>, ?SEARCHABLE}
+                 ])
+                ,Context
+            )
+    end.
+
+validate_multi(Context, Type, Props) ->
+    QueryOptions = query_options(cb_context:account_db(Context)),
+    Context1 = validate_query(Context, QueryOptions, Props),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            multi_search(Context1, Type, Props);
+        _Status ->
+            Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_query(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_query(cb_context:context(), wh_proplist(), wh_proplist() | ne_binary()) -> cb_context:context().
+validate_query(Context, Query) ->
+    QueryOptions = query_options(cb_context:account_db(Context)),
+    validate_query(Context, QueryOptions, Query).
+
+validate_query(Context, _Available, []) ->
+    cb_context:set_resp_status(Context, 'success');
+validate_query(Context, Available, [{<<"by_", Query/binary>>, _}|Props]) ->
+    Context1 = validate_query(Context, Available, Query),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            validate_query(Context1, Available, Props);
+        _Status ->
+            Context1
+    end;
+validate_query(Context, Available, [{Query, _}|Props]) ->
+    lager:debug("ignoring query string ~s", [Query]),
+    validate_query(Context, Available, Props);
+validate_query(Context, Available, Query) when is_binary(Query) ->
+    case lists:member(Query, Available) of
+        'true' ->
+            cb_context:set_resp_status(Context, 'success');
+        'false' ->
+            cb_context:add_validation_error(
+                <<"q">>
+                ,<<"enum">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Value not found in enumerated list of values">>}
+                    ,{<<"target">>, Available}
+                    ,{<<"cause">>, Query}
+                 ])
+                ,Context
+            )
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec query_options(ne_binary()) -> ne_binaries().
+query_options(AccountDb) ->
+    case couch_mgr:open_cache_doc(AccountDb, <<"_design/search">>) of
+        {'ok', JObj} ->
+            format_query_options(wh_json:get_keys(<<"views">>, JObj));
+        {'error', _E} when AccountDb =:= ?WH_ACCOUNTS_DB ->
+            ?ACCOUNTS_QUERY_OPTIONS;
+        {'error', _E} ->
+            ?ACCOUNT_QUERY_OPTIONS
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec format_query_options(ne_binaries()) -> ne_binaries().
+-spec format_query_option(ne_binary()) -> ne_binary().
+format_query_options(Views) ->
+    [format_query_option(View) || View <- Views].
+
+
+format_query_option(<<"search_by_", Name/binary>>) -> Name;
+format_query_option(Name) -> Name.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,24 +297,150 @@ validate_search(Context, V, Q, T) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
-search(Context, Start, Field, Type) ->
-    End = next_binary_key(Start),
-    {StartKey, EndKey} = 
-        case cb_context:account_id(Context) of
-            'undefined' ->
-                AuthId = cb_context:auth_account_id(Context), 
-                {[AuthId, Type, Start], [AuthId, Type, End]};
-             _ ->
-                 {[Type, Start], [Type, End ]}
-        end,
-    ViewName = <<?QUERY_TPL/binary, Field/binary>>,
-    ViewOptions = [{'startkey', StartKey}
-                   ,{'endkey', EndKey}
-                   ,{'limit', crossbar_doc:pagination_page_size(Context)}
-                  ],
-    crossbar_doc:load_view(ViewName, ViewOptions, Context, fun normalize_view_results/2).
+-spec search(cb_context:context(), ne_binary(), ne_binary(), binary()) -> cb_context:context().
+search(Context, Type, Query, Value) ->
+    ViewName = <<?QUERY_TPL/binary, Query/binary>>,
+    ViewOptions =
+        [{'startkey', get_start_key(Context, Type, Value)}
+         ,{'endkey', get_end_key(Context, Type, Value)}
+         ,{'limit', crossbar_doc:pagination_page_size(Context)}
+        ],
+    fix_envelope(
+      crossbar_doc:load_view(
+        ViewName
+        ,ViewOptions
+        ,Context
+        ,fun normalize_view_results/2
+       )
+     ).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec multi_search(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
+-spec multi_search(cb_context:context(), ne_binary(), wh_proplist(), wh_json:object()) -> cb_context:context().
+multi_search(Context, Type, Props) ->
+    Context1 = cb_context:set_should_paginate(Context, 'false'),
+    multi_search(Context1, Type, Props , wh_json:new()).
+
+multi_search(Context, _Type, [], Acc) ->
+    cb_context:set_resp_data(Context, Acc);
+multi_search(Context, Type, [{<<"by_", Query/binary>>, Value}|Props], Acc) ->
+    ViewName = <<?QUERY_TPL/binary, Query/binary>>,
+    ViewOptions =
+        [{'startkey', get_start_key(Context, Type, Value)}
+         ,{'endkey', get_end_key(Context, Type, Value)}
+        ],
+    Context1 =
+        crossbar_doc:load_view(
+          ViewName
+          ,ViewOptions
+          ,Context
+          ,fun normalize_view_results/2
+         ),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            RespData = cb_context:resp_data(Context1),
+            Acc1 = wh_json:set_value(Query, RespData, Acc),
+            multi_search(Context1, Type, Props, Acc1);
+        _ -> Context1
+    end;
+multi_search(Context, Type, [_|Props], Acc) ->
+    multi_search(Context, Type, Props, Acc).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_start_key(cb_context:context(), ne_binary(), ne_binary()) -> ne_binaries().
+get_start_key(Context, Type, Value) ->
+    StartKey =
+        case cb_context:req_value(Context, <<"start_key">>) of
+            'undefined' -> Value;
+            Key -> Key
+        end,
+    case cb_context:account_id(Context) of
+        'undefined' ->
+            AuthId = cb_context:auth_account_id(Context),
+            [AuthId, Type, StartKey];
+        _ ->
+            [Type, StartKey]
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_end_key(cb_context:context(), ne_binary(), binary()) -> ne_binaries().
+get_end_key(Context, Type, Value) ->
+    case cb_context:account_id(Context) of
+        'undefined' ->
+            AuthId = cb_context:auth_account_id(Context),
+            [AuthId, Type, next_binary_key(Value)];
+        _ ->
+            [Type, next_binary_key(Value)]
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% replaces last character in binary with next character
+%% @end
+%%--------------------------------------------------------------------
+-spec next_binary_key(binary()) -> ne_binary().
+next_binary_key(<<>>) ->
+    <<"\ufff0">>;
+next_binary_key(Bin) ->
+    <<Bin/binary, "\ufff0">>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec fix_envelope(cb_context:context()) -> cb_context:context().
+fix_envelope(Context) ->
+    cb_context:set_resp_envelope(
+      cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
+      ,lists:foldl(
+         fun fix_envelope_fold/2
+         ,cb_context:resp_envelope(Context)
+         ,[<<"start_key">>, <<"next_start_key">>]
+        )
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec fix_envelope_fold(binary(), wh_json:object()) -> wh_json:object().
+fix_envelope_fold(Key, JObj) ->
+    case fix_start_key(wh_json:get_value(Key, JObj)) of
+        'undefined' -> wh_json:delete_key(Key, JObj);
+        V -> wh_json:set_value(Key, V, JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec fix_start_key(api_binaries()) -> api_binary().
+fix_start_key('undefined') -> 'undefined';
+fix_start_key([_ , StartKey]) -> StartKey;
+fix_start_key([_ , _, StartKey]) -> StartKey.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,13 +451,3 @@ search(Context, Start, Field, Type) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% replaces last character in binary with next character
-%% @end
-%%--------------------------------------------------------------------
--spec next_binary_key(binary()) -> binary().
-next_binary_key(Bin) ->
-    <<Bin/binary, "\ufff0">>.

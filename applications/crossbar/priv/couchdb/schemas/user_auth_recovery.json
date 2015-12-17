@@ -1,38 +1,38 @@
 {
-  "_id": "user_auth_recovery",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Password Recovery",
-  "description": "Provides an auth-token via user credentials",
-  "properties": {
-    "username": {
-      "type": "string",
-      "required": true,
-      "description": "The users username",
-      "minLength": 1,
-      "maxLength": 254
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "user_auth_recovery",
+    "description": "Provides an auth-token via user credentials",
+    "name": "Password Recovery",
+    "properties": {
+        "account_name": {
+            "description": "The account name of the user",
+            "maxLength": 64,
+            "minLength": 1,
+            "required": false,
+            "type": "string"
+        },
+        "account_realm": {
+            "description": "The account realm of the user",
+            "maxLength": 64,
+            "minLength": 1,
+            "required": false,
+            "type": "string"
+        },
+        "phone_number": {
+            "description": "A phone number assigned to the users account",
+            "maxLength": 64,
+            "minLength": 1,
+            "required": false,
+            "type": "string"
+        },
+        "username": {
+            "description": "The users username",
+            "maxLength": 254,
+            "minLength": 1,
+            "required": true,
+            "type": "string"
+        }
     },
-    "account_realm": {
-      "type": "string",
-      "required": false,
-      "description": "The account realm of the user",
-      "minLength": 1,
-      "maxLength": 64
-    },
-    "account_name": {
-      "type": "string",
-      "required": false,
-      "description": "The account name of the user",
-      "minLength": 1,
-      "maxLength": 64
-    },
-    "phone_number": {
-      "type": "string",
-      "required": false,
-      "description": "A phone number assigned to the users account",
-      "minLength": 1,
-      "maxLength": 64
-    }
-  }
+    "required": true,
+    "type": "object"
 }

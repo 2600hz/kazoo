@@ -1,14 +1,15 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014 2600Hz INC
+%%% @yright (C) 2011-2015 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%
+%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -ifndef(WAPI_DIALPLAN_HRL).
--include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
 %% For dialplan messages, what does the Invite-Format param accept as values?
@@ -40,19 +41,37 @@
 
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS
-        ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
-          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-          ,<<"Dial-Endpoint-Method">>, <<"Insert-At">>
-          ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
-          ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
-          ,<<"SIP-Transport">>, <<"Custom-SIP-Headers">>
+        ,[<<"B-Leg-Events">>
+          ,<<"Callee-ID-Name">>
+          ,<<"Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>
+          ,<<"Caller-ID-Number">>
+          ,<<"Confirm-Key">>
+          ,<<"Confirm-Cancel-Timeout">>
+          ,<<"Confirm-File">>
+          ,<<"Continue-On-Fail">>
+          ,<<"Custom-Channel-Vars">>
+          ,<<"Custom-SIP-Headers">>
+          ,<<"Dial-Endpoint-Method">>
+          ,<<"Enable-T38-Fax">>
+          ,<<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Gateway">>
+          ,<<"Enable-T38-Passthrough">>
+          ,<<"Force-Fax">>
+          ,<<"Hold-Media">>
           ,<<"Ignore-Completed-Elsewhere">>
-          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
-          ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
-          ,<<"B-Leg-Events">>
+          ,<<"Ignore-Early-Media">>
+          ,<<"Ignore-Forward">>
+          ,<<"Insert-At">>
+          ,<<"Media">>
+          ,<<"Outbound-Callee-ID-Name">>
+          ,<<"Outbound-Callee-ID-Number">>
+          ,<<"Outbound-Caller-ID-Name">>
+          ,<<"Outbound-Caller-ID-Number">>
+          ,<<"Ringback">>
+          ,<<"SIP-Transport">>
+          ,<<"Secure-RTP">>
+          ,<<"Timeout">>
          ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -74,24 +93,49 @@
 %% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS
-        ,[<<"Route">>, <<"To-User">>
-          ,<<"To-Realm">>, <<"To-DID">>, <<"To-URI">>
-          ,<<"To-IP">>, <<"To-Username">>
-          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-          ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
-          ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-          ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"Custom-SIP-Headers">>, <<"Presence-ID">>
-          ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
-          ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
-          ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
-          ,<<"Ignore-Completed-Elsewhere">>
-          ,<<"SIP-Interface">>
-          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
-          ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
+        ,[<<"Auth-Password">>
+          ,<<"Auth-Realm">>
+          ,<<"Auth-User">>
+          ,<<"Bypass-Media">>
+          ,<<"Callee-ID-Name">>
+          ,<<"Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>
+          ,<<"Caller-ID-Number">>
+          ,<<"Codecs">>
+          ,<<"Custom-Channel-Vars">>
+          ,<<"Custom-SIP-Headers">>
+          ,<<"Enable-T38-Fax">>
+          ,<<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Gateway">>
+          ,<<"Enable-T38-Passthrough">>
+          ,<<"Endpoint-Delay">>
+          ,<<"Endpoint-Options">>
+          ,<<"Endpoint-Progress-Timeout">>
+          ,<<"Endpoint-Timeout">>
+          ,<<"Endpoint-Type">>
           ,<<"Failover">>
+          ,<<"Force-Fax">>
+          ,<<"Forward-IP">>
+          ,<<"Hold-Media">>
+          ,<<"Ignore-Completed-Elsewhere">>
+          ,<<"Ignore-Early-Media">>
+          ,<<"Outbound-Call-ID">>
+          ,<<"Outbound-Callee-ID-Name">>
+          ,<<"Outbound-Callee-ID-Number">>
+          ,<<"Outbound-Caller-ID-Name">>
+          ,<<"Outbound-Caller-ID-Number">>
+          ,<<"Presence-ID">>
+          ,<<"Proxy-IP">>
+          ,<<"Proxy-Zone">>
+          ,<<"Route">>
+          ,<<"SIP-Interface">>
+          ,<<"SIP-Transport">>
+          ,<<"To-DID">>
+          ,<<"To-IP">>
+          ,<<"To-Realm">>
+          ,<<"To-URI">>
+          ,<<"To-User">>
+          ,<<"To-Username">>
          ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
@@ -127,14 +171,19 @@
                             ,<<"Media-Name">>, <<"Media-Transfer-Method">>
                             ,<<"Media-Transfer-Destination">>
                            ]).
--define(OPTIONAL_STORE_REQ_HEADERS, [<<"Additional-Headers">>, <<"Insert-At">>]).
+-define(OPTIONAL_STORE_REQ_HEADERS, [<<"Additional-Headers">>
+                                     ,<<"Suppress-Error-Report">>
+                                     ,<<"Insert-At">>
+                                    ]).
 -define(STORE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
                            ,{<<"Application-Name">>, <<"store">>}
                            ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
                            ,?INSERT_AT_TUPLE
                           ]).
--define(STORE_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
+-define(STORE_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}
+                          ,{<<"Suppress-Error-Report">>, fun wh_util:is_boolean/1}
+                         ]).
 
 %% Store Fax
 -define(STORE_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
@@ -337,6 +386,16 @@
                          ]).
 -define(HOLD_REQ_TYPES, []).
 
+%% Soft hold
+-define(SOFT_HOLD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Unhold-Key">>]).
+-define(OPTIONAL_SOFT_HOLD_REQ_HEADERS, [<<"Insert-At">>, <<"A-MOH">>, <<"B-MOH">>]).
+-define(SOFT_HOLD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"soft_hold">>}
+                               ,?INSERT_AT_TUPLE
+                              ]).
+-define(SOFT_HOLD_REQ_TYPES, []).
+
 %% Park
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>, <<"Timeout">>, <<"Hangup-Cause">>]).
@@ -408,6 +467,7 @@
                                            ,<<"Park-After-Pickup">> %% Will park either leg after cancel
                                            ,<<"Hangup-After-Pickup">>
                                            ,<<"Move-Channel-If-Necessary">>
+                                           ,<<"Publish-Usurp">>, <<"B-Leg-Events">>
                                           ]).
 -define(CONNECT_LEG_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
@@ -417,6 +477,8 @@
 -define(CONNECT_LEG_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}
                                 ,{<<"Hangup-After-Pickup">>, fun wh_util:is_boolean/1}
                                 ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
+                                ,{<<"Publish-Usurp">>, fun wh_util:is_boolean/1}
+                                ,{<<"B-Leg-Events">>, fun b_leg_events_v/1}
                                ]).
 
 %% Eavesdrop
@@ -459,8 +521,11 @@
 
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
-                                      ,<<"Silence-Hits">>, <<"Insert-At">>
+-define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Insert-At">>
+                                      ,<<"Silence-Hits">>
+                                      ,<<"Silence-Threshold">>
+                                      ,<<"Terminators">>
+                                      ,<<"Time-Limit">>
                                      ]).
 -define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -472,12 +537,20 @@
 %% Record Call Leg into MediaName
 %% Stream-To = local results in the recording being stored on the media server
 %% Stream-To = remote will stream the recording to the handling ecallmgr server
--define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>
+-define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>
+                                  ,<<"Call-ID">>
+                                  ,<<"Media-Name">>
                                   ,<<"Record-Action">>
                                  ]).
--define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>, <<"Follow-Transfer">>
-                                           ,<<"Media-Transfer-Method">> ,<<"Media-Transfer-Destination">>
-                                           ,<<"Additional-Headers">>
+-define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Additional-Headers">>
+                                           ,<<"Channels-As-Stereo">>
+                                           ,<<"Follow-Transfer">>
+                                           ,<<"Insert-At">>
+                                           ,<<"Media-Transfer-Destination">>
+                                           ,<<"Media-Transfer-Method">>
+                                           ,<<"Record-Min-Sec">>
+                                           ,<<"Record-Sample-Rate">>
+                                           ,<<"Time-Limit">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
@@ -485,7 +558,7 @@
                                  ,{<<"Record-Action">>, [<<"start">>, <<"stop">>]}
                                  ,?INSERT_AT_TUPLE
                                 ]).
--define(RECORD_CALL_REQ_TYPES, []).
+-define(RECORD_CALL_REQ_TYPES, [{<<"Record-Sample-Rate">>, fun is_integer/1}]).
 
 %% Play and Record Digits
 -define(PLAY_COLLECT_DIGITS_REQ_HEADERS
@@ -555,7 +628,7 @@
 
 %% Redirect
 -define(REDIRECT_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Redirect-Contact">>]).
--define(OPTIONAL_REDIRECT_REQ_HEADERS, [<<"Insert-At">>, <<"Redirect-Server">>]).
+-define(OPTIONAL_REDIRECT_REQ_HEADERS, [<<"Insert-At">>, <<"Redirect-Server">>, <<"Redirect-Node">>]).
 -define(REDIRECT_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                               ,{<<"Event-Name">>, <<"command">>}
                               ,{<<"Application-Name">>, <<"redirect">>}
@@ -563,6 +636,7 @@
                              ]).
 -define(REDIRECT_REQ_TYPES, [{<<"Redirect-Contact">>, fun is_binary/1}
                              ,{<<"Redirect-Server">>, fun is_binary/1}
+                             ,{<<"Redirect-Node">>, fun is_binary/1}
                             ]).
 
 %% Execute_Extension
@@ -659,6 +733,25 @@
                                  ,?INSERT_AT_TUPLE
                                 ]).
 -define(FAX_DETECTION_REQ_TYPES, []).
+
+%% Store VM Request
+-define(STORE_VM_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                               ,<<"Media-Name">>, <<"Media-Transfer-Method">>
+                               ,<<"Media-Transfer-Destination">>
+                              ]).
+-define(OPTIONAL_STORE_VM_REQ_HEADERS, [<<"Additional-Headers">>
+                                        ,<<"Suppress-Error-Report">>
+                                        ,<<"Insert-At">>
+                                       ]).
+-define(STORE_VM_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"store_vm">>}
+                              ,{<<"Media-Transfer-Method">>, [<<"stream">>, <<"put">>, <<"post">>]}
+                              ,?INSERT_AT_TUPLE
+                             ]).
+-define(STORE_VM_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}
+                             ,{<<"Suppress-Error-Report">>, fun wh_util:is_boolean/1}
+                            ]).
 
 -define(WAPI_DIALPLAN_HRL, 'true').
 -endif.

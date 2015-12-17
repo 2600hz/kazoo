@@ -39,6 +39,7 @@
 -export([config_req/1, config_req_v/1
          ,config_resp/1, config_resp_v/1
         ]).
+-export([play_macro_req/1, play_macro_req_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
@@ -100,6 +101,7 @@
 -define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
                                          ,<<"Conference-Doc">>, <<"Play-Welcome">>
                                          ,<<"Play-Welcome-Media">>
+                                         ,<<"Play-Exit-Tone">>, <<"Play-Entry-Tone">>
                                         ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
@@ -351,7 +353,14 @@
                          ,{<<"tones">>, ?CONF_TONES_REQ_VALUES, fun ?MODULE:tones/1}
                          ,{<<"say">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:say/1}
                          ,{<<"tts">>, ?CONF_SAY_REQ_VALUES, fun ?MODULE:tts/1}
+                         ,{<<"play_macro">>, ?CONF_PLAY_MACRO_REQ_VALUES, fun ?MODULE:play_macro_req/1}
                         ]).
+
+-define(CONF_PLAY_MACRO_REQ_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Commands">>]).
+-define(OPTIONAL_CONF_PLAY_MACRO_REQ_HEADERS, []).
+-define(CONF_PLAY_MACRO_REQ_VALUES, []).
+-define(CONF_PLAY_MACRO_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
+                                   ]).
 
 focus_queue_name(Focus) -> <<(wh_util:to_binary(Focus))/binary, "_conference">>.
 
@@ -628,6 +637,24 @@ play(JObj) -> play(wh_json:to_proplist(JObj)).
 play_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PLAY_HEADERS, ?PLAY_VALUES, ?PLAY_TYPES);
 play_v(JObj) -> play_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec play_macro_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+play_macro_req(Prop) when is_list(Prop) ->
+    case play_macro_req_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?CONF_PLAY_MACRO_REQ_HEADERS, ?OPTIONAL_CONF_PLAY_MACRO_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for play_macro_req"}
+    end;
+play_macro_req(JObj) -> play_macro_req(wh_json:to_proplist(JObj)).
+
+-spec play_macro_req_v(api_terms()) -> boolean().
+play_macro_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CONF_PLAY_MACRO_REQ_HEADERS, ?CONF_PLAY_MACRO_REQ_VALUES, ?CONF_PLAY_MACRO_REQ_TYPES);
+play_macro_req_v(JObj) -> play_macro_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc

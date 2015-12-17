@@ -22,6 +22,7 @@
                     ,suppress_unregister_notifications = 'false' :: boolean()
                     ,register_overwrite_notify = 'false' :: boolean()
                     ,account_realm :: api_binary()
+                    ,account_normalized_realm :: api_binary()
                     ,account_name :: api_binary()
                     ,nonce :: api_binary()
                     ,a3a8_key :: api_binary()

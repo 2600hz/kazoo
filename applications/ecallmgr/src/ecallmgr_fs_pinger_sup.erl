@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -9,7 +9,6 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
@@ -21,10 +20,7 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type, Args), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                                    (N, T, A) -> {N, {N, start_link, A}, permanent, 5000, T, [N]} end(Name, Type, Args)).
--define(PINGER(Node, Opts), {Node, {ecallmgr_fs_pinger, start_link, [Node, Opts]}, transient, 5000, worker, [Node]}).
--define(CHILDREN, []).
+-define(PINGER(Node, Opts), ?WORKER_NAME_ARGS_TYPE(Node, 'ecallmgr_fs_pinger', [Node, Opts], 'transient')).
 
 %% ===================================================================
 %% API functions
@@ -38,24 +34,24 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec add_node(atom(), proplist()) -> {'error', term()} | 
-                                            {'ok','undefined' | pid()} | 
-                                            {'ok','undefined' | pid(), term()}.
+-spec add_node(atom(), wh_proplist()) -> {'error', any()} |
+                                         {'ok', api_pid()} |
+                                         {'ok', api_pid(), any()}.
 add_node(Node, Options) ->
     supervisor:start_child(?SERVER, ?PINGER(Node, Options)).
 
 find_pinger(Node) ->
-    Workers = supervisor:which_children(ecallmgr_fs_pinger_sup),
+    Workers = supervisor:which_children('ecallmgr_fs_pinger_sup'),
     find_pinger(Workers, Node).
 
-find_pinger([], _) -> undefined;
-find_pinger([{Node, Pid, worker, _}|_], Node) -> Pid;
+find_pinger([], _) -> 'undefined';
+find_pinger([{Node, Pid, 'worker', _}|_], Node) -> Pid;
 find_pinger([_|Workers], Node) ->
     find_pinger(Workers, Node).
 
--spec remove_node/1 :: (atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+-spec remove_node(atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove_node(Node) ->
     _T = supervisor:terminate_child(?SERVER, Node),
     lager:debug("terminated pinger: ~p", [_T]),
@@ -76,11 +72,10 @@ remove_node(Node) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
-    MaxRestarts = 5,
-    MaxSecondsBetweenRestarts = 10,
+    RestartStrategy = 'one_for_one',
+    MaxRestarts = 2,
+    MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [],
 
-    {ok, {SupFlags, Children}}.
+    {'ok', {SupFlags, []}}.

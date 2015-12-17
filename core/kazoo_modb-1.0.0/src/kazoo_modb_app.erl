@@ -19,7 +19,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
+-spec start(any(), any()) -> {'ok', pid()} | {'error', startlink_err()}.
 start(_Type, _Args) ->
     case kazoo_modb_sup:start_link() of
         {'ok', P} -> {'ok', P};
@@ -33,6 +33,6 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) ->
     'ok'.

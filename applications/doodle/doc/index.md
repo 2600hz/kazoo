@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Doodle
 Title: Doodle
 Language: en-US

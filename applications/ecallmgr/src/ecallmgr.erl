@@ -23,6 +23,7 @@
 start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
+
     ecallmgr_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -31,9 +32,9 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
-    application:start(?MODULE).
+    whapps_controller:start_app('ecallmgr').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -59,6 +60,7 @@ start_deps() ->
                                                 ,'lager'
                                                 ,'gproc'
                                                 ,'ibrowse'
+                                                ,'whistle_config'
                                                 ,'whistle_amqp'
                                                 ,'whistle_stats'
                                                ]],

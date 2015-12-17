@@ -29,11 +29,11 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.contact_list">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.contact_list">>, ?MODULE, resource_exists),
-    crossbar_bindings:bind(<<"*.validate.contact_list">>, ?MODULE, validate).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.contact_list">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.contact_list">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.contact_list">>, ?MODULE, 'validate').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -42,7 +42,7 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
+-spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -54,8 +54,8 @@ allowed_methods() -> [?HTTP_GET].
 %%    /contact_list/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
-resource_exists() -> true.
+-spec resource_exists() -> 'true'.
+resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -64,10 +64,15 @@ resource_exists() -> true.
 %% and load necessary information.
 %% /contact_list mights load a list of skel objects
 %% /contact_list/123 might load the skel object 123
-%% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET, db_name=AccountDb}=Context) ->
-    ContactList = provisioner_contact_list:build(AccountDb),
-    Context#cb_context{resp_status=success, resp_data=ContactList}.
+-spec validate(cb_context:context()) -> cb_context:context().
+validate(Context) ->
+    validate(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), http_method()) -> cb_context:context().
+validate(Context, ?HTTP_GET) ->
+    ContactList = provisioner_contact_list:build(cb_context:account_db(Context)),
+    cb_context:setters(Context, [{fun cb_context:set_resp_data/2, ContactList}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ]).

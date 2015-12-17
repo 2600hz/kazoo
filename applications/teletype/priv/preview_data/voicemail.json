@@ -1,0 +1,62 @@
+{
+    "_id": "a5efca2c6f6fecc637e55920331ae029",
+    "check_if_owner": true,
+    "delete_after_notify": false,
+    "id": "a5efca2c6f6fecc637e55920331ae029",
+    "is_setup": false,
+    "mailbox": "101",
+    "media": {},
+    "messages": [
+        {
+            "call_id": "e037c84e-703e-11e4-80ee-e3f6d7f3ec98",
+            "caller_id_name": "Jane Doe",
+            "caller_id_number": "101",
+            "folder": "new",
+            "from": "nouser@nodomain.com",
+            "length": 4960,
+            "media_id": "0b08f4afe606237e242deab8f935a205",
+            "timestamp": 63583656877,
+            "to": "101@realm.com"
+        },
+        {
+            "call_id": "c27c1076-703e-11e4-80a9-e3f6d7f3ec98",
+            "caller_id_name": "Jane Doe",
+            "caller_id_number": "101",
+            "folder": "new",
+            "from": "nouser@nodomain.com",
+            "length": 11440,
+            "media_id": "bcadca7c973bfeb8eff2a3b240efc69c",
+            "timestamp": 63583656834,
+            "to": "101@realm.com"
+        },
+        {
+            "call_id": "p4b2grictnqoga164vap",
+            "caller_id_name": "Jane Doe",
+            "caller_id_number": "webrtc",
+            "folder": "new",
+            "from": "webrtc@realm.com",
+            "length": 880,
+            "media_id": "4c28e937109fca385212ec2532495782",
+            "timestamp": 63583227643,
+            "to": "101@realm.com"
+        }
+    ],
+    "name": "John Doe's VMBox",
+    "not_configurable": false,
+    "owner_id": "bd1683a4a288c4f0b8a34a02906d3520",
+    "pvt_account_db": "account%2F00%2F00%2F0000000000000000000000000000",
+    "pvt_account_id": "00000000000000000000000000000000",
+    "pvt_created": 63576902621,
+    "pvt_modified": 63580540501,
+    "pvt_request_id": "0e6a298d040f627290fb5e48d520a203",
+    "pvt_type": "vmbox",
+    "pvt_vsn": "1",
+    "require_pin": false,
+    "skip_greeting": false,
+    "skip_instructions": false,
+    "timezone": "America/Los_Angeles",
+    "ui_metadata": {
+        "ui": "monster-ui",
+        "version": "v3.15"
+    }
+}

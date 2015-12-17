@@ -17,6 +17,7 @@
          ,validate/1, validate/2
          ,put/1
          ,post/2
+         ,patch/2
          ,delete/2
         ]).
 
@@ -34,6 +35,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.resource_templates">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.resource_templates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.resource_templates">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.resource_templates">>, ?MODULE, 'patch'),
     crossbar_bindings:bind(<<"*.execute.delete.resource_templates">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -50,7 +52,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,6 +103,11 @@ validate_resource_templates(?HTTP_POST, Id, Context) ->
         'true' -> validate_request(Id, Context);
         'false' -> forbidden(Context)
     end;
+validate_resource_templates(?HTTP_PATCH, Id, Context) ->
+    case is_allowed_to_update(Context) of
+        'true' -> validate_patch(Id, Context);
+        'false' -> forbidden(Context)
+    end;
 validate_resource_templates(?HTTP_DELETE, Id, Context) ->
     case is_allowed_to_update(Context) of
         'true' -> crossbar_doc:load(Id, Context);
@@ -109,6 +116,9 @@ validate_resource_templates(?HTTP_DELETE, Id, Context) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) -> crossbar_doc:save(Context).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) -> crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) -> crossbar_doc:save(Context).
@@ -166,10 +176,14 @@ is_allowed_to_update(Context) ->
 
 -spec forbidden(cb_context:context()) -> cb_context:context().
 forbidden(Context) ->
-    cb_context:add_validation_error(<<"Account">>
-                                   ,<<"forbidden">>
-                                   ,<<"You are not authorized to modify the resource templates">>
-                                   ,Context).
+    cb_context:add_validation_error(
+        <<"Account">>
+        ,<<"forbidden">>
+        ,wh_json:from_list([
+            {<<"message">>, <<"You are not authorized to modify the resource templates">>}
+         ])
+        ,Context
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -185,20 +199,34 @@ validate_request(ResourceId, Context) ->
         'false' -> on_successful_validation(ResourceId,Context1)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(ResourceId, Context) ->
+    crossbar_doc:patch_and_validate(ResourceId, Context, fun validate_request/2).
+
 -spec check_template_name(cb_context:context()) -> cb_context:context().
 check_template_name(Context) ->
     case wh_json:get_ne_value(<<"template_name">>, cb_context:req_data(Context)) of
         'undefined' ->
-            cb_context:add_validation_error(<<"template_name">>
-                                           ,<<"required">>
-                                           ,<<"Template name is required">>
-                                           ,Context);
+            cb_context:add_validation_error(
+                <<"template_name">>
+               ,<<"required">>
+               ,wh_json:from_list([
+                    {<<"message">>, <<"Template name is required">>}
+                 ])
+               ,Context
+            );
         _Name -> cb_context:set_resp_status(Context, 'success')
     end.
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    JObj = wh_json:set_value(<<"pvt_type">>, <<"resource_template">>, cb_context:req_data(Context)),
+    JObj = wh_doc:set_type(cb_context:req_data(Context), <<"resource_template">>),
     cb_context:set_resp_status(cb_context:set_doc(Context, JObj), 'success');
 on_successful_validation(Id, Context) ->
     Context1 = crossbar_doc:load(Id, Context),

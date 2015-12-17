@@ -4,7 +4,7 @@
 %%% Handlers for various AMQP payloads
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(doodle_route_req).
 
@@ -14,14 +14,18 @@
 
 -define(RESOURCE_TYPES_HANDLED,[<<"sms">>]).
 
+-define(DEFAULT_ROUTE_WIN_TIMEOUT, 3000).
+-define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
+-define(ROUTE_WIN_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call))
-             andalso resource_allowed(Call)
-        of
+        andalso resource_allowed(Call)
+    of
+        'false' -> 'ok';
         'true' ->
             lager:info("received a request asking if doodle can route this message"),
             AllowNoMatch = allow_no_match(Call),
@@ -29,16 +33,42 @@ handle_req(JObj, Props) ->
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
-                    maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
+                    NewFlow = maybe_prepend_preflow(Call, Flow),
+                    maybe_reply_to_req(JObj, Props, Call, NewFlow, NoMatch);
                 {'ok', _, 'true'} ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {'error', R} ->
                     lager:info("unable to find callflow ~p", [R])
-            end;
-
-        'false' ->
-            'ok'
+            end
     end.
+
+-spec maybe_prepend_preflow(whapps_call:call(), wh_json:object()) -> wh_json:object().
+maybe_prepend_preflow(Call, CallFlow) ->
+    AccountDb = whapps_call:account_db(Call),
+    case kz_account:fetch(AccountDb) of
+        {'error', _E} ->
+            lager:warning("could not open account doc ~s : ~p", [AccountDb, _E]),
+            CallFlow;
+        {'ok', Doc} ->
+            case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
+                'undefined' -> CallFlow;
+                PreflowId   -> prepend_preflow(AccountDb, PreflowId, CallFlow)
+            end
+    end.
+
+-spec prepend_preflow(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+prepend_preflow(AccountDb, PreflowId, CallFlow) ->
+    case couch_mgr:open_cache_doc(AccountDb, PreflowId) of
+        {'error', _E} ->
+            lager:warning("could not open ~s in ~s : ~p", [PreflowId, AccountDb, _E]),
+            CallFlow;
+        {'ok', Doc} ->
+            Children = wh_json:from_list([{<<"_">>, wh_json:get_value(<<"flow">>, CallFlow)}]),
+            Preflow = wh_json:set_value(<<"children">>, Children, wh_json:get_value(<<"flow">>, Doc)),
+            wh_json:set_value(<<"flow">>, Preflow, CallFlow)
+    end.
+
+
 
 -spec resource_allowed(whapps_call:call()) -> boolean().
 resource_allowed(Call) ->
@@ -63,20 +93,20 @@ allow_no_match_type(Call) ->
         _ -> 'true'
     end.
 
-
+-spec maybe_reply_to_req(wh_json:object(), wh_proplist(), whapps_call:call(), wh_json:object(), boolean()) ->
+                                'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
-    lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
-                                                       ,whapps_call:account_id(Call)
-                                                      ]),
+    lager:info("callflow ~s in ~s satisfies request"
+               ,[wh_doc:id(Flow), whapps_call:account_id(Call)]),
     {Name, Cost} = bucket_info(Call, Flow),
 
-    case kz_buckets:consume_tokens(Name, Cost) of
+    case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
         'false' ->
             lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
         'true' ->
             ControllerQ = props:get_value('queue', Props),
-            cache_call(Flow, NoMatch, ControllerQ, Call, JObj),
-            send_route_response(Flow, JObj, ControllerQ, Call)
+            UpdatedCall = update_call(Flow, NoMatch, ControllerQ, Call, JObj),
+            send_route_response(Flow, JObj, UpdatedCall)
     end.
 
 -spec bucket_info(whapps_call:call(), wh_json:object()) -> {ne_binary(), pos_integer()}.
@@ -88,58 +118,69 @@ bucket_info(Call, Flow) ->
 
 -spec bucket_name_from_call(whapps_call:call(), wh_json:object()) -> ne_binary().
 bucket_name_from_call(Call, Flow) ->
-    <<(whapps_call:account_id(Call))/binary, ":", (wh_json:get_value(<<"_id">>, Flow))/binary>>.
+    <<(whapps_call:account_id(Call))/binary, ":", (wh_doc:id(Flow))/binary>>.
 
 -spec bucket_cost(wh_json:object()) -> pos_integer().
 bucket_cost(Flow) ->
-    Min = whapps_config:get_integer(?CONFIG_CAT, <<"min_bucket_cost">>, 5),
+    Min = whapps_config:get_integer(?CONFIG_CAT, <<"min_bucket_cost">>, 1),
     case wh_json:get_integer_value(<<"pvt_bucket_cost">>, Flow) of
         'undefined' -> Min;
         N when N < Min -> Min;
         N -> N
     end.
 
--spec send_route_response(wh_json:object(), wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
-send_route_response(_Flow, JObj, Q, _Call) ->
-    Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+-spec send_route_response(wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok'.
+send_route_response(_Flow, JObj, Call) ->
+    lager:info("doodle knows how to route the message! sending sms response"),
+    Resp = props:filter_undefined([{?KEY_MSG_ID, wh_api:msg_id(JObj)}
+                                   ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"sms">>}
-                                   | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ServerId = wh_api:server_id(JObj),
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
-    whapps_util:amqp_pool_send(Resp, Publisher),
-    lager:info("doodle knows how to route the message! sent sms response").
+    case wh_amqp_worker:call(Resp
+                             ,Publisher
+                             ,fun wapi_route:win_v/1
+                             ,?ROUTE_WIN_TIMEOUT
+                            )
+    of
+        {'ok', RouteWin} ->
+            lager:info("doodle has received a route win, taking control of the text"),
+            doodle_route_win:execute_text_flow(RouteWin, whapps_call:from_route_win(RouteWin, Call));
+        {'error', _E} ->
+            lager:info("doodle didn't received a route win, exiting : ~p", [_E])
+    end.
 
--spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call(), wh_json:object()) -> 'ok'.
-cache_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
-
-    Updaters = [fun(C) ->
-                        Props = [{'cf_flow_id', wh_json:get_value(<<"_id">>, Flow)}
-                                 ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
-                                 ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
-                                 ,{'cf_no_match', NoMatch}
-                                 ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow)}
-                                ],
-                        whapps_call:kvs_store_proplist(Props, C)
-                end
-                ,fun(C) -> whapps_call:set_controller_queue(ControllerQ, C) end
-                ,fun(C) -> whapps_call:set_application_name(?APP_NAME, C) end
-                ,fun(C) -> whapps_call:set_application_version(?APP_VERSION, C) end
+-spec update_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call(), wh_json:object()) -> whapps_call:call().
+update_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
+    Updaters = [{fun whapps_call:kvs_store_proplist/2
+                 ,[{'cf_flow_id', wh_doc:id(Flow)}
+                   ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
+                   ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
+                   ,{'cf_no_match', NoMatch}
+                   ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow)}
+                   ,{'flow_status', <<"queued">>}
+                  ]
+                }
+                ,{fun whapps_call:set_controller_queue/2, ControllerQ}
+                ,{fun whapps_call:set_application_name/2, ?APP_NAME}
+                ,{fun whapps_call:set_application_version/2, ?APP_VERSION}
                 ,fun(C) -> cache_resource_types(Flow, C, JObj) end
                ],
-    whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)).
+    whapps_call:exec(Updaters, Call).
 
 -spec cache_resource_types(wh_json:object(), whapps_call:call(), wh_json:object()) -> whapps_call:call().
 cache_resource_types(Flow, Call, JObj) ->
-     lists:foldl(fun([_K | _K1]=KL , C1) ->
-                         whapps_call:kvs_store(lists:nthtail(1, KL), wh_json:get_value(KL, JObj), C1);
-                    (K, C1) ->
-                         whapps_call:kvs_store(K, wh_json:get_value(K, JObj), C1)
-                 end, Call, cache_resource_types(whapps_call:resource_type(Call), Flow, Call, JObj)).
+    lists:foldl(fun(K, C1) ->
+                        whapps_call:kvs_store(K, wh_json:get_value(K, JObj), C1)
+                end
+                ,Call
+                ,cache_resource_types(whapps_call:resource_type(Call), Flow, Call, JObj)
+               ).
 
-
--spec cache_resource_types(ne_binary(), wh_json:object(), whapps_call:call(), wh_json:object()) -> wh_proplist().
+-spec cache_resource_types(ne_binary(), wh_json:object(), whapps_call:call(), wh_json:object()) -> ne_binaries().
 cache_resource_types(<<"sms">>, _Flow, _Call, _JObj) ->
     [<<"Message-ID">>, <<"Body">>];
 cache_resource_types(_Other, _Flow, _Call, _JObj) -> [].

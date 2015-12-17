@@ -1,10 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Manage offnet calls
 %%% @end
-%%% Created : 18 Jun 2011 by James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_offnet_sup).
 
@@ -16,9 +14,9 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(SERVER, ?MODULE).
+-include_lib("whistle/include/wh_types.hrl").
 
--define(CHILD(ID, Args), {ID, {'ts_from_offnet', 'start_link', [Args]}, 'temporary', 2000, 'worker', ['ts_from_offnet']}).
+-define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API functions
@@ -35,7 +33,11 @@ start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 start_handler(CallID, RouteReqJObj) ->
-    supervisor:start_child(?SERVER, ?CHILD(<<"offnet-", CallID/binary>>, RouteReqJObj)).
+    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(<<"offnet-", CallID/binary>>
+                                                           ,'ts_from_offnet'
+                                                           ,[RouteReqJObj]
+                                                           ,'temporary'
+                                                          )).
 
 stop_handler(CallID) ->
     'ok' = supervisor:terminate_child(?SERVER, <<"offnet-", CallID/binary>>),

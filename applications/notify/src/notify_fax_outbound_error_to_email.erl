@@ -31,11 +31,9 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:fax_outbound_error_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     lager:debug("new outbound fax error left, sending to email if enabled"),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AcctObj} = kz_account:fetch(wh_json:get_value(<<"Account-ID">>, JObj)),
     case is_notice_enabled(AcctObj) of
         'true' -> send(JObj, AcctObj);
         'false' -> 'ok'
@@ -130,7 +128,7 @@ create_template_props(Event, Docs, Account) ->
      ,{<<"error">>, [{<<"call_info">>, wh_json:get_value(<<"Fax-Error">>, Event)}
                     ,{<<"fax_info">>, wh_json:get_value([<<"Fax-Info">>,<<"Fax-Result-Text">>], Event)}
                     ]}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
+     ,{<<"account_db">>, wh_doc:account_db(Account)}
     ].
 
 fax_values(Event) ->

@@ -47,7 +47,7 @@ stop(Supervisor) ->
     supervisor:terminate_child('acdc_agents_sup', Supervisor).
 
 restart(Supervisor) ->
-    stop(Supervisor),
+    _ = stop(Supervisor),
     supervisor:restart_child('acdc_agents_sup', Supervisor).
 
 -spec status(pid()) -> 'ok'.

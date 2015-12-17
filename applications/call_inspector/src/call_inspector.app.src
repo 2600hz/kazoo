@@ -1,0 +1,13 @@
+{application, call_inspector,
+ [
+  {description, "A inspectortron application useful for quickly troubleshooting issues"},
+  {vsn, "1.0.0"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { call_inspector_app, []}},
+  {env, []}
+ ]}.

@@ -1,45 +1,45 @@
 {
-  "_id": "acls",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "ACL Entry",
-  "description": "Access Control List entries",
-  "additionalProperties": false,
-  "properties": {
-    "cidr": {
-      "type": "string",
-      "required": true,
-      "name": "CIDR",
-      "description": "Classless Inter-Domain Routing IP notation for use on the ACL"
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "acls",
+    "additionalProperties": false,
+    "description": "Access Control List entries",
+    "name": "ACL Entry",
+    "properties": {
+        "cidr": {
+            "description": "Classless Inter-Domain Routing IP notation for use on the ACL",
+            "name": "CIDR",
+            "required": true,
+            "type": "string"
+        },
+        "description": {
+            "description": "Will be added as a comment for quick identification later",
+            "maxLen": 30,
+            "name": "Name",
+            "required": false,
+            "type": "string"
+        },
+        "network-list-name": {
+            "description": "The trusted list should represent anything that can issue calls without authorization.  The authoritative list should indicate inter-network routing equipment (SBC, etc).",
+            "enum": [
+                "authoritative",
+                "trusted"
+            ],
+            "name": "ACL List",
+            "required": true,
+            "type": "string"
+        },
+        "type": {
+            "default": "allow",
+            "description": "Allow or deny this CIDR",
+            "enum": [
+                "allow",
+                "deny"
+            ],
+            "name": "Type",
+            "required": true,
+            "type": "string"
+        }
     },
-    "network-list-name": {
-      "type": "string",
-      "required": true,
-      "name": "ACL List",
-      "description": "The trusted list should represent anything that can issue calls without authorization.  The authoritative list should indicate inter-network routing equipment (SBC, ect).",
-      "enum": [
-        "authoritative",
-        "trusted"
-      ]
-    },
-    "type": {
-      "type": "string",
-      "required": true,
-      "name": "Type",
-      "description": "Allow or deny this CIDR",
-      "enum": [
-        "allow",
-        "deny"
-      ],
-      "default": "allow"
-    },
-    "description": {
-      "type": "string",
-      "required": false,
-      "name": "Name",
-      "description": "Will be added as a comment for quick identification later",
-      "maxLen": 30
-    }
-  }
+    "required": true,
+    "type": "object"
 }

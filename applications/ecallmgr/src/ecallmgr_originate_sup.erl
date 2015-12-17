@@ -51,7 +51,7 @@ start_originate_proc(Node, JObj) -> supervisor:start_child(?SERVER, [Node, JObj]
 %%--------------------------------------------------------------------
 init([]) ->
     Restart = 'transient',
-    Shutdown = 2000,
+    Shutdown = 2 * ?MILLISECONDS_IN_SECOND,
     Type = 'worker',
 
     AChild = {'ecallmgr_originate', {'ecallmgr_originate', 'start_link', []},

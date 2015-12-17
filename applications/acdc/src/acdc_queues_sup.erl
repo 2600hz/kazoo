@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -40,6 +40,7 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
+-spec new(ne_binary(), ne_binary()) -> startlink_ret().
 new(AcctId, QueueId) ->
     case find_queue_supervisor(AcctId, QueueId) of
         P when is_pid(P) -> {'ok', P};
@@ -78,10 +79,11 @@ find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
 -spec status() -> 'ok'.
 status() ->
     lager:info("ACDc Queues Status"),
-    _ = spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- workers()] end),
+    Ws = workers(),
+    _ = wh_util:spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- Ws] end),
     'ok'.
 
--spec queues_running() -> [{pid(), term()},...] | [].
+-spec queues_running() -> [{pid(), any()}].
 queues_running() ->
     [{W, catch acdc_queue_manager:config(acdc_queue_sup:manager(W))} || W <- workers()].
 

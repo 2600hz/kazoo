@@ -132,7 +132,7 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
 
 ### Agent Login
 
-            AMQP               Erlang           
+            AMQP               Erlang
 [CF]                 [AsM]                [AsSup]           [ASup]           [APG]
   -- agent_login ----->
      AcctId/AgentId
@@ -143,7 +143,7 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
 
 ### Agent Logout
 
-            AMQP               Erlang           
+            AMQP               Erlang
 [CF]                 [AsM]                [AsSup]           [ASup]           [APG]
   -- agent_logout ----->
      AcctId/AgentId
@@ -154,7 +154,7 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
 
 ### Agent Pause
 
-            AMQP               Erlang           
+            AMQP               Erlang
 [CF]                 [AsM]                [AsSup]           [ASup]           [APG]
   -- agent_pause ----->
      AcctId/AgentId
@@ -165,7 +165,7 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
 
 ### Agent Resume
 
-            AMQP               Erlang           
+            AMQP               Erlang
 [CF]                 [AsM]                [AsSup]           [ASup]           [APG]
   -- agent_resume ----->
      AcctId/AgentId
@@ -344,4 +344,3 @@ Similar to agent processes. The FSM will manage the lifecycle of a coach/whisper
                       \|----acdc_super_fsm
 
 ### Supervisor startup
-

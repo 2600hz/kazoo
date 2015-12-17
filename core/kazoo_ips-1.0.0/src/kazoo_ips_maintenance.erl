@@ -48,16 +48,16 @@ add() ->
     io:format("Please use: sup kazoo_ips_maintenance add <ip> <zone> <host>~n", []),
     'no_return'.
 
--spec add(ne_binary(), ne_binary(), ne_binary()) -> 'no_return'.
-add(IP, Zone, Host) ->
-    _ = case kz_ip:create(IP, Zone, Host) of
-            {'ok', _} ->
-                io:format("added IP ~s to available dedicated ips~n"
-                          ,[IP]);
-            {'error', _R} ->
-                io:format("unable to add IP: ~p~n", [_R])
-        end,
-    'no_return'.
+-spec add(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+add(IPAddress, Zone, Host) ->
+    case kz_ip:create(IPAddress, Zone, Host) of
+        {'ok', _IP} ->
+            io:format("added IP ~s to available dedicated ips~n"
+                      ,[IPAddress]
+                     );
+        {'error', _R} ->
+            io:format("unable to add IP ~s: ~p~n", [IPAddress, _R])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -147,7 +147,8 @@ summary(Host) ->
             {'ok', JObjs} -> print_summary(JObjs);
             {'error', _Reason} ->
                 io:format("Unable to list IPs assigned to host ~s: ~p~n"
-                          ,[Host, _Reason])
+                          ,[Host, _Reason]
+                         )
         end,
     'no_return'.
 

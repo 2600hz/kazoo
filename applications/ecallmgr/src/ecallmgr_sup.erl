@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2015, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -14,14 +14,11 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(POOL_SIZE, 100).
--define(OVERFLOW_POOL_SIZE, 100).
-
--define(CHILDREN, [?WORKER('ecallmgr_init')
+-define(CHILDREN, [?WORKER('wh_nodes')
+                   ,?WORKER('ecallmgr_init')
                    ,?SUPER('ecallmgr_auxiliary_sup')
                    ,?SUPER('ecallmgr_call_sup')
                    ,?SUPER('ecallmgr_fs_sup')
-                   ,?WORKER('wh_nodes')
                   ]).
 
 %% ===================================================================
@@ -53,6 +50,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    wh_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

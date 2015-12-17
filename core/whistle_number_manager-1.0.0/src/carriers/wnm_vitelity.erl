@@ -37,7 +37,7 @@ is_number_billable(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', wh_json:objects()} |
-                          {'error', _}.
+                          {'error', any()}.
 find_numbers(Prefix, Quantity, Opts) when not is_integer(Quantity) ->
     find_numbers(Prefix, wh_util:to_integer(Quantity), Opts);
 find_numbers(Prefix, Quantity, Opts) ->
@@ -49,7 +49,7 @@ find_numbers(Prefix, Quantity, Opts) ->
 
 -spec classify_and_find(ne_binary(), pos_integer(), wh_proplist()) ->
                                {'ok', wh_json:objects()} |
-                               {'error', _}.
+                               {'error', any()}.
 classify_and_find(Prefix, Quantity, Opts) ->
     case wnm_util:classify_number(Prefix) of
         <<"tollfree_us">> -> find(Prefix, Quantity, add_tollfree_options(Quantity, Opts));
@@ -98,13 +98,13 @@ add_local_options(Prefix, Opts) ->
 
 -spec find(ne_binary(), pos_integer(), wh_proplist()) ->
                   {'ok', wh_json:objects()} |
-                  {'error', _}.
+                  {'error', any()}.
 find(Prefix, Quantity, Opts) ->
     query_vitelity(Prefix, Quantity, wnm_vitelity_util:build_uri(Opts)).
 
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
                             {'ok', wh_json:object()} |
-                            {'error', _}.
+                            {'error', any()}.
 query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
@@ -121,7 +121,7 @@ query_vitelity(Prefix, Quantity, URI) ->
 
 -spec process_xml_resp(ne_binary(), pos_integer(), text()) ->
                               {'ok', wh_json:object()} |
-                              {'error', _}.
+                              {'error', any()}.
 process_xml_resp(Prefix, Quantity, XML) ->
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Prefix, Quantity, XmlEl)
@@ -133,7 +133,7 @@ process_xml_resp(Prefix, Quantity, XML) ->
 
 -spec process_xml_content_tag(ne_binary(), pos_integer(), xml_el()) ->
                                      {'ok', wh_json:object()} |
-                                     {'error', _}.
+                                     {'error', any()}.
 process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                                       ,content=Children
                                                      }) ->
@@ -148,10 +148,10 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
                                  {'ok', wh_json:object()} |
-                                 {'error', _}.
+                                 {'error', any()}.
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), wh_proplist()) ->
                                  {'ok', wh_json:object()} |
-                                 {'error', _}.
+                                 {'error', any()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
     {'error', 'no_numbers'};
 process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'

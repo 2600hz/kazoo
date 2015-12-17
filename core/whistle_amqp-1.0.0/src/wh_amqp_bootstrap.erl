@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Karls Hackity Hack....
 %%% We want to block during startup until we have a AMQP connection
@@ -59,11 +59,11 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     add_zones(get_config()),
     lager:info("waiting for first amqp connection...", []),
     wh_amqp_connections:wait_for_available(),
-    timer:sleep(2000),
+    timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     amqp_util:targeted_exchange(),
     {'ok', #state{}, 100}.
 

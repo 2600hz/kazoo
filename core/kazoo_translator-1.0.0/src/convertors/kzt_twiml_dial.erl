@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%% Handle the emulation of the Dial verb
 %%% @end
@@ -11,8 +11,7 @@
 -export([exec/3]).
 
 -ifdef(TEST).
--export([test/0]).
--include_lib("eunit/include/eunit.hrl").
+-export([cleanup_dial_me/1]).
 -endif.
 
 -include("../kzt.hrl").
@@ -92,7 +91,7 @@ exec(Call, [#xmlElement{name='Conference'
 
     lager:debug("waited for offnet, maybe ending dial"),
 
-    maybe_end_dial(Call1, DialProps),
+    _ = maybe_end_dial(Call1, DialProps),
     {'stop', Call1};
 
 exec(Call, [#xmlElement{name='Queue'
@@ -152,7 +151,6 @@ dial_me(Call, Attrs, DialMe) ->
 
     OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
                    ,{<<"Media">>, media_processing(Call1)}
-                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
                    ,{<<"Force-Outbound">>, force_outbound(Props)}
                    ,{<<"Server-ID">>, whapps_call:controller_queue(Call1)}
                   ],
@@ -179,15 +177,15 @@ setup_call_for_dial(Call, Props) ->
     Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
                ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
                ,{fun kzt_util:set_record_call/2, should_record_call(Props)}
-               ,{fun kzt_util:set_call_timeout/2, kzt_twiml:timeout_s(Props)}
+               ,{fun kzt_util:set_call_timeout/2, kzt_twiml_util:timeout_s(Props)}
                ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
               ],
     whapps_call:exec(Setters, Call).
 
 -spec maybe_end_dial(whapps_call:call(), wh_proplist()) ->
-                            {'ok' | 'stop', whapps_call:call()}.
+                            {'ok' | 'stop' | 'request', whapps_call:call()}.
 maybe_end_dial(Call, Props) ->
-    maybe_end_dial(Call, Props, kzt_twiml:action_url(Props)).
+    maybe_end_dial(Call, Props, kzt_twiml_util:action_url(Props)).
 
 maybe_end_dial(Call, _Props, 'undefined') ->
     lager:debug("a-leg status after bridge: ~s", [kzt_util:get_call_status(Call)]),
@@ -235,9 +233,6 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
     DeviceId = kz_xml:texts_to_binary(DeviceIdTxt),
     lager:debug("maybe adding device ~s to ring group", [DeviceId]),
     case cf_endpoint:build(DeviceId, Call) of
-        {'ok', []} ->
-            lager:debug("no device endpoint built for ~s, skipping", [DeviceId]),
-            xml_elements_to_endpoints(Call, EPs, Acc);
         {'ok', DeviceEPs} -> xml_elements_to_endpoints(Call, EPs, DeviceEPs ++ Acc);
         {'error', _E} ->
             lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
@@ -289,15 +284,8 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
     _Props = kz_xml:attributes_to_proplist(Attrs),
 
     try wnm_sip:parse(kz_xml:texts_to_binary(Number)) of
-        Uri ->
-            lager:debug("maybe add SIP ~s", [wnm_sip:encode(Uri)]),
-            SipJObj = wh_json:from_list([{<<"invite_format">>, <<"route">>}
-                                         ,{<<"route">>, wnm_sip:encode(Uri)}
-                                        ]),
-            Device = wh_json:from_list([{<<"sip">>, SipJObj}]),
-            EP = cf_endpoint:create_sip_endpoint(Device, wh_json:new(), Call),
-
-            xml_elements_to_endpoints(Call, EPs, [EP|Acc])
+        URI ->
+            xml_elements_to_endpoints(Call, EPs, [sip_uri(Call, URI)|Acc])
     catch
         'throw':_E ->
             lager:debug("failed to parse SIP uri: ~p", [_E]),
@@ -307,6 +295,20 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
 xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
     lager:debug("unknown endpoint, skipping: ~p", [_Xml]),
     xml_elements_to_endpoints(Call, EPs, Acc).
+
+-spec sip_uri(whapps_call:call(), ne_binary()) -> wh_json:object().
+sip_uri(Call, URI) ->
+    lager:debug("maybe adding SIP endpoint: ~s", [wnm_sip:encode(URI)]),
+    SIPDevice = sip_device(URI),
+    cf_endpoint:create_sip_endpoint(SIPDevice, wh_json:new(), Call).
+
+-spec sip_device(ne_binary()) -> kz_device:doc().
+sip_device(URI) ->
+    lists:foldl(fun({F, V}, D) -> F(D, V) end
+                ,kz_device:new()
+                ,[{fun kz_device:set_sip_invite_format/2, <<"route">>}
+                  ,{fun kz_device:set_sip_route/2, wnm_sip:encode(URI)}
+                 ]).
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, whapps_call:from_realm(Call)]).
 
@@ -407,15 +409,15 @@ add_conference_profile(Call, ConfProps) ->
                    ,{<<"energy-level">>, props:get_integer_value('energyLevel', ConfProps, 20)}
                    ,{<<"member-flags">>, conference_member_flags(ConfProps)}
                    ,{<<"conference-flags">>, conference_flags(ConfProps)}
-                   ,{<<"tts-engine">>, kzt_twiml:get_engine(ConfProps)}
-                   ,{<<"tts-voice">>, kzt_twiml:get_voice(ConfProps)}
+                   ,{<<"tts-engine">>, kzt_twiml_util:get_engine(ConfProps)}
+                   ,{<<"tts-voice">>, kzt_twiml_util:get_voice(ConfProps)}
                    ,{<<"max-members">>, get_max_participants(ConfProps)}
                    ,{<<"comfort-noise">>, props:get_integer_value('comfortNoise', ConfProps, 1000)}
                    ,{<<"annouce-count">>, props:get_integer_value('announceCount', ConfProps)}
                    ,{<<"caller-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
                    ,{<<"moderator-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
-                   ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, <<"Kazoo">>)}
-                   ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, <<"0000000000">>)}
+                   ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, wh_util:anonymous_caller_id_name())}
+                   ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, wh_util:anonymous_caller_id_number())}
                    %,{<<"suppress-events">>, <<>>} %% add events to make FS less chatty
                    ,{<<"moh-sound">>, props:get_value('waitUrl', ConfProps, <<"http://com.twilio.music.classical.s3.amazonaws.com/Mellotroniac_-_Flight_Of_Young_Hearts_Flute.mp3">>)}
                   ])),
@@ -432,14 +434,3 @@ conference_member_flags(ConfProps) ->
         'true' -> <<"endconf">>;
         'false' -> 'undefined'
     end.
-
--ifdef(TEST).
-
--spec test() -> 'ok'.
-test() -> 'ok'.
-
--spec cleanup_dial_me_test() -> any().
-cleanup_dial_me_test() ->
-    ?assertEqual(<<"+14158867900">>, cleanup_dial_me(<<"+1 (415) 886-7900">>)).
-
--endif.

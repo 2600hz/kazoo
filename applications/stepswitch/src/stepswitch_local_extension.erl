@@ -239,6 +239,7 @@ build_local_extension(#state{number_props=Props
     AccountId = props:get_value('account_id', Props),
     Realm = get_account_realm(AccountId),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    CCVsNoAuth = wh_json:delete_keys([<<"Authorizing-Type">>, <<"Authorizing-ID">>], CCVs),
     CCVUpdates = props:filter_undefined(
                    [{<<"Inception">>, <<Number/binary, "@", Realm/binary>>}
                     ,{<<"Retain-CID">>, <<"true">>}
@@ -254,7 +255,7 @@ build_local_extension(#state{number_props=Props
      ,{<<"Reset">>, <<"true">>}
      ,{<<"Extension">>, Number}
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-     ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
+     ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVsNoAuth)}
      ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
      ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
      | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
@@ -262,18 +263,16 @@ build_local_extension(#state{number_props=Props
 
 -spec get_account_name(ne_binary(), ne_binary()) -> ne_binary().
 get_account_name(Number, AccountId) when is_binary(Number) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} -> wh_json:get_ne_value(<<"name">>, JObj, Number);
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:name(JObj, Number);
         _ -> Number
     end.
 
 
 -spec get_account_realm(ne_binary()) -> ne_binary().
 get_account_realm(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} -> wh_json:get_ne_value(<<"realm">>, JObj, AccountId);
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:realm(JObj, AccountId);
         _ -> AccountId
     end.
 

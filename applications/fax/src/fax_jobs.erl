@@ -56,7 +56,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    spawn(?MODULE, 'cleanup_jobs', []),
+    _ = wh_util:spawn(fun cleanup_jobs/0),
     {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
@@ -109,7 +109,7 @@ handle_info('timeout', #state{jobs=[]}=State) ->
 %                   ,{'startkey', [wh_json:new()]}
                    ,{'endkey', Upto}
                    ],
-    case couch_mgr:get_results(?WH_FAXES, <<"faxes/jobs">>, ViewOptions) of
+    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/jobs">>, ViewOptions) of
         {'ok', []} -> {'noreply', State, ?POLLING_INTERVAL};
         {'ok', Jobs} ->
             lager:debug("fetched ~b jobs, attempting to distribute to workers", [length(Jobs)]),
@@ -118,9 +118,9 @@ handle_info('timeout', #state{jobs=[]}=State) ->
             lager:debug("failed to fetch fax jobs: ~p", [_Reason]),
             {'noreply', State, ?POLLING_INTERVAL}
     end;
-handle_info({'DOWN', Ref, process, Pid, Reason}, State) ->
+handle_info({'DOWN', Ref, process, Pid, Reason}, #state{jobs=Jobs}=State) ->
     lager:debug("Fax Worker crashed ? ~p / ~p / ~p",[Ref, Pid, Reason]),
-    {'noreply', State, ?POLLING_INTERVAL};
+    {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -166,17 +166,15 @@ distribute_jobs([Job|Jobs]) ->
 -spec cleanup_jobs() -> 'ok'.
 cleanup_jobs() ->
     ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
-    case couch_mgr:get_results(?WH_FAXES, <<"faxes/processing_by_node">>, ViewOptions) of
+    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
         {'ok', JObjs} ->
-            [begin
-                 DocId = wh_json:get_value(<<"id">>, JObj),
-                 lager:debug("moving zombie job ~s status to pending", [DocId]),
-                 couch_mgr:update_doc(?WH_FAXES, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
-             end
-             || JObj <- JObjs
-            ],
+            _ = [begin
+                     DocId = wh_doc:id(JObj),
+                     lager:debug("moving zombie job ~s status to pending", [DocId]),
+                     couch_mgr:update_doc(?WH_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
+                 end
+                 || JObj <- JObjs
+                ],
             'ok';
         {'error', _R} -> lager:debug("unable to cleanup jobs: ~p", [_R])
     end.
-
-

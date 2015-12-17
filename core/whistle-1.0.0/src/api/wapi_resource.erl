@@ -69,18 +69,20 @@
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>
-                                         ,<<"Originate-Immediate">>
                                          ,<<"Custom-Channel-Vars">>
+                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore
                                          ,<<"Export-Custom-Channel-Vars">>
+                                         ,<<"Originate-Immediate">>
                                          ,<<"Outbound-Call-ID">>
-                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore                                                                  %% Eavesdrop
+                                         %% Eavesdrop
                                          ,<<"Eavesdrop-Call-ID">>
                                          ,<<"Eavesdrop-Mode">>
                                          ,<<"Eavesdrop-Group-ID">>
-                                         ,<<"Fax-Identity-Number">>
                                          ,<<"Fax-Identity-Name">>
+                                         ,<<"Fax-Identity-Number">>
                                          ,<<"Fax-Timezone">>
                                          ,<<"Intercept-Unbridged-Only">>
+                                         ,<<"Simplify-Loopback">> %% loopback_bowout flag
                                          | wapi_dialplan:optional_bridge_req_headers()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
@@ -97,6 +99,7 @@
                               ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                               ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                               ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
+                              ,{<<"Simplify-Bowout">>, fun wh_util:is_boolean/1}
                              ]).
 
 %% Originate Endpoints

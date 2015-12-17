@@ -1,12 +1,24 @@
 {
-    "_id": "_design/lists"
-    ,"language": "javascript"
-    ,"views": {
+    "_id": "_design/lists",
+    "filters": {
+        "export": "function(doc, req) { return ( doc.pvt_type == 'list' ); }"
+    },
+    "language": "javascript",
+    "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type == 'list' && !doc.pvt_deleted) emit(doc._id, {'id': doc._id, 'name': doc.name, 'entries': doc.entries}) };"
+            "map": "function(doc) {if ((doc.pvt_type != 'list') || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'description': doc.description});}"
+        },
+        "entries": {
+            "map": "function(doc) {if ((doc.pvt_type != 'list_entry') || doc.pvt_deleted) return; emit(doc.list_id, doc);}"
+        },
+        "match_prefix": {
+            "map": "function(doc) {if ((doc.pvt_type != 'list_entry') || doc.pvt_deleted || (doc.number == null && doc.prefix == null)) return; emit(doc.number ? doc.number : doc.prefix, null);}"
+        },
+        "match_prefix_in_list": {
+            "map": "function(doc) {if ((doc.pvt_type != 'list_entry') || doc.pvt_deleted || (doc.number == null && doc.prefix == null)) return; emit([doc.list_id, doc.number ? doc.number : doc.prefix], null);}"
+        },
+        "regexps_in_list": {
+            "map": "function(doc) {if ((doc.pvt_type != 'list_entry') || doc.pvt_deleted || !(doc.regexp || doc.pattern)) return; emit(doc.list_id, doc.regexp ? doc.regexp : doc.pattern);}"
         }
-    }
-    ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'list' ); }"
     }
 }

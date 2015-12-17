@@ -34,7 +34,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 
+stop() ->
     cowboy:stop_listener('socketio_http_listener'),
     exit(whereis('blackhole_sup'), 'shutdown'),
     'ok'.

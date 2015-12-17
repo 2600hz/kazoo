@@ -59,7 +59,7 @@ start_proc(Args) ->
 %%--------------------------------------------------------------------
 init([]) ->
     Restart = transient,
-    Shutdown = 2000,
+    Shutdown = 2 * ?MILLISECONDS_IN_SECOND,
     Type = worker,
 
     AChild = {ecallmgr_call_control, {ecallmgr_call_control, start_link, []},

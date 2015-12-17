@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -28,9 +28,10 @@
 -export([unavailable/1]).
 -export([is_available/0]).
 -export([wait_for_available/0]).
+-export([wait_for_available_tag/1]).
 
 -export([brokers_for_zone/1, brokers_for_zone/2, broker_for_zone/1]).
--export([brokers_with_tag/1, brokers_with_tag/2,broker_with_tag/1]).
+-export([brokers_with_tag/1, brokers_with_tag/2, broker_with_tag/1]).
 -export([is_zone_available/1, is_tag_available/1, is_hidden_broker/1]).
 
 -export([start_link/0]).
@@ -64,29 +65,29 @@ start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec new(wh_amqp_connection() | text()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 new(Broker) -> new(Broker, 'local').
 
 -spec new(wh_amqp_connection() | text(), text()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 new(<<_/binary>> = Broker, Zone) ->
     case broker_connections(Broker) =:= 0 of
         'false' -> {'error', 'exists'};
-        'true' -> wh_amqp_connections:add(Broker, Zone)
+        'true' -> ?MODULE:add(Broker, Zone)
     end;
 new(Broker, Zone) ->
     new(wh_util:to_binary(Broker), Zone).
 
 -spec add(wh_amqp_connection() | text()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 -spec add(wh_amqp_connection() | text(), text()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 -spec add(wh_amqp_connection() | text(), text(), list()) ->
                  wh_amqp_connection() |
-                 {'error', _}.
+                 {'error', any()}.
 
 add(Broker) -> add(Broker, 'local').
 
@@ -108,7 +109,7 @@ add(Broker, Zone) when not is_atom(Zone) ->
 add(Broker, Zone) ->
     add(Broker, Zone, []).
 
-add(Broker, Zone, Tags) ->    
+add(Broker, Zone, Tags) ->
     case catch amqp_uri:parse(wh_util:to_list(Broker)) of
         {'EXIT', _R} ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
@@ -143,7 +144,7 @@ remove(Connection) when is_pid(Connection) ->
     wh_amqp_connection_sup:remove(Connection);
 remove(Broker) when not is_binary(Broker) ->
     remove(wh_util:to_binary(Broker));
-remove(Broker) ->
+remove(<<_/binary>> = Broker) ->
     Pattern = #wh_amqp_connections{broker=Broker
                                    ,connection='$1'
                                    ,_='_'
@@ -218,8 +219,9 @@ federated_brokers() ->
                                        ,_='_'
                                       },
                   [{'andalso',
-                     {'=/=', '$1', 'local'},
-                     {'=:=', '$3', 'false'}}],
+                    {'=/=', '$1', 'local'},
+                    {'=:=', '$3', 'false'}}
+                  ],
                   ['$2']
                  }
                 ],
@@ -244,15 +246,18 @@ broker_zone(Broker) ->
 is_available() -> primary_broker() =/= 'undefined'.
 
 -spec wait_for_available() -> 'ok'.
-wait_for_available() -> wait_for_available('infinity').
+wait_for_available() -> wait_for_available(fun is_available/0, 'infinity').
 
--spec wait_for_available('infinity') -> 'ok';
-                        (non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
-wait_for_available(Timeout) ->
-    case is_available() of
+-spec wait_for_available_tag(binary()) -> 'ok'.
+wait_for_available_tag(Tag) -> wait_for_available(fun() -> is_tag_available(Tag) end, 'infinity').
+
+-spec wait_for_available(any(), 'infinity') -> 'ok';
+                        (any(), non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
+wait_for_available(Fun, Timeout) ->
+    case apply(Fun,[]) of
         'true' -> 'ok';
         'false' ->
-            gen_server:cast(?MODULE, {'add_watcher', self()}),
+            gen_server:cast(?MODULE, {'add_watcher', Fun, self()}),
             wait_for_notification(Timeout)
     end.
 
@@ -327,8 +332,8 @@ handle_cast({'connection_unavailable', Connection}, State) ->
     Props = [{#wh_amqp_connections.available, 'false'}],
     _ = ets:update_element(?TAB, Connection, Props),
     {'noreply', State, 'hibernate'};
-handle_cast({'add_watcher', Watcher}, State) ->
-    case is_available() of
+handle_cast({'add_watcher', Fun, Watcher}, State) ->
+    case apply(Fun, []) of
         'false' -> {'noreply', add_watcher(Watcher, State), 'hibernate'};
         'true' ->
             _ = notify_watcher(Watcher),
@@ -420,7 +425,6 @@ wait_for_notification(Timeout) ->
 
 -spec brokers_with_tag(ne_binary()) -> wh_amqp_connections_list().
 -spec brokers_with_tag(ne_binary(), api_boolean()) -> wh_amqp_connections_list().
-
 brokers_with_tag(Tag) ->
     %% by default we want all the brokers
     brokers_with_tag(Tag, 'undefined').
@@ -430,18 +434,18 @@ brokers_with_tag(Tag, Available) ->
                                        ,_='_'
                                       },
                   [{'orelse',
-                        {'=:=', '$1', {'const', Available}},
-                        {'=:=', {'const', Available}, 'undefined'}
+                    {'=:=', '$1', {'const', Available}},
+                    {'=:=', {'const', Available}, 'undefined'}
                    }
                   ]
-                 ,['$_']
+                  ,['$_']
                  }
                 ],
     [Connection
-        || #wh_amqp_connections{tags=Tags}=Connection <- ets:select(?TAB, MatchSpec),
-           lists:member(Tag, Tags)
+     || #wh_amqp_connections{tags=Tags}=Connection <- ets:select(?TAB, MatchSpec),
+        lists:member(Tag, Tags)
     ].
-        
+
 -spec broker_with_tag(ne_binary()) -> api_binary().
 broker_with_tag(Tag) ->
     case brokers_with_tag(Tag, 'true') of
@@ -462,11 +466,11 @@ brokers_for_zone(Zone, Available) ->
                                        ,_='_'
                                       },
                   [{'andalso',
-                     {'=:=', '$1', {'const', Zone}},
-                     {'orelse',
-                        {'=:=', '$2', {'const', Available}},
-                        {'=:=', {'const', Available}, 'undefined'}
-                     }
+                    {'=:=', '$1', {'const', Zone}},
+                    {'orelse',
+                     {'=:=', '$2', {'const', Available}},
+                     {'=:=', {'const', Available}, 'undefined'}
+                    }
                    }
                   ],
                   ['$_']

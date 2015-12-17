@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   Karl Anderson
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cf_sms_user).
 
@@ -23,29 +23,50 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle(Data, Call) ->
-    UserId = wh_json:get_ne_value(<<"id">>, Data),
-    Endpoints = get_endpoints(UserId, Data, Call),
-
-    case length(Endpoints) > 0
-        andalso whapps_sms_command:b_send_sms(Endpoints, Call)
+handle(Data, Call1) ->
+    UserId = wh_doc:id(Data),
+    Funs = [{fun doodle_util:set_callee_id/2, UserId}
+            ,{fun whapps_call:kvs_store/3, <<"target_owner_id">>, UserId}
+           ],
+    Call = whapps_call:exec(Funs, Call1),
+    {Endpoints, Dnd} = get_endpoints(UserId, Data, Call),
+    Strategy = wh_json:get_binary_value(<<"sms_strategy">>, Data, <<"single">>),
+    case Endpoints =/= []
+        andalso whapps_sms_command:b_send_sms(Endpoints, Strategy, Call)
     of
-        'false' ->
+        'false' when Dnd =:= 0 ->
             lager:notice("user ~s has no endpoints", [UserId]),
-            doodle_exe:continue(Call);
-        {'ok', _} ->
-            lager:info("completed successful bridge to user"),
-            doodle_exe:stop(Call);
-        {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
-        {'error', _R} ->
+            doodle_exe:continue(doodle_util:set_flow_error(<<"error">>, <<"user has no endpoints">>, Call));
+        'false' when Dnd > 0 ->
+            lager:notice("do not disturb user ~s", [UserId]),
+            maybe_handle_bridge_failure({'error', 'do_not_disturb'}, Call);
+        {'ok', JObj} ->
+            handle_result(JObj, Call);
+        {'error', _R}=Reason ->
             lager:info("error bridging to user: ~p", [_R]),
-            doodle_exe:continue(Call)
+            maybe_handle_bridge_failure(Reason, Call)
     end.
 
--spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
-maybe_handle_bridge_failure(Reason, Call) ->
-    case cf_util:handle_bridge_failure(Reason, Call) of
-        'not_found' -> doodle_exe:continue(Call);
+-spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_result(JObj, Call1) ->
+    Status = doodle_util:sms_status(JObj),
+    Call = doodle_util:set_flow_status(Status, Call1),
+    handle_result_status(Call, Status).
+
+-spec handle_result_status(whapps_call:call(), ne_binary()) -> 'ok'.
+handle_result_status(Call, <<"pending">>) ->
+    doodle_util:maybe_reschedule_sms(Call);
+handle_result_status(Call, _Status) ->
+    lager:info("completed successful message to the user"),
+    doodle_exe:continue(Call).
+
+-spec maybe_handle_bridge_failure(any(), whapps_call:call()) -> 'ok'.
+maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
+    case doodle_util:handle_bridge_failure(Reason, Call) of
+        'not_found' ->
+            doodle_util:maybe_reschedule_sms(
+              doodle_util:set_flow_status(<<"pending">>, wh_util:to_binary(R), Call)
+              );
         'ok' -> 'ok'
     end.
 
@@ -54,17 +75,39 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %% @doc
 %% Loop over the provided endpoints for the callflow and build the
 %% json object used in the bridge API
+%% Send to endpoint in determined order
 %% @end
 %%--------------------------------------------------------------------
-
 -spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) ->
-                           wh_json:objects().
-get_endpoints('undefined', _, _) -> [];
+                           {wh_json:objects(), non_neg_integer()}.
+get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
-    lists:foldr(fun(EndpointId, Acc) ->
+    EndpointIds = cf_attributes:owned_by(UserId, <<"device">>, Call),
+    {Endpoints, DndCount} = lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
                         case cf_endpoint:build(EndpointId, Params, Call) of
-                            {'ok', Endpoint} -> Endpoint ++ Acc;
-                            {'error', _E} -> Acc
+                            {'ok', Endpoint} -> {Endpoint ++ Acc, Dnd};
+                            {'error', 'do_not_disturb'} -> {Acc, Dnd+1};
+                            {'error', _E} -> {Acc, Dnd}
                         end
-                end, [], cf_attributes:owned_by(UserId, <<"device">>, Call)).
+                end
+                ,{[], 0}
+                ,EndpointIds
+               ),
+    SortedEndpoints = sort_endpoints_by_type(Endpoints),
+    {SortedEndpoints, DndCount}.
+
+-spec sort_endpoints_by_type(wh_json:objects()) -> wh_json:objects().
+sort_endpoints_by_type(Endpoints) ->
+    lists:sort(fun(EndpointA, EndpointB) ->
+            EndpointAValue = endpoint_type_sort_value(wh_json:get_value(<<"Endpoint-Type">>, EndpointA)),
+            EndpointBValue = endpoint_type_sort_value(wh_json:get_value(<<"Endpoint-Type">>, EndpointB)),
+            (EndpointAValue < EndpointBValue)
+        end,
+        Endpoints).
+
+-spec endpoint_type_sort_value(binary()) -> non_neg_integer().
+endpoint_type_sort_value(<<"amqp">>) ->
+    0;
+endpoint_type_sort_value(_Type) ->
+    1.

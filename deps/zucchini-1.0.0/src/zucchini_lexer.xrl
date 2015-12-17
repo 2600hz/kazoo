@@ -1,6 +1,6 @@
 Definitions.
 
-A = [a-zA-Z][a-zA-Z0-9_:@\-\.]*[a-zA-Z0-9]
+A = [a-zA-Z0-9_:@\-\.]
 D = [0-9]
 S = [\s\t]
 
@@ -29,7 +29,14 @@ to_key(TokenChars, TokenLen) ->
 
 -compile({inline, to_atom/1}).
 to_atom(TokenChars) ->
-    list_to_atom(string:strip(TokenChars, left)).
+    L = string:strip(TokenChars, left),
+    case lists:all(fun(A)-> lists:member(A, "0123456789") end, L) of
+        'true' -> to_integer(L);
+        'false' -> case lists:all(fun(A)-> lists:member(A, "0123456789.") end, L) of
+                        'true' -> to_float(L);
+                        'false' -> list_to_atom(L)
+                   end
+    end.  
 
 -compile({inline, to_integer/1}).
 to_integer(TokenChars) ->

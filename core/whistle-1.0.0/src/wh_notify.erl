@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -17,9 +17,11 @@
 -export([first_call/1]).
 -export([first_registration/1]).
 -export([transaction/2, transaction/3]).
--export([system_alert/2, system_alert/3]).
+-export([system_alert/2]).
+-export([detailed_alert/3]).
 
--include("../include/wh_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(APP_NAME, <<"whistle">>).
 -define(APP_VERSION, <<"1.2.1">>).
@@ -29,13 +31,12 @@
 
 cnam_request(PhoneNumber) ->
     AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, PhoneNumber),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', Account} -> cnam_request(Account, PhoneNumber);
         {'error', Reason} ->
-            Number = wh_json:get_value(<<"_id">>, PhoneNumber),
+            Number = wh_doc:id(PhoneNumber),
             Subject = io_lib:format("unable to open account ~s for cnam update on ~s", [AccountId, Number]),
-            Body = io_lib:format("Failed to open account ~s (~s) for cnam update on ~s.~nReason: ~p", [AccountId, AccountDb, Number, Reason]),
+            Body = io_lib:format("Failed to open account doc ~s for cnam update on ~s.~nReason: ~p", [AccountId, Number, Reason]),
             generic_alert(Subject, Body)
     end.
 
@@ -51,13 +52,12 @@ cnam_request(PhoneNumber, Account) ->
 
 port_request(PhoneNumber) ->
     AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, PhoneNumber),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', Account} -> cnam_request(Account, PhoneNumber);
         {'error', Reason} ->
-            Number = wh_json:get_value(<<"_id">>, PhoneNumber),
+            Number = wh_doc:id(PhoneNumber),
             Subject = io_lib:format("unable to open account ~s for port request of ~s", [AccountId, Number]),
-            Body = io_lib:format("Failed to open account ~s (~s) for port request of ~s.~nReason: ~p", [AccountId, AccountDb, Number, Reason]),
+            Body = io_lib:format("Failed to open account doc ~s for port request of ~s.~nReason: ~p", [AccountId, Number, Reason]),
             generic_alert(Subject, Body)
     end.
 
@@ -83,8 +83,7 @@ deregister(LastReg) ->
 
 deregister(LastReg, Endpoint) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, LastReg),
-    AccountDb = wh_json:get_value(<<"Account-DB">>, LastReg),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', Account} -> deregister(LastReg, Endpoint, Account);
         {'error', _R} ->
             lager:info("unable to open account ~s deregister notice: ~p", [AccountId, _R])
@@ -98,8 +97,13 @@ deregister(LastReg, Endpoint, Account) ->
              ],
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_deregister/1).
 
-low_balance(_Account, _Credit) ->
-    'ok'.
+-spec low_balance(ne_binary(), float() | integer() | ne_binary()) -> 'ok'.
+low_balance(AccountId, Credit) ->
+    Req = [{<<"Account-ID">>, AccountId}
+           ,{<<"Current-Balance">>, Credit}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wh_amqp_worker:cast(Req, fun wapi_notifications:publish_low_balance/1).
 
 new_account(_User, _Account) ->
     'ok'.
@@ -131,19 +135,29 @@ transaction(Account, Transaction, ServicePlan) ->
                ]),
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_transaction/1).
 
--spec system_alert(atom() | string() | binary(), [term()]) -> 'ok'.
--spec system_alert(atom() | string() | binary(), [term()], wh_proplist()) -> 'ok'.
-
+-spec system_alert(atom() | string() | binary(), [any()]) -> 'ok'.
 system_alert(Format, Args) ->
-    system_alert(Format, Args, []).
-
-system_alert(Format, Args, Props) ->
     Msg = io_lib:format(Format, Args),
     Notify= [{<<"Message">>, wh_util:to_binary(Msg)}
              ,{<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Msg))/binary>>}
-             ,{<<"Details">>, wh_json:from_list(Props)}
              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
+
+-spec detailed_alert(string(), list(), wh_proplist()) -> 'ok'.
+detailed_alert(Format, Args, Props) ->
+    Msg = io_lib:format(Format, Args),
+    Notify = [{<<"Message">>, wh_util:to_binary(Msg)}
+              ,{<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Msg))/binary>>}
+              ,{<<"Details">>,
+                wh_json:from_list(
+                  %% Include Format to help parse JSON data sent
+                  [{<<"Format">>, wh_util:to_binary(Format)}
+                   | Props
+                  ])
+               }
+              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
     wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
 
 -spec generic_alert(atom() | string() | binary(), atom() | string() | binary()) -> 'ok'.

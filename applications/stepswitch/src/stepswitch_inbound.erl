@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%% Handle route requests from carrier resources
 %%% @end
@@ -19,7 +19,7 @@
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_route:req_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     case wh_json:get_ne_value(?CCV(<<"Account-ID">>), JObj) of
         'undefined' -> maybe_relay_request(JObj);
         _AcctID -> 'ok'
@@ -46,6 +46,7 @@ maybe_relay_request(JObj) ->
                         ,fun maybe_set_ringback/2
                         ,fun maybe_set_transfer_media/2
                         ,fun maybe_lookup_cnam/2
+                        ,fun maybe_add_prepend/2
                         ,fun maybe_blacklisted/2
                         ,fun maybe_transition_port_in/2
                        ],
@@ -62,7 +63,7 @@ maybe_relay_request(JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id(wh_proplist(), wh_json:object()) ->
+-spec set_account_id(number_properties(), wh_json:object()) ->
                             wh_json:object().
 set_account_id(NumberProps, JObj) ->
     AccountId = wh_number_properties:account_id(NumberProps),
@@ -74,7 +75,7 @@ set_account_id(NumberProps, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_ignore_display_updates(wh_proplist(), wh_json:object()) ->
+-spec set_ignore_display_updates(number_properties(), wh_json:object()) ->
                                         wh_json:object().
 set_ignore_display_updates(_, JObj) ->
     wh_json:set_value(?CCV(<<"Ignore-Display-Updates">>), <<"true">>, JObj).
@@ -85,7 +86,7 @@ set_ignore_display_updates(_, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_inception(wh_proplist(), wh_json:object()) ->
+-spec set_inception(number_properties(), wh_json:object()) ->
                            wh_json:object().
 set_inception(_, JObj) ->
     Request = wh_json:get_value(<<"Request">>, JObj),
@@ -97,13 +98,13 @@ set_inception(_, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_find_resource(wh_proplist(), wh_json:object()) ->
+-spec maybe_find_resource(number_properties(), wh_json:object()) ->
                                  wh_json:object().
 maybe_find_resource(_NumberProps, JObj) ->
     case stepswitch_resources:reverse_lookup(JObj) of
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
-            Routines = [fun maybe_add_resource_id/2
+            Routines = [fun add_resource_id/2
                         ,fun maybe_add_t38_settings/2
                        ],
             lists:foldl(fun(F, J) ->  F(J, ResourceProps) end
@@ -112,16 +113,20 @@ maybe_find_resource(_NumberProps, JObj) ->
                        )
     end.
 
--spec maybe_add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
-maybe_add_resource_id(JObj, ResourceProps) ->
-    case props:get_is_true('global', ResourceProps) of
-        'false' -> JObj;
-        'true' ->
-            wh_json:set_value(?CCV(<<"Resource-ID">>)
-                              ,props:get_value('resource_id', ResourceProps)
-                              ,JObj
-                             )
-    end.
+-spec add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
+add_resource_id(JObj, ResourceProps) ->
+    ResourceId = props:get_value('resource_id', ResourceProps),
+    wh_json:set_values([{?CCV(<<"Resource-ID">>), ResourceId}
+                        ,{?CCV(<<"Global-Resource">>), props:get_is_true('global', ResourceProps)}
+                        ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                       %% TODO
+                       %% we need to make sure that Authorizing-ID is used
+                       %% with Authorizing-Type in ALL whapps
+                       %% when this is done remove the comment below
+                       %% ,{?CCV(<<"Authorizing-ID">>), ResourceId}
+                       ]
+                       ,JObj
+                      ).
 
 -spec maybe_add_t38_settings(wh_json:object(), wh_proplist()) -> wh_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
@@ -139,7 +144,7 @@ maybe_add_t38_settings(JObj, ResourceProps) ->
         _ -> JObj
     end.
 
--spec maybe_format_destination(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec maybe_format_destination(number_properties(), wh_json:object()) -> wh_json:object().
 maybe_format_destination(_NumberProps, JObj) ->
     case wh_json:get_value(?CCV(<<"Resource-ID">>), JObj) of
         'undefined' -> JObj;
@@ -157,7 +162,7 @@ maybe_format_destination(_NumberProps, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_ringback(wh_proplist(), wh_json:object()) ->
+-spec maybe_set_ringback(number_properties(), wh_json:object()) ->
                                 wh_json:object().
 maybe_set_ringback(NumberProps, JObj) ->
     case wh_number_properties:ringback_media_id(NumberProps) of
@@ -172,7 +177,7 @@ maybe_set_ringback(NumberProps, JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_transfer_media(wh_proplist(), wh_json:object()) ->
+-spec maybe_set_transfer_media(number_properties(), wh_json:object()) ->
                                       wh_json:object().
 maybe_set_transfer_media(NumberProps, JObj) ->
     case wh_number_properties:transfer_media_id(NumberProps) of
@@ -188,7 +193,7 @@ maybe_set_transfer_media(NumberProps, JObj) ->
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_lookup_cnam(wh_proplist(), wh_json:object()) ->
+-spec maybe_lookup_cnam(number_properties(), wh_json:object()) ->
                                wh_json:object().
 maybe_lookup_cnam(NumberProps, JObj) ->
     case wh_number_properties:inbound_cnam_enabled(NumberProps) of
@@ -199,10 +204,23 @@ maybe_lookup_cnam(NumberProps, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_add_prepend(number_properties(), wh_json:object()) ->
+                               wh_json:object().
+maybe_add_prepend(NumberProps, JObj) ->
+    case wh_number_properties:prepend(NumberProps) of
+        'undefined' -> JObj;
+        Prepend -> wh_json:set_value(<<"Prepend-CID-Name">>, Prepend, JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_blacklisted(wh_proplist(), wh_json:object()) ->
+-spec maybe_blacklisted(number_properties(), wh_json:object()) ->
                            wh_json:object().
 maybe_blacklisted(_NumberProps, JObj) ->
     case is_blacklisted(JObj) of
@@ -223,28 +241,31 @@ relay_request(JObj) ->
     wapi_route:publish_req(JObj),
     lager:debug("relaying route request").
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_transition_port_in(wh_proplist(), wh_json:object()) ->
+-spec maybe_transition_port_in(number_properties(), wh_json:object()) ->
                                       wh_json:object().
 maybe_transition_port_in(NumberProps, JObj) ->
-    _ = case wh_number_properties:has_pending_port(NumberProps) of
-            'false' -> 'ok';
-            'true' ->
-                case wh_port_request:get(wh_number_properties:number(NumberProps)) of
-                    {'ok', PortReq} ->
-                        _ = wh_port_request:transition_to_complete(PortReq);
-                    _ ->
-                        Number = stepswitch_util:get_inbound_destination(JObj),
-                        wh_number_manager:ported(Number)
-                end
-        end,
+    case wh_number_properties:has_pending_port(NumberProps) of
+        'false' -> 'ok';
+        'true' -> transition_port_in(NumberProps, JObj)
+    end,
     JObj.
+
+-spec transition_port_in(number_properties(), wh_json:object()) ->
+                                wh_json:object().
+transition_port_in(NumberProps, JObj) ->
+    case wh_port_request:get(wh_number_properties:number(NumberProps)) of
+        {'ok', PortReq} ->
+            _ = wh_port_request:transition_to_complete(PortReq);
+        _ ->
+            Number = stepswitch_util:get_inbound_destination(JObj),
+            wh_number_manager:ported(Number)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -276,10 +297,9 @@ is_blacklisted(JObj) ->
                             {'ok', ne_binaries()} |
                             {'error', any()}.
 get_blacklists(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'error', _R}=E ->
-            lager:error("could not open ~s in ~s: ~p", [AccountId, AccountDb, _R]),
+            lager:error("could not open account doc ~s : ~p", [AccountId, _R]),
             E;
         {'ok', Doc} ->
             case wh_json:get_value(<<"blacklists">>, Doc, []) of

@@ -1,0 +1,57 @@
+{
+    "_attachments": {
+        "f431f87036c794347dfd65495ec1ca68.tiff": {
+            "content_type": "image/tiff",
+            "digest": "md5-qV5juwRnpqiL1VBuZVecGA==",
+            "length": 18348,
+            "revpos": 2,
+            "stub": true
+        }
+    },
+    "_id": "201410-85ed8b31bd58b6425333a5799e248f4e",
+    "_rev": "2-2accc7ee4738416d5e9a672154a12ab9",
+    "call_id": "17569451_131324137@realm.com",
+    "cdr_doc_id": "201410-17569451_131324137@realm.com",
+    "description": "fax document received",
+    "from_number": "+14150000001",
+    "media_type": "tiff",
+    "name": "fax message received at 2014-10-29 23:21:36 UTC",
+    "notifications": {
+        "email": {
+            "send_to": [
+                ""
+            ]
+        }
+    },
+    "owner_id": "bd1683a4a288c4f0b8a34a02906d3520",
+    "pvt_account_db": "account%2F00%2F00%2F0000000000000000000000000000-201410",
+    "pvt_account_id": "00000000000000000000000000000000",
+    "pvt_created": 63581844096,
+    "pvt_job_node": "whistle_apps@server.net",
+    "pvt_modified": 63581844096,
+    "pvt_node": "whistle_apps@server.net",
+    "pvt_type": "fax",
+    "rx_result": {
+        "bad_rows": "0",
+        "doc_id": "201410-85ed8b31bd58b6425333a5799e248f4e",
+        "ecm_used": false,
+        "encoding": "4",
+        "encoding_name": "T.4 2-D",
+        "file_image_pixel_size": "1728x2339",
+        "file_image_resolution": "8040x7700",
+        "identity_number": "+14150000000",
+        "image_pixel_size": "1728x2339",
+        "image_resolution": "8040x7700",
+        "image_size": "17310",
+        "longest_bad_row_run": "0",
+        "remote_station_id": "FOIPLY",
+        "result_text": "OK",
+        "success": true,
+        "total_pages": "1",
+        "transfer_rate": "9600",
+        "transferred_pages": "1"
+    },
+    "source_type": "incoming_fax",
+    "timestamp": 63581844088,
+    "to_number": "+14150000000"
+}

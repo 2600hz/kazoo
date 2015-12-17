@@ -118,9 +118,9 @@ $ curl -v --cacert media_mgr.crt https://api.2600hz.com:8443/v1/accounts
 > User-Agent: curl/7.22.0 (x86_64-pc-linux-gnu) libcurl/7.22.0 OpenSSL/1.0.1 zlib/1.2.3.4 libidn/1.23 librtmp/2.3
 > Host: api.2600hz.com:8443
 > Accept: */*
-> 
+>
 < HTTP/1.1 401 Unauthorized
-< Www-Authenticate: 
+< Www-Authenticate:
 < Access-Control-Max-Age: 86400
 < Access-Control-Expose-Headers: Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag
 < Access-Control-Allow-Headers: Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match
@@ -131,7 +131,7 @@ $ curl -v --cacert media_mgr.crt https://api.2600hz.com:8443/v1/accounts
 < Date: Fri, 01 Jun 2012 22:19:11 GMT
 < Server: Cowboy
 < Connection: keep-alive
-< 
+<
 * Connection #0 to host api.2600hz.com left intact
 * Closing connection #0
 * SSLv3, TLS alert, Client hello (1):

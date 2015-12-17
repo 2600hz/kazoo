@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,6 +13,7 @@
          ,load_from_file/2
          ,load_merge/2, load_merge/3
          ,merge/3
+         ,patch_and_validate/3
          ,load_view/3, load_view/4, load_view/5, load_view/6
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
@@ -30,6 +31,17 @@
         ]).
 
 -export([handle_json_success/2]).
+-export([handle_couch_mgr_success/2
+         ,handle_couch_mgr_errors/3
+        ]).
+
+-ifdef(TEST).
+-export([filter_doc_by_querystring/2]).
+-endif.
+
+-export_type([view_options/0
+              ,startkey/0
+             ]).
 
 -include("crossbar.hrl").
 
@@ -40,33 +52,50 @@
                    ,fun add_pvt_created/2
                    ,fun add_pvt_modified/2
                    ,fun add_pvt_request_id/2
+                   ,fun add_pvt_auth/2
                   ]).
 
--define(PAGINATION_PAGE_SIZE, whapps_config:get_integer(?CONFIG_CAT
-                                                        ,<<"pagination_page_size">>
-                                                        ,50
-                                                       )).
+-define(PAGINATION_PAGE_SIZE
+        ,whapps_config:get_integer(?CONFIG_CAT
+                                   ,<<"pagination_page_size">>
+                                   ,50
+                                  )
+       ).
+
+-type direction() :: 'ascending' | 'descending'.
+
+-type startkey() :: wh_json:json_term() | 'undefined'.
+
+-type startkey_fun() :: 'undefined' |
+                        fun((cb_context:context()) -> startkey()) |
+                        fun((wh_proplist(), cb_context:context()) -> startkey()).
+
+-type view_options() :: couch_util:view_options() |
+                        [{'databases', ne_binaries()} |
+                         {'startkey_fun', startkey_fun()}
+                        ].
 
 -record(load_view_params, {view :: api_binary()
-                           ,view_options = [] :: wh_proplist()
+                           ,view_options = [] :: view_options()
                            ,context :: cb_context:context()
-                           ,start_key :: wh_json:json_term()
+                           ,start_key :: startkey()
                            ,page_size :: non_neg_integer() | api_binary()
                            ,filter_fun :: filter_fun()
                            ,dbs = [] :: ne_binaries()
+                           ,direction = 'ascending' :: direction()
                           }).
 -type load_view_params() :: #load_view_params{}.
 
 -spec pagination_page_size() -> pos_integer().
--spec pagination_page_size(cb_context:context()) -> pos_integer().
--spec pagination_page_size(cb_context:context(), ne_binary()) -> pos_integer().
+-spec pagination_page_size(cb_context:context()) -> api_pos_integer().
+-spec pagination_page_size(cb_context:context(), ne_binary()) -> api_pos_integer().
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
 pagination_page_size(Context) ->
     pagination_page_size(Context, cb_context:api_version(Context)).
 
-pagination_page_size(_Context, <<"v1">>) -> 'undefined';
+pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
 pagination_page_size(Context, _Version) ->
     case cb_context:req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
@@ -110,20 +139,14 @@ load(DocId, Context, Options) ->
 load(_DocId, Context, _Options, 'error') -> Context;
 load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
     OpenFun = case props:get_is_true('use_cache', Opts, 'true') of
-                  'true' -> fun couch_mgr:open_cache_doc/3;
+                  'true' ->  fun couch_mgr:open_cache_doc/3;
                   'false' -> fun couch_mgr:open_doc/3
               end,
     case OpenFun(cb_context:account_db(Context), DocId, Opts) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
-            lager:debug("loaded doc ~s(~s) from ~s"
-                        ,[DocId, wh_json:get_value(<<"_rev">>, JObj), cb_context:account_db(Context)]
-                       ),
-            case wh_json:is_true(<<"pvt_deleted">>, JObj) of
-                'true' -> cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);
-                'false' -> cb_context:store(handle_couch_mgr_success(JObj, Context), 'db_doc', JObj)
-            end
+            handle_successful_load(Context, JObj)
     end;
 load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
@@ -131,8 +154,32 @@ load([_|_]=IDs, Context, Opts, _RespStatus) ->
     Opts1 = [{'keys', IDs}, 'include_docs' | Opts],
     case couch_mgr:all_docs(cb_context:account_db(Context), Opts1) of
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
-        {'ok', JObjs} -> handle_couch_mgr_success(extract_included_docs(JObjs), Context)
+        {'ok', JObjs} ->
+            Docs = extract_included_docs(JObjs),
+            cb_context:store(handle_couch_mgr_success(Docs, Context)
+                             ,'db_doc'
+                             ,Docs
+                            )
     end.
+
+-spec handle_successful_load(cb_context:context(), wh_json:object()) -> cb_context:context().
+-spec handle_successful_load(cb_context:context(), wh_json:object(), boolean()) -> cb_context:context().
+handle_successful_load(Context, JObj) ->
+    handle_successful_load(Context, JObj, wh_doc:is_soft_deleted(JObj)).
+
+handle_successful_load(Context, JObj, 'true') ->
+    lager:debug("doc ~s(~s) is soft-deleted, returning bad_identifier"
+                ,[wh_doc:id(JObj), wh_doc:revision(JObj)]
+               ),
+    cb_context:add_system_error('bad_identifier'
+                                ,wh_json:from_list([{<<"cause">>, wh_doc:id(JObj)}])
+                                ,Context
+                               );
+handle_successful_load(Context, JObj, 'false') ->
+    lager:debug("loaded doc ~s(~s) from ~s"
+                ,[wh_doc:id(JObj), wh_doc:revision(JObj), cb_context:account_db(Context)]
+               ),
+    cb_context:store(handle_couch_mgr_success(JObj, Context), 'db_doc', JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -177,9 +224,7 @@ load_merge(DocId, DataJObj, Context, 'undefined') ->
     Context1 = load(DocId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            lager:debug("loaded doc ~s(~s), merging"
-                        ,[DocId, wh_json:get_value(<<"_rev">>, cb_context:doc(Context1))]
-                       ),
+            lager:debug("loaded doc ~s(~s), merging", [DocId, wh_doc:revision(cb_context:doc(Context1))]),
             merge(DataJObj, cb_context:doc(Context1), Context1);
         _Status -> Context1
     end;
@@ -191,6 +236,22 @@ load_merge(_DocId, _DataJObj, Context, BypassJObj) ->
 merge(DataJObj, JObj, Context) ->
     PrivJObj = wh_json:private_fields(JObj),
     handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
+
+-type validate_fun() :: fun((ne_binary(), cb_context:context()) -> cb_context:context()).
+
+-spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
+                                cb_context:context().
+patch_and_validate(Id, Context, ValidateFun) ->
+    Context1 = ?MODULE:load(Id, Context),
+    Context2 = case cb_context:resp_status(Context1) of
+                   'success' ->
+                       PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+                       PatchedJObj = wh_json:merge_recursive(cb_context:doc(Context1), PubJObj),
+                       cb_context:set_req_data(Context, PatchedJObj);
+                   _Status ->
+                       Context1
+               end,
+    ValidateFun(Id, Context2).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -237,14 +298,26 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                 ,start_key=StartKey
                                 ,page_size=PageSize
                                 ,filter_fun=FilterFun
-                                ,dbs=lists:filter(fun couch_mgr:db_exists/1, props:get_value('databases', Options, [cb_context:account_db(Context)]))
+                                ,dbs=lists:filter(fun couch_mgr:db_exists/1
+                                                  ,props:get_value('databases', Options, [cb_context:account_db(Context)])
+                                                 )
+                                ,direction=view_sort_direction(Options)
                                }).
+
+-spec view_sort_direction(wh_proplist()) -> direction().
+view_sort_direction(Options) ->
+    case props:get_value('descending', Options) of
+        'true' -> 'descending';
+        'undefined' -> 'ascending'
+    end.
 
 load_view(#load_view_params{dbs=[]
                             ,context=Context
                            }) ->
     case cb_context:resp_status(Context) of
-        'success' -> handle_couch_mgr_success(cb_context:doc(Context), Context);
+        'success' ->
+            lager:debug("databases exhausted"),
+            handle_couch_mgr_success(cb_context:doc(Context), Context);
         _Status -> Context
     end;
 load_view(#load_view_params{page_size=PageSize
@@ -260,24 +333,23 @@ load_view(#load_view_params{view=View
                             ,context=Context
                             ,start_key=StartKey
                             ,page_size=PageSize
-                            ,filter_fun=FilterFun
                             ,dbs=[Db|Dbs]
+                            ,direction=_Direction
                            }=LVPs) ->
-    HasFilter = is_function(FilterFun, 2) orelse has_qs_filter(Context),
     Limit = limit_by_page_size(Context, PageSize),
 
-    lager:debug("limit: ~p page_size: ~p", [Limit, PageSize]),
+    lager:debug("limit: ~p page_size: ~p dir: ~p", [Limit, PageSize, _Direction]),
 
     DefaultOptions =
         props:filter_undefined(
           [{'startkey', StartKey}
            ,{'limit', Limit}
-           | props:delete_keys(['startkey', 'limit'], Options)
+           | props:delete_keys(['startkey', 'limit', 'databases'], Options)
           ]),
 
     IncludeOptions =
-        case HasFilter of
-            'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
+        case has_qs_filter(Context) of
+            'true' -> props:insert_value('include_docs', DefaultOptions);
             'false' -> DefaultOptions
         end,
 
@@ -288,7 +360,16 @@ load_view(#load_view_params{view=View
             _V -> props:delete('include_docs', IncludeOptions)
         end,
 
+    lager:debug("couch_mgr:get_results(~p, ~p, ~p)", [Db, View, ViewOptions]),
+
     case couch_mgr:get_results(Db, View, ViewOptions) of
+        % There were more dbs, so move to the next one
+        {'error', 'not_found'} when Dbs =:= [] ->
+            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
+            crossbar_util:response_missing_view(Context);
+        {'error', 'not_found'} ->
+            lager:debug("either the db ~s or view ~s was not found", [Db, View]),
+            load_view(LVPs#load_view_params{dbs=Dbs});
         {'error', Error} ->
             handle_couch_mgr_errors(Error, View, Context);
         {'ok', JObjs} ->
@@ -298,48 +379,22 @@ load_view(#load_view_params{view=View
                                                 ,cb_context:api_version(Context)
                                                 ,LVPs#load_view_params{dbs=Dbs
                                                                        ,context=cb_context:set_resp_status(Context, 'success')
-                                                                      })
+                                                                      }
+                                               )
     end.
 
--spec limit_by_page_size(api_binary() | pos_integer()) ->
-                                'undefined' | pos_integer().
--spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) ->
-                                'undefined' | pos_integer().
+-spec limit_by_page_size(api_binary() | pos_integer()) -> api_pos_integer().
+-spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) -> api_pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
 
 limit_by_page_size(Context, PageSize) ->
-    case cb_context:api_version(Context) =/= <<"v1">>
-        andalso cb_context:req_value(Context, <<"paginate">>)
-    of
-        'undefined' ->
-            lager:debug("pagination enabled by default, checking filters"),
-            maybe_disable_page_size(Context, PageSize);
+    case cb_context:should_paginate(Context) of
+        'true' -> limit_by_page_size(PageSize);
         'false' ->
-            lager:debug("not enabling pagination"),
-            'undefined';
-        ShouldEnable ->
-            case wh_util:is_true(ShouldEnable) of
-                'true' ->
-                    lager:debug("pagination explicitly enabled, getting page size from ~p", [PageSize]),
-                    limit_by_page_size(PageSize);
-                'false' ->
-                    lager:debug("pagination disabled by request or version"),
-                    'undefined'
-            end
-    end.
-
--spec maybe_disable_page_size(cb_context:context(), pos_integer() | api_binary()) ->
-                                     'undefined' | pos_integer().
-maybe_disable_page_size(Context, PageSize) ->
-    case has_qs_filter(Context) of
-        'true' ->
-            lager:debug("request has a query string filter, disabling pagination"),
-            'undefined';
-        'false' ->
-            lager:debug("no query string filter, getting page size from ~p", [PageSize]),
-            limit_by_page_size(PageSize)
+            lager:debug("pagination disabled in context"),
+            'undefined'
     end.
 
 -spec start_key(cb_context:context()) -> wh_json:json_term() | 'undefined'.
@@ -413,14 +468,7 @@ load_attachment(DocId, AName, Context) when is_binary(DocId) ->
                                 ])
     end;
 load_attachment(Doc, AName, Context) ->
-    load_attachment(find_doc_id(Doc), AName, Context).
-
--spec find_doc_id(wh_json:object()) -> api_binary().
-find_doc_id(JObj) ->
-    case wh_json:get_ne_value(<<"_id">>, JObj) of
-        'undefined' -> wh_json:get_ne_value(<<"id">>, JObj);
-        DocId -> DocId
-    end.
+    load_attachment(wh_doc:id(Doc), AName, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -450,21 +498,23 @@ save(Context, [_|_]=JObjs, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
     case couch_mgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
         {'error', Error} ->
-            IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
+            IDs = [wh_doc:id(JObj) || JObj <- JObjs],
             handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            Context1
     end;
 save(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj0),
+            DocId = wh_doc:id(JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -493,11 +543,12 @@ ensure_saved(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:ensure_saved(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj0),
+            DocId = wh_doc:id(JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -528,7 +579,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                     {'ok', Rev} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
                     lager:debug("looking up rev for ~s: ~s", [DocId, Rev]),
                     [{'rev', Rev} | Options];
-                O -> O
+                _O -> Options
             end,
 
     AName = wh_util:clean_binary(Name),
@@ -537,7 +588,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
         {'error', 'conflict'=Error} ->
             lager:debug("saving attachment resulted in a conflict, checking for validity"),
             Context1 = load(DocId, Context, [{'use_cache', 'false'}]),
-            case wh_json:get_value([<<"_attachments">>, AName], cb_context:doc(Context1)) of
+            case wh_doc:attachment(cb_context:doc(Context1), AName) of
                 'undefined' ->
                     lager:debug("attachment does appear to be missing, reporting error"),
                     _ = maybe_delete_doc(Context, DocId),
@@ -563,7 +614,6 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                         ,[AName, DocId, cb_context:account_db(Context)]
                        ),
             {'ok', Rev1} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-            couch_mgr:flush_cache_doc(cb_context:account_db(Context), DocId),
             cb_context:setters(Context
                                ,[{fun cb_context:set_doc/2, wh_json:new()}
                                  ,{fun cb_context:set_resp_status/2, 'success'}
@@ -572,16 +622,17 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
                                 ])
     end.
 
--spec maybe_delete_doc(cb_context:context(), ne_binary()) -> {'ok', _} | {'error', _}.
+-spec maybe_delete_doc(cb_context:context(), ne_binary()) ->
+                              {'ok', _} |
+                              {'error', any()}.
 maybe_delete_doc(Context, DocId) ->
     AccountDb = cb_context:account_db(Context),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'error', _}=Error -> Error;
         {'ok', JObj} ->
-            Attachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
-            case wh_json:is_empty(Attachments) of
-                'false' -> {'ok', 'non_empty'};
-                'true' -> couch_mgr:del_doc(AccountDb, JObj)
+            case wh_doc:attachments(JObj) of
+                'undefined' -> couch_mgr:del_doc(AccountDb, JObj);
+                _Attachments -> {'ok', 'non_empty'}
             end
     end.
 
@@ -597,37 +648,57 @@ maybe_delete_doc(Context, DocId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context()) -> cb_context:context().
--spec delete(cb_context:context(), 'permanent') -> cb_context:context().
+-spec delete(cb_context:context(), 'permanent' | 'soft') -> cb_context:context().
 
 delete(Context) ->
-    JObj0 = cb_context:doc(Context),
-    JObj1 = wh_json:set_value(<<"pvt_deleted">>, 'true', update_pvt_parameters(JObj0, Context)),
-    case couch_mgr:save_doc(cb_context:account_db(Context), JObj1) of
-        {'error', 'not_found'} -> handle_couch_mgr_success(JObj0, Context);
-        {'error', Error} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj1),
-            handle_couch_mgr_errors(Error, DocId, Context);
-        {'ok', _} ->
-            lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj1)
-                                               ,cb_context:account_db(Context)
-                                              ]),
-            Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
-    end.
+    delete(Context, 'soft').
 
+delete(Context, 'soft') ->
+    Doc = cb_context:doc(Context),
+    case couch_mgr:lookup_doc_rev(cb_context:account_db(Context), wh_doc:id(Doc)) of
+        {'ok', Rev}   -> soft_delete(Context, Rev);
+        {'error', _E} -> soft_delete(Context, wh_doc:revision(Doc))
+    end;
 delete(Context, 'permanent') ->
-    JObj0 = cb_context:doc(Context),
-    case couch_mgr:del_doc(cb_context:account_db(Context), JObj0) of
-        {'error', 'not_found'} -> handle_couch_mgr_success(JObj0, Context);
+    JObj = cb_context:doc(Context),
+    Del = wh_json:from_list([{<<"_id">>, wh_doc:id(JObj)}
+                             ,{<<"_rev">>, wh_doc:revision(JObj)}
+                            ]),
+    do_delete(Context, Del, fun couch_mgr:del_doc/2).
+
+-spec soft_delete(cb_context:context(), api_binary()) -> cb_context:context().
+soft_delete(Context, Rev) ->
+    lager:debug("soft deleting with rev ~s", [Rev]),
+    JObj1 = lists:foldl(fun({F, V}, J) -> F(J, V) end
+                        ,update_pvt_parameters(cb_context:doc(Context), Context)
+                        ,[{fun wh_doc:set_soft_deleted/2, 'true'}
+                          ,{fun wh_doc:set_revision/2, Rev}
+                         ]),
+    do_delete(Context, JObj1, fun couch_mgr:save_doc/2).
+
+-type delete_fun() :: fun((ne_binary(), wh_json:object() | ne_binary()) ->
+                                 {'ok', wh_json:object() | wh_json:objects()} |
+                                 couch_mgr:couchbeam_error()).
+
+-spec do_delete(cb_context:context(), wh_json:object(), delete_fun()) ->
+                       cb_context:context().
+do_delete(Context, JObj, CouchFun) ->
+    case CouchFun(cb_context:account_db(Context), JObj) of
+        {'error', 'not_found'} ->
+            lager:debug("doc ~s wasn't found in ~s, not deleting"
+                        ,[wh_doc:id(JObj), cb_context:account_db(Context)]
+                       ),
+            handle_couch_mgr_success(JObj, Context);
         {'error', Error} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj0),
+            DocId = wh_doc:id(JObj),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', _} ->
-            lager:debug("permanently deleted ~s from ~s"
-                        ,[wh_json:get_value(<<"_id">>, JObj0), cb_context:account_db(Context)]
+            lager:debug("'deleted' ~s from ~s"
+                        ,[wh_doc:id(JObj), cb_context:account_db(Context)]
                        ),
-            Context1 = handle_couch_mgr_success(JObj0, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
+            Context1 = handle_couch_mgr_success(JObj, Context),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
+            Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -667,7 +738,7 @@ rev_to_etag([_|_])-> 'automatic';
 rev_to_etag([]) -> 'undefined';
 rev_to_etag(Rev) when is_binary(Rev) -> wh_util:to_list(Rev);
 rev_to_etag(JObj) ->
-    case wh_json:get_value(<<"_rev">>, JObj) of
+    case wh_doc:revision(JObj) of
         'undefined' -> 'undefined';
         Rev -> wh_util:to_list(Rev)
     end.
@@ -678,15 +749,42 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined') ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined') ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
-    update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
+    update_pagination_envelope_params(Context
+                                      ,StartKey
+                                      ,PageSize
+                                      ,'undefined'
+                                      ,cb_context:should_paginate(Context)
+                                     ).
 
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary()) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined', api_binary()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
-    CurrentPageSize = wh_json:get_value(<<"page_size">>, cb_context:resp_envelope(Context), 0),
+    update_pagination_envelope_params(Context
+                                      ,StartKey
+                                      ,PageSize
+                                      ,NextStartKey
+                                      ,cb_context:should_paginate(Context)
+                                     ).
+
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined', api_binary(), boolean()) ->
+                                               cb_context:context().
+update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
+    lager:debug("pagination disabled, removing resp envelope keys"),
+    cb_context:set_resp_envelope(Context
+                                 ,wh_json:delete_keys(
+                                    [<<"start_key">>
+                                     ,<<"page_size">>
+                                     ,<<"next_start_key">>
+                                    ]
+                                    ,cb_context:resp_envelope(Context)
+                                   )
+                                );
+update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey, 'true') ->
+    RespEnvelope = cb_context:resp_envelope(Context),
+    CurrentPageSize = wh_json:get_integer_value(<<"page_size">>, RespEnvelope, 0),
     cb_context:set_resp_envelope(Context
                                  ,wh_json:set_values(
                                     props:filter_undefined(
@@ -694,21 +792,23 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                        ,{<<"page_size">>, PageSize + CurrentPageSize}
                                        ,{<<"next_start_key">>, NextStartKey}
                                       ])
-                                    ,cb_context:resp_envelope(Context)
-                                   )).
+                                    ,RespEnvelope
+                                   )
+                                ).
 
 -spec handle_couch_mgr_pagination_success(wh_json:objects(), pos_integer() | 'undefined', ne_binary(), load_view_params()) ->
                                                  cb_context:context().
 handle_couch_mgr_pagination_success(JObjs
                                     ,_PageSize
-                                    ,<<"v1">>
+                                    ,?VERSION_1
                                     ,#load_view_params{context=Context
                                                        ,filter_fun=FilterFun
+                                                       ,direction=Direction
                                                       }=LVPs
                                    ) ->
     load_view(LVPs#load_view_params{
                 context=cb_context:set_doc(Context
-                                           ,apply_filter(FilterFun, JObjs, Context)
+                                           ,apply_filter(FilterFun, JObjs, Context, Direction)
                                            ++ cb_context:doc(Context)
                                           )
                });
@@ -729,9 +829,10 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                                                        ,start_key=StartKey
                                                        ,filter_fun=FilterFun
                                                        ,page_size=PageSize
+                                                       ,direction=Direction
                                                       }=LVPs
                                    ) ->
-    Filtered = apply_filter(FilterFun, JObjs, Context),
+    Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
     FilteredCount = length(Filtered),
 
     load_view(LVPs#load_view_params{context=
@@ -749,11 +850,12 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                                     ,#load_view_params{context=Context
                                                        ,start_key=StartKey
                                                        ,filter_fun=FilterFun
+                                                       ,direction=Direction
                                                       }=LVPs
                                    ) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
-            Filtered = apply_filter(FilterFun, Results, Context),
+            Filtered = apply_filter(FilterFun, Results, Context, Direction),
 
             load_view(LVPs#load_view_params{
                         context=
@@ -765,7 +867,7 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                        });
         {Results, [NextJObj]} ->
             NextStartKey = wh_json:get_value(<<"key">>, NextJObj),
-            Filtered = apply_filter(FilterFun, Results, Context),
+            Filtered = apply_filter(FilterFun, Results, Context, Direction),
             lager:debug("next start key: ~p", [NextStartKey]),
 
             load_view(LVPs#load_view_params{
@@ -778,7 +880,7 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                        })
     catch
         'error':'badarg' ->
-            Filtered = apply_filter(FilterFun, JObjs, Context),
+            Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
             FilteredCount = length(Filtered),
 
             lager:debug("recv less than ~p results: ~p", [PageSize, FilteredCount]),
@@ -795,21 +897,29 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
 
 -type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
 
--spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context()) ->
+-spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context(), direction()) ->
                           wh_json:objects().
--spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context(), boolean()) ->
+-spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context(), direction(), boolean()) ->
                           wh_json:objects().
-apply_filter(FilterFun, JObjs, Context) ->
-    apply_filter(FilterFun, JObjs, Context, has_qs_filter(Context)).
+apply_filter(FilterFun, JObjs, Context, Direction) ->
+    apply_filter(FilterFun, JObjs, Context, Direction, has_qs_filter(Context)).
 
-apply_filter(FilterFun, JObjs, Context, HasQSFilter) ->
-    lager:debug("applying filter fun ~p and maybe qs filter: ~p", [FilterFun, HasQSFilter]),
+apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
+    lager:debug("applying filter fun: ~p, qs filter: ~p to dir ~p", [FilterFun, HasQSFilter, Direction]),
 
-    maybe_apply_custom_filter(FilterFun
-                              ,[JObj
-                                || JObj <- JObjs,
-                                   filtered_doc_by_qs(JObj, HasQSFilter, Context)
-                               ]).
+    Filtered =
+        maybe_apply_custom_filter(FilterFun
+                                  ,[JObj
+                                    || JObj <- JObjs,
+                                       filtered_doc_by_qs(JObj, HasQSFilter, Context)
+                                   ]),
+    lager:debug("filter resulted in ~p out of ~p objects"
+                ,[length(Filtered), length(JObjs)]
+               ),
+    case Direction of
+        'ascending' -> Filtered;
+        'descending' -> lists:reverse(Filtered)
+    end.
 
 -spec maybe_apply_custom_filter('undefined' | filter_fun(), wh_json:objects()) -> wh_json:objects().
 maybe_apply_custom_filter('undefined', JObjs) -> JObjs;
@@ -837,6 +947,7 @@ handle_couch_mgr_success([], Context) ->
                   ,{fun cb_context:set_resp_status/2, 'success'}
                   ,{fun cb_context:set_resp_data/2, []}
                   ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                  | version_specific_success([], Context)
                  ]);
 handle_couch_mgr_success([JObj|_]=JObjs, Context) ->
     case wh_json:is_json_object(JObj) of
@@ -858,13 +969,19 @@ handle_thing_success(Thing, Context) ->
                          ,{fun cb_context:set_resp_etag/2, 'undefined'}
                         ]).
 
--spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
-handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
+-spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context()) ->
+                                 cb_context:context().
+-spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context(), http_method()) ->
+                                 cb_context:context().
+handle_json_success(JObj, Context) ->
+    handle_json_success(JObj, Context, cb_context:req_verb(Context)).
+
+handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
-                   wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
+                   not wh_doc:is_soft_deleted(JObj)
                ],
-    RespHeaders = [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
+    RespHeaders = [{<<"Location">>, wh_doc:id(JObj)}
                    || JObj <- JObjs
                   ] ++ cb_context:resp_headers(Context),
     cb_context:setters(Context
@@ -874,19 +991,20 @@ handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
                          ,{fun cb_context:set_resp_headers/2, RespHeaders}
                         ]);
-handle_json_success([_|_]=JObjs, Context) ->
+handle_json_success([_|_]=JObjs, Context, _Verb) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
-                   wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
+                   not wh_doc:is_soft_deleted(JObj)
                ],
     cb_context:setters(Context
                        ,[{fun cb_context:set_doc/2, JObjs}
                          ,{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, RespData}
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
+                         | version_specific_success(JObjs, Context)
                         ]);
-handle_json_success(JObj, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    RespHeaders = [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
+handle_json_success(JObj, Context, ?HTTP_PUT) ->
+    RespHeaders = [{<<"Location">>, wh_doc:id(JObj)}
                    | cb_context:resp_headers(Context)
                   ],
     cb_context:setters(Context
@@ -896,13 +1014,24 @@ handle_json_success(JObj, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                          ,{fun cb_context:set_resp_headers/2, RespHeaders}
                         ]);
-handle_json_success(JObj, Context) ->
+handle_json_success(JObj, Context, _Verb) ->
     cb_context:setters(Context
                        ,[{fun cb_context:set_doc/2, JObj}
                          ,{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                         ]).
+
+-spec version_specific_success(wh_json:objects(), cb_context:context()) -> list().
+version_specific_success(JObjs, Context) ->
+    version_specific_success(JObjs, Context, cb_context:api_version(Context)).
+version_specific_success(_JObjs, _Context, ?VERSION_1) ->
+    [];
+version_specific_success(JObjs, Context, _Version) ->
+    [{fun cb_context:set_resp_envelope/2
+      ,wh_json:set_value(<<"page_size">>, length(JObjs), cb_context:resp_envelope(Context))
+     }
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -911,26 +1040,26 @@ handle_json_success(JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_couch_mgr_errors(couch_util:couchbeam_errors(), api_binary() | api_binaries(), cb_context:context()) ->
-                                           cb_context:context().
+                                     cb_context:context().
 handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),
-    cb_context:add_system_error('datastore_missing', [{'details', cb_context:account_db(Context)}], Context);
+    cb_context:add_system_error('datastore_missing', wh_json:from_list([{<<"cause">>, cb_context:account_db(Context)}]), Context);
 handle_couch_mgr_errors('db_not_reachable', _DocId, Context) ->
     lager:debug("operation on doc ~s from ~s failed: db_not_reachable", [_DocId, cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_unreachable', Context);
 handle_couch_mgr_errors('not_found', DocId, Context) ->
     lager:debug("operation on doc ~s from ~s failed: not_found", [DocId, cb_context:account_db(Context)]),
-    cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);
+    cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, DocId}]),  Context);
 handle_couch_mgr_errors('conflict', DocId, Context) ->
     lager:debug("failed to update doc ~s in ~s: conflicts", [DocId, cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_conflict', Context);
 handle_couch_mgr_errors('invalid_view_name', View, Context) ->
     lager:debug("loading view ~s from ~s failed: invalid view", [View, cb_context:account_db(Context)]),
-    cb_context:add_system_error('datastore_missing_view', [{'details', wh_util:to_binary(View)}], Context);
+    cb_context:add_system_error('datastore_missing_view', wh_json:from_list([{<<"cause">>, wh_util:to_binary(View)}]), Context);
 handle_couch_mgr_errors(Else, _View, Context) ->
     lager:debug("operation failed: ~p on ~p", [Else, _View]),
     try wh_util:to_binary(Else) of
-        Reason -> cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
+        Reason -> cb_context:add_system_error('datastore_fault', wh_json:from_list([{<<"cause">>, Reason}]), Context)
     catch
         _:_ -> cb_context:add_system_error('datastore_fault', Context)
     end.
@@ -947,50 +1076,83 @@ handle_couch_mgr_errors(Else, _View, Context) ->
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, Context) ->
-    lists:foldl(fun(Fun, JObj) -> Fun(JObj, Context) end, JObj0, ?PVT_FUNS).
+    lists:foldl(fun(Fun, JObj) ->
+                        apply_pvt_fun(Fun, JObj, Context)
+                end
+                ,JObj0
+                ,?PVT_FUNS
+               ).
+
+-type pvt_fun() :: fun((wh_json:object(), cb_context:context()) -> wh_json:object()).
+-spec apply_pvt_fun(pvt_fun(), wh_json:object(), cb_context:context()) ->
+                           wh_json:object().
+apply_pvt_fun(Fun, JObj, Context) ->
+    Fun(JObj, Context).
 
 -spec add_pvt_vsn(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_vsn(JObj, _) ->
-    case wh_json:get_value(<<"pvt_vsn">>, JObj) of
-        'undefined' -> wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj);
+    case wh_doc:vsn(JObj) of
+        'undefined' -> wh_doc:set_vsn(JObj, ?CROSSBAR_DOC_VSN);
         _ -> JObj
     end.
 
 -spec add_pvt_account_db(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_account_db(JObj, Context) ->
-    case wh_json:get_value(<<"pvt_account_db">>, JObj) of
+    case wh_doc:account_db(JObj) of
         'undefined' ->
-            wh_json:set_value(<<"pvt_account_db">>, cb_context:account_db(Context), JObj);
+            case cb_context:account_db(Context) of
+                'undefined' -> JObj;
+                AccountDb -> wh_doc:set_account_db(JObj, AccountDb)
+            end;
         _Else -> JObj
     end.
 
 -spec add_pvt_account_id(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_account_id(JObj, Context) ->
-    case wh_json:get_value(<<"pvt_account_id">>, JObj) of
+    case wh_doc:account_id(JObj) of
         'undefined' ->
-            wh_json:set_value(<<"pvt_account_id">>, cb_context:account_id(Context), JObj);
+            case cb_context:account_id(Context) of
+                'undefined' -> JObj;
+                AccountId -> wh_doc:set_account_id(JObj, AccountId)
+            end;
         _Else -> JObj
     end.
 
 -spec add_pvt_created(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_created(JObj, _) ->
-    case wh_json:get_value(<<"_rev">>, JObj) of
+    case wh_doc:revision(JObj) of
         'undefined' ->
             Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-            wh_json:set_value(<<"pvt_created">>, Timestamp, JObj);
+            wh_doc:set_created(JObj, Timestamp);
         _ ->
             JObj
     end.
 
--spec add_pvt_modified(wh_json:object(), cb_context:context()) -> wh_json:object().
+-spec add_pvt_modified(wh_json:object(), cb_context:context()) ->
+                              wh_json:object().
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
+    wh_doc:set_modified(JObj, Timestamp).
 
--spec add_pvt_request_id(wh_json:object(), cb_context:context()) -> wh_json:object().
+-spec add_pvt_request_id(wh_json:object(), cb_context:context()) ->
+                                wh_json:object().
 add_pvt_request_id(JObj, Context) ->
     RequestId = cb_context:req_id(Context),
     wh_json:set_value(<<"pvt_request_id">>, RequestId, JObj).
+
+-spec add_pvt_auth(wh_json:object(), cb_context:context()) ->
+                          wh_json:object().
+add_pvt_auth(JObj, Context) ->
+    case cb_context:is_authenticated(Context) of
+        'false' -> wh_json:set_value(<<"pvt_is_authenticated">>, 'false', JObj);
+        'true' ->
+            Values = props:filter_undefined(
+                       [{<<"pvt_is_authenticated">>, 'true'}
+                        ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
+                        ,{<<"pvt_auth_user_id">>, cb_context:auth_user_id(Context)}
+                       ]),
+            wh_json:set_values(Values, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1011,7 +1173,9 @@ extract_included_docs(JObjs) ->
 %%--------------------------------------------------------------------
 -spec has_qs_filter(cb_context:context()) -> boolean().
 has_qs_filter(Context) ->
-    lists:any(fun is_filter_key/1, wh_json:to_proplist(cb_context:query_string(Context))).
+    wh_json:any(fun is_filter_key/1
+                ,cb_context:query_string(Context)
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1020,7 +1184,7 @@ has_qs_filter(Context) ->
 %% represents a filter parameter
 %% @end
 %%--------------------------------------------------------------------
--spec is_filter_key({binary(), term()}) -> boolean().
+-spec is_filter_key({binary(), any()}) -> boolean().
 is_filter_key({<<"filter_", _/binary>>, _}) -> 'true';
 is_filter_key({<<"has_key", _/binary>>, _}) -> 'true';
 is_filter_key({<<"key_missing", _/binary>>, _}) -> 'true';
@@ -1038,17 +1202,30 @@ is_filter_key(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_doc(api_object(), cb_context:context()) -> boolean().
-filter_doc('undefined', _Context) -> 'true';
+filter_doc('undefined', _Context) ->
+    lager:debug("no doc was returned (no include_docs?)"),
+    'true';
 filter_doc(Doc, Context) ->
+    filter_doc_by_querystring(Doc, cb_context:query_string(Context)).
+
+-spec filter_doc_by_querystring(wh_json:object(), wh_json:object()) -> boolean().
+filter_doc_by_querystring(Doc, QueryString) ->
     wh_json:all(fun({K, V}) ->
-                        try filter_prop(Doc, K, V) of
-                            Bool -> Bool
-                        catch
-                            _E:_R -> 'false'
-                        end
+                        should_filter_doc(Doc, K, V)
                 end
-                ,cb_context:query_string(Context)
+                ,QueryString
                ).
+
+-spec should_filter_doc(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
+should_filter_doc(Doc, K, V) ->
+    try filter_prop(Doc, K, V) of
+        'undefined' -> 'true';
+        Bool -> Bool
+    catch
+        _E:_R ->
+            lager:debug("failed to process filter ~s: ~s:~p", [K, _E, _R]),
+            'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1056,25 +1233,51 @@ filter_doc(Doc, Context) ->
 %% Returns 'true' or 'false' if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop(wh_json:object(), ne_binary(), term()) -> boolean().
+-spec filter_prop(wh_json:object(), ne_binary(), any()) -> api_boolean().
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
-    not (wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val));
+    not should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
-    wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val);
+    should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"has_key">>, Key) ->
-    wh_json:get_value(binary:split(Key, <<".">>), Doc) =/= 'undefined';
+    has_key(Doc, Key);
 filter_prop(Doc, <<"key_missing">>, Key) ->
-    wh_json:get_value(binary:split(Key, <<".">>), Doc) =:= 'undefined';
+    not has_key(Doc, Key);
 filter_prop(Doc, <<"has_value">>, Key) ->
-    wh_json:get_ne_value(binary:split(Key, <<".">>), Doc) =/= 'undefined';
+    has_value(Doc, Key);
 filter_prop(Doc, <<"created_from">>, Val) ->
-    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= wh_util:to_integer(Val);
+    lowerbound(wh_doc:created(Doc), wh_util:to_integer(Val));
 filter_prop(Doc, <<"created_to">>, Val) ->
-    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) =< wh_util:to_integer(Val);
+    upperbound(wh_doc:created(Doc), wh_util:to_integer(Val));
 filter_prop(Doc, <<"modified_from">>, Val) ->
-    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) >= wh_util:to_integer(Val);
+    lowerbound(wh_doc:modified(Doc), wh_util:to_integer(Val));
 filter_prop(Doc, <<"modified_to">>, Val) ->
-    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< wh_util:to_integer(Val);
+    upperbound(wh_doc:modified(Doc), wh_util:to_integer(Val));
 filter_prop(_, _, _) ->
-    'true'.
-%% ADD Unit Tests for private/public field filtering and merging
+    'undefined'.
+
+-spec upperbound(integer(), integer()) -> boolean().
+upperbound(DocTimestamp, QSTimestamp) ->
+    QSTimestamp >= DocTimestamp.
+
+-spec lowerbound(integer(), integer()) -> boolean().
+lowerbound(DocTimestamp, QSTimestamp) ->
+    QSTimestamp =< DocTimestamp.
+
+-spec should_filter(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
+should_filter(Doc, Key, Val) ->
+    Keys = binary_key_to_json_key(Key),
+    wh_json:get_binary_value(Keys, Doc, <<>>) =:= wh_util:to_binary(Val).
+
+-spec has_key(wh_json:object(), ne_binary()) -> boolean().
+has_key(Doc, Key) ->
+    Keys = binary_key_to_json_key(Key),
+    wh_json:get_value(Keys, Doc) =/= 'undefined'.
+
+-spec has_value(wh_json:object(), ne_binary()) -> boolean().
+has_value(Doc, Key) ->
+    Keys = binary_key_to_json_key(Key),
+    wh_json:get_ne_value(Keys, Doc) =/= 'undefined'.
+
+-spec binary_key_to_json_key(ne_binary()) -> ne_binaries().
+binary_key_to_json_key(Key) ->
+    binary:split(Key, <<".">>, ['global']).

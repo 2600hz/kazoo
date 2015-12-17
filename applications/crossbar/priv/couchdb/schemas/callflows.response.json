@@ -1,27 +1,27 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.response",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": true,
     "description": "Validator for the Response callflow action",
     "properties": {
         "code": {
-            "type": "string",
-            "required": true,
+            "description": "The SIP Hangup code to respond with",
             "name": "Code",
-            "description": "The SIP Hangup code to respond with"
+            "required": true,
+            "type": "integer"
         },
-        "message":{
-            "type":"string",
-            "required":false,
-            "name":"Message",
-            "description":"The SIP Hangup cause to respond with"
+        "media": {
+            "description": "Optional media file to play before responding with the hangup code/cause",
+            "name": "Media",
+            "required": false,
+            "type": "string"
         },
-        "media":{
-            "type":"string",
-            "required":false,
-            "name":"Media",
-            "description":"Optional media file to play before responding with the hangup code/cause"
+        "message": {
+            "description": "The SIP Hangup cause to respond with",
+            "name": "Message",
+            "required": false,
+            "type": "string"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

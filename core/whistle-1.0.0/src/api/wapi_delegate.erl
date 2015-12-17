@@ -99,8 +99,10 @@ declare_exchanges() ->
 -spec publish_delegate(ne_binary(), api_terms(), maybe_key(), binary()) -> 'ok'.
 publish_delegate(TargetApp, API) ->
     publish_delegate(TargetApp, API, 'undefined').
+
 publish_delegate(TargetApp, API, Key) ->
     publish_delegate(TargetApp, API, Key, ?DEFAULT_CONTENT_TYPE).
+
 publish_delegate(<<_/binary>> = TargetApp, API, 'undefined', ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?DELEGATE_VALUES, fun ?MODULE:delegate/1),
     amqp_util:whapps_publish(?DELEGATE_ROUTING_KEY(TargetApp), Payload, ContentType);

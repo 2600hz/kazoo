@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action":"logout" | "login" | "toggle" | "bridge"
@@ -52,12 +52,12 @@ handle(Data, Call) ->
 
 hotdesk_id(Data, <<"logout">>, Call) ->
     case cf_attributes:owner_ids(whapps_call:authorizing_id(Call), Call) of
-        [] -> wh_json:get_value(<<"id">>, Data);
-        [Id] -> wh_json:get_value(<<"id">>, Data, Id);
-        [_|_] -> wh_json:get_value(<<"id">>, Data)
+        [] -> wh_doc:id(Data);
+        [Id] -> wh_doc:id(Data, Id);
+        [_|_] -> wh_doc:id(Data)
     end;
 hotdesk_id(Data, _, _) ->
-    wh_json:get_value(<<"id">>, Data).
+    wh_doc:id(Data).
 
 -spec handle_action(ne_binary(), hotdesk(), whapps_call:call()) -> 'ok'.
 handle_action(<<"bridge">>, #hotdesk{enabled='false'}, Call) ->
@@ -77,11 +77,11 @@ handle_action(<<"bridge">>, Hotdesk, Call) ->
             cf_exe:continue(Call)
     end;
 handle_action(<<"login">>, Hotdesk, Call) ->
-    login(Hotdesk, Call),
+    _ = login(Hotdesk, Call),
     cf_exe:continue(Call);
 handle_action(<<"logout">>, Hotdesk, Call) ->
     whapps_call_command:answer(Call),
-    logout(Hotdesk, Call),
+    _ = logout(Hotdesk, Call),
     cf_exe:continue(Call);
 handle_action(<<"toggle">>, #hotdesk{endpoint_ids=[]}=Hotdesk, Call) ->
     handle_action(<<"login">>, Hotdesk, Call);
@@ -97,7 +97,7 @@ handle_action(<<"toggle">>, Hotdesk, Call) ->
 -spec bridge_to_endpoints(hotdesk(), whapps_call:call()) ->
                                  {'ok', wh_json:object()} |
                                  {'fail', wh_json:object()} |
-                                 {'error', _}.
+                                 {'error', any()}.
 
 bridge_to_endpoints(#hotdesk{endpoint_ids=EndpointIds}, Call) ->
     Endpoints = build_endpoints(EndpointIds, Call),
@@ -268,7 +268,7 @@ logged_out(_, Call) ->
 %%--------------------------------------------------------------------
 -spec get_hotdesk_profile(api_binary(), wh_json:object(), whapps_call:call()) ->
                                  hotdesk() |
-                                 {'error', _}.
+                                 {'error', any()}.
 get_hotdesk_profile('undefined', Data, Call) ->
     find_hotdesk_profile(Call, Data, ?MAX_LOGIN_ATTEMPTS, 1);
 get_hotdesk_profile(OwnerId, Data, Call) ->
@@ -283,7 +283,7 @@ get_hotdesk_profile(OwnerId, Data, Call) ->
 
 -spec find_hotdesk_profile(whapps_call:call(), wh_json:object(), pos_integer(), pos_integer()) ->
                                   hotdesk() |
-                                  {'error', _}.
+                                  {'error', any()}.
 find_hotdesk_profile(Call, _Data, Max, Loop) when Loop > Max ->
     lager:info("too many failed attempts to get the hotdesk id"),
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
@@ -317,7 +317,7 @@ find_hotdesk_profile(Call, Data, Max, Loop) ->
 
 -spec lookup_hotdesk_id(ne_binary(), wh_json:object(), whapps_call:call()) ->
                                hotdesk() |
-                               {'error', _}.
+                               {'error', any()}.
 lookup_hotdesk_id(HotdeskId, Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{'key', HotdeskId}
@@ -335,10 +335,10 @@ lookup_hotdesk_id(HotdeskId, Data, Call) ->
 
 -spec from_json(wh_json:object(), wh_json:object(), whapps_call:call()) -> hotdesk().
 from_json(JObj, Data, Call) ->
-    OwnerId = wh_json:get_value(<<"_id">>, JObj),
+    OwnerId = wh_doc:id(JObj),
     Hotdesk =  wh_json:get_value(<<"hotdesk">>, JObj),
     lager:info("creating hotdesk profile from ~s", [OwnerId]),
-    #hotdesk{hotdesk_id = wh_json:get_value(<<"id">>, Hotdesk)
+    #hotdesk{hotdesk_id = wh_doc:id(Hotdesk)
              ,enabled = wh_json:is_true(<<"enabled">>, Hotdesk)
              ,pin = wh_json:get_binary_value(<<"pin">>, Hotdesk)
              ,require_pin = wh_json:is_true(<<"require_pin">>, Hotdesk)
@@ -371,7 +371,7 @@ update_hotdesk_endpoint(AccountDb, EndpointId, Fun) when is_binary(EndpointId) -
             E
     end;
 update_hotdesk_endpoint(AccountDb, JObj, Fun) ->
-    EndpointId = wh_json:get_value(<<"_id">>, JObj),
+    EndpointId = wh_doc:id(JObj),
     case couch_mgr:save_doc(AccountDb, Fun(JObj)) of
         {'ok', _}=Ok ->
             _ = cf_util:unsolicited_endpoint_mwi_update(AccountDb, EndpointId),
@@ -389,7 +389,7 @@ get_endpoint_ids(OwnerId, Call) ->
     ViewOptions = [{'key', OwnerId}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_users">>, ViewOptions) of
         {'ok', JObjs} ->
-            [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs];
+            [wh_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to fetch endpoints used by ~s: ~p", [OwnerId, _R]),
             []

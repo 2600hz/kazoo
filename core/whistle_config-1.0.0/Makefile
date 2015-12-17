@@ -1,16 +1,11 @@
 PROJECT = whistle_config
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
-DIALYZER = dialyzer
 
-EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
+EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
- ERLC_OPTS = -Werror +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
-         # +bin_opt_info
-
-DIRS = . \
-	$(ROOT)/core/whistle-1.0.0
+ERLC_OPTS += -Werror +debug_info +warn_export_all $(PA)
 
 .PHONY: all compile clean
 
@@ -36,23 +31,16 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
-	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
+clean-test:
+	rm -f test/*.beam test/$(PROJECT).app
 
-test: clean compile-test eunit
+test: clean-test compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test $(PA) -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
-
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
-
-dialyze: 
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) $(PA) \
-                --plt $(ROOT)/.platform_dialyzer.plt --no_native \
+	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."

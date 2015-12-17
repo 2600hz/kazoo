@@ -1,59 +1,59 @@
 {
-  "_id": "limits",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Limits",
-  "description": "Limit an account's ability to place concurrent calls using flat rate trunks",
-  "properties": {
-    "twoway_trunks": {
-      "type": "integer",
-      "required": false,
-      "name": "Twoway Trunks",
-      "description": "The number of two-way, flat-rate trunks",
-      "minimum": 0
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "limits",
+    "description": "Limit an account's ability to place concurrent calls using flat rate trunks",
+    "name": "Limits",
+    "properties": {
+        "allow_prepay": {
+            "default": true,
+            "description": "Determines if the account would like to allow per-minute calls if they have credit",
+            "name": "Allow Prepay",
+            "required": false,
+            "type": "boolean"
+        },
+        "burst_trunks": {
+            "description": "The number of two-way, flat-rate trunks used only if no other trunks are available",
+            "minimum": 0,
+            "name": "Burst Trunks",
+            "required": false,
+            "type": "integer"
+        },
+        "calls": {
+            "description": "A hard limit for the total number calls",
+            "minimum": 0,
+            "name": "Calls",
+            "required": false,
+            "type": "integer"
+        },
+        "inbound_trunks": {
+            "description": "The number of inbound, flat-rate trunks",
+            "minimum": 0,
+            "name": "Inbound Trunks",
+            "required": false,
+            "type": "integer"
+        },
+        "outbound_trunks": {
+            "description": "The number of outbound, flat-rate trunks",
+            "minimum": 0,
+            "name": "Outbound Trunks",
+            "required": false,
+            "type": "integer"
+        },
+        "resource_consuming_calls": {
+            "description": "A hard limit for the number of resource consuming calls",
+            "minimum": 0,
+            "name": "Resource Consuming Calls",
+            "required": false,
+            "type": "integer"
+        },
+        "twoway_trunks": {
+            "description": "The number of two-way, flat-rate trunks",
+            "minimum": 0,
+            "name": "Twoway Trunks",
+            "required": false,
+            "type": "integer"
+        }
     },
-    "inbound_trunks": {
-      "type": "integer",
-      "required": false,
-      "name": "Inbound Trunks",
-      "description": "The number of indbound, flat-rate trunks",
-      "minimum": 0
-    },
-    "outbound_trunks": {
-      "type": "integer",
-      "required": false,
-      "name": "Outbound Trunks",
-      "description": "The number of outbound, flat-rate trunks",
-      "minimum": 0
-    },
-    "burst_trunks": {
-      "type": "integer",
-      "required": false,
-      "name": "Burst Trunks",
-      "description": "The number of two-way, flat-rate trunks used only if no other trunks are available",
-      "minimum": 0
-    },
-    "resource_consuming_calls": {
-      "type": "integer",
-      "required": false,
-      "name": "Resource Consuming Calls",
-      "description": "A hard limit for the number of resource consuming calls",
-      "minimum": 0
-    },
-    "calls": {
-      "type": "integer",
-      "required": false,
-      "name": "Calls",
-      "description": "A hard limit for the total number calls",
-      "minimum": 0
-    },
-    "allow_prepay": {
-      "type": "boolean",
-      "required": false,
-      "name": "Allow Prepay",
-      "description": "Determines if the account would like to all per-minute calls if they have credit",
-      "default": true
-    }
-  }
+    "required": true,
+    "type": "object"
 }

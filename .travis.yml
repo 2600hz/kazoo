@@ -1,18 +1,43 @@
 language: erlang
 notifications:
-  email: 
+  email:
     - engineering@2600hz.com
     - operations@2600hz.com
-  irc: 
-    channels: 
+  irc:
+    channels:
       - "irc.freenode.org#2600hz-dev"
+
 otp_release:
-  - R16B
+  - 18.1
+  - 17.5
   - R15B03
-  - R15B02
-  - R15B01
-  - R15B
+
+addons:
+  apt:
+    packages:
+      - xsltproc
+
+cache:
+  directories:
+    - $HOME/proper
+
+sudo: false
+
 before_install:
-    - sudo apt-get install -qq xsltproc
-script: "make compile"
-after script: "make eunit"
+  - set -e
+  - if [[ ! -d $HOME/proper/.git/ ]]; then git clone --depth=50 --branch=master https://github.com/manopapad/proper.git $HOME/proper && cd $HOME/proper && make fast; fi
+  - cd $TRAVIS_BUILD_DIR
+  - if [[ $TRAVIS_OTP_RELEASE =~ ^1  ]]; then ERLC_OPTS="$ERLC_OPTS +nowarn_deprecated_type +nowarn_deprecated_function"; fi
+  - if [[ $TRAVIS_OTP_RELEASE =~ ^18 ]]; then ERLC_OPTS="$ERLC_OPTS -DOTP_AT_LEAST_18"; fi
+
+script: ERLC_OPTS="$ERLC_OPTS" make compile
+
+after_success:
+  - if [[ 0 -ne `git status --porcelain -- applications/ core/ | wc -l` ]]; then echo Unstaged changes! && git status --porcelain && exit 1; fi
+  - make xref
+  - make build-plt
+  - git fetch origin master:master
+  - files="$(git diff --name-only master... | grep -v deps/)" || true
+  - ./scripts/check-dialyzer.escript $files
+  - ERL_LIBS="$HOME/proper" ERLC_OPTS="$ERLC_OPTS" make eunit
+  - ./scripts/check-whitespace.sh core/ applications/

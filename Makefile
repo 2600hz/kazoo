@@ -1,15 +1,13 @@
 ROOT = .
-DIALYZER = dialyzer
+
+KAZOODIRS = core/Makefile \
+	    applications/Makefile
 
 MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-DIRS = $(ROOT)/core/whistle-1.0.0 \
-	   $(ROOT)/core/whistle_amqp-1.0.0 \
-	   $(ROOT)/core/whistle_apps-1.0.0
-
-.PHONY: $(MAKEDIRS)
+.PHONY: $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo
 
 all : compile
 
@@ -19,30 +17,63 @@ compile: $(MAKEDIRS)
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
 
-deps : ACTION = get-deps
-deps : $(MAKEDIRS)
-
-clean : ACTION = clean
-clean : $(MAKEDIRS)
-	rm -f test/*.beam
+clean: ACTION = clean
+clean: $(MAKEDIRS)
 	rm -f *crash.dump
+	rm -rf scripts/log/*
 
-test : clean app eunit
+clean-test : ACTION = clean-test
+clean-test : $(KAZOODIRS)
 
-eunit :
-	@$(REBAR) eunit skip_deps=true
+eunit: ACTION = test
+eunit: $(KAZOODIRS)
 
-build-plt :
-	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps erts kernel stdlib crypto public_key ssl
+proper: ACTION = test
+proper: ERLC_OPTS += -DPROPER
+proper: $(KAZOODIRS)
 
-dialyze :
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-                --plt $(ROOT)/.platform_dialyzer.plt --no_native \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
+test: ACTION = test
+test: ERLC_OPTS += -DPROPER
+test: $(KAZOODIRS)
 
-docs:
-	@$(REBAR) doc skip_deps=true
+core:
+	$(MAKE) -C core all
+deps:
+	$(MAKE) -C deps all
+apps:
+	$(MAKE) -C applications all
 
-update:
-	./bin/git_update.sh
+kazoo: core apps
+
+DIALYZER ?= dialyzer
+PLT ?= $(ROOT)/.kazoo.plt
+$(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src  -print)
+# $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin -print)
+$(PLT):
+	@$(DIALYZER) --no_native --build_plt --output_plt $(PLT) \
+	    --apps erts kernel stdlib crypto public_key ssl \
+	    -r $(DEPS_SRCS)
+	@for ebin in $(CORE_EBINS); do \
+	    $(DIALYZER) --no_native --add_to_plt --plt $(PLT) --output_plt $(PLT) -r $$ebin; \
+	done
+build-plt: $(PLT)
+
+dialyze-kazoo: TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin -print) $(shell find $(ROOT)/core -name ebin -print)
+dialyze-kazoo: dialyze
+dialyze-apps:  TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin -print)
+dialyze-apps: dialyze
+dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin -print)
+dialyze-core: dialyze
+dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin -print)
+dialyze: $(PLT)
+	@$(ROOT)/scripts/check-dialyzer.escript $(TO_DIALYZE)
+
+xref: EBINS = $(shell find $(ROOT) -name ebin -print)
+xref:
+	@$(ROOT)/scripts/check-xref.escript $(EBINS)
+
+sup_completion: sup_completion_file = $(ROOT)/sup.bash
+sup_completion: kazoo
+	@$(if $(wildcard $(sup_completion_file)), rm $(sup_completion_file))
+	@$(ROOT)/scripts/sup-build-autocomplete.escript $(sup_completion_file) applications/ core/
+	@echo SUP Bash completion file written at $(sup_completion_file)

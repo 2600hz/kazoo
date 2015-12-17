@@ -26,7 +26,7 @@ Uploading media for custom music on hold, IVR prompts, or TTS (if a proper TTS e
 
 ### Create a new TTS media document (requires iSpeech to be enabled)
 
-    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d {"data":{"name":"TestTTS","media_source":"tts","tts":{"text":"Testing TTS","voice":"female/en-US"}}
+    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"name":"TestTTS","media_source":"tts","tts":{"text":"Testing TTS","voice":"female/en-US"}}'
 
 ### Get a metadata about media file
 

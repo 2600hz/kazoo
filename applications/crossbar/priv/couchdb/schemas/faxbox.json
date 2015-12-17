@@ -1,257 +1,272 @@
 {
-  "_id": "faxbox",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Fax Box",
-  "description": "FaxBoxes allow configuration of individual fax virtual machines",
-  "properties": {
-    "name": {
-      "type": "string",
-      "required": true,
-      "name": "Name",
-      "description": "A friendly name for the faxbox",
-      "minLength": 1,
-      "maxLength": 128
-    },
-    "retries": {
-      "type": "integer",
-      "required": false,
-      "name": "Retries",
-      "description": "The number of times to retry",
-      "minimum": 0,
-      "maximum": 4,
-      "default": 1
-    },
-    "attempts": {
-      "type": "integer",
-      "required": false,
-      "name": "Attempts",
-      "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
-      "minimum": 0,
-      "maximum": 4,
-      "default": 0
-    },
-    "caller_name": {
-      "type": "string",
-      "required": false,
-      "name": "Caller ID Name",
-      "description": "The Caller-ID-Name",
-      "default": "Kazoo Fax Printer"
-    },
-    "caller_id": {
-      "type": "string",
-      "required": false,
-      "name": "Caller ID Number",
-      "description": "The Caller-ID-Number"
-    },
-    "fax_header": {
-      "type": "string",
-      "required": false,
-      "name": "Fax Header Name",
-      "description": "The name printed at the top of the fax",
-      "default": "Kazoo Fax Printer"
-    },
-    "fax_identity": {
-      "type": "string",
-      "required": false,
-      "name": "Fax Header Number",
-      "description": "The number printed at the top of the fax"
-    },
-    "fax_timezone": {
-      "type": "string",
-      "required": false,
-      "name": "Fax Header Timezone",
-      "description": "The timezone announced"
-    },
-    "notifications": {
-      "type": "object",
-      "required": false,
-      "description": "Status notifications",
-      "properties": {
-        "inbound": {
-          "type": "object",
-          "required": false,
-          "description": "Inbound Status notifications",
-          "properties": {
-            "email": {
-              "type": "object",
-              "required": false,
-              "name": "Inbound Email Notifications",
-              "description": "Email notifications",
-              "properties": {
-                "send_to": {
-                  "type": [
-                    "string",
-                    "array"
-                  ],
-                  "required": false,
-                  "name": "Email Address",
-                  "description": "A list or string of email recipent(s)",
-                  "items": {
-                    "type": "string",
-                    "required": false,
-                    "format": "email"
-                  },
-                  "format": "email"
-                }
-              }
-            },
-            "sms": {
-              "type": "object",
-              "required": false,
-              "description": "SMS notifications",
-              "properties": {
-                "send_to": {
-                  "type": [
-                    "string",
-                    "array"
-                  ],
-                  "required": false,
-                  "description": "A list or string of sms recipent(s)",
-                  "items": {
-                    "type": "string",
-                    "required": false
-                  }
-                }
-              }
-            },
-            "callback": {
-              "type": "object",
-              "required": false,
-              "name": "Callback Parameters",
-              "description": "A URL to send results to",
-              "properties": {
-                "url": {
-                  "type": "string",
-                  "required": false,
-                  "name": "URL",
-                  "description": "The URL to call back with the results"
-                },
-                "method": {
-                  "type": "string",
-                  "required": false,
-                  "name": "Method",
-                  "description": "The http method to use when sending the results",
-                  "enum": [
-                    "post",
-                    "put"
-                  ]
-                },
-                "type": {
-                  "type": "string",
-                  "required": false,
-                  "name": "Content-Type",
-                  "description": "The content-type to use when sending the results",
-                  "enum": [
-                    "json",
-                    "www-url-form-encoded"
-                  ]
-                }
-              }
-            }
-          }
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "faxbox",
+    "description": "FaxBoxes allow configuration of individual fax virtual machines",
+    "name": "Fax Box",
+    "properties": {
+        "attempts": {
+            "default": 0,
+            "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+            "maximum": 4,
+            "minimum": 0,
+            "name": "Attempts",
+            "required": false,
+            "type": "integer"
         },
-        "outbound": {
-          "type": "object",
-          "required": false,
-          "description": "Outbound Status notifications",
-          "properties": {
-            "email": {
-              "type": "object",
-              "required": false,
-              "description": "Email notifications",
-              "properties": {
-                "send_to": {
-                  "type": [
-                    "string",
-                    "array"
-                  ],
-                  "required": false,
-                  "name": "Email Address",
-                  "description": "A list or string of email recipent(s)",
-                  "items": {
-                    "type": "string",
+        "caller_id": {
+            "description": "The Caller-ID-Number",
+            "name": "Caller ID Number",
+            "required": false,
+            "type": "string"
+        },
+        "caller_name": {
+            "default": "Kazoo Fax Printer",
+            "description": "The Caller-ID-Name",
+            "name": "Caller ID Name",
+            "required": false,
+            "type": "string"
+        },
+        "custom_smtp_email_address": {
+            "description": "custom smtp address",
+            "name": "SMTP Address",
+            "required": false,
+            "type": "string"
+        },
+        "fax_header": {
+            "default": "Kazoo Fax Printer",
+            "description": "The name printed at the top of the fax",
+            "name": "Fax Header Name",
+            "required": false,
+            "type": "string"
+        },
+        "fax_identity": {
+            "description": "The number printed at the top of the fax",
+            "name": "Fax Header Number",
+            "required": false,
+            "type": "string"
+        },
+        "fax_timezone": {
+            "description": "The timezone announced",
+            "name": "Fax Header Timezone",
+            "required": false,
+            "type": "string"
+        },
+        "media": {
+            "default": {},
+            "description": "The device media parameters",
+            "name": "Media Parameters",
+            "properties": {
+                "fax_option": {
+                    "description": "Support T.38",
+                    "name": "Is T.38 Supported?",
                     "required": false,
-                    "format": "email"
-                  },
-                  "format": "email"
+                    "type": "boolean"
                 }
-              }
             },
-            "sms": {
-              "type": "object",
-              "required": false,
-              "description": "SMS notifications",
-              "properties": {
-                "send_to": {
-                  "type": [
-                    "string",
-                    "array"
-                  ],
-                  "required": false,
-                  "name": "SMS Number",
-                  "description": "A list or string of sms recipent(s)",
-                  "items": {
-                    "type": "string",
-                    "required": false
-                  }
+            "required": false,
+            "type": "object"
+        },
+        "name": {
+            "description": "A friendly name for the faxbox",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Name",
+            "required": true,
+            "type": "string"
+        },
+        "notifications": {
+            "description": "Status notifications",
+            "properties": {
+                "inbound": {
+                    "description": "Inbound Status notifications",
+                    "properties": {
+                        "callback": {
+                            "description": "A URL to send results to",
+                            "name": "Callback Parameters",
+                            "properties": {
+                                "method": {
+                                    "description": "The http method to use when sending the results",
+                                    "enum": [
+                                        "post",
+                                        "put"
+                                    ],
+                                    "name": "Method",
+                                    "required": false,
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "description": "The content-type to use when sending the results",
+                                    "enum": [
+                                        "json",
+                                        "www-url-form-encoded"
+                                    ],
+                                    "name": "Content-Type",
+                                    "required": false,
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "description": "The URL to call back with the results",
+                                    "name": "URL",
+                                    "required": false,
+                                    "type": "string"
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        },
+                        "email": {
+                            "description": "Email notifications",
+                            "name": "Inbound Email Notifications",
+                            "properties": {
+                                "send_to": {
+                                    "description": "A list or string of email recipent(s)",
+                                    "format": "email",
+                                    "items": {
+                                        "format": "email",
+                                        "required": false,
+                                        "type": "string"
+                                    },
+                                    "name": "Email Address",
+                                    "required": false,
+                                    "type": [
+                                        "string",
+                                        "array"
+                                    ]
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        },
+                        "sms": {
+                            "description": "SMS notifications",
+                            "properties": {
+                                "send_to": {
+                                    "description": "A list or string of sms recipent(s)",
+                                    "items": {
+                                        "required": false,
+                                        "type": "string"
+                                    },
+                                    "required": false,
+                                    "type": [
+                                        "string",
+                                        "array"
+                                    ]
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                },
+                "outbound": {
+                    "description": "Outbound Status notifications",
+                    "properties": {
+                        "callback": {
+                            "description": "A URL to send results to",
+                            "properties": {
+                                "method": {
+                                    "description": "The http method to use when sending the results",
+                                    "enum": [
+                                        "post",
+                                        "put"
+                                    ],
+                                    "name": "Method",
+                                    "required": false,
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "description": "The content-type to use when sending the results",
+                                    "enum": [
+                                        "json",
+                                        "www-url-form-encoded"
+                                    ],
+                                    "name": "Content-Type",
+                                    "required": false,
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "description": "The URL to call back with the results",
+                                    "name": "URL",
+                                    "required": false,
+                                    "type": "string"
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        },
+                        "email": {
+                            "description": "Email notifications",
+                            "properties": {
+                                "send_to": {
+                                    "description": "A list or string of email recipent(s)",
+                                    "format": "email",
+                                    "items": {
+                                        "format": "email",
+                                        "required": false,
+                                        "type": "string"
+                                    },
+                                    "name": "Email Address",
+                                    "required": false,
+                                    "type": [
+                                        "string",
+                                        "array"
+                                    ]
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        },
+                        "sms": {
+                            "description": "SMS notifications",
+                            "properties": {
+                                "send_to": {
+                                    "description": "A list or string of sms recipent(s)",
+                                    "items": {
+                                        "required": false,
+                                        "type": "string"
+                                    },
+                                    "name": "SMS Number",
+                                    "required": false,
+                                    "type": [
+                                        "string",
+                                        "array"
+                                    ]
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
                 }
-              }
             },
-            "callback": {
-              "type": "object",
-              "required": false,
-              "description": "A URL to send results to",
-              "properties": {
-                "url": {
-                  "type": "string",
-                  "required": false,
-                  "name": "URL",
-                  "description": "The URL to call back with the results"
-                },
-                "method": {
-                  "type": "string",
-                  "required": false,
-                  "name": "Method",
-                  "description": "The http method to use when sending the results",
-                  "enum": [
-                    "post",
-                    "put"
-                  ]
-                },
-                "type": {
-                  "type": "string",
-                  "required": false,
-                  "name": "Content-Type",
-                  "description": "The content-type to use when sending the results",
-                  "enum": [
-                    "json",
-                    "www-url-form-encoded"
-                  ]
-                }
-              }
-            }
-          }
+            "required": false,
+            "type": "object"
+        },
+        "retries": {
+            "default": 1,
+            "description": "The number of times to retry",
+            "maximum": 4,
+            "minimum": 0,
+            "name": "Retries",
+            "required": false,
+            "type": "integer"
+        },
+        "smtp_permission_list": {
+            "default": [],
+            "description": "smtp permission list. accepts regular expressions",
+            "items": {
+                "required": false,
+                "type": "string"
+            },
+            "name": "SMTP Permissions",
+            "required": false,
+            "type": "array"
         }
-      }
     },
-    "custom_smtp_email_address": {
-      "type": "string",
-      "required": false,
-      "name": "SMTP Address",
-      "description": "custom smtp address"
-    },
-    "smtp_permission_list": {
-      "type": "array",
-      "required": false,
-      "name": "SMTP Permissions",
-      "description": "smtp permission list. accepts regular expressions",
-      "items": {
-        "type": "string",
-        "required": false
-      },
-      "default": []
-    }
-  }
+    "required": true,
+    "type": "object"
 }

@@ -31,7 +31,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     application:start(?MODULE).
 
@@ -59,12 +59,14 @@ start_deps() ->
         {'ok', 'true'} -> reloader:start();
         _ -> 'ok'
     end,
-    [wh_util:ensure_started(A) || A <- ['sasl'
-                                        ,'crypto'
-                                        ,'gproc'
-                                        ,'lager'
-                                        ,'kazoo_token_buckets'
-                                        ,'whistle_amqp'
-                                        ,'whistle_couch'
-                                       ]],
+    _ = [wh_util:ensure_started(A) || A <- ['sasl'
+                                            ,'crypto'
+                                            ,'gproc'
+                                            ,'lager'
+                                            ,'whistle_config'
+                                            ,'kazoo_caches'
+                                            ,'kazoo_token_buckets'
+                                            ,'whistle_amqp'
+                                            ,'whistle_couch'
+                                           ]],
     'ok'.

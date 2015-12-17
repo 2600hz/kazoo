@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Handle failover provisioning
 %%% @end
@@ -23,8 +23,8 @@
 %% add the failover route (for in service numbers only)
 %% @end
 %%--------------------------------------------------------------------
--spec save/1 :: (wnm_number()) -> wnm_number().
-save(#number{state = <<"in_service">>} = Number) ->
+-spec save(wnm_number()) -> wnm_number().
+save(#number{state = ?NUMBER_STATE_IN_SERVICE} = Number) ->
     maybe_update_failover(Number);
 save(Number) ->
     delete(Number).
@@ -36,20 +36,20 @@ save(Number) ->
 %% remove the failover route
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (wnm_number()) -> wnm_number().
+-spec delete(wnm_number()) -> wnm_number().
 delete(#number{features=Features
                ,current_number_doc=CurrentDoc
                ,number_doc=Doc
               }=Number) ->
     case wh_json:get_ne_value(?FAILOVER_KEY, CurrentDoc) of
-        undefined -> Number;
+        'undefined' -> Number;
         _Else ->
             Number#number{features=sets:del_element(?FAILOVER_KEY, Features)
                           ,number_doc=wh_json:delete_key(?FAILOVER_KEY, Doc)
                          }
     end.
 
--spec maybe_update_failover/1 :: (wnm_number()) -> wnm_number().
+-spec maybe_update_failover(wnm_number()) -> wnm_number().
 maybe_update_failover(#number{current_number_doc=CurrentJObj
                               ,number_doc=JObj
                               ,features=Features
@@ -59,9 +59,10 @@ maybe_update_failover(#number{current_number_doc=CurrentJObj
     NotChanged = wnm_util:are_jobjs_identical(CurrentFailover, Failover),
 
     case wh_util:is_empty(Failover) of
-        true ->
+        'true' ->
             N#number{features=sets:del_element(?FAILOVER_KEY, Features)};
-        false when NotChanged  -> N#number{features=sets:add_element(?FAILOVER_KEY, Features)};
-        false ->
+        'false' when NotChanged ->
+            N#number{features=sets:add_element(?FAILOVER_KEY, Features)};
+        'false' ->
             wnm_number:activate_feature(?FAILOVER_KEY, N)
     end.

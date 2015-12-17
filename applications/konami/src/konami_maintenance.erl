@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -16,7 +16,7 @@
 
 -record(builder_action, {module_fun_name :: atom()
                          ,metaflow_key :: ne_binary()
-                         ,builders = [] :: [{pos_integer(), atom()},...] | []
+                         ,builders = [] :: [{pos_integer(), atom()}]
                         }).
 -type builder_action() :: #builder_action{}.
 
@@ -125,7 +125,7 @@ pattern_builder(Default, SaveFun) ->
                                  }
                 ).
 
--spec print_builders(wh_proplist()) -> ['ok',...] | [].
+-spec print_builders(wh_proplist()) -> ['ok'].
 print_builders(Builders) ->
     [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders].
 
@@ -140,7 +140,7 @@ builder_menu(Default, SaveFun, #builder_action{builders=Builders
                                               }=BA) ->
     io:format("~s Builders:~n", [wh_util:ucfirst_binary(Key)]),
 
-    print_builders(Builders),
+    _ = print_builders(Builders),
     io:format("  0. Return to Menu~n~n", []),
 
     {'ok', [Option]} = io:fread("Which builder to add: ", "~d"),

@@ -20,7 +20,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start/2 :: (term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
+-spec start/2 :: (_, _) -> {'ok', pid()} | {'error', startlink_err()}.
 start(_Type, _Args) ->
     case whistle_stats_sup:start_link() of
         {ok, P} -> {ok, P};
@@ -34,6 +34,6 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop/1 :: (term()) -> 'ok'.
+-spec stop/1 :: (_) -> 'ok'.
 stop(_State) ->
     ok.

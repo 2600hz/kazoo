@@ -66,11 +66,14 @@ resource_exists() -> 'true'.
 %% and load necessary information.
 %% /acls mights load a list of skel objects
 %% /acls/123 might load the skel object 123
-%% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
+    validate_summary(Context, cb_context:req_verb(Context)).
+
+-spec validate_summary(cb_context:context(), http_method()) -> cb_context:context().
+validate_summary(Context, ?HTTP_GET) ->
     summary(Context).
 
 %%--------------------------------------------------------------------
@@ -93,7 +96,7 @@ summary(Context) ->
     ReqResp = whapps_util:amqp_pool_request(Req
                                             ,fun wapi_sysconf:publish_get_req/1
                                             ,fun wapi_sysconf:get_resp_v/1
-                                            ,2000
+                                            ,2 * ?MILLISECONDS_IN_SECOND
                                            ),
     case ReqResp of
         {'error', _R} ->
@@ -101,5 +104,7 @@ summary(Context) ->
             cb_context:add_system_error('datastore_fault', Context);
         {'ok', JObj} ->
             ACLs = wh_json:get_value(<<"Value">>, JObj, wh_json:new()),
-            Context#cb_context{resp_data=ACLs, resp_status='success'}
+            cb_context:setters(Context, [{fun cb_context:set_resp_data/2, ACLs}
+                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ])
     end.

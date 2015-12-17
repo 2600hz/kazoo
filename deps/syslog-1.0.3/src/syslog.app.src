@@ -1,0 +1,13 @@
+{application, syslog,
+ [
+  {description, "Syslog for erlang"},
+  {vsn, "1.0.3"},
+  {registered, [syslog_sup, syslog]},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { syslog_app, []}},
+  {modules, []},
+  {env, []}
+ ]}.

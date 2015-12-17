@@ -1,92 +1,89 @@
 {
-  "_id": "callflows",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Callflow",
-  "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
-  "properties": {
-    "numbers": {
-      "type": "array",
-      "required": false,
-      "name": "Numbers",
-      "description": "A list of static numbers that the callflow should execute for",
-      "items": {
-        "type": "string",
-        "required": false,
-        "minLength": 1,
-        "maxLength": 36
-      },
-      "default": []
-    },
-    "patterns": {
-      "type": "array",
-      "required": false,
-      "name": "Patterns",
-      "description": "A list of regular expressions that the callflow should execute for, with optional capture groups",
-      "items": {
-        "type": "string",
-        "required": false,
-        "minLength": 1
-      },
-      "default": []
-    },
-    "featurecode": {
-      "type": "object",
-      "required": false,
-      "name": "Feature Code Parameters",
-      "description": "When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature",
-      "properties": {
-        "name": {
-          "type": "string",
-          "required": false,
-          "minLength": 1,
-          "maxLength": 128
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows",
+    "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
+    "name": "Callflow",
+    "properties": {
+        "featurecode": {
+            "description": "When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature",
+            "name": "Feature Code Parameters",
+            "properties": {
+                "name": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "required": false,
+                    "type": "string"
+                },
+                "number": {
+                    "maxLength": 30,
+                    "minLength": 1,
+                    "required": false,
+                    "type": "string"
+                }
+            },
+            "required": false,
+            "type": "object"
         },
-        "number": {
-          "type": "string",
-          "required": false,
-          "minLength": 1,
-          "maxLength": 30
+        "flow": {
+            "description": "A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
+            "name": "Callflow",
+            "properties": {
+                "children": {
+                    "default": {},
+                    "description": "Children callflows",
+                    "name": "Children Callflows",
+                    "required": false,
+                    "type": "object"
+                },
+                "data": {
+                    "default": {},
+                    "description": "The data/arguments of the callflow module",
+                    "name": "Module Data",
+                    "required": true,
+                    "type": "object"
+                },
+                "module": {
+                    "description": "The name of the callflow module to excute at this node",
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "name": "Module Name",
+                    "required": true,
+                    "type": "string"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "metaflow": {
+            "$ref": "metaflows",
+            "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)"
+        },
+        "numbers": {
+            "default": [],
+            "description": "A list of static numbers that the callflow should execute for",
+            "items": {
+                "maxLength": 36,
+                "minLength": 1,
+                "required": false,
+                "type": "string"
+            },
+            "name": "Numbers",
+            "required": false,
+            "type": "array"
+        },
+        "patterns": {
+            "default": [],
+            "description": "A list of regular expressions that the callflow should execute for, with optional capture groups",
+            "items": {
+                "minLength": 1,
+                "required": false,
+                "type": "string"
+            },
+            "name": "Patterns",
+            "required": false,
+            "type": "array"
         }
-      }
     },
-    "flow": {
-      "type": "object",
-      "required": true,
-      "name": "Callflow",
-      "description": "A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
-      "properties": {
-        "module": {
-          "type": "string",
-          "required": true,
-          "name": "Module Name",
-          "description": "The name of the callflow module to excute at this node",
-          "minLength": 1,
-          "maxLength": 64
-        },
-        "data": {
-          "type": "object",
-          "required": true,
-          "name": "Module Data",
-          "description": "The data/arguments of the callflow module",
-          "default": {}
-        },
-        "children": {
-          "type": "object",
-          "required": false,
-          "name": "Children Callflows",
-          "description": "Children callflows",
-          "default": {}
-        }
-      }
-    },
-    "metaflow": {
-      "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
-      "type": [
-        "object",
-        "boolean"
-      ]
-    }
-  }
+    "required": true,
+    "type": "object"
 }

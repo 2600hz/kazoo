@@ -1,54 +1,54 @@
 {
-  "_id": "user_auth",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "User Auth",
-  "description": "Provides an auth-token via user credentials",
-  "properties": {
-    "credentials": {
-      "type": "string",
-      "required": true,
-      "name": "Credentials",
-      "description": "A hash of the uses credentials",
-      "minLength": 1,
-      "maxLength": 64
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "user_auth",
+    "description": "Provides an auth-token via user credentials",
+    "name": "User Auth",
+    "properties": {
+        "account_name": {
+            "description": "The account name of the user",
+            "maxLength": 128,
+            "minLength": 1,
+            "name": "Account Name",
+            "required": false,
+            "type": "string"
+        },
+        "account_realm": {
+            "description": "The account realm of the user",
+            "format": "uri",
+            "maxLength": 64,
+            "minLength": 1,
+            "name": "Account Realm",
+            "required": false,
+            "type": "string"
+        },
+        "credentials": {
+            "description": "A hash of the uses credentials",
+            "maxLength": 64,
+            "minLength": 1,
+            "name": "Credentials",
+            "required": true,
+            "type": "string"
+        },
+        "method": {
+            "default": "md5",
+            "description": "The hash method",
+            "enum": [
+                "md5",
+                "sha"
+            ],
+            "name": "Method",
+            "required": false,
+            "type": "string"
+        },
+        "phone_number": {
+            "description": "A phone number assigned to the users account",
+            "maxLength": 64,
+            "minLength": 1,
+            "name": "Phone Number",
+            "required": false,
+            "type": "string"
+        }
     },
-    "account_realm": {
-      "type": "string",
-      "required": false,
-      "name": "Account Realm",
-      "description": "The account realm of the user",
-      "minLength": 1,
-      "maxLength": 64,
-      "format": "uri"
-    },
-    "account_name": {
-      "type": "string",
-      "required": false,
-      "name": "Account Name",
-      "description": "The account name of the user",
-      "minLength": 1,
-      "maxLength": 128
-    },
-    "phone_number": {
-      "type": "string",
-      "required": false,
-      "name": "Phone Number",
-      "description": "A phone number assigned to the users account",
-      "minLength": 1,
-      "maxLength": 64
-    },
-    "method": {
-      "type": "string",
-      "required": false,
-      "name": "Method",
-      "description": "The hash method",
-      "enum": [
-        "md5",
-        "sha"
-      ],
-      "default": "md5"
-    }
-  }
+    "required": true,
+    "type": "object"
 }

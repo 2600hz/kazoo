@@ -18,6 +18,7 @@
         ]).
 
 -include("acdc.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 -spec handle_call_event(ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
@@ -47,7 +48,7 @@ handle_call_event(Category, Name, JObj, Props) ->
                               ,JObj
                              ).
 
--spec handle_member_call(wh_json:object(), wh_proplist(), delivery()) -> 'ok'.
+-spec handle_member_call(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> 'ok'.
 handle_member_call(JObj, Props, Delivery) ->
     'true' = wapi_acdc_queue:member_call_v(JObj),
     acdc_queue_fsm:member_call(props:get_value('fsm_pid', Props), JObj, Delivery),
@@ -79,26 +80,26 @@ handle_config_change(JObj, _Props) ->
                        ).
 
 -spec handle_queue_change(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-handle_queue_change(_, AccountId, QueueId, <<"doc_created">>) ->
+handle_queue_change(_, AccountId, QueueId, ?DOC_CREATED) ->
     lager:debug("maybe starting new queue for ~s: ~s", [AccountId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
         'undefined' -> acdc_queues_sup:new(AccountId, QueueId);
         P when is_pid(P) -> 'ok'
     end;
-handle_queue_change(AccountDb, AccountId, QueueId, <<"doc_edited">>) ->
+handle_queue_change(AccountDb, AccountId, QueueId, ?DOC_EDITED) ->
     lager:debug("maybe updating existing queue for ~s: ~s", [AccountId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
         'undefined' -> acdc_queues_sup:new(AccountId, QueueId);
         QueueSup when is_pid(QueueSup) ->
             {'ok', JObj} = couch_mgr:open_doc(AccountDb, QueueId),
             WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-            [acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(WorkerSup), JObj)
-             || WorkerSup <- acdc_queue_workers_sup:workers(WorkersSup)
-            ],
+            _ = [acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(WorkerSup), JObj)
+                 || WorkerSup <- acdc_queue_workers_sup:workers(WorkersSup)
+                ],
             Mgr = acdc_queue_sup:manager(QueueSup),
             acdc_queue_manager:refresh(Mgr, JObj)
     end;
-handle_queue_change(_, AccountId, QueueId, <<"doc_deleted">>) ->
+handle_queue_change(_, AccountId, QueueId, ?DOC_DELETED) ->
     lager:debug("maybe stopping existing queue for ~s: ~s", [AccountId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
         'undefined' -> lager:debug("no queue(~s) started for account ~s", [QueueId, AccountId]);
@@ -146,7 +147,7 @@ send_probe(JObj, State) ->
     PresenceUpdate =
         [{<<"State">>, State}
          ,{<<"Presence-ID">>, To}
-         ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(To))}
+         ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, To))}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_presence:publish_update(PresenceUpdate).

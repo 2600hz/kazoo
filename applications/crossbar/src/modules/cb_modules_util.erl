@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Functions shared between crossbar modules
 %%% @end
@@ -16,106 +16,159 @@
 
          ,attachment_name/2
          ,content_type_to_extension/1
+         ,parse_media_type/1
 
          ,bucket_name/1
-         ,reconcile_services/1
+         ,token_cost/1, token_cost/2, token_cost/3
          ,bind/2
 
-         ,range_view_options/1, range_view_options/2
+         ,range_view_options/1, range_view_options/2, range_view_options/3, range_view_options/5
+
+         ,range_modb_view_options/1, range_modb_view_options/2, range_modb_view_options/3, range_modb_view_options/5
+
+         ,take_sync_field/1
+
+         ,remove_plaintext_password/1
         ]).
 
 -include("../crossbar.hrl").
 
--define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
+-define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
 
 -spec range_view_options(cb_context:context()) ->
-                                {pos_integer(), pos_integer()} |
+                                {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
 -spec range_view_options(cb_context:context(), pos_integer()) ->
-                                {pos_integer(), pos_integer()} |
+                                {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
 range_view_options(Context) ->
     range_view_options(Context, ?MAX_RANGE).
 range_view_options(Context, MaxRange) ->
+    range_view_options(Context, MaxRange, <<"created">>).
+range_view_options(Context, MaxRange, Key) ->
     TStamp =  wh_util:current_tstamp(),
-    CreatedTo = created_to(Context, TStamp),
-    CreatedFrom = created_from(Context, CreatedTo, MaxRange),
-
-    case CreatedTo - CreatedFrom of
+    RangeTo = range_to(Context, TStamp, Key),
+    RangeFrom = range_from(Context, RangeTo, MaxRange, Key),
+    range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo).
+range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
+    case RangeTo - RangeFrom of
         N when N < 0 ->
-            Message = <<"created_from is prior to created_to">>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
+            cb_context:add_validation_error(
+              <<Key/binary, "_from">>
+              ,<<"date_range">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<Key/binary, "_from is prior to ", Key/binary, "_to">>}
+                  ,{<<"cause">>, RangeFrom}
+                 ])
+              ,Context
+             );
         N when N > MaxRange ->
-            Message = <<"created_to is more than "
+            Message = <<Key/binary, "_to is more than "
                         ,(wh_util:to_binary(MaxRange))/binary
-                        ," seconds from created_from"
+                        ," seconds from ", Key/binary, "_from"
                       >>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
-        _N -> {CreatedFrom, CreatedTo}
+            cb_context:add_validation_error(
+              <<Key/binary, "_from">>
+              ,<<"date_range">>
+              ,wh_json:from_list(
+                 [{<<"message">>, Message}
+                  ,{<<"cause">>, RangeTo}
+                 ])
+              ,Context
+             );
+        _N -> {RangeFrom, RangeTo}
     end.
 
--spec created_to(cb_context:context(), pos_integer()) -> pos_integer().
-created_to(Context, TStamp) ->
+-spec range_modb_view_options(cb_context:context()) ->
+                                     {'ok', wh_proplist()} |
+                                     cb_context:context().
+range_modb_view_options(Context) ->
+    range_modb_view_options(Context, 'undefined', 'undefined').
+
+-spec range_modb_view_options(cb_context:context(), api_binaries()) ->
+                                     {'ok', wh_proplist()} |
+                                     cb_context:context().
+range_modb_view_options(Context, PrefixKeys) ->
+    range_modb_view_options(Context, PrefixKeys, 'undefined').
+
+-spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
+                                     {'ok', crossbar_doc:view_options()} |
+                                     cb_context:context().
+range_modb_view_options(Context, 'undefined', SuffixKeys) ->
+    range_modb_view_options(Context, [], SuffixKeys);
+range_modb_view_options(Context, PrefixKeys, 'undefined') ->
+    range_modb_view_options(Context, PrefixKeys, []);
+range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
+    case ?MODULE:range_view_options(Context) of
+        {CreatedFrom, CreatedTo} ->
+            range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
+        Context1 -> Context1
+    end.
+
+-spec range_modb_view_options(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
+                                     {'ok', crossbar_doc:view_options()} |
+                                     cb_context:context().
+range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
+    case ?MODULE:range_view_options(Context, ?MAX_RANGE, <<"created">>, CreatedFrom, CreatedTo) of
+        {CreatedFrom, CreatedTo} ->
+            range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
+        Context1 -> Context1
+    end.
+
+-spec range_modb_view_options1(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
+                                     {'ok', crossbar_doc:view_options()} |
+                                     cb_context:context().
+range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
+    AccountId = cb_context:account_id(Context),
+    case PrefixKeys =:= [] andalso SuffixKeys =:= [] of
+        'true' -> {'ok', [{'startkey', CreatedFrom}
+                          ,{'endkey', CreatedTo}
+                          ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
+                         ]};
+        'false' -> {'ok', [{'startkey', [Key || Key <- PrefixKeys ++ [CreatedFrom] ++ SuffixKeys] }
+                           ,{'endkey', [Key || Key <- PrefixKeys  ++ [CreatedTo]   ++ SuffixKeys] }
+                           ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
+                          ]}
+    end.
+
+-spec range_to(cb_context:context(), pos_integer(), ne_binary()) -> pos_integer().
+range_to(Context, TStamp, Key) ->
     case crossbar_doc:start_key(Context) of
         'undefined' ->
-            lager:debug("building created_to from req value"),
-            wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, TStamp));
+            lager:debug("building ~s_to from req value", [Key]),
+            wh_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_to">>, TStamp));
         StartKey ->
-            lager:debug("found startkey ~p as created_to", [StartKey]),
+            lager:debug("found startkey ~p as ~s_to", [StartKey, Key]),
             wh_util:to_integer(StartKey)
     end.
 
--spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_from(Context, CreatedTo, MaxRange) ->
-    lager:debug("building created_from from req value"),
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, CreatedTo - MaxRange)).
+-spec range_from(cb_context:context(), pos_integer(), pos_integer(), ne_binary()) -> pos_integer().
+range_from(Context, CreatedTo, MaxRange, Key) ->
+    lager:debug("building ~s_from from req value", [Key]),
+    wh_util:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, CreatedTo - MaxRange)).
 
--spec bind(atom(), wh_proplist()) -> 'ok'.
+-type binding() :: {ne_binary(), atom()}.
+-type bindings() :: [binding(),...].
+-spec bind(atom(), bindings()) -> 'ok'.
 bind(Module, Bindings) ->
-    [crossbar_bindings:bind(Binding, Module, Function)
-     || {Binding, Function} <- Bindings
-    ],
+    _ = [crossbar_bindings:bind(Binding, Module, Function)
+         || {Binding, Function} <- Bindings
+        ],
     'ok'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Bill for devices
-%% @end
-%%--------------------------------------------------------------------
--spec reconcile_services(cb_context:context()) -> cb_context:context().
-reconcile_services(Context) ->
-    case cb_context:resp_status(Context) =:= 'success'
-        andalso cb_context:req_verb(Context) =/= <<"GET">>
-    of
-        'false' -> Context;
-        'true' ->
-            lager:debug("maybe reconciling services for account ~s"
-                       ,[cb_context:account_id(Context)]),
-            _ = wh_services:save_as_dirty(cb_context:account_id(Context))
-    end.
 
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = wh_util:to_hex_binary(crypto:sha(Creds)),
-    MD5 = wh_util:to_hex_binary(erlang:md5(Creds)),
+    SHA1 = wh_util:to_hex_binary(crypto:hash('sha', Creds)),
+    MD5 = wh_util:to_hex_binary(crypto:hash('md5', Creds)),
     {MD5, SHA1}.
 
 -spec update_mwi(api_binary(), ne_binary()) -> pid().
 update_mwi(OwnerId, AccountDb) ->
-    spawn(fun() ->
-                  timer:sleep(1000),
-                  cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId)
-          end).
+    wh_util:spawn(fun() ->
+                          timer:sleep(?MILLISECONDS_IN_SECOND),
+                          cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId)
+                  end).
 
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> wh_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
@@ -155,13 +208,15 @@ create_call_from_context(Context) ->
         props:filter_undefined(
           [{fun whapps_call:set_account_db/2, cb_context:account_db(Context)}
            ,{fun whapps_call:set_account_id/2, cb_context:account_id(Context)}
+           ,{fun whapps_call:set_resource_type/2, <<"audio">>}
            ,{fun whapps_call:set_owner_id/2, wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
            | request_specific_extraction_funs(Context)
           ]),
     whapps_call:exec(Routines, whapps_call:new()).
 
--spec request_specific_extraction_funs(cb_context:context()) -> functions().
--spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) -> functions().
+-spec request_specific_extraction_funs(cb_context:context()) -> whapps_call:exec_funs().
+-spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) ->
+                                                         whapps_call:exec_funs().
 request_specific_extraction_funs(Context) ->
     request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 
@@ -182,10 +237,31 @@ request_specific_extraction_funs_from_nouns(Context, ?USERS_QCALL_NOUNS(UserId, 
 request_specific_extraction_funs_from_nouns(_Context, _ReqNouns) ->
     [].
 
+-spec filter_number_regex(ne_binary(), ne_binary()) -> ne_binary().
+filter_number_regex(Number, Regex) ->
+    case re:run(Number, Regex, [{'capture', 'all_but_first', 'binary'}]) of
+        {'match', [Match|_]} ->
+            lager:info("filtered number using regex ~p, result: ~p", [Regex, Match]),
+            Match;
+
+        _NotMatching ->
+            lager:warning("tried to filter number ~p with regex ~p, but no match found", [Number, Regex]),
+            Number
+    end.
+
 -spec build_number_uri(cb_context:context(), ne_binary()) -> ne_binary().
 build_number_uri(Context, Number) ->
+    QueryStr  = cb_context:query_string(Context),
+    FilterVal = wh_json:get_value(<<"number_filter">>, QueryStr, <<"true">>),
+
+    UseNumber = case FilterVal of
+        <<"false">> -> Number;
+        <<"true">>  -> binary:replace(Number, ?QCALL_NUMBER_FILTER, <<>>, ['global']);
+        FilterRegex -> filter_number_regex(Number, FilterRegex)
+    end,
+
     Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
-    <<Number/binary, "@", Realm/binary>>.
+    <<UseNumber/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(whapps_call:call(), cb_context:context()) -> wh_json:objects().
 -spec get_endpoints(whapps_call:call(), cb_context:context(), req_nouns()) -> wh_json:objects().
@@ -234,8 +310,10 @@ default_bleg_cid(Call, Context) ->
                                 ,wh_json:merge_jobjs(cb_context:query_string(Context), Defaults)
                                ).
 
--spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) -> cb_context:context().
+-spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) ->
+                                 cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
+    AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Inherit-Codec">>, <<"false">>}
@@ -249,7 +327,7 @@ originate_quickcall(Endpoints, Call, Context) ->
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, maybe_auto_answer(Endpoints)}
+               ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
@@ -264,13 +342,20 @@ originate_quickcall(Endpoints, Call, Context) ->
                | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
-    crossbar_util:response_202(<<"processing request">>, cb_context:set_resp_data(Context, Request)).
+    JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
+    crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec maybe_auto_answer(wh_json:objects()) -> wh_json:objects().
-maybe_auto_answer([Endpoint]) ->
-    [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true', Endpoint)];
-maybe_auto_answer(Endpoints) ->
-    Endpoints.
+-spec update_quickcall_endpoints(boolean(), wh_json:objects()) -> wh_json:objects().
+update_quickcall_endpoints(AutoAnswer, [Endpoint]) ->
+    WithAA = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint),
+    [set_quickcall_outbound_call_id(WithAA)];
+update_quickcall_endpoints(_AutoAnswer, Endpoints) ->
+    [set_quickcall_outbound_call_id(Endpoint) || Endpoint <- Endpoints].
+
+-spec set_quickcall_outbound_call_id(wh_json:object()) -> wh_json:object().
+set_quickcall_outbound_call_id(Endpoint) ->
+    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-quickcall">>,
+    wh_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
 
 -spec get_application_data(cb_context:context()) -> wh_json:object().
 -spec get_application_data_from_nouns(req_nouns()) -> wh_json:object().
@@ -284,18 +369,19 @@ get_application_data_from_nouns(?USERS_QCALL_NOUNS(_UserId, Number)) ->
 get_application_data_from_nouns(_Nouns) ->
     wh_json:from_list([{<<"Route">>, <<"0">>}]).
 
+-define(DEFAULT_TIMEOUT_S, 30).
 -spec get_timeout(cb_context:context()) -> pos_integer().
 get_timeout(Context) ->
-    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 30)) of
-        Timeout when Timeout > 3 -> Timeout;
-        _ -> 30
+    try wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, ?DEFAULT_TIMEOUT_S)) of
+        Timeout when is_integer(Timeout), Timeout > 3 -> Timeout;
+        _ -> ?DEFAULT_TIMEOUT_S
     catch
-        _:_ -> 30
+        _:_ -> ?DEFAULT_TIMEOUT_S
     end.
 
 -spec get_ignore_early_media(cb_context:context()) -> boolean().
 get_ignore_early_media(Context) ->
-    wh_util:is_true(cb_context:req_value(Context, <<"ignore-early-media">>)).
+    wh_util:is_true(cb_context:req_value(Context, <<"ignore-early-media">>, 'true')).
 
 -spec get_media(cb_context:context()) -> ne_binary().
 get_media(Context) ->
@@ -325,18 +411,12 @@ get_caller_id_number(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_superduper_admin(api_binary() | cb_context:context()) -> boolean().
--spec is_superduper_admin(ne_binary(), ne_binary()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
 is_superduper_admin(<<_/binary>> = AccountId) ->
-    is_superduper_admin(AccountId, wh_util:format_account_id(AccountId, 'encoded'));
-is_superduper_admin(Context) ->
-    is_superduper_admin(cb_context:auth_account_id(Context)).
-
-is_superduper_admin(AccountId, AccountDb) ->
-    lager:debug("checking for superduper admin: ~s (~s)", [AccountId, AccountDb]),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+    lager:debug("checking for superduper admin: ~s", [AccountId]),
+    case kz_account:fetch(AccountId) of
         {'ok', JObj} ->
-            case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
+            case kz_account:is_superduper_admin(JObj) of
                 'true' ->
                     lager:debug("the requestor is a superduper admin"),
                     'true';
@@ -347,7 +427,9 @@ is_superduper_admin(AccountId, AccountDb) ->
         {'error', _E} ->
             lager:debug("not authorizing, error during lookup: ~p", [_E]),
             'false'
-    end.
+    end;
+is_superduper_admin(Context) ->
+    is_superduper_admin(cb_context:auth_account_id(Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -391,12 +473,22 @@ content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
 content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
 content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>;
+content_type_to_extension(<<"image/tiff">>) -> <<"tif">>;
+content_type_to_extension(<<"image/tif">>) -> <<"tif">>;
 content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
 content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
 content_type_to_extension(<<"image/png">>) -> <<"png">>;
 content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
 content_type_to_extension(<<"text/html">>) -> <<"html">>;
-content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
+content_type_to_extension(<<"text/plain">>) -> <<"txt">>;
+content_type_to_extension(<<"image/icon">>) -> <<"ico">>;
+content_type_to_extension(<<"image/x-icon">>) -> <<"ico">>.
+
+-spec parse_media_type(ne_binary()) ->
+                              {'error', 'badarg'} |
+                              media_values().
+parse_media_type(MediaType) ->
+    cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2).
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
@@ -413,3 +505,81 @@ bucket_name('undefined', AccountId) ->
     <<"no_ip/", AccountId/binary>>;
 bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
+
+-spec token_cost(cb_context:context()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer() | wh_json:key() | wh_json:keys()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer(), wh_json:keys()) -> non_neg_integer().
+
+token_cost(Context) ->
+    token_cost(Context, 1).
+
+token_cost(Context, <<_/binary>> = Suffix) ->
+    token_cost(Context, 1, [Suffix]);
+token_cost(Context, [_|_]=Suffix) ->
+    token_cost(Context, 1, Suffix);
+token_cost(Context, Default) ->
+    token_cost(Context, Default, []).
+
+token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
+    Costs = whapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
+    find_token_cost(Costs
+                    ,Default
+                    ,Suffix
+                    ,cb_context:req_nouns(Context)
+                    ,cb_context:req_verb(Context)
+                    ,cb_context:account_id(Context)
+                   ).
+
+-spec find_token_cost(wh_json:object() | non_neg_integer()
+                      ,non_neg_integer()
+                      ,wh_json:keys()
+                      ,req_nouns()
+                      ,http_method()
+                      ,api_binary()
+                     ) ->
+                             non_neg_integer().
+
+find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->
+    lager:debug("flat token cost of ~p configured", [N]),
+    N;
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
+    Keys = [[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
+           ],
+    get_token_cost(JObj, Default, Keys);
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
+    Keys = [[AccountId, Endpoint, ReqVerb | Suffix]
+            ,[AccountId, Endpoint | Suffix]
+            ,[AccountId | Suffix]
+            ,[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
+           ],
+    get_token_cost(JObj, Default, Keys).
+
+-spec get_token_cost(wh_json:object(), non_neg_integer(), wh_json:keys()) ->
+                            non_neg_integer().
+get_token_cost(JObj, Default, Keys) ->
+    case wh_json:get_first_defined(Keys, JObj) of
+        'undefined' -> Default;
+        V -> wh_util:to_integer(V)
+    end.
+
+%% @public
+-spec take_sync_field(cb_context:context()) -> cb_context:context().
+take_sync_field(Context) ->
+    Doc = cb_context:doc(Context),
+    ShouldSync = wh_json:is_true(<<"sync">>, Doc, 'false'),
+    CleansedDoc = wh_json:delete_key(<<"sync">>, Doc),
+    cb_context:setters(Context, [{fun cb_context:store/3, 'sync', ShouldSync}
+                                 ,{fun cb_context:set_doc/2, CleansedDoc}
+                                ]).
+
+%% @public
+-spec remove_plaintext_password(cb_context:context()) -> cb_context:context().
+remove_plaintext_password(Context) ->
+    Doc = wh_json:delete_keys(
+            [<<"password">>,
+             <<"confirm_password">>
+            ], cb_context:doc(Context)
+           ),
+    cb_context:set_doc(Context, Doc).

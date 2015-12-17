@@ -38,15 +38,13 @@
 init() ->
     couch_mgr:db_create(?KZ_TOKEN_DB),
     Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
-
     lager:debug("shared auth started up, using ~s as authoritative crossbar", [Url]),
-
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, authenticate),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, authorize),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.shared_auth">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.shared_auth">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.shared_auth">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.shared_auth">>, ?MODULE, put).
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.shared_auth">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.shared_auth">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.shared_auth">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.shared_auth">>, ?MODULE, 'put').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,29 +68,33 @@ allowed_methods() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
-resource_exists() -> true.
+resource_exists() -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(#cb_context{}) -> boolean().
-authorize(#cb_context{req_nouns=[{<<"shared_auth">>, _}]}) ->
-    true;
-authorize(_) ->
-    false.
+-spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context(), req_nouns()) -> boolean().
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context)).
+
+authorize(_, [{<<"shared_auth">>, _}]) ->'true';
+authorize(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(#cb_context{}) -> boolean().
-authenticate(#cb_context{req_nouns=[{<<"shared_auth">>, []}], req_verb = ?HTTP_PUT}) ->
-    true;
-authenticate(_) ->
-    false.
+-spec authenticate(cb_context:context()) -> boolean().
+-spec authenticate(http_method(), req_nouns()) -> boolean().
+authenticate(Context) ->
+    authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+authenticate(?HTTP_PUT, [{<<"shared_auth">>, []}]) -> 'true';
+authenticate(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -119,54 +121,64 @@ authenticate(_) ->
 %% Failure here returns 400 or 401
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
-validate(#cb_context{req_data=JObj, req_verb = ?HTTP_PUT}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate_request(cb_context:context(), http_method(), api_object()) -> cb_context:context().
+validate(Context) ->
+    validate_request(Context, cb_context:req_verb(Context), cb_context:auth_doc(Context)).
+
+validate_request(Context, ?HTTP_PUT, _) ->
     _ = cb_context:put_reqid(Context),
     XBarUrl = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
-    SharedToken = wh_json:get_value(<<"shared_token">>, JObj),
+    SharedToken = wh_json:get_value(<<"shared_token">>, cb_context:req_data(Context)),
     case authenticate_shared_token(SharedToken, XBarUrl) of
-        {ok, Payload} ->
+        {'ok', Payload} ->
             lager:debug("authoritive shared auth request succeeded"),
             RemoteData = wh_json:get_value(<<"data">>, wh_json:decode(Payload)),
             case import_missing_data(RemoteData) of
-                true ->
-                    Context#cb_context{resp_status=success, doc=RemoteData, auth_token=SharedToken};
-                false ->
-                    cb_context:add_system_error(datastore_fault, Context)
+                'true' ->
+                    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                                 ,{fun cb_context:set_doc/2, RemoteData}
+                                                 ,{fun cb_context:set_auth_token/2, SharedToken}
+                                                ]);
+                'false' ->
+                    cb_context:add_system_error('datastore_fault', Context)
             end;
-        {forbidden, _} ->
+        {'forbidden', _} ->
             lager:debug("authoritive shared auth request forbidden"),
-            cb_context:add_system_error(invalid_credentials, Context);
-        {error, _}=E ->
+            cb_context:add_system_error('invalid_credentials', Context);
+        {'error', _}=E ->
             lager:debug("authoritive shared auth request error: ~p", [E]),
-            cb_context:add_system_error(datastore_unreachable, Context)
+            cb_context:add_system_error('datastore_unreachable', Context)
     end;
-validate(#cb_context{auth_doc=undefined, req_verb = ?HTTP_GET}=Context) ->
+
+validate_request(Context, ?HTTP_GET, 'undefined') ->
     _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received but there is no authorizing doc (noauth running?)"),
-    cb_context:add_system_error(invalid_credentials, Context);
-validate(#cb_context{auth_doc=JObj, req_verb = ?HTTP_GET}=Context) ->
+    cb_context:add_system_error('invalid_credentials', Context);
+
+validate_request(Context, ?HTTP_GET, JObj) ->
     _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received, creating response"),
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     UserId = wh_json:get_value(<<"owner_id">>, JObj),
-    Db = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_cache_doc(Db, AccountId) of
-        {ok, Account} ->
+    case kz_account:fetch(AccountId) of
+        {'ok', Account} ->
+            Db = wh_util:format_account_id(AccountId, 'encoded'),
             case couch_mgr:open_doc(Db, UserId) of
-                {ok, User} ->
-                    Context#cb_context{resp_status=success
-                                       ,resp_data=wh_json:from_list([{<<"account">>, Account}
-                                                                     ,{<<"user">>, User}
-                                                                    ])
-                                      };
-                {error, R} ->
+                {'ok', User} ->
+                    RespData = wh_json:from_list([{<<"account">>, Account}
+                                                  ,{<<"user">>, User}
+                                                 ]),
+                    cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                                ,{fun cb_context:set_resp_data/2, RespData}
+                                                ]);
+                {'error', R} ->
                     lager:debug("failed to get user for response ~p", [R]),
-                    cb_context:add_system_error(datastore_fault, Context)
+                    cb_context:add_system_error('datastore_fault', Context)
             end;
-        {error, R} ->
+        {'error', R} ->
             lager:debug("failed to get account for response ~p", [R]),
-            cb_context:add_system_error(datastore_fault, Context)
+            cb_context:add_system_error('datastore_fault', Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -187,26 +199,26 @@ put(Context) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_local_token(#cb_context{}) -> #cb_context{}.
-create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
-    AccountId = wh_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>),
-    OwnerId = wh_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>),
-    Token = wh_json:from_list([{<<"account_id">>, AccountId}
-                               ,{<<"owner_id">>, OwnerId}
-                               ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                               ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+-spec create_local_token(cb_context:context()) -> cb_context:context().
+create_local_token(Context) ->
+    JObj = cb_context:doc(Context),
+    Token = wh_json:from_list([{<<"account_id">>, wh_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>)}
+                               ,{<<"owner_id">>, wh_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>)}
+                               ,{<<"created">>, wh_util:current_tstamp()}
+                               ,{<<"modified">>, wh_util:current_tstamp()}
                                ,{<<"method">>, wh_util:to_binary(?MODULE)}
-                               ,{<<"shared_token">>, SharedToken}
+                               ,{<<"shared_token">>, cb_context:auth_token(Context)}
                               ]),
     case couch_mgr:save_doc(?KZ_TOKEN_DB, Token) of
-        {ok, Doc} ->
-            AuthToken = wh_json:get_value(<<"_id">>, Doc),
+        {'ok', Doc} ->
+            AuthToken = wh_doc:id(Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
-            crossbar_util:response(crossbar_util:response_auth(JObj)
-                                   ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
-        {error, R} ->
+            Context1 = cb_context:set_doc(cb_context:set_auth_token(Context, AuthToken)
+                                          ,Doc),
+            crossbar_util:response(crossbar_util:response_auth(JObj), Context1);
+        {'error', R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
-            cb_context:add_system_error(invalid_credentials, Context)
+            cb_context:add_system_error('invalid_credentials', Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -216,23 +228,22 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token(api_binary(), nonempty_string())
-                                     -> {'ok', string() | binary()} | {'error', atom()} | {'forbidden', 'shared_token_rejected'}.
-authenticate_shared_token(undefined, _) ->
-    {forbidden, missing_shared_token};
+-spec authenticate_shared_token(api_binary(), nonempty_string()) ->
+                                       {'ok', string() | binary()} |
+                                       {'error', atom()} |
+                                       {'forbidden', atom()}.
+authenticate_shared_token('undefined', _) ->
+    {'forbidden', 'missing_shared_token'};
 authenticate_shared_token(SharedToken, XBarUrl) ->
     Url = lists:flatten(XBarUrl, "/shared_auth"),
     Headers = [{"Accept", "application/json"}
                ,{"X-Auth-Token", wh_util:to_list(SharedToken)}
               ],
     lager:debug("validating shared token ~s via ~s", [SharedToken, Url]),
-    case ibrowse:send_req(Url, Headers, get) of
-        {ok, "200", _, Resp} ->
-            {ok, Resp};
-        {ok, "401", _, _} ->
-            {forbidden, shared_token_rejected};
-        Resp ->
-            {error, Resp}
+    case ibrowse:send_req(Url, Headers, 'get') of
+        {'ok', "200", _, Resp} -> {'ok', Resp};
+        {'ok', "401", _, _} -> {'forbidden', 'shared_token_rejected'};
+        Resp -> {'error', Resp}
     end.
 
 %%--------------------------------------------------------------------
@@ -245,9 +256,9 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
 -spec import_missing_data(wh_json:object()) -> boolean().
 import_missing_data(RemoteData) ->
     Account = wh_json:get_value(<<"account">>, RemoteData),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, Account),
+    AccountId = wh_doc:account_id(Account),
     User = wh_json:get_value(<<"user">>, RemoteData),
-    UserId = wh_json:get_value(<<"_id">>, User),
+    UserId = wh_doc:id(User),
     import_missing_account(AccountId, Account) andalso
         import_missing_user(AccountId, UserId, User).
 
@@ -258,51 +269,58 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account(api_binary(), 'undefined' | wh_json:object()) -> boolean().
-import_missing_account(undefined, _) ->
+-spec import_missing_account(api_binary(), api_object()) -> boolean().
+import_missing_account('undefined', _Account) ->
     lager:debug("shared auth reply did not define an account id"),
-    false;
-import_missing_account(_, undefined) ->
+    'false';
+import_missing_account(_AccountId, 'undefined') ->
     lager:debug("shared auth reply did not define an account definition"),
-    false;
+    'false';
 import_missing_account(AccountId, Account) ->
-    %% check if the acount datbase exists
-    Db = wh_util:format_account_id(AccountId, encoded),
+    %% check if the account database exists
+    Db = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:db_exists(Db) of
         %% if the account database exists make sure it has the account
         %% definition, because when couch is acting up it can skip this
-        true ->
+        'true' ->
             lager:debug("remote account db ~s alread exists locally", [AccountId]),
             %% make sure the account definition is in the account, if not
             %% use the one we got from shared auth
-            case couch_mgr:open_cache_doc(Db, AccountId) of
-                {error, not_found} ->
+            case kz_account:fetch(AccountId) of
+                {'error', 'not_found'} ->
                     lager:debug("missing local account definition, creating from shared auth response"),
-                    Doc = wh_json:delete_key(<<"_rev">>, Account),
+                    Doc = wh_doc:delete_revision(Account),
                     Event = <<"*.execute.post.accounts">>,
-                    case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}, AccountId]) of
-                        #cb_context{resp_status=success} ->
+                    Context1 = crossbar_bindings:fold(Event
+                                                     ,[cb_context:set_doc(
+                                                         cb_context:set_account_db(cb_context:new(), Db)
+                                                                          ,Doc)
+                                                       ,AccountId
+                                                      ]),
+                    case cb_context:resp_status(Context1) of
+                        'success' ->
                             lager:debug("udpated account definition"),
-                            true;
+                            'true';
                         _ ->
                             lager:debug("could not update account definition"),
-                            false
+                            'false'
                     end;
-                {ok, _} ->
+                {'ok', _} ->
                     lager:debug("account definition exists locally"),
-                    true
+                    'true'
             end;
-        false ->
+        'false' ->
             lager:debug("remote account db ~s does not exist locally, creating", [AccountId]),
-            Doc = wh_json:delete_key(<<"_rev">>, Account),
+            Doc = wh_doc:delete_revision(Account),
             Event = <<"*.execute.put.accounts">>,
-            case crossbar_bindings:fold(Event, [#cb_context{doc=Doc}]) of
-                #cb_context{resp_status=success} ->
+            Context1 = crossbar_bindings:fold(Event, [cb_context:set_doc(cb_context:new(), Doc)]),
+            case cb_context:resp_status(Context1) of
+                'success' ->
                     lager:debug("imported account"),
-                    true;
+                    'true';
                 _ ->
                     lager:debug("could not import account"),
-                    false
+                    'false'
             end
     end.
 
@@ -313,28 +331,31 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user(api_binary(), api_binary(), 'undefined' | wh_json:object()) -> boolean().
-import_missing_user(_, undefined, _) ->
+-spec import_missing_user(api_binary(), api_binary(), api_object()) -> boolean().
+import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
-    false;
-import_missing_user(_, _, undefined) ->
+    'false';
+import_missing_user(_, _, 'undefined') ->
     lager:debug("shared auth reply did not define an user object"),
-    false;
+    'false';
 import_missing_user(AccountId, UserId, User) ->
-    Db = wh_util:format_account_id(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:lookup_doc_rev(Db, UserId) of
-        {ok, _} ->
+        {'ok', _} ->
             lager:debug("remote user ~s already exists locally in account ~s", [UserId, AccountId]),
-            true;
+            'true';
         _Else ->
-            Doc = wh_json:delete_key(<<"_rev">>, User),
+            Doc = wh_doc:delete_revision(User),
             Event = <<"*.execute.put.users">>,
-            case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}]) of
-                #cb_context{resp_status=success} ->
+            Context1 = crossbar_bindings:fold(Event, [cb_context:set_doc(
+                                                        cb_context:set_account_db(cb_context:new(), Db)
+                                                                         ,Doc)]),
+            case cb_context:resp_status(Context1) of
+                'success' ->
                     lager:debug("imported user ~s in account ~s", [UserId, AccountId]),
-                    true;
+                    'true';
                 _ ->
                     lager:debug("could not import user ~s in account ~s", [UserId, AccountId]),
-                    false
+                    'false'
             end
     end.

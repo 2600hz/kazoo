@@ -1,3 +1,4 @@
+## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo)
 
 ````
     ... ........                                                
@@ -56,13 +57,9 @@
                                                  ....           
 ````
 
-[![Build Status](https://secure.travis-ci.org/2600hz/2600hz-platform.png)](http://travis-ci.org/2600hz/2600hz-platform)
-
-## Kazoo
-
 ### Cloud-Based Telecommunications For Everyone
 
-Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](http://opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](https://www.gnu.org/)/[Linux](https://en.wikipedia.org/wiki/Linux), [Erlang](http://erlang.org), [FreeSWITCH](https://freeswitch.org), [CouchDB](https://couchdb.apache.org) \(specifically [BigCouch](http://bigcouch.cloudant.com)), and [RabbitMQ](https://www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
+Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](http://opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](https://www.gnu.org/)/[Linux](https://en.wikipedia.org/wiki/Linux), [Erlang](http://www.erlang.org/), [FreeSWITCH](https://freeswitch.org), [CouchDB](https://couchdb.apache.org) \(specifically [BigCouch](http://bigcouch.cloudant.com)), and [RabbitMQ](https://www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
 
 ### What is Kazoo?
 
@@ -107,7 +104,7 @@ _Everyone can!_
 
 No problem!  We have many different places where folks can chip in time. These include (but aren't limited to):
 
-* Maintaining and expanding the documenation
+* Maintaining and expanding the documentation
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
     * on IRC (#2600hz on Freenode)
@@ -128,18 +125,18 @@ If you have a non-US deployment, please consider sharing your system configurati
 ### I know me some Erlang! How can I contribute?
 
 * Clone the repo
-    * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo) to forking repos
+    * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos
 * Squash a bug, build a feature, etc
     * Browse the [ticket queue](https://2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
     * Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
-* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests)!
+* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests/)!
     * Please keep your pull requests focused and specific to the task at hand
     * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
 
 ### Do you know other languages?
 
 * Help us write some automated testing tools
-* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600hz/kazoo_ui)
+* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600hz/kazoo-ui)
 * Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600hz/kazoo-php-sdk) | [RUBY](https://github.com/2600hz/kazoo-ruby-sdk))
 * Check out our Pivot APIs and help us create SDKs in your favorite languages
 * Check out our AMQP APIs and create a WhApp in your favorite language
@@ -147,13 +144,18 @@ If you have a non-US deployment, please consider sharing your system configurati
 
 ## Build Dependencies
 
-* erlang R15+
-* python-simplejson
+* R15B ≤ erlang ≤ 17.5
+    * Note: due to an issue with `parse_transform`s, R16B03 won't build ([merl](deps/merl-28e5b3829168199e8475fa91b997e0c03b90d280) needs update)
+    * Note: to build on 17.* Erlang releases you may need to set `ERLC_OPTS` to `'+nowarn_deprecated_type +nowarn_deprecated_function'` (see .travis.yml for more info)
+* python2
 * libxslt
 * gcc-c++
 * zip
 * unzip
 * expat-devel
+* zlib-devel
+* openssl-devel
+* libxml-devel
 * make
 * nc
 

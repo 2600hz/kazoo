@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -18,7 +18,10 @@
 -export([is_authorized/1
          ,is_authorized/2
         ]).
--export([from_jobj/1]).
+-export([from_jobj/1
+         ,from_ccvs/2
+         ,to_jobj/1
+        ]).
 
 -export([set_account_id/2
          ,account_id/1
@@ -44,10 +47,13 @@
 -export([timestamp/1]).
 -export([message_id/1]).
 -export([server_id/1]).
+-export([node/1]).
 -export([classification/1]).
 -export([number/1]).
 -export([per_minute_cost/1]).
 -export([call_cost/1]).
+-export([ccvs/1]).
+-export([caller_network_address/1]).
 
 -include_lib("jonny5.hrl").
 
@@ -66,12 +72,14 @@
                   ,sip_request :: api_binary()
                   ,message_id :: api_binary()
                   ,server_id :: api_binary()
+                  ,node :: api_binary()
                   ,classification :: api_binary()
                   ,number :: api_binary()
                   ,billing_seconds = 0 :: non_neg_integer()
                   ,answered_time = 0 :: non_neg_integer()
-                  ,timestamp = 0 :: non_neg_integer()
+                  ,timestamp = 0 :: gregorian_seconds()
                   ,request_jobj = wh_json:new() :: wh_json:object()
+                  ,request_ccvs = wh_json:new() :: wh_json:object()
                  }).
 -opaque request() :: #request{}.
 -export_type([request/0]).
@@ -100,24 +108,69 @@ from_jobj(JObj) ->
              ,sip_to = wh_json:get_ne_value(<<"To">>, JObj)
              ,sip_from = wh_json:get_ne_value(<<"From">>, JObj)
              ,sip_request = Request
-             ,message_id = wh_json:get_value(<<"Msg-ID">>, JObj)
-             ,server_id = wh_json:get_value(<<"Server-ID">>, JObj)
+             ,message_id = wh_api:msg_id(JObj)
+             ,server_id = wh_api:server_id(JObj)
+             ,node = wh_api:node(JObj)
              ,billing_seconds = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
              ,answered_time = wh_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
              ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
              ,classification = wnm_util:classify_number(Number)
              ,number = Number
              ,request_jobj = JObj
+             ,request_ccvs = CCVs
             }.
+
+-spec from_ccvs(request(), wh_proplist()) -> request().
+from_ccvs(#request{request_ccvs=ReqCCVs
+                   ,request_jobj=ReqJObj
+                  }=Request, CCVs) ->
+    NewCCVs = wh_json:set_values(CCVs, ReqCCVs),
+
+    Request#request{account_id=props:get_value(<<"Account-ID">>, CCVs)
+                    ,request_ccvs=NewCCVs
+                    ,request_jobj=wh_json:set_value(<<"Custom-Channel-Vars">>, NewCCVs, ReqJObj)
+                   }.
+
 
 -spec request_number(ne_binary(), wh_json:object()) -> ne_binary().
 request_number(Number, CCVs) ->
-    case wh_json:get_value(<<"Original-Number">>, CCVs) of
+    case wh_json:get_first_defined([<<"E164-Destination">>
+                                    ,<<"Original-Number">>
+                                   ], CCVs
+                                  ) of
         'undefined' -> Number;
         Original ->
             lager:debug("using original number ~s instead of ~s", [Original, Number]),
             Original
     end.
+
+-spec ccvs(request()) -> wh_json:object().
+ccvs(#request{request_ccvs=CCVs}) -> CCVs.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec to_jobj(request()) -> wh_json:object().
+to_jobj(Request) ->
+    Props =
+        props:filter_undefined(
+          [{<<"account_id">>, account_id(Request)}
+          ,{<<"reseller_id">>, reseller_id(Request)}
+          ,{<<"call_direction">>, call_direction(Request)}
+          ,{<<"call_id">>, call_id(Request)}
+          ,{<<"other_leg_call_id">>, other_leg_call_id(Request)}
+          ,{<<"answered_time">>, answered_time(Request)}
+          ,{<<"billing_seconds">>, billing_seconds(Request)}
+          ,{<<"from">>, from(Request)}
+          ,{<<"to">>, to(Request)}
+          ,{<<"number">>, ?MODULE:number(Request)}
+          ,{<<"classification">>, classification(Request)}
+          ]
+         ),
+    wh_json:from_list(Props).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -126,47 +179,47 @@ request_number(Number, CCVs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(ne_binary(), request(), j5_limits:limits()) -> request().
-authorize(Reason, #request{reseller_id=AccountId
-                           ,account_id=AccountId
-                          }=Request
+authorize(Reason
+          ,#request{reseller_id=AccountId
+                    ,account_id=AccountId
+                   }=Request
           ,_Limits) ->
-            lager:debug("account ~s authorized channel: ~s"
-                        ,[AccountId, Reason]),
-            Request#request{account_billing=Reason
-                            ,account_authorized='true'
-                           };
-authorize(Reason, #request{reseller_id=ResellerId
-                           ,account_id=AccountId
-                          }=Request
+    authorized_by_account(Reason, Request);
+authorize(Reason
+          ,#request{reseller_id=ResellerId}=Request
           ,Limits) ->
-    case j5_limits:account_id(Limits) =:= ResellerId of
-        'true' ->
-            lager:debug("reseller ~s authorized channel: ~s"
-                        ,[ResellerId, Reason]),
-            Request#request{reseller_billing=Reason
-                            ,reseller_authorized='true'
-                           };
-        'false' ->
-            lager:debug("account ~s authorized channel: ~s"
-                        ,[AccountId, Reason]),
-            Request#request{account_billing=Reason
-                            ,account_authorized='true'
-                           }
+    case j5_limits:account_id(Limits) of
+        ResellerId ->
+            authorized_by_reseller(Reason, Request);
+        _Id ->
+            authorized_by_account(Reason, Request)
     end.
 
--spec authorize_account(ne_binary(), request()) -> request().
-authorize_account(Reason, #request{account_id=AccountId}=Request) ->
+-spec authorized_by_reseller(ne_binary(), request()) -> request().
+authorized_by_reseller(Reason, #request{reseller_id=_ResellerId}=Request) ->
+    lager:debug("reseller ~s authorized channel: ~s"
+                ,[_ResellerId, Reason]
+               ),
+    Request#request{reseller_billing=Reason
+                    ,reseller_authorized='true'
+                   }.
+
+-spec authorized_by_account(ne_binary(), request()) -> request().
+authorized_by_account(Reason, #request{account_id=_AccountId}=Request) ->
     lager:debug("account ~s authorized channel: ~s"
-                ,[AccountId, Reason]),
+                ,[_AccountId, Reason]
+               ),
     Request#request{account_billing=Reason
-                    ,account_authorized='true'}.
+                    ,account_authorized='true'
+                   }.
+
+-spec authorize_account(ne_binary(), request()) -> request().
+authorize_account(Reason, Request) ->
+    authorized_by_account(Reason, Request).
 
 -spec authorize_reseller(ne_binary(), request()) -> request().
-authorize_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
-    lager:debug("reseller ~s authorized channel: ~s"
-                ,[ResellerId, Reason]),
-    Request#request{reseller_billing=Reason
-                    ,reseller_authorized='true'}.
+authorize_reseller(Reason, Request) ->
+    authorized_by_reseller(Reason, Request).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -175,35 +228,45 @@ authorize_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec deny(ne_binary(), request(), j5_limits:limits()) -> request().
-deny(Reason, #request{reseller_id=ResellerId
-                     ,account_id=AccountId}=Request
+deny(Reason
+     ,#request{reseller_id=ResellerId
+               ,account_id=AccountId
+              }=Request
      ,Limits) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' ->
             lager:debug("reseller ~s denied channel: ~s"
-                        ,[ResellerId, Reason]),
+                        ,[ResellerId, Reason]
+                       ),
             Request#request{reseller_billing=Reason
-                            ,reseller_authorized='false'};
+                            ,reseller_authorized='false'
+                           };
         'false' ->
             lager:debug("account ~s denied channel: ~s"
-                        ,[AccountId, Reason]),
+                        ,[AccountId, Reason]
+                       ),
             Request#request{account_billing=Reason
-                            ,account_authorized='false'}
+                            ,account_authorized='false'
+                           }
     end.
 
 -spec deny_account(ne_binary(), request()) -> request().
 deny_account(Reason, #request{account_id=AccountId}=Request) ->
     lager:debug("account ~s denied channel: ~s"
-                ,[AccountId, Reason]),
+                ,[AccountId, Reason]
+               ),
     Request#request{account_billing=Reason
-                    ,account_authorized='false'}.
+                    ,account_authorized='false'
+                   }.
 
 -spec deny_reseller(ne_binary(), request()) -> request().
 deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
     lager:debug("reseller ~s denied channel: ~s"
-                ,[ResellerId, Reason]),
+                ,[ResellerId, Reason]
+               ),
     Request#request{reseller_billing=Reason
-                    ,reseller_authorized='false'}.
+                    ,reseller_authorized='false'
+                   }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -214,15 +277,19 @@ deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
 -spec is_authorized(request()) -> boolean().
 is_authorized(#request{account_id=AccountId
                        ,account_authorized=Authorized
-                       ,reseller_id=AccountId}) -> Authorized;
+                       ,reseller_id=AccountId
+                      }) -> Authorized;
 is_authorized(#request{account_authorized=AccountAuthorized
-                      ,reseller_authorized=ResellerAuthorized}) ->
-    AccountAuthorized andalso ResellerAuthorized.
+                       ,reseller_authorized=ResellerAuthorized
+                      }) ->
+    AccountAuthorized
+        andalso ResellerAuthorized.
 
 -spec is_authorized(request(), j5_limits:limits()) -> boolean().
 is_authorized(#request{account_authorized=AccountAuthorized
                        ,reseller_id=ResellerId
-                       ,reseller_authorized=ResellerAuthorized}
+                       ,reseller_authorized=ResellerAuthorized
+                      }
               ,Limits) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' -> ResellerAuthorized;
@@ -236,7 +303,8 @@ is_authorized(#request{account_authorized=AccountAuthorized
 %% @end
 %%--------------------------------------------------------------------
 -spec set_account_id(api_binary(), request()) -> request().
-set_account_id(AccountId, Request) -> Request#request{account_id=AccountId}.
+set_account_id(AccountId, Request) ->
+    Request#request{account_id=AccountId}.
 
 -spec account_id(request()) -> api_binary().
 account_id(#request{account_id=AccountId}) -> AccountId.
@@ -263,7 +331,8 @@ reseller_id(#request{reseller_id=ResellerId}) -> ResellerId.
 -spec billing(request(), j5_limits:limits()) -> api_binary().
 billing(#request{account_billing=AccountBilling
                  ,reseller_id=ResellerId
-                 ,reseller_billing=ResellerBilling}
+                 ,reseller_billing=ResellerBilling
+                }
         ,Limits) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' -> ResellerBilling;
@@ -392,6 +461,15 @@ server_id(#request{server_id=ServerId}) -> ServerId.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec node(request()) -> api_binary().
+node(#request{node=NodeId}) -> NodeId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec classification(request()) -> api_binary().
 classification(#request{classification=Classification}) -> Classification.
 
@@ -423,3 +501,7 @@ per_minute_cost(#request{request_jobj=JObj}) ->
 -spec call_cost(request()) -> non_neg_integer().
 call_cost(#request{request_jobj=JObj}) ->
     wht_util:call_cost(JObj).
+
+-spec caller_network_address(request()) -> api_binary().
+caller_network_address(#request{request_jobj=JObj}) ->
+    wh_json:get_value(<<"From-Network-Addr">>, JObj).

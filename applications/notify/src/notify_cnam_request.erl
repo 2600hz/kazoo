@@ -44,7 +44,7 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:cnam_request_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     lager:debug("a cnam change has been requested, sending email notification"),
 

@@ -13,16 +13,7 @@
 -export([exec/2
          ,parse_cmds/1
          ,req_params/1
-        ]).
-
--export([timeout_s/1
-         ,reject_reason/1
-         ,reject_status/1
-         ,reject_code/1
-         ,get_engine/1
-         ,get_voice/1
          ,exec_gather_els/3
-         ,action_url/1
         ]).
 
 -spec parse_cmds(iolist()) -> {'ok', xml_els()} |
@@ -30,9 +21,11 @@
 parse_cmds(XMLString) ->
     try xmerl_scan:string(wh_util:to_list(XMLString)) of
         {#xmlElement{name='Response'}=XML, _} -> {'ok', XML};
-        _ -> {'error', 'not_parsed'}
+        _E ->
+            {'error', 'not_parsed'}
     catch
-        _:_ -> {'error', 'not_parsed'}
+        _E:_R ->
+            {'error', 'not_parsed'}
     end.
 
 -spec exec(whapps_call:call(), xml_el() | text()) ->
@@ -111,7 +104,7 @@ exec_element(Call, #xmlElement{name='Say'
                                ,content=ToSay
                                ,attributes=Attrs
                               }) ->
-    case say(Call, ToSay, Attrs) of
+    case kzt_twiml_say:exec(Call, ToSay, Attrs) of
         {'ok', _}=OK -> OK;
         {'error', _E, Call1} ->
             lager:debug("say stopped with error ~p", [_E]),
@@ -189,12 +182,12 @@ hangup(Call) ->
 reject(Call, Attrs) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
 
-    Reason = reject_reason(Props),
-    Code = reject_code(Reason),
+    Reason = kzt_twiml_util:reject_reason(Props),
+    Code = kzt_twiml_util:reject_code(Reason),
 
     lager:debug("rejecting call with ~s(~s)", [Reason, Code]),
-    _ = whapps_call_command:response(Code, Reason, reject_prompt(Props), Call),
-    {'stop', kzt_util:update_call_status(reject_status(Code), Call)}.
+    _ = whapps_call_command:response(Code, Reason, kzt_twiml_util:reject_prompt(Props), Call),
+    {'stop', kzt_util:update_call_status(kzt_twiml_util:reject_status(Code), Call)}.
 
 -spec pause(whapps_call:call(), xml_attribs()) ->
                    {'ok', whapps_call:call()}.
@@ -202,7 +195,7 @@ pause(Call, Attrs) ->
     whapps_call_command:answer(Call),
     Props = kz_xml:attributes_to_proplist(Attrs),
 
-    PauseFor = pause_for(Props),
+    PauseFor = kzt_twiml_util:pause_for(Props),
     lager:debug("pause for ~b ms", [PauseFor]),
     timer:sleep(PauseFor),
     {'ok', Call}.
@@ -226,28 +219,6 @@ set_variables(Call, Els) when is_list(Els) ->
                    (_, C) -> C
                 end, Call, Els).
 
--spec say(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
-                 {'ok', whapps_call:call()} |
-                 {'error', _, whapps_call:call()}.
-say(Call, XmlText, Attrs) ->
-    whapps_call_command:answer(Call),
-    SayMe = kz_xml:texts_to_binary(XmlText, whapps_config:get_integer(<<"pivot">>, <<"tts_texts_size">>, ?TTS_SIZE_LIMIT)),
-
-    Props = kz_xml:attributes_to_proplist(Attrs),
-
-    Voice = get_voice(Props),
-    Lang = get_lang(Props),
-    Engine = get_engine(Props),
-
-    Terminators = get_terminators(Props),
-
-    lager:info("SAY: '~s' using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
-
-    case loop_count(Props) of
-        0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, 'infinity');
-        N when N > 0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N)
-    end.
-
 -spec play(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
                   {'ok', whapps_call:call()} |
                   {'error', _, whapps_call:call()}.
@@ -257,9 +228,9 @@ play(Call, XmlText, Attrs) ->
     lager:info("PLAY '~s'", [PlayMe]),
 
     Props = kz_xml:attributes_to_proplist(Attrs),
-    Terminators = get_terminators(Props),
+    Terminators = kzt_twiml_util:get_terminators(Props),
 
-    case loop_count(Props) of
+    case kzt_twiml_util:loop_count(Props) of
         0 -> kzt_receiver:play_loop(Call, PlayMe, Terminators, 'infinity');
         N when N > 0 -> kzt_receiver:play_loop(Call, PlayMe, Terminators, N)
     end.
@@ -325,10 +296,10 @@ gather(Call, Attrs) ->
 
     Props = kz_xml:attributes_to_proplist(Attrs),
 
-    Timeout = timeout_s(Props, 5) * 1000,
-    FinishKey = finish_dtmf(Props),
+    Timeout = kzt_twiml_util:timeout_s(Props, 5) * ?MILLISECONDS_IN_SECOND,
+    FinishKey = kzt_twiml_util:finish_dtmf(Props),
 
-    gather(Call, FinishKey, Timeout, Props, num_digits(Props)).
+    gather(Call, FinishKey, Timeout, Props, kzt_twiml_util:num_digits(Props)).
 
 -spec gather(whapps_call:call(), api_binary(), wh_timeout(), wh_proplist(), pos_integer()) ->
                     {'ok', whapps_call:call()} |
@@ -364,7 +335,7 @@ gather_finished(Call, Props) ->
         _DTMFs ->
             lager:info("caller entered DTMFs: ~s", [_DTMFs]),
             CurrentUri = kzt_util:get_voice_uri(Call),
-            NewUri = kzt_util:resolve_uri(CurrentUri, action_url(Props)),
+            NewUri = kzt_util:resolve_uri(CurrentUri, kzt_twiml_util:action_url(Props)),
             Method = kzt_util:http_method(Props),
 
             Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
@@ -375,9 +346,9 @@ gather_finished(Call, Props) ->
 
 record_call(Call, Attrs) ->
     Props = kz_xml:attributes_to_proplist(Attrs),
-    Timeout = timeout_s(Props, 5),
-    FinishOnKey = get_finish_key(Props),
-    MaxLength = get_max_length(Props),
+    Timeout = kzt_twiml_util:timeout_s(Props, 5),
+    FinishOnKey = kzt_twiml_util:get_finish_key(Props),
+    MaxLength = kzt_twiml_util:get_max_length(Props),
 
     MediaName = media_name(Call),
 
@@ -400,7 +371,7 @@ record_call(Call, Attrs) ->
                                 {'request', whapps_call:call()}.
 finish_record_call(Call, Props, MediaName) ->
     CurrentUri = kzt_util:get_voice_uri(Call),
-    NewUri = kzt_util:resolve_uri(CurrentUri, action_url(Props)),
+    NewUri = kzt_util:resolve_uri(CurrentUri, kzt_twiml_util:action_url(Props)),
     Method = kzt_util:http_method(Props),
 
     lager:info("recording of ~s finished; using method '~s' to ~s from ~s", [MediaName, Method, NewUri, CurrentUri]),
@@ -463,102 +434,3 @@ media_name(Call) ->
 %%------------------------------------------------------------------------------
 %% Helpers
 %%------------------------------------------------------------------------------
-loop_count(Props) -> props:get_integer_value('loop', Props, 1).
-
-finish_dtmf(Props) -> finish_dtmf(Props, <<"#">>).
-finish_dtmf(Props, Default) when is_list(Props) ->
-    case props:get_binary_value('finishOnKey', Props) of
-        'undefined' -> Default;
-        DTMF ->
-            'true' = lists:member(DTMF, ?ANY_DIGIT),
-            DTMF
-    end.
-
--spec get_voice(wh_proplist()) -> ne_binary().
-get_voice(Props) ->
-    case props:get_binary_value('voice', Props) of
-        <<"man">> -> <<"male">>;
-        <<"male">> -> <<"male">>;
-        <<"woman">> -> <<"female">>;
-        <<"female">> -> <<"female">>;
-        'undefined' -> ?DEFAULT_TTS_VOICE
-    end.
-
--spec get_lang(wh_proplist()) -> ne_binary().
-get_lang(Props) ->
-    case props:get_binary_value('language', Props) of
-        'undefined' -> ?DEFAULT_TTS_LANG;
-        <<"en">> -> <<"en-US">>;
-        <<"en-gb">> -> <<"en-GB">>;
-        <<"es">> -> <<"es">>;
-        <<"fr">> -> <<"fr">>;
-        <<"de">> -> <<"de">>;
-        <<"it">> -> <<"it">>
-    end.
-
--spec get_engine(wh_proplist()) -> ne_binary().
-get_engine(Props) ->
-    case props:get_binary_value('engine', Props) of
-        'undefined' -> ?DEFAULT_TTS_ENGINE;
-        Engine -> Engine
-    end.
-
-get_finish_key(Props) ->
-    wapi_dialplan:terminators(props:get_binary_value('finishOnKey', Props)).
-
-get_terminators(Props) ->
-    wapi_dialplan:terminators(props:get_binary_value('terminators', Props)).
-
--spec get_max_length(wh_proplist()) -> pos_integer().
-get_max_length(Props) ->
-    Max = whapps_config:get_integer(?MODULE, <<"max_length">>, 3600),
-    case props:get_integer_value('maxLength', Props) of
-        'undefined' -> Max;
-        N when N > 0, N =< Max -> N
-    end.
-
-%% limit pause to 1 hour (3600000 ms)
--spec pause_for(wh_proplist()) -> 1000..3600000.
-pause_for(Props) ->
-    case props:get_integer_value('length', Props) of
-        'undefined' -> 1000;
-        N when is_integer(N), N > 0, N =< 3600 -> N * 1000;
-        N when is_integer(N), N > 3600 -> 3600000
-    end.
-
--spec action_url(wh_proplist()) -> api_binary().
-action_url(Props) -> props:get_binary_value('action', Props).
-
--spec reject_prompt(wh_proplist()) -> api_binary().
-reject_prompt(Props) -> props:get_binary_value('prompt', Props).
-
--spec timeout_s(wh_proplist()) -> pos_integer().
-timeout_s(Props) -> timeout_s(Props, 30).
-timeout_s(Props, Default) ->
-    case props:get_integer_value('timeout', Props, Default) of
-        N when is_integer(N), N > 3600 -> 3600;
-        N when is_integer(N), N > 0 -> N
-    end.
-
--spec num_digits(wh_proplist()) -> wh_timeout().
-num_digits(Props) ->
-    case props:get_integer_value('numDigits', Props) of
-        'undefined' -> 'infinity';
-        N when is_integer(N), N > 0 -> N
-    end.
-
--spec reject_reason(wh_proplist()) -> ne_binary().
-reject_reason(Props) ->
-    case props:get_binary_value('reason', Props) of
-        'undefined' -> <<"rejected">>;
-        <<"rejected">> -> <<"rejected">>;
-        <<"busy">> -> <<"busy">>
-    end.
-
--spec reject_code(ne_binary()) -> ne_binary().
-reject_code(<<"busy">>) -> <<"486">>;
-reject_code(<<"rejected">>) -> <<"503">>.
-
--spec reject_status(ne_binary()) -> ne_binary().
-reject_status(<<"486">>) -> ?STATUS_BUSY;
-reject_status(<<"503">>) -> ?STATUS_NOANSWER.

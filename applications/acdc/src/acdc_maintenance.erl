@@ -17,6 +17,18 @@
          ,migrate_to_acdc_db/0, migrate/0
          ,refresh/0, refresh_account/1
          ,flush_call_stat/1
+         ,queues_summary/0, queues_summary/1, queue_summary/2
+         ,queues_detail/0, queues_detail/1, queue_detail/2
+         ,queues_restart/1, queue_restart/2
+
+         ,agents_summary/0, agents_summary/1, agent_summary/2
+         ,agents_detail/0, agents_detail/1, agent_detail/2
+         ,agent_login/2
+         ,agent_logout/2
+         ,agent_pause/2, agent_pause/3
+         ,agent_resume/2
+         ,agent_queue_login/3
+         ,agent_queue_logout/3
         ]).
 
 -include("acdc.hrl").
@@ -26,7 +38,7 @@ logout_agents(AccountId) ->
     io:format("Sending notices to logout agents for ~s~n", [AccountId]),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', AgentView} = couch_mgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
-    [logout_agent(AccountId, wh_json:get_value(<<"id">>, Agent)) || Agent <- AgentView],
+    _ = [logout_agent(AccountId, wh_doc:id(Agent)) || Agent <- AgentView],
     'ok'.
 
 -spec logout_agent(ne_binary(), ne_binary()) -> 'ok'.
@@ -75,7 +87,7 @@ current_queues(AccountId) ->
 
 log_current_queues(Agents) ->
     io:format(" ~35s | ~s~n", [<<"Agent ID">>, <<"Queue IDs">>]),
-    [log_current_queue(Agent) || Agent <- Agents],
+    _ = [log_current_queue(Agent) || Agent <- Agents],
     'ok'.
 log_current_queue(AgentSup) ->
     AgentL = acdc_agent_sup:listener(AgentSup),
@@ -92,7 +104,7 @@ current_agents(AccountId) ->
     end.
 log_current_agents(Queues) ->
     io:format(" ~35s | ~s~n", [<<"Queue ID">>, <<"Agent IDs">>]),
-    [log_current_agent(Queue) || Queue <- Queues],
+    _ = [log_current_agent(Queue) || Queue <- Queues],
     'ok'.
 log_current_agent(QueueSup) ->
     QueueM = acdc_queue_sup:manager(QueueSup),
@@ -120,7 +132,7 @@ current_calls(AccountId, Props) ->
     get_and_show(AccountId, <<"custom">>, Req).
 
 get_and_show(AccountId, QueueId, Req) ->
-    put('callid', <<"acdc_maint.", AccountId/binary, ".", QueueId/binary>>),
+    wh_util:put_callid(<<"acdc_maint.", AccountId/binary, ".", QueueId/binary>>),
     case whapps_util:amqp_pool_collect(Req
                                        ,fun wapi_acdc_stats:publish_current_calls_req/1
                                        ,'acdc'
@@ -140,6 +152,7 @@ get_and_show(AccountId, QueueId, Req) ->
 
 show_call_stats([], _) -> 'ok';
 show_call_stats([Resp|Resps], Ks) ->
+    wh_util:put_callid(?MODULE),
     show_call_stat_cat(Ks, Resp),
     show_call_stats(Resps, Ks).
 
@@ -167,7 +180,7 @@ refresh() ->
         {'ok', []} ->
             lager:debug("no accounts configured for acdc");
         {'ok', Accounts} ->
-            [refresh_account(wh_json:get_value(<<"key">>, Acct)) || Acct <- Accounts],
+            _ = [refresh_account(wh_json:get_value(<<"key">>, Acct)) || Acct <- Accounts],
             lager:debug("refreshed accounts");
         {'error', 'not_found'} ->
             lager:debug("acdc db not found"),
@@ -194,11 +207,9 @@ migrate() ->
     migrate_to_acdc_db().
 migrate_to_acdc_db() ->
     {'ok', Accounts} = couch_mgr:all_docs(?KZ_ACDC_DB),
-    [maybe_remove_acdc_account(wh_json:get_value(<<"id">>, Account)) || Account <- Accounts],
+    _ = [maybe_remove_acdc_account(wh_doc:id(Account)) || Account <- Accounts],
     io:format("removed any missing accounts from ~s~n", [?KZ_ACDC_DB]),
-
-    [migrate_to_acdc_db(Acct) || Acct <- whapps_util:get_all_accounts('raw')],
-
+    _ = [migrate_to_acdc_db(Acct) || Acct <- whapps_util:get_all_accounts('raw')],
     io:format("migration complete~n").
 
 -spec maybe_remove_acdc_account(ne_binary()) -> 'ok'.
@@ -278,3 +289,202 @@ flush_call_stat(CallId) ->
                                      ),
             io:format("setting call to 'abandoned'~n", [])
     end.
+
+-spec queues_summary() -> 'ok'.
+-spec queues_summary(ne_binary()) -> 'ok'.
+-spec queue_summary(ne_binary(), ne_binary()) -> 'ok'.
+queues_summary() ->
+    wh_util:put_callid(?MODULE),
+    show_queues_summary(acdc_queues_sup:queues_running()).
+
+queues_summary(AcctId) ->
+    wh_util:put_callid(?MODULE),
+    show_queues_summary(
+      [Q || {_, {QAcctId, _}} = Q <- acdc_queues_sup:queues_running(),
+            QAcctId =:= AcctId
+      ]).
+
+queue_summary(AcctId, QueueId) ->
+    wh_util:put_callid(?MODULE),
+    show_queues_summary(
+      [Q || {_, {QAcctId, QQueueId}} = Q <- acdc_queues_sup:queues_running(),
+            QAcctId =:= AcctId,
+            QQueueId =:= QueueId
+      ]).
+
+-spec show_queues_summary([{pid(), {ne_binary(), ne_binary()}}]) -> 'ok'.
+show_queues_summary([]) -> 'ok';
+show_queues_summary([{P, {AcctId, QueueId}}|Qs]) ->
+    lager:info("  Supervisor: ~p Acct: ~s Queue: ~s~n", [P, AcctId, QueueId]),
+    show_queues_summary(Qs).
+
+queues_detail() ->
+    acdc_queues_sup:status().
+queues_detail(AcctId) ->
+    wh_util:put_callid(?MODULE),
+    _ = [acdc_queue_sup:status(S)
+         || S <- acdc_queues_sup:find_acct_supervisors(AcctId)
+        ],
+    'ok'.
+queue_detail(AcctId, QueueId) ->
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
+        'undefined' -> lager:info("no queue ~s in account ~s", [QueueId, AcctId]);
+        Pid -> acdc_queue_sup:status(Pid)
+    end.
+
+queues_restart(AcctId) ->
+    wh_util:put_callid(?MODULE),
+    case acdc_queues_sup:find_acct_supervisors(AcctId) of
+        [] ->
+            lager:info("there are no running queues in ~s", [AcctId]);
+        Pids ->
+            [maybe_stop_then_start_queue(AcctId, Pid) || Pid <- Pids]
+    end.
+queue_restart(AcctId, QueueId) ->
+    wh_util:put_callid(?MODULE),
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
+        'undefined' ->
+            lager:info("queue ~s in account ~s not running", [QueueId, AcctId]);
+        Pid ->
+            maybe_stop_then_start_queue(AcctId, QueueId, Pid)
+    end.
+
+-spec maybe_stop_then_start_queue(ne_binary(), pid()) -> 'ok'.
+-spec maybe_stop_then_start_queue(ne_binary(), ne_binary(), pid()) -> 'ok'.
+
+maybe_stop_then_start_queue(AcctId, Pid) ->
+    {AcctId, QueueId} = acdc_queue_manager:config(acdc_queue_sup:manager(Pid)),
+    maybe_stop_then_start_queue(AcctId, QueueId, Pid).
+maybe_stop_then_start_queue(AcctId, QueueId, Pid) ->
+    case supervisor:terminate_child('acdc_queues_sup', Pid) of
+        'ok' ->
+            lager:info("stopped queue supervisor ~p", [Pid]),
+            maybe_start_queue(AcctId, QueueId);
+        {'error', 'not_found'} ->
+            lager:info("queue supervisor ~p not found", [Pid]);
+        {'error', _E} ->
+            lager:info("failed to terminate queue supervisor ~p: ~p", [_E])
+    end.
+
+maybe_start_queue(AcctId, QueueId) ->
+    case acdc_queues_sup:new(AcctId, QueueId) of
+        {'ok', 'undefined'} ->
+            lager:info("tried to start queue but it asked to be ignored");
+        {'ok', Pid} ->
+            lager:info("started queue back up in ~p", [Pid]);
+        {'error', 'already_present'} ->
+            lager:info("queue is already present (but not running)");
+        {'error', {'already_running', Pid}} ->
+            lager:info("queue is already running in ~p", [Pid]);
+        {'error', _E} ->
+            lager:info("failed to start queue: ~p", [_E])
+    end.
+
+agents_summary() ->
+    wh_util:put_callid(?MODULE),
+    show_agents_summary(acdc_agents_sup:agents_running()).
+
+agents_summary(AcctId) ->
+    wh_util:put_callid(?MODULE),
+    show_agents_summary(
+      [A || {_, {AAcctId, _, _}} = A <- acdc_agents_sup:agents_running(),
+            AAcctId =:= AcctId
+      ]).
+
+agent_summary(AcctId, AgentId) ->
+    wh_util:put_callid(?MODULE),
+    show_agents_summary(
+      [Q || {_, {AAcctId, AAgentId, _}} = Q <- acdc_agents_sup:agents_running(),
+            AAcctId =:= AcctId,
+            AAgentId =:= AgentId
+      ]).
+
+-spec show_agents_summary([{pid(), acdc_agent_listener:config()}]) -> 'ok'.
+show_agents_summary([]) -> 'ok';
+show_agents_summary([{P, {AcctId, QueueId, _AMQPQueue}}|Qs]) ->
+    lager:info("  Supervisor: ~p Acct: ~s Agent: ~s", [P, AcctId, QueueId]),
+    show_queues_summary(Qs).
+
+agents_detail() ->
+    wh_util:put_callid(?MODULE),
+    acdc_agents_sup:status().
+agents_detail(AcctId) ->
+    wh_util:put_callid(?MODULE),
+    _ = [acdc_agent_sup:status(S)
+         || S <- acdc_agents_sup:find_acct_supervisors(AcctId)
+        ],
+    'ok'.
+agent_detail(AcctId, AgentId) ->
+    wh_util:put_callid(?MODULE),
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        'undefined' -> lager:info("no agent ~s in account ~s", [AgentId, AcctId]);
+        Pid -> acdc_agent_sup:status(Pid)
+    end.
+
+agent_login(AcctId, AgentId) ->
+    wh_util:put_callid(?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_login/1),
+    lager:info("published login update for agent").
+
+agent_logout(AcctId, AgentId) ->
+    wh_util:put_callid(?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_logout/1),
+    lager:info("published logout update for agent").
+
+agent_pause(AcctId, AgentId) ->
+    agent_pause(AcctId, AgentId
+                ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
+               ).
+agent_pause(AcctId, AgentId, Timeout) ->
+    wh_util:put_callid(?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"Timeout">>, wh_util:to_integer(Timeout)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_pause/1),
+    lager:info("published pause for agent").
+
+agent_resume(AcctId, AgentId) ->
+    wh_util:put_callid(?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_resume/1),
+    lager:info("published resume for agent").
+
+
+agent_queue_login(AcctId, AgentId, QueueId) ->
+    wh_util:put_callid(?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"Queue-ID">>, QueueId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_login_queue/1),
+    lager:info("published login update for agent").
+
+agent_queue_logout(AcctId, AgentId, QueueId) ->
+    wh_util:put_callid(?MODULE),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"Queue-ID">>, QueueId}
+                |  wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_logout_queue/1),
+    lager:info("published logout update for agent").

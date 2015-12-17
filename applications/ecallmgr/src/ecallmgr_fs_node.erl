@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Manage a FreeSWITCH node and its resources
 %%% @end
@@ -13,7 +13,7 @@
 
 -export([start_link/1, start_link/2]).
 -export([handle_reload_acls/2]).
--export([handle_reload_gtws/2]).
+-export([handle_reload_gateways/2]).
 -export([sync_channels/1
          ,sync_interface/1
          ,sync_capabilities/1
@@ -23,6 +23,7 @@
 -export([sip_external_ip/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
+-export([interface/1]).
 -export([fetch_timeout/0, fetch_timeout/1]).
 -export([init/1
          ,handle_call/3
@@ -66,6 +67,7 @@
                     ,aggressive_nat
                     ,stun_enabled
                     ,stun_auto_disabled
+                    ,interface_props = []
                    }).
 -type interface() :: #interface{}.
 
@@ -132,14 +134,17 @@
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
                       ,[{<<"switch_event">>, <<"reload_acls">>}]
                      }
-                     ,{{?MODULE, 'handle_reload_gtws'}
-                       ,[{<<"switch_event">>, <<"reload_gateways">>}]
-                      }
+                    ,{{?MODULE, 'handle_reload_gateways'}
+                      ,[{<<"switch_event">>, <<"reload_gateways">>}]
+                     }
                     ]).
--define(BINDINGS, [{'switch', []}]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(BINDINGS, [{'switch', [{'restrict_to', ['reload_acls'
+                                                ,'reload_gateways'
+                                               ]}
+                              ]}
+                  ]).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(SERVER, ?MODULE).
 
@@ -150,7 +155,7 @@
 -define(SEC_TO_MICRO(Sec), wh_util:to_integer(Sec)*1000000).
 -define(MILLI_TO_MICRO(Mil), wh_util:to_integer(Mil)*1000).
 
--define(FS_TIMEOUT, 5000).
+-define(FS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 -define(REPLAY_REG_MAP,
         [{<<"Realm">>, <<"realm">>}
@@ -186,9 +191,13 @@
 
 start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
+    QueueName = <<(wh_util:to_binary(Node))/binary
+                  ,"-"
+                  ,(wh_util:to_binary(?MODULE))/binary
+                >>,
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_name', QueueName}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [Node, Options]).
@@ -227,15 +236,19 @@ sip_external_ip(Srv) ->
     gen_server:call(find_srv(Srv), 'sip_external_ip').
 
 -spec handle_reload_acls(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_reload_acls(_JObj, Props) ->
+handle_reload_acls(JObj, Props) ->
+    'true' = wapi_switch:reload_acls_v(JObj),
+
     Node = props:get_value('node', Props),
     case freeswitch:bgapi(Node, 'reloadacl', "") of
         {'ok', Job} -> lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
         {'error', _E} -> lager:debug("reloadacl failed with error: ~p", [_E])
     end.
 
--spec handle_reload_gtws(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_reload_gtws(_JObj, Props) ->
+-spec handle_reload_gateways(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_reload_gateways(JObj, Props) ->
+    'true' = wapi_switch:reload_gateways_v(JObj),
+
     Node = props:get_value('node', Props),
     Args = ["profile "
             ,?DEFAULT_FS_PROFILE
@@ -262,7 +275,6 @@ find_srv(Node) when is_binary(Node) -> find_srv(wh_util:to_atom(Node));
 find_srv(Node) when is_atom(Node) ->
     ecallmgr_fs_node_sup:node_srv(ecallmgr_fs_sup:find_node(Node)).
 
--define(DEFAULT_FETCH_TIMEOUT, 2600).
 -spec fetch_timeout() -> pos_integer().
 -spec fetch_timeout(fs_node()) -> pos_integer().
 fetch_timeout() ->
@@ -287,7 +299,7 @@ fetch_timeout(_Node) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put('callid', Node),
+    wh_util:put_callid(Node),
     process_flag('priority', 'high'), %% Living dangerously!
     lager:info("starting new fs node listener for ~s", [Node]),
     gproc:reg({'p', 'l', 'fs_node'}),
@@ -318,6 +330,8 @@ handle_call('sip_external_ip', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.ext_sip_ip, State};
 handle_call('sip_url', _, #state{interface=Interface}=State) ->
     {'reply', Interface#interface.url, State};
+handle_call('interface_props', _, #state{interface=Interface}=State) ->
+    {'reply', Interface#interface.interface_props, State};
 handle_call('node', _, #state{node=Node}=State) ->
     {'reply', Node, State}.
 
@@ -336,9 +350,7 @@ handle_cast('sync_interface', #state{node=Node
                                     }=State) ->
     {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
-    _Pid = spawn(fun() ->
-                         probe_capabilities(Node)
-                 end),
+    _Pid = wh_util:spawn(fun probe_capabilities/1, [Node]),
     lager:debug("syncing capabilities in ~p", [_Pid]),
     {'noreply', State};
 handle_cast('sync_channels', #state{node=Node}=State) ->
@@ -348,7 +360,7 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
 handle_cast('sync_registrations', #state{node=Node}=State) ->
-    _Pid = spawn(fun() -> maybe_replay_registrations(Node) end),
+    _Pid = wh_util:spawn(fun maybe_replay_registrations/1, [Node]),
     lager:debug("syncing registrations in ~p", [_Pid]),
     {'noreply', State};
 handle_cast(_Req, State) ->
@@ -423,7 +435,7 @@ code_change(_OldVsn, State, _Extra) ->
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
                       {'timeout', {atom(), ne_binary()}}.
--type cmd_results() :: [cmd_result(),...] | [] |
+-type cmd_results() :: [cmd_result()] |
                        {'error', 'retry'}.
 
 -spec run_start_cmds(atom(), wh_proplist()) -> pid_ref().
@@ -436,7 +448,7 @@ run_start_cmds(Node, Options) ->
 -spec run_start_cmds(atom(), wh_proplist(), pid()) -> any().
 run_start_cmds(Node, Options, Parent) ->
     wh_util:put_callid(Node),
-    timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5000, Node)),
+    timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
 
     run_start_cmds(Node, Options, Parent, is_restarting(Node)).
 
@@ -539,7 +551,7 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
                     process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'list');
                 {'bgerror', BGApiID, Error} ->
                     process_resp(ApiCmd, ApiArg, binary:split(Error, <<"\n">>, ['global']), Acc)
-            after 120000 ->
+            after 120 * ?MILLISECONDS_IN_SECOND ->
                     [{'timeout', {ApiCmd, ApiArg}} | Acc]
             end;
         {'error', _}=Error ->
@@ -568,13 +580,13 @@ process_resp(ApiCmd, ApiArg, [<<"-ERR ", Err/binary>>|Resps], Acc) ->
     end;
 process_resp(_, _, [], Acc) -> Acc.
 
--spec was_bad_error(ne_binary(), atom(), _) -> boolean().
+-spec was_bad_error(ne_binary(), atom(), any()) -> boolean().
 was_bad_error(<<"[Module already loaded]">>, 'load', _) -> 'false';
 was_bad_error(_E, _, _) -> 'true'.
 
--spec was_not_successful_cmd({'ok', _} |
-                             {'ok', _, _} |
-                             _
+-spec was_not_successful_cmd({'ok', any()} |
+                             {'ok', any(), any()} |
+                             any()
                             ) -> boolean().
 
 was_not_successful_cmd({'ok', _}) -> 'false';
@@ -642,6 +654,7 @@ interface_from_props(Props) ->
                ,aggressive_nat=props:get_is_true(<<"AGGRESSIVENAT">>, Props)
                ,stun_enabled=props:get_is_true(<<"STUN-ENABLED">>, Props)
                ,stun_auto_disabled=props:get_is_true(<<"STUN-AUTO-DISABLE">>, Props)
+               ,interface_props=Props
               }.
 
 -spec split_codes(ne_binary(), wh_proplist()) -> ne_binaries().
@@ -683,7 +696,7 @@ maybe_replay_registrations(Node) ->
     wh_util:put_callid(Node),
     replay_registration(Node, get_registrations(Node)).
 
--spec replay_registration(atom(), list(wh_proplist()) | []) -> 'ok'.
+-spec replay_registration(atom(), [wh_proplist()]) -> 'ok'.
 replay_registration(_Node, [[]]) -> 'ok';
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
@@ -717,7 +730,7 @@ replay_expires(V) ->
 replay_contact(V) ->
     <<"<", (lists:nth(3, binary:split(V, <<"/">>, ['global'] ) ))/binary, ">">>.
 
--spec get_registrations(atom()) -> list(wh_proplist()).
+-spec get_registrations(atom()) -> [wh_proplist()].
 get_registrations(Node) ->
     case freeswitch:api(Node, 'show', "registrations") of
         {'ok', Response} ->
@@ -729,7 +742,7 @@ get_registrations(Node) ->
         _Else -> [[]]
     end.
 
--spec get_registration_details(list()) -> list(wh_proplist()).
+-spec get_registration_details(list()) -> [wh_proplist()].
 get_registration_details([Header, _, _, _| _] = Lines) ->
     [begin
          {Res, _Total} = lists:mapfoldl(
@@ -747,8 +760,12 @@ node_interface(Node, CurrInterface) ->
     case ecallmgr_util:get_interface_properties(Node) of
         [] ->
             lager:debug("no interface properties available at the moment, will sync again"),
-            _ = erlang:send_after(1000, self(), 'sync_interface'),
+            _ = erlang:send_after(?MILLISECONDS_IN_SECOND, self(), 'sync_interface'),
             CurrInterface;
         Props ->
             interface_from_props(Props)
     end.
+
+-spec interface(atom() | binary()) -> wh_proplist().
+interface(Node) ->
+    gen_server:call(find_srv(Node), 'interface_props').

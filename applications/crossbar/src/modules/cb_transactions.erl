@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz INC
+%%% @copyright (C) 2013-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -12,13 +12,19 @@
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
+         ,to_csv/1
+         ,delete/2
         ]).
 
 -include("../crossbar.hrl").
+-include_lib("whistle_transactions/include/whistle_transactions.hrl").
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
+-define(CURRENT_BALANCE, <<"current_balance">>).
+-define(MONTHLY, <<"monthly_recurring">>).
+-define(SUBSCRIPTIONS, <<"subscriptions">>).
+-define(DEBIT, <<"debit">>).
+
+-type payload() :: {cowboy_req:req(), cb_context:context()}.
 
 %%%===================================================================
 %%% API
@@ -34,7 +40,28 @@
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.transactions">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.transactions">>, ?MODULE, 'resource_exists'),
-    crossbar_bindings:bind(<<"*.validate.transactions">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.validate.transactions">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.transactions">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.to_csv.get.transactions">>, ?MODULE, 'to_csv').
+
+-spec to_csv(payload()) -> payload().
+to_csv({Req, Context}) ->
+    JObjs = flatten(cb_context:resp_data(Context), []),
+    {Req, cb_context:set_resp_data(Context, JObjs)}.
+
+-spec flatten(wh_json:objects(), wh_json:objects()) -> wh_json:objects().
+flatten([], Results) ->
+    wht_util:collapse_call_transactions(Results);
+flatten([JObj|JObjs], Results) ->
+    Metadata = wh_json:get_ne_value(<<"metadata">>, JObj),
+    case wh_json:is_json_object(Metadata) of
+        'true' ->
+            Props = wh_json:to_proplist(Metadata),
+            flatten(JObjs, [wh_json:set_values(Props, JObj)|Results]);
+        'false' ->
+            flatten(JObjs, [JObj|Results])
+    end;
+flatten(Else, _) -> Else.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -47,6 +74,11 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+allowed_methods(?CURRENT_BALANCE) ->
+    [?HTTP_GET];
+allowed_methods(?DEBIT) ->
+    [?HTTP_DELETE];
 allowed_methods(_) ->
     [?HTTP_GET].
 
@@ -69,70 +101,189 @@ resource_exists(_) -> 'true'.
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /transactions mights load a list of transactions objects
+%% /transactions might load a list of transactions objects
 %% /transactions/123 might load the transactions object 123
-%% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
-
 validate(Context) ->
     validate_transactions(Context, cb_context:req_verb(Context)).
 
-validate_transactions(Context, ?HTTP_GET) ->
-    case cb_modules_util:range_view_options(Context) of
-        {CreatedFrom, CreatedTo} ->
-            Options = [{'from', CreatedFrom}
-                       ,{'to', CreatedTo}
-                       ,{'prorated', 'true'}
-                       ,{'reason', cb_context:req_value(Context, <<"reason">>)}
-                      ],
-            fetch(Context, Options);
-        Context1 -> Context1
-    end.
-
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, PathToken) ->
     validate_transaction(Context, PathToken, cb_context:req_verb(Context)).
 
-validate_transaction(Context, <<"current_balance">>, ?HTTP_GET) ->
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, ?DEBIT) ->
+    case cb_context:resp_status(Context) of
+        'success' -> maybe_debit_billing_id(Context);
+        _Error -> Context
+    end.
+
+%% Note: really similar to cb_braintree:maybe_charge_billing_id/2
+-spec maybe_debit_billing_id(cb_context:context()) -> cb_context:context().
+maybe_debit_billing_id(Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+
+    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
+        MasterAccountId ->
+            lager:debug("invoking a bookkeeper to remove requested credit"),
+            maybe_create_debit_tansaction(Context);
+        AuthAccountId when AuthAccountId =/= MasterAccountId ->
+            lager:debug("allowing reseller to remove credit without invoking a bookkeeper"),
+            maybe_create_debit_tansaction(Context);
+        ResellerId ->
+            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit"),
+            Resp = wh_json:from_list(
+                     [{<<"message">>, <<"Please contact your phone provider to remove credit.">>}
+                      ,{<<"cause">>, ResellerId}
+                     ]),
+            cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Resp, Context)
+    end.
+
+-spec maybe_create_debit_tansaction(cb_context:context()) -> cb_context:context().
+maybe_create_debit_tansaction(Context) ->
+    case create_debit_tansaction(Context) of
+        {'error', _R}=Error ->
+            lager:error("failed to create debit transaction : ~p", [_R]),
+            cb_context:add_system_error(
+              'transaction_failed'
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"failed to create debit transaction">>}
+                  ,{<<"cause">>, wh_util:error_to_binary(Error)}
+                 ])
+              ,Context
+             );
+        {'ok', Transaction} ->
+            cb_context:set_resp_data(
+              Context
+              ,wh_transaction:to_public_json(Transaction)
+             )
+    end.
+
+-spec create_debit_tansaction(cb_context:context()) ->
+                                     {'ok', wh_transaction:transaction()} |
+                                     {'error', _}.
+create_debit_tansaction(Context) ->
+    AccountId = cb_context:account_id(Context),
+    JObj = cb_context:req_data(Context),
+    Amount = wh_json:get_float_value(<<"amount">>, JObj),
+    Units = wht_util:dollars_to_units(Amount),
+    Meta =
+        wh_json:from_list(
+          [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
+         ),
+    Reason = wh_json:get_value(<<"reason">>, JObj, <<"admin_discretion">>),
+
+    Routines = [fun(Tr) -> wh_transaction:set_reason(Reason, Tr) end
+                ,fun(Tr) -> wh_transaction:set_metadata(Meta, Tr) end
+                ,fun wh_transaction:save/1
+               ],
+    lists:foldl(
+      fun(F, Tr) -> F(Tr) end
+      ,wh_transaction:debit(AccountId, Units)
+      ,Routines
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_transactions(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_transaction(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_transactions(Context, ?HTTP_GET) ->
+    case cb_modules_util:range_view_options(Context) of
+        {CreatedFrom, CreatedTo} ->
+            Reason = cb_context:req_value(Context, <<"reason">>),
+            fetch_transactions(Context, CreatedFrom, CreatedTo, Reason);
+        Context1 -> Context1
+    end.
+
+validate_transaction(Context, ?CURRENT_BALANCE, ?HTTP_GET) ->
     Balance = wht_util:units_to_dollars(wht_util:current_balance(cb_context:account_id(Context))),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, JObj}
                         ]);
-validate_transaction(Context, <<"monthly_recurring">>, ?HTTP_GET) ->
+validate_transaction(Context, ?MONTHLY, ?HTTP_GET) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
-            Options = [{'from', CreatedFrom}
-                       ,{'to', CreatedTo}
-                       ,{'prorated', 'false'}
-                       ,{'reason', cb_context:req_value(Context, <<"reason">>)}
-                      ],
-            fetch_monthly_recurring(Context, Options);
+            Reason = cb_context:req_value(Context, <<"reason">>),
+            fetch_monthly_recurring(Context, CreatedFrom, CreatedTo, Reason);
         Context1 -> Context1
     end;
-validate_transaction(Context, <<"subscriptions">>, ?HTTP_GET) ->
-    fetch_braintree_subscriptions(Context);
+validate_transaction(Context, ?SUBSCRIPTIONS, ?HTTP_GET) ->
+    filter_subscriptions(Context);
+validate_transaction(Context, ?DEBIT, ?HTTP_DELETE) ->
+    validate_debit(Context);
 validate_transaction(Context, _PathToken, _Verb) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(cb_context:context(), wh_proplist()) -> cb_context:context().
-fetch(Context, Options) ->
-    Transactions = fetch_transactions(Context, Options),
-    ProratedTransactions = fetch_braintree_transactions(Context, Options),
-    case {Transactions, ProratedTransactions} of
-        {{'ok', Trs}, {'ok', PTrs}} ->
-            send_resp({'ok', Trs ++ PTrs}, Context);
-        {_, {'error', _}=E} -> send_resp(E, Context);
-        {{'error', _}=E, _} -> send_resp(E, Context)
+-spec validate_debit(cb_context:context()) -> cb_context:context().
+-spec validate_debit(cb_context:context(), api_float()) -> cb_context:context().
+validate_debit(Context) ->
+    Amount = wh_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
+
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> validate_debit(Context, Amount);
+        'false' ->
+            case wh_services:is_reseller(cb_context:auth_account_id(Context)) of
+                'true' -> validate_debit(Context, Amount);
+                'false' -> cb_context:add_system_error('forbidden', Context)
+            end
+    end.
+
+validate_debit(Context, 'undefined') ->
+    Message = <<"Amount is required">>,
+    cb_context:add_validation_error(
+      <<"amount">>
+      ,<<"required">>
+      ,wh_json:from_list([{<<"message">>, Message}])
+      ,Context
+     );
+validate_debit(Context, Amount) when Amount =< 0 ->
+    Message = <<"Amount must be more than 0">>,
+    cb_context:add_validation_error(
+      <<"amount">>
+      ,<<"minimum">>
+      ,wh_json:from_list([{<<"message">>, Message}])
+      ,Context
+     );
+validate_debit(Context, Amount) ->
+    AccountId = cb_context:account_id(Context),
+    FuturAmount = wht_util:current_account_dollars(AccountId) - Amount,
+    case FuturAmount < 0 of
+        'false' ->
+            cb_context:set_resp_status(Context, 'success');
+        'true' ->
+            Message = <<"Available credit can not be less than 0">>,
+            cb_context:add_validation_error(
+              <<"amount">>
+              ,<<"minimum">>
+              ,wh_json:from_list(
+                 [{<<"message">>, Message}
+                  ,{<<"cause">>, FuturAmount}
+                 ])
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -141,221 +292,40 @@ fetch(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_monthly_recurring(cb_context:context(), wh_proplist()) -> cb_context:context().
-fetch_monthly_recurring(Context, Options) ->
-    Transactions = fetch_braintree_transactions(Context, Options),
-    case Transactions of
-        {'ok', _}=Resp -> send_resp(Resp, Context);
-        {'error', _}=E -> send_resp(E, Context)
-    end.
+-spec fetch_transactions(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
+                                cb_context:context().
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_transactions(cb_context:context(), wh_proplist()) ->
-                                {'ok', wh_json:objects()} |
-                                {'error', ne_binary()}.
-fetch_transactions(Context, Options) ->
-    From = props:get_value('from', Options),
-    To = props:get_value('to', Options),
-    try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
+fetch_transactions(Context, From, To, 'undefined') ->
+    case wh_transactions:fetch(cb_context:account_id(Context), From, To) of
+        {'error', _R}=Error -> send_resp(Error, Context);
         {'ok', Transactions} ->
-            JObjs = maybe_filter_by_reason(Transactions, Options),
-            {'ok', wht_util:collapse_call_transactions(JObjs)};
-        {'error', _}=Error -> Error
-    catch
-        _:_ ->
-            {'error', <<"error while fetching transactions">>}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_braintree_transactions(cb_context:context(), wh_proplist()) ->
-                                          {'ok', wh_json:objects()} |
-                                          {'error', ne_binary()}.
-fetch_braintree_transactions(Context, Options) ->
-    From = props:get_value('from', Options),
-    To = props:get_value('to', Options),
-    Prorated = props:get_value('prorated', Options, 'false'),
-    case wh_service_transactions:current_billing_period(
-           cb_context:account_id(Context)
-           ,'transactions'
-           ,{timestamp_to_braintree(From), timestamp_to_braintree(To)}
-          )
-    of
-        'not_found' ->
-            {'error', <<"no data found in braintree">>};
-        'unknown_error' ->
-            {'error', <<"unknown braintree error">>};
-        BTransactions ->
-            JObjs = lists:foldl(fun(BTr, Acc) ->
-                                        IsProrated = braintree_transaction_is_prorated(BTr),
-                                        case IsProrated =:= Prorated of
-                                            'true' -> [filter_braintree_transaction(BTr)|Acc];
-                                            'false' -> Acc
-                                        end
-                                end, [], BTransactions),
-            {'ok', JObjs}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_filter_by_reason(any(), wh_proplist()) -> wh_json:objects().
-maybe_filter_by_reason(Transactions, Options) ->
-    case props:get_value('reason', Options) of
-        'undefined' ->
-            wh_transactions:to_public_json(Transactions);
-        Reason ->
+            JObjs = wh_transactions:to_public_json(Transactions),
+            send_resp({'ok', JObjs}, Context)
+    end;
+fetch_transactions(Context, From, To, <<"only_calls">>) ->
+    case wh_transactions:fetch_local(cb_context:account_id(Context), From, To) of
+        {'error', _R}=Error -> send_resp(Error, Context);
+        {'ok', Transactions} ->
+            JObjs = [wh_transaction:to_public_json(Transaction)
+                     || Transaction <- wh_transactions:filter_for_per_minute(Transactions)
+                    ],
+            send_resp({'ok', JObjs}, Context)
+    end;
+fetch_transactions(Context, From, To, Reason)
+  when Reason =:= <<"only_bookkeeper">>; Reason =:= <<"no_calls">> ->
+    case wh_transactions:fetch_bookkeeper(cb_context:account_id(Context), From, To) of
+        {'error', _R}=Error -> send_resp(Error, Context);
+        {'ok', Transactions} ->
             Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-            wh_transactions:to_public_json(Filtered)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec braintree_transaction_is_prorated(wh_json:objects()) -> boolean().
-braintree_transaction_is_prorated(BTransaction) ->
-    case wh_json:get_value(<<"subscription_id">>, BTransaction) of
-        'undefined' -> 'true';
-        _Id ->
-            Addon = calculate_addon(BTransaction),
-            Discount = calculate_discount(BTransaction),
-            Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
-            (Addon - Discount) =/= Amount
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_addon(wh_json:object()) -> number().
-calculate_addon(BTransaction) ->
-    Addons = wh_json:get_value(<<"add_ons">>, BTransaction, []),
-    calculate(Addons, 0).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_discount(wh_json:object()) -> number().
-calculate_discount(BTransaction) ->
-    Addons = wh_json:get_value(<<"discounts">>, BTransaction, []),
-    calculate(Addons, 0).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate(wh_json:objects(), number()) -> number().
-calculate([], Acc) -> Acc/100;
-calculate([Addon|Addons], Acc) ->
-    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0)*100,
-    Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
-    calculate(Addons, (Amount*Quantity+Acc)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec filter_braintree_transaction(wh_json:object()) ->
-                                          wh_json:object().
-filter_braintree_transaction(BTransaction) ->
-    Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
-                ,fun(BTr) -> correct_date_braintree_transaction(BTr) end
-                ,fun(BTr) -> prorated_braintree_transaction(BTr) end
-               ],
-    lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
-
--spec clean_braintree_transaction(wh_json:object()) -> wh_json:object().
-clean_braintree_transaction(BTransaction) ->
-    RemoveKeys = [<<"status">>
-                  ,<<"type">>
-                  ,<<"currency_code">>
-                  ,<<"merchant_account_id">>
-                  ,<<"settlement_batch">>
-                  ,<<"avs_postal_response">>
-                  ,<<"avs_street_response">>
-                  ,<<"ccv_response_code">>
-                  ,<<"processor_authorization_code">>
-                  ,<<"processor_response_code">>
-                  ,<<"tax_exempt">>
-                  ,<<"billing_address">>
-                  ,<<"shipping_address">>
-                  ,<<"customer">>
-                  ,<<"card">>
-                 ],
-    wh_json:delete_keys(RemoveKeys, BTransaction).
-
--spec correct_date_braintree_transaction(wh_json:object()) -> wh_json:object().
-correct_date_braintree_transaction(BTransaction) ->
-    Keys = [<<"created_at">>, <<"update_at">>],
-    lists:foldl(fun correct_date_braintree_transaction_fold/2, BTransaction, Keys).
-
-correct_date_braintree_transaction_fold(Key, BTr) ->
-    case wh_json:get_value(Key, BTr, 'null') of
-        'null' -> BTr;
-        V1 ->
-            V2 = string:substr(binary:bin_to_list(V1), 1, 10),
-            [Y, M, D|_] = string:tokens(V2, "-"),
-            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
-            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
-            Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
-            wh_json:set_value(Key, Timestamp, BTr)
-    end.
-
--spec prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
-prorated_braintree_transaction(BTransaction) ->
-    wh_json:set_value(<<"prorated">>
-                      ,braintree_transaction_is_prorated(BTransaction)
-                      ,BTransaction).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_braintree_subscriptions(cb_context:context()) -> cb_context:context().
-fetch_braintree_subscriptions(Context) ->
-    filter_braintree_subscriptions(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec filter_braintree_subscriptions(cb_context:context()) -> cb_context:context().
-filter_braintree_subscriptions(Context) ->
-    case wh_service_transactions:current_billing_period(cb_context:account_id(Context), 'subscriptions') of
-        'not_found' ->
-            send_resp({'error', <<"no data found in braintree">>}, Context);
-        'unknow_error' ->
-            send_resp({'error', <<"unknown braintree error">>}, Context);
-        BSubscriptions ->
-            JObjs = [filter_braintree_subscription(BSub) || BSub <- BSubscriptions],
+            JObjs = wh_transactions:to_public_json(Filtered),
+            send_resp({'ok', JObjs}, Context)
+    end;
+fetch_transactions(Context, From, To, Reason) ->
+    case wh_transactions:fetch(cb_context:account_id(Context), From, To) of
+        {'error', _R}=Error -> send_resp(Error, Context);
+        {'ok', Transactions} ->
+            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
+            JObjs = wh_transactions:to_public_json(Filtered),
             send_resp({'ok', JObjs}, Context)
     end.
 
@@ -365,10 +335,48 @@ filter_braintree_subscriptions(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_subscription(wh_json:object()) -> wh_json:object().
-filter_braintree_subscription(BSubscription) ->
-    Routines = [fun(BSub) -> clean_braintree_subscription(BSub) end
-                ,fun(BSub) -> correct_date_braintree_subscription(BSub) end
+-spec fetch_monthly_recurring(cb_context:context(), gregorian_seconds(), gregorian_seconds(), api_binary()) ->
+                                     cb_context:context().
+fetch_monthly_recurring(Context, From, To, Reason) ->
+    case wh_bookkeeper_braintree:transactions(cb_context:account_id(Context), From, To) of
+        {'error', _}=E -> send_resp(E, Context);
+        {'ok', Transactions} ->
+            JObjs = [wh_transaction:to_public_json(Transaction)
+                     || Transaction <- wh_transactions:filter_by_reason(Reason, Transactions),
+                        wh_transaction:code(Transaction) =:= ?CODE_MONTHLY_RECURRING
+                    ],
+            send_resp({'ok', JObjs}, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_subscriptions(cb_context:context()) -> cb_context:context().
+filter_subscriptions(Context) ->
+    AccountId = cb_context:account_id(Context),
+    case wh_service_transactions:current_billing_period(AccountId, 'subscriptions') of
+        'not_found' ->
+            send_resp({'error', <<"no data found in braintree">>}, Context);
+        'unknow_error' ->
+            send_resp({'error', <<"unknown braintree error">>}, Context);
+        BSubscriptions ->
+            JObjs = [filter_subscription(BSub) || BSub <- BSubscriptions],
+            send_resp({'ok', JObjs}, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_subscription(wh_json:object()) -> wh_json:object().
+filter_subscription(BSubscription) ->
+    Routines = [fun clean_braintree_subscription/1
+                ,fun correct_date_braintree_subscription/1
                ],
     lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
 
@@ -411,15 +419,13 @@ correct_date_braintree_subscription(BSubscription) ->
            ],
     lists:foldl(fun correct_date_braintree_subscription_fold/2, BSubscription, Keys).
 
--spec correct_date_braintree_subscription_fold(ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec correct_date_braintree_subscription_fold(ne_binary(), wh_json:object()) -> wh_json:object().
 correct_date_braintree_subscription_fold(Key, BSub) ->
     case wh_json:get_value(Key, BSub, 'null') of
         'null' -> BSub;
-        V1 ->
-            V2 = binary:bin_to_list(V1),
-            [Y, M, D|_] = string:tokens(V2, "-"),
-            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
-            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+        Value ->
+            [Y, M, D | _] = string:tokens(binary_to_list(Value), "-"),
+            DateTime = {{list_to_integer(Y), list_to_integer(M), list_to_integer(D)}, {0, 0, 0}},
             Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
             wh_json:set_value(Key, Timestamp, BSub)
     end.
@@ -430,25 +436,15 @@ correct_date_braintree_subscription_fold(Key, BSub) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_resp({'ok', _} | {'error', _}, cb_context:context()) -> cb_context:context().
+-spec send_resp({'ok', any()} | {'error', any()}, cb_context:context()) -> cb_context:context().
 send_resp({'ok', JObj}, Context) ->
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, JObj}
                         ]);
 send_resp({'error', Details}, Context) ->
-    cb_context:add_system_error('bad_identifier', [{'details', Details}], Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec timestamp_to_braintree(pos_integer()) -> ne_binary().
-timestamp_to_braintree(Timestamp) ->
-    {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    <<(wh_util:to_binary(M))/binary, "/"
-      ,(wh_util:to_binary(D))/binary, "/"
-      ,(wh_util:to_binary(Y))/binary
-    >>.
+    cb_context:add_system_error(
+      'bad_identifier'
+      ,wh_json:from_list([{<<"cause">>, Details}])
+      ,Context
+     ).

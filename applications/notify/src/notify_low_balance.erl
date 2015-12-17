@@ -44,7 +44,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec send(integer(), wh_json:object()) -> any().
 send(CurrentBalance, Account) ->
-    AccountId = wh_json:get_value(<<"_id">>, Account),
+    AccountId = wh_doc:id(Account),
     case collect_recipients(AccountId) of
         'undefined' -> 'ok';
         To ->
@@ -67,7 +67,7 @@ send(CurrentBalance, Account) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(integer(), wh_json:object()) -> wh_proplist().
 create_template_props(CurrentBalance, Account) ->
-    AccountDb = wh_util:format_account_id(wh_json:get_value(<<"_id">>, Account), 'encoded'),
+    AccountDb = wh_util:format_account_id(wh_doc:id(Account), 'encoded'),
     Threshold = notify_account_crawler:low_balance_threshold(AccountDb),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(wh_json:new(), Account, ?MOD_CONFIG_CAT)}
@@ -119,12 +119,12 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collect_recipients(ne_binary()) -> api_binaries() | ne_binary().
+-spec collect_recipients(ne_binary()) -> api_binaries() | api_binary().
 collect_recipients(AccountId) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     get_email(AccountId, MasterAccountId).
 
--spec get_email(ne_binary(), ne_binary()) -> api_binaries().
+-spec get_email(ne_binary(), ne_binary()) -> api_binaries() | api_binary().
 get_email(MasterAccountId, MasterAccountId) ->
     AccountDb = wh_util:format_account_id(MasterAccountId, 'encoded'),
     lager:debug("attempting to email low balance to master account ~s"
@@ -150,7 +150,7 @@ get_email(AccountId, MasterAccountId) ->
             get_email(MasterAccountId, MasterAccountId)
     end.
 
--spec get_email(wh_json:object(), ne_binary(), ne_binary()) -> api_binaries() | ne_binary().
+-spec get_email(wh_json:object(), ne_binary(), ne_binary()) -> api_binaries() | api_binary().
 get_email(JObj, AccountId, MasterAccountId) ->
     case find_billing_email(JObj) of
         'undefined' ->
@@ -162,7 +162,7 @@ get_email(JObj, AccountId, MasterAccountId) ->
         Email -> Email
     end.
 
--spec find_billing_email(wh_json:object()) -> api_binaries() | ne_binary().
+-spec find_billing_email(wh_json:object()) -> api_binaries() | api_binary().
 find_billing_email(JObj) ->
     case is_notify_enabled(JObj) of
         'false' -> 'undefined';

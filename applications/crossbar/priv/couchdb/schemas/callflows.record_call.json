@@ -1,42 +1,61 @@
 {
+    "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.record_call",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "type": "object",
-    "required": true,
     "description": "Validator for the Record Call callflow action",
     "properties": {
         "action": {
-            "type": "string",
-            "required": true,
-            "name": "Action",
             "description": "Toggle whether to start or stop a recording",
-            "enum":["start", "stop"]
+            "enum": [
+                "start",
+                "stop"
+            ],
+            "name": "Action",
+            "required": true,
+            "type": "string"
         },
-        "time_limit":{
-            "type":"integer",
-            "required":false,
-            "name":"Time Limit",
-            "description":"Limit, in seconds, of how long to record the call",
-            "minimum":1
-        },
-        "format":{
-            "type": "string",
-            "required": false,
-            "name": "Format",
+        "format": {
             "description": "Disk Format to write the recording",
-            "enum":["mp3", "wav"]
+            "enum": [
+                "mp3",
+                "wav"
+            ],
+            "name": "Format",
+            "required": false,
+            "type": "string"
         },
-        "url":{
-            "type":"string",
-            "required":false,
-            "name":"URL",
-            "description":"What URL to use as a base for where to send the recording after it finishes"
+        "record_min_sec": {
+            "description": "Minimal record time, in seconds, to store recordings",
+            "minimum": 0,
+            "name": "Recording minmum seconds",
+            "required": false,
+            "type": "integer"
         },
-        "record_on_answer":{
-            "type":"boolean",
-            "required":false,
-            "name":"Record on Answer",
-            "description":"Whether to delay starting the recording until the call is answered"
+        "record_on_answer": {
+            "description": "Whether to delay starting the recording until the call is answered",
+            "name": "Record on Answer",
+            "required": false,
+            "type": "boolean"
+        },
+        "record_sample_rate": {
+            "description": "Sampling rate of the recording, in Hz",
+            "name": "Sample Rate",
+            "required": false,
+            "type": "integer"
+        },
+        "time_limit": {
+            "description": "Limit, in seconds, of how long to record the call",
+            "minimum": 1,
+            "name": "Time Limit",
+            "required": false,
+            "type": "integer"
+        },
+        "url": {
+            "description": "What URL to use as a base for where to send the recording after it finishes",
+            "name": "URL",
+            "required": false,
+            "type": "string"
         }
-    }
+    },
+    "required": true,
+    "type": "object"
 }

@@ -62,7 +62,8 @@ handle(Data, Call) ->
             maybe_intercept(Data, Call, Params);
         {'error', _E} ->
             lager:info("Error <<~s>> processing intercept '~s' for number ~s"
-                       ,[_E, InterceptType, Number]),
+                       ,[_E, InterceptType, Number]
+                      ),
             _ = whapps_call_command:b_play(<<"park-no_caller">>, Call),
             cf_exe:stop(Call)
     end.
@@ -139,15 +140,11 @@ build_intercept_params(Number, <<"device">>, Call) ->
 build_intercept_params(_Number, <<"user">>, _Call) ->
     {'error', <<"work in progress">>};
 build_intercept_params(Number, <<"extension">>, Call) ->
-    AccountId = whapps_call:account_id(Call),
-    case cf_util:lookup_callflow(Number, AccountId) of
-        {'ok', FlowDoc, 'false'} ->
-            Data = wh_json:get_value([<<"flow">>, <<"data">>], FlowDoc),
-            Module = wh_json:get_value([<<"flow">>, <<"module">>], FlowDoc),
-            params_from_data(Module, Data,Call);
-        {'ok', _FlowDoc, 'true'} ->
-            {'error', <<"no callflow with extension ", Number/binary>>};
-        {'error', _} = E -> E
+    case cf_eavesdrop_feature:get_target_for_extension(Number, Call) of
+        'error' -> {'error', <<"Can't find target for extension ", Number/binary>>};
+        {'ok', TargetId, TargetType} ->
+            Data = wh_json:from_list([{<<"id">>, TargetId}]),
+            params_from_data(TargetType, Data, Call)
     end;
 build_intercept_params(_ ,'undefined', _) ->
     {'error', <<"parameter 'type' not defined">>};
@@ -158,14 +155,11 @@ build_intercept_params(_, Other, _) ->
                               {'ok', wh_proplist()} |
                               {'error', ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
-    EndpointId = wh_json:get_value(<<"id">>,Data),
+    EndpointId = wh_doc:id(Data),
     {'ok', [{<<"user_id">>, EndpointId}]};
 params_from_data(<<"device">>, Data, _Call) ->
-    EndpointId = wh_json:get_value(<<"id">>, Data),
+    EndpointId = wh_doc:id(Data),
     {'ok', [{<<"device_id">>, EndpointId}]};
-
-params_from_data('undefined', _, _) ->
-    {'error',<<"module not defined in callflow">>};
 params_from_data(Other, _, _) ->
     {'error',<<"module ",Other/binary," not implemented">>}.
 

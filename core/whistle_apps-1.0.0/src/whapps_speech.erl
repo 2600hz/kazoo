@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%% For TTS (Text To Speech), use the create/* methods
 %%% To do ASR (Automatic Speech Recognition), there are two options:
@@ -12,10 +12,12 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   SIPLABS LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(whapps_speech).
 
 -include("whistle_apps.hrl").
+-include("whapps_speech.hrl").
 
 -export([create/1
          ,create/2
@@ -33,8 +35,6 @@
          ,asr_commands/4
          ,asr_commands/5
         ]).
-
--define(MOD_CONFIG_CAT, <<"speech">>).
 
 -type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
 -type provider_return() :: {'error', provider_errors()} |
@@ -74,55 +74,13 @@ create(Text, Voice, Format, Options) ->
 create('undefined', Text, Voice, Format, Options) ->
     create(Text, Voice, Format, Options);
 create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
-    VoiceMappings = [{<<"female/en-us">>, <<"usenglishfemale">>}
-                     ,{<<"male/en-us">>, <<"usenglishmale">>}
-                     ,{<<"female/en-ca">>, <<"caenglishfemale">>}
-                     ,{<<"female/en-au">>, <<"auenglishfemale">>}
-                     ,{<<"female/en-gb">>, <<"ukenglishfemale">>}
-                     ,{<<"male/en-gb">>, <<"ukenglishmale">>}
-                     ,{<<"female/es-us">>, <<"usspanishfemale">>}
-                     ,{<<"male/es-us">>, <<"usspanishmale">>}
-                     ,{<<"female/us-us">>, <<"usspanishfemale">>}
-                     ,{<<"female/zh-cn">>, <<"chchinesefemale">>}
-                     ,{<<"male/zh-cn">>, <<"chchinesemale">>}
-                     ,{<<"female/zh-hk">>, <<"hkchinesefemale">>}
-                     ,{<<"female/zh-tw">>, <<"twchinesefemale">>}
-                     ,{<<"female/ja-jp">>, <<"jpjapanesefemale">>}
-                     ,{<<"male/ja-jp">>, <<"jpjapanesemale">>}
-                     ,{<<"female/ko-kr">>, <<"krkoreanfemale">>}
-                     ,{<<"male/ko-kr">>, <<"krkoreanmale">>}
-                     ,{<<"female/da-dk">>, <<"eurdanishfemale">>}
-                     ,{<<"female/de-de">>, <<"eurgermanfemale">>}
-                     ,{<<"male/de-de">>, <<"eurgermanmale">>}
-                     ,{<<"female/ca-es">>, <<"eurcatalanfemale">>}
-                     ,{<<"female/es-es">>, <<"eurspanishfemale">>}
-                     ,{<<"male/es-es">>, <<"eurspanishmale">>}
-                     ,{<<"female/fi-fi">>, <<"eurfinnishfemale">>}
-                     ,{<<"female/fr-ca">>, <<"cafrenchfemale">>}
-                     ,{<<"male/fr-ca">>, <<"cafrenchmale">>}
-                     ,{<<"female/fr-fr">>, <<"eurfrenchfemale">>}
-                     ,{<<"male/fr-fr">>, <<"eurfrenchmale">>}
-                     ,{<<"female/it-it">>, <<"euritalianfemale">>}
-                     ,{<<"male/it-it">>, <<"euritalianmale">>}
-                     ,{<<"female/nb-no">>, <<"eurnorwegianfemale">>}
-                     ,{<<"female/nl-nl">>, <<"eurdutchfemale">>}
-                     ,{<<"female/pl-pl">>, <<"eurpolishfemale">>}
-                     ,{<<"female/pt-br">>, <<"brportuguesefemale">>}
-                     ,{<<"female/pt-pt">>, <<"eurportuguesefemale">>}
-                     ,{<<"male/pt-pt">>, <<"eurportuguesemale">>}
-                     ,{<<"female/ru-ru">>, <<"rurussianfemale">>}
-                     ,{<<"male/ru-ru">>, <<"rurussianmale">>}
-                     ,{<<"female/sv-se">>, <<"swswedishfemale">>}
-                     ,{<<"female/hu-hu">>, <<"huhungarianfemale">>}
-                     ,{<<"female/cs-cz">>, <<"eurczechfemale">>}
-                     ,{<<"female/tr-tr">>, <<"eurturkishfemale">>}
-                     ,{<<"male/tr-tr">>, <<"eurturkishmale">>}
-                    ],
+    VoiceMappings = ?ISPEECH_VOICE_MAPPINGS,
     case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
         'undefined' ->
             {'error', 'invalid_voice'};
         ISpeechVoice ->
-            BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"http://api.ispeech.org/api/json">>),
+            BaseUrl = ?ISPEECH_TTS_URL,
+
             Props = [{<<"text">>, Text}
                      ,{<<"voice">>, ISpeechVoice}
                      ,{<<"format">>, Format}
@@ -135,11 +93,76 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
             Headers = [{"Content-Type", "application/json; charset=UTF-8"}],
             HTTPOptions = [{'response_format', 'binary'} | Options],
             Body = wh_json:encode(wh_json:from_list(Props)),
+
+            lager:debug("sending TTS request to ~s", [BaseUrl]),
+
             Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
             create_response(Engine, Response)
     end;
+create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
+    create_voicefabric(Engine, Text, Voice, Options);
 create(_, _, _, _, _) ->
     {'error', 'unknown_provider'}.
+
+-spec create_voicefabric(ne_binary(), binary(), ne_binary(), wh_proplist()) ->
+                                create_resp().
+create_voicefabric(Engine, Text, Voice, Options) ->
+    lager:debug("getting ~ts from VoiceFabric", [Text]),
+    VoiceMappings = ?VOICEFABRIC_VOICE_MAPPINGS,
+    case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
+        'undefined' ->
+            {'error', 'invalid_voice'};
+        VFabricVoice ->
+            BaseUrl = ?VOICEFABRIC_TTS_URL,
+            ApiKey = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>),
+            Data = [{<<"apikey">>, ApiKey}
+                    ,{<<"ttsVoice">>, VFabricVoice}
+                    ,{<<"textFormat">>, <<"text/plain">>}
+                    ,{<<"text">>, Text}
+                   ],
+            ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"multipart">>),
+            case voicefabric_request_body(ArgsEncode, Data) of
+                {'ok', Headers, Body} ->
+                    HTTPOptions = [{'response_format', 'binary'} | Options],
+                    lager:debug("sending ~ts", [Body]),
+                    Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
+                    create_response(Engine, Response);
+                {'error', Reason} ->
+                    lager:warning(Reason),
+                    {'error', 'tts_provider_failure', Reason}
+            end
+    end.
+
+-spec voicefabric_request_body(ne_binary(), list()) ->
+                                      {'ok', list(), ne_binary()} |
+                                      {'error', ne_binary()}.
+voicefabric_request_body(<<"urlencode">>, Data) ->
+    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
+    Body = props:to_querystring(Data),
+    {'ok', Headers, Body};
+voicefabric_request_body(<<"multipart">>, Data) ->
+    Boundary = iolist_to_binary([<<"--bound--">>
+                                 ,couch_mgr:get_uuid()
+                                 ,<<"--bound--">>
+                                ]),
+    Headers = [{"Content-Type"
+                ,"multipart/form-data; charset=UTF-8; boundary=" ++ erlang:binary_to_list(Boundary)
+               }
+              ],
+    Body = iolist_to_binary([[<<"--", Boundary/binary,
+                                "\r\nContent-Disposition: form-data;"
+                                " name=\"", Key/binary
+                                , "\"\r\n\r\n", Val/binary, "\r\n"
+                              >>
+                              || {Key, Val} <- Data
+                             ]
+                             ,"--"
+                             ,Boundary
+                             ,"--"
+                            ]),
+    {'ok', Headers, Body};
+voicefabric_request_body(ArgsEncode, _Data) ->
+    {'error', <<"voicefabric: unknown args encode method: ", ArgsEncode/binary>>}.
 
 %%------------------------------------------------------------------------------
 %% Transcribe the audio binary
@@ -173,11 +196,12 @@ maybe_convert_content(Content, ContentType, Locale, Options) ->
         'false' ->
             ConvertTo = whapps_config:get_binary(?MOD_CONFIG_CAT
                                                  ,<<"asr_prefered_content_type">>
-                                                 ,<<"application/mpeg">>),
+                                                 ,<<"application/mpeg">>
+                                                ),
             case convert_content(Content, ContentType, ConvertTo) of
                 'error' -> {'error', 'unsupported_content_type'};
                 Converted ->
-                    attempt_asr_freeform(Converted, ContentType, Locale, Options)
+                    attempt_asr_freeform(Converted, ConvertTo, Locale, Options)
             end
     end.
 
@@ -189,21 +213,27 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
         {'ibrowse_req_id', ReqID} ->
-            lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
+            lager:debug("streaming response ~p to provided option: ~p"
+                        ,[ReqID, props:get_value('stream_to', Options)]
+                       ),
             {'ok', ReqID};
-        {'ok', "200", _Headers, Content} ->
-            lager:debug("asr of media succeeded: ~s", [Content]),
-            {'ok', wh_json:decode(Content)};
-        {'ok', Code, _Hdrs, Content} ->
+        {'ok', "200", _Headers, Content2} ->
+            lager:debug("asr of media succeeded: ~s", [Content2]),
+            {'ok', wh_json:decode(Content2)};
+        {'ok', Code, _Hdrs, Content2} ->
             lager:debug("asr of media failed with code ~s", [Code]),
-            lager:debug("resp: ~s", [Content]),
-            {'error', 'asr_provider_failure', wh_json:decode(Content)}
+            lager:debug("resp: ~s", [Content2]),
+            {'error', 'asr_provider_failure', wh_json:decode(Content2)}
     end.
 
--spec attempt_asr_freeform(api_binary(), binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
+-spec attempt_asr_freeform(api_binary(), binary(), ne_binary(), ne_binary(), wh_proplist()) ->
+                                  provider_return().
 attempt_asr_freeform(_, <<>>, _, _, _) -> {'error', 'no_content'};
 attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
-    BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"asr_url">>, <<"http://api.ispeech.org/api/json">>),
+    BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT
+                                       ,<<"asr_url">>
+                                       ,<<"http://api.ispeech.org/api/rest">>
+                                      ),
     lager:debug("sending request to ~s", [BaseUrl]),
     Props = [{<<"apikey">>, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>)}
              ,{<<"action">>, <<"recognize">>}
@@ -213,9 +243,9 @@ attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
              ,{<<"locale">>, Locale}
              ,{<<"audio">>, base64:encode(Bin)}
             ],
-    Headers = [{"Content-Type", "application/json"}],
+    Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
     HTTPOptions = [{'response_format', 'binary'} | Options],
-    Body = wh_json:encode(wh_json:from_list(Props)),
+    Body = props:to_querystring(Props),
     lager:debug("req body: ~s", [Body]),
     ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions);
 attempt_asr_freeform(_, _, _, _, _) ->
@@ -290,6 +320,36 @@ create_response(_Engine, {'error', _R}) ->
 create_response(_Engine, {'ibrowse_req_id', ReqID}) ->
     lager:debug("speech file streaming as ~p", [ReqID]),
     {'ok', ReqID};
+create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
+    _ = [lager:debug("hdr: ~p", [H]) || H <- Headers],
+    lager:debug("converting media"),
+    {'ok', Rate} = voicefabric_get_media_rate(Headers),
+    RawFile = tmp_file_name(<<"raw">>),
+    WavFile = tmp_file_name(<<"wav">>),
+    wh_util:write_file(RawFile, Content),
+    From = ["raw -r ", Rate, " -e signed-integer -b 16"],
+    To = "wav",
+    Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
+    lager:debug("os cmd: ~ts", [Cmd]),
+    CmdOut = os:cmd(Cmd),
+    CmdOut =:= [] orelse lager:debug("cmd out: ~ts", [CmdOut]),
+    wh_util:delete_file(RawFile),
+    lager:debug("reading file"),
+    case file:read_file(WavFile) of
+        {'ok', WavContent} ->
+            wh_util:delete_file(WavFile),
+            lager:debug("media converted"),
+            NewHeaders = props:set_values([{"Content-Type", "audio/wav"}
+                                           ,{"Content-Length", integer_to_list(byte_size(WavContent))}
+                                          ]
+                                          ,Headers
+                                         ),
+            lager:debug("corrected headers"),
+            create_response(<<"default">>, {'ok', "200", NewHeaders, WavContent});
+        {'error', _Reason} ->
+            lager:debug("failed: ~p", [_Reason]),
+            {'error', 'tts_provider_failure', <<"converting failed">>}
+    end;
 create_response(_Engine, {'ok', "200", Headers, Content}) ->
     ContentType = props:get_value("Content-Type", Headers),
     ContentLength = props:get_value("Content-Length", Headers),
@@ -297,9 +357,26 @@ create_response(_Engine, {'ok', "200", Headers, Content}) ->
     {'ok', wh_util:to_binary(ContentType), Content};
 create_response(Engine, {'ok', Code, RespHeaders, Content}) ->
     lager:warning("creating speech file failed with code ~s: ~s", [Code, Content]),
-    [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
-
+    _ = [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
     {'error', 'tts_provider_failure', create_error_response(Engine, RespHeaders, Content)}.
+
+-spec voicefabric_get_media_rate(wh_proplist()) -> {'ok', ne_binary()}.
+voicefabric_get_media_rate(Headers1) ->
+    Headers = [{wh_util:to_lower_binary(X), wh_util:to_binary(Y)}
+               || {X, Y} <- Headers1
+              ],
+    case props:get_value(<<"content-type">>, Headers) of
+        <<"audio/raw; ", Params/binary>> ->
+            [<<"rate=", Rate/binary>>] =
+                lists:filter(fun voicefabric_filter_rate/1
+                             ,re:split(Params, "; ")
+                            ),
+            {'ok', Rate}
+    end.
+
+-spec voicefabric_filter_rate(ne_binary()) -> boolean().
+voicefabric_filter_rate(<<"rate=", _/binary>>) -> 'true';
+voicefabric_filter_rate(_)                     -> 'false'.
 
 -spec create_error_response(ne_binary(), wh_proplist(), binary()) -> binary().
 create_error_response(<<"ispeech">>, _RespHeaders, Content) ->
@@ -311,13 +388,13 @@ create_error_response(_Engine, _RespHeaders, Content) ->
 convert_content(Content, <<"audio/mpeg">>, <<"application/wav">> = _ContentType) ->
     Mp3File = tmp_file_name(<<"mp3">>),
     WavFile = tmp_file_name(<<"wav">>),
-    _ = file:write_file(Mp3File, Content),
+    wh_util:write_file(Mp3File, Content),
     Cmd = io_lib:format("lame --decode ~s ~s &> /dev/null && echo -n \"success\"", [Mp3File, WavFile]),
     _ = os:cmd(Cmd),
-    _ = file:delete(Mp3File),
+    wh_util:delete_file(Mp3File),
     case file:read_file(WavFile) of
         {'ok', WavContent} ->
-            _ = file:delete(WavFile),
+            wh_util:delete_file(WavFile),
             WavContent;
         {'error', _R} ->
             lager:info("unable to convert mpeg to wav: ~p", [_R]),
@@ -329,4 +406,8 @@ convert_content(_, ContentType, ConvertTo) ->
 
 -spec tmp_file_name(ne_binary()) -> string().
 tmp_file_name(Ext) ->
-    wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_voicemail.", Ext/binary>>).
+    Prefix = wh_util:rand_hex_binary(10),
+    Name = filename:join([?TMP_PATH
+                          ,<<Prefix/binary, "_voicemail.", Ext/binary>>
+                         ]),
+    wh_util:to_list(Name).

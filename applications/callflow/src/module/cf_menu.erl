@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "id":"menu_id"
@@ -81,49 +81,64 @@ menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
                 end,
             cf_exe:continue(Call)
     end;
-menu_loop(#cf_menu_data{retries=Retries
-                        ,max_length=MaxLength
+menu_loop(#cf_menu_data{max_length=MaxLength
                         ,timeout=Timeout
-                        ,record_pin=RecordPin
-                        ,record_from_offnet=RecOffnet
                         ,interdigit_timeout=Interdigit
                        }=Menu, Call) ->
     NoopId = whapps_call_command:play(get_prompt(Menu, Call), Call),
 
     case whapps_call_command:collect_digits(MaxLength, Timeout, Interdigit, NoopId, Call) of
         {'ok', <<>>} ->
-            lager:info("menu entry timeout"),
+            menu_handle_no_digits(Menu, Call);
+        {'ok', Digits} ->
+            menu_handle_digits(Menu, Call, Digits);
+        {'error', _} ->
+            lager:info("caller hungup while in the menu"),
+            cf_exe:stop(Call)
+    end.
+
+menu_handle_digits(#cf_menu_data{retries=Retries
+                                 ,record_from_offnet=RecOffnet
+                                 ,record_pin=RecordPin
+                                }=Menu, Call, Digits) ->
+    %% this try_match_digits calls hunt_for_callflow() based on the digits dialed
+    %% if it finds a callflow, the main CFPid will move on to it and try_match_digits
+    %% will return true, matching here, and causing menu_loop to exit; this is
+    %% expected behaviour as CFPid has moved on from this invocation
+    AllowRecord = (RecOffnet orelse whapps_call:inception(Call) =:= 'undefined'),
+    case try_match_digits(Digits, Menu, Call) of
+        'true' -> lager:debug("hunt callflow found");
+        'false' when Digits =:= RecordPin, AllowRecord ->
+            menu_handle_record(Menu, Call);
+        'false' ->
+            lager:info("invalid selection ~w", [Digits]),
+            _ = play_invalid_prompt(Menu, Call),
+            menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
+    end.
+
+-spec menu_handle_record(menu(), whapps_call:call()) -> 'ok'.
+menu_handle_record(Menu, Call) ->
+    lager:info("selection matches recording pin"),
+    case record_greeting(tmp_file(), Menu, Call) of
+        {'ok', M} ->
+            lager:info("returning caller to menu"),
+            _ = whapps_call_command:b_prompt(<<"menu-return">>, Call),
+            menu_loop(M, Call);
+        {'error', _} ->
+            cf_exe:stop(Call)
+    end.
+
+-spec menu_handle_no_digits(menu(), whapps_call:call()) -> 'ok'.
+menu_handle_no_digits(#cf_menu_data{retries=Retries}=Menu, Call) ->
+    lager:info("menu entry timeout"),
+    case try_match_digits(<<"timeout">>, Menu, Call) of
+        'true' -> lager:debug("timeout hunt callflow found");
+        'false' ->
             case cf_exe:attempt(<<"timeout">>, Call) of
                 {'attempt_resp', 'ok'} -> 'ok';
                 {'attempt_resp', {'error', _}} ->
                     menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
-            end;
-        {'ok', Digits} ->
-            %% this try_match_digits calls hunt_for_callflow() based on the digits dialed
-            %% if it finds a callflow, the main CFPid will move on to it and try_match_digits
-            %% will return true, matching here, and causing menu_loop to exit; this is
-            %% expected behaviour as CFPid has moved on from this invocation
-            AllowRecord = RecOffnet orelse whapps_call:inception(Call) =:= 'undefined',
-            case try_match_digits(Digits, Menu, Call) of
-                'true' -> lager:debug("hunt callflow found");
-                'false' when Digits =:= RecordPin, AllowRecord ->
-                    lager:info("selection matches recording pin"),
-                    case record_greeting(tmp_file(), Menu, Call) of
-                        {'ok', M} ->
-                            lager:info("returning caller to menu"),
-                            _ = whapps_call_command:b_prompt(<<"menu-return">>, Call),
-                            menu_loop(M, Call);
-                        {'error', _} ->
-                            cf_exe:stop(Call)
-                    end;
-                'false' ->
-                    lager:info("invalid selection ~w", [Digits]),
-                    _ = play_invalid_prompt(Menu, Call),
-                    menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
-            end;
-        {'error', _} ->
-            lager:info("caller hungup while in the menu"),
-            cf_exe:stop(Call)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -347,12 +362,18 @@ get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(binary(), binary(), whapps_call:call()) ->
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) ->
                              {'ok', wh_json:object()} |
                              {'error', wh_json:object()}.
 store_recording(AttachmentName, MediaId, Call) ->
     lager:info("storing recording ~s as media ~s", [AttachmentName, MediaId]),
-    'ok' = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
+    CallerIdName = whapps_call:caller_id_name(Call),
+    Description = <<"recorded by ", CallerIdName/binary>>,
+    Updates = [{<<"content_type">>, <<"audio/mpeg">>}
+               ,{<<"media_source">>, <<"recording">>}
+               ,{<<"description">>, Description}
+              ],
+    'ok' = update_doc(Updates, MediaId, Call),
     whapps_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
 
 %%--------------------------------------------------------------------
@@ -363,17 +384,22 @@ store_recording(AttachmentName, MediaId, Call) ->
 -spec get_new_attachment_url(binary(), binary(), whapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = case couch_mgr:open_doc(AccountDb, MediaId) of
+    _ = case couch_mgr:open_cache_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
-                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
-                    [] -> 'ok';
-                    Existing ->
-                        [couch_mgr:delete_attachment(AccountDb, MediaId, Attach) || Attach <- Existing]
-                end;
+                maybe_delete_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
         end,
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
     URL.
+
+-spec maybe_delete_attachments(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_delete_attachments(AccountDb, _MediaId, JObj) ->
+    case wh_doc:maybe_remove_attachments(JObj) of
+        {'false', _} -> 'ok';
+        {'true', Removed} ->
+            couch_mgr:save_doc(AccountDb, Removed),
+            lager:debug("removing attachments from ~s", [_MediaId])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -419,7 +445,7 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec recording_media_doc(binary(), menu(), whapps_call:call()) -> binary().
+-spec recording_media_doc(ne_binary(), menu(), whapps_call:call()) -> ne_binary().
 recording_media_doc(Type, #cf_menu_data{name=MenuName
                                         ,menu_id=Id
                                        }, Call) ->
@@ -433,7 +459,7 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
              ,{<<"streamable">>, 'true'}],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(AccountDb, Doc),
-    wh_json:get_value(<<"_id">>, JObj).
+    wh_doc:id(JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -441,13 +467,13 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(text(), wh_json:json_term(), menu() | binary(),  whapps_call:call() | binary()) ->
+-spec update_doc(text(), wh_json:json_term(), menu() | ne_binary(),  whapps_call:call() | ne_binary()) ->
+                        'ok' | {'error', atom()}.
+-spec update_doc(wh_proplist(), ne_binary(), whapps_call:call() | ne_binary()) ->
                         'ok' | {'error', atom()}.
 update_doc(Key, Value, #cf_menu_data{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
-update_doc(Key, Value, Id, Call) when is_tuple(Call) ->
-    update_doc(Key, Value, Id, whapps_call:account_db(Call));
-update_doc(Key, Value, Id, Db) ->
+update_doc(Key, Value, Id, <<_/binary>> = Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);
         {'ok', JObj} ->
@@ -456,7 +482,22 @@ update_doc(Key, Value, Id, Db) ->
                 {'ok', _} -> 'ok';
                 {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
             end
-    end.
+    end;
+update_doc(Key, Value, Id, Call) ->
+    update_doc(Key, Value, Id, whapps_call:account_db(Call)).
+
+update_doc(Updates, Id, <<_/binary>> = Db) ->
+    case couch_mgr:open_doc(Db, Id) of
+        {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E]);
+        {'ok', JObj} ->
+            case couch_mgr:save_doc(Db, wh_json:set_values(Updates, JObj)) of
+                {'error', 'conflict'} -> update_doc(Updates, Id, Db);
+                {'ok', _} -> 'ok';
+                {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
+            end
+    end;
+update_doc(Updates, Id, Call) ->
+    update_doc(Updates, Id, whapps_call:account_db(Call)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -466,7 +507,7 @@ update_doc(Key, Value, Id, Db) ->
 %%--------------------------------------------------------------------
 -spec get_menu_profile(wh_json:object(), whapps_call:call()) -> menu().
 get_menu_profile(Data, Call) ->
-    Id = wh_json:get_value(<<"id">>, Data),
+    Id = wh_doc:id(Data),
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, Id) of
         {'ok', JObj} ->

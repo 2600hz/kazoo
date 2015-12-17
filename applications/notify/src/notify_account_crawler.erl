@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -25,6 +25,8 @@
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
 
+-define(KEY_LOW_BALANCE_SENT, [<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>]).
+
 -record(state, {}).
 
 %%%===================================================================
@@ -41,13 +43,12 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
+-spec check(ne_binary()) -> 'ok'.
 check(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
-            AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-            process_account(AccountId, AccountDb, JObj);
+            process_account(AccountId, wh_doc:account_db(JObj), JObj);
         {'error', _R} ->
             lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
     end;
@@ -117,24 +118,19 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('next_account', []) ->
-    Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time">>, 300000),
+    Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time">>, 5 * ?MILLISECONDS_IN_MINUTE),
     erlang:send_after(Cycle, self(), 'crawl_accounts'),
     {'noreply', [], 'hibernate'};
 handle_info('next_account', [Account|Accounts]) ->
-    _ = case wh_json:get_value(<<"id">>, Account) of
+    _ = case wh_doc:id(Account) of
             <<"_design", _/binary>> -> 'ok';
             AccountId ->
                 %% do not open the account def in the account db or we will
                 %% be wasting bigcouch's file descriptors
-                case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-                    {'ok', JObj} ->
-                        AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-                        process_account(AccountId, AccountDb, JObj);
-                    {'error', _R} ->
-                        lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
-                end
+                OpenResult = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+                check_then_process_account(AccountId, OpenResult)
         end,
-    Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10000),
+    Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10 * ?MILLISECONDS_IN_SECOND),
     erlang:send_after(Cycle, self(), 'next_account'),
     {'noreply', Accounts, 'hibernate'};
 handle_info('crawl_accounts', _) ->
@@ -150,6 +146,17 @@ handle_info('crawl_accounts', _) ->
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
+
+-spec check_then_process_account(ne_binary(), {'ok', wh_json:object()} | {'error',any()}) -> 'ok'.
+check_then_process_account(AccountId, {'ok', JObj}) ->
+    case wh_doc:is_soft_deleted(JObj) of
+        'true' ->
+            lager:debug("not processing account ~p (soft-destroyed)", [AccountId]);
+        'false' ->
+            process_account(AccountId, wh_doc:account_db(JObj), JObj)
+    end;
+check_then_process_account(AccountId, {'error', _R}) ->
+    lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -179,6 +186,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec process_account (ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 process_account(AccountId, AccountDb, JObj) ->
     lager:debug("notify crawler processing account ~s", [AccountId]),
     _ = maybe_test_for_initial_occurrences(AccountId, AccountDb, JObj),
@@ -263,7 +271,7 @@ maybe_test_for_initial_call(AccountId, AccountDb, JObj) ->
 -spec test_for_initial_call(ne_binary(), ne_binary()) -> 'ok'.
 test_for_initial_call(AccountId, AccountDb) ->
     ViewOptions = [{'key', <<"cdr">>}
-                   ,{'limit', <<"1">>}
+                   ,{'limit', 1}
                   ],
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', [_|_]} ->
@@ -304,28 +312,35 @@ maybe_test_for_low_balance(AccountId, AccountDb, JObj) ->
 test_for_low_balance(AccountId, AccountDb, JObj) ->
     Threshold = low_balance_threshold(AccountId),
     CurrentBalance = wht_util:current_balance(AccountId),
-    lager:debug("checking if account ~s balance is below $~w", [AccountId, Threshold]),
+    lager:debug("checking if account ~s balance $~w is below $~w"
+               ,[AccountId, wht_util:units_to_dollars(CurrentBalance), Threshold]
+               ),
     case CurrentBalance < wht_util:dollars_to_units(Threshold) of
         'false' ->
             maybe_reset_low_balance(AccountId, AccountDb, JObj);
         'true' ->
-            case wh_topup:init(AccountId, CurrentBalance) of
-                'ok' ->
-                    Props = [{<<"Account-ID">>, AccountId}],
-                    whapps_util:amqp_pool_request(
-                        Props
-                       ,fun wapi_notifications:publish_topup/1
-                       ,fun wapi_notifications:topup_v/1
-                    ),
-                    'ok';
-                'error' ->
-                    maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj)
-            end
+            topup_account(AccountId, AccountDb, JObj, CurrentBalance)
+    end.
+
+-spec topup_account(ne_binary(), ne_binary()
+                    ,wh_json:object(), integer()) -> 'ok'.
+topup_account(AccountId, AccountDb, JObj, CurrentBalance) ->
+    case wh_topup:init(AccountId, CurrentBalance) of
+        'ok' ->
+            lager:debug("topup successful for ~s", [AccountId]);
+        'error' ->
+            lager:error("topup failed for ~s", [AccountId]),
+            maybe_handle_low_balance(
+                CurrentBalance
+                ,AccountId
+                ,AccountDb
+                ,JObj
+            )
     end.
 
 -spec maybe_reset_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_reset_low_balance(AccountId, AccountDb, JObj) ->
-    case wh_json:is_true([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], JObj, 'true') of
+    case wh_json:is_true(?KEY_LOW_BALANCE_SENT, JObj, 'true') of
         'false' -> 'ok';
         'true' ->
             reset_low_balance(AccountId, AccountDb)
@@ -336,7 +351,7 @@ reset_low_balance(AccountId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
             lager:debug("reseting low balance sent flag for account ~s", [AccountId]),
-            Account = wh_json:set_value([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], 'false', JObj),
+            Account = wh_json:set_value(?KEY_LOW_BALANCE_SENT, 'false', JObj),
             case couch_mgr:save_doc(AccountDb, Account) of
                 {'ok', _} ->
                     couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Account),
@@ -350,8 +365,8 @@ reset_low_balance(AccountId, AccountDb) ->
 
 -spec maybe_handle_low_balance(integer(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
-    case wh_json:is_true([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], JObj)
-        orelse wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>], JObj) =:= 'undefined'
+    case wh_json:is_true(?KEY_LOW_BALANCE_SENT, JObj)
+        orelse wh_json:get_value(?KEY_LOW_BALANCE_SENT, JObj) =:= 'undefined'
     of
         'true' -> 'ok';
         'false' ->
@@ -368,13 +383,14 @@ handle_low_balance(CurrentBalance, AccountId, AccountDb) ->
 
 -spec notify_low_balance(integer(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
-    Account = wh_json:set_value([<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>]
+    Account = wh_json:set_value(?KEY_LOW_BALANCE_SENT
                                 ,'true'
-                                ,JObj),
+                                ,JObj
+                               ),
     case couch_mgr:save_doc(AccountDb, Account) of
         {'ok', _} ->
             couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Account),
-            notify_low_balance:send(CurrentBalance, Account);
+            wh_notify:low_balance(CurrentBalance, AccountId);
         _E ->
             lager:debug("unable to update low balance flag for account ~s: ~p~n", [AccountId, _E]),
             'ok'
@@ -382,16 +398,12 @@ notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
 
 -spec low_balance_threshold(ne_binary()) -> float().
 low_balance_threshold(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
     Default = whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+
+    case kz_account:fetch(Account) of
         {'error', _R} -> Default;
         {'ok', JObj} ->
-            wh_json:get_float_value([<<"topup">>, <<"threshold">>], JObj, Default)
+            TopUp = wh_json:get_float_value([<<"topup">>, <<"threshold">>], JObj, Default),
+            kz_account:threshold(JObj, TopUp)
     end.
-
-
-
-

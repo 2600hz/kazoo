@@ -1,7 +1,0 @@
-{application, 'erlang_localtime',
- [
-  {description, ""},
-  {vsn, "1.0.1"},
-  {registered, []},
-  {env, []}
- ]}.

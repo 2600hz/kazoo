@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Handles authorization requests, responses, queue bindings
 %%% @end
@@ -25,12 +25,21 @@
 -define(KEY_AUTHZ_BROADCAST, <<"authz.authorize.broadcast">>).
 
 %% Authorization Requests
--define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
-                            ,<<"Call-ID">>, <<"Call-Direction">>
-                            ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+-define(AUTHZ_REQ_HEADERS, [<<"Call-Direction">>
+                            ,<<"Call-ID">>
+                            ,<<"Caller-ID-Name">>
+                            ,<<"Caller-ID-Number">>
+                            ,<<"From">>
+                            ,<<"Request">>
+                            ,<<"To">>
                            ]).
--define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>
+-define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>
+                                     ,<<"From-Network-Addr">>
+                                     ,<<"From-Network-Port">>
                                      ,<<"Other-Leg-Call-ID">>
+                                     ,<<"From-Network-Addr">>
+                                     ,<<"From-Network-Port">>
+                                     ,<<"Switch-Hostname">>
                                     ]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"authz_req">>}

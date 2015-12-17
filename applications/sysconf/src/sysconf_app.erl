@@ -25,7 +25,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) -> startlink_ret().
+-spec start(any(), any()) ->
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
 start(_StartType, _StartArgs) -> sysconf:start_link().
 
 %%--------------------------------------------------------------------
@@ -34,5 +36,5 @@ start(_StartType, _StartArgs) -> sysconf:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> 'ok'.
 stop(_State) -> sysconf:stop().

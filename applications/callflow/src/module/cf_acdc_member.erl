@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% Data: {
@@ -9,6 +9,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(cf_acdc_member).
 
@@ -18,10 +19,13 @@
 
 -type max_wait() :: pos_integer() | 'infinity'.
 
+-define(MEMBER_TIMEOUT, <<"member_timeout">>).
+-define(MEMBER_HANGUP, <<"member_hangup">>).
+
 -record(member_call, {call              :: whapps_call:call()
                       ,queue_id         :: api_binary()
                       ,config_data = [] :: wh_proplist()
-                      ,max_wait = 60000 :: max_wait()
+                      ,max_wait = 60 * ?MILLISECONDS_IN_SECOND :: max_wait()
                      }).
 -type member_call() :: #member_call{}.
 
@@ -32,13 +36,16 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    QueueId = wh_json:get_value(<<"id">>, Data),
+    QueueId = wh_doc:id(Data),
     lager:info("sending call to queue ~s", [QueueId]),
+
+    Priority = lookup_priority(Data, Call),
 
     MemberCall = props:filter_undefined(
                    [{<<"Account-ID">>, whapps_call:account_id(Call)}
                     ,{<<"Queue-ID">>, QueueId}
                     ,{<<"Call">>, whapps_call:to_json(Call)}
+                    ,{<<"Member-Priority">>, Priority}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ]),
 
@@ -61,6 +68,16 @@ handle(Data, Call) ->
                                   }
                       ,is_queue_full(MaxQueueSize, CurrQueueSize)
                      ).
+
+-spec lookup_priority(wh_json:object(), whapps_call:call()) -> api_binary().
+lookup_priority(Data, Call) ->
+    FromData = wh_json:get_integer_value(<<"priority">>, Data),
+    FromCall = whapps_call:custom_channel_var(<<"Call-Priority">>, Call),
+    case {FromData, FromCall} of
+        {FromData, _} when is_integer(FromData) -> FromData;
+        {_, FromCall} when is_binary(FromCall) -> wh_util:to_integer(FromCall);
+        _ -> 'undefined'
+    end.
 
 -spec maybe_enter_queue(member_call(), boolean()) -> any().
 maybe_enter_queue(#member_call{call=Call}, 'true') ->
@@ -98,7 +115,7 @@ wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
     end.
 
 end_member_call(Call) ->
-    cancel_member_call(Call, <<"member_timeout">>),
+    cancel_member_call(Call, ?MEMBER_TIMEOUT),
     stop_hold_music(Call),
     cf_exe:continue(Call).
 
@@ -111,7 +128,7 @@ process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event"
     cf_exe:control_usurped(Call);
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_DESTROY">>}) ->
     lager:info("member hungup while waiting in the queue (was there ~b s)", [wh_util:elapsed_s(Start)]),
-    cancel_member_call(Call, <<"member_hungup">>),
+    cancel_member_call(Call, ?MEMBER_HANGUP),
     cf_exe:stop(Call);
 process_message(#member_call{call=Call
                              ,queue_id=QueueId
@@ -136,7 +153,7 @@ process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call
             lager:info("caller pressed the exit key(~s), moving to next callflow action", [DigitPressed]),
             cancel_member_call(Call, <<"dtmf_exit">>),
             _ = whapps_call_command:flush_dtmf(Call),
-            timer:sleep(1000),
+            timer:sleep(?MILLISECONDS_IN_SECOND),
             cf_exe:continue(Call);
         'false' ->
             lager:info("caller pressed ~s, ignoring", [DigitPressed]),
@@ -151,7 +168,7 @@ process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
 %% convert from seconds to milliseconds, or infinity
 -spec max_wait(integer()) -> max_wait().
 max_wait(N) when N < 1 -> 'infinity';
-max_wait(N) -> N * 1000.
+max_wait(N) -> N * ?MILLISECONDS_IN_SECOND.
 
 max_queue_size(N) when is_integer(N), N > 0 -> N;
 max_queue_size(_) -> 0.
@@ -161,6 +178,9 @@ is_queue_full(0, _) -> 'false';
 is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
 
 -spec cancel_member_call(whapps_call:call(), ne_binary()) -> 'ok'.
+cancel_member_call(Call, <<"timeout">>) ->
+    lager:info("update reason from `timeout` to `member_timeout`"),
+    cancel_member_call(Call, ?MEMBER_TIMEOUT);
 cancel_member_call(Call, Reason) ->
     AcctId = whapps_call:account_id(Call),
     {'ok', QueueId} = whapps_call:kvs_find('queue_id', Call),

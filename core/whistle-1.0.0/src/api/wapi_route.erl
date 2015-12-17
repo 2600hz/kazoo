@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Routing requests, responses, and wins!
 %%% @end
@@ -21,10 +21,16 @@
          ,get_auth_user/1
          ,req_event_type/0
          ,is_actionable_resp/1
+
+         ,call_id/1
+         ,control_queue/1
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
 -include("wapi_dialplan.hrl").
+
+-define(KEY_CALL_ID, <<"Call-ID">>).
+-define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
 
 %% routing keys to use in the callmgr exchange
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
@@ -33,20 +39,23 @@
 -define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
 
 %% Route Requests
--define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
+-define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, ?KEY_CALL_ID
                             ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
--define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
+-define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Orig-Port">>
                                      ,<<"Max-Call-Length">>, <<"Media">>
                                      ,<<"Transcode">>, <<"Codecs">>
                                      ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                      ,<<"Resource-Type">>, <<"Cost-Parameters">>
-                                     ,<<"From-Network-Addr">>, <<"User-Agent">>
+                                     ,<<"From-Network-Addr">>, <<"From-Network-Port">>
+                                     ,<<"User-Agent">>
                                      ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                     ,<<"Switch-URL">>, <<"Switch-URI">>
                                      ,<<"Ringback-Media">>, <<"Transfer-Media">>
                                      ,<<"SIP-Request-Host">>, <<"Message-ID">>
                                      ,<<"Body">>
                                      ,<<"From-Tag">>, <<"To-Tag">>
+                                     ,<<"Prepend-CID-Name">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
@@ -62,19 +71,23 @@
 -define(ROUTE_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
                           ,{<<"Request">>, fun is_binary/1}
-                          ,{<<"Call-ID">>, fun is_binary/1}
+                          ,{?KEY_CALL_ID, fun is_binary/1}
                           ,{<<"Event-Queue">>, fun is_binary/1}
                           ,{<<"Caller-ID-Name">>, fun is_binary/1}
                           ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                          ,{<<"Cost-Parameters">>, fun(JObj) ->
-                                                           wh_json:is_json_object(JObj)
-                                                               andalso lists:all(fun({K, _V}) ->
-                                                                                 lists:member(K, ?ROUTE_REQ_COST_PARAMS)
-                                                                         end, wh_json:to_proplist(JObj))
-                                                   end}
+                          ,{<<"Cost-Parameters">>, fun has_cost_parameters/1}
                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                          ]).
+
+-spec has_cost_parameters(wh_json:object()) -> boolean().
+has_cost_parameters(JObj) ->
+    wh_json:is_json_object(JObj)
+        andalso wh_json:all(fun({K, _V}) ->
+                                    lists:member(K, ?ROUTE_REQ_COST_PARAMS)
+                            end
+                            ,JObj
+                           ).
 
 %% Route Responses
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
@@ -119,13 +132,13 @@
                           ]).
 
 %% Route Winner
--define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
+-define(ROUTE_WIN_HEADERS, [?KEY_CALL_ID, ?KEY_CONTROL_QUEUE]).
 -define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(ROUTE_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"route_win">>}
                           ]).
--define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
-                          ,{<<"Control-Queue">>, fun is_binary/1}
+-define(ROUTE_WIN_TYPES, [{?KEY_CALL_ID, fun is_binary/1}
+                          ,{?KEY_CONTROL_QUEUE, fun is_binary/1}
                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                          ]).
 
@@ -331,3 +344,11 @@ get_auth_user_realm(ApiProp) when is_list(ApiProp) ->
 get_auth_user_realm(ApiJObj) ->
     [ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     {ReqUser, ReqDomain}.
+
+-spec call_id(wh_json:object()) -> api_binary().
+call_id(JObj) ->
+    wh_json:get_value(?KEY_CALL_ID, JObj).
+
+-spec control_queue(wh_json:object()) -> api_binary().
+control_queue(JObj) ->
+    wh_json:get_value(?KEY_CONTROL_QUEUE, JObj).

@@ -61,3 +61,144 @@ This API check if the numbers are still available for purchase.
      ,"revision": "undefined"
      ,"status": "success"
     }
+
+
+## Fix Phone Numbers
+
+### Request
+
+- Verb: `POST`
+- Url: `v2/accounts/ACCOUNT_ID/phone_numbers/fix`
+- Payload: None
+
+### Response
+
+```
+{
+    "data": {}
+    "status": "success"
+}
+```
+
+## Activate a new phone number
+
+    curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}" \
+    http://server:8000/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}/activate -d '{}'
+
+
+## E911
+
+### Request
+
+- Verb: `POST`
+- Url: `v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}`
+- Payload:
+
+```
+{
+    "data": {
+        "used_by": "callflow",
+        "id": "{{NUMBER}}",
+        "dash_e911": {
+            "postal_code": "{{ZIP_CODE}}",
+            "street_address": "{{ADDRESS}}",
+            "extended_address": "{{EXTENDED}}",
+            "locality": "{{CITY}}",
+            "region": "{{STATE}}"
+        }
+    }
+}
+```
+
+### Response
+
+#### Invalid address
+
+```
+{
+    "data": {
+        "address": {
+            "invalid": {
+                "cause": {
+                    "postal_code": "{{ZIP_CODE}}",
+                    "street_address": "{{ADDRESS}}",
+                    "extended_address": "{{EXTENDED}}",
+                    "locality": "{{CITY}}",
+                    "region": "{{STATE}}"
+                },
+                "message": "Location is not geocoded",
+                "provider": "dash_e911"
+            }
+        }
+    },
+    "error": "400",
+    "message": "invalid data",
+    "status": "error"
+}
+```
+#### Multiple choice
+
+```
+{
+    "data": {
+        "multiple_choice": {
+            "dash_e911": {
+                "cause": {
+                    "postal_code": "{{ZIP_CODE}}",
+                    "street_address": "{{ADDRESS}}",
+                    "extended_address": "{{EXTENDED}}",
+                    "locality": "{{CITY}}",
+                    "region": "{{STATE}}"
+                },
+                "details": [{
+                    "postal_code": "{{ZIP_CODE}}",
+                    "street_address": "{{ADDRESS}}",
+                    "extended_address": "{{EXTENDED}}",
+                    "locality": "{{CITY}}",
+                    "region": "{{STATE}}"
+                }, {
+                    "postal_code": "{{ZIP_CODE}}",
+                    "street_address": "{{ADDRESS}}",
+                    "extended_address": "{{EXTENDED}}",
+                    "locality": "{{CITY}}",
+                    "region": "{{STATE}}"
+                }],
+                "message": "more than one address found"
+            }
+        }
+    },
+    "error": "400",
+    "message": "multiple_choice",
+    "status": "error"
+}
+```
+
+#### Success
+
+```
+{
+    "data": {
+        "used_by": "callflow",
+        "id": "{{NUMBER}}",
+        "dash_e911": {
+            "street_address": "116 NATOMA ST",
+            "extended_address": "APT 116",
+            "caller_name": "Valued Customer",
+            "locality": "SAN FRANCISCO",
+            "latitude": "37.786861",
+            "longitude": "-122.399484",
+            "location_id": "27578725",
+            "plus_four": "3745",
+            "postal_code": "94105",
+            "region": "CA",
+            "status": "PROVISIONED",
+            "legacy_data": {
+                "house_number": "116",
+                "streetname": "NATOMA ST",
+                "suite": "APT 116"
+            }
+        }
+    },
+    "status": "success"
+}
+```

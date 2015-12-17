@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
 %%% @end
@@ -15,7 +15,14 @@
 
 -export([reconcile_providers/0]).
 
+-export([cleanup_phone_numbers/0, cleanup_phone_numbers/1]).
+
+-export([create_phone_number/1, create_phone_number/2]).
+-export([activate_phone_number/1, activate_phone_number/2]).
+-export([create_and_activate_phone_number/2]).
+
 -include("wnm.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 %% These are temporary until the viewing of numbers in an account can
 %% be standardized
@@ -55,7 +62,7 @@ refresh() ->
 -spec reconcile(string() | ne_binary() | 'all') -> 'no_return'.
 
 reconcile() ->
-    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences.", []),
+    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences."),
     'no_return'.
 
 reconcile(Arg) ->
@@ -69,8 +76,8 @@ reconcile(Arg) ->
 %% in the accounts
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_numbers() -> 'no_return' | {'error', _}.
--spec reconcile_numbers(string() | ne_binary() | 'all') -> 'no_return' | {'error', _}.
+-spec reconcile_numbers() -> 'no_return' | {'error', any()}.
+-spec reconcile_numbers(string() | ne_binary() | 'all') -> 'no_return' | {'error', any()}.
 
 reconcile_numbers() ->
     reconcile_numbers('all').
@@ -89,7 +96,7 @@ reconcile_numbers(NumberDb) ->
         {'ok', JObjs} ->
             Numbers = [Number
                        || JObj <- JObjs
-                              ,case (Number = wh_json:get_value(<<"id">>, JObj)) of
+                              ,case (Number = wh_doc:id(JObj)) of
                                    <<"_design/", _/binary>> -> 'false';
                                    _Else -> 'true'
                                end
@@ -154,13 +161,98 @@ reconcile_providers([], Config) ->
     whapps_config:set_default(?WNM_CONFIG_CAT, <<"providers">>, Config).
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% exist
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_phone_numbers() -> 'ok'.
+-spec cleanup_phone_numbers(ne_binary() | ne_binaries()) -> 'ok'.
+cleanup_phone_numbers() ->
+    Accounts = whapps_util:get_all_accounts('raw'),
+    wh_number_fix:fix_account_numbers(Accounts).
+
+cleanup_phone_numbers(Account) ->
+    wh_number_fix:fix_account_numbers(Account).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% exist
+%% @end
+%%--------------------------------------------------------------------
+-spec create_phone_number(ne_binary()) -> 'ok'.
+-spec create_phone_number(ne_binary(), ne_binary()) -> 'ok'.
+-spec create_phone_number(ne_binary(), ne_binary(), ne_binary()) ->
+                                 {'ok', wh_json:object()} |
+                                 {atom(), api_object()}.
+create_phone_number(Number) ->
+    {'ok', AccountId} = whapps_util:get_master_account_id(),
+    create_phone_number(Number, AccountId).
+
+create_phone_number(Number, AccountId) ->
+    {'ok', SystemAccountId} = whapps_util:get_master_account_id(),
+    case create_phone_number(Number, AccountId, SystemAccountId) of
+        {'ok', JObj} ->
+            io:format("successfully created ~s: ~s~n"
+                      ,[Number, wh_json:encode(JObj)]
+                     );
+        {Error, Reason} ->
+            io:format("failed to create ~s: ~s: ~p~n"
+                      ,[Number, Error, Reason]
+                     )
+    end.
+
+create_phone_number(Number, AccountId, SystemAccountId) ->
+    wh_number_manager:create_number(Number
+                                    ,AccountId
+                                    ,SystemAccountId
+                                   ).
+
+-spec activate_phone_number(ne_binary()) -> 'ok'.
+-spec activate_phone_number(ne_binary(), ne_binary()) -> 'ok'.
+-spec activate_phone_number(ne_binary(), ne_binary(), ne_binary()) ->
+                                   {'ok', wh_json:object()} |
+                                   {atom(), api_object()}.
+activate_phone_number(Number) ->
+    {'ok', AccountId} = whapps_util:get_master_account_id(),
+    activate_phone_number(Number, AccountId).
+
+activate_phone_number(Number, AccountId) ->
+    {'ok', SystemAccountId} = whapps_util:get_master_account_id(),
+    case activate_phone_number(Number, AccountId, SystemAccountId) of
+        {'ok', JObj} ->
+            io:format("successfully activated ~s: ~s~n"
+                      ,[Number, wh_json:encode(JObj)]
+                     );
+        {Error, Reason} ->
+            io:format("failed to activate ~s: ~s: ~p~n"
+                      ,[Number, Error, Reason]
+                     )
+    end.
+
+activate_phone_number(Number, AccountId, SystemAccountId) ->
+    wh_number_manager:assign_number_to_account(Number
+                                               ,AccountId
+                                               ,SystemAccountId
+                                              ).
+
+-spec create_and_activate_phone_number(ne_binary(), ne_binary()) -> 'ok'.
+create_and_activate_phone_number(Number, AccountId) ->
+    {'ok', SystemAccountId} = whapps_util:get_master_account_id(),
+
+    {'ok', _} = create_phone_number(Number, AccountId, SystemAccountId),
+    {'ok', JObj} = activate_phone_number(Number, AccountId, SystemAccountId),
+    io:format("created and activated number: ~s", [wh_json:encode(JObj)]).
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Given an account create a json object of all numbers that look to
 %% external (TODO: currently just uses US rules).
 %% @end
 %%--------------------------------------------------------------------
--spec get_callflow_account_numbers(ne_binary()) -> wh_json:json_strings().
+-spec get_callflow_account_numbers(ne_binary()) -> wh_json:keys().
 get_callflow_account_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:get_all_results(AccountDb, ?CALLFLOW_VIEW) of
@@ -180,7 +272,7 @@ get_callflow_account_numbers(AccountId) ->
 -spec is_trunkstore_account(wh_json:object()) -> boolean().
 is_trunkstore_account(JObj) ->
     wh_json:get_value(<<"type">>, JObj) =:= <<"sys_info">> orelse
-        wh_json:get_value(<<"pvt_type">>, JObj) =:= <<"sys_info">>.
+        wh_doc:type(JObj) =:= <<"sys_info">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -200,7 +292,7 @@ get_trunkstore_account_numbers(AccountId, AccountDb) ->
             lager:debug("account db ~s has trunkstore DIDs", [AccountDb]),
             Assigned = [wh_json:get_value(<<"key">>, JObj) || JObj <- JObjs],
 
-            TSDocId = wh_json:get_value(<<"id">>, hd(JObjs)),
+            TSDocId = wh_doc:id(hd(JObjs)),
             {'ok', TSDoc} = couch_mgr:open_doc(AccountDb, TSDocId),
             lager:debug("fetched ts doc ~s from ~s", [TSDocId, AccountDb]),
 

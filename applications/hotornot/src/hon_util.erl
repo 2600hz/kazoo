@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -13,11 +13,11 @@
          ,sort_rates/1
         ]).
 
--include("hotornot.hrl").
-
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
+-export([build_keys/1]).
 -endif.
+
+-include("hotornot.hrl").
 
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
@@ -38,14 +38,21 @@ find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
     Keys = build_keys(E164),
 
     lager:debug("searching for prefixes for ~s: ~p", [E164, Keys]),
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{'keys', Keys}
-                                                                  ,'include_docs'
-                                                                 ])
+    case couch_mgr:get_results(?WH_RATES_DB
+                               ,<<"rates/lookup">>
+                               ,[{'keys', Keys}
+                                 ,'include_docs'
+                                ]
+                              )
     of
         {'ok', []}=OK -> OK;
+        {'error', _}=E -> E;
         {'ok', ViewRows} ->
-            {'ok', [wh_json:get_value(<<"doc">>, ViewRow) || ViewRow <- ViewRows]};
-        {'error', _}=E -> E
+            {'ok'
+             ,[wh_json:get_value(<<"doc">>, ViewRow)
+               || ViewRow <- ViewRows
+              ]
+            }
     end;
 find_candidate_rates(DID, _) ->
     lager:debug("DID ~s is too short", [DID]),
@@ -84,13 +91,25 @@ sort_rates(Rates) ->
 %% Return whether the given rate is a candidate for the given DID
 %% taking into account direction of the call and options the DID
 %% needs to have available
--spec matching_rate(wh_json:object(), ne_binary(), 'undefined' | ne_binary(), trunking_options()) -> boolean().
+-spec matching_rate(wh_json:object(), ne_binary(), api_binary(), trunking_options()) -> boolean().
 matching_rate(Rate, E164, Direction, RouteOptions) ->
-    (Direction =:= 'undefined' orelse lists:member(Direction, wh_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)))
-        andalso options_match(RouteOptions, wh_json:get_value([<<"options">>], Rate, []))
-        andalso lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
-                          ,wh_json:get_value([<<"routes">>], Rate, [])
-                         ).
+    matching_direction(Rate, Direction)
+        andalso matching_options(Rate, RouteOptions)
+        andalso matching_routes(Rate, E164).
+
+-spec matching_routes(wh_json:object(), ne_binary()) -> boolean().
+matching_routes(Rate, E164) ->
+    lists:any(fun(Regex) -> re:run(E164, Regex) =/= 'nomatch' end
+              ,wh_json:get_value([<<"routes">>], Rate, [])
+             ).
+
+-spec matching_direction(wh_json:object(), api_binary()) -> boolean().
+matching_direction(_Rate, 'undefined') ->
+    'true';
+matching_direction(Rate, Direction) ->
+    lists:member(Direction
+                 ,wh_json:get_value([<<"direction">>], Rate, ?BOTH_DIRECTIONS)
+                ).
 
 %% Return true if RateA has lower weight than RateB
 -spec sort_rate(wh_json:object(), wh_json:object()) -> boolean().
@@ -110,17 +129,16 @@ sort_rate(RateA, RateB) ->
 %% Rate options come from the carrier providing the trunk
 %% All Route options must exist in a carrier's options to keep the carrier
 %% in the list of carriers capable of handling the call
+-spec matching_options(wh_json:object(), trunking_options()) -> boolean().
+matching_options(Rate, RouteOptions) ->
+    options_match(wh_json:get_value([<<"options">>], Rate, []), RouteOptions).
+
 -spec options_match(trunking_options(), trunking_options()) -> boolean().
 options_match([], []) -> 'true';
 options_match([], _) -> 'true';
-options_match(RouteOptions, RateOptions) ->
-    lists:all(fun(RouteOpt) -> props:get_value(RouteOpt, RateOptions, 'false') =/= 'false' end, RouteOptions).
-
--ifdef(TEST).
-build_keys_test() ->
-    ?assertEqual([1], build_keys(<<"1">>)),
-    ?assertEqual([12, 1], build_keys(<<"12">>)),
-    ?assertEqual([123, 12, 1], build_keys(<<"123">>)).
-
--endif.
-
+options_match(RateOptions, RouteOptions) ->
+    lists:all(fun(RouteOption) ->
+                      props:get_value(RouteOption, RateOptions, 'false') =/= 'false'
+              end
+              ,RouteOptions
+             ).

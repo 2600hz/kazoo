@@ -93,7 +93,7 @@ maybe_same_group(Data, Call) ->
 
 -spec is_caller_same_group(wh_json:object(), whapps_call:call(), wh_json:object()) -> boolean().
 is_caller_same_group(Data, Call, CallerDeviceJObj) ->
-    DeviceId = wh_json:get_value(<<"_id">>, CallerDeviceJObj),
+    DeviceId = wh_doc:id(CallerDeviceJObj),
     OwnerId = wh_json:get_value(<<"owner_id">>, CallerDeviceJObj),
     GroupId = wh_json:get_value(<<"group_id">>, Data),
     is_owner_same_group(Call, DeviceId, OwnerId, GroupId).
@@ -159,7 +159,7 @@ find_group_endpoints(GroupId, Call) ->
     GroupsJObj = cf_attributes:groups(Call),
     case [wh_json:get_value(<<"value">>, JObj)
           || JObj <- GroupsJObj,
-             wh_json:get_value(<<"id">>, JObj) =:= GroupId
+             wh_doc:id(JObj) =:= GroupId
          ]
     of
         [] -> [];

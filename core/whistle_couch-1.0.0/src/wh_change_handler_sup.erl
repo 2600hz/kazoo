@@ -65,7 +65,7 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     Restart = transient,
-    Shutdown = 2000,
+    Shutdown = 2 * ?MILLISECONDS_IN_SECOND,
     Type = worker,
 
     AChild = {wh_change_handler, {wh_change_handler, start_link, []},

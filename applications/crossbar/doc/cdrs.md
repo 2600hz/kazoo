@@ -61,6 +61,7 @@ The existence of these properties will vary depending on the nature of the call.
   * inbound - the SIP To header
 * to\_uri - SIP To header
 * user\_agent - User Agent of the endpoint
+* bridge\_id - Bridge ID
 
 ### Kazoo-specific Properties
 
@@ -133,3 +134,7 @@ Using Crossbar to modify metaflows is very simple. There are only three GETs
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
 
 &tip All timestamps will be in Gregorian seconds (not Unix epoch).
+
+#### _GET_ - Fetch account CDRs in csv format:
+
+    curl -v -X GET -H "Accept: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs

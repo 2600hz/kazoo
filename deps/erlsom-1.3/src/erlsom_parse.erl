@@ -490,7 +490,7 @@ stateMachine(Event, State = #state{currentState = #altState{name=Name, type=Type
           %% check on MaxOccurs
 	  if %%{
 	    Max /= unbound, Count >= Max ->
-	      %% debug("But we have already recieved this event the maximum number of times"),
+	      %% debug("But we have already received this event the maximum number of times"),
               %% pop.
               NewState = State#state{currentState = pop(lists:reverse(Acc), Head),
                                      resultSoFar = Tail},
@@ -725,7 +725,7 @@ stateMachine(Event, State = #state{currentState = #cs{re = RemainingElements,
 	  %% debug("This is a valid alternative"),
 	  if 
 	    MaxOccurs /= unbound, ReceivedSoFar >= MaxOccurs ->
-	      %% debug("But we have already recieved this event the maximum number of times"),
+	      %% debug("But we have already received this event the maximum number of times"),
               %% move on
               NewState = State#state{currentState = #cs{re = NextElements, 
                                                         sf = 0, 

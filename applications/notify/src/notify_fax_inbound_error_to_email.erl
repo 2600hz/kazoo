@@ -31,7 +31,7 @@ init() ->
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:fax_inbound_error_v(JObj),
-    _ = whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     lager:debug("new fax error left, sending to email if enabled"),
     {'ok', Account} = notify_util:get_account_doc(JObj),
     case is_notice_enabled(Account) of
@@ -127,7 +127,7 @@ create_template_props(Event, Docs, Account) ->
      ,{<<"error">>, [{<<"call_info">>, wh_json:get_value(<<"Fax-Error">>, Event)}
                     ,{<<"fax_info">>, wh_json:get_value([<<"Fax-Info">>,<<"Fax-Result-Text">>], Event)}
                     ]}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
+     ,{<<"account_db">>, wh_doc:account_db(Account)}
     ].
 
 fax_values(Event) ->

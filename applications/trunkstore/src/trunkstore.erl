@@ -36,7 +36,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     application:start(?MODULE).
 
@@ -47,7 +47,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 
+stop() ->
     exit(whereis('trunkstore_sup'), 'shutdown'),
     'ok'.
 
@@ -79,5 +79,5 @@ declare_exchanges() ->
     _ = wapi_dialplan:declare_exchanges(),
     _ = wapi_offnet_resource:declare_exchanges(),
     _ = wapi_route:declare_exchanges(),
-    _ = wapi_notifications:declare_exchanges(), 
+    _ = wapi_notifications:declare_exchanges(),
     wapi_self:declare_exchanges().

@@ -4,8 +4,8 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_system_config.hrl").
-
--define(WHAPPS_CONFIG_CACHE, 'whapps_config_cache').
+-include_lib("whistle/include/kz_system_config.hrl").
+-include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 -define(DEFAULT_WHAPPS, ['registrar'
                          ,'reorder'
@@ -24,7 +24,11 @@
                          ,'milliwatt'
                          ,'pivot'
                          ,'camper'
+                         ,'frontier'
+                         ,'doodle'
                         ]).
+
+-define(WHAPPS_GETBY_CACHE, 'whapps_getby_cache').
 
 -define(WHISTLE_APPS_HRL, 'true').
 -endif.

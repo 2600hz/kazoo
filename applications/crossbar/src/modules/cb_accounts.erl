@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Account module
 %%%
@@ -20,6 +20,7 @@
          ,put/1, put/2
          ,post/2, post/3
          ,delete/2
+         ,patch/2
         ]).
 
 -export([is_unique_realm/2]).
@@ -39,11 +40,13 @@
 -define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
 
--define(PVT_TYPE, <<"account">>).
+-define(PVT_TYPE, kz_account:type()).
 -define(CHILDREN, <<"children">>).
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
 -define(API_KEY, <<"api_key">>).
+-define(TREE, <<"tree">>).
+-define(PARENTS, <<"parents">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
@@ -56,6 +59,7 @@ init() ->
                 ,{<<"*.validate.accounts">>, 'validate'}
                 ,{<<"*.execute.put.accounts">>, 'put'}
                 ,{<<"*.execute.post.accounts">>, 'post'}
+                ,{<<"*.execute.patch.accounts">>, 'patch'}
                 ,{<<"*.execute.delete.accounts">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
@@ -79,13 +83,13 @@ allowed_methods(AccountId) ->
     case whapps_util:get_master_account_id() of
         {'ok', AccountId} ->
             lager:debug("accessing master account, disallowing DELETE"),
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST];
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH];
         {'ok', _MasterId} ->
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE];
         {'error', _E} ->
             lager:debug("failed to get master account id: ~p", [_E]),
             lager:info("disallowing DELETE while we can't determine the master account id"),
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST]
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH]
     end.
 
 allowed_methods(_, ?MOVE) ->
@@ -95,6 +99,8 @@ allowed_methods(_, Path) ->
               ,?DESCENDANTS
               ,?SIBLINGS
               ,?API_KEY
+              ,?TREE
+              ,?PARENTS
              ],
     case lists:member(Path, Paths) of
         'true' -> [?HTTP_GET];
@@ -120,6 +126,8 @@ resource_exists(_, Path) ->
               ,?SIBLINGS
               ,?API_KEY
               ,?MOVE
+              ,?TREE
+              ,?PARENTS
              ],
     lists:member(Path, Paths).
 
@@ -174,6 +182,8 @@ validate_account(Context, _AccountId, ?HTTP_PUT) ->
     validate_request('undefined', prepare_context('undefined', Context));
 validate_account(Context, AccountId, ?HTTP_POST) ->
     validate_request(AccountId, prepare_context(AccountId, Context));
+validate_account(Context, AccountId, ?HTTP_PATCH) ->
+    validate_patch_request(AccountId, prepare_context(AccountId, Context));
 validate_account(Context, AccountId, ?HTTP_DELETE) ->
     validate_delete_request(AccountId, prepare_context(AccountId, Context)).
 
@@ -188,12 +198,14 @@ validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
     load_descendants(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context));
+validate_account_path(Context, AccountId, ?PARENTS, ?HTTP_GET) ->
+    load_parents(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
-            ApiKey = wh_json:get_value(<<"pvt_api_key">>, JObj),
+            ApiKey = kz_account:api_key(JObj),
             RespJObj = wh_json:from_list([{<<"api_key">>, ApiKey}]),
             cb_context:set_resp_data(Context1, RespJObj);
         _Else -> Context1
@@ -202,17 +214,27 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
     Data = cb_context:req_data(Context),
     case wh_json:get_binary_value(<<"to">>, Data) of
         'undefined' ->
-            cb_context:add_validation_error(<<"to">>
-                                            ,<<"required">>
-                                            ,<<"Field 'to' is required">>
-                                            ,Context);
+            cb_context:add_validation_error(
+                <<"to">>
+                ,<<"required">>
+                ,wh_json:from_list([
+                    {<<"message">>, <<"Field 'to' is required">>}
+                 ])
+                ,Context
+            );
         ToAccount ->
             case validate_move(whapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"allow_move">>, <<"superduper_admin">>)
                                ,Context, AccountId, ToAccount)
             of
                 'true' -> cb_context:set_resp_status(Context, 'success');
-                'false' -> cb_context:add_system_error('forbidden', [], Context)
+                'false' -> cb_context:add_system_error('forbidden', Context)
             end
+    end;
+validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
+    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_account_tree(Context1);
+        _Else -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -227,7 +249,7 @@ post(Context, AccountId) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            _ = provisioner_util:maybe_update_account(Context1),
+            _ = wh_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
             JObj = cb_context:doc(Context1),
             _ = replicate_account_definition(JObj),
             support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, JObj)
@@ -243,6 +265,10 @@ post(Context, AccountId, ?MOVE) ->
         _Status -> Context
     end.
 
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, AccountId) ->
+    post(Context, AccountId).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -254,21 +280,27 @@ post(Context, AccountId, ?MOVE) ->
 
 put(Context) ->
     JObj = cb_context:doc(Context),
-    AccountId = wh_json:get_value(<<"_id">>, JObj, couch_mgr:get_uuid()),
+    AccountId = wh_doc:id(JObj, couch_mgr:get_uuid()),
     try create_new_account_db(prepare_context(AccountId, Context)) of
         C ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            Tree = kz_account:tree(JObj),
             _ = maybe_update_descendants_count(Tree),
+            _ = create_apps_store_doc(AccountId),
             leak_pvt_fields(C)
     catch
         'throw':C ->
+            lager:debug("failed to create account, unrolling changes"),
+
             case cb_context:is_context(C) of
-                'true' ->  delete(C, AccountId);
+                'true' -> delete(C, AccountId);
                 'false' ->
                     C = cb_context:add_system_error('unspecified_fault', Context),
                     delete(C, AccountId)
             end;
-        _:_ ->
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST),
             C = cb_context:add_system_error('unspecified_fault', Context),
             delete(C, AccountId)
     end.
@@ -288,13 +320,13 @@ delete(Context, Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case whapps_util:is_account_db(AccountDb) of
         'false' ->
-            cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
+            cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]),  Context);
         'true' ->
             Context1 = delete_remove_services(prepare_context(Context, AccountId, AccountDb)),
-            Tree = wh_json:get_value(<<"pvt_tree">>, cb_context:doc(Context1)),
-            _ = maybe_update_descendants_count(Tree),
+            _ = maybe_update_descendants_count(kz_account:tree(cb_context:doc(Context1))),
             Context1
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -303,7 +335,17 @@ delete(Context, Account) ->
 -spec maybe_update_descendants_count(ne_binaries()) -> 'ok'.
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
-    _ = spawn('crossbar_util', 'descendants_count', [lists:last(Tree)]),
+    _ = wh_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_apps_store_doc(ne_binary()) -> 'ok'.
+create_apps_store_doc(AccountId) ->
+    _ = wh_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -380,73 +422,99 @@ prepare_context(Context, AccountId, AccountDb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(api_binary(), cb_context:context()) ->
+                              cb_context:context().
 validate_request(AccountId, Context) ->
-    ensure_account_has_realm(AccountId, Context).
+    ValidateFuns = [fun ensure_account_has_realm/2
+                    ,fun remove_spaces/2
+                    ,fun cleanup_leaky_keys/2
+                    ,fun validate_realm_is_unique/2
+                    ,fun validate_account_name_is_unique/2
+                    ,fun validate_account_schema/2
+                    ,fun disallow_direct_clients/2
+                   ],
+    lists:foldl(fun(F, C) -> F(AccountId, C) end
+                ,Context
+                ,ValidateFuns
+               ).
 
 -spec ensure_account_has_realm(api_binary(), cb_context:context()) -> cb_context:context().
-ensure_account_has_realm(AccountId, Context) ->
+ensure_account_has_realm(_AccountId, Context) ->
     JObj = cb_context:req_data(Context),
-    case wh_json:get_ne_value(<<"realm">>, JObj) of
+    case kz_account:realm(JObj) of
         'undefined' ->
-            RealmSuffix = whapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
-            Strength = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
-            J = wh_json:set_value(<<"realm">>, list_to_binary([wh_util:rand_hex_binary(Strength), ".", RealmSuffix]), JObj),
-            remove_spaces(AccountId, cb_context:set_req_data(Context, J));
-        _Else ->
-            remove_spaces(AccountId, Context)
+            Realm = random_realm(),
+            lager:debug("req has no realm, creating random realm '~s'", [Realm]),
+            cb_context:set_req_data(Context, kz_account:set_realm(JObj, Realm));
+        _Realm ->
+            lager:debug("req has realm '~s'", [_Realm]),
+            Context
     end.
 
+-spec random_realm() -> ne_binary().
+random_realm() ->
+    RealmSuffix = whapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
+    Strength = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
+    list_to_binary([wh_util:rand_hex_binary(Strength), ".", RealmSuffix]).
+
 -spec remove_spaces(api_binary(), cb_context:context()) -> cb_context:context().
-remove_spaces(AccountId, Context) ->
-    JObj = cb_context:req_data(Context),
-    JObjNew = lists:foldl(fun(Key, Acc) ->
-                        case wh_json:get_value(Key, Acc) of
-                            'undefined' -> Acc;
-                            Value ->
-                                NoSpaces = binary:replace(Value, <<" ">>, <<>>, ['global']),
-                                wh_json:set_value(Key, NoSpaces, Acc)
-                        end
-                end, JObj, ?REMOVE_SPACES),
-    cleanup_leaky_keys(AccountId, cb_context:set_req_data(Context, JObjNew)).
+remove_spaces(_AccountId, Context) ->
+    ReqData = lists:foldl(fun remove_spaces_fold/2
+                          ,cb_context:req_data(Context)
+                          ,?REMOVE_SPACES
+                         ),
+    cb_context:set_req_data(Context, ReqData).
+
+-spec remove_spaces_fold(wh_json:key(), wh_json:object()) -> wh_json:object().
+remove_spaces_fold(Key, Acc) ->
+    case wh_json:get_value(Key, Acc) of
+        'undefined' -> Acc;
+        Value ->
+            NoSpaces = binary:replace(Value, <<" ">>, <<>>, ['global']),
+            wh_json:set_value(Key, NoSpaces, Acc)
+    end.
 
 -spec cleanup_leaky_keys(api_binary(), cb_context:context()) -> cb_context:context().
-cleanup_leaky_keys(AccountId, Context) ->
+cleanup_leaky_keys(_AccountId, Context) ->
     RemoveKeys = [<<"wnm_allow_additions">>
                   ,<<"superduper_admin">>
                   ,<<"billing_mode">>
                  ],
     ReqData = wh_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
-    validate_realm_is_unique(AccountId
-                             ,cb_context:set_req_data(Context, ReqData)
-                            ).
+    cb_context:set_req_data(Context, ReqData).
 
 -spec validate_realm_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
 validate_realm_is_unique(AccountId, Context) ->
-    Realm = wh_json:get_ne_value(<<"realm">>, cb_context:req_data(Context)),
+    Realm = kz_account:realm(cb_context:req_data(Context)),
     case is_unique_realm(AccountId, Realm) of
-        'true' -> validate_account_name_is_unique(AccountId, Context);
+        'true' -> Context;
         'false' ->
-            C = cb_context:add_validation_error([<<"realm">>]
-                                                ,<<"unique">>
-                                                ,<<"Account realm already in use">>
-                                                ,Context
-                                               ),
-            validate_account_name_is_unique(AccountId, C)
+            cb_context:add_validation_error(
+              [<<"realm">>]
+              ,<<"unique">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Account realm already in use">>}
+                  ,{<<"cause">>, Realm}
+                 ])
+              ,Context
+             )
     end.
 
 -spec validate_account_name_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
 validate_account_name_is_unique(AccountId, Context) ->
-    Name = wh_json:get_ne_value(<<"name">>, cb_context:req_data(Context)),
+    Name = kz_account:name(cb_context:req_data(Context)),
     case maybe_is_unique_account_name(AccountId, Name) of
-        'true' -> validate_account_schema(AccountId, Context);
+        'true' -> Context;
         'false' ->
-            C = cb_context:add_validation_error([<<"name">>]
-                                                ,<<"unique">>
-                                                ,<<"Account name already in use">>
-                                                ,Context
-                                               ),
-            validate_account_schema(AccountId, C)
+            cb_context:add_validation_error(
+              [<<"name">>]
+              ,<<"unique">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Account name already in use">>}
+                  ,{<<"cause">>, Name}
+                 ])
+              ,Context
+             )
     end.
 
 -spec validate_account_schema(api_binary(), cb_context:context()) -> cb_context:context().
@@ -465,6 +533,8 @@ on_successful_validation(AccountId, Context) ->
                                   cb_context:context().
 -spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
                                   cb_context:context().
+-spec maybe_import_enabled(cb_context:context(), wh_json:object(), api_binary()) ->
+                                  cb_context:context().
 maybe_import_enabled(Context) ->
     case cb_context:auth_account_id(Context) =:= cb_context:account_id(Context) of
         'true' ->
@@ -478,19 +548,52 @@ maybe_import_enabled(Context) ->
 maybe_import_enabled(Context, 'success') ->
     AuthId = cb_context:auth_account_id(Context),
     JObj = cb_context:doc(Context),
-    case lists:member(AuthId, wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
+    case lists:member(AuthId, kz_account:tree(JObj)) of
         'false' ->
             cb_context:set_doc(Context, wh_json:delete_key(<<"enabled">>, JObj));
         'true' ->
-            case wh_json:get_value(<<"enabled">>, JObj) of
-                'undefined' -> Context;
-                Enabled ->
-                    cb_context:set_doc(Context
-                                       ,wh_json:set_value(<<"pvt_enabled">>, wh_util:is_true(Enabled)
-                                                          ,wh_json:delete_key(<<"enabled">>, JObj)
-                                                         )
-                                      )
-            end
+            maybe_import_enabled(Context, JObj, wh_json:get_value(<<"enabled">>, JObj))
+    end.
+
+maybe_import_enabled(Context, _JObj, 'undefined') -> Context;
+maybe_import_enabled(Context, JObj, IsEnabled) ->
+    JObj1 =
+        case wh_util:is_true(IsEnabled) of
+            'true' -> kz_account:enable(JObj);
+            'false' -> kz_account:disable(JObj)
+        end,
+    cb_context:set_doc(Context
+                       ,wh_json:delete_key(<<"enabled">>, JObj1)
+                      ).
+
+-spec disallow_direct_clients(api_binary(), cb_context:context()) -> cb_context:context().
+disallow_direct_clients(AccountId, Context) ->
+    AllowDirect = whapps_config:get_is_true(?WH_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true'),
+    maybe_disallow_direct_clients(AllowDirect, AccountId, Context).
+
+-spec maybe_disallow_direct_clients(boolean(), api_binary(), cb_context:context()) ->
+                                           cb_context:context().
+maybe_disallow_direct_clients('true', _AccountId, Context) ->
+    Context;
+maybe_disallow_direct_clients('false', _AccountId, Context) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    AuthUserReseller = wh_services:get_reseller_id(AuthAccountId),
+    case AuthUserReseller =/= MasterAccountId
+        orelse wh_services:is_reseller(AuthAccountId)
+    of
+        'true' -> Context;
+        'false' ->
+            lager:debug("direct account ~p is disallowed from creating sub-accounts", [AuthAccountId]),
+            cb_context:add_validation_error(
+              [<<"account">>]
+              ,<<"forbidden">>
+              ,wh_json:from_list(
+                 [{<<"message">>, <<"Direct account is not allowed to create sub-accounts">>}
+                  ,{<<"cause">>, AuthAccountId}
+                 ])
+              ,Context
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -508,11 +611,16 @@ validate_delete_request(AccountId, Context) ->
         {'error', 'not_found'} -> cb_context:add_system_error('datastore_missing_view', Context);
         {'error', _} -> cb_context:add_system_error('datastore_fault', Context);
         {'ok', JObjs} ->
-            case [JObj || JObj <- JObjs, wh_json:get_value(<<"id">>, JObj) =/= AccountId] of
+            case [JObj || JObj <- JObjs, wh_doc:id(JObj) =/= AccountId] of
                 [] -> cb_context:set_resp_status(Context, 'success');
                 _Else -> cb_context:add_system_error('account_has_descendants', Context)
             end
     end.
+
+%% @private
+-spec validate_patch_request(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch_request(AccountId, Context) ->
+    crossbar_doc:patch_and_validate(AccountId, Context, fun validate_request/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -536,115 +644,142 @@ leak_pvt_fields(Context) ->
     leak_pvt_fields(Context, cb_context:resp_status(Context)).
 
 leak_pvt_fields(Context, 'success') ->
-    leak_pvt_allow_additions(Context);
+    Routines = [fun leak_pvt_allow_additions/1
+                ,fun leak_pvt_superduper_admin/1
+                ,fun leak_pvt_api_key/1
+                ,fun leak_pvt_created/1
+                ,fun leak_pvt_enabled/1
+                ,fun leak_reseller_id/1
+                ,fun leak_is_reseller/1
+                ,fun leak_billing_mode/1
+                ,fun leak_notification_preference/1
+                ,fun leak_trial_time_left/1
+               ],
+    cb_context:setters(Context, Routines);
 leak_pvt_fields(Context, _Status) -> Context.
 
 -spec leak_pvt_allow_additions(cb_context:context()) -> cb_context:context().
 leak_pvt_allow_additions(Context) ->
-    JObj = cb_context:doc(Context),
-    RespJObj = cb_context:resp_data(Context),
-    AllowAdditions = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj, 'false'),
-
-    leak_pvt_superduper_admin(
-      cb_context:set_resp_data(Context
-                               ,wh_json:set_value(<<"wnm_allow_additions">>, AllowAdditions, RespJObj))
-     ).
+    cb_context:set_resp_data(Context
+                             ,wh_json:set_value(<<"wnm_allow_additions">>
+                                                ,kz_account:allow_number_additions(cb_context:doc(Context))
+                                                ,cb_context:resp_data(Context)
+                                               )
+                            ).
 
 -spec leak_pvt_superduper_admin(cb_context:context()) -> cb_context:context().
 leak_pvt_superduper_admin(Context) ->
-    JObj = cb_context:doc(Context),
-    RespJObj = cb_context:resp_data(Context),
-
-    SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, 'false'),
-    leak_pvt_api_key(
-      cb_context:set_resp_data(Context
-                               ,wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj))
-     ).
+    cb_context:set_resp_data(Context
+                             ,wh_json:set_value(<<"superduper_admin">>
+                                                ,kz_account:is_superduper_admin(cb_context:doc(Context))
+                                                ,cb_context:resp_data(Context)
+                                               )
+                            ).
 
 -spec leak_pvt_api_key(cb_context:context()) -> cb_context:context().
 leak_pvt_api_key(Context) ->
-    QueryString = cb_context:query_string(Context),
-    case wh_json:is_true(<<"include_api_key">>, QueryString, 'false')
+    case wh_util:is_true(cb_context:req_value(Context, <<"include_api_key">>, 'false'))
         orelse whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"expose_api_key">>, 'false')
     of
-        'false' -> leak_pvt_created(Context);
+        'false' -> Context;
         'true' ->
-            JObj = cb_context:doc(Context),
-            RespJObj = cb_context:resp_data(Context),
-            ApiKey = wh_json:get_value(<<"pvt_api_key">>, JObj),
-            leak_pvt_created(
-              cb_context:set_resp_data(Context
-                                       ,wh_json:set_value(<<"api_key">>, ApiKey, RespJObj)
-                                      )
-             )
+            cb_context:set_resp_data(Context
+                                     ,wh_json:set_value(<<"api_key">>
+                                                        ,kz_account:api_key(cb_context:doc(Context))
+                                                        ,cb_context:resp_data(Context)
+                                                       )
+                                    )
     end.
 
 -spec leak_pvt_created(cb_context:context()) -> cb_context:context().
 leak_pvt_created(Context) ->
-    JObj = cb_context:doc(Context),
-    RespJObj = cb_context:resp_data(Context),
-
-    Created = wh_json:get_value(<<"pvt_created">>, JObj),
-    leak_pvt_enabled(
-      cb_context:set_resp_data(Context
-                               ,wh_json:set_value(<<"created">>, Created, RespJObj)
-                              )
-     ).
+    cb_context:set_resp_data(Context
+                             ,wh_json:set_value(<<"created">>
+                                                ,wh_doc:created(cb_context:doc(Context))
+                                                ,cb_context:resp_data(Context)
+                                               )
+                            ).
 
 -spec leak_pvt_enabled(cb_context:context()) -> cb_context:context().
 leak_pvt_enabled(Context) ->
     RespJObj = cb_context:resp_data(Context),
-
-    case wh_json:get_value(<<"pvt_enabled">>, cb_context:doc(Context)) of
+    case kz_account:is_enabled(cb_context:doc(Context)) of
         'true' ->
-            leak_reseller_id(
-              cb_context:set_resp_data(Context
-                                       ,wh_json:set_value(<<"enabled">>, 'true', RespJObj)
-                                      )
-             );
+            cb_context:set_resp_data(Context
+                                     ,wh_json:set_value(<<"enabled">>, 'true', RespJObj)
+                                    );
         'false' ->
-            leak_reseller_id(
-              cb_context:set_resp_data(Context
-                                       ,wh_json:set_value(<<"enabled">>, 'false', RespJObj)
-                                      )
-             );
-        _ ->
-            leak_reseller_id(Context)
+            cb_context:set_resp_data(Context
+                                     ,wh_json:set_value(<<"enabled">>, 'false', RespJObj)
+                                    )
     end.
 
 -spec leak_reseller_id(cb_context:context()) -> cb_context:context().
 leak_reseller_id(Context) ->
-    RespJObj = cb_context:resp_data(Context),
-    AccountId = cb_context:account_id(Context),
-    ResellerId = wh_services:find_reseller_id(AccountId),
-    leak_billing_mode(
-        cb_context:set_resp_data(
-            cb_context:set_reseller_id(Context, ResellerId)
-            ,wh_json:set_value(<<"reseller_id">>, ResellerId, RespJObj)
-        )
-    ).
+    cb_context:set_resp_data(Context
+                             ,wh_json:set_value(<<"reseller_id">>
+                                                ,cb_context:reseller_id(Context)
+                                                ,cb_context:resp_data(Context)
+                                                )
+                            ).
+
+-spec leak_is_reseller(cb_context:context()) -> cb_context:context().
+leak_is_reseller(Context) ->
+    IsReseller = wh_services:is_reseller(cb_context:account_id(Context)),
+    cb_context:set_resp_data(Context
+                             ,wh_json:set_value(<<"is_reseller">>
+                                                ,IsReseller
+                                                ,cb_context:resp_data(Context)
+                                               )
+                            ).
 
 -spec leak_billing_mode(cb_context:context()) -> cb_context:context().
 leak_billing_mode(Context) ->
-    {'ok', MasterAccount} = whapps_util:get_master_account_id(),
-
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     AuthAccountId = cb_context:auth_account_id(Context),
     RespJObj = cb_context:resp_data(Context),
-
-    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
+    case cb_context:reseller_id(Context) of
         AuthAccountId ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_value(<<"billing_mode">>, <<"limits_only">>, RespJObj)
                                     );
-        MasterAccount ->
+        MasterAccountId ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_value(<<"billing_mode">>, <<"normal">>, RespJObj)
                                     );
-        _Else ->
+        _AccountId ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_value(<<"billing_mode">>, <<"manual">>, RespJObj)
                                     )
     end.
+
+-spec leak_notification_preference(cb_context:context()) -> cb_context:context().
+-spec leak_notification_preference(cb_context:context(), api_binary()) -> cb_context:context().
+leak_notification_preference(Context) ->
+    leak_notification_preference(Context, kz_account:notification_preference(cb_context:doc(Context))).
+
+leak_notification_preference(Context, 'undefined') ->
+    Context;
+leak_notification_preference(Context, Pref) ->
+    UpdatedRespJObj = wh_json:set_value(<<"notification_preference">>, Pref, cb_context:resp_data(Context)),
+    cb_context:set_resp_data(Context, UpdatedRespJObj).
+
+-spec leak_trial_time_left(cb_context:context()) ->
+                                  cb_context:context().
+-spec leak_trial_time_left(cb_context:context(), wh_json:object(), api_integer()) ->
+                                  cb_context:context().
+leak_trial_time_left(Context) ->
+    JObj = cb_context:doc(Context),
+    leak_trial_time_left(Context, JObj, kz_account:trial_expiration(JObj)).
+
+leak_trial_time_left(Context, _JObj, 'undefined') ->
+    Context;
+leak_trial_time_left(Context, JObj, _Expiration) ->
+    RespData = wh_json:set_value(<<"trial_time_left">>
+                                 ,kz_account:trial_time_left(JObj)
+                                 ,cb_context:resp_data(Context)
+                                ),
+    cb_context:set_resp_data(Context, RespData).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -657,7 +792,7 @@ load_children(AccountId, Context) ->
     load_children(AccountId, Context, cb_context:api_version(Context)).
 
 -spec load_children(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
-load_children(AccountId, Context, <<"v1">>) ->
+load_children(AccountId, Context, ?VERSION_1) ->
     load_children_v1(AccountId, Context);
 load_children(AccountId, Context, _Version) ->
     load_paginated_children(AccountId, Context).
@@ -674,23 +809,15 @@ load_children_v1(AccountId, Context) ->
 
 -spec load_paginated_children(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_children(AccountId, Context) ->
-    StartKey = crossbar_doc:start_key(Context),
+    StartKey = start_key(Context),
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_CHILDREN
-                             ,[{'startkey', start_key(AccountId, StartKey)}
+                             ,[{'startkey', [AccountId, StartKey]}
                                ,{'endkey', [AccountId, wh_json:new()]}
                               ]
                              ,Context
                              ,fun normalize_view_results/2
                             )).
-
--spec start_key(ne_binary(), api_binary()) -> ne_binaries().
-start_key(AccountId, 'undefined') ->
-    [AccountId];
-start_key(AccountId, AccountId) ->
-    [AccountId];
-start_key(AccountId, StartKey) ->
-    [AccountId, StartKey].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -702,29 +829,34 @@ start_key(AccountId, StartKey) ->
 load_descendants(AccountId, Context) ->
     load_descendants(AccountId, Context, cb_context:api_version(Context)).
 
-load_descendants(AccountId, Context, <<"v1">>) ->
+load_descendants(AccountId, Context, ?VERSION_1) ->
     load_descendants_v1(AccountId, Context);
 load_descendants(AccountId, Context, _Version) ->
     load_paginated_descendants(AccountId, Context).
 
 -spec load_descendants_v1(ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants_v1(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [{'startkey', [AccountId]}
-                                                   ,{'endkey', [AccountId, wh_json:new()]}
-                                                  ], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
+                           ,[{'startkey', [AccountId]}
+                             ,{'endkey', [AccountId, wh_json:new()]}
+                            ]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 -spec load_paginated_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_descendants(AccountId, Context) ->
-    StartKey = crossbar_doc:start_key(Context),
+    StartKey = start_key(Context),
     lager:debug("account ~s startkey ~s", [AccountId, StartKey]),
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                             ,[{'startkey', start_key(AccountId, StartKey)}
-                               ,{'endkey', [AccountId, wh_json:new()]}
+                             ,[{'startkey', [AccountId, StartKey]}
+                               ,{'endkey',  [AccountId, wh_json:new()]}
                               ]
                              ,Context
                              ,fun normalize_view_results/2
-                            )).
+                            )
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -737,21 +869,24 @@ load_siblings(AccountId, Context) ->
     load_siblings(AccountId, Context, cb_context:api_version(Context)).
 
 -spec load_siblings(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
-load_siblings(AccountId, Context, <<"v1">>) ->
+load_siblings(AccountId, Context, ?VERSION_1) ->
     load_siblings_v1(AccountId, Context);
 load_siblings(AccountId, Context, _Version) ->
     load_paginated_siblings(AccountId, Context).
 
 -spec load_siblings_v1(ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings_v1(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT, [{'startkey', AccountId}
-                                                         ,{'endkey', AccountId}
-                                                        ], Context),
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT
+                                      ,[{'startkey', AccountId}
+                                        ,{'endkey', AccountId}
+                                       ]
+                                      ,Context
+                                     ),
     case cb_context:resp_status(Context1) of
         'success' ->
             load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
         _Status ->
-            cb_context:add_system_error('bad_identifier', [{'details', AccountId}], Context)
+            cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]), Context)
     end.
 
 -spec load_paginated_siblings(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -768,7 +903,7 @@ load_paginated_siblings(AccountId, Context) ->
         'success' ->
             load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
         _Status ->
-            cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context)
+            cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]),  Context)
     end.
 
 -spec load_siblings_results(ne_binary(), cb_context:context(), wh_json:objects()) -> cb_context:context().
@@ -776,22 +911,33 @@ load_siblings_results(_AccountId, Context, [JObj|_]) ->
     Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
     load_children(Parent, Context);
 load_siblings_results(AccountId, Context, _) ->
-    cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context).
+    cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]),  Context).
+
+
+-spec start_key(cb_context:context()) -> binary().
+start_key(Context) ->
+    case crossbar_doc:start_key(Context) of
+        'undefined' -> <<>>;
+        Key -> Key
+    end.
 
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
     cb_context:set_resp_envelope(
-      Context
-      ,lists:foldl(fun(Key, Env) ->
-                           lager:debug("maybe fixing ~s: ~p", [Key, wh_json:get_value(Key, Env)]),
-                           case fix_start_key(wh_json:get_value(Key, Env)) of
-                               'undefined' -> wh_json:delete_key(Key, Env);
-                               V -> wh_json:set_value(Key, V, Env)
-                           end
-                   end
-                   ,cb_context:resp_envelope(Context)
-                   ,[<<"start_key">>, <<"next_start_key">>]
-                  )).
+        cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
+        ,lists:foldl(
+            fun fix_envelope_fold/2
+            ,cb_context:resp_envelope(Context)
+            ,[<<"start_key">>, <<"next_start_key">>]
+        )
+    ).
+
+-spec fix_envelope_fold(binary(), wh_json:object()) -> wh_json:object().
+fix_envelope_fold(Key, JObj) ->
+    case fix_start_key(wh_json:get_value(Key, JObj)) of
+        'undefined' -> wh_json:delete_key(Key, JObj);
+        V -> wh_json:set_value(Key, V, JObj)
+    end.
 
 -spec fix_start_key(api_binary() | list()) -> api_binary().
 fix_start_key('undefined') -> 'undefined';
@@ -800,6 +946,114 @@ fix_start_key([StartKey]) -> StartKey;
 fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
 fix_start_key([_AccountId, StartKey]) -> StartKey;
 fix_start_key([StartKey|_T]) -> StartKey.
+
+-spec load_account_tree(cb_context:context()) -> cb_context:context().
+load_account_tree(Context) ->
+    Tree = get_authorized_account_tree(Context),
+    Options = [{'keys', Tree}, 'include_docs'],
+    case couch_mgr:all_docs(?WH_ACCOUNTS_DB, Options) of
+        {'error', R} -> crossbar_doc:handle_couch_mgr_errors(R, ?WH_ACCOUNTS_DB, Context);
+        {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
+    end.
+
+-spec get_authorized_account_tree(cb_context:context()) -> ne_binaries().
+get_authorized_account_tree(Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    lists:dropwhile(fun(E) -> E =/= AuthAccountId end
+                    ,kz_account:tree(cb_context:doc(Context))
+                   ).
+
+-spec format_account_tree_results(cb_context:context(), wh_json:objects()) -> cb_context:context().
+format_account_tree_results(Context, JObjs) ->
+    RespData =
+        [wh_json:from_list(
+           [{<<"id">>, wh_doc:id(JObj)}
+            ,{<<"name">>, wh_json:get_value([<<"doc">>, <<"name">>], JObj)}
+           ])
+         || JObj <- JObjs
+        ],
+    cb_context:set_resp_data(Context, RespData).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec load_parents(ne_binary(), cb_context:context()) -> cb_context:context().
+load_parents(AccountId, Context) ->
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY
+                                      ,[]
+                                      ,cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)
+                                     ),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_parent_tree(AccountId, Context1);
+        _Status -> Context1
+    end.
+
+-spec load_parent_tree(ne_binary(), cb_context:context()) -> cb_context:context().
+load_parent_tree(AccountId, Context) ->
+    RespData = cb_context:resp_data(Context),
+    Tree = extract_tree(AccountId, RespData),
+    Parents = find_accounts_from_tree(Tree, RespData, Context),
+    RespEnv =
+        wh_json:set_value(
+          <<"page_size">>
+          ,erlang:length(Parents)
+          ,cb_context:resp_envelope(Context)
+         ),
+    cb_context:setters(
+      Context
+      ,[{fun cb_context:set_resp_data/2, Parents}
+        ,{fun cb_context:set_resp_envelope/2, RespEnv}
+       ]
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec extract_tree(ne_binary(), wh_json:objects()) -> ne_binaries().
+extract_tree(AccountId, JObjs) ->
+    JObj = wh_json:find_value(<<"id">>, AccountId, JObjs),
+    [_, Tree] = wh_json:get_value(<<"key">>, JObj),
+    lists:delete(AccountId, Tree).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec find_accounts_from_tree(ne_binaries(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
+-spec find_accounts_from_tree(ne_binaries(), wh_json:objects(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+find_accounts_from_tree(Tree, JObjs, Context) ->
+    find_accounts_from_tree(
+        lists:reverse(Tree)
+        ,JObjs
+        ,cb_context:auth_account_id(Context)
+        ,[]
+     ).
+
+find_accounts_from_tree([], _, _, Acc) -> Acc;
+find_accounts_from_tree([AuthAccountId|_], JObjs, AuthAccountId, Acc) ->
+    JObj = wh_json:find_value(<<"id">>, AuthAccountId, JObjs),
+    Value = wh_json:get_value(<<"value">>, JObj),
+    [account_from_tree(Value)|Acc];
+find_accounts_from_tree([AccountId|Tree], JObjs, AuthAccountId, Acc) ->
+    JObj = wh_json:find_value(<<"id">>, AccountId, JObjs),
+    Value = wh_json:get_value(<<"value">>, JObj),
+    find_accounts_from_tree(
+      Tree
+      ,JObjs
+      ,AuthAccountId
+      ,[account_from_tree(Value)|Acc]
+     ).
+
+-spec account_from_tree(wh_json:object()) -> wh_json:object().
+account_from_tree(JObj) ->
+    wh_json:from_list([{<<"id">>, wh_doc:id(JObj)}
+                       ,{<<"name">>, kz_account:name(JObj)}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -830,33 +1084,25 @@ set_private_properties(Context) ->
 
 -spec add_pvt_type(cb_context:context()) -> cb_context:context().
 add_pvt_type(Context) ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, cb_context:doc(Context))
-                      ).
+    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), ?PVT_TYPE)).
 
 -spec add_pvt_vsn(cb_context:context()) -> cb_context:context().
 add_pvt_vsn(Context) ->
-    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_vsn">>, <<"1">>, cb_context:doc(Context))).
+    cb_context:set_doc(Context, wh_doc:set_vsn(cb_context:doc(Context), <<"1">>)).
 
 -spec add_pvt_enabled(cb_context:context()) -> cb_context:context().
 add_pvt_enabled(Context) ->
     JObj = cb_context:doc(Context),
-    case lists:reverse(wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
+    case lists:reverse(kz_account:tree(JObj)) of
         [ParentId | _] ->
             ParentDb = wh_util:format_account_id(ParentId, 'encoded'),
             case (not wh_util:is_empty(ParentId))
                 andalso couch_mgr:open_doc(ParentDb, ParentId)
             of
                 {'ok', Parent} ->
-                    case wh_json:is_true(<<"pvt_enabled">>, Parent, 'true') of
-                        'true' ->
-                            cb_context:set_doc(Context
-                                               ,wh_json:set_value(<<"pvt_enabled">>, 'true', JObj)
-                                              );
-                        'false' ->
-                            cb_context:set_doc(Context
-                                               ,wh_json:set_value(<<"pvt_enabled">>, 'false', JObj)
-                                              )
+                    case kz_account:is_enabled(Parent) of
+                        'true'  -> cb_context:set_doc(Context, kz_account:enable(JObj));
+                        'false' -> cb_context:set_doc(Context, kz_account:disable(JObj))
                     end;
                 _Else -> Context
             end;
@@ -867,18 +1113,16 @@ add_pvt_enabled(Context) ->
 -spec maybe_add_pvt_api_key(cb_context:context()) -> cb_context:context().
 maybe_add_pvt_api_key(Context) ->
     JObj = cb_context:doc(Context),
-    case wh_json:get_value(<<"pvt_api_key">>, JObj) of
+    case kz_account:api_key(JObj) of
         'undefined' ->
             APIKey = wh_util:to_hex_binary(crypto:rand_bytes(32)),
-            cb_context:set_doc(Context
-                               ,wh_json:set_value(<<"pvt_api_key">>, APIKey, JObj)
-                              );
+            cb_context:set_doc(Context, kz_account:set_api_key(JObj, APIKey));
         _Else -> Context
     end.
 
 -spec maybe_add_pvt_tree(cb_context:context()) -> cb_context:context().
 maybe_add_pvt_tree(Context) ->
-    case wh_json:get_value(<<"pvt_tree">>, cb_context:doc(Context)) of
+    case kz_account:tree(cb_context:doc(Context)) of
         [_|_] -> Context;
         _Else -> add_pvt_tree(Context)
     end.
@@ -886,12 +1130,8 @@ maybe_add_pvt_tree(Context) ->
 -spec add_pvt_tree(cb_context:context()) -> cb_context:context().
 add_pvt_tree(Context) ->
     case create_new_tree(Context) of
-        'error' ->
-            cb_context:add_system_error('empty_tree_accounts_exist', Context);
-        Tree ->
-            cb_context:set_doc(Context
-                               ,wh_json:set_value(<<"pvt_tree">>, Tree, cb_context:doc(Context))
-                              )
+        'error' -> cb_context:add_system_error('empty_tree_accounts_exist', Context);
+        Tree -> cb_context:set_doc(Context, kz_account:set_tree(cb_context:doc(Context), Tree))
     end.
 
 -spec create_new_tree(cb_context:context() | api_binary()) -> ne_binaries() | 'error'.
@@ -910,7 +1150,7 @@ create_new_tree(Parent) when is_binary(Parent) ->
     case couch_mgr:open_doc(ParentDb, ParentId) of
         {'error', _} -> create_new_tree('undefined');
         {'ok', JObj} ->
-            wh_json:get_value(<<"pvt_tree">>, JObj, []) ++ [ParentId]
+            kz_account:tree(JObj) ++ [ParentId]
     end;
 create_new_tree(Context) ->
     create_new_tree(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
@@ -921,8 +1161,7 @@ create_new_tree(Context, _Verb, _Nouns) ->
     JObj = cb_context:auth_doc(Context),
     case wh_json:is_json_object(JObj) of
         'false' -> create_new_tree('undefined');
-        'true' ->
-            create_new_tree(wh_json:get_value(<<"account_id">>, JObj))
+        'true' -> create_new_tree(wh_json:get_value(<<"account_id">>, JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -937,17 +1176,24 @@ create_new_tree(Context, _Verb, _Nouns) ->
 load_account_db([AccountId|_], Context) ->
     load_account_db(AccountId, Context);
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', _} ->
+    case kz_account:fetch(AccountId) of
+        {'ok', _JObj} ->
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
+            ResellerId = wh_services:find_reseller_id(AccountId),
             cb_context:setters(Context
                                ,[{fun cb_context:set_resp_status/2, 'success'}
                                  ,{fun cb_context:set_account_db/2, AccountDb}
                                  ,{fun cb_context:set_account_id/2, AccountId}
+                                 ,{fun cb_context:set_reseller_id/2, ResellerId}
                                 ]);
-       {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
-       {'error', _R} -> crossbar_util:response_db_fatal(Context)   
+        {'error', 'not_found'} ->
+            cb_context:add_system_error(
+              'bad_identifier'
+              ,wh_json:from_list([{<<"cause">>, AccountId}])
+              ,Context
+             );
+        {'error', _R} -> crossbar_util:response_db_fatal(Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -968,25 +1214,65 @@ create_new_account_db(Context) ->
             lager:debug("failed to create database: ~s", [AccountDb]),
             throw(cb_context:add_system_error('datastore_fault', Context));
         'true' ->
-            lager:debug("created DB ~s", [AccountDb]),
+            lager:debug("created account database: ~s", [AccountDb]),
             C = create_account_definition(prepare_context(AccountDb, Context)),
+            lager:debug("created account definition"),
+
             _ = load_initial_views(C),
+            lager:debug("laoded initial views"),
+
             _ = crossbar_bindings:map(<<"account.created">>, C),
+            lager:debug("alerted listeners of new account"),
+
             _ = notify_new_account(C),
+            lager:debug("sent notification of new account"),
+
             _ = wh_services:reconcile(AccountDb),
+            lager:debug("performed initial services reconcile"),
+
             _ = create_account_mod(cb_context:account_id(C)),
+            lager:debug("created this month's MODb for account"),
+
             _ = create_first_transaction(cb_context:account_id(C)),
+            lager:debug("created first transaction for account"),
+
+            _ = maybe_set_notification_preference(C),
+            lager:debug("set notification preference"),
             C
+    end.
+
+-spec maybe_set_notification_preference(cb_context:context()) -> 'ok'.
+maybe_set_notification_preference(Context) ->
+    AccountId = cb_context:account_id(Context),
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    case kz_account:fetch(ResellerId) of
+        {'error', _E} ->
+            lager:error("failed to open reseller '~s': ~p", [ResellerId, _E]);
+        {'ok', AccountJObj} ->
+            case kz_account:notification_preference(AccountJObj) of
+                'undefined' ->
+                    lager:debug("notification preference not set on reseller '~s'", [ResellerId]);
+                Preference ->
+                    set_notification_preference(Context, Preference)
+            end
+    end.
+
+-spec set_notification_preference(cb_context:context(), ne_binary()) -> 'ok'.
+set_notification_preference(Context, Preference) ->
+    AccountDb = cb_context:account_db(Context),
+    AccountDefinition = kz_account:set_notification_preference(cb_context:doc(Context), Preference),
+    case couch_mgr:save_doc(AccountDb, AccountDefinition) of
+        {'error', _R} ->
+            lager:error("failed to update account definition: ~p", [_R]);
+        {'ok', AccountDef} ->
+            _ = replicate_account_definition(AccountDef),
+            lager:info("notification_preference set to '~s'", [Preference])
     end.
 
 -spec create_account_mod(ne_binary()) -> any().
 create_account_mod(AccountId) ->
     Db = wh_util:format_account_mod_id(AccountId),
-    _ = couch_mgr:db_create(Db),
-    couch_mgr:revise_doc_from_file(Db
-                                   ,'crossbar'
-                                   ,<<"account/cdrs.json">>
-                                  ).
+    kazoo_modb:create(Db).
 
 -spec create_first_transaction(ne_binary()) -> any().
 create_first_transaction(AccountId) ->
@@ -1015,7 +1301,10 @@ create_account_definition(Context) ->
              ,{<<"pvt_created">>, TStamp}
              ,{<<"pvt_vsn">>, <<"1">>}
             ],
-    case couch_mgr:save_doc(AccountDb, wh_json:set_values(Props, cb_context:doc(Context))) of
+
+    JObj = maybe_set_trial_expires(wh_json:set_values(Props, cb_context:doc(Context))),
+
+    case couch_mgr:save_doc(AccountDb, JObj) of
         {'ok', AccountDef}->
             _ = replicate_account_definition(AccountDef),
             cb_context:setters(Context
@@ -1028,10 +1317,46 @@ create_account_definition(Context) ->
             throw(cb_context:add_system_error('datastore_fault', Context))
     end.
 
+-spec maybe_set_trial_expires(wh_json:object()) -> wh_json:object().
+maybe_set_trial_expires(JObj) ->
+    case kz_account:is_trial_account(JObj) of
+        'false' -> JObj;
+        'true' -> set_trial_expires(JObj)
+    end.
+
+-spec set_trial_expires(wh_json:object()) -> wh_json:object().
+set_trial_expires(JObj) ->
+    TrialTime = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
+    Expires = wh_util:now_s(wh_util:now()) + TrialTime,
+    kz_account:set_trial_expiration(JObj, Expires).
+
+
 -spec load_initial_views(cb_context:context()) -> 'ok'.
 load_initial_views(Context)->
-    Views = whapps_maintenance:get_all_account_views(),
-    whapps_util:update_views(cb_context:account_db(Context), Views, 'true').
+    [{FirstId, _}|_] = Views = whapps_maintenance:get_all_account_views(),
+    {LastId, _} = lists:last(Views),
+    whapps_util:update_views(cb_context:account_db(Context), Views, 'true'),
+    ensure_views(Context, [FirstId, LastId]).
+
+-spec ensure_views(cb_context:context(), ne_binaries()) -> 'ok'.
+-spec ensure_views(cb_context:context(), ne_binaries(), 0..3) -> 'ok'.
+ensure_views(Context, Ids) ->
+    ensure_views(Context, Ids, 3).
+
+ensure_views(_Context, [], _Retries) -> 'ok';
+ensure_views(_Context, [_Id|_], 0) ->
+    lager:debug("failed to find design doc ~s in ~s", [_Id, cb_context:account_db(_Context)]);
+ensure_views(Context, [Id|Ids], Retries) ->
+    AccountDb = cb_context:account_db(Context),
+    case couch_mgr:open_doc(AccountDb, Id) of
+        {'ok', _} -> ensure_views(Context, Ids, 3);
+        {'error', 'not_found'} ->
+            timer:sleep(500),
+            ensure_views(Context, [Id|Ids], Retries-1);
+        {'error', _E} ->
+            lager:debug("failed to open design doc ~s in ~s: ~p", [Id, AccountDb, _E]),
+            load_initial_views(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1041,14 +1366,14 @@ load_initial_views(Context)->
 %%--------------------------------------------------------------------
 -spec replicate_account_definition(wh_json:object()) ->
                                           {'ok', wh_json:object()} |
-                                          {'error', _}.
+                                          {'error', any()}.
 replicate_account_definition(JObj) ->
-    AccountId = wh_json:get_value(<<"_id">>, JObj),
+    AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', Rev} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj));
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
         _Else ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj))
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -1063,7 +1388,7 @@ is_unique_realm(AccountId, Realm) ->
     ViewOptions = [{'key', wh_util:to_lower_binary(Realm)}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
         {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= AccountId;
+        {'ok', [JObj]} -> wh_doc:id(JObj) =:= AccountId;
         {'error', 'not_found'} -> 'true';
         _Else -> 'false'
     end.
@@ -1088,7 +1413,7 @@ is_unique_account_name(AccountId, Name) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
         {'ok', []} -> 'true';
         {'error', 'not_found'} -> 'true';
-        {'ok', [JObj|_]} -> wh_json:get_value(<<"id">>, JObj) =:= AccountId;
+        {'ok', [JObj|_]} -> wh_doc:id(JObj) =:= AccountId;
         _Else ->
             lager:error("error ~p checking view ~p in ~p", [_Else, ?AGG_VIEW_NAME, ?WH_ACCOUNTS_DB]),
             'false'
@@ -1109,9 +1434,9 @@ notify_new_account(Context) ->
 notify_new_account(_Context, 'undefined') -> 'ok';
 notify_new_account(Context, _AuthDoc) ->
     JObj = cb_context:doc(Context),
-    Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
-              ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
-              ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
+    Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
+              ,{<<"Account-Realm">>, kz_account:realm(JObj)}
+              ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
               ,{<<"Account-ID">>, cb_context:account_id(Context)}
               ,{<<"Account-DB">>, cb_context:account_db(Context)}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
@@ -1136,7 +1461,15 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
             Context
     catch
         'throw':{Error, Reason} ->
-            cb_context:add_validation_error(<<"billing_id">>, <<"not_found">>, wh_util:to_binary(Error), Reason)
+            cb_context:add_validation_error(
+              <<"billing_id">>
+              ,<<"not_found">>
+              ,wh_json:from_list(
+                 [{<<"message">>, wh_util:to_binary(Error)}
+                  ,{<<"cause">>, AccountId}
+                 ])
+              ,Reason
+             )
     end.
 
 %%--------------------------------------------------------------------
@@ -1214,7 +1547,8 @@ delete_mod_dbs(AccountId, Year, Month) ->
 delete_remove_from_accounts(Context) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->
-            _ = provisioner_util:maybe_delete_account(Context),
+            _ = wh_util:spawn(fun provisioner_util:maybe_delete_account/1, [Context]),
+            _ = wh_util:spawn(fun cb_mobile_manager:delete_account/1, [Context]),
             crossbar_doc:delete(
               cb_context:setters(Context
                                  ,[{fun cb_context:set_account_db/2, ?WH_ACCOUNTS_DB}
@@ -1226,8 +1560,3 @@ delete_remove_from_accounts(Context) ->
         {'error', _R} ->
             crossbar_util:response('error', <<"unable to remove account definition">>, 500, Context)
     end.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
--endif.

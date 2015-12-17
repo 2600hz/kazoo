@@ -1,10 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Manage onnet calls
 %%% @end
-%%% Created : 18 Jun 2011 by James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_onnet_sup).
 
@@ -16,9 +14,9 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(SERVER, ?MODULE).
+-include_lib("whistle/include/wh_types.hrl").
 
--define(CHILD(ID, Args), {ID, {ts_from_onnet, start_link, [Args]}, temporary, 2000, worker, [ts_from_onnet]}).
+-define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API functions
@@ -32,13 +30,17 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 start_handler(CallID, RouteReqJObj) ->
-    supervisor:start_child(?SERVER, ?CHILD(<<"onnet-", CallID/binary>>, RouteReqJObj)).
+    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(<<"onnet-", CallID/binary>>
+                                                           ,'ts_from_onnet'
+                                                           ,[RouteReqJObj]
+                                                           ,'temporary'
+                                                          )).
 
 stop_handler(CallID) ->
-    ok = supervisor:terminate_child(?SERVER, <<"onnet-", CallID/binary>>),
+    'ok' = supervisor:terminate_child(?SERVER, <<"onnet-", CallID/binary>>),
     supervisor:delete_child(?SERVER, <<"onnet-", CallID/binary>>).
 
 %%%===================================================================
@@ -59,13 +61,13 @@ stop_handler(CallID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 1,
     MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, []}}.
+    {'ok', {SupFlags, []}}.
 
 %%%===================================================================
 %%% Internal functions

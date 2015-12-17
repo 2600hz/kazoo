@@ -4,6 +4,7 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(APP_NAME, <<"trunkstore">>).
 -define(APP_VERSION, <<"0.9.0">>).
@@ -26,7 +27,6 @@
 -define(TS_VIEW_CARRIERIP, <<"LookUpCarrierIP/LookUpCarrierIP">>).
 
 -define(EOD, 'end_of_day').
--define(MILLISECS_PER_DAY, 1000 * 60 * 60 * 24).
 
 %% couch params for the routing table and its views
 -define(TS_RATES_DB, <<"ts_rates">>).
@@ -39,8 +39,7 @@
 -define(TS_CONFIG_CAT, <<"trunkstore">>).
 
 % just want to deal with binary K/V pairs
-%%-type proplist() :: list(tuple(binary(), binary())) | [].
--type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].
+-type active_calls() :: [{binary(), 'flat_rate' | 'per_min'}].
 
 -record(ts_callflow_state, {
           aleg_callid :: api_binary()

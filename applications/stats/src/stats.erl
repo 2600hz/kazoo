@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%    Stephen Gibberd <stephen.gibberd@2600hz.com>

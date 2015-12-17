@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Calls coming from known clients, getting settings for caller-id and
 %%% what not, and sending the calls offnet.
@@ -22,7 +22,7 @@ start_link(RouteReqJObj) ->
 
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
-    start_amqp(ts_callflow:init(RouteReqJObj)).
+    start_amqp(ts_callflow:init(RouteReqJObj, <<"sys_info">>)).
 
 start_amqp({'error', 'not_ts_account'}) -> 'ok';
 start_amqp(State) ->
@@ -87,6 +87,9 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                    ,ts_util:maybe_ensure_cid_valid('emergency', ECIDNum, FromUser, AccountId)}
                 ]
         end,
+    RouteReq = ts_callflow:get_request_data(State),
+    OriginalCIdNumber = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq),
+    OriginalCIdName = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq),
     CallerID =
         case ts_util:caller_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
                                 ,wh_json:get_value(<<"caller_id">>, SrvOptions)
@@ -96,13 +99,16 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
             {'undefined', 'undefined'} ->
                 case whapps_config:get_is_true(<<"trunkstore">>, <<"ensure_valid_caller_id">>, 'false') of
                     'true' ->
-                        ValidCID = ts_util:maybe_ensure_cid_valid('external', 'undefined', FromUser, AccountId),
-                        [{<<"Outbound-Caller-ID-Name">>, ValidCID}
-                         ,{<<"Outbound-Caller-ID-Number">>, ValidCID}
+                        ValidCID = ts_util:maybe_ensure_cid_valid('external', OriginalCIdNumber, FromUser, AccountId),
+                        [{<<"Outbound-Caller-ID-Number">>, ValidCID}
+                         ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
                          | EmergencyCallerID
                         ];
                     'false' ->
-                        EmergencyCallerID
+                        [{<<"Outbound-Caller-ID-Number">>, OriginalCIdNumber}
+                         ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
+                         | EmergencyCallerID
+                        ]
                 end;
             {CIDName, CIDNum} ->
                 [{<<"Outbound-Caller-ID-Name">>, CIDName}

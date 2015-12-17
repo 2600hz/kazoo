@@ -34,8 +34,8 @@
                 ,app :: api_binary()
                 ,dialstrings :: api_binary()
                 ,queue :: api_binary()
-                ,control_pid :: 'undefined' | pid()
-                ,tref :: 'undefined' | reference()
+                ,control_pid :: api_pid()
+                ,tref :: api_reference()
                 ,fetch_id = wh_util:rand_hex_binary(16)
                }).
 -type state() :: #state{}.
@@ -54,7 +54,7 @@
 
 -define(ORIGINATE_PARK, <<"&park()">>).
 -define(ORIGINATE_EAVESDROP, <<"eavesdrop">>).
--define(REPLY_TIMEOUT, 5000).
+-define(REPLY_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 
 %%%===================================================================
 %%% API
@@ -199,9 +199,10 @@ handle_cast({'maybe_update_node', Node}, #state{node=_OldNode}=State) ->
     {'noreply', State#state{node=Node}, 'hibernate'};
 handle_cast({'create_uuid'}, #state{node=Node
                                     ,originate_req=JObj
+                                    ,uuid='undefined'
                                    }=State) ->
     UUID = {_, Id} = create_uuid(JObj, Node),
-    put('callid', Id),
+    wh_util:put_callid(Id),
     lager:debug("created uuid ~p", [UUID]),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
 
@@ -231,7 +232,6 @@ handle_cast({'get_originate_action'}, #state{originate_req=JObj
     ,'hibernate'
     };
 handle_cast({'build_originate_args'}, #state{uuid='undefined'}=State) ->
-    lager:debug("no uuid defined, building one"),
     gen_listener:cast(self(), {'create_uuid'}),
     {'noreply', State};
 
@@ -300,7 +300,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
 
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
-            put('callid', CallId),
+            wh_util:put_callid(CallId),
             lager:debug("originate is executing, waiting for completion"),
             erlang:monitor_node(Node, 'true'),
             bind_to_call_events(CallId),
@@ -506,15 +506,14 @@ get_eavesdrop_action(JObj) ->
     end.
 
 -spec build_originate_args(ne_binary(), state(), wh_json:object(), ne_binary()) -> api_binary().
-build_originate_args(Action, #state{uuid=UUID}=State, JObj, FetchId) ->
+build_originate_args(Action, State, JObj, FetchId) ->
     case wh_json:get_value(<<"Endpoints">>, JObj, []) of
         [] ->
             lager:warning("no endpoints defined in originate request"),
             'undefined';
         [Endpoint] ->
             lager:debug("only one endpoint, don't create per-endpoint UUIDs"),
-            maybe_start_call_handlers(UUID, State),
-            build_originate_args_from_endpoints(Action, [update_endpoint(Endpoint, UUID)], JObj, FetchId);
+            build_originate_args_from_endpoints(Action, [update_endpoint(Endpoint, State)], JObj, FetchId);
         Endpoints ->
             lager:debug("multiple endpoints defined, assigning uuids to each"),
             UpdatedEndpoints = [update_endpoint(Endpoint, State) || Endpoint <- Endpoints],
@@ -525,34 +524,55 @@ build_originate_args(Action, #state{uuid=UUID}=State, JObj, FetchId) ->
                                                  ne_binary().
 build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
-    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-                        <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
-                        _Else -> <<"|">>
-                    end,
+    DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
+
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
-    J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
-                            ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
-                            ,{<<"Loopback-Bowout">>, <<"false">>}
-                           ], JObj),
-    list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
+
+    ChannelVars = get_channel_vars(JObj, FetchId),
+
+    list_to_binary([ChannelVars, DialStrings, " ", Action]).
+
+-spec get_channel_vars(wh_json:object(), ne_binary()) -> iolist().
+get_channel_vars(JObj, FetchId) ->
+    CCVs = [{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
+            ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
+           ],
+    Vars = maybe_add_loopback(JObj, CCVs),
+    J = wh_json:set_values(Vars, JObj),
+    ecallmgr_fs_xml:get_channel_vars(J).
+
+-spec maybe_add_loopback(wh_json:object(), wh_proplist()) -> wh_proplist().
+maybe_add_loopback(JObj, Props) ->
+    case wh_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj) of
+        'undefined' -> Props;
+        Simplify -> [{<<"Loopback-Bowout">>, Simplify} | Props]
+    end.
 
 -spec originate_execute(atom(), ne_binary(), pos_integer()) ->
                                {'ok', ne_binary()} |
                                {'error', ne_binary() | 'timeout' | 'crash'}.
 originate_execute(Node, Dialstrings, Timeout) ->
     lager:debug("executing on ~s: ~s", [Node, Dialstrings]),
-    case freeswitch:api(Node, 'originate', wh_util:to_list(Dialstrings), Timeout*1000) of
+    case freeswitch:api(Node
+                        ,'originate'
+                        ,wh_util:to_list(Dialstrings)
+                        ,Timeout*?MILLISECONDS_IN_SECOND
+                       )
+    of
         {'ok', <<"+OK ", ID/binary>>} ->
             UUID = wh_util:strip_binary(binary:replace(ID, <<"\n">>, <<>>)),
             Media = get('hold_media'),
-            _Pid = spawn(fun() -> set_music_on_hold(Node, UUID, Media) end),
+            _Pid = wh_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
         {'ok', Other} ->
             lager:debug("recv other 'ok': ~s", [Other]),
             {'error', wh_util:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};
-        {'error', Error} ->
+        {'error', Error} when is_binary(Error) ->
             lager:debug("error originating: ~s", [Error]),
-            {'error', wh_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))}
+            {'error', wh_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))};
+        {'error', _Reason} ->
+            lager:debug("error originating: ~p", [_Reason]),
+            {'error', <<"unspecified">>}
     end.
 
 -spec set_music_on_hold(atom(), ne_binary(), api_binary()) -> 'ok'.
@@ -576,7 +596,7 @@ unbind_from_call_events() ->
 
 -spec update_uuid(api_binary(), ne_binary()) -> 'ok'.
 update_uuid(OldUUID, NewUUID) ->
-    put('callid', NewUUID),
+    wh_util:put_callid(NewUUID),
     lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
     unbind_from_call_events(),
     bind_to_call_events(NewUUID),
@@ -589,7 +609,7 @@ update_uuid(OldUUID, NewUUID) ->
 create_uuid(Node) ->
     case freeswitch:api(Node, 'create_uuid', " ") of
         {'ok', UUID} ->
-            put('callid', UUID),
+            wh_util:put_callid(UUID),
             lager:debug("FS generated our uuid: ~s", [UUID]),
             {'fs', UUID};
         {'error', _E} ->
@@ -609,7 +629,7 @@ create_uuid(Endpoint, JObj, Node) ->
         CallId -> {'api', CallId}
     end.
 
--spec get_unset_vars(wh_json:object()) -> string().
+-spec get_unset_vars(wh_json:object()) -> iolist().
 get_unset_vars(JObj) ->
     %% Refactor (Karl wishes he had unit tests here for you to use)
     ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
@@ -619,20 +639,40 @@ get_unset_vars(JObj) ->
                                     ),
                    ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= 'undefined'
              ],
-    case [[$u,$n,$s,$e,$t,$: | K]
+    case ["unset:" ++ K
           || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
                  ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)]
     of
         [] -> "";
-        Unset -> [string:join(Unset, "^"), maybe_fix_fs_auto_answer_bug(Export)]
+        Unset ->
+            [string:join(Unset, "^")
+            ,maybe_fix_ignore_early_media(Export)
+            ,maybe_fix_group_confirm(Export)
+            ,maybe_fix_fs_auto_answer_bug(Export)
+            ,"^"
+            ]
+    end.
+
+-spec maybe_fix_ignore_early_media(strings()) -> string().
+maybe_fix_ignore_early_media(Export) ->
+    case lists:member("ignore_early_media", Export) of
+        'true' -> "";
+        'false' -> "^unset:ignore_early_media"
+    end.
+
+-spec maybe_fix_group_confirm(strings()) -> string().
+maybe_fix_group_confirm(Export) ->
+    case lists:member("group_confirm_key", Export) of
+        'true' -> "";
+        'false' -> "^unset:group_confirm_key^unset:group_confirm_cancel_timeout^unset:group_confirm_file"
     end.
 
 -spec maybe_fix_fs_auto_answer_bug(strings()) -> string().
 maybe_fix_fs_auto_answer_bug(Export) ->
     case lists:member("sip_auto_answer", Export) of
-        'true' -> "^";
+        'true' -> "";
         'false' ->
-            "^unset:sip_h_Call-Info^unset:sip_h_Alert-Info^unset:alert_info^unset:sip_invite_params^set:sip_auto_answer=false^"
+            "^unset:sip_h_Call-Info^unset:sip_h_Alert-Info^unset:alert_info^unset:sip_invite_params^set:sip_auto_answer=false"
     end.
 
 -spec publish_error(ne_binary(), created_uuid() | api_binary(), wh_json:object(), api_binary()) -> 'ok'.
@@ -741,7 +781,7 @@ find_max_endpoint_timeout([EP|EPs], T) ->
 
 -spec start_control_process(state()) ->
                                    {'ok', state()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 start_control_process(#state{originate_req=JObj
                              ,node=Node
                              ,uuid={_, Id}=UUID
@@ -754,16 +794,17 @@ start_control_process(#state{originate_req=JObj
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
             _ = publish_originate_uuid(ServerId, UUID, JObj, CtrlQ),
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
+            lager:debug("started control pid ~p for uuid ~s", [CtrlPid, Id]),
             {'ok', State#state{control_pid=CtrlPid}};
         {'error', _E}=E ->
             Error = <<"failed to preemptively start a call control process">>,
             _ = publish_error(Error, UUID, JObj, ServerId),
             E
     end;
-start_control_process(#state{control_pid=Pid
+start_control_process(#state{control_pid=_Pid
                              ,uuid=_UUID
                             }=State) ->
-    lager:debug("control process ~p exists for uuid ~p", [Pid, _UUID]),
+    lager:debug("control process ~p exists for uuid ~p", [_Pid, _UUID]),
     {'ok', State}.
 
 -spec maybe_start_call_handlers(created_uuid(), state()) -> 'ok'.
@@ -779,29 +820,33 @@ maybe_start_call_handlers(UUID, State) ->
 start_abandon_timer() ->
     erlang:send_after(?REPLY_TIMEOUT, self(), {'abandon_originate'}).
 
+-spec update_endpoint(wh_json:object(), state()) -> wh_json:object().
 update_endpoint(Endpoint, #state{node=Node
                                  ,originate_req=JObj
+                                 ,uuid=GlobalUUID
                                 }=State) ->
     {_, Id} = UUID =
         case wh_json:get_value(<<"Outbound-Call-ID">>, Endpoint) of
             'undefined' -> create_uuid(Endpoint, JObj, Node);
             OutboundCallId -> {'api', OutboundCallId}
         end,
-    maybe_start_call_handlers(UUID, State#state{uuid=UUID
-                                                ,control_pid='undefined'
-                                               }),
-    fix_hold_media(wh_json:set_value(<<"origination_uuid">>, Id, Endpoint), State);
-update_endpoint(Endpoint, {_, BuiltId}=State) ->
-    Id =
-        case wh_json:get_value(<<"Outbound-Call-ID">>, Endpoint) of
-            'undefined' -> BuiltId;
-            OutboundCallId -> OutboundCallId
-        end,
 
-    fix_hold_media(wh_json:set_value(<<"origination_uuid">>, Id, Endpoint), State).
+    case uuid_matches(UUID, GlobalUUID) of
+        'true' -> 'ok';
+        'false' ->
+            maybe_start_call_handlers(UUID, State#state{uuid=UUID
+                                                        ,control_pid='undefined'
+                                                       })
+    end,
 
--spec fix_hold_media(wh_json:object(), _) -> wh_json:object().
-fix_hold_media(Endpoint, _State) ->
+    fix_hold_media(wh_json:set_value(<<"origination_uuid">>, Id, Endpoint)).
+
+-spec uuid_matches(created_uuid(), created_uuid()) -> boolean().
+uuid_matches({_, UUID}, {_, UUID}) -> 'true';
+uuid_matches(_, _) -> 'false'.
+
+-spec fix_hold_media(wh_json:object()) -> wh_json:object().
+fix_hold_media(Endpoint) ->
     put('hold_media', wh_json:get_value(<<"Hold-Media">>, Endpoint)),
     wh_json:delete_key(<<"Hold-Media">>, Endpoint).
 
@@ -809,6 +854,9 @@ fix_hold_media(Endpoint, _State) ->
 should_update_uuid(OldUUID, Props) ->
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
         <<"loopback::bowout">> ->
-             props:get_value(<<"Resigning-UUID">>, Props) =:= OldUUID;
+            lager:debug("bowout detected with ~s, old uuid is ~s"
+                        ,[props:get_value(?RESIGNING_UUID, Props), OldUUID]
+                       ),
+            props:get_value(?RESIGNING_UUID, Props) =:= OldUUID;
         _ -> 'false'
     end.

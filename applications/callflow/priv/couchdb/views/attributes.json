@@ -1,37 +1,37 @@
 {
-   "_id": "_design/cf_attributes",
-   "language": "javascript",
-   "views": {
-       "temporal_rules": {
-           "map": "function(doc) { if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return; emit(doc._id, null); }"
-       },
-       "owned": {
-           "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {for (owner_id in doc.hotdesk.users) {emit([owner_id, doc.pvt_type], doc._id)};} else if (doc.owner_id) {emit([doc.owner_id, doc.pvt_type], doc._id);}}"
-       },
-       "owner": {
-           "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {for (owner_id in doc.hotdesk.users) {emit(doc._id, owner_id)};} else if (doc.owner_id) {emit(doc._id, doc.owner_id);}}"
-       },
-       "hotdesk_id": {
-           "map": "function(doc) { if (!doc.hotdesk || !doc.hotdesk.id || doc.pvt_deleted) return; emit(doc.hotdesk.id, null); }"
-       },
-       "hotdesk_users": {
-           "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {for (owner_id in doc.hotdesk.users) {emit(owner_id, null)};}}"
-       },
-       "mailbox_number": {
-           "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return; emit(doc.mailbox, null); }"
-       },
-       "active_resources_by_rules": {
-           "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'caller_id_options': doc.caller_id_options,'flags':doc.flags||[]}); }"
-       },
-       "vm_count_by_owner": {
-           "map": "function(doc) { if (doc.pvt_type != 'vmbox' || !doc.owner_id || doc.pvt_deleted) return; doc.messages.forEach(function (message) { if (message.folder != 'deleted') emit([doc.owner_id, message.folder], 1); }); }",
-           "reduce": "function (key, values, rereduce) { return sum(values) }"
-       },
-       "sip_username": {
-           "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {var owners = Object.keys(doc.hotdesk.users);} else if (doc.owner_id) {var owners = new Array();owners.push(doc.owner_id);} else {var owners = new Array();}if (doc.sip && doc.sip.username && doc.sip.method == 'password' && !doc.pvt_deleted) {emit(doc.sip.username, owners);} else if (doc.pvt_type === 'sys_info' && !doc.pvt_deleted) {for (i in doc.servers) {var auth = doc.servers[i].auth;if (auth.auth_user && auth.auth_method == 'password') {emit(auth.auth_user, owners);}}}}"
-       },
-       "groups": {
-		   "map": "function (doc) {if (doc.pvt_type != 'group' || doc.pvt_deleted || !doc.endpoints) return;emit(null, doc.endpoints);}"
-       }
-   }
+    "_id": "_design/cf_attributes",
+    "language": "javascript",
+    "views": {
+        "active_resources_by_rules": {
+            "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'caller_id_options': doc.caller_id_options,'flags':doc.flags||[]}); }"
+        },
+        "groups": {
+            "map": "function (doc) {if (doc.pvt_type != 'group' || doc.pvt_deleted || !doc.endpoints) return;emit(null, doc.endpoints);}"
+        },
+        "hotdesk_id": {
+            "map": "function(doc) { if (!doc.hotdesk || !doc.hotdesk.id || doc.pvt_deleted) return; emit(doc.hotdesk.id, null); }"
+        },
+        "hotdesk_users": {
+            "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {for (owner_id in doc.hotdesk.users) {emit(owner_id, null)};}}"
+        },
+        "mailbox_number": {
+            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || doc.pvt_deleted) return; emit(doc.mailbox, null); }"
+        },
+        "owned": {
+            "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {for (owner_id in doc.hotdesk.users) {emit([owner_id, doc.pvt_type], doc._id)};} else if (doc.owner_id) {emit([doc.owner_id, doc.pvt_type], doc._id);}}"
+        },
+        "owner": {
+            "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {for (owner_id in doc.hotdesk.users) {emit(doc._id, owner_id)};} else if (doc.owner_id) {emit(doc._id, doc.owner_id);}}"
+        },
+        "sip_username": {
+            "map": "function (doc) {if (doc.pvt_deleted) return;if (doc.hotdesk && doc.hotdesk.users && Object.keys(doc.hotdesk.users).length) {var owners = Object.keys(doc.hotdesk.users);} else if (doc.owner_id) {var owners = new Array();owners.push(doc.owner_id);} else {var owners = new Array();}if (doc.sip && doc.sip.username && doc.sip.method == 'password' && !doc.pvt_deleted) {emit(doc.sip.username, owners);} else if (doc.pvt_type === 'sys_info' && !doc.pvt_deleted) {for (i in doc.servers) {var auth = doc.servers[i].auth;if (auth.auth_user && auth.auth_method == 'password') {emit(auth.auth_user, owners);}}}}"
+        },
+        "temporal_rules": {
+            "map": "function(doc) { if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return; emit(doc._id, null); }"
+        },
+        "vm_count_by_owner": {
+            "map": "function(doc) { if (doc.pvt_type != 'vmbox' || !doc.owner_id || doc.pvt_deleted) return; doc.messages.forEach(function (message) { if (message.folder != 'deleted') emit([doc.owner_id, message.folder], 1); }); }",
+            "reduce": "function (key, values, rereduce) { return sum(values) }"
+        }
+    }
 }

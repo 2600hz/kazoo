@@ -47,28 +47,30 @@ get_offnet_gateways(Gateways) ->
 -spec gateway_fold(wh_json:object(), wh_json:object()) -> wh_json:object().
 gateway_fold(JObj, Acc) ->
     Gateway = wh_json:get_value(<<"value">>, JObj),
-    Id = wh_json:get_value(<<"id">>, Gateway),
+    Id = wh_doc:id(Gateway),
     wh_json:set_value(Id, format_gateway(Gateway), Acc).
 
 -spec format_gateway(wh_json:object()) -> wh_json:object().
 format_gateway(JObj) ->
-    DefaultProxy = 'undefined',
-    Variables = [{<<"Account-ID">>, wh_json:get_value(<<"account_id">>, JObj)}
-                 ,{<<"Username">>, wh_json:get_value(<<"username">>, JObj)}
-                 ,{<<"Realm">>, wh_json:get_value(<<"realm">>, JObj)}
-                 ,{<<"Authorizing-Type">>, wh_json:get_value(<<"resource">>, JObj)}
-                 ,{<<"Authorizing-ID">>, wh_json:get_value(<<"id">>, JObj)}
-                 ,{<<"Inception">>, <<"${destination_number}">>}
-                 ,{<<"Gateway-Version">>, wh_json:get_value(<<"version">>, JObj)}
+    Variables = [{<<"ecallmgr_Account-ID">>, wh_json:get_value(<<"account_id">>, JObj)}
+                 ,{<<"ecallmgr_Username">>, wh_json:get_value(<<"username">>, JObj)}
+                 ,{<<"ecallmgr_Realm">>, wh_json:get_value(<<"realm">>, JObj)}
+                 ,{<<"ecallmgr_Authorizing-Type">>, wh_json:get_ne_value(<<"resource">>, JObj, <<"resource">>)}
+                 ,{<<"ecallmgr_Authorizing-ID">>, wh_doc:id(JObj)}
+                 ,{<<"ecallmgr_Resource-ID">>, wh_json:get_ne_value(<<"resource_id">>, JObj, wh_doc:id(JObj))}
+                 ,{<<"ecallmgr_Inception">>, <<"${destination_number}">>}
+                 ,{<<"ecallmgr_Gateway-Version">>, wh_json:get_value(<<"version">>, JObj)}
                 ],
     Gateway = [{<<"Username">>, wh_json:get_value(<<"username">>, JObj, <<"none">>)}
+               ,{<<"Auth-Username">>, wh_json:get_value(<<"auth_username">>, JObj)}
                ,{<<"Password">>, wh_json:get_value(<<"password">>, JObj, <<"none">>)}
                ,{<<"Realm">>, wh_json:get_value(<<"server">>, JObj)}
-               ,{<<"Proxy">>, wh_json:get_value(<<"proxy">>, JObj, DefaultProxy)}
+               ,{<<"Proxy">>, wh_json:get_value(<<"proxy">>, JObj)}
                ,{<<"From-Domain">>, wh_json:get_value(<<"realm">>, JObj)}
                ,{<<"Expire-Seconds">>, wh_json:get_binary_value(<<"expiration">>, JObj)}
                ,{<<"Register">>, <<"true">>}
                ,{<<"Extension-In-Contact">>, <<"true">>}
+               ,{<<"Extension">>, wh_json:get_ne_value(<<"register_extension">>, JObj)}
                ,{<<"Variables">>, wh_json:from_list(props:filter_undefined(Variables))}
               ],
     wh_json:from_list(props:filter_undefined(Gateway)).

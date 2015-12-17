@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,7 +18,7 @@
 -export([allotments/1]).
 -export([allotment_consumed/4]).
 -export([per_minute/1]).
--export([per_minute_cost/1]).
+-export([per_minute_cost/1, real_per_minute_cost/1]).
 -export([accounts/0]).
 -export([account/1]).
 -export([to_props/1]).
@@ -53,12 +53,12 @@
                   ,account_id :: api_binary() | '$1' | '_'
                   ,account_billing :: api_binary() | '$1' | '_'
                   ,account_allotment = 'false' :: boolean() | '_'
-                  ,reseller_id :: api_binary() | '$1' | '_'
+                  ,reseller_id :: api_binary() | '$1' | '$2' | '_'
                   ,reseller_billing :: api_binary() | '$1' | '_'
                   ,reseller_allotment = 'false' :: boolean() | '_'
                   ,soft_limit = 'false' :: boolean() | '_'
                   ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
-                  ,answered_timestamp :: 'undefined' | pos_integer() | '$1' | '_'
+                  ,answered_timestamp :: api_pos_integer() | '$1' | '_'
                   ,rate :: api_binary() | '_'
                   ,rate_increment :: api_binary() | '_'
                   ,rate_minimum :: api_binary() | '_'
@@ -69,28 +69,32 @@
                   ,rate_id :: api_binary() | '_'
                   ,base_cost :: api_binary() | '_'
                  }).
+
 -type channel() :: #channel{}.
--type channels() :: [channel(),...] | [].
+-type channels() :: [channel()].
 -export_type([channel/0
               ,channels/0
              ]).
 
 -define(BINDINGS, [{'authz', [{'restrict_to', ['broadcast']}
                               ,'federate'
-                             ]}
+                             ]
+                   }
                    ,{'rate', [{'restrict_to', ['broadcast']}
                               ,'federate'
-                             ]}
+                             ]
+                    }
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
-                      ,[{<<"authz">>, <<"authz_resp">>}]}
+                      ,[{<<"authz">>, <<"authz_resp">>}]
+                     }
                      ,{{?MODULE, 'handle_rate_resp'}
-                       ,[{<<"rate">>, <<"resp">>}]}
+                       ,[{<<"rate">>, <<"resp">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
-
 
 %%%===================================================================
 %%% API
@@ -104,12 +108,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
-                                                          ,{'responders', ?RESPONDERS}
-                                                          ,{'queue_name', ?QUEUE_NAME}
-                                                          ,{'queue_options', ?QUEUE_OPTIONS}
-                                                          ,{'consume_options', ?CONSUME_OPTIONS}
-                                                         ], []).
+    gen_listener:start_link({'local', ?SERVER}
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
+                             ]
+                            ,[]
+                           ).
 
 -spec sync() -> 'ok'.
 sync() -> gen_server:cast(?SERVER, 'synchronize_channels').
@@ -320,6 +328,27 @@ per_minute_cost(AccountId) ->
                         call_cost(Channel) + Cost
                 end, 0, ets:select(?TAB, MatchSpec)).
 
+-spec real_per_minute_cost(ne_binary()) -> non_neg_integer().
+real_per_minute_cost(AccountId) ->
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,account_billing = <<"per_minute">>
+                           ,_='_'
+                          }
+                  ,[]
+                  ,['$_']
+                 }
+                 ,{#channel{reseller_id = AccountId
+                            ,reseller_billing = <<"per_minute">>
+                            ,_='_'
+                           }
+                   ,[]
+                   ,['$_']
+                  }
+                ],
+    lists:foldl(fun(Channel, Cost) ->
+                        call_cost(Channel, 0) + Cost
+                end, 0, ets:select(?TAB, MatchSpec)).
+
 -spec accounts() -> ne_binaries().
 accounts() ->
     MatchSpec = [{#channel{account_id = '$1'
@@ -332,7 +361,7 @@ accounts() ->
                 ],
     accounts(ets:select(?TAB, MatchSpec), sets:new()).
 
--spec accounts(_, set()) -> ne_binaries().
+-spec accounts(any(), set()) -> ne_binaries().
 accounts([], Accounts) ->
     lists:reverse(sets:to_list(Accounts));
 accounts([['undefined', 'undefined']|Ids], Accounts) ->
@@ -501,10 +530,16 @@ handle_cast({'rate_resp', JObj}, State) ->
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
     {'noreply', State};
-handle_cast({'wh_nodes', {'expire', _Node}}, #state{sync_ref=SyncRef}=State) ->
-    lager:debug("notifed that node ~s is no longer reachable, synchronizing channels", [_Node]),
-    self() ! {'synchronize_channels', SyncRef},
-    {'noreply', State};
+handle_cast({'wh_nodes', {'expire', #wh_node{node=NodeName, whapps=Whapps}}}
+            ,#state{sync_ref=SyncRef}=State
+           ) ->
+    case props:get_value(<<"ecallmgr">>, Whapps) of
+        'undefined' -> {'noreply', State};
+        _WhappInfo ->
+            lager:debug("ecallmgr node ~s is no longer reachable, synchronizing channels", [NodeName]),
+            self() ! {'synchronize_channels', SyncRef},
+            {'noreply', State}
+    end;
 handle_cast({'authorized', JObj}, State) ->
     _ = ets:insert(?TAB, from_jobj(JObj)),
     {'noreply', State};
@@ -526,9 +561,10 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) ->
     Req = wh_api:default_headers(?APP_NAME, ?APP_VERSION),
-    _ = case whapps_util:amqp_pool_collect(Req
-                                           ,fun wapi_call:publish_query_channels_req/1
-                                           ,{'ecallmgr', 'true'})
+    _ = case wh_amqp_worker:call_collect(Req
+                                         ,fun wapi_call:publish_query_channels_req/1
+                                         ,{'ecallmgr', 'true'}
+                                        )
         of
             {'error', _R} ->
                 lager:error("could not reach ecallmgr channels: ~p", [_R]);
@@ -597,29 +633,49 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec from_jobj(wh_json:object()) -> channel().
 from_jobj(JObj) ->
-    %% CHANNEL_CREATE has bunch of stuff in CCVs where as auth_resp
-    %%  is root level, so if no CCVs then just use the JObj as is...
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, JObj),
-    AccountBilling = wh_json:get_value(<<"Account-Billing">>, CCVs),
-    ResellerBilling = wh_json:get_value(<<"Reseller-Billing">>, CCVs),
+    AccountId = wh_json:get_first_defined(
+                       [<<"Account-ID">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                       ], JObj
+                      ),
+    AccountBilling = wh_json:get_first_defined(
+                       [<<"Account-Billing">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Account-Billing">>]
+                       ], JObj
+                      ),
+    ResellerId = wh_json:get_first_defined(
+                       [<<"Reseller-ID">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Reseller-ID">>]
+                       ], JObj
+                      ),
+    ResellerBilling = wh_json:get_first_defined(
+                       [<<"Reseller-Billing">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Reseller-Billing">>]
+                       ], JObj
+                      ),
+    SoftLimit = wh_json:get_first_defined(
+                       [<<"Soft-Limit">>
+                       ,[<<"Custom-Channel-Vars">>, <<"Soft-Limit">>]
+                       ], JObj
+                      ),
     #channel{call_id = wh_json:get_value(<<"Call-ID">>, JObj)
              ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
              ,direction = wh_json:get_value(<<"Call-Direction">>, JObj)
-             ,account_id = wh_json:get_value(<<"Account-ID">>, CCVs)
+             ,account_id = AccountId
              ,account_billing = AccountBilling
-             ,account_allotment = is_alloment(AccountBilling)
-             ,reseller_id = wh_json:get_value(<<"Reseller-ID">>, CCVs)
+             ,account_allotment = is_allotment(AccountBilling)
+             ,reseller_id = ResellerId
              ,reseller_billing = ResellerBilling
-             ,reseller_allotment = is_alloment(ResellerBilling)
-             ,soft_limit = wh_json:is_true(<<"Soft-Limit">>, JObj)
+             ,reseller_allotment = is_allotment(ResellerBilling)
+             ,soft_limit = wh_util:is_true(SoftLimit)
             }.
 
--spec is_alloment(ne_binary()) -> boolean().
-is_alloment(<<"allotment_", _/binary>>) -> 'true';
-is_alloment(_) -> 'false'.
+-spec is_allotment(ne_binary()) -> boolean().
+is_allotment(<<"allotment_", _/binary>>) -> 'true';
+is_allotment(_) -> 'false'.
 
 -type unique_channel() :: {ne_binary(), api_binary()}.
--type unique_channels() :: [unique_channel(),...] | [].
+-type unique_channels() :: [unique_channel()].
 
 -spec count_unique_calls(unique_channels()) -> non_neg_integer().
 count_unique_calls(Channels) ->
@@ -673,7 +729,7 @@ start_channel_sync_timer(State) ->
     State#state{sync_ref=SyncRef
                 ,sync_timer=TRef}.
 
--type non_neg_integers() :: [non_neg_integer(),...] | [].
+-type non_neg_integers() :: [non_neg_integer()].
 
 -spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
 sum_allotment_consumed(CycleStart, Span, Matches) ->
@@ -699,10 +755,13 @@ calculate_consumed(CycleStart, Span, CurrentTimestamp, Timestamp) ->
     end.
 
 -spec call_cost(channel()) -> non_neg_integer().
-call_cost(#channel{answered_timestamp='undefined'}=Channel) ->
-    wht_util:call_cost(billing_jobj(60, Channel));
-call_cost(#channel{answered_timestamp=Timestamp}=Channel) ->
-    BillingSeconds = wh_util:current_tstamp() - Timestamp + 60,
+call_cost(Channel) -> call_cost(Channel, 60).
+
+-spec call_cost(channel(), integer()) -> non_neg_integer().
+call_cost(#channel{answered_timestamp='undefined'}=Channel, Seconds) ->
+    wht_util:call_cost(billing_jobj(Seconds, Channel));
+call_cost(#channel{answered_timestamp=Timestamp}=Channel, Seconds) ->
+    BillingSeconds = wh_util:current_tstamp() - Timestamp + Seconds,
     wht_util:call_cost(billing_jobj(BillingSeconds, Channel)).
 
 -spec billing_jobj(non_neg_integer(), channel()) -> wh_json:object().

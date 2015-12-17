@@ -1,15 +1,23 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2015, 2600Hz INC
 %%% @doc
 %%% Execute call commands
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%
+%%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_command).
 
 -export([exec_cmd/4]).
+
+-ifdef(TEST).
+-export([get_conference_flags/1
+         ,tones_app/1
+        ]).
+-endif.
 
 -include("ecallmgr.hrl").
 
@@ -20,6 +28,7 @@
                       [ecallmgr_util:send_cmd_ret(),...].
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     exec_cmd(Node, UUID, JObj, ControlPID, wh_json:get_value(<<"Call-ID">>, JObj)).
+
 exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
     case get_fs_app(Node, UUID, JObj, App) of
@@ -29,8 +38,8 @@ exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
             ecallmgr_call_control:event_execute_complete(ControlPid, UUID, AppName);
         {AppName, AppData} ->
             ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
-        %% {AppName, AppData, NewNode} ->
-        %%     ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
+        {AppName, AppData, NewNode} ->
+            ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
         [_|_]=Apps ->
             [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
     end;
@@ -62,12 +71,14 @@ get_fs_app(Node, UUID, JObj, <<"noop">>) ->
                        'undefined' ->
                            <<"Event-Subclass=whistle::noop,Event-Name=CUSTOM"
                              ,",whistle_event_name=CHANNEL_EXECUTE_COMPLETE"
-                             ,",whistle_application_name=noop">>;
+                             ,",whistle_application_name=noop"
+                           >>;
                        NoopId ->
                            <<"Event-Subclass=whistle::noop,Event-Name=CUSTOM"
                              ,",whistle_event_name=CHANNEL_EXECUTE_COMPLETE"
                              ,",whistle_application_name=noop"
-                             ,",whistle_application_response=", (wh_util:to_binary(NoopId))/binary>>
+                             ,",whistle_application_response=", (wh_util:to_binary(NoopId))/binary
+                           >>
                    end,
             {<<"event">>, Args}
     end;
@@ -76,23 +87,7 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
     case wapi_dialplan:tts_v(JObj) of
         'false' -> {'error', <<"tts failed to execute as JObj didn't validate">>};
         'true' ->
-            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-
-            case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
-                <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
-                _Engine ->
-                    SayMe = wh_json:get_value(<<"Text">>, JObj),
-                    lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
-
-                    TTS = <<"tts://", SayMe/binary>>,
-                    case ecallmgr_util:media_path(TTS, UUID, JObj) of
-                        TTS ->
-                            lager:debug("failed to fetch a playable media, reverting to flite"),
-                            get_fs_app(Node, UUID, wh_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
-                        MediaPath ->
-                            play(Node, UUID, wh_json:set_value(<<"Media-Name">>, MediaPath, JObj))
-                    end
-            end
+            tts(Node, UUID, JObj)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
@@ -138,7 +133,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
             Routines = [fun(V) ->
-                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                            case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
                                 'false' -> V;
                                 'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
                             end
@@ -167,58 +162,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
     case wapi_dialplan:record_call_v(JObj) of
         'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         'true' ->
-            Routines = [fun(V) ->
-                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
-                                'false' -> V;
-                                'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
-                            end
-                        end
-                        ,fun(V) ->
-                            case get_terminators(JObj) of
-                                'undefined' -> V;
-                                Terminators -> [Terminators|V]
-                            end
-                         end
-                        ,fun(V) -> [{<<"RECORD_APPEND">>, <<"true">>}
-                                    ,{<<"enable_file_write_buffering">>, <<"false">>}
-                                    | V
-                                   ]
-                         end
-                       ],
-            Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
-            _ = ecallmgr_util:set(Node, UUID, Vars),
-
-            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-            RecordingName = ecallmgr_util:recording_filename(MediaName),
-            case wh_json:get_value(<<"Record-Action">>, JObj) of
-                <<"start">> ->
-                    FollowTransfer = wh_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
-                    _ = ecallmgr_util:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
-                                                       ,{<<"recording_follow_attxfer">>, FollowTransfer}
-                                                      ]),
-                    _ = ecallmgr_util:export(
-                            Node
-                            ,UUID
-                            ,[{<<"Insert-At">>, wh_json:get_value(<<"Insert-At">>, JObj)}
-                              ,{<<"Time-Limit">>, wh_json:get_value(<<"Time-Limit">>, JObj)}
-                              ,{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
-                              ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"Media-Transfer-Method">>, JObj)}
-                              ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)}
-                              ,{<<"Additional-Headers">>, wh_json:get_value(<<"Additional-Headers">>, JObj)}
-                             ]
-                        ),
-                    %% UUID start path/to/media limit
-                    RecArg = binary_to_list(
-                                list_to_binary([UUID, <<" start ">>
-                                                ,RecordingName, <<" ">>
-                                                ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
-                                               ])),
-                    {<<"record_call">>, RecArg};
-                <<"stop">> ->
-                    %% UUID stop path/to/media
-                    RecArg = binary_to_list(list_to_binary([UUID, <<" stop ">>, RecordingName])),
-                    {<<"record_call">>, RecArg}
-            end
+            record_call(Node, UUID, JObj)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"store">>) ->
@@ -232,13 +176,38 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                 <<"put">> ->
                     %% stream file over HTTP PUT
                     lager:debug("stream ~s via HTTP PUT", [RecordingName]),
-                    stream_over_http(Node, UUID, RecordingName, 'put', 'store', JObj),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store', JObj),
                     {<<"store">>, 'noop'};
                 <<"post">> ->
                     %% stream file over HTTP POST
                     lager:debug("stream ~s via HTTP POST", [RecordingName]),
-                    stream_over_http(Node, UUID, RecordingName, 'post', 'store', JObj),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store', JObj),
                     {<<"store">>, 'noop'};
+                _Method ->
+                    %% unhandled method
+                    lager:debug("unhandled stream method ~s", [_Method]),
+                    {'return', 'error'}
+            end
+    end;
+
+get_fs_app(Node, UUID, JObj, <<"store_vm">>) ->
+    case wapi_dialplan:store_vm_v(JObj) of
+        'false' -> {'error', <<"store failed to execute as JObj did not validate">>};
+        'true' ->
+            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+            RecordingName = ecallmgr_util:recording_filename(MediaName),
+            lager:debug("streaming media ~s", [RecordingName]),
+            case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                <<"put">> ->
+                    %% stream file over HTTP PUT
+                    lager:debug("stream ~s via HTTP PUT", [RecordingName]),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'put', 'store_vm', JObj),
+                    {<<"store_vm">>, 'noop'};
+                <<"post">> ->
+                    %% stream file over HTTP POST
+                    lager:debug("stream ~s via HTTP POST", [RecordingName]),
+                    _ = stream_over_http(Node, UUID, RecordingName, 'post', 'store_vm', JObj),
+                    {<<"store_vm">>, 'noop'};
                 _Method ->
                     %% unhandled method
                     lager:debug("unhandled stream method ~s", [_Method]),
@@ -254,7 +223,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
-                    stream_over_http(Node, UUID, File, 'put', 'fax', JObj),
+                    _ = stream_over_http(Node, UUID, File, 'put', 'fax', JObj),
                     {App, 'noop'};
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
@@ -279,25 +248,8 @@ get_fs_app(Node, UUID, JObj, <<"tones">>) ->
         'false' -> {'error', <<"tones failed to execute as JObj did not validate">>};
         'true' ->
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-            Tones = wh_json:get_value(<<"Tones">>, JObj, []),
-            FSTones = [begin
-                           Vol = case wh_json:get_value(<<"Volume">>, Tone) of
-                                     'undefined' -> [];
-                                     %% need to map V (0-100) to FS values
-                                     V -> list_to_binary(["v=", wh_util:to_list(V), ";"])
-                                 end,
-                           Repeat = case wh_json:get_value(<<"Repeat">>, Tone) of
-                                        'undefined' -> [];
-                                        R -> list_to_binary(["l=", wh_util:to_list(R), ";"])
-                                    end,
-                           Freqs = string:join([wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, Tone)], ","),
-                           On = wh_util:to_list(wh_json:get_value(<<"Duration-ON">>, Tone)),
-                           Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
-                           wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
-                       end || Tone <- Tones
-                      ],
-            Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
-            {<<"playback">>, Arg}
+            Tones = wh_json:get_list_value(<<"Tones">>, JObj, []),
+            tones_app(Tones)
     end;
 
 get_fs_app(_Node, _UUID, _JObj, <<"answer">>) ->
@@ -337,6 +289,17 @@ get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
             {<<"endless_playback">>, Stream}
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
+    UnholdKey = wh_json:get_value(<<"Unhold-Key">>, JObj),
+
+    AMOH = wh_json:get_value(<<"A-MOH">>, JObj, <<>>),
+    BMOH = wh_json:get_value(<<"B-MOH">>, JObj, <<>>),
+
+    AMedia = ecallmgr_util:media_path(AMOH, 'extant', UUID, JObj),
+    BMedia = ecallmgr_util:media_path(BMOH, 'extant', UUID, JObj),
+
+    {<<"soft_hold">>, list_to_binary([UnholdKey, " ", AMedia, " ", BMedia])};
+
 get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case wapi_dialplan:page_v(JObj) of
@@ -368,7 +331,7 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                         ,fun(DP) ->
                                  lists:foldl(fun(Channel, D) ->
                                                      [{"application", <<"conference_set_auto_outcall "
-                                                                        ,"{sip_auto_answer=true}"
+                                                                        ,"{alert_info=intercom}[sip_auto_answer=true]"
                                                                         ,Channel/binary>>}
                                                       |D
                                                      ]
@@ -532,18 +495,15 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
     case wapi_dialplan:redirect_v(JObj) of
         'false' -> {'error', <<"redirect failed to execute as JObj did not validate">>};
         'true' ->
-            _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
-                    'undefined' -> 'ok';
-                    Server -> ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, Server}])
-                end,
+            RedirectServer = lookup_redirect_server(JObj) ,
+            maybe_add_redirect_header(Node, UUID, RedirectServer),
+
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
 %% TODO: can we depreciate this command? It was prior to ecallmgr_fs_query....dont think anything is using it.
 get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
-    spawn(fun() ->
-                  send_fetch_call_event(Node, UUID, JObj)
-          end),
+    _ = wh_util:spawn(fun send_fetch_call_event/3, [Node, UUID, JObj]),
     {<<"fetch">>, 'noop'};
 
 get_fs_app(Node, UUID, JObj, <<"conference">>) ->
@@ -572,6 +532,33 @@ get_fs_app(_Node, _UUID, JObj, <<"fax_detection">>) ->
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Redirect command helpers
+%% @end
+%%--------------------------------------------------------------------
+
+-spec lookup_redirect_server(wh_json:object()) -> api_binary().
+lookup_redirect_server(JObj) ->
+    case wh_json:get_value(<<"Redirect-Server">>, JObj) of
+        'undefined' -> fixup_redirect_node(wh_json:get_value(<<"Redirect-Node">>, JObj));
+        Server -> Server
+    end.
+
+-spec fixup_redirect_node(api_binary()) -> api_binary().
+fixup_redirect_node('undefined') ->
+    'undefined';
+fixup_redirect_node(Node) ->
+    SipUrl = ecallmgr_fs_node:sip_url(Node),
+    binary:replace(SipUrl, <<"mod_sofia@">>, <<>>).
+
+-spec maybe_add_redirect_header(atom(), ne_binary(), api_binary()) -> 'ok'.
+maybe_add_redirect_header(_Node, _UUID, 'undefined') -> 'ok';
+maybe_add_redirect_header(Node, UUID, RedirectServer) ->
+    lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
+    ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -614,6 +601,7 @@ call_pickup(Node, UUID, JObj) ->
                          {'return', ne_binary()} |
                          {'error', ne_binary()}.
 connect_leg(Node, UUID, JObj) ->
+    _ = ecallmgr_fs_bridge:maybe_b_leg_events(Node, UUID, JObj),
     case prepare_app(Node, UUID, JObj) of
         {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
             get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget, <<"call_pickup">>);
@@ -628,7 +616,6 @@ connect_leg(Node, UUID, JObj) ->
                          {'error', ne_binary()}.
 prepare_app(Node, UUID, JObj) ->
     Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-
     case ecallmgr_fs_channel:fetch(Target, 'record') of
         {'ok', #channel{node=Node
                         ,answered=IsAnswered
@@ -650,20 +637,43 @@ prepare_app(Node, UUID, JObj) ->
                                   {'execute', atom(), ne_binary(), wh_json:object(), ne_binary()} |
                                   {'error', ne_binary()}.
 prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
-    case wh_amqp_worker:call([{<<"Call-ID">>, TargetCallId}
-                              ,{<<"Active-Only">>, 'true'}
-                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ]
-                             ,fun(C) -> wapi_call:publish_channel_status_req(TargetCallId, C) end
-                             ,fun wapi_call:channel_status_resp_v/1
-                            )
+    case wh_amqp_worker:call_collect(
+           [{<<"Call-ID">>, TargetCallId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ]
+           ,fun(C) -> wapi_call:publish_channel_status_req(TargetCallId, C) end
+           ,{'ecallmgr', 'true'}
+          )
     of
-        {'ok', Resp} ->
-            lager:debug("found response to channel query, checking for ~s: ~p", [TargetCallId, Resp]),
-            prepare_app_via_amqp(Node, UUID, JObj, TargetCallId, Resp);
+        {'ok', JObjs} ->
+            lager:debug("got response to channel query, checking if ~s is active.", [TargetCallId]),
+            case prepare_app_status_filter(JObjs) of
+                {'ok', Resp} ->
+                    prepare_app_via_amqp(Node, UUID, JObj, TargetCallId, Resp);
+                {'error', _E} ->
+                    lager:debug("error querying for channels for ~s: ~p", [TargetCallId, _E]),
+                    {'error', <<"failed to find target callid ", TargetCallId/binary>>}
+            end;
         {'error', _E} ->
             lager:debug("error querying for channels for ~s: ~p", [TargetCallId, _E]),
             {'error', <<"failed to find target callid ", TargetCallId/binary>>}
+    end.
+
+-spec prepare_app_status_filter(wh_json:objects()) ->
+                                       {'ok', wh_json:object()} |
+                                       {'error', 'not_found'}.
+prepare_app_status_filter([]) ->
+    {'error', 'not_found'};
+prepare_app_status_filter([JObj|JObjs]) ->
+    %% NOTE: this prefers active calls with the assumption
+    %%  that kazoo will never have a call that is active
+    %%  then disconnected then active...This seems reasonable
+    %%  for the foreseeable future ;)
+    case wapi_call:channel_status_resp_v(JObj) andalso
+        wh_json:get_value(<<"Status">>, JObj) =:= <<"active">>
+    of
+        'true' -> {'ok', JObj};
+        'false' -> prepare_app_status_filter(JObjs)
     end.
 
 -spec prepare_app_via_amqp(atom(), ne_binary(), wh_json:object(), ne_binary(), wh_json:object()) ->
@@ -745,11 +755,11 @@ prepare_app_usurpers(Node, UUID) ->
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
-    ExportsApi = [{<<"Continue-On-Fail">>, <<"true">>}
-                  ,{<<"Continue-On-Cancel">>, <<"true">>}
-                  ,{<<"Hangup-After-Pickup">>, <<"false">>}
-                  ,{<<"Park-After-Pickup">>, <<"true">>}
-                 ],
+    ExportsApi = exports_from_api(JObj, [<<"Continue-On-Fail">>
+                                         ,<<"Continue-On-Cancel">>
+                                         ,<<"Hangup-After-Pickup">>
+                                         ,<<"Park-After-Pickup">>
+                                        ]),
 
     SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
               ,{<<"Unanswered-Only">>, 'undefined', <<"intercept_unanswered_only">>}
@@ -766,22 +776,36 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
                     ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-    wh_amqp_worker:cast(ControlUsurp
-                        ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
-                       ),
-    lager:debug("published control usurp for ~s", [Target]),
 
-    ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
-    ecallmgr_util:export(Node, UUID, Exports),
+    case wh_json:is_true(<<"Publish-Usurp">>, JObj, 'true') of
+        'true' ->
+            wh_amqp_worker:cast(ControlUsurp
+                                ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
+                               ),
+            lager:debug("published control usurp for ~s", [Target]);
+        'false' ->
+            lager:debug("API is skipping control usurp")
+    end,
+
+    ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj) ++ Exports),
+    ecallmgr_util:set(Node, UUID, Exports),
+    ecallmgr_util:set(Node, Target, Exports),
+
     {Command, Target}.
+
+-spec exports_from_api(wh_json:object(), ne_binaries()) -> wh_proplist().
+exports_from_api(JObj, Ks) ->
+    props:filter_undefined(
+      [{K, wh_json:get_binary_value(K, JObj)} || K <- Ks]
+     ).
 
 -spec get_eavesdrop_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_eavesdrop_app(Node, UUID, JObj, Target) ->
-    ExportsApi = [{<<"Park-After-Pickup">>, <<"false">>}
-                  ,{<<"Continue-On-Fail">>, <<"true">>}
-                  ,{<<"Continue-On-Cancel">>, <<"true">>}
-                 ],
+    ExportsApi = exports_from_api(JObj, [<<"Park-After-Pickup">>
+                                         ,<<"Continue-On-Fail">>
+                                         ,<<"Continue-On-Cancel">>
+                                        ]),
 
     SetApi = [{<<"Enable-DTMF">>, 'undefined', <<"eavesdrop_enable_dtmf">>}
              ],
@@ -831,27 +855,23 @@ build_set_args([{ApiHeader, Default, FSHeader}|Headers], JObj, Args) ->
 %% Conference command helpers
 %% @end
 %%--------------------------------------------------------------------
-get_conference_app(ChanNode, UUID, JObj, 'true') ->
+get_conf_id_and_profile(JObj) ->
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    ProfileName = wh_json:get_ne_value(<<"Profile">>, JObj, <<"undefined">>),
+    {ConfName, ProfileName}.
+
+-spec get_conference_app(atom(), ne_binary(), wh_json:object(), boolean()) ->
+                                {ne_binary(), ne_binary(), atom()} |
+                                {ne_binary(), 'noop' | ne_binary()}.
+get_conference_app(ChanNode, UUID, JObj, 'true') ->
+    {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
     Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
-    ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     case ecallmgr_fs_conferences:node(ConfName) of
         {'error', 'not_found'} ->
-            lager:debug("conference ~s hasn't been started yet", [ConfName]),
-            {'ok', _} = ecallmgr_util:send_cmd(ChanNode, UUID, "conference", Cmd),
-
-            case wait_for_conference(ConfName) of
-                {'ok', ChanNode} ->
-                    lager:debug("conference has started on ~s", [ChanNode]),
-                    maybe_set_nospeak_flags(ChanNode, UUID, JObj),
-                    {<<"conference">>, 'noop'};
-                {'ok', OtherNode} ->
-                    lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
-                    get_conference_app(ChanNode, UUID, JObj, 'true')
-            end;
+            maybe_start_conference_on_our_node(ChanNode, UUID, JObj);
         {'ok', ChanNode} ->
             lager:debug("channel is on same node as conference"),
+            ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
             maybe_set_nospeak_flags(ChanNode, UUID, JObj),
             {<<"conference">>, Cmd};
         {'ok', ConfNode} ->
@@ -862,12 +882,32 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             ecallmgr_util:export(ConfNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
             {<<"conference">>, Cmd, ConfNode}
     end;
+
 get_conference_app(ChanNode, UUID, JObj, 'false') ->
-    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-    ConferenceConfig = wh_json:get_value(<<"Profile">>, JObj, <<"default">>),
+    {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
     maybe_set_nospeak_flags(ChanNode, UUID, JObj),
-    ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
+    %% ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
+
+-spec maybe_start_conference_on_our_node(atom(), ne_binary(), wh_json:object()) ->
+                                                {ne_binary(), ne_binary(), atom()} |
+                                                {ne_binary(), 'noop' | ne_binary()}.
+maybe_start_conference_on_our_node(ChanNode, UUID, JObj) ->
+    {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
+    Cmd = list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)]),
+
+    lager:debug("conference ~s hasn't been started yet", [ConfName]),
+    {'ok', _} = ecallmgr_util:send_cmd(ChanNode, UUID, "conference", Cmd),
+
+    case wait_for_conference(ConfName) of
+        {'ok', ChanNode} ->
+            lager:debug("conference has started on ~s", [ChanNode]),
+            maybe_set_nospeak_flags(ChanNode, UUID, JObj),
+            {<<"conference">>, 'noop'};
+        {'ok', OtherNode} ->
+            lager:debug("conference has started on other node ~s, lets move", [OtherNode]),
+            get_conference_app(ChanNode, UUID, JObj, 'true')
+    end.
 
 maybe_set_nospeak_flags(Node, UUID, JObj) ->
     case wh_json:is_true(<<"Member-Nospeak">>, JObj) of
@@ -897,10 +937,10 @@ get_conference_flags(JObj) ->
             Flags = lists:foldl(fun maybe_add_conference_flag/2, [<<>>], L),
             All = case maybe_add_conference_flag(KV, []) of
                 [] -> tl(Flags);
-                [<<",">> | T] -> T ++ Flags;
-                Fs -> Fs ++ Flags
+                [<<",">> | T] -> [T | Flags];
+                Fs -> [Fs | Flags]
             end,
-            <<"+flags{", (iolist_to_binary(All))/binary, "}">>
+            iolist_to_binary(["+flags{", All, "}"])
     end.
 
 maybe_add_conference_flag({K, V}, Acc) ->
@@ -925,30 +965,39 @@ wait_for_conference(ConfName) ->
 %% Store command helpers
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax', wh_json:object()) -> any().
+-spec stream_over_http(atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store'| 'store_vm' | 'fax', wh_json:object()) -> any().
+stream_over_http(Node, UUID, File, 'put'=Method, 'store'=Type, JObj) ->
+    Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
+    Args = list_to_binary([Url, <<" ">>, File]),
+    lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
+    send_fs_bg_store(Node, UUID, File, Args, Method, Type);
+
+stream_over_http(Node, UUID, File, 'put'=Method, 'store_vm'=Type, JObj) ->
+    Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
+    Args = list_to_binary([Url, <<" ">>, File]),
+    lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
+    send_fs_bg_store(Node, UUID, File, Args, Method, Type);
+
 stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
     ecallmgr_util:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
     Args = list_to_binary([Url, <<" ">>, File]),
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
+    SendAlert = wh_json:is_true(<<"Suppress-Error-Report">>, JObj, 'false'),
     Result = case send_fs_store(Node, Args, Method) of
                  {'ok', <<"+OK", _/binary>>} ->
                      lager:debug("successfully stored media for ~s", [Type]),
                      <<"success">>;
                  {'ok', Err} ->
                      lager:debug("store media failed for ~s: ~s", [Type, Err]),
-                     wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
-                                            ,[Type, File, UUID, Node]
-                                            ,[{<<"Details">>, Err}]
-                                           ),
+                     maybe_send_detailed_alert(SendAlert, Node, UUID, File, Type, Err),
                      <<"failure">>;
                  {'error', E} ->
                      lager:debug("error executing http_put for ~s: ~p", [Type, E]),
-                     wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
-                                            ,[Type, File, UUID, Node]
-                                            ,[{<<"Details">>, E}]
-                                           ),
+                     maybe_send_detailed_alert(SendAlert, Node, UUID, File, Type, E),
                      <<"failure">>
              end,
     case Type of
@@ -956,34 +1005,103 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
         'fax' -> send_store_fax_call_event(UUID, Result)
     end.
 
+-spec maybe_send_detailed_alert(boolean(), atom(), ne_binary(), ne_binary(), 'store' | 'fax', any()) -> any().
+maybe_send_detailed_alert('true', _, _, _, _, _) -> 'ok';
+maybe_send_detailed_alert(_, Node, UUID, File, Type, Reason) ->
+    send_detailed_alert(Node, UUID, File, Type, Reason).
+
+-spec send_detailed_alert(atom(), ne_binary(), ne_binary(), 'store' | 'fax', any()) -> any().
+send_detailed_alert(Node, UUID, File, Type, Reason) ->
+    wh_notify:detailed_alert("Failed to store ~s: media file ~s for call ~s on ~s "
+                             ,[Type, File, UUID, Node]
+                             ,[{<<"Details">>, Reason}]
+                            ).
+
 -spec send_fs_store(atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
 send_fs_store(Node, Args, 'put') ->
-    freeswitch:api(Node, 'http_put', wh_util:to_list(Args), 120000);
+    freeswitch:api(Node, 'http_put', wh_util:to_list(Args), 120 * ?MILLISECONDS_IN_SECOND);
 send_fs_store(Node, Args, 'post') ->
-    freeswitch:api(Node, 'http_post', wh_util:to_list(Args), 120000).
+    freeswitch:api(Node, 'http_post', wh_util:to_list(Args), 120 * ?MILLISECONDS_IN_SECOND).
 
--spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
+-spec send_fs_bg_store(atom(), ne_binary(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'store_vm' | 'fax') -> fs_api_ret().
+send_fs_bg_store(Node, UUID, File, Args, 'put', 'store') ->
+    case freeswitch:bgapi(Node, UUID, [File], 'http_put', wh_util:to_list(Args), fun chk_store_result/6) of
+        {'error', _} -> send_store_call_event(Node, UUID, <<"failure">>);
+        {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
+    end;
+send_fs_bg_store(Node, UUID, File, Args, 'put', 'store_vm') ->
+    case freeswitch:bgapi(Node, UUID, [File], 'http_put', wh_util:to_list(Args), fun chk_store_vm_result/6) of
+        {'error', _} -> send_store_vm_call_event(Node, UUID, <<"failure">>);
+        {'ok', JobId} -> lager:debug("bgapi started ~p", [JobId])
+    end.
+
+-spec chk_store_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
+chk_store_result(Res, Node, UUID, [File], JobId, <<"+OK", _/binary>>=Reply) ->
+    lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
+    send_store_call_event(Node, UUID, {<<"success">>, File});
+chk_store_result(Res, Node, UUID, [File], JobId, Reply) ->
+    lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
+    send_store_call_event(Node, UUID, {<<"failure">>, File}).
+
+-spec chk_store_vm_result(atom(), atom(), ne_binary(), list(), ne_binary(), binary()) -> 'ok'.
+chk_store_vm_result(Res, Node, UUID, _, JobId, <<"+OK", _/binary>>=Reply) ->
+    lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
+    send_store_vm_call_event(Node, UUID, <<"success">>);
+chk_store_vm_result(Res, Node, UUID, _, JobId, Reply) ->
+    lager:debug("chk_store_result ~p : ~p : ~p", [Res, JobId, Reply]),
+    send_store_vm_call_event(Node, UUID, <<"failure">>).
+
+-spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary() | {ne_binary(), api_binary()}) -> 'ok'.
+send_store_call_event(Node, UUID, {MediaTransResults, File}) ->
+    ChannelProps =
+        case ecallmgr_fs_channel:channel_data(Node, UUID) of
+            {'ok', Ps} -> Ps;
+            {'error', _Err} -> []
+        end,
+
+    BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, <<"store">>),
+    ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
+    wh_amqp_worker:cast(ApiProps, fun wapi_call:publish_event/1);
 send_store_call_event(Node, UUID, MediaTransResults) ->
+    send_store_call_event(Node, UUID, {MediaTransResults, 'undefined'}).
+
+-spec maybe_add_ccvs(wh_proplist(), wh_proplist()) -> wh_proplist().
+maybe_add_ccvs(BaseProps, ChannelProps) ->
+    case ecallmgr_util:custom_channel_vars(ChannelProps) of
+        [] -> BaseProps;
+        CustomProp ->
+            props:set_value(<<"Custom-Channel-Vars">>
+                            ,wh_json:from_list(CustomProp)
+                            ,BaseProps
+                           )
+    end.
+
+-spec build_base_store_event_props(ne_binary(), wh_proplist(), ne_binary(), api_binary(), ne_binary()) -> wh_proplist().
+build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, App) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
-    Prop = case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-               {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
-               {'error', _Err} -> []
-           end,
-    EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-                ,{<<"Call-ID">>, UUID}
-                ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
-                ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
-                ,{<<"Application-Name">>, <<"store">>}
-                ,{<<"Application-Response">>, MediaTransResults}
-                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-               ],
-    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
-                   [] -> EvtProp1;
-                   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
-                                  | EvtProp1
-                                 ]
-               end,
-    wapi_call:publish_event(EvtProp2).
+    props:filter_undefined(
+      [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps, Timestamp)}
+       ,{<<"Call-ID">>, UUID}
+       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, ChannelProps, <<>>)}
+       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps, <<"HANGUP">>)}
+       ,{<<"Application-Name">>, App}
+       ,{<<"Application-Response">>, MediaTransResults}
+       ,{<<"Application-Data">>, File}
+       | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+      ]).
+
+-spec send_store_vm_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
+send_store_vm_call_event(Node, UUID, MediaTransResults) ->
+    ChannelProps =
+        case ecallmgr_fs_channel:channel_data(Node, UUID) of
+            {'ok', Ps} -> Ps;
+            {'error', _Err} -> []
+        end,
+
+    BaseProps = build_base_store_event_props(UUID, ChannelProps, MediaTransResults, 'undefined', <<"store_vm">>),
+    ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
+
+    wh_amqp_worker:cast(ApiProps, fun wapi_call:publish_event/1).
 
 -spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
 send_store_fax_call_event(UUID, Results) ->
@@ -994,52 +1112,61 @@ send_store_fax_call_event(UUID, Results) ->
             ,{<<"Application-Response">>, Results}
             | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_call:publish_event(Prop).
+    wh_amqp_worker:cast(Prop, fun wapi_call:publish_event/1).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec find_fetch_channel_data(atom(), ne_binary(), wh_json:object()) ->
+                                     {'ok', wh_proplist()}.
+find_fetch_channel_data(Node, UUID, JObj) ->
+    case wh_json:is_true(<<"From-Other-Leg">>, JObj) of
+        'true' ->
+            {'ok', OtherUUID} = freeswitch:api(Node, 'uuid_getvar', wh_util:to_list(<<UUID/binary, " bridge_uuid">>)),
+            ecallmgr_fs_channel:channel_data(Node, OtherUUID);
+        'false' ->
+            ecallmgr_fs_channel:channel_data(Node, UUID)
+    end.
+
 -spec send_fetch_call_event(atom(), ne_binary(), wh_json:object()) -> 'ok'.
 send_fetch_call_event(Node, UUID, JObj) ->
     try
-        Prop = case wh_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
-                   'true' ->
-                       {'ok', OtherUUID} = freeswitch:api(Node, 'uuid_getvar', wh_util:to_list(<<UUID/binary, " bridge_uuid">>)),
-                       {'ok', Dump} = freeswitch:api(Node, 'uuid_dump', wh_util:to_list(OtherUUID)),
-                       ecallmgr_util:eventstr_to_proplist(Dump);
-                   'false' ->
-                       {'ok', Dump} = freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)),
-                       ecallmgr_util:eventstr_to_proplist(Dump)
-               end,
-        EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-                    ,{<<"Call-ID">>, UUID}
-                    ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
-                    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
-                    ,{<<"Application-Name">>, <<"fetch">>}
-                    ,{<<"Application-Response">>, <<>>}
-                    | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-                   ],
-        EvtProp2 =
-            case ecallmgr_util:custom_channel_vars(Prop) of
-                [] -> EvtProp1;
-                CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)}
-                               | EvtProp1
-                              ]
-            end,
-        wapi_call:publish_event(EvtProp2)
+        {'ok', ChannelProps} = find_fetch_channel_data(Node, UUID, JObj),
+        BaseProps = base_fetch_call_event_props(UUID, ChannelProps),
+        ApiProps = maybe_add_ccvs(BaseProps, ChannelProps),
+        wh_amqp_worker:cast(ApiProps, fun wapi_call:publish_event/1)
     catch
         Type:_ ->
-            Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                     ,{<<"Error-Message">>, "failed to construct or publish fetch call event"}
-                     ,{<<"Call-ID">>, UUID}
-                     ,{<<"Application-Name">>, <<"fetch">>}
-                     ,{<<"Application-Response">>, <<>>}
-                     | wh_api:default_headers(<<"error">>, wh_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
-                    ],
-            wapi_dialplan:publish_error(UUID, Error)
+            Error = base_fetch_error_event_props(UUID, JObj, Type),
+            wh_amqp_worker:cast(Error, fun(E) -> wapi_dialplan:publish_error(UUID, E) end)
     end.
+
+-spec base_fetch_error_event_props(ne_binary(), wh_json:object(), atom()) ->
+                                          wh_proplist().
+base_fetch_error_event_props(UUID, JObj, Type) ->
+    props:filter_undefined(
+      [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+       ,{<<"Error-Message">>, <<"failed to construct or publish fetch call event">>}
+       ,{<<"Call-ID">>, UUID}
+       ,{<<"Application-Name">>, <<"fetch">>}
+       ,{<<"Application-Response">>, <<>>}
+       | wh_api:default_headers(<<"error">>, wh_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
+      ]).
+
+-spec base_fetch_call_event_props(ne_binary(), wh_proplist()) ->
+                                         wh_proplist().
+base_fetch_call_event_props(UUID, ChannelProps) ->
+    props:filter_undefined(
+      [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps)}
+       ,{<<"Call-ID">>, UUID}
+       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, ChannelProps)}
+       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps)}
+       ,{<<"Application-Name">>, <<"fetch">>}
+       ,{<<"Application-Response">>, <<>>}
+       | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1051,7 +1178,7 @@ execute_exten_handle_reset(DP, Node, UUID, JObj) ->
     case wh_json:is_true(<<"Reset">>, JObj) of
         'false' -> ok;
         'true' ->
-            create_dialplan_move_ccvs(<<"Execute-Extension-Original-">>, Node, UUID, DP)
+            create_dialplan_move_ccvs(Node, UUID, DP)
     end.
 
 execute_exten_handle_ccvs(DP, _Node, UUID, JObj) ->
@@ -1083,27 +1210,65 @@ execute_exten_post_exec(DP, _Node, _UUID, _JObj) ->
      |DP
     ].
 
--spec create_dialplan_move_ccvs(ne_binary(), atom(), ne_binary(), wh_proplist()) -> wh_proplist().
-create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
-    case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
-        {'ok', Result} ->
-            Props = ecallmgr_util:eventstr_to_proplist(Result),
-            lists:foldr(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
-                                [{"application"
-                                  ,<<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
-                                 ,{"application"
-                                   ,<<"set ",?CHANNEL_VAR_PREFIX, Root/binary ,Key/binary, "=", Val/binary>>}
-                                 |Acc
-                                ];
-                           ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
-                                [{"application", <<"unset ", Key/binary>>}
-                                 ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, Root/binary, K/binary, "=", Val/binary>>}
-                                 |Acc];
-                           (_, Acc) -> Acc
-                        end, DP, Props);
-        _Error ->
-            lager:debug("failed to get result from uuid_dump for ~s", [UUID]),
+-spec create_dialplan_move_ccvs(atom(), ne_binary(), wh_proplist()) -> wh_proplist().
+create_dialplan_move_ccvs(Node, UUID, DP) ->
+    case ecallmgr_fs_channel:channel_data(Node, UUID) of
+        {'ok', Props} ->
+            create_dialplan_move_ccvs(DP, Props);
+        {'error', _E} ->
+            lager:debug("failed to create ccvs for move, no channel data for ~s: ~p", [UUID, _E]),
             DP
+    end.
+
+-spec create_dialplan_move_ccvs(wh_proplist(), wh_proplist()) -> wh_proplist().
+create_dialplan_move_ccvs(DP, Props) ->
+    lists:foldr(
+      fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
+              [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
+               ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
+               |Acc
+              ];
+         ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
+              [{"application", <<"unset ", Key/binary>>}
+               ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, ?CHANNEL_VARS_EXT, K/binary, "=", Val/binary>>}
+               |Acc
+              ];
+         ({<<"variable_sip_h_X-", Key/binary>>, Val}, Acc) ->
+              [{"application", <<"unset sip_h_X-", Key/binary>>}
+               ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
+               |Acc
+              ];
+         ({<<"sip_h_X-", Key/binary>>, Val}, Acc) ->
+              [{"application", <<"unset sip_h_X-", Key/binary>>}
+               ,{"application", <<"set sip_h_X-", ?CHANNEL_VARS_EXT ,Key/binary, "=", Val/binary>>}
+               |Acc
+              ];
+         (_, Acc) -> Acc
+      end
+      ,DP
+      ,Props
+     ).
+
+-spec tts(atom(), ne_binary(), wh_json:object()) ->
+                 {ne_binary(), ne_binary()}.
+tts(Node, UUID, JObj) ->
+    'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+
+    case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
+        <<"flite">> -> ecallmgr_fs_flite:call_command(Node, UUID, JObj);
+        _Engine ->
+            SayMe = wh_json:get_value(<<"Text">>, JObj),
+            lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
+
+            TTS = <<"tts://", SayMe/binary>>,
+            case ecallmgr_util:media_path(TTS, UUID, JObj) of
+                TTS ->
+                    lager:debug("failed to fetch a playable media, reverting to flite"),
+                    get_fs_app(Node, UUID, wh_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
+                MediaPath ->
+                    lager:debug("got media path ~s", [MediaPath]),
+                    play(Node, UUID, wh_json:set_value(<<"Media-Name">>, MediaPath, JObj))
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -1165,7 +1330,7 @@ get_terminators([_|_]=Ts) ->
         'false' ->
             put('$prior_terminators', Ts),
             case wh_util:is_empty(Ts) of
-                'true' -> {<<"playback_terminators">>, <<"none">>};
+                'true' ->  {<<"playback_terminators">>, <<"none">>};
                 'false' -> {<<"playback_terminators">>, wh_util:to_binary(Ts)}
             end
     end;
@@ -1202,28 +1367,140 @@ maybe_set_park_timeout(Node, UUID, JObj) ->
             ecallmgr_fs_command:set(Node, UUID, [{<<"park_timeout">>, ParkTimeout}])
     end.
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
+-spec record_call(atom(), ne_binary(), wh_json:object()) -> fs_app().
+record_call(Node, UUID, JObj) ->
+    set_record_call_vars(Node, UUID, JObj),
 
-all_conference_flags_test() ->
-    JObj = wh_json:from_list([{<<"Mute">>, 'true'}
-                              ,{<<"Deaf">>, 'true'}
-                              ,{<<"Moderator">>, 'true'}
-                             ]),
-    ?assertEqual(<<"+flags{mute,moderator,deaf}">>, get_conference_flags(JObj)).
+    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+    RecordingName = ecallmgr_util:recording_filename(MediaName),
 
-two_conference_flags_test() ->
-    JObj = wh_json:from_list([{<<"Mute">>, 'true'}
-                              ,{<<"Moderator">>, 'true'}
-                             ]),
-    ?assertEqual(<<"+flags{mute,moderator}">>, get_conference_flags(JObj)).
+    RecArg = case wh_json:get_value(<<"Record-Action">>, JObj) of
+                 <<"start">> ->
+                     start_record_call_args(Node, UUID, JObj, RecordingName);
+                 <<"stop">> ->
+                     list_to_binary([UUID, <<" stop ">>, RecordingName])
+             end,
+    ecallmgr_fs_command:record_call(Node, UUID, RecArg),
+    {<<"record_call">>, 'noop'}.
 
-one_conference_flag_test() ->
-    JObj = wh_json:from_list([{<<"Mute">>, 'true'}]),
-    ?assertEqual(<<"+flags{mute}">>, get_conference_flags(JObj)).
+-spec set_record_call_vars(atom(), ne_binary(), wh_json:object()) -> 'ok'.
+set_record_call_vars(Node, UUID, JObj) ->
+    Routines = [fun maybe_waste_resources/1
+                ,fun(Acc) -> maybe_get_terminators(Acc, JObj) end
+               ],
 
-no_conference_flags_test() ->
-    JObj = wh_json:new(),
-    ?assertEqual(<<>>, get_conference_flags(JObj)).
+    Vars = lists:foldl(fun(F, V) -> F(V) end
+                       ,[{<<"RECORD_APPEND">>, <<"true">>}
+                         ,{<<"enable_file_write_buffering">>, <<"false">>}
+                         ,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
+                         ,{<<"RECORD_SOFTWARE">>, <<"2600Hz, Inc.'s Kazoo">>}
+                        ]
+                       ,Routines
+                      ),
+    ecallmgr_util:set(Node, UUID, Vars).
 
--endif.
+-spec maybe_waste_resources(wh_proplist()) -> wh_proplist().
+maybe_waste_resources(Acc) ->
+    case ecallmgr_config:is_true(<<"record_waste_resources">>, 'false') of
+        'false' -> Acc;
+        'true' -> [{<<"record_waste_resources">>, <<"true">>} | Acc]
+    end.
+
+-spec maybe_get_terminators(wh_proplist(), wh_json:object()) -> wh_proplist().
+maybe_get_terminators(Acc, JObj) ->
+    case get_terminators(JObj) of
+        'undefined' -> Acc;
+        Terminators -> [Terminators|Acc]
+    end.
+
+-spec should_record_stereo(wh_json:object()) -> ne_binary().
+should_record_stereo(JObj) ->
+    case wh_json:is_true(<<"Channels-As-Stereo">>, JObj, 'true') of
+        'true'  -> <<"true">>;
+        'false' -> <<"false">>
+    end.
+
+-spec start_record_call_args(atom(), ne_binary(), wh_json:object(), ne_binary()) -> ne_binary().
+start_record_call_args(Node, UUID, JObj, RecordingName) ->
+    FollowTransfer = wh_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
+    RecordMinSec = wh_json:get_binary_value(<<"Record-Min-Sec">>, JObj),
+    SampleRate = get_sample_rate(JObj),
+
+    _ = ecallmgr_util:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
+                                       ,{<<"recording_follow_attxfer">>, FollowTransfer}
+                                       ,{<<"Record-Min-Sec">>, RecordMinSec}
+                                       ,{<<"record_sample_rate">>, wh_util:to_binary(SampleRate)}
+                                      ]),
+    _ = ecallmgr_util:export(
+          Node
+          ,UUID
+          ,[{<<"Insert-At">>, wh_json:get_value(<<"Insert-At">>, JObj)}
+            ,{<<"Time-Limit">>, wh_json:get_value(<<"Time-Limit">>, JObj)}
+            ,{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+            ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"Media-Transfer-Method">>, JObj)}
+            ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)}
+            ,{<<"Additional-Headers">>, wh_json:get_value(<<"Additional-Headers">>, JObj)}
+           ]),
+
+    list_to_binary([UUID, <<" start ">>
+                    ,RecordingName, <<" ">>
+                    ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
+                   ]).
+
+-spec get_sample_rate(wh_json:object()) -> pos_integer().
+get_sample_rate(JObj) ->
+    case wh_json:get_integer_value(<<"Record-Sample-Rate">>, JObj) of
+        'undefined' -> ?DEFAULT_SAMPLE_RATE;
+        SampleRate -> SampleRate
+    end.
+
+-spec tones_app(wh_json:objects()) -> {ne_binary(), iodata()}.
+tones_app(Tones) ->
+    FSTones = [tone_to_fs_tone(Tone) || Tone <- Tones],
+    Arg = "tone_stream://" ++ string:join(FSTones, ";"),
+    {<<"playback">>, Arg}.
+
+-spec tone_to_fs_tone(wh_json:object()) -> string().
+tone_to_fs_tone(Tone) ->
+    Vol = tone_volume(Tone),
+    Repeat = tone_repeat(Tone),
+    Freqs = tone_frequencies(Tone),
+
+    On = tone_duration_on(Tone),
+    Off = tone_duration_off(Tone),
+
+    wh_util:to_list(
+      list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"])
+     ).
+
+-spec tone_volume(wh_json:object()) -> binary().
+tone_volume(Tone) ->
+    case wh_json:get_value(<<"Volume">>, Tone) of
+        'undefined' -> <<>>;
+        %% need to map V (0-100) to FS values
+        V -> list_to_binary(["v=", wh_util:to_list(V), ";"])
+    end.
+
+-spec tone_repeat(wh_json:object()) -> binary().
+tone_repeat(Tone) ->
+    case wh_json:get_value(<<"Repeat">>, Tone) of
+        'undefined' -> <<>>;
+        R -> list_to_binary(["l=", wh_util:to_list(R), ";"])
+    end.
+
+-spec tone_frequencies(wh_json:object()) -> ne_binary().
+tone_frequencies(Tone) ->
+    wh_util:join_binary(
+      [wh_util:to_binary(V)
+       || V <- wh_json:get_value(<<"Frequencies">>, Tone, [])
+      ]
+      ,<<",">>
+     ).
+
+-spec tone_duration_on(wh_json:object()) -> ne_binary().
+tone_duration_on(Tone) ->
+    wh_json:get_binary_value(<<"Duration-ON">>, Tone).
+
+-spec tone_duration_off(wh_json:object()) -> ne_binary().
+tone_duration_off(Tone) ->
+    wh_json:get_binary_value(<<"Duration-OFF">>, Tone).

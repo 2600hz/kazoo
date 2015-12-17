@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, VoIP INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -18,7 +18,6 @@
 -export([should_lookup_cnam/0]).
 
 -include("../wnm.hrl").
-
 
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(WNM_OTHER_CONFIG_CAT, <<"number_manager.other">>).
@@ -75,7 +74,9 @@ check_numbers(Numbers, _Props) ->
             end
     end.
 
--spec format_check_numbers(wh_json:obect()) -> {'error', any()} | {'ok', any()}.
+-spec format_check_numbers(wh_json:object()) ->
+                                  {'error', _} |
+                                  {'ok', _}.
 format_check_numbers(Body) ->
     case wh_json:get_value(<<"status">>, Body) of
         <<"success">> ->

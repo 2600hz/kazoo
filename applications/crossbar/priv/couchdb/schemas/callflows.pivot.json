@@ -1,52 +1,52 @@
 {
-  "_id": "callflows.pivot",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "description": "Validator for the Pivot callflow element",
-  "properties": {
-    "voice_url": {
-      "type": "string",
-      "required": true,
-      "name": "Script URL",
-      "description": "What URL to request the initial Pivot callflow"
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.pivot",
+    "description": "Validator for the Pivot callflow element",
+    "properties": {
+        "cdr_url": {
+            "description": "Optional URL to send the CDR to at the end of the call",
+            "name": "CDR URL",
+            "required": false,
+            "type": "string"
+        },
+        "debug": {
+            "default": false,
+            "description": "Store debug logs related to processing this Pivot call",
+            "name": "Debug?",
+            "required": false,
+            "type": "boolean"
+        },
+        "method": {
+            "default": "get",
+            "description": "What HTTP verb to send the request(s) with",
+            "enum": [
+                "get",
+                "post",
+                "GET",
+                "POST"
+            ],
+            "name": "Method",
+            "required": false,
+            "type": "string"
+        },
+        "req_format": {
+            "default": "kazoo",
+            "description": "What format of Pivot will the your server respond with",
+            "enum": [
+                "kazoo",
+                "twiml"
+            ],
+            "name": "Payload Type",
+            "required": false,
+            "type": "string"
+        },
+        "voice_url": {
+            "description": "What URL to request the initial Pivot callflow",
+            "name": "Script URL",
+            "required": true,
+            "type": "string"
+        }
     },
-    "cdr_url": {
-      "type": "string",
-      "required": false,
-      "name": "CDR URL",
-      "description": "Optional URL to send the CDR to at the end of the call"
-    },
-    "req_format": {
-      "type": "string",
-      "required": false,
-      "name": "Payload Type",
-      "description": "What format of Pivot will the your server respond with",
-      "enum": [
-        "kazoo",
-        "twiml"
-      ],
-      "default": "kazoo"
-    },
-    "method": {
-      "type": "string",
-      "required": false,
-      "name": "Method",
-      "description": "What HTTP verb to send the request(s) with",
-      "enum": [
-        "get",
-        "post",
-        "GET",
-        "POST"
-      ],
-      "default": "get"
-    },
-    "debug": {
-      "type": "boolean",
-      "required": false,
-      "name": "Debug?",
-      "description": "Store debug logs related to processing this Pivot call",
-      "default": false
-    }
-  }
+    "required": true,
+    "type": "object"
 }

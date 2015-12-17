@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,9 +12,10 @@
 
 -export([emit/3]).
 
--spec emit(pids() | pid(), api_binary(), wh_json:object()) -> 'ok'.
+-spec emit([pid()] | pid(), api_binary(), wh_json:object()) -> 'ok'.
 emit(SessionPid, Event, Data) when is_pid(SessionPid) ->
     lager:debug("sending event data: ~s", [Event]),
     socketio_session:send_event(SessionPid, Event, Data);
-emit([_|_]=SessionPids, Event, Data) ->
-    [socketio_session:send_event(SessionPid, Event, Data) || SessionPid <- SessionPids].
+emit(SessionPids, Event, Data) when is_list(SessionPids) ->
+    _ = [socketio_session:send_event(SessionPid, Event, Data) || SessionPid <- SessionPids],
+    'ok'.

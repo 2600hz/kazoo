@@ -24,7 +24,6 @@
         ]).
 
 -include("blackhole.hrl").
--include_lib("rabbitmq_server/include/rabbit_framing.hrl").
 
 -record(state, {}).
 -type state() :: #state{}.
@@ -52,15 +51,15 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link({'local', ?MODULE}
-                           ,?MODULE
-                           ,[{'bindings', ?BINDINGS}
-                            ,{'responders', ?RESPONDERS}
-                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                            ], []).
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                             ], []).
 
--spec handle_amqp_event(wh_json:object(), wh_proplist(), #'basic.deliver'{} | ne_binary()) -> any().
+-spec handle_amqp_event(wh_json:object(), wh_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
     handle_amqp_event(EventJObj, Props, RoutingKey);
 handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
@@ -148,10 +147,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()), state()) -> {'noreply', state()};
-                 (_, state()) -> {'noreply', state()}.
+-spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()), state()) ->
+                         {'noreply', state()}.
 handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
-    spawn(?MODULE, 'handle_amqp_event', [JObj, [], call_routing(EventType, JObj)]),
+    _ = wh_util:spawn(fun handle_amqp_event/3, [JObj, [], call_routing(EventType, JObj)]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.

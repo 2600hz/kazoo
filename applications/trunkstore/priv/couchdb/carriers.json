@@ -1,23 +1,38 @@
-{ "_id":"carriers"
-  ,"carrier_name":{
-     "name":"Carrier Name"
-     ,"enabled":"1"
-     ,"flags":["CallerID","CNAM","Porting","US48","Alaska","Hawaii","TollFree"]
-     ,"weight_cost":100
-     ,"weight_location":1
-     ,"routes":["^\\+{0,1}1{0,1}(\\d{10})$"]
-     ,"gateways":[{
-                   "server":"carrier.ip.com"
-		   ,"realm":"carrier.ip.com"
-		   ,"username":"your_username"
-		   ,"password":"your_password"
-		   ,"prefix":""
-		   ,"suffix":""
-                   ,"media_handling": "bypass"
-                   ,"progress-timer":"6"
-		   ,"codecs":["G729","G711"]
-		   ,"enabled":"1"
-		  }
-		 ]
-  }
+{
+    "_id": "carriers",
+    "carrier_name": {
+        "enabled": "1",
+        "flags": [
+            "CallerID",
+            "CNAM",
+            "Porting",
+            "US48",
+            "Alaska",
+            "Hawaii",
+            "TollFree"
+        ],
+        "gateways": [
+            {
+                "codecs": [
+                    "G729",
+                    "G711"
+                ],
+                "enabled": "1",
+                "media_handling": "bypass",
+                "password": "your_password",
+                "prefix": "",
+                "progress-timer": "6",
+                "realm": "carrier.ip.com",
+                "server": "carrier.ip.com",
+                "suffix": "",
+                "username": "your_username"
+            }
+        ],
+        "name": "Carrier Name",
+        "routes": [
+            "^\\+{0,1}1{0,1}(\\d{10})$"
+        ],
+        "weight_cost": 100,
+        "weight_location": 1
+    }
 }

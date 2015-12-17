@@ -30,7 +30,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
+-spec start(any(), any()) ->
     {'ok', pid()} |
     {'error', startlink_err()}.
 start(_, _) -> camper:start_link().

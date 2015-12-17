@@ -32,7 +32,7 @@ start_link() ->
 %% Starts the application
 %% @end
 %%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', _}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     application:start(?MODULE).
 
@@ -43,7 +43,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 
+stop() ->
     exit(whereis('pivot_sup'), 'shutdown'),
     'ok'.
 
@@ -73,7 +73,7 @@ start_deps() ->
 declare_exchanges() ->
     _ = wapi_pivot:declare_exchanges(),
     _ = wapi_route:declare_exchanges(),
-    _ = wapi_call:declare_exchanges(),    
+    _ = wapi_call:declare_exchanges(),
     _ = wapi_dialplan:declare_exchanges(),
-    _ = wapi_notifications:declare_exchanges(), 
+    _ = wapi_notifications:declare_exchanges(),
     wapi_self:declare_exchanges().

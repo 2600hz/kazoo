@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2014-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -32,6 +32,7 @@
         ]).
 
 -include("whistle_media.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -record(state, {}).
 
@@ -83,7 +84,10 @@ prompt_path(AccountId, PromptId, L) ->
     case wh_json:get_first_defined(language_keys(Language), Langs) of
         'undefined' ->
             lager:debug("failed to find prompt ~s in ~p", [PromptId, language_keys(Language)]),
-            default_prompt_path(PromptId, Language);
+            case wh_services:find_reseller_id(AccountId) of
+                AccountId -> default_prompt_path(PromptId, Language);
+                ResellerId -> prompt_path(ResellerId, PromptId, L)
+            end;
         Path -> Path
     end.
 
@@ -100,7 +104,7 @@ handle_media_doc(JObj, _Props) ->
     handle_media_doc_change(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
 
 -spec handle_media_doc_change(wh_json:object(), ne_binary()) -> 'ok'.
-handle_media_doc_change(JObj, <<"doc_deleted">>) ->
+handle_media_doc_change(JObj, ?DOC_DELETED) ->
     MediaId = wh_json:get_value(<<"ID">>, JObj),
     Database = wh_json:get_value(<<"Database">>, JObj),
     gen_listener:cast(?MODULE, {'rm_mapping'
@@ -218,7 +222,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("recv control of ~p from ~p", [_TableId, _From]),
-    _ = spawn(fun init_map/0),
+    _ = wh_util:spawn(fun init_map/0),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -279,10 +283,8 @@ init_map(Db, View, StartKey, Limit, SendFun) ->
               ],
     case couch_mgr:get_results(Db, View, Options) of
         {'ok', []} -> lager:debug("no more results in ~s:~s", [Db, View]);
-        {'ok', ViewResults} ->
-            init_map(Db, View, StartKey, Limit, SendFun, ViewResults);
-        {'error', _E} ->
-            lager:debug("error loading ~s in ~s: ~p", [View, Db, _E])
+        {'ok', ViewResults} -> init_map(Db, View, StartKey, Limit, SendFun, ViewResults);
+        {'error', _E} -> lager:debug("error loading ~s in ~s: ~p", [View, Db, _E])
     end.
 
 init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
@@ -313,12 +315,20 @@ maybe_add_prompt(AccountId, JObj) ->
     maybe_add_prompt(AccountId, JObj, wh_json:get_value(<<"prompt_id">>, JObj)).
 
 maybe_add_prompt(?WH_MEDIA_DB, JObj, 'undefined') ->
-    lager:warning("adding old system prompt ~s", [wh_json:get_value(<<"_id">>, JObj)]),
-    maybe_add_prompt(?WH_MEDIA_DB, JObj, wh_json:get_value(<<"_id">>, JObj));
+    Id = wh_doc:id(JObj),
+    MapId = mapping_id(?WH_MEDIA_DB, Id),
+
+    case ets:lookup(table_id(), MapId) of
+        [] ->
+            lager:warning("adding old system prompt ~s", [Id]),
+            maybe_add_prompt(?WH_MEDIA_DB, JObj, Id);
+        [#media_map{languages=_Ls}] ->
+            lager:debug("old prompt ~s being ignored, has languages ~p", [Id, _Ls])
+    end;
 maybe_add_prompt(_AccountId, _JObj, 'undefined') ->
-    lager:debug("no prompt id, ignoring ~s for ~s", [wh_json:get_value(<<"_id">>, _JObj), _AccountId]);
+    lager:debug("no prompt id, ignoring ~s for ~s", [wh_doc:id(_JObj), _AccountId]);
 maybe_add_prompt(AccountId, JObj, PromptId) ->
-    lager:debug("add prompt ~s to ~s", [PromptId, AccountId]),
+    lager:debug("add prompt ~s to ~s (~s)", [PromptId, AccountId, wh_doc:id(JObj)]),
     Lang = wh_util:to_lower_binary(
              wh_json:get_value(<<"language">>, JObj, wh_media_util:prompt_language(AccountId))
             ),
@@ -331,8 +341,8 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
                   account_id=AccountId
                   ,prompt_id=PromptId
                   ,languages=wh_json:set_value(Lang
-                                               ,wh_media_util:prompt_path(wh_json:get_value(<<"pvt_account_db">>, JObj)
-                                                                          ,wh_json:get_value(<<"_id">>, JObj)
+                                               ,wh_media_util:prompt_path(wh_doc:account_id(JObj)
+                                                                          ,wh_doc:id(JObj)
                                                                          )
                                                ,Langs
                                               )

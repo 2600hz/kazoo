@@ -14,13 +14,23 @@
 
 -include("whistle_apps.hrl").
 
-start_link() -> spawn(?MODULE, 'init', []), 'ignore'.
+start_link() ->
+    _ = wh_util:spawn(fun init/0),
+    'ignore'.
 
 init() ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     case wh_config:get_atom('whistle_apps', 'cookie') of
         [] ->
-            lager:warning("failed to set whistle_apps cookie");
+            lager:warning("failed to set whistle_apps cookie trying node ~s", [node()]),
+            [Name, _Host] = binary:split(wh_util:to_binary(node()), <<"@">>),
+            case wh_config:get_atom(wh_util:to_atom(Name, 'true'), 'cookie') of
+                [] ->
+                    lager:warning("failed to set whistle_apps cookie for node ~s", [node()]);
+                [Cookie|_] ->
+                    erlang:set_cookie(erlang:node(), Cookie),
+                    lager:info("setting whistle_apps cookie to ~p", [Cookie])
+            end;
         [Cookie|_] ->
             erlang:set_cookie(erlang:node(), Cookie),
             lager:info("setting whistle_apps cookie to ~p", [Cookie])

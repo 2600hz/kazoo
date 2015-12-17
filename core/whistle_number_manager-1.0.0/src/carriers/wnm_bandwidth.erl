@@ -67,7 +67,7 @@ get_number_data(Number) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', wh_json:object()} |
-                          {'error', term()}.
+                          {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quanity, Opts) ->
     find_numbers(Rest, Quanity, Opts);
 find_numbers(<<"1", Rest/binary>>, Quanity, Opts) ->
@@ -117,10 +117,13 @@ is_number_billable(_Number) -> 'true'.
 -spec acquire_number/1 :: (wnm_number()) -> wnm_number().
 
 acquire_number(#number{dry_run='true'}=Number) -> Number;
-acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}=N) ->
-    Debug = whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, true),
-    case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, true) of
-        false when Debug ->
+acquire_number(#number{auth_by=AuthBy
+                       ,assigned_to=AssignedTo
+                       ,module_data=Data
+                      }=N) ->
+    Debug = whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true'),
+    case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, 'true') of
+        'false' when Debug ->
             lager:debug("allowing sandbox provisioning", []),
             N;
         'false' ->
@@ -174,12 +177,12 @@ disconnect_number(Number) -> Number.
 %% @private
 %% @doc
 %% Make a REST request to Bandwidth.com Numbers API to preform the
-%% given verb (purchase, search, provision, ect).
+%% given verb (purchase, search, provision, etc).
 %% @end
 %%--------------------------------------------------------------------
 -spec make_numbers_request(atom(), wh_proplist()) ->
-                                  {'ok', term()} |
-                                  {'error', term()}.
+                                  {'ok', _} |
+                                  {'error', any()}.
 make_numbers_request(Verb, Props) ->
     lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
     DevKey = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
@@ -194,12 +197,19 @@ make_numbers_request(Verb, Props) ->
                ,{"Content-Type", "text/xml"}
               ],
     HTTPOptions = [{'ssl', [{'verify', 0}]}
-                   ,{'inactivity_timeout', 180000}
-                   ,{'connect_timeout', 180000}
+                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ],
     ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                       ,io_lib:format("Request:~n~s ~s~n~s~n", ['post', ?BW_NUMBER_URL, Body])),
-    case ibrowse:send_req(?BW_NUMBER_URL, Headers, 'post', unicode:characters_to_binary(Body), HTTPOptions, 180000) of
+    case ibrowse:send_req(?BW_NUMBER_URL
+                          ,Headers
+                          ,'post'
+                          ,unicode:characters_to_binary(Body)
+                          ,HTTPOptions
+                          ,180 * ?MILLISECONDS_IN_SECOND
+                         )
+    of
         {'ok', "401", _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n401~n~s~n", [_Response])
@@ -260,7 +270,7 @@ make_numbers_request(Verb, Props) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json(term()) -> wh_json:object().
+-spec number_order_response_to_json(any()) -> wh_json:object().
 number_order_response_to_json([]) ->
     wh_json:new();
 number_order_response_to_json([Xml]) ->
@@ -284,7 +294,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json(term()) -> wh_json:object().
+-spec number_search_response_to_json(any()) -> wh_json:object().
 number_search_response_to_json([]) ->
     wh_json:new();
 number_search_response_to_json([Xml]) ->
@@ -325,9 +335,8 @@ rate_center_to_json(Xml) ->
 %% error text
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response(term()) ->
-                             {'ok', term()} |
-                             {'error', api_binary() | ne_binaries()}.
+-spec verify_response(any()) -> {'ok', any()} |
+                                {'error', api_binary() | ne_binaries()}.
 verify_response(Xml) ->
     case wh_util:get_xml_value("/*/status/text()", Xml) of
         <<"success">> ->

@@ -178,7 +178,7 @@ send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
                ]),
     PubFun(Update).
 
-presence_id(JObj) -> wh_json:get_value(<<"presence_id">>, JObj).
+presence_id(JObj) -> kz_device:presence_id(JObj).
 presence_state(JObj) ->
     format_presence_state(wh_json:get_value(<<"presence_state">>, JObj)).
 

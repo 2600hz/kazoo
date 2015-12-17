@@ -73,28 +73,26 @@ eavesdrop_a_channel(Channels, Call) ->
 
     lager:debug("looking for channels on my node ~s that aren't me", [MyMediaServer]),
 
-    {_, _, Chans} = lists:foldl(fun chan_sort/2, {MyUUID, MyMediaServer, {[], []}}, Channels),
+    {_, _, SortedChannels} = lists:foldl(fun channels_sort/2, {MyUUID, MyMediaServer, {[], []}}, Channels),
 
-    case Chans of
+    case SortedChannels of
         {[], []} ->
             lager:debug("no channels available to eavesdrop"),
             no_channels(Call);
-        {[], [RemoteChan | _Remote]} ->
-            lager:info("no calls on my media server, trying ~s", [wh_json:get_value(<<"uuid">>, RemoteChan)]),
-
+        {[], [RemoteChannel | _Remote]} ->
+            lager:info("no calls on my media server, trying redirect to ~s", [wh_json:get_value(<<"node">>, RemoteChannel)]),
             Contact = erlang:iolist_to_binary(["sip:", whapps_call:request(Call)]),
-            whapps_call_command:redirect(Contact, wh_json:get_value(<<"node">>, RemoteChan), Call),
-            eavesdrop_call(RemoteChan, Call);
-        {[LocalChan | _Cs], _} ->
-            lager:info("found a call (~s) on my media server", [wh_json:get_value(<<"uuid">>, LocalChan)]),
-            eavesdrop_call(LocalChan, Call)
+            whapps_call_command:redirect_to_node(Contact, wh_json:get_value(<<"node">>, RemoteChannel), Call);
+        {[LocalChannel | _Cs], _} ->
+            lager:info("found a call (~s) on my media server", [wh_json:get_value(<<"uuid">>, LocalChannel)]),
+            eavesdrop_call(LocalChannel, Call)
     end.
 
--type chans() :: {wh_json:objects(), wh_json:objects()}.
--type chan_sort_acc() :: {ne_binary(), ne_binary(), chans()}.
+-type channels() :: {wh_json:objects(), wh_json:objects()}.
+-type channel_sort_acc() :: {ne_binary(), ne_binary(), channels()}.
 
--spec chan_sort(wh_json:object(), chan_sort_acc()) -> chan_sort_acc().
-chan_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
+-spec channels_sort(wh_json:object(), channel_sort_acc()) -> channel_sort_acc().
+channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [wh_json:get_value(<<"uuid">>, Channel)
                                                         ,wh_json:is_true(<<"answered">>, Channel)
                                                         ,wh_json:get_value(<<"node">>, Channel)
@@ -179,7 +177,7 @@ sip_user_of_endpoint(EndpointId, Call) ->
     case cf_endpoint:get(EndpointId, Call) of
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
-            wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
+            kz_device:sip_username(Endpoint)
     end.
 
 -spec no_users(whapps_call:call()) -> any().

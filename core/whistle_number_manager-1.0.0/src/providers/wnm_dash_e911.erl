@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle e911 provisioning
@@ -12,7 +12,6 @@
 
 -export([save/1]).
 -export([delete/1]).
--export([is_valid_location/1]).
 
 -include("../wnm.hrl").
 
@@ -21,10 +20,17 @@
 -define(DASH_XML_PROLOG, "<?xml version=\"1.0\"?>").
 -define(DASH_AUTH_USERNAME, whapps_config:get_string(?WNM_DASH_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(DASH_AUTH_PASSWORD, whapps_config:get_string(?WNM_DASH_CONFIG_CAT, <<"auth_password">>, <<>>)).
--define(DASH_EMERG_URL, whapps_config:get_string(?WNM_DASH_CONFIG_CAT
-                                                 ,<<"emergency_provisioning_url">>
-                                                 ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>)).
+-define(DASH_EMERG_URL
+        ,whapps_config:get_string(?WNM_DASH_CONFIG_CAT
+                                  ,<<"emergency_provisioning_url">>
+                                  ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>
+                                 )
+       ).
+
 -define(DASH_DEBUG, whapps_config:get_is_true(?WNM_DASH_CONFIG_CAT, <<"debug">>, 'false')).
+-define(DASH_DEBUG(Fmt, Args), ?DASH_DEBUG
+        andalso file:write_file("/tmp/dash_e911.xml", io_lib:format(Fmt, Args))
+       ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,11 +40,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save(wnm_number()) -> wnm_number().
-save(#number{state = <<"port_in">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_PORT_IN} = Number) ->
     maybe_update_dash_e911(Number);
-save(#number{state = <<"reserved">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_RESERVED} = Number) ->
     maybe_update_dash_e911(Number);
-save(#number{state = <<"in_service">>} = Number) ->
+save(#number{state = ?NUMBER_STATE_IN_SERVICE} = Number) ->
     maybe_update_dash_e911(Number);
 save(Number) -> delete(Number).
 
@@ -55,13 +61,13 @@ delete(#number{features=Features
                ,current_number_doc=CurrentDoc
                ,number_doc=Doc
               }=Number) ->
-    case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
+    case wh_json:get_ne_value(?DASH_KEY, CurrentDoc) of
         'undefined' -> Number;
         _Else ->
-            lager:debug("removing e911 information"),
+            lager:debug("removing e911 information from ~s", [Num]),
             _ = remove_number(Num),
-            Number#number{features=sets:del_element(<<"dash_e911">>, Features)
-                          ,number_doc=wh_json:delete_key(<<"dash_e911">>, Doc)
+            Number#number{features=sets:del_element(?DASH_KEY, Features)
+                          ,number_doc=wh_json:delete_key(?DASH_KEY, Doc)
                          }
     end.
 
@@ -71,28 +77,73 @@ delete(#number{features=Features
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_dash_e911(wnm_number()) -> wnm_number().
+-spec maybe_update_dash_e911(wnm_number()) ->
+                        wnm_number()
+                        | {'ok', wh_json:object()}
+                        | {'error', _}
+                        | {'invalid', _}
+                        | {'multiple_choice', wh_json:object()}.
 maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
                                ,number_doc=JObj
                                ,features=Features
                                ,number=Number
                               }=N) ->
-    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
-    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    CurrentE911 = wh_json:get_ne_value(?DASH_KEY, CurrentJObj),
+    E911 = wh_json:get_ne_value(?DASH_KEY, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
-            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
-        'false' when NotChanged  -> N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+            N#number{features=sets:del_element(?DASH_KEY, Features)};
+        'false' when NotChanged  ->
+            N#number{features=sets:add_element(?DASH_KEY, Features)};
         'false' ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
-            N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
-            case update_e911(Number, E911, JObj) of
-                {'error', _}=E -> E;
-                {'ok', J} -> N1#number{number_doc=J}
+            N1 = wnm_number:activate_feature(?DASH_KEY, N),
+            case maybe_update_dash_e911(Number, E911, JObj) of
+                {'ok', J} -> N1#number{number_doc=J};
+                Else -> Else
             end
+    end.
+
+-spec maybe_update_dash_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
+                        {'ok', wh_json:object()}
+                        | {'error', _}
+                        | {'invalid', _}
+                        | {'multiple_choice', wh_json:object()}.
+maybe_update_dash_e911(Number, Address, JObj) when is_binary(Number) ->
+    Location = json_address_to_xml_location(Address),
+    case is_valid_location(Location) of
+        {'error', _R}=Error->
+            lager:error("error while checking location ~p", [_R]),
+            Error;
+        {'invalid', Reason}->
+            lager:error("error while checking location ~p", [Reason]),
+            Error =
+                wh_json:from_list(
+                  [{<<"cause">>, Address}
+                   ,{<<"message">>, Reason}
+                  ]),
+            {'invalid', Error};
+        {'provisioned', _} ->
+            lager:debug("location seems already provisioned"),
+            update_e911(Number, Address, JObj);
+        {'geocoded', [_Loc]} ->
+            lager:debug("location seems geocoded to only one address"),
+            update_e911(Number, Address, JObj);
+        {'geocoded', [_|_]=Addresses} ->
+            lager:warning("location could correspond to multiple addresses"),
+            Update =
+                wh_json:from_list(
+                  [{<<"cause">>, Address}
+                   ,{<<"details">>, Addresses}
+                   ,{<<"message">>, <<"more than one address found">>}
+                  ]),
+            {'multiple_choice', Update};
+        {'geocoded', _Loc} ->
+            lager:debug("location seems geocoded to only one address"),
+            update_e911(Number, Address, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -103,34 +154,38 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
 %%--------------------------------------------------------------------
 -spec update_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
                          {'ok', wh_json:object()} |
-                         {'error', _}.
+                         {'error', any()}.
 update_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Number, Location, CallerName) of
-        {'error', R}=E ->
-            lager:debug("error provisioning dash e911 address: ~p", [R]),
+        {'error', _R}=E ->
+            lager:debug("error provisioning dash e911 address: ~p", [_R]),
             E;
         {'provisioned', E911} ->
             lager:debug("provisioned dash e911 address"),
-            {'ok', wh_json:set_value(<<"dash_e911">>, E911, JObj)};
+            {'ok', wh_json:set_value(?DASH_KEY, E911, JObj)};
         {'geocoded', E911} ->
-            lager:debug("added location to dash e911, attempting to provision new location"),
-            case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
-                'undefined' ->
-                    lager:debug("provisioning attempt moved location to status: undefined"),
-                    {'ok', wh_json:set_value(<<"dash_e911">>, E911, JObj)};
-                Status ->
-                    lager:debug("provisioning attempt moved location to status: ~s", [Status]),
-                    {'ok', wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
-            end
+            provision_geocoded(JObj, E911)
+    end.
+
+-spec provision_geocoded(wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()}.
+provision_geocoded(JObj, E911) ->
+    lager:debug("added location to dash e911, attempting to provision new location"),
+    case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
+        'undefined' ->
+            lager:debug("provisioning attempt moved location to status: undefined"),
+            {'ok', wh_json:set_value(?DASH_KEY, E911, JObj)};
+        Status ->
+            lager:debug("provisioning attempt moved location to status: ~s", [Status]),
+            {'ok', wh_json:set_value(?DASH_KEY, wh_json:set_value(<<"status">>, Status, E911), JObj)}
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Make a REST request to dash e911 emergency provisiong API to preform
-%% the given verb (validatelocation, addlocation, ect).
+%% the given verb (validatelocation, addlocation, etc).
 %% @end
 %%--------------------------------------------------------------------
 -type emergency_provisioning_error() :: 'authentication' |
@@ -146,57 +201,49 @@ emergency_provisioning_request(Verb, Props) ->
     URL = list_to_binary([?DASH_EMERG_URL, "/", wh_util:to_lower_binary(Verb)]),
     Body = xmerl:export_simple([{Verb, Props}]
                                ,'xmerl_xml'
-                               ,[{'prolog', ?DASH_XML_PROLOG}]),
+                               ,[{'prolog', ?DASH_XML_PROLOG}]
+                              ),
     Headers = [{"Accept", "*/*"}
                ,{"User-Agent", ?WNM_USER_AGENT}
                ,{"Content-Type", "text/xml"}
               ],
     HTTPOptions = [{'ssl',[{'verify',0}]}
-                   ,{'inactivity_timeout', 180000}
-                   ,{'connect_timeout', 180000}
+                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
-    ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                        ,io_lib:format("Request:~n~s ~s~n~s~n", ['post', URL, Body])),
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'post'
-                          ,unicode:characters_to_binary(Body), HTTPOptions, 180000
+    ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
+    case ibrowse:send_req(wh_util:to_list(URL)
+                          ,Headers
+                          ,'post'
+                          ,unicode:characters_to_binary(Body)
+                          ,HTTPOptions
+                          ,180 * ?MILLISECONDS_IN_SECOND
                          )
     of
         {'ok', "401", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n401~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),
             {'error', 'authentication'};
         {'ok', "403", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n403~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n403~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 403 (unauthorized)"),
             {'error', 'authorization'};
         {'ok', "404", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n404~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n404~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 404 (not found)"),
             {'error', 'not_found'};
         {'ok', "500", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n500~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n500~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 500 (server error)"),
             {'error', 'server_error'};
         {'ok', "503", _, _Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n503~n~s~n", [_Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n503~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 503"),
             {'error', 'server_error'};
         {'ok', Code, _, Response} ->
-            ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                                ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
-                                                ,['append']),
+            ?DASH_DEBUG("Response:~n~p~n~s~n", [Code, Response]),
             lager:debug("received response from dash e911"),
             try xmerl_scan:string(Response) of
                 {Xml, _} -> {'ok', Xml}
@@ -216,9 +263,10 @@ emergency_provisioning_request(Verb, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_location(term()) ->
-                               {'geocoded', wh_json:object()} |
-                               {'provisioned', wh_json:object()} |
+-spec is_valid_location(any()) ->
+                               {'geocoded', wh_json:object() | wh_json:objects()} |
+                               {'provisioned', wh_json:object() | wh_json:objects()} |
+                               {'invalid', binary()} |
                                {'error', binary()}.
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
@@ -230,7 +278,7 @@ is_valid_location(Location) ->
                 <<"PROVISIONED">> ->
                     {'provisioned', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"INVALID">> ->
-                    {'error', wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'invalid', wh_util:get_xml_value("//Location/status/description/text()", Response)};
                 <<"ERROR">> ->
                     {'error', wh_util:get_xml_value("//Location/status/description/text()", Response)};
                 Else ->
@@ -244,14 +292,16 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_location(ne_binary(), term(), ne_binary()) ->
+-spec add_location(ne_binary(), any(), ne_binary()) ->
                           {'geocoded', wh_json:object()} |
                           {'provisioned', wh_json:object()} |
                           {'error', binary()}.
 add_location(Number, Location, CallerName) ->
     Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}
-                      ,{'callername', [wh_util:to_list(CallerName)]}]}
-             |Location
+                      ,{'callername', [wh_util:to_list(CallerName)]}
+                     ]
+             }
+             | Location
             ],
     case emergency_provisioning_request('addLocation', Props) of
         {'error', Reason} -> {'error', wh_util:to_binary(Reason)};
@@ -299,7 +349,10 @@ remove_number(Number) ->
         {'error', 'server_error'} ->
             lager:debug("removed number from dash e911"),
             <<"REMOVED">>;
-        Response ->
+        {'error', _E} ->
+            lager:debug("removed number from dash e911: ~p", [_E]),
+            <<"REMOVED">>;
+        {'ok', Response} ->
             case wh_util:get_xml_value("//URIStatus/code/text()", Response) of
                 <<"REMOVED">> = R ->
                     lager:debug("removed number from dash e911"),
@@ -333,7 +386,7 @@ json_address_to_xml_location(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_xml_to_json_address(term()) -> wh_json:object().
+-spec location_xml_to_json_address(any()) -> wh_json:object() | wh_json:objects().
 location_xml_to_json_address([]) ->
     wh_json:new();
 location_xml_to_json_address([Xml]) ->
@@ -366,7 +419,7 @@ location_xml_to_json_address(Xml) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec legacy_data_xml_to_json(term()) -> wh_json:object().
+-spec legacy_data_xml_to_json(any()) -> wh_json:object().
 legacy_data_xml_to_json([]) ->
     wh_json:new();
 legacy_data_xml_to_json([Xml]) ->

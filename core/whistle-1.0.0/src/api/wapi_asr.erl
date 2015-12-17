@@ -21,6 +21,8 @@
 
 -include_lib("whistle/include/wh_api.hrl").
 
+-define(KEY_ASR_REQ, <<"asr.req">>).
+
 %% ASR Request - when Speech to text is desired
 -define(ASR_REQ_HEADERS, [<<"ASR-Endpoint">>, <<"ASR-Account-ID">>, <<"ASR-Account-Password">>, <<"Call-ID">>
                               ,<<"Control-Queue">>

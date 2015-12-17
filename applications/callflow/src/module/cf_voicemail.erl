@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
 %%%   "action":"compose"|"check"
@@ -16,48 +16,84 @@
 -module(cf_voicemail).
 
 -include("../callflow.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -export([handle/2]).
+-export([new_message/4]).
 
--define(FOLDER_NEW, <<"new">>).
--define(FOLDER_SAVED, <<"saved">>).
--define(FOLDER_DELETED, <<"deleted">>).
+-define(KEY_MEDIA_ID, <<"media_id">>).
+-define(KEY_VOICEMAIL, <<"voicemail">>).
+-define(KEY_MAX_MESSAGE_COUNT, <<"max_message_count">>).
+-define(KEY_MAX_MESSAGE_LENGTH, <<"max_message_length">>).
+-define(KEY_MIN_MESSAGE_SIZE, <<"min_message_size">>).
+-define(KEY_MAX_BOX_NUMBER_LENGTH, <<"max_box_number_length">>).
+-define(KEY_EXTERNAL_STORAGE, <<"external_storage">>).
+-define(KEY_EXTENSION, <<"extension">>).
+-define(KEY_MAX_PIN_LENGTH, <<"max_pin_length">>).
+-define(KEY_DELETE_AFTER_NOTIFY, <<"delete_after_notify">>).
+-define(KEY_SAVE_AFTER_NOTIFY, <<"save_after_notify">>).
 
 -define(MAILBOX_DEFAULT_SIZE
         ,whapps_config:get_integer(?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"max_message_count">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
                                    ,100
                                   )).
 -define(MAILBOX_DEFAULT_MSG_MAX_LENGTH
         ,whapps_config:get_integer(?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"max_message_length">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_LENGTH]
                                    ,500
                                   )).
 -define(MAILBOX_DEFAULT_MSG_MIN_LENGTH
         ,whapps_config:get_integer(?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"min_message_size">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
                                    ,500
                                   )).
 -define(MAILBOX_DEFAULT_BOX_NUMBER_LENGTH
         ,whapps_config:get_integer(?CF_CONFIG_CAT
-                                   ,[<<"voicemail">>, <<"max_box_number_length">>]
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_BOX_NUMBER_LENGTH]
                                    ,15
                                   )).
-
+-define(MAILBOX_DEFAULT_STORAGE
+        ,whapps_config:get(?CF_CONFIG_CAT
+                           ,[?KEY_VOICEMAIL, ?KEY_EXTERNAL_STORAGE]
+                          )).
 -define(DEFAULT_VM_EXTENSION
-        ,whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
+        ,whapps_config:get(?CF_CONFIG_CAT
+                           ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
+                           ,<<"mp3">>
+                          )
        ).
 
 -define(DEFAULT_MAX_PIN_LENGTH
-        ,whapps_config:get_integer(?CF_CONFIG_CAT, [<<"voicemail">>, <<"max_pin_length">>], 6)
+        ,whapps_config:get_integer(?CF_CONFIG_CAT
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_PIN_LENGTH]
+                                   ,6
+                                  )
+       ).
+
+-define(DEFAULT_SAVE_AFTER_NOTIFY
+        ,whapps_config:get(?CF_CONFIG_CAT
+                           ,[?KEY_VOICEMAIL, ?KEY_SAVE_AFTER_NOTIFY]
+                           ,'false'
+                          )
        ).
 
 -define(DEFAULT_DELETE_AFTER_NOTIFY
         ,whapps_config:get(?CF_CONFIG_CAT
-                           ,[<<"voicemail">>, <<"delete_after_notify">>]
+                           ,[?KEY_VOICEMAIL, ?KEY_DELETE_AFTER_NOTIFY]
                            ,'false'
                           )
        ).
+-define(MAILBOX_RETRY_STORAGE_TIMES(AccountId)
+        ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
+                                          ,[?KEY_VOICEMAIL, <<"storage_retry_times">>]
+                                          ,5
+                                         )).
+-define(MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(AccountId)
+        ,whapps_account_config:get_global(AccountId, ?CF_CONFIG_CAT
+                                          ,[?KEY_VOICEMAIL, <<"storage_retry_local_on_remote_failure">>]
+                                          ,'true'
+                                         )).
 
 -record(keys, {
           %% Compose Voicemail
@@ -79,11 +115,15 @@
           ,rec_unavailable  = <<"1">>
           ,rec_name = <<"2">>
           ,set_pin = <<"3">>
+          ,rec_temporary_unavailable  = <<"4">>
+          ,del_temporary_unavailable  = <<"5">>
           ,return_main = <<"0">>
 
           %% Post playbak
           ,keep = <<"1">>
           ,replay = <<"2">>
+          ,prev = <<"4">>
+          ,next = <<"6">>
           ,delete = <<"7">>
          }).
 -type vm_keys() :: #keys{}.
@@ -97,9 +137,10 @@
           ,skip_instructions = 'false' :: boolean()
           ,skip_greeting = 'false' :: boolean()
           ,unavailable_media_id :: api_binary()
+          ,temporary_unavailable_media_id :: api_binary()
           ,name_media_id :: api_binary()
           ,pin = <<>> :: binary()
-          ,timezone = <<"America/Los_Angeles">> :: binary()
+          ,timezone :: ne_binary()
           ,max_login_attempts = 3 :: non_neg_integer()
           ,require_pin = 'false' :: boolean()
           ,check_if_owner = 'true' :: boolean()
@@ -111,11 +152,12 @@
           ,keys = #keys{} :: vm_keys()
           ,transcribe_voicemail = 'false' :: boolean()
           ,notifications :: wh_json:object()
-          ,delete_after_notify = 'false' :: boolean()
+          ,after_notify_action = 'nothing' :: 'nothing' | 'delete' | 'save'
           ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
           ,play_greeting_intro = 'false' :: boolean()
           ,use_person_not_available = 'false' :: boolean()
           ,not_configurable = 'false' :: boolean()
+          ,account_db :: api_binary()
          }).
 -type mailbox() :: #mailbox{}.
 
@@ -131,18 +173,24 @@ handle(Data, Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
             whapps_call_command:answer(Call),
+            lager:debug("answered the call and composing the voicemail"),
             case compose_voicemail(get_mailbox_profile(Data, Call), Call) of
                 'ok' ->
                     lager:info("compose voicemail complete"),
                     cf_exe:continue(Call);
                 {'branch', Flow} ->
                     lager:info("compose voicemail complete, branch to operator"),
-                    cf_exe:branch(Flow, Call)
+                    cf_exe:branch(Flow, Call);
+                {'error', 'channel_hungup'} ->
+                    lager:info("channel has hungup, stopping the compose"),
+                    cf_exe:stop(Call)
             end;
         <<"check">> ->
             whapps_call_command:answer(Call),
-            check_mailbox(get_mailbox_profile(Data, Call), Call),
-            cf_exe:continue(Call);
+            case check_mailbox(get_mailbox_profile(Data, Call), Call) of
+                'ok' ->  cf_exe:continue(Call);
+                {'error', 'channel_hungup'} -> cf_exe:stop(Call)
+            end;
         _ ->
             cf_exe:continue(Call)
     end.
@@ -153,16 +201,18 @@ handle(Data, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec check_mailbox(mailbox(), whapps_call:call()) -> 'ok'.
--spec check_mailbox(mailbox(), whapps_call:call(), non_neg_integer()) -> 'ok'.
--spec check_mailbox(mailbox(), boolean(), whapps_call:call(), non_neg_integer()) -> 'ok'.
+-spec check_mailbox(mailbox(), whapps_call:call()) ->
+                           'ok' | {'error', 'channel_hungup'}.
+-spec check_mailbox(mailbox(), whapps_call:call(), non_neg_integer()) ->
+                           'ok' | {'error', 'channel_hungup'}.
+-spec check_mailbox(mailbox(), boolean(), whapps_call:call(), non_neg_integer()) ->
+                           'ok' | {'error', 'channel_hungup'}.
 
-check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call) ->
+check_mailbox(Box, Call) ->
     %% Wrapper to initalize the attempt counter
-    check_mailbox(Box, Call, 1),
-    AccountDb = whapps_call:account_db(Call),
-    _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
-    'ok'.
+    Resp = check_mailbox(Box, Call, 1),
+    _ = send_mwi_update(Box, Call),
+    Resp.
 
 check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call, Loop) ->
     IsOwner = is_owner(Call, OwnerId),
@@ -186,7 +236,7 @@ check_mailbox(#mailbox{pin = <<>>}=Box, 'true', Call, _) ->
     %% right to the main menu
     lager:info("caller is the owner of this mailbox, and it has no pin"),
     main_menu(Box, Call);
-check_mailbox(#mailbox{pin = <<>>, exists='true'}, 'false', Call, _) ->
+check_mailbox(#mailbox{pin = <<>>, require_pin='true'}, 'false', Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
     %% then terminate this call.
     lager:info("attempted to sign into a mailbox with no pin"),
@@ -196,7 +246,6 @@ check_mailbox(#mailbox{pin=Pin
                        ,interdigit_timeout=Interdigit
                       }=Box, IsOwner, Call, Loop) ->
     lager:info("requesting pin number to check mailbox"),
-    put('cf_voicemail', ?LINE),
 
     NoopId = whapps_call_command:prompt(<<"vm-enter_pass">>, Call),
 
@@ -233,7 +282,6 @@ find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loo
     'ok';
 find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
     lager:info("requesting mailbox number to check"),
-    put('cf_voicemail', ?LINE),
 
     NoopId = whapps_call_command:prompt(<<"vm-enter_id">>, Call),
 
@@ -258,7 +306,10 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
                     find_mailbox(Box, Call, Loop + 1);
                 {'ok', [JObj]} ->
                     lager:info("get profile of ~p", [JObj]),
-                    ReqBox = get_mailbox_profile(wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]), Call),
+                    ReqBox = get_mailbox_profile(
+                               wh_json:from_list([{<<"id">>, wh_doc:id(JObj)}])
+                               ,Call
+                              ),
                     check_mailbox(ReqBox, Call, Loop);
                 {'ok', _} ->
                     lager:info("mailbox ~s is ambiguous", [Mailbox]),
@@ -277,9 +328,11 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec compose_voicemail(mailbox(), whapps_call:call()) ->
-                               'ok' | {'branch', _}.
+                               'ok' | {'branch', _} |
+                               {'error', 'channel_hungup'}.
 -spec compose_voicemail(mailbox(), boolean(), whapps_call:call()) ->
-                               'ok' | {'branch', _}.
+                               'ok' | {'branch', _} |
+                               {'error', 'channel_hungup'}.
 compose_voicemail(#mailbox{owner_id=OwnerId}=Box, Call) ->
     IsOwner = is_owner(Call, OwnerId),
     compose_voicemail(Box, IsOwner, Call).
@@ -296,21 +349,32 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                            ,message_count=Count
                            ,mailbox_id=VMBId
                            ,mailbox_number=VMBN
-                          }, _, Call) when Count >= MaxCount andalso MaxCount > 0 ->
+                           ,keys=#keys{login=Login}
+                          }=Box, _, Call) when Count >= MaxCount
+                                               andalso MaxCount > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
     Props = [{<<"Account-DB">>, whapps_call:account_db(Call)}
-            ,{<<"Voicemail-Box">>, VMBId}
-            ,{<<"Voicemail-Number">>, VMBN}
-            ,{<<"Max-Message-Count">>, MaxCount}
-            ,{<<"Message-Count">>, Count}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    _ = whapps_util:amqp_pool_request(Props
-                                      ,fun wapi_notifications:publish_voicemail_full/1
-                                      ,fun wapi_notifications:voicemail_full_v/1
-                                     ),
-    _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
-    'ok';
+             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+             ,{<<"Voicemail-Box">>, VMBId}
+             ,{<<"Voicemail-Number">>, VMBN}
+             ,{<<"Max-Message-Count">>, MaxCount}
+             ,{<<"Message-Count">>, Count}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    _ = wh_amqp_worker:call(Props
+                            ,fun wapi_notifications:publish_voicemail_full/1
+                            ,fun wapi_notifications:voicemail_full_v/1
+                           ),
+    _ = whapps_call_command:prompt(<<"vm-mailbox_full">>, Call),
+    _NoopId = whapps_call_command:noop(Call),
+
+    case whapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 5 * ?MILLISECONDS_IN_MINUTE) of
+        {'dtmf', Login} ->
+            lager:info("caller wishes to login to mailbox"),
+            check_mailbox(Box, Call);
+        _Else ->
+            lager:debug("finished with call")
+    end;
 compose_voicemail(#mailbox{keys=#keys{login=Login
                                       ,operator=Operator
                                      }
@@ -363,7 +427,15 @@ play_greeting_intro(_, _) -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 -spec play_greeting(mailbox(), whapps_call:call()) -> ne_binary() | 'ok'.
-play_greeting(#mailbox{skip_greeting='true'}, _) -> 'ok';
+play_greeting(#mailbox{skip_greeting='true'}, _Call) -> 'ok';
+play_greeting(#mailbox{temporary_unavailable_media_id= <<_/binary>> = MediaId}
+              ,Call
+             ) ->
+    Corrected = wh_media_util:media_path(MediaId, Call),
+    lager:info("mailbox has a temporary greeting which always overrides standard greeting: '~s', corrected to '~s'",
+               [MediaId, Corrected]
+              ),
+    whapps_call_command:play(Corrected, Call);
 play_greeting(#mailbox{use_person_not_available='true'
                        ,unavailable_media_id='undefined'
                       }, Call) ->
@@ -410,20 +482,23 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
     case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
-            case review_recording(AttachmentName, 'true', Box, Call) of
+            IsCallUp = wh_json:get_value(<<"Hangup-Cause">>, Msg) =:= 'undefined',
+            case IsCallUp
+                andalso review_recording(AttachmentName, 'true', Box, Call)
+            of
+                'false' ->
+                    cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call);
                 {'ok', 'record'} ->
                     record_voicemail(tmp_file(), Box, Call);
                 {'ok', _Selection} ->
-                    _ = new_message(AttachmentName, Length, Box, Call),
+                    cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
                     _ = whapps_call_command:prompt(<<"vm-saved">>, Call),
                     _ = whapps_call_command:prompt(<<"vm-thank_you">>, Call),
-                    _ = timer:sleep(8000),
-                    cf_exe:continue(Call);
+                    'ok';
                 {'branch', Flow} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = whapps_call_command:prompt(<<"vm-saved">>, Call),
-                    _ = timer:sleep(8000),
-                    cf_exe:branch(Flow, Call)
+                    {'branch', Flow}
             end;
         {'error', _R} ->
             lager:info("error while attempting to record a new message: ~p", [_R])
@@ -440,12 +515,12 @@ setup_mailbox(Box, Call) ->
     {'ok', _} = whapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
 
     lager:info("prompting caller to set a pin"),
-    _ = change_pin(Box, Call),
+    #mailbox{} = change_pin(Box, Call),
 
     {'ok', _} = whapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
     lager:info("prompting caller to record an unavailable greeting"),
 
-    Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
+    #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
     'ok' = update_doc(<<"is_setup">>, 'true', Box1, Call),
     lager:info("voicemail configuration wizard is complete"),
 
@@ -458,22 +533,29 @@ setup_mailbox(Box, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec main_menu(mailbox(), whapps_call:call()) -> 'ok'.
--spec main_menu(mailbox(), whapps_call:call(), non_neg_integer()) -> 'ok'.
+-spec main_menu(mailbox(), whapps_call:call()) ->
+                       'ok' | {'error', 'channel_hungup'}.
+-spec main_menu(mailbox(), whapps_call:call(), non_neg_integer()) ->
+                       'ok' | {'error', 'channel_hungup'}.
 main_menu(#mailbox{is_setup='false'}=Box, Call) ->
-    main_menu(setup_mailbox(Box, Call), Call, 1);
+    try setup_mailbox(Box, Call) of
+        #mailbox{}=Box1 -> main_menu(Box1, Call, 1)
+    catch
+        'error':{'badmatch',{'error','channel_hungup'}} ->
+            lager:debug("channel has hungup while setting up mailbox"),
+            {'error', 'channel_hungup'};
+        _E:_R ->
+            lager:debug("failed to setup mailbox: ~s: ~p", [_E, _R])
+    end;
 main_menu(Box, Call) -> main_menu(Box, Call, 1).
 
-main_menu(#mailbox{owner_id=OwnerId}, Call, Loop) when Loop > 4 ->
+main_menu(Box, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
     %% is likely a abandonded channel, terminate
-    AccountDb = whapps_call:account_db(Call),
     lager:info("entered main menu with too many invalid entries"),
-    _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
     _ = whapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
-    'ok';
-main_menu(#mailbox{owner_id=OwnerId
-                   ,keys=#keys{hear_new=HearNew
+    send_mwi_update(Box, Call);
+main_menu(#mailbox{keys=#keys{hear_new=HearNew
                                ,hear_saved=HearSaved
                                ,exit=Exit
                               }
@@ -483,17 +565,17 @@ main_menu(#mailbox{owner_id=OwnerId
 
     lager:debug("playing mailbox main menu"),
     _ = whapps_call_command:b_flush(Call),
-    AccountDb = whapps_call:account_db(Call),
 
     Messages = get_messages(Box, Call),
-    New = count_messages(Messages, ?FOLDER_NEW),
-    Saved = count_messages(Messages, ?FOLDER_SAVED),
+    New = count_messages(Messages, ?VM_FOLDER_NEW),
+    Saved = count_messages(Messages, ?VM_FOLDER_SAVED),
 
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
                                              ++ [{'prompt', <<"vm-main_menu_not_configurable">>}]
-                                             ,Call),
-    put('cf_voicemail', ?LINE),
+                                             ,Call
+                                            ),
+
     case whapps_call_command:collect_digits(?KEY_LENGTH
                                             ,whapps_call_command:default_collect_timeout()
                                             ,Interdigit
@@ -503,31 +585,28 @@ main_menu(#mailbox{owner_id=OwnerId
     of
         {'error', _} ->
             lager:info("error during mailbox main menu"),
-            _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
-            'ok';
+            send_mwi_update(Box, Call);
         {'ok', Exit} ->
             lager:info("user choose to exit voicemail menu"),
-            _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
-            'ok';
+            send_mwi_update(Box, Call);
         {'ok', HearNew} ->
-            lager:info("playing all messages in folder: ~s", [?FOLDER_NEW]),
-            Folder = get_folder(Messages, ?FOLDER_NEW),
+            lager:info("playing all messages in folder: ~s", [?VM_FOLDER_NEW]),
+            Folder = get_folder(Messages, ?VM_FOLDER_NEW),
             case play_messages(Folder, New, Box, Call) of
-                'ok' -> 'ok';
+                'ok' -> send_mwi_update(Box, Call);
                 _Else -> main_menu(Box, Call)
             end;
         {'ok', HearSaved} ->
-            lager:info("playing all messages in folder: ~s", [?FOLDER_SAVED]),
-            Folder = get_folder(Messages, ?FOLDER_SAVED),
+            lager:info("playing all messages in folder: ~s", [?VM_FOLDER_SAVED]),
+            Folder = get_folder(Messages, ?VM_FOLDER_SAVED),
             case play_messages(Folder, Saved, Box, Call) of
-                'ok' -> 'ok';
+                'ok' -> send_mwi_update(Box, Call);
                 _Else ->  main_menu(Box, Call)
             end;
         _ ->
             main_menu(Box, Call, Loop + 1)
     end;
-main_menu(#mailbox{owner_id=OwnerId
-                   ,keys=#keys{hear_new=HearNew
+main_menu(#mailbox{keys=#keys{hear_new=HearNew
                                ,hear_saved=HearSaved
                                ,configure=Configure
                                ,exit=Exit
@@ -537,17 +616,16 @@ main_menu(#mailbox{owner_id=OwnerId
                   }=Box, Call, Loop) ->
     lager:debug("playing mailbox main menu"),
     _ = whapps_call_command:b_flush(Call),
-    AccountDb = whapps_call:account_db(Call),
 
     Messages = get_messages(Box, Call),
-    New = count_messages(Messages, ?FOLDER_NEW),
-    Saved = count_messages(Messages, ?FOLDER_SAVED),
+    New = count_messages(Messages, ?VM_FOLDER_NEW),
+    Saved = count_messages(Messages, ?VM_FOLDER_SAVED),
 
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
                                              ++ [{'prompt', <<"vm-main_menu">>}]
                                              ,Call),
-    put('cf_voicemail', ?LINE),
+
     case whapps_call_command:collect_digits(?KEY_LENGTH
                                             ,whapps_call_command:default_collect_timeout()
                                             ,Interdigit
@@ -557,31 +635,32 @@ main_menu(#mailbox{owner_id=OwnerId
     of
         {'error', _} ->
             lager:info("error during mailbox main menu"),
-            _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
-            'ok';
+                send_mwi_update(Box, Call);
         {'ok', Exit} ->
             lager:info("user choose to exit voicemail menu"),
-            _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
-            'ok';
+            send_mwi_update(Box, Call);
         {'ok', HearNew} ->
-            lager:info("playing all messages in folder: ~s", [?FOLDER_NEW]),
-            Folder = get_folder(Messages, ?FOLDER_NEW),
+            lager:info("playing all messages in folder: ~s", [?VM_FOLDER_NEW]),
+            Folder = get_folder(Messages, ?VM_FOLDER_NEW),
             case play_messages(Folder, New, Box, Call) of
-                'ok' -> 'ok';
+                'ok' -> send_mwi_update(Box, Call);
                 _Else -> main_menu(Box, Call)
             end;
         {'ok', HearSaved} ->
-            lager:info("playing all messages in folder: ~s", [?FOLDER_SAVED]),
-            Folder = get_folder(Messages, ?FOLDER_SAVED),
+            lager:info("playing all messages in folder: ~s", [?VM_FOLDER_SAVED]),
+            Folder = get_folder(Messages, ?VM_FOLDER_SAVED),
             case play_messages(Folder, Saved, Box, Call) of
-                'ok' -> 'ok';
+                'ok' -> send_mwi_update(Box, Call);
                 _Else ->  main_menu(Box, Call)
             end;
         {'ok', Configure} ->
             lager:info("caller choose to change their mailbox configuration"),
             case config_menu(Box, Call) of
                 'ok' -> 'ok';
-                Else -> main_menu(Else, Call)
+                {'error', 'channel_hungup'}=E ->
+                    lager:debug("channel has hungup, done trying to setup mailbox"),
+                    E;
+                #mailbox{}=Box1 -> main_menu(Box1, Call)
             end;
         _ ->
             main_menu(Box, Call, Loop + 1)
@@ -598,50 +677,50 @@ message_count_prompts(0, 0) ->
     [{'prompt', <<"vm-no_messages">>}];
 message_count_prompts(1, 0) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_message">>}
     ];
 message_count_prompts(0, 1) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_message">>}
     ];
 message_count_prompts(1, 1) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_message">>}
     ];
 message_count_prompts(New, 0) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', wh_util:to_binary(New), <<"number">>}
+     ,{'say', wh_util:to_binary(New), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_messages">>}
     ];
 message_count_prompts(New, 1) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', wh_util:to_binary(New), <<"number">>}
+     ,{'say', wh_util:to_binary(New), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_message">>}
     ];
 message_count_prompts(0, Saved) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', wh_util:to_binary(Saved), <<"number">>}
+     ,{'say', wh_util:to_binary(Saved), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_messages">>}
     ];
 message_count_prompts(1, Saved) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', <<"1">>}
+     ,{'say', <<"1">>, ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', wh_util:to_binary(Saved), <<"number">>}
+     ,{'say', wh_util:to_binary(Saved), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_messages">>}
     ];
 message_count_prompts(New, Saved) ->
     [{'prompt', <<"vm-you_have">>}
-     ,{'say', wh_util:to_binary(New), <<"number">>}
+     ,{'say', wh_util:to_binary(New), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-new_and">>}
-     ,{'say', wh_util:to_binary(Saved), <<"number">>}
+     ,{'say', wh_util:to_binary(Saved), ?VM_KEY_MESSAGES}
      ,{'prompt', <<"vm-saved_messages">>}
     ].
 
@@ -653,8 +732,13 @@ message_count_prompts(New, Saved) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec play_messages(wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
-                                 'ok' | 'complete'.
-play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
+                           'ok' | 'complete'.
+play_messages(Messages, Count, Box, Call) ->
+    play_messages(Messages, [], Count, Box, Call).
+
+-spec play_messages(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                           'ok' | 'complete'.
+play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
     Message = get_message(H, Call),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = [{'prompt', <<"vm-message_number">>}
@@ -668,27 +752,47 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
         {'ok', 'keep'} ->
             lager:info("caller choose to save the message"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            set_folder(?FOLDER_SAVED, H, Box, Call),
-            play_messages(T, Count, Box, Call);
+            _ = set_folder(?VM_FOLDER_SAVED, H, Box, Call),
+            play_messages(T, [H|PrevMessages], Count, Box, Call);
+        {'ok', 'prev'} ->
+            lager:info("caller choose to listen to previous message"),
+            play_prev_message(Messages, PrevMessages, Count, Box, Call);
+        {'ok', 'next'} ->
+            lager:info("caller choose to listen to next message"),
+            play_next_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'delete'} ->
             lager:info("caller choose to delete the message"),
             _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            set_folder(?FOLDER_DELETED, H, Box, Call),
-            play_messages(T, Count, Box, Call);
+            _ = set_folder(?VM_FOLDER_DELETED, H, Box, Call),
+            play_messages(T, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->
             lager:info("caller choose to return to the main menu"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-            set_folder(?FOLDER_SAVED, H, Box, Call),
+            _ = set_folder(?VM_FOLDER_SAVED, H, Box, Call),
             'complete';
         {'ok', 'replay'} ->
             lager:info("caller choose to replay"),
-            play_messages(Messages, Count, Box, Call);
+            play_messages(Messages, PrevMessages, Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
     end;
-play_messages([], _, _, _) ->
+play_messages([], _, _, _, _) ->
     lager:info("all messages in folder played to caller"),
     'complete'.
+
+-spec play_next_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                               'ok' | 'complete'.
+play_next_message([_] = Messages, PrevMessages, Count, Box, Call) ->
+    play_messages(Messages, PrevMessages, Count, Box, Call);
+play_next_message([H|T], PrevMessages, Count, Box, Call) ->
+    play_messages(T, [H|PrevMessages], Count, Box, Call).
+
+-spec play_prev_message(wh_json:objects(), wh_json:objects(), non_neg_integer(), mailbox(), whapps_call:call()) ->
+                               'ok' | 'complete'.
+play_prev_message(Messages, [] = PrevMessages, Count, Box, Call) ->
+    play_messages(Messages, PrevMessages, Count, Box, Call);
+play_prev_message(Messages, [H|T], Count, Box, Call) ->
+    play_messages([H|Messages], T, Count, Box, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -697,7 +801,7 @@ play_messages([], _, _, _) ->
 %% user provides a valid option
 %% @end
 %%--------------------------------------------------------------------
--type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay'}.
+-type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay' | 'prev' | 'next'}.
 
 -spec message_menu(mailbox(), whapps_call:call()) ->
                           {'error', 'channel_hungup' | 'channel_unbridge' | wh_json:object()} |
@@ -710,13 +814,15 @@ message_menu(Box, Call) ->
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                          ,keep=Keep
                                          ,delete=Delete
+                                         ,prev=Prev
+                                         ,next=Next
                                          ,return_main=ReturnMain
                                         }
                               ,interdigit_timeout=Interdigit
                              }=Box, Call) ->
     lager:info("playing message menu"),
     NoopId = whapps_call_command:audio_macro(Prompt, Call),
-    put('cf_voicemail', ?LINE),
+
     case whapps_call_command:collect_digits(?KEY_LENGTH
                                             ,whapps_call_command:default_collect_timeout()
                                             ,Interdigit
@@ -728,6 +834,8 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
         {'ok', Delete} -> {'ok', 'delete'};
         {'ok', ReturnMain} -> {'ok', 'return'};
         {'ok', Replay} -> {'ok', 'replay'};
+        {'ok', Prev} -> {'ok', 'prev'};
+        {'ok', Next} -> {'ok', 'next'};
         {'error', _}=E -> E;
         _ -> message_menu(Box, Call)
     end.
@@ -739,22 +847,20 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
 %% @end
 %%--------------------------------------------------------------------
 -spec config_menu(mailbox(), whapps_call:call()) ->
-                         'ok' | mailbox().
+                         'ok' | mailbox() |
+                         {'error', 'channel_hungup'}.
 -spec config_menu(mailbox(), whapps_call:call(), pos_integer()) ->
-                         'ok' | mailbox().
+                         'ok' | mailbox() |
+                         {'error', 'channel_hungup'}.
+config_menu(Box, Call) ->
+    config_menu(Box, Call, 1).
 
-config_menu(Box, Call) -> config_menu(Box, Call, 1).
-
-config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
-                                ,rec_name=RecName
-                                ,set_pin=SetPin
-                                ,return_main=ReturnMain
-                               }
-                     ,interdigit_timeout=Interdigit
-                    }=Box, Call, Loop) when Loop < 4 ->
+config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
+            ,Call
+            ,Loop
+           ) when Loop < 4 ->
     lager:info("playing mailbox configuration menu"),
     {'ok', _} = whapps_call_command:b_flush(Call),
-    put('cf_voicemail', ?LINE),
 
     NoopId = whapps_call_command:prompt(<<"vm-settings_menu">>, Call),
 
@@ -765,53 +871,203 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
                                             ,Call
                                            )
     of
-        {'ok', RecUnavailable} ->
-            lager:info("caller choose to record their unavailable greeting"),
-            case record_unavailable_greeting(tmp_file(), Box, Call) of
-                'ok' -> 'ok';
-                Else -> config_menu(Else, Call)
-            end;
-        {'ok', RecName} ->
-            lager:info("caller choose to record their name"),
-            case record_name(tmp_file(), Box, Call) of
-                'ok' -> 'ok';
-                Else -> config_menu(Else, Call)
-            end;
-        {'ok', SetPin} ->
-            lager:info("caller choose to change their pin"),
-            case change_pin(Box, Call) of
-                'ok' -> 'ok';
-                _Else -> config_menu(Box, Call)
-            end;
-        {'ok', ReturnMain} ->
-            lager:info("caller choose to return to the main menu"),
+        {'ok', Selection} ->
+            handle_config_selection(Box, Call, Loop, Selection);
+        {'error', _E} ->
+            lager:info("failed to collect config menu selection: ~p", [_E])
+    end.
+
+-spec handle_config_selection(mailbox(), whapps_call:call(), pos_integer(), binary()) ->
+                                     'ok' | mailbox() |
+                                     {'error', 'channel_hungup'}.
+handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to record their unavailable greeting"),
+    case record_unavailable_greeting(tmp_file(), Box, Call) of
+        'ok' -> 'ok';
+        Else -> config_menu(Else, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{rec_name=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to record their name"),
+    case record_name(tmp_file(), Box, Call) of
+        'ok' -> 'ok';
+        Else -> config_menu(Else, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{set_pin=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to change their pin"),
+    case change_pin(Box, Call) of
+        {'error', 'channel_hungup'}=E ->
+            lager:debug("channel has hungup, done trying to setup mailbox"),
+            E;
+        {'error', _E} ->
+            lager:debug("changing pin failed: ~p", [_E]),
+            config_menu(Box, Call);
+        #mailbox{}=Box1 ->
+            config_menu(Box1, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{rec_temporary_unavailable=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to record their temporary unavailable greeting"),
+    case record_temporary_unavailable_greeting(tmp_file(), Box, Call) of
+        'ok' -> 'ok';
+        Box1 -> config_menu(Box1, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}}=Box
+                        ,Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to delete their temporary unavailable greeting"),
+    case delete_temporary_unavailable_greeting(Box, Call) of
+        'ok' -> 'ok';
+        Box1 -> config_menu(Box1, Call)
+    end;
+handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
+                        ,_Call
+                        ,_Loop
+                        ,Selection
+                       ) ->
+    lager:info("caller choose to return to the main menu"),
+    Box;
+%% Bulk delete -> delete all voicemails
+%% Reset -> delete all voicemails, greetings, name, and reset pin
+handle_config_selection(#mailbox{}=Box
+                        ,Call
+                        ,Loop
+                        ,_Selection
+                       ) ->
+    lager:info("undefined config menu option '~s'", [_Selection]),
+    config_menu(Box, Call, Loop + 1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Recording the temporary greeting to override the common greeting
+%% @end
+%%--------------------------------------------------------------------
+-spec record_temporary_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) ->
+                                                   'ok' | mailbox().
+record_temporary_unavailable_greeting(AttachmentName
+                                      ,#mailbox{temporary_unavailable_media_id='undefined'}=Box
+                                      ,Call
+                                     ) ->
+    lager:info("no temporary greetings was recorded before so new media document should be created"),
+    MediaId = recording_media_doc(<<"temporary unavailable greeting">>, Box, Call),
+    record_temporary_unavailable_greeting(AttachmentName
+                                          ,Box#mailbox{temporary_unavailable_media_id=MediaId}
+                                          ,Call
+                                         );
+record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
+    lager:info("record new temporary greetings use existing media document"),
+    overwrite_temporary_unavailable_greeting(AttachmentName, Box, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Overwrites current media document of the temporary greeting
+%% by a new recorded version.
+%% @end
+%%--------------------------------------------------------------------
+-spec overwrite_temporary_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) ->
+                                                      'ok' | mailbox().
+overwrite_temporary_unavailable_greeting(AttachmentName
+                                         ,#mailbox{temporary_unavailable_media_id=MediaId}=Box
+                                         ,Call
+                                        ) ->
+    lager:info("overwriting temporary unavailable greeting  as ~s", [AttachmentName]),
+    Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
+                              ,{<<"Duration-ON">>, <<"500">>}
+                              ,{<<"Duration-OFF">>, <<"100">>}
+                             ]),
+    _NoopId = whapps_call_command:audio_macro(
+                [{'prompt', <<"vm-record_temp_greeting">>}
+                 ,{'tones', [Tone]}
+                ]
+                ,Call
+               ),
+    _ = whapps_call_command:b_record(AttachmentName, Call),
+    case review_recording(AttachmentName, 'false', Box, Call) of
+        {'ok', 'record'} ->
+            lager:info("selected item: record new temporary greetings"),
+            record_temporary_unavailable_greeting(tmp_file(), Box, Call);
+        {'ok', 'save'} ->
+            lager:info("selected item: store recorded temporary greetings"),
+            _ = store_recording(AttachmentName, MediaId, Call),
+            'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], MediaId, Box, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
-        %% Bulk delete -> delete all voicemails
-        %% Reset -> delete all voicemails, greetings, name, and reset pin
-        {'ok', _} -> config_menu(Box, Call, Loop + 1);
-        _ -> 'ok'
+        {'ok', 'no_selection'} ->
+            lager:info("selected item: no selection"),
+            _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+            'ok';
+        {'branch', _}=B -> B
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% Deletes current temporary greeting.
 %% @end
 %%--------------------------------------------------------------------
+-spec delete_temporary_unavailable_greeting(mailbox(), whapps_call:call()) ->
+                                                   'ok' | mailbox().
+delete_temporary_unavailable_greeting(#mailbox{temporary_unavailable_media_id='undefined'}=_Box, _Call) ->
+    'ok';
+delete_temporary_unavailable_greeting(Box, Call) ->
+    'ok' = update_doc([<<"media">>, <<"temporary_unavailable">>], 'undefined', Box, Call),
+    Box#mailbox{temporary_unavailable_media_id='undefined'}.
+
 -spec record_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) ->
                                          'ok' | mailbox().
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id='undefined'}=Box, Call) ->
     MediaId = recording_media_doc(<<"unavailable greeting">>, Box, Call),
     record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id=MediaId}, Call);
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
-    lager:info("recording unavailable greeting  as ~s", [AttachmentName]),
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), MediaId) of
+        {'ok', JObj} -> check_media_source(AttachmentName, Box, Call, JObj);
+        _ -> overwrite_unavailable_greeting(AttachmentName, Box, Call)
+    end.
+
+-spec check_media_source(ne_binary(), mailbox(), whapps_call:call(), wh_json:object()) ->
+                                'ok' | mailbox().
+check_media_source(AttachmentName, Box, Call, JObj) ->
+    case wh_json:get_value(<<"media_source">>, JObj) of
+        <<"upload">> ->
+            lager:debug("The voicemail greeting media is a web upload, let's not touch it,"
+                        ++ " it may be in use in some other maibox. We create new media document."
+                       ),
+            record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id='undefined'}, Call);
+        _ ->
+            overwrite_unavailable_greeting(AttachmentName, Box, Call)
+    end.
+
+-spec overwrite_unavailable_greeting(ne_binary(), mailbox(), whapps_call:call()) ->
+                                            'ok' | mailbox().
+overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
+    lager:info("overwriting unavailable greeting  as ~s", [AttachmentName]),
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     _NoopId = whapps_call_command:audio_macro([{'prompt', <<"vm-record_greeting">>}
                                                ,{'tones', [Tone]}
-                                              ], Call),
+                                              ]
+                                              ,Call
+                                             ),
     _ = whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, 'false', Box, Call) of
         {'ok', 'record'} ->
@@ -890,16 +1146,18 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec change_pin(mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+-spec change_pin(mailbox(), whapps_call:call()) ->
+                        mailbox() | {'error', any()}.
 change_pin(#mailbox{mailbox_id=Id
                     ,interdigit_timeout=Interdigit
-                   }=Box, Call) ->
+                   }=Box
+           ,Call
+          ) ->
     lager:info("requesting new mailbox pin number"),
     try
-        put('cf_voicemail', ?LINE),
         {'ok', Pin} = get_new_pin(Interdigit, Call),
         lager:info("collected first pin"),
-        put('cf_voicemail', ?LINE),
+
         {'ok', Pin} = confirm_new_pin(Interdigit, Call),
         lager:info("collected second pin"),
 
@@ -908,7 +1166,7 @@ change_pin(#mailbox{mailbox_id=Id
 
         AccountDb = whapps_call:account_db(Call),
 
-        {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
+        {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, Id),
 
         case validate_box_schema(wh_json:set_value(<<"pin">>, Pin, JObj)) of
             {'ok', PublicJObj} ->
@@ -925,21 +1183,34 @@ change_pin(#mailbox{mailbox_id=Id
                 invalid_pin(Box, Call)
         end
     catch
+        'error':{'badmatch',{'error','channel_hungup'}} ->
+            lager:debug("channel hungup while configuring pin"),
+            {'error', 'channel_hungup'};
+        'error':{'badmatch',{'ok',_ConfirmPin}} ->
+            lager:debug("new pin was invalid, try again"),
+            invalid_pin(Box, Call);
         _E:_R ->
-            lager:info("new pin was invalid, trying again"),
+            lager:debug("failed to get new pin: ~s: ~p", [_E, _R]),
             invalid_pin(Box, Call)
     end.
 
--spec invalid_pin(mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+-spec invalid_pin(mailbox(), whapps_call:call()) ->
+                         mailbox() |
+                         {'error', any()}.
 invalid_pin(Box, Call) ->
     case whapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
         {'ok', _} -> change_pin(Box, Call);
-        _ -> 'ok'
+        {'error', 'channel_hungup'}=E ->
+            lager:debug("channel hungup after bad pin"),
+            E;
+        {'error', _E}=E ->
+            lager:debug("invalid pin prompt interrupted: ~p", [_E]),
+            E
     end.
 
 -spec validate_box_schema(wh_json:object()) ->
                                  {'ok', wh_json:object()} |
-                                 {'error', _}.
+                                 {'error', any()}.
 validate_box_schema(JObj) ->
     {'ok', Schema} = wh_json_schema:load(<<"vmboxes">>),
     case jesse:validate_with_schema(Schema, wh_json:public_fields(JObj)) of
@@ -950,19 +1221,22 @@ validate_box_schema(JObj) ->
     end.
 
 -spec get_new_pin(pos_integer(), whapps_call:call()) ->
-                         {'ok', binary()}.
+                         {'ok', binary()} |
+                         {'error', any()}.
 get_new_pin(Interdigit, Call) ->
     NoopId = whapps_call_command:prompt(<<"vm-enter_new_pin">>, Call),
     collect_pin(Interdigit, Call, NoopId).
 
 -spec confirm_new_pin(pos_integer(), whapps_call:call()) ->
-                         {'ok', binary()}.
+                             {'ok', binary()} |
+                             {'error', any()}.
 confirm_new_pin(Interdigit, Call) ->
     NoopId = whapps_call_command:prompt(<<"vm-enter_new_pin_confirm">>, Call),
     collect_pin(Interdigit, Call, NoopId).
 
 -spec collect_pin(pos_integer(), whapps_call:call(), ne_binary()) ->
-                         {'ok', binary()}.
+                         {'ok', binary()} |
+                         {'error', any()}.
 collect_pin(Interdigit, Call, NoopId) ->
     whapps_call_command:collect_digits(?DEFAULT_MAX_PIN_LENGTH
                                        ,whapps_call_command:default_collect_timeout()
@@ -977,20 +1251,41 @@ collect_pin(Interdigit, Call, NoopId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new_message(ne_binary(), pos_integer(), mailbox(), whapps_call:call()) -> any().
-new_message(AttachmentName, Length, Box, Call) ->
+new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     MediaId = message_media_doc(whapps_call:account_db(Call), Box, AttachmentName),
-    case store_recording(AttachmentName, MediaId, Call) of
+    case store_recording(AttachmentName, MediaId, Call, Box, ?MAILBOX_DEFAULT_STORAGE) of
         'true' -> update_mailbox(Box, Call, MediaId, Length);
+        {'error', Call1} ->
+            Msg = io_lib:format("failed to store media ~s in voicemail box ~s of account ~s"
+                                ,[MediaId, Id, whapps_call:account_id(Call1)]
+                               ),
+            lager:critical(Msg),
+            Funs = [{fun whapps_call:kvs_store/3, 'mailbox_id', Id}
+                    ,{fun whapps_call:kvs_store/3, 'attachment_name', AttachmentName}
+                    ,{fun whapps_call:kvs_store/3, 'media_id', MediaId}
+                    ,{fun whapps_call:kvs_store/3, 'media_length', Length}
+                   ],
+            system_report(Msg, whapps_call:exec(Funs, Call1));
         'false' ->
             lager:warning("failed to store media: ~p", [MediaId]),
             couch_mgr:del_doc(whapps_call:account_db(Call), MediaId)
     end.
 
+-spec system_report(text(), whapps_call:call()) -> 'ok'.
+system_report(Msg, Call) ->
+    Notify = props:filter_undefined(
+               [{<<"Subject">>, <<"failed to store voicemail recorded media">>}
+                ,{<<"Message">>, iolist_to_binary(Msg)}
+                ,{<<"Details">>, whapps_call:to_json(Call)}
+                ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
+
 -spec update_mailbox(mailbox(), whapps_call:call(), ne_binary(), integer()) ->
                             'ok'.
 update_mailbox(#mailbox{mailbox_id=Id
-                        ,owner_id=OwnerId
                         ,transcribe_voicemail=MaybeTranscribe
                        }=Box, Call, MediaId, Length) ->
     Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
@@ -1011,25 +1306,36 @@ update_mailbox(#mailbox{mailbox_id=Id
             ,{<<"Call-ID">>, whapps_call:call_id(Call)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    _ = case whapps_util:amqp_pool_collect(Prop
-                                           ,fun wapi_notifications:publish_voicemail/1
-                                           ,fun collecting/1
-                                           ,30000)
+
+    lager:debug("notifying of voicemail saved"),
+    _ = case wh_amqp_worker:call_collect(Prop
+                                         ,fun wapi_notifications:publish_voicemail/1
+                                         ,fun collecting/1
+                                         ,30 * ?MILLISECONDS_IN_SECOND
+                                        )
         of
             {'ok', JObjs} ->
                 JObj = get_completed_msg(JObjs),
                 maybe_save_meta(Length, Box, Call, MediaId, JObj);
-            _Else ->
-                lager:debug("notification error: ~p", [_Else]),
+            {'timeout', JObjs} ->
+                case get_completed_msg(JObjs) of
+                    ?EMPTY_JSON_OBJECT ->
+                        lager:info("timed out waiting for resp"),
+                        save_meta(Length, Box, Call, MediaId);
+                    JObj ->
+                        maybe_save_meta(Length, Box, Call, MediaId, JObj)
+                end;
+            {'error', _E} ->
+                lager:debug("notification error: ~p", [_E]),
                 save_meta(Length, Box, Call, MediaId)
         end,
-    timer:sleep(2500),
-    _ = cf_util:unsolicited_owner_mwi_update(whapps_call:account_db(Call), OwnerId),
-    'ok'.
+    send_mwi_update(Box, Call).
 
 -spec collecting(wh_json:objects()) -> boolean().
 collecting([JObj|_]) ->
-    case wapi_notifications:notify_update_v(JObj) andalso wh_json:get_value(<<"Status">>, JObj) of
+    case wapi_notifications:notify_update_v(JObj)
+        andalso wh_json:get_value(<<"Status">>, JObj)
+    of
         <<"completed">> -> 'true';
         <<"failed">> -> 'true';
         _ -> 'false'
@@ -1063,48 +1369,94 @@ get_caller_id_number(Call) ->
         Prepend -> <<(wh_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>
     end.
 
-maybe_save_meta(Length, #mailbox{delete_after_notify='false'}=Box, Call, MediaId, _UpdateJObj) ->
+-spec maybe_save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary(), wh_json:object()) ->
+                             'ok'.
+maybe_save_meta(Length, #mailbox{after_notify_action='nothing'}=Box, Call, MediaId, _UpdateJObj) ->
     save_meta(Length, Box, Call, MediaId);
-maybe_save_meta(Length, #mailbox{delete_after_notify='true'}=Box, Call, MediaId, UpdateJObj) ->
+
+maybe_save_meta(Length, #mailbox{after_notify_action=Action}=Box, Call, MediaId, UpdateJObj) ->
     case wh_json:get_value(<<"Status">>, UpdateJObj) of
         <<"completed">> ->
-            lager:debug("attachment was sent out via notification, deleting media file"),
-            couch_mgr:del_doc(whapps_call:account_db(Call), MediaId);
+            case Action of
+                'delete' ->
+                    lager:debug("attachment was sent out via notification, deleteing media file"),
+                    {'ok', _} = couch_mgr:del_doc(whapps_call:account_db(Call), MediaId);
+                'save' ->
+                    lager:debug("attachment was sent out via notification, saving media file"),
+                    update_folder(?VM_FOLDER_SAVED, MediaId, Box, Call)
+            end;
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [wh_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
             save_meta(Length, Box, Call, MediaId)
     end.
 
+
+-spec save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary()) -> 'ok'.
 save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
-    Metadata = wh_json:from_list(
-                 [{<<"timestamp">>, new_timestamp()}
-                  ,{<<"from">>, whapps_call:from(Call)}
-                  ,{<<"to">>, whapps_call:to(Call)}
-                  ,{<<"caller_id_number">>, get_caller_id_number(Call)}
-                  ,{<<"caller_id_name">>, get_caller_id_name(Call)}
-                  ,{<<"call_id">>, whapps_call:call_id(Call)}
-                  ,{<<"folder">>, ?FOLDER_NEW}
-                  ,{<<"length">>, Length}
-                  ,{<<"media_id">>, MediaId}
-                 ]),
+    Timestamp = new_timestamp(),
+    Metadata = create_metadata_object(Length, Call, MediaId, Timestamp),
     {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
-    lager:debug("stored voicemail metadata for ~s", [MediaId]).
+    lager:debug("stored voicemail metadata for ~s", [MediaId]),
+
+    publish_voicemail_saved(Length, Id, Call, MediaId, Timestamp).
+
+-spec create_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), gregorian_seconds()) ->
+                                    wh_json:object().
+create_metadata_object(Length, Call, MediaId, Timestamp) ->
+    ExternalMediaUrl = case couch_mgr:open_doc(whapps_call:account_db(Call), MediaId) of
+                           {'ok', JObj} -> wh_json:get_value(<<"external_media_url">>, JObj);
+                           {'error', _} -> 'undefined'
+                       end,
+
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"timestamp">>, Timestamp}
+         ,{<<"from">>, whapps_call:from(Call)}
+         ,{<<"to">>, whapps_call:to(Call)}
+         ,{<<"caller_id_number">>, get_caller_id_number(Call)}
+         ,{<<"caller_id_name">>, get_caller_id_name(Call)}
+         ,{<<"call_id">>, whapps_call:call_id(Call)}
+         ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
+         ,{<<"length">>, Length}
+         ,{?KEY_MEDIA_ID, MediaId}
+         ,{<<"external_media_url">>, ExternalMediaUrl}
+        ])).
+
+-spec publish_voicemail_saved(pos_integer(), ne_binary(), whapps_call:call(), ne_binary(), gregorian_seconds()) ->
+                                     'ok'.
+publish_voicemail_saved(Length, Id, Call, MediaId, Timestamp) ->
+    Prop = [{<<"From-User">>, whapps_call:from_user(Call)}
+            ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
+            ,{<<"To-User">>, whapps_call:to_user(Call)}
+            ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
+            ,{<<"Account-DB">>, whapps_call:account_db(Call)}
+            ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+            ,{<<"Voicemail-Box">>, Id}
+            ,{<<"Voicemail-Name">>, MediaId}
+            ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
+            ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
+            ,{<<"Voicemail-Timestamp">>, Timestamp}
+            ,{<<"Voicemail-Length">>, Length}
+            ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_notifications:publish_voicemail_saved(Prop),
+    lager:debug("published voicemail_saved for ~s", [Id]).
 
 -spec maybe_transcribe(whapps_call:call(), ne_binary(), boolean()) ->
                               api_object().
 maybe_transcribe(Call, MediaId, 'true') ->
     Db = whapps_call:account_db(Call),
     {'ok', MediaDoc} = couch_mgr:open_doc(Db, MediaId),
-    case wh_json:get_value(<<"_attachments">>, MediaDoc, []) of
+    case wh_doc:attachment_names(MediaDoc) of
         [] ->
             lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
             'undefined';
-        Attachments ->
-            {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
-            case couch_mgr:fetch_attachment(Db, MediaId, Attachment) of
+        [AttachmentId|_] ->
+            case couch_mgr:fetch_attachment(Db, MediaId, AttachmentId) of
                 {'ok', Bin} ->
-                    lager:info("transcribing first attachment ~s: ~p", [Attachment, MetaData]),
-                    maybe_transcribe(Db, MediaDoc, Bin, wh_json:get_value(<<"content_type">>, MetaData));
+                    lager:info("transcribing first attachment ~s", [AttachmentId]),
+                    maybe_transcribe(Db, MediaDoc, Bin, wh_doc:attachment_content_type(MediaDoc, AttachmentId));
                 {'error', _E} ->
                     lager:info("error fetching vm: ~p", [_E]),
                     'undefined'
@@ -1113,7 +1465,7 @@ maybe_transcribe(Call, MediaId, 'true') ->
 maybe_transcribe(_, _, 'false') -> 'undefined'.
 
 -spec maybe_transcribe(ne_binary(), wh_json:object(), binary(), api_binary()) ->
-                                    api_object().
+                              api_object().
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
 maybe_transcribe(_, _, <<>>, _) -> 'undefined';
 maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
@@ -1148,13 +1500,13 @@ is_valid_transcription(_Res, _Txt, _) ->
                            {'error', atom()}.
 save_metadata(NewMessage, Db, Id) ->
     {'ok', JObj} = couch_mgr:open_doc(Db, Id),
-    Messages = wh_json:get_value([<<"messages">>], JObj, []),
+    Messages = wh_json:get_value([?VM_KEY_MESSAGES], JObj, []),
     case has_message_meta(wh_json:get_value(<<"call_id">>, NewMessage), Messages) of
         'true' ->
             lager:info("message meta already exists in VM Messages"),
             {'ok', JObj};
         'false' ->
-            case couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], [NewMessage | Messages], JObj)) of
+            case couch_mgr:save_doc(Db, wh_json:set_value([?VM_KEY_MESSAGES], [NewMessage | Messages], JObj)) of
                 {'error', 'conflict'} ->
                     lager:info("saving resulted in a conflict, trying again"),
                     save_metadata(NewMessage, Db, Id);
@@ -1181,101 +1533,127 @@ has_message_meta(NewMsgCallId, Messages) ->
 %%--------------------------------------------------------------------
 -spec get_mailbox_profile(wh_json:object(), whapps_call:call()) -> mailbox().
 get_mailbox_profile(Data, Call) ->
-    Id = wh_json:get_value(<<"id">>, Data),
+    Id = wh_doc:id(Data),
     AccountDb = whapps_call:account_db(Call),
 
-    case get_mailbox_doc(AccountDb, Id, whapps_call:kvs_fetch('cf_capture_group', Call), Call) of
-        {'ok', JObj} ->
-            MailboxId = wh_json:get_value(<<"_id">>, JObj),
+    case get_mailbox_doc(AccountDb, Id, Data, Call) of
+        {'ok', MailboxJObj} ->
+            MailboxId = wh_doc:id(MailboxJObj),
             lager:info("loaded voicemail box ~s", [MailboxId]),
             Default = #mailbox{},
 
             %% dont check if the voicemail box belongs to the owner (by default) if the call was not
             %% specificly to him, IE: calling a ring group and going to voicemail should not check
             LastAct = whapps_call:kvs_fetch('cf_last_action', Call),
-            CheckIfOwner = (('undefined' =:= LastAct) orelse ('cf_device' =:= LastAct)),
+            CheckIfOwner = (('undefined' =:= LastAct)
+                            orelse ('cf_device' =:= LastAct)
+                           ),
 
-            {NameMediaId, OwnerId}
-                = case wh_json:get_ne_value(<<"owner_id">>, JObj) of
-                      'undefined' -> {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), 'undefined'};
-                      OId ->
-                          case couch_mgr:open_cache_doc(AccountDb, OId) of
-                              {'ok', Owner} ->
-                                  {wh_json:find(?RECORDED_NAME_KEY, [Owner, JObj]), OId};
-                              {'error', 'not_found'} ->
-                                  lager:info("owner ~s no longer exists", [OId]),
-                                  {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), 'undefined'}
-                          end
-                  end,
+            {NameMediaId, OwnerId} = owner_info(AccountDb, MailboxJObj),
 
-            MaxMessageCount =
-                case whapps_account_config:get(whapps_call:account_id(Call)
-                                               ,?CF_CONFIG_CAT
-                                               ,[<<"voicemail">>, <<"max_message_count">>]
-                                              )
-                of
-                    'undefined' -> ?MAILBOX_DEFAULT_SIZE;
-                    MMC -> MMC
-                end,
-            MsgCount = count_non_deleted_messages(wh_json:get_value(<<"messages">>, JObj, [])),
+            MaxMessageCount = max_message_count(Call),
+            MsgCount = count_non_deleted_messages(wh_json:get_value(?VM_KEY_MESSAGES, MailboxJObj, [])),
 
-            lager:info("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),
+            lager:info("mailbox limited to ~p voicemail messages (has ~b currently)"
+                       ,[MaxMessageCount, MsgCount]
+                      ),
 
-            DeleteAfterNotify =
-                case ?DEFAULT_DELETE_AFTER_NOTIFY of
-                    'true' -> 'true';
-                    'false' ->
-                        wh_json:is_true(<<"delete_after_notify">>, JObj, 'false')
-                end,
+            AfterNotifyAction = after_notify_action(MailboxJObj),
 
             #mailbox{mailbox_id = MailboxId
                      ,exists = 'true'
                      ,keys = populate_keys(Call)
                      ,skip_instructions =
-                         wh_json:is_true(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
+                         kzd_voicemail_box:skip_instructions(MailboxJObj, Default#mailbox.skip_instructions)
                      ,skip_greeting =
-                         wh_json:is_true(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
+                         kzd_voicemail_box:skip_greeting(MailboxJObj, Default#mailbox.skip_greeting)
                      ,pin =
-                         wh_json:get_binary_value(<<"pin">>, JObj, <<>>)
+                         kzd_voicemail_box:pin(MailboxJObj, <<>>)
                      ,timezone =
-                         wh_json:get_value(<<"timezone">>, JObj, Default#mailbox.timezone)
+                         kzd_voicemail_box:timezone(MailboxJObj, ?DEFAULT_TIMEZONE)
                      ,mailbox_number =
-                         wh_json:get_binary_value(<<"mailbox">>, JObj, whapps_call:request_user(Call))
+                         kzd_voicemail_box:mailbox_number(MailboxJObj, whapps_call:request_user(Call))
                      ,require_pin =
-                         wh_json:is_true(<<"require_pin">>, JObj)
+                         kzd_voicemail_box:pin_required(MailboxJObj)
                      ,check_if_owner =
-                         wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
+                         kzd_voicemail_box:check_if_owner(MailboxJObj, CheckIfOwner)
                      ,unavailable_media_id =
-                         wh_json:get_ne_value([<<"media">>, <<"unavailable">>], JObj)
+                         wh_json:get_ne_value([<<"media">>, <<"unavailable">>], MailboxJObj)
+                     ,temporary_unavailable_media_id =
+                         wh_json:get_ne_value([<<"media">>, <<"temporary_unavailable">>], MailboxJObj)
                      ,name_media_id =
                          NameMediaId
                      ,owner_id =
                          OwnerId
                      ,is_setup =
-                         wh_json:is_true(<<"is_setup">>, JObj, 'false')
+                         kzd_voicemail_box:is_setup(MailboxJObj, 'false')
                      ,max_message_count =
                          wh_util:to_integer(MaxMessageCount)
                      ,max_message_length =
-                         find_max_message_length([Data, JObj])
+                         find_max_message_length([Data, MailboxJObj])
                      ,message_count =
                          MsgCount
                      ,transcribe_voicemail =
-                         wh_json:is_true(<<"transcribe">>, JObj, 'false')
+                         wh_json:is_true(<<"transcribe">>, MailboxJObj, 'false')
                      ,notifications =
-                         wh_json:get_value(<<"notifications">>, JObj)
-                     ,delete_after_notify = DeleteAfterNotify
+                         wh_json:get_value(<<"notifications">>, MailboxJObj)
+                     ,after_notify_action = AfterNotifyAction
                      ,interdigit_timeout =
-                         wh_json:find(<<"interdigit_timeout">>, [JObj, Data], whapps_call_command:default_interdigit_timeout())
+                         wh_json:find(<<"interdigit_timeout">>, [MailboxJObj, Data], whapps_call_command:default_interdigit_timeout())
                      ,play_greeting_intro =
-                         wh_json:is_true(<<"play_greeting_intro">>, JObj, Default#mailbox.play_greeting_intro)
+                         wh_json:is_true(<<"play_greeting_intro">>, MailboxJObj, Default#mailbox.play_greeting_intro)
                      ,use_person_not_available =
-                         wh_json:is_true(<<"use_person_not_available">>, JObj, Default#mailbox.use_person_not_available)
+                         wh_json:is_true(<<"use_person_not_available">>, MailboxJObj, Default#mailbox.use_person_not_available)
                      ,not_configurable=
-                         wh_json:is_true(<<"not_configurable">>, JObj, 'false')
+                         wh_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
+                     ,account_db = AccountDb
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
             #mailbox{}
+    end.
+
+-spec after_notify_action(wh_json:object()) -> atom().
+after_notify_action(MailboxJObj) ->
+    Delete = wh_json:is_true(?KEY_DELETE_AFTER_NOTIFY, MailboxJObj, ?DEFAULT_DELETE_AFTER_NOTIFY),
+    Save   = wh_json:is_true(?KEY_SAVE_AFTER_NOTIFY, MailboxJObj, ?DEFAULT_SAVE_AFTER_NOTIFY),
+
+    case {Delete, Save} of
+        {'false', 'false'} -> 'nothing';
+        {'false', 'true'}  -> 'save';
+        {'true', 'false'}  -> 'delete';
+        {'true', 'true'}   -> 'save'
+    end.
+
+-spec max_message_count(whapps_call:call()) -> non_neg_integer().
+max_message_count(Call) ->
+    case whapps_account_config:get(whapps_call:account_id(Call)
+                                   ,?CF_CONFIG_CAT
+                                   ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
+                                  )
+    of
+        'undefined' -> ?MAILBOX_DEFAULT_SIZE;
+        MMC -> MMC
+    end.
+
+-spec owner_info(ne_binary(), wh_json:object()) ->
+                        {api_binary(), api_binary()}.
+-spec owner_info(ne_binary(), wh_json:object(), api_binary()) ->
+                        {api_binary(), api_binary()}.
+owner_info(AccountDb, MailboxJObj) ->
+    owner_info(AccountDb, MailboxJObj, wh_json:get_ne_value(<<"owner_id">>, MailboxJObj)).
+
+owner_info(_AccountDb, MailboxJObj, 'undefined') ->
+    {wh_json:get_ne_value(?RECORDED_NAME_KEY, MailboxJObj)
+     ,'undefined'
+    };
+owner_info(AccountDb, MailboxJObj, OwnerId) ->
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', OwnerJObj} ->
+            {wh_json:find(?RECORDED_NAME_KEY, [OwnerJObj, MailboxJObj]), OwnerId};
+        {'error', 'not_found'} ->
+            lager:info("owner ~s no longer exists", [OwnerId]),
+            {wh_json:get_ne_value(?RECORDED_NAME_KEY, MailboxJObj), 'undefined'}
     end.
 
 %%--------------------------------------------------------------------
@@ -1288,22 +1666,24 @@ get_mailbox_profile(Data, Call) ->
 populate_keys(Call) ->
     Default = #keys{},
     JObj = whapps_account_config:get(whapps_call:account_id(Call), <<"keys">>),
-    #keys{operator = wh_json:get_binary_value([<<"voicemail">>, <<"operator">>], JObj, Default#keys.operator)
-          ,login = wh_json:get_binary_value([<<"voicemail">>, <<"login">>], JObj, Default#keys.login)
-          ,save = wh_json:get_binary_value([<<"voicemail">>, <<"save">>], JObj, Default#keys.save)
-          ,listen = wh_json:get_binary_value([<<"voicemail">>, <<"listen">>], JObj, Default#keys.listen)
-          ,record = wh_json:get_binary_value([<<"voicemail">>, <<"record">>], JObj, Default#keys.record)
-          ,hear_new = wh_json:get_binary_value([<<"voicemail">>, <<"hear_new">>], JObj, Default#keys.hear_new)
-          ,hear_saved = wh_json:get_binary_value([<<"voicemail">>, <<"hear_saved">>], JObj, Default#keys.hear_saved)
-          ,configure = wh_json:get_binary_value([<<"voicemail">>, <<"configure">>], JObj, Default#keys.configure)
-          ,exit = wh_json:get_binary_value([<<"voicemail">>, <<"exit">>], JObj, Default#keys.exit)
-          ,rec_unavailable = wh_json:get_binary_value([<<"voicemail">>, <<"record_unavailable">>], JObj, Default#keys.rec_unavailable)
-          ,rec_name = wh_json:get_binary_value([<<"voicemail">>, <<"record_name">>], JObj, Default#keys.rec_name)
-          ,set_pin = wh_json:get_binary_value([<<"voicemail">>, <<"set_pin">>], JObj, Default#keys.set_pin)
-          ,return_main = wh_json:get_binary_value([<<"voicemail">>, <<"return_main_menu">>], JObj, Default#keys.return_main)
-          ,keep = wh_json:get_binary_value([<<"voicemail">>, <<"keep">>], JObj, Default#keys.keep)
-          ,replay = wh_json:get_binary_value([<<"voicemail">>, <<"replay">>], JObj, Default#keys.replay)
-          ,delete = wh_json:get_binary_value([<<"voicemail">>, <<"delete">>], JObj, Default#keys.delete)
+    #keys{operator = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"operator">>], JObj, Default#keys.operator)
+          ,login = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"login">>], JObj, Default#keys.login)
+          ,save = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"save">>], JObj, Default#keys.save)
+          ,listen = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"listen">>], JObj, Default#keys.listen)
+          ,record = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"record">>], JObj, Default#keys.record)
+          ,hear_new = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_new">>], JObj, Default#keys.hear_new)
+          ,hear_saved = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"hear_saved">>], JObj, Default#keys.hear_saved)
+          ,configure = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"configure">>], JObj, Default#keys.configure)
+          ,exit = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"exit">>], JObj, Default#keys.exit)
+          ,rec_unavailable = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"record_unavailable">>], JObj, Default#keys.rec_unavailable)
+          ,rec_name = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"record_name">>], JObj, Default#keys.rec_name)
+          ,set_pin = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"set_pin">>], JObj, Default#keys.set_pin)
+          ,return_main = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"return_main_menu">>], JObj, Default#keys.return_main)
+          ,keep = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"keep">>], JObj, Default#keys.keep)
+          ,replay = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"replay">>], JObj, Default#keys.replay)
+          ,prev = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"prev">>], JObj, Default#keys.prev)
+          ,next = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"next">>], JObj, Default#keys.next)
+          ,delete = wh_json:get_binary_value([?KEY_VOICEMAIL, <<"delete">>], JObj, Default#keys.delete)
          }.
 
 %%--------------------------------------------------------------------
@@ -1312,10 +1692,11 @@ populate_keys(Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_mailbox_doc(ne_binary(), api_binary(), api_binary(), whapps_call:call()) ->
+-spec get_mailbox_doc(ne_binary(), api_binary(), wh_json:object(), whapps_call:call()) ->
                              {'ok', wh_json:object()} |
-                             {'error', term()}.
-get_mailbox_doc(Db, Id, CaptureGroup, Call) ->
+                             {'error', any()}.
+get_mailbox_doc(Db, Id, Data, Call) ->
+    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
     case wh_util:is_empty(Id) of
         'false' ->
@@ -1330,56 +1711,76 @@ get_mailbox_doc(Db, Id, CaptureGroup, Call) ->
                 Else -> Else
             end;
         'true' ->
-            get_user_mailbox_doc(Call)
+            get_user_mailbox_doc(Data, Call)
     end.
 
--spec get_user_mailbox_doc(whapps_call:call()) ->
+-spec get_user_mailbox_doc(wh_json:object(), whapps_call:call()) ->
                                   {'ok', wh_json:object()} |
-                                  {'error', _}.
--spec get_user_mailbox_doc(whapps_call:call(), api_binary()) ->
+                                  {'error', any()}.
+-spec get_user_mailbox_doc(wh_json:object(), whapps_call:call(), api_binary()) ->
                                   {'ok', wh_json:object()} |
-                                  {'error', _}.
-get_user_mailbox_doc(Call) ->
-    get_user_mailbox_doc(Call, whapps_call:owner_id(Call)).
-get_user_mailbox_doc(Call, 'undefined') ->
+                                  {'error', any()}.
+get_user_mailbox_doc(Data, Call) ->
+    get_user_mailbox_doc(Data, Call, whapps_call:owner_id(Call)).
+
+get_user_mailbox_doc(Data, Call, 'undefined') ->
     DeviceId = whapps_call:authorizing_id(Call),
     case couch_mgr:open_cache_doc(whapps_call:account_db(Call), DeviceId) of
         {'ok', DeviceJObj} ->
             case wh_json:get_value(<<"owner_id">>, DeviceJObj) of
                 'undefined' ->
-                    {'error', "ID and capture group is empty, what voicemail box do you want?"};
+                    lager:debug("device used to check voicemail has no owner assigned", []),
+                    {'error', "request voicemail box number"};
                 OwnerId ->
-                    get_user_mailbox_doc(Call, OwnerId)
+                    get_user_mailbox_doc(Data, Call, OwnerId)
             end;
         {'error', _} ->
-            {'error', "ID and capture group is empty, what voicemail box do you want?"}
+            lager:debug("unknown device used to check voicemail", []),
+            {'error', "request voicemail box number"}
     end;
-get_user_mailbox_doc(Call, OwnerId) ->
+get_user_mailbox_doc(Data, Call, OwnerId) ->
+    SingleMailboxLogin = wh_json:is_true(<<"single_mailbox_login">>, Data, 'false'),
     case cf_attributes:owned_by_docs(OwnerId, <<"vmbox">>, Call) of
         [] ->
             lager:debug("owner ~s has no vmboxes", [OwnerId]),
-            {'error', "ID and capture group is empty, what voicemail box do you want?"};
-        [Box] ->
-            lager:debug("owner ~s has one vmbox: ~s", [OwnerId, wh_json:get_value(<<"id">>, Box)]),
+            {'error', "request voicemail box number"};
+        [Box] when SingleMailboxLogin ->
+            lager:debug("owner ~s has one vmbox ~s, and single mailbox login is enabled"
+                       ,[OwnerId, wh_doc:id(Box)]
+                       ),
             {'ok', Box};
-        [_|_]=Boxes ->
-            lager:debug("owner ~s has multiple vmboxes, searching", [OwnerId]),
-            get_user_mailbox(whapps_call:caller_id_number(Call), Boxes)
+        Boxes ->
+            lager:debug("found ~p vmboxes assigned to owner ~s",
+                        [length(Boxes), OwnerId]),
+            maybe_match_callerid(Boxes,Data, Call)
     end.
 
--spec get_user_mailbox(ne_binary(), wh_json:objects()) ->
-                              {'ok', wh_json:object()} |
-                              {'error', _}.
-get_user_mailbox(_CallerId, []) ->
-    lager:debug("failed to find vm box named ~s", [_CallerId]),
-    {'error', "ID and capture group is empty, what voicemail box do you want?"};
-get_user_mailbox(CallerId, [Box|Boxes]) ->
+-spec maybe_match_callerid(wh_json:objects(), wh_json:object(), whapps_call:call()) ->
+                                  {'ok', wh_json:object()} |
+                                  {'error', any()}.
+maybe_match_callerid(Boxes, Data, Call) ->
+    case wh_json:is_true(<<"callerid_match_login">>, Data, 'false') of
+        'false' ->
+            lager:debug("found voicemail boxes but caller-id match disabled", []),
+            {'error', "request voicemail box number"};
+        'true' ->
+            CallerId = whapps_call:caller_id_number(Call),
+            try_match_callerid(Boxes, CallerId)
+    end.
+
+-spec try_match_callerid(wh_json:objects(), ne_binary()) ->
+                                {'ok', wh_json:object()} |
+                                {'error', any()}.
+try_match_callerid([], _CallerId) ->
+    lager:debug("no voicemail box found for owner with matching caller id ~s", [_CallerId]),
+    {'error', "request voicemail box number"};
+try_match_callerid([Box|Boxes], CallerId) ->
     case wh_json:get_value(<<"mailbox">>, Box) of
         CallerId ->
             lager:debug("found mailbox from caller id ~s", [CallerId]),
             {'ok', Box};
         _Mailbox ->
-            get_user_mailbox(CallerId, Boxes)
+            try_match_callerid(Boxes, CallerId)
     end.
 
 %%--------------------------------------------------------------------
@@ -1410,7 +1811,6 @@ review_recording(AttachmentName, AllowOperator
                           }=Box
                  ,Call, Loop) ->
     lager:info("playing recording review options"),
-    put('cf_voicemail', ?LINE),
 
     NoopId = whapps_call_command:prompt(<<"vm-review_recording">>, Call),
     case whapps_call_command:collect_digits(?KEY_LENGTH
@@ -1436,8 +1836,10 @@ review_recording(AttachmentName, AllowOperator
                 {'ok', Flow} -> {'branch', Flow};
                 {'error',_R} -> review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
             end;
-        {'error', _} ->
-            lager:info("error while waiting for review selection"),
+        {'error', 'channel_hungup'} ->
+            {'ok', 'no_selection'};
+        {'error', _E} ->
+            lager:info("error while waiting for review selection ~p", [_E]),
             {'ok', 'no_selection'};
         _ ->
             review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
@@ -1448,29 +1850,131 @@ review_recording(AttachmentName, AllowOperator
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> boolean().
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> boolean() | 'error'.
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), mailbox(), api_binary()) -> boolean() | 'error'.
 store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
-    _ = whapps_call_command:b_store(AttachmentName
-                                    ,get_new_attachment_url(AttachmentName, DocId, Call)
-                                    ,Call),
-    timer:sleep(5000),
+    Fun = fun() -> get_new_attachment_url(AttachmentName, DocId, Call) end,
+    case try_store_recording(AttachmentName, DocId, Fun, Call) of
+        'ok' ->
+            check_attachment_length(AttachmentName, DocId, Call);
+        {'error', _}=Err -> Err
+    end.
+
+-spec check_attachment_length(ne_binary(), ne_binary(), whapps_call:call()) ->
+                                     boolean() |
+                                     {'error', whapps_call:call()}.
+check_attachment_length(AttachmentName, DocId, Call) ->
     AccountDb = whapps_call:account_db(Call),
+    MinLength = min_recording_length(Call),
+
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
-            MinLength =
-                case whapps_account_config:get(whapps_call:account_id(Call)
-                                               ,?CF_CONFIG_CAT
-                                               ,[<<"voicemail">>, <<"min_message_size">>]
-                                              )
-                of
-                    'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
-                    MML -> wh_util:to_integer(MML)
-                end,
-            AttachmentLength = wh_json:get_integer_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
-            lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
-            AttachmentLength > MinLength;
-        _Else -> 'false'
+            case wh_doc:attachment_length(JObj, AttachmentName) of
+                'undefined' ->
+                    Err = io_lib:format("attachment ~s is missing from doc ~s", [AttachmentName, DocId]),
+                    lager:debug(Err),
+                    {'error', whapps_call:kvs_store('error_details', {'error', Err}, Call)};
+                AttachmentLength ->
+                    lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
+                    is_integer(AttachmentLength) andalso AttachmentLength > MinLength
+            end;
+        {'error', _}=Err ->
+            {'error', whapps_call:kvs_store('error_details', Err, Call) }
+    end.
+
+store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
+    store_recording(AttachmentName, DocId, Call);
+store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, StorageUrl) ->
+    Url = get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl),
+    lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
+    case try_store_recording(AttachmentName, DocId, Url, Call) of
+        'ok' ->
+            case update_doc(<<"external_media_url">>, Url, DocId, Call) of
+                'ok' -> 'true';
+                {'error', _}=Err -> Err
+            end;
+        {'error', _}=Err ->
+            case ?MAILBOX_RETRY_LOCAL_STORAGE_REMOTE_FAILS(whapps_call:account_id(Call)) of
+                'true' -> store_recording(AttachmentName, DocId, Call);
+                'false' -> Err
+            end
+    end.
+
+-type store_url() :: ne_binary() | fun(() -> ne_binary()).
+
+-spec try_store_recording(ne_binary(), ne_binary(), store_url(), whapps_call:call()) ->
+                                 'ok' | {'error', whapps_call:call()}.
+-spec try_store_recording(ne_binary(), ne_binary(), store_url(), integer(), whapps_call:call()) ->
+                                 'ok' | {'error', whapps_call:call()}.
+try_store_recording(AttachmentName, DocId, Url, Call) ->
+    Tries = ?MAILBOX_RETRY_STORAGE_TIMES(whapps_call:account_id(Call)),
+    Funs = [{fun whapps_call:kvs_store/3, 'media_url', Url}],
+    try_store_recording(AttachmentName, DocId, Url, Tries, whapps_call:exec(Funs, Call)).
+try_store_recording(_, _, _, 0, Call) -> {'error', Call};
+try_store_recording(AttachmentName, DocId, Url, Tries, Call) ->
+    case whapps_call_command:b_store_vm(AttachmentName, store_url(Url), <<"put">>, [wh_json:new()], 'true', Call) of
+        {'ok', JObj} ->
+            verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj);
+        Other ->
+            lager:error("error trying to store voicemail media, retrying ~B more times", [Tries - 1]),
+            retry_store(AttachmentName, DocId, Url, Tries, Call, Other)
+    end.
+
+-spec store_url(store_url()) -> ne_binary().
+store_url(UrlFun) when is_function(UrlFun) -> UrlFun();
+store_url(<<_/binary>> = Url) -> Url.
+
+-spec retry_store(ne_binary(), ne_binary(), store_url(), pos_integer(), whapps_call:call(), any()) ->
+                         'ok' | {'error', whapps_call:call()}.
+retry_store(AttachmentName, DocId, Url, Tries, Call, Error) ->
+    timer:sleep(2000),
+    try_store_recording(AttachmentName
+                        ,DocId
+                        ,Url
+                        ,Tries - 1
+                        ,whapps_call:kvs_store('error_details', Error, Call)
+                       ).
+
+-spec verify_stored_recording(ne_binary(), ne_binary(), store_url(), pos_integer(), whapps_call:call(), wh_json:object()) ->
+                                     'ok' |
+                                     {'error', whapps_call:call()}.
+verify_stored_recording(AttachmentName, DocId, Url, Tries, Call, JObj) ->
+    case wh_json:get_value(<<"Application-Response">>, JObj) of
+        <<"success">> ->
+            lager:debug("storing ~s into ~s was successful", [AttachmentName, DocId]);
+        _Response ->
+            case check_attachment_length(AttachmentName, DocId, Call) of
+                'true' ->
+                    lager:debug("attachment ~s exists on ~s, saved!", [AttachmentName, DocId]);
+                'false' ->
+                    lager:debug("attachment ~s isn't on ~s, retry necessary", [AttachmentName, DocId]),
+                    retry_store(AttachmentName, DocId, Url, Tries, Call, JObj);
+                {'error', Call1} ->
+                    lager:debug("error fetching ~s, will retry store", [DocId]),
+                    retry_store(AttachmentName, DocId, Url, Tries, Call1, JObj)
+            end
+    end.
+
+-spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), api_binary(), ne_binary()) -> ne_binary().
+get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl) ->
+    AccountId = whapps_call:account_id(Call),
+    <<StorageUrl/binary
+      ,"/", AccountId/binary
+      ,"/", (wh_util:to_binary(OwnerId))/binary
+      ,"/", DocId/binary
+      ,"/", AttachmentName/binary
+    >>.
+
+-spec min_recording_length(whapps_call:call()) -> integer().
+min_recording_length(Call) ->
+    case whapps_account_config:get(whapps_call:account_id(Call)
+                                   ,?CF_CONFIG_CAT
+                                   ,[?KEY_VOICEMAIL, ?KEY_MIN_MESSAGE_SIZE]
+                                  )
+    of
+        'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
+        MML -> wh_util:to_integer(MML)
     end.
 
 %%--------------------------------------------------------------------
@@ -1483,69 +1987,75 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
-                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
-                    [] -> 'ok';
-                    Existing ->
-                        [begin
-                             lager:info("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
-                             couch_mgr:delete_attachment(AccountDb, MediaId, Attach)
-                         end
-                         || Attach <- Existing
-                        ]
-                end;
+                maybe_remove_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
         end,
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
     URL.
+
+-spec maybe_remove_attachments(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_remove_attachments(AccountDb, MediaId, JObj) ->
+    case wh_doc:maybe_remove_attachments(JObj) of
+        {'false', _} -> 'ok';
+        {'true', Removed} ->
+            couch_mgr:save_doc(AccountDb, Removed),
+            lager:debug("doc ~s has existing attachments, removing", [MediaId])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+
+-spec message_name(ne_binary(), wh_datetime()) -> ne_binary().
+-spec message_name(ne_binary(), wh_datetime(), string()) -> ne_binary().
+message_name(BoxNum, DT) ->
+    message_name(BoxNum, DT, "").
+
+message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
+    list_to_binary(["mailbox ", BoxNum, " message "
+                    ,wh_util:to_binary(M), "-"
+                    ,wh_util:to_binary(D), "-"
+                    ,wh_util:to_binary(Y), " "
+                    ,wh_util:to_binary(H), ":"
+                    ,wh_util:to_binary(I), ":"
+                    ,wh_util:to_binary(S), TZ
+                   ]).
+
 -spec message_media_doc(ne_binary(), mailbox(), ne_binary()) -> ne_binary().
-message_media_doc(Db, #mailbox{mailbox_number=BoxNum
-                               ,mailbox_id=Id
-                               ,timezone=Timezone
-                              }, AttachmentName) ->
+message_media_doc(Db
+                  ,#mailbox{mailbox_number=BoxNum
+                            ,mailbox_id=Id
+                            ,timezone=Timezone
+                           }
+                  ,AttachmentName
+                 ) ->
     UtcSeconds = wh_util:current_tstamp(),
     UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
-    Name = case localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)) of
-               {{Y,M,D},{H,I,S}} ->
-                   list_to_binary(["mailbox ", BoxNum, " message "
-                                   ,wh_util:to_binary(M), "-"
-                                   ,wh_util:to_binary(D), "-"
-                                   ,wh_util:to_binary(Y), " "
-                                   ,wh_util:to_binary(H), ":"
-                                   ,wh_util:to_binary(I), ":"
-                                   ,wh_util:to_binary(S)
-                                  ]);
+    Name = case localtime:utc_to_local(UtcDateTime, Timezone) of
                {'error', 'unknown_tz'} ->
                    lager:info("unknown timezone: ~s", [Timezone]),
-                   {{Y,M,D},{H,I,S}} = UtcDateTime,
-                   list_to_binary(["mailbox ", BoxNum, " message "
-                                   ,wh_util:to_binary(M), "-"
-                                   ,wh_util:to_binary(D), "-"
-                                   ,wh_util:to_binary(Y), " "
-                                   ,wh_util:to_binary(H), ":"
-                                   ,wh_util:to_binary(I), ":"
-                                   ,wh_util:to_binary(S), " UTC"
-                                  ])
+                   message_name(BoxNum, UtcDateTime, " UTC");
+               DT ->
+                   message_name(BoxNum, DT)
            end,
 
-    Props = [{<<"name">>, Name}
-             ,{<<"description">>, <<"voicemail message media">>}
-             ,{<<"source_type">>, <<"voicemail">>}
-             ,{<<"source_id">>, Id}
-             ,{<<"media_source">>, <<"recording">>}
-             ,{<<"media_type">>, ?DEFAULT_VM_EXTENSION}
-             ,{<<"media_filename">>, AttachmentName}
-             ,{<<"streamable">>, 'true'}
-             ,{<<"utc_seconds">>, UtcSeconds}
-            ],
+    Props = props:filter_undefined(
+              [{<<"name">>, Name}
+               ,{<<"description">>, <<"voicemail message media">>}
+               ,{<<"source_type">>, ?KEY_VOICEMAIL}
+               ,{<<"source_id">>, Id}
+               ,{<<"media_source">>, <<"recording">>}
+               ,{<<"media_type">>, ?DEFAULT_VM_EXTENSION}
+               ,{<<"media_filename">>, AttachmentName}
+               ,{<<"streamable">>, 'true'}
+               ,{<<"utc_seconds">>, UtcSeconds}
+               ,{<<"external_media_url">>, ?MAILBOX_DEFAULT_STORAGE}
+              ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"private_media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
-    wh_json:get_value(<<"_id">>, JObj).
+    wh_doc:id(JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1562,7 +2072,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
     Props = props:filter_undefined(
               [{<<"name">>, Name}
                ,{<<"description">>, <<"voicemail recorded/prompt media">>}
-               ,{<<"source_type">>, <<"voicemail">>}
+               ,{<<"source_type">>, ?KEY_VOICEMAIL}
                ,{<<"source_id">>, Id}
                ,{<<"owner_id">>, OwnerId}
                ,{<<"media_source">>, <<"recording">>}
@@ -1570,7 +2080,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
               ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(AccountDb, Doc),
-    wh_json:get_value(<<"_id">>, JObj).
+    wh_doc:id(JObj).
 
 
 %%--------------------------------------------------------------------
@@ -1582,7 +2092,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
 get_messages(#mailbox{mailbox_id=Id}, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, Id) of
-        {'ok', JObj} -> wh_json:get_value(<<"messages">>, JObj, []);
+        {'ok', JObj} -> wh_json:get_value(?VM_KEY_MESSAGES, JObj, []);
         _ -> []
     end.
 
@@ -1594,8 +2104,12 @@ get_messages(#mailbox{mailbox_id=Id}, Call) ->
 %%--------------------------------------------------------------------
 -spec get_message(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_message(Message, Call) ->
-    MediaId = wh_json:get_value(<<"media_id">>, Message),
-    list_to_binary(["/", whapps_call:account_db(Call), "/", MediaId]).
+    case wh_json:get_value(<<"external_media_url">>, Message) of
+        'undefined' ->
+            MediaId = wh_json:get_value(?KEY_MEDIA_ID, Message),
+            list_to_binary(["/", whapps_call:account_db(Call), "/", MediaId]);
+        ExternalMediaUrl -> ExternalMediaUrl
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1606,7 +2120,7 @@ get_message(Message, Call) ->
 -spec count_messages(wh_json:objects(), ne_binary()) -> non_neg_integer().
 count_messages(Messages, Folder) ->
     lists:sum([1 || Message <- Messages,
-                    wh_json:get_value(<<"folder">>, Message) =:= Folder
+                    wh_json:get_value(?VM_KEY_FOLDER, Message) =:= Folder
               ]).
 
 -spec count_non_deleted_messages(wh_json:objects()) -> non_neg_integer().
@@ -1616,8 +2130,8 @@ count_non_deleted_messages(L) ->
 count_non_deleted_messages([], Count) ->
     Count;
 count_non_deleted_messages([MsgMeta|Messages], Count) ->
-    case wh_json:get_value(<<"folder">>, MsgMeta) of
-        ?FOLDER_DELETED -> count_non_deleted_messages(Messages, Count);
+    case wh_json:get_value(?VM_KEY_FOLDER, MsgMeta) of
+        ?VM_FOLDER_DELETED -> count_non_deleted_messages(Messages, Count);
         _ -> count_non_deleted_messages(Messages, Count+1)
     end.
 
@@ -1629,7 +2143,7 @@ count_non_deleted_messages([MsgMeta|Messages], Count) ->
 %%--------------------------------------------------------------------
 -spec get_folder(wh_json:objects(), ne_binary()) -> wh_json:objects().
 get_folder(Messages, Folder) ->
-    [M || M <- Messages, wh_json:get_value(<<"folder">>, M) =:= Folder].
+    [M || M <- Messages, wh_json:get_value(?VM_KEY_FOLDER, M) =:= Folder].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1640,8 +2154,8 @@ get_folder(Messages, Folder) ->
 -spec set_folder(ne_binary(), wh_json:object(), mailbox(), whapps_call:call()) -> any().
 set_folder(Folder, Message, Box, Call) ->
     lager:info("setting folder for message to ~s", [Folder]),
-    not (wh_json:get_value(<<"folder">>, Message) =:= Folder) andalso
-        update_folder(Folder, wh_json:get_value(<<"media_id">>, Message), Box, Call).
+    not (wh_json:get_value(?VM_KEY_FOLDER, Message) =:= Folder) andalso
+        update_folder(Folder, wh_json:get_value(?KEY_MEDIA_ID, Message), Box, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1651,19 +2165,19 @@ set_folder(Folder, Message, Box, Call) ->
 %%--------------------------------------------------------------------
 -spec update_folder(ne_binary(), ne_binary(), mailbox(), whapps_call:call()) ->
                            {'ok', wh_json:object()} |
-                           {'error', term()}.
+                           {'error', any()}.
 update_folder(_, 'undefined', _, _) ->
     {'error', 'attachment_undefined'};
 update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    Folder =:= ?FOLDER_DELETED andalso
+    Folder =:= ?VM_FOLDER_DELETED andalso
         update_doc(<<"pvt_deleted">>, 'true', MediaId, AccountDb),
     case couch_mgr:open_doc(AccountDb, Id) of
         {'ok', JObj} ->
-            Messages = [update_folder1(Message, Folder, MediaId, wh_json:get_value(<<"media_id">>, Message))
-                        || Message <- wh_json:get_value(<<"messages">>, JObj, [])
+            Messages = [update_folder1(Message, Folder, MediaId, wh_json:get_value(?KEY_MEDIA_ID, Message))
+                        || Message <- wh_json:get_value(?VM_KEY_MESSAGES, JObj, [])
                        ],
-            case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"messages">>, Messages, JObj)) of
+            case couch_mgr:save_doc(AccountDb, wh_json:set_value(?VM_KEY_MESSAGES, Messages, JObj)) of
                 {'error', 'conflict'} ->
                     update_folder(Folder, MediaId, Mailbox, Call);
                 {'ok', _}=OK ->
@@ -1679,7 +2193,7 @@ update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, Call) ->
 
 -spec update_folder1(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
 update_folder1(Message, Folder, MediaId, MediaId) ->
-    wh_json:set_value(<<"folder">>, Folder, Message);
+    wh_json:set_value(?VM_KEY_FOLDER, Folder, Message);
 update_folder1(Message, _, _, _) ->
     Message.
 
@@ -1735,7 +2249,7 @@ tmp_file() ->
 %% with year 0.
 %% @end
 %%--------------------------------------------------------------------
--spec new_timestamp() -> pos_integer().
+-spec new_timestamp() -> gregorian_seconds().
 new_timestamp() -> wh_util:current_tstamp().
 
 %%--------------------------------------------------------------------
@@ -1748,7 +2262,7 @@ new_timestamp() -> wh_util:current_tstamp().
 -spec get_unix_epoch(ne_binary(), ne_binary()) -> ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(Epoch)),
-    LocalDateTime = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
+    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
     wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%--------------------------------------------------------------------
@@ -1760,16 +2274,38 @@ get_unix_epoch(Epoch, Timezone) ->
 -spec find_max_message_length(wh_json:objects()) -> pos_integer().
 find_max_message_length([]) -> ?MAILBOX_DEFAULT_MSG_MAX_LENGTH;
 find_max_message_length([JObj | T]) ->
-    case wh_json:get_integer_value(<<"max_message_length">>, JObj) of
+    case wh_json:get_integer_value(?KEY_MAX_MESSAGE_LENGTH, JObj) of
         Len when is_integer(Len) andalso Len > 0 -> Len;
         _ -> find_max_message_length(T)
     end.
 
 -spec is_owner(whapps_call:call(), ne_binary()) -> boolean().
 is_owner(Call, OwnerId) ->
-    case whapps_call:kvs_fetch('owner_id', Call) of
+    case whapps_call:owner_id(Call) of
         <<>> -> 'false';
         'undefined' -> 'false';
         OwnerId -> 'true';
         _Else -> 'false'
     end.
+
+-spec send_mwi_update(mailbox(), whapps_call:call()) -> 'ok'.
+send_mwi_update(#mailbox{owner_id=OwnerId, mailbox_number=BoxNumber}=Box, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    _ = wh_util:spawn(fun cf_util:unsolicited_owner_mwi_update/2, [AccountDb, OwnerId]),
+    Messages = get_messages(Box, Call),
+    New = count_messages(Messages, ?VM_FOLDER_NEW),
+    Saved = count_messages(Messages, ?VM_FOLDER_SAVED),
+    _ = wh_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, Call]),
+    lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, whapps_call:account_id(Call), New, Saved]).
+
+-spec send_mwi_update(non_neg_integer(), non_neg_integer(), ne_binary(), whapps_call:call()) -> 'ok'.
+send_mwi_update(New, Saved, BoxNumber, Call) ->
+    Realm = whapps_call:account_realm(Call),
+    Command = [{<<"To">>, <<BoxNumber/binary, "@", Realm/binary>>}
+               ,{<<"Messages-New">>, New}
+               ,{<<"Messages-Saved">>, Saved}
+               ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("updating MWI for vmbox ~s@~s (~b/~b)", [BoxNumber, Realm, New, Saved]),
+    wh_amqp_worker:cast(Command, fun wapi_presence:publish_mwi_update/1).

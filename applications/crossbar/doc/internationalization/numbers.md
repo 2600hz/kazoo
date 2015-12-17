@@ -83,33 +83,33 @@ This is a set of regexes to group numbers by type and are not used for routing. 
 
     "classifiers":{
         "tollfree_us":{
-            "regex":"^\\+1(800|888|877|866|855)\\d{7}$",
+            "regex":"^\\+1((?:800|888|877|866|855)\\d{7})$",
             "friendly_name":"US TollFree"
         },
         "toll_us":{
-            "regex":"^\\+1900\\d{7}$",
+            "regex":"^\\+1(900\\d{7})$",
             "friendly_name":"US Toll"
         },
         "emergency":{
-            "regex":"^911$",
+            "regex":"^(911)$",
             "friendly_name":"Emergency Dispatcher"
         },
         "caribbean":{
-            "regex":"^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7}$",
+            "regex":"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$",
             "friendly_name":"Caribbean"
         },
         "did_us":{
-            "regex":"^\\+?1?[2-9][0-9]{2}[2-9][0-9]{6}$",
+            "regex":"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$",
             "friendly_name":"US DID",
             "pretty_print":"SS(###) ### - ####"
         },
         "international":{
-            "regex":"^011\\d*$|^00\\d*$",
+            "regex":"^(011\\d*)$|^(00\\d*)$",
             "friendly_name":"International",
             "pretty_print":"SSS011*"
         },
         "unknown":{
-            "regex":"^.*$",
+            "regex":"^(.*)$",
             "friendly_name":"Unknown"
         }
     }
@@ -129,7 +129,6 @@ The following characters can be used in a pretty print string to manipulate the 
 If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and '\*')
 
 `SS(###) ### - *` : this sample will convert numbers in the format of +14158867900 to (415) 886 - 7900
-
 
 # Per-Account dial plans
 
@@ -181,6 +180,24 @@ Using the PATCH HTTP verb, you can add the `dial_plan` object to an existing doc
     curl -X PATCH -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID} -d '{"data":{"dial_plan":{"^(\\d7)$":{"prefix":"+1415","description":"USA/CA/SF"}}}}'
 
 You can, of course, POST the full document with the added `dial_plan` object.
+
+### System dial plans
+
+It is possible to add dial plans to system config. Account/user/device `dial_plan` can refer to it adding array of system dial plan names at key `system`.
+
+#### Adding system `dialplan` example
+
+    curl -X POST -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/system_configs/dialplans -d '{"data":{"^(2\\d{6}$":{"prefix":"+7383","name":"Novosibirsk"}}}'
+
+#### Using system `dialplan` example
+
+    curl -X PATCH -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID} -d '{"data":{"dial_plan":{"system":["Novosibirsk"]}}}'
+
+### Available system dial plans
+
+All users can view available system dial plans.
+
+    curl -X GET -H "Content-Type: application/json" -H "X-Auth-Token": {AUTH_TOKEN}" http://server.com:8000/v2/dialplans
 
 ### Caches to flush
 
