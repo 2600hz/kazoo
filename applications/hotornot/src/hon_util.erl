@@ -119,7 +119,7 @@ sort_rate(RateA, RateB) ->
 
     case PrefixA =:= PrefixB of
         'true' ->
-            wh_json:get_integer_value(<<"weight">>, RateA, 100) >
+            wh_json:get_integer_value(<<"weight">>, RateA, 100) <
                 wh_json:get_integer_value(<<"weight">>, RateB, 100);
         'false' ->
             PrefixA > PrefixB
