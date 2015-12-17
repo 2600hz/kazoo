@@ -18,7 +18,7 @@ The enabled Monster UI applications were moved from an object on the account doc
 
 #### Erlang Version Support
 
-Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward compatable with prior Erlang versions.
+Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward compatible with prior Erlang versions.
 
 #### Number Manager
 
@@ -26,7 +26,7 @@ Upgrading to 4.0 will shift number management from `core/whistle_number_manager`
 
 #### CouchDB
 
-Upgrading will change the way Kazoo interacts with CouchDB (including deprecating using BigCouch and recommending CouchDB!). For most operations, nothing will be noticably different.
+Upgrading will change the way Kazoo interacts with CouchDB (including deprecating using BigCouch and recommending CouchDB!). For most operations, nothing will be noticeably different.
 
 ## Upcoming
 
