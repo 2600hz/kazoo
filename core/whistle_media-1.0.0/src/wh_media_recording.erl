@@ -596,6 +596,7 @@ save_recording(Call, MediaName, RecordingLength, Format, {'true', 'local'}) ->
     StoreUrl = store_url(Call, MediaJObj),
     lager:info("store local url: ~s", [StoreUrl]),
     store_recording(MediaName, StoreUrl, Call, 'local');
+
 save_recording(Call, MediaName, _RecordingLength, _Format, {'true', 'other', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(MediaName, Url, Call, 'other').
