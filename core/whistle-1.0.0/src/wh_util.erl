@@ -1071,13 +1071,13 @@ truncate_binary(Bin, Size, 'right') ->
     truncate_right_binary(Bin, Size).
 
 -spec truncate_left_binary(binary(), non_neg_integer()) -> binary().
-truncate_left_binary(Bin, Size) when size(Bin) > Size ->
-    binary:part(Bin, {size(Bin), -Size});
+truncate_left_binary(Bin, Size) when byte_size(Bin) > Size ->
+    binary:part(Bin, {byte_size(Bin), -Size});
 truncate_left_binary(Bin, _) ->
     Bin.
 
 -spec truncate_right_binary(binary(), non_neg_integer()) -> binary().
-truncate_right_binary(Bin, Size) when size(Bin) > Size ->
+truncate_right_binary(Bin, Size) when byte_size(Bin) > Size ->
     binary:part(Bin, {0, Size});
 truncate_right_binary(Bin, _) ->
     Bin.
@@ -1085,7 +1085,7 @@ truncate_right_binary(Bin, _) ->
 -spec suffix_binary(binary(), binary()) -> boolean().
 suffix_binary(<<>>, _Bin) -> 'false';
 suffix_binary(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
-    try binary:part(Bin, byte_size(Bin), (byte_size(Suffix) * -1)) =:= Suffix of
+    try truncate_left_binary(Bin, byte_size(Suffix)) =:= Suffix of
         Bool -> Bool
     catch
         _:_ -> 'false'

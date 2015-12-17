@@ -127,7 +127,7 @@ binary_tail(Binary) ->
 
 -spec binary_head(ne_binary()) -> ne_binary().
 binary_head(Binary) ->
-    binary:part(Binary, 0, 1).
+    wh_util:truncate_right_binary(Binary, 1).
 
 %%--------------------------------------------------------------------
 %% @public
