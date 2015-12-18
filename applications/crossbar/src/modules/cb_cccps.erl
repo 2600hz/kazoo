@@ -11,8 +11,8 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1
+         ,validate/1, validate/2, validate/3
+         ,put/1, put/2
          ,post/2
          ,delete/2
         ]).
@@ -20,6 +20,7 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"cccps/crossbar_listing">>).
+-define(AUTODIAL, <<"autodial">>).
 
 %%%===================================================================
 %%% API
@@ -68,7 +69,7 @@ init_db() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -100,6 +101,8 @@ validate(Context) ->
     validate_cccps(Context, cb_context:req_verb(Context)).
 validate(Context, Id) ->
     validate_cccp(Context, Id, cb_context:req_verb(Context)).
+validate(Context, _Id, ?AUTODIAL) ->
+    validate_cccp(Context, ?AUTODIAL, cb_context:req_verb(Context)).
 
 -spec validate_cccps(cb_context:context(), http_method()) -> cb_context:context().
 validate_cccps(Context, ?HTTP_GET) ->
@@ -113,6 +116,15 @@ validate_cccps(Context, ?HTTP_PUT) ->
     end.
 
 -spec validate_cccp(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_cccp(Context, ?AUTODIAL, ?HTTP_PUT) ->
+    JObj = wh_json:from_list([{<<"Number">>, wh_json:get_value(<<"a_leg_number">>, cb_context:req_data(Context))}
+                              ,{<<"B-Leg-Number">>, wh_json:get_value(<<"b_leg_number">>, cb_context:req_data(Context))}
+                              ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"outbound_cid">>, cb_context:req_data(Context))}
+                              ,{<<"Account-ID">>, cb_context:account_id(Context)}
+                              ,{<<"Callback-Delay">>, wh_json:get_value(<<"callback_delay">>, cb_context:req_data(Context))}
+                             ]),
+    cccp_callback_sup:new(JObj),
+    cb_context:set_resp_status(Context, 'success');
 validate_cccp(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_cccp(Context, Id, ?HTTP_POST) ->
@@ -131,6 +143,10 @@ put(Context) ->
     Context2 = crossbar_doc:save(Context),
     couch_mgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
     Context2.
+
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, ?AUTODIAL) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public

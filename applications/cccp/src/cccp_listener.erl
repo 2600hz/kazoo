@@ -22,8 +22,6 @@
 
 -include("cccp.hrl").
 
--record(state, {}).
-
 -define(BINDINGS, [{'self', []}
                   ,{'route', []}
                   ,{'conf', [{'doc_type', <<"sys_info">>}]}
