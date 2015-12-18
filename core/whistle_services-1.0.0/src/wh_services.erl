@@ -503,7 +503,7 @@ check_bookkeeper(BillingId, Amount) ->
     case select_bookkeeper(BillingId) of
         'wh_bookkeeper_local' ->
             Balance = wht_util:current_balance(BillingId),
-            Balance - Amount =< 0;
+            Balance - Amount >= 0;
         Bookkeeper -> Bookkeeper:is_good_standing(BillingId)
     end.
 
