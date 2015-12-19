@@ -111,12 +111,17 @@ case_args({M,F} = MF) ->
     Asz = lists:reverse(get(MF)),
     %% io:format("Asz(~p) ~10000p\n", [MF, Asz]),
     ["            .sup.", to_list(M), $., to_list(F), ".*)"
-     " COMPREPLY=( $(compgen -W '--> ", spaces(uspaces(Asz)), "' -- $cur) ) ;;\n"
+     " COMPREPLY=( $(compgen -W '--> ", spaces(sep_vars(Asz)), "' -- $cur) ) ;;\n"
     ].
 
-uspaces(Lists) ->
-    [ [$[, [to_list(E) || E <- List], $]]
-      || List <- Lists ].
+sep_vars(Lists) ->
+    [ [$[, join_args($,, As), $]]
+      || As <- Lists ].
+
+join_args(_, []) -> "";
+join_args(_, [A]) -> to_list(A);
+join_args(Sep, [H|As]) ->
+    [to_list(H), [ [Sep,A] || A <- As ]].
 
 spaces(List) ->
     [[to_list(E), $\s] || E <- List].
