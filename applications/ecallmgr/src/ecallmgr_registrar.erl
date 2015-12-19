@@ -1280,7 +1280,7 @@ get_contact_hostport(Uri) ->
         _Else -> Uri
     end.
 
--spec write_terms(list(), list()) -> 'ok'|{'error', term()}.
+-spec write_terms(list(), list()) -> 'ok' | {'error', posix()}.
 write_terms(Filename, List) ->
     Text = lists:map(fun(Term) -> io_lib:format("~p.~n", [Term]) end, List),
     file:write_file(Filename, Text).
@@ -1288,8 +1288,10 @@ write_terms(Filename, List) ->
 -spec export_registrations_to_file(ne_binary()) -> integer().
 export_registrations_to_file(Filename) ->
     RegList = ets:tab2list(?MODULE),
-    write_terms(binary_to_list(Filename), RegList),
-    length(RegList).
+    case write_terms(binary_to_list(Filename), RegList) of
+        'ok' -> length(RegList);
+        _ -> 0
+    end.
 
 -spec import_registrations_from_file(ne_binary()) -> integer().
 import_registrations_from_file(Filename) ->
