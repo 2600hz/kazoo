@@ -1280,7 +1280,7 @@ get_contact_hostport(Uri) ->
         _Else -> Uri
     end.
 
--spec write_terms(list(), list()) -> 'ok' | {'error', posix()}.
+-spec write_terms(list(), list()) -> 'ok' | {'error', atom()}.
 write_terms(Filename, List) ->
     Text = lists:map(fun(Term) -> io_lib:format("~p.~n", [Term]) end, List),
     file:write_file(Filename, Text).
