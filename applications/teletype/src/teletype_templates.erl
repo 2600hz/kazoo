@@ -81,14 +81,17 @@ load_templates(DataJObj) ->
       ]).
 
 fetch(TemplateId, AccountId, AccountId) ->
-    case fetch_failure_cache(TemplateId, AccountId) of
-        'error' -> fetch_master(TemplateId);
-        'ok' -> fetch_from_db(TemplateId, AccountId, AccountId)
+    case fetch_from_db(TemplateId, AccountId) of
+        {'error', 'not_found'} -> fetch_master(TemplateId);
+        {'error', _} -> [];
+        OK -> OK
     end;
 fetch(TemplateId, AccountId, ResellerId) ->
-    case fetch_failure_cache(TemplateId, AccountId) of
-        'error' -> fetch_parent(TemplateId, AccountId, ResellerId);
-        'ok' -> fetch_from_db(TemplateId, AccountId, ResellerId)
+    case fetch_from_db(TemplateId, AccountId) of
+        {'error', 'not_found'} ->
+            fetch_parent(TemplateId, AccountId, ResellerId);
+        {'error', _} -> [];
+        OK -> OK
     end.
 
 %%--------------------------------------------------------------------
@@ -217,56 +220,28 @@ get_parent_account_id(AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_from_db(ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
-fetch_from_db(TemplateId, AccountId, ResellerId) ->
+-spec fetch_from_db(ne_binary(), ne_binary()) ->
+                           wh_proplist() |
+                           {'error', any()}.
+fetch_from_db(TemplateId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     DocId = doc_id(TemplateId),
     lager:debug("fetching template ~s in ~s", [DocId, AccountId]),
-    case couch_mgr:open_cache_doc(AccountDb, DocId) of
+    case couch_mgr:open_cache_doc(AccountDb
+                                  ,DocId
+                                  ,[{'cache_failures', ['not_found']}]
+                                 )
+    of
         {'ok', TemplateJObj} ->
             fetch_attachment(
               DocId
               ,AccountDb
               ,wh_doc:attachments(TemplateJObj, wh_json:new())
              );
-        {'error', 'not_found'} ->
-            lager:debug("failed to fetch template ~s from ~s not_found", [TemplateId, AccountId]),
-            _ = cache_failure(TemplateId, AccountId),
-            fetch_parent(TemplateId, AccountId, ResellerId);
-        {'error', _E} ->
-            lager:debug("failed to fetch template ~s from ~s ~p", [TemplateId, AccountId, _E]),
-            []
+        {'error', _E}=E ->
+            lager:debug("failed to fetch template ~s from ~s: ~s", [TemplateId, AccountId, _E]),
+            E
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_failure_cache(ne_binary(), ne_binary()) -> 'ok' | 'error'.
-fetch_failure_cache(TemplateId, AccountId) ->
-    lager:debug("looking if ~s recenlty failed to be fetched in ~s", [TemplateId, AccountId]),
-    case wh_cache:fetch_local(?CACHE_NAME, ?TEMPLATE_FAILURE_KEY(TemplateId, AccountId)) of
-        {'ok', 'failed'} -> 'error';
-        {'error', 'not_found'} -> 'ok'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec cache_failure(ne_binary(), ne_binary()) -> 'ok'.
-cache_failure(TemplateId, AccountId) ->
-    lager:debug("caching failure to find ~s in ~s", [TemplateId, AccountId]),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    CacheProps = [{'origin', {'db', AccountDb, doc_id(TemplateId)}}],
-    wh_cache:store_local(
-      ?CACHE_NAME
-      ,?TEMPLATE_FAILURE_KEY(TemplateId, AccountId)
-      ,'failed'
-      ,CacheProps
-     ).
 
 %%--------------------------------------------------------------------
 %% @private
