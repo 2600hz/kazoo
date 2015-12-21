@@ -8,8 +8,7 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
-  - 18.1
-  - 17.5
+  - 18.2
 
 addons:
   apt:
