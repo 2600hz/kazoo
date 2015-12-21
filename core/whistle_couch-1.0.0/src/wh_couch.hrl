@@ -66,8 +66,10 @@
                               ,ready = 'false'
                               ,admin = 'false'
                               ,server = #server{}
+                              ,tag = 'local'
                              }).
 -type couch_connection() :: #wh_couch_connection{}.
+-type couch_connections() :: [couch_connection()].
 
 -type couchbeam_db() :: #db{}.
 

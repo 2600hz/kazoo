@@ -11,14 +11,16 @@
 
 -export([start_link/0]).
 -export([add/1]).
+-export([add_unique/1, add_unique/2]).
 -export([update/1]).
--export([wait_for_connection/0]).
--export([get_url/0
+-export([wait_for_connection/0, wait_for_connection/1, wait_for_connection/2]).
+-export([get_url/0, get_url/1
          ,get_host/0
          ,get_port/0
          ,get_creds/0
-         ,get_server/0
-         ,test_conn/0
+         ,get_server/0, get_server/1
+         ,test_conn/0, test_conn/1
+         ,get_by_tag/1
         ]).
 -export([get_admin_url/0
          ,get_admin_port/0
@@ -46,6 +48,8 @@
 
 -include_lib("wh_couch.hrl").
 
+-export_type([couch_connection/0, couch_connections/0]).
+
 -record(state, {cookie = 'change_me'}).
 
 %%%===================================================================
@@ -71,14 +75,36 @@ update(#wh_couch_connection{}=Connection) ->
 add(#wh_couch_connection{}=Connection) ->
     gen_server:cast(?MODULE, {'add_connection', Connection}).
 
--spec wait_for_connection() -> 'ok'.
+-spec add_unique(couch_connection()) -> 'ok'.
+add_unique(#wh_couch_connection{}=Connection) ->
+    add_unique(Connection, 'local').
+
+-spec add_unique(couch_connection(), term()) -> 'ok'.
+add_unique(#wh_couch_connection{}=Connection, Tag) ->
+    case get_by_tag(Tag) of
+        [] -> gen_server:cast(?MODULE, {'add_connection', Connection#wh_couch_connection{tag=Tag}});
+        _ -> 'ok'
+    end.
+
+-spec wait_for_connection() -> 'ok' | 'no_connection'.
+-spec wait_for_connection(term()) -> 'ok' | 'no_connection'.
+-spec wait_for_connection(term(), wh_timeout()) -> 'ok' | 'no_connection'.
+
 wait_for_connection() ->
-    try test_conn() of
+    wait_for_connection('local').
+
+wait_for_connection(Tag) ->
+    wait_for_connection(Tag, 'infinity').
+
+wait_for_connection(_Tag, 0) -> 'no_connection';
+wait_for_connection(Tag, Timeout) ->
+    Start = os:timestamp(),
+    try test_conn(Tag) of
         _ -> 'ok'
     catch
         'error':{'badmatch','$end_of_table'} ->
             timer:sleep(random:uniform(?MILLISECONDS_IN_SECOND) + 100),
-            wait_for_connection()
+            wait_for_connection(Tag, wh_util:decr_timeout(Timeout, Start))
     end.
 
 -spec get_host() -> string().
@@ -86,6 +112,7 @@ get_host() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,host = '$3'
+                                       ,tag = 'local'
                                        ,_ = '_'
                                       }
                   ,['$1', {'not','$2'}]
@@ -99,6 +126,7 @@ get_port() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,port = '$3'
+                                       ,tag = 'local'
                                        ,_ = '_'
                                       }
                   ,['$1', {'not','$2'}]
@@ -112,6 +140,7 @@ get_admin_port() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,port = '$3'
+                                       ,tag = 'local'
                                        ,_ = '_'
                                       }
                   ,['$1', '$2']
@@ -126,6 +155,7 @@ get_creds() ->
                                        ,admin = '$2'
                                        ,username = '$3'
                                        ,password = '$4'
+                                       ,tag = 'local'
                                        ,_ = '_'
                                       }
                   ,['$1', {'not','$2'}]
@@ -134,11 +164,16 @@ get_creds() ->
     {[Creds], _} = ets:select(?MODULE, MatchSpec, 1),
     Creds.
 
--spec get_server() -> #server{}.
+-spec get_server() -> #server{} | 'undefined'.
 get_server() ->
+    get_server('local').
+
+-spec get_server(term()) -> #server{}.
+get_server(Tag) ->
     MatchSpec = [{#wh_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,server = '$3'
+                                       ,tag = Tag
                                        ,_ = '_'
                                       }
                   ,['$1', {'not','$2'}]
@@ -147,11 +182,22 @@ get_server() ->
     {[Server], _} = ets:select(?MODULE, MatchSpec, 1),
     Server.
 
+-spec get_by_tag(term()) -> couch_connections().
+get_by_tag(Label) ->
+    MatchSpec = [{#wh_couch_connection{tag = Label
+                                       ,_ = '_'
+                                      }
+                 ,[]
+                 ,['$_']
+                 }],
+    ets:select(?MODULE, MatchSpec).
+
 -spec get_admin_server() -> #server{}.
 get_admin_server() ->
     MatchSpec = [{#wh_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,server = '$3'
+                                       ,tag = 'local'
                                        ,_ = '_'
                                       }
                   ,['$1', '$2']
@@ -161,13 +207,17 @@ get_admin_server() ->
     AdminServer.
 
 -spec get_url() -> api_binary().
-get_url() ->
+get_url() -> get_url('local').
+
+-spec get_url(term()) -> api_binary().
+get_url(Tag) ->
     MatchSpec = [{#wh_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,host = '$3'
                                        ,port = '$4'
                                        ,username = '$5'
                                        ,password = '$6'
+                                       ,tag = Tag
                                        ,_ = '_'
                                       }
                   ,['$1', {'not','$2'}]
@@ -184,6 +234,7 @@ get_admin_url() ->
                                        ,port = '$4'
                                        ,username = '$5'
                                        ,password = '$6'
+                                       ,tag = 'local'
                                        ,_ = '_'
                                       }
                   ,['$1', '$2']
@@ -194,7 +245,11 @@ get_admin_url() ->
 
 -spec test_conn() -> {'ok', wh_json:object()} |
                      {'error', any()}.
-test_conn() -> couch_util:server_info(get_server()).
+-spec test_conn(term()) -> {'ok', wh_json:object()} |
+                           {'error', any()}.
+
+test_conn() -> test_conn('local').
+test_conn(Tag) -> couch_util:server_info(get_server(Tag)).
 
 -spec test_admin_conn() -> {'ok', wh_json:object()} |
                            {'error', any()}.
