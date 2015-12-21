@@ -137,7 +137,7 @@
 -record(state, {name,
 		strategy               :: strategy(),
 		children = []          :: [child_rec()],
-		dynamics               :: ?DICT:?DICT() | ?SETS:?SET(),
+		dynamics               :: ?DICT:dict:dict() | ?SETS:sets:set(),
 		intensity              :: non_neg_integer(),
 		period                 :: pos_integer(),
 		restarts = [],
@@ -1123,7 +1123,7 @@ monitor_child(Pid) ->
 %%-----------------------------------------------------------------
 %% Func: terminate_dynamic_children/3
 %% Args: Child    = child_rec()
-%%       Dynamics = ?DICT() | ?SET()
+%%       Dynamics = dict:dict() | sets:set()
 %%       SupName  = {local, atom()} | {global, atom()} | {pid(),Mod}
 %% Returns: ok
 %%
@@ -1492,7 +1492,7 @@ add_restart(State) ->
     I = State#state.intensity,
     P = State#state.period,
     R = State#state.restarts,
-    Now = erlang:now(),
+    Now = erlang:timestamp(),
     R1 = add_restart([Now|R], Now, P),
     State1 = State#state{restarts = R1},
     case length(R1) of

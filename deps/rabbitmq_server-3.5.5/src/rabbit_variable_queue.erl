@@ -778,7 +778,7 @@ update_rates(State = #vqstate{ in_counter      =     InCount,
                                                ack_in    =  AckInRate,
                                                ack_out   = AckOutRate,
                                                timestamp = TS }}) ->
-    Now = erlang:now(),
+    Now = erlang:timestamp(),
 
     Rates = #rates { in        = update_rate(Now, TS,     InCount,     InRate),
                      out       = update_rate(Now, TS,    OutCount,    OutRate),

@@ -4,20 +4,31 @@ pushd `dirname $0` > /dev/null
 
 ROOT=`pwd -P`/..
 
+EXCLUDES="merl.erl"
+
 echo "Looking at $ROOT"
+
+function SaRF {
+    SEARCH=$1
+    REPLACE=$2
+    FILE=$3
+    PREFIX=$4
+
+    case ${FILE##*.} in
+        erl )
+            sed -i "s/$PREFIX$SEARCH/$PREFIX$REPLACE/g" $FILE ;;
+        hrl )
+            sed -i "s/$PREFIX$SEARCH/$PREFIX$REPLACE/g" $FILE ;;
+    esac
+}
 
 function SaR {
     SEARCH=$1
     REPLACE=$2
 
-    for PREFIX in " " "("; do
-        for FILE in `grep -lr "$PREFIX$SEARCH" $ROOT/{core,applications,deps}`; do
-            case ${FILE##*.} in
-                erl )
-                    sed -i "s/$PREFIX$SEARCH/$PREFIX$REPLACE/g" $FILE ;;
-                hrl )
-                    sed -i "s/$PREFIX$SEARCH/$PREFIX$REPLACE/g" $FILE ;;
-            esac
+    for PREFIX in " " "(" "{" "="; do
+        for FILE in `grep -lr "$PREFIX$SEARCH" $ROOT/{core,applications,deps} --exclude=$EXCLUDES`; do
+            SaRF $SEARCH $REPLACE $FILE $PREFIX
         done
     done
 }
@@ -45,5 +56,20 @@ SaR "tree()" "trees:tree()"
 
 echo "replacing set()"
 SaR "set()" "sets:set()"
+
+echo "replacing erlang:now()"
+SaR "erlang:now" "erlang:timestamp"
+
+echo "replacing RabbitMQ ?QUEUE()"
+SaR "?QUEUE()" "queue:queue()"
+
+echo "replacing RabbitMQ ?DICT()"
+SaR "?DICT()" "dict:dict()"
+
+echo "replacing RabbitMQ ?SET()"
+SaR "?SET()" "sets:set()"
+
+echo "replacing apns Queue::queue()"
+SaRF "Queue::queue()" "Queue::queue:queue()" "$ROOT/applications/pusher/lib/apns/src/apns_queue.erl" ""
 
 popd > /dev/null

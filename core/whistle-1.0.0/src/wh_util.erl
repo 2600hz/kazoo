@@ -1345,7 +1345,7 @@ now_s(_) ->  erlang:system_time('seconds').
 now_ms(_) -> erlang:system_time('milli_seconds').
 now_us(_) -> erlang:system_time('micro_seconds').
 -else.
-now() -> erlang:now().
+now() -> erlang:timestamp().
 -spec now_s(wh_now()) -> gregorian_seconds().
 -spec now_ms(wh_now()) -> pos_integer().
 -spec now_us(wh_now()) -> pos_integer().

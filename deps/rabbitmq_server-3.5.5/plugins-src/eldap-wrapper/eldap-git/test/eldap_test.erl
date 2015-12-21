@@ -226,7 +226,7 @@ t30() -> t30([]).
 t30(Heading) ->
     F = fun() ->
 		sleep(),
-		{_,_,Tno} = erlang:now(),
+		{_,_,Tno} = erlang:timestamp(),
 		Stno = integer_to_list(Tno),
 		Desc = "LDAP hacker " ++ Stno,
 		line(),
@@ -252,7 +252,7 @@ t31() -> t31([]).
 t31(Heading) ->
     F = fun() ->
 		sleep(),
-		{_,_,Tno} = erlang:now(),
+		{_,_,Tno} = erlang:timestamp(),
 		line(),
 		heading(Heading,
 			"=== TEST 31 (delete 'description' attribute)~n"),
@@ -273,7 +273,7 @@ t40() -> t40([]).
 t40(Heading) ->
     F = fun() ->
 		sleep(),
-		{_,_,Tno} = erlang:now(),
+		{_,_,Tno} = erlang:timestamp(),
 		line(),
 		heading(Heading,
 			"=== TEST 40 (add entry 'Bill Valentine')~n"),
@@ -297,7 +297,7 @@ t41() -> t41([]).
 t41(Heading) ->
     F = fun() ->
 		sleep(),
-		{_,_,Tno} = erlang:now(),
+		{_,_,Tno} = erlang:timestamp(),
 		line(),
 		heading(Heading,
 			"=== TEST 41 (delete entry 'Bill Valentine')~n"),
@@ -317,7 +317,7 @@ t50() -> t50([]).
 t50(Heading) ->
     F = fun() ->
 		sleep(),
-		{_,_,Tno} = erlang:now(),
+		{_,_,Tno} = erlang:timestamp(),
 		line(),
 		heading(Heading,
 			"=== TEST 50 (modify DN to: 'Torbjorn M.Tornkvist')~n"),
@@ -341,7 +341,7 @@ t51() -> t51([]).
 t51(Heading) ->
     F = fun() ->
 		sleep(),
-		{_,_,Tno} = erlang:now(),
+		{_,_,Tno} = erlang:timestamp(),
 		line(),
 		heading(Heading,
 			"=== TEST 51 (modify DN, remove the RDN attribute)~n"),
