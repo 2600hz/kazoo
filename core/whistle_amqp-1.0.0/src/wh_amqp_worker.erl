@@ -631,7 +631,7 @@ handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=
             lager:debug("pub fun: ~p", [PublishFun]),
             {'reply', {'error', 'function_clause'}, reset(State)};
         _E:R ->
-            lager:debug("failed to publish request: ~s:~p", [_E, R]),
+            lager:debug("error when publishing: ~s:~p", [_E, R]),
             {'reply', {'error', R}, reset(State)}
     end;
 handle_call(_Request, _From, State) ->
