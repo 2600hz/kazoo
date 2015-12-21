@@ -311,9 +311,11 @@ do_conference_action(Context, Id, Action, ParticipantId) ->
 
 -spec perform_conference_action(whapps_conference:conference(), binary(), ne_binary()) -> 'ok'.
 perform_conference_action(Conference, <<"mute">>, ParticipantId) ->
-    whapps_conference_command:mute_participant(ParticipantId, Conference);
+    whapps_conference_command:mute_participant(ParticipantId, Conference),
+    whapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference);
 perform_conference_action(Conference, <<"unmute">>, ParticipantId) ->
-    whapps_conference_command:unmute_participant(ParticipantId, Conference);
+    whapps_conference_command:unmute_participant(ParticipantId, Conference),
+    whapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference);
 perform_conference_action(Conference, <<"kick">>, ParticipantId) ->
     whapps_conference_command:kick(ParticipantId, Conference).
 
