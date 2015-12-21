@@ -26,14 +26,18 @@ handle_event(Context, EventJObj) ->
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 add_amqp_binding(<<"conference.event.", ConfId/binary>>, _Context) ->
-    blackhole_listener:add_binding('conference', [{'restrict_to', [{'conference', ConfId}]}]);
+    blackhole_listener:add_binding('conference', [{'conference', ConfId}, {'restrict_to', ['event']}]);
+add_amqp_binding(<<"conference.command.", ConfId/binary>>, _Context) ->
+    blackhole_listener:add_binding('conference', [{'conference', ConfId}, {'restrict_to', ['command']}]);
 add_amqp_binding(Binding, _Context) ->
     lager:debug("unmatched binding ~p", [Binding]),
     'ok'.
 
 -spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 rm_amqp_binding(<<"conference.event.", ConfId/binary>>, _Context) ->
-    blackhole_listener:remove_binding('conference', [{'restrict_to', [{'conference', ConfId}]}]);
+    blackhole_listener:remove_binding('conference', [{'conference', ConfId}, {'restrict_to', ['event']}]);
+rm_amqp_binding(<<"conference.command.", ConfId/binary>>, _Context) ->
+    blackhole_listener:remove_binding('conference', [{'conference', ConfId}, {'restrict_to', ['command']}]);
 rm_amqp_binding(Binding, _Context) ->
     lager:debug("unmatched binding ~p", [Binding]),
     'ok'.

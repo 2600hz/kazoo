@@ -18,6 +18,7 @@ Here are a non-exhaustive list of bindings provided per default callback module:
     * `call.CHANNEL_BRIDGE.*`
 * `bh_conference`:
     * `conference.event.*`
+    * `conference.command.*`
 * `bh_fax`:
     * `fax.status.*`
 

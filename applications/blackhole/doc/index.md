@@ -37,7 +37,14 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
       socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_ANSWER.*' });
       socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_DESTROY.*' });
       socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'conference.event.*' });
+      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'conference.command.{CONFERENCE_ID}' });
 
+      socket.on('mute_participant', function (data) {
+        console.log(data);
+      });
+      socket.on('unmute_participant', function (data) {
+        console.log(data);
+      });
       socket.on('participants_event', function (data) {
         console.log(data);
       });
