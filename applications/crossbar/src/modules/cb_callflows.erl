@@ -477,11 +477,16 @@ is_pattern_unique(J, Number) ->
     patterns_dont_match(Number, Patterns).
 
 -spec filter_callflow_list(api_binary(), wh_json:objects()) -> wh_json:objects().
-filter_callflow_list('undefined', JObjs) -> JObjs;
+filter_callflow_list('undefined', JObjs) ->
+    [JObj
+     || JObj <- JObjs,
+        not(kzd_callflow:is_feature_code(wh_json:get_value(<<"doc">>, JObj)))
+    ];
 filter_callflow_list(CallflowId, JObjs) ->
     [JObj
      || JObj <- JObjs,
         wh_doc:id(JObj) =/= CallflowId
+        andalso not(kzd_callflow:is_feature_code(wh_json:get_value(<<"doc">>, JObj)))
     ].
 
 -spec patterns_dont_match(ne_binary(), ne_binaries()) -> boolean().
