@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(kz_apps_store).
+-module(kzd_apps_store).
 
 -export([fetch/1, new/1]).
 -export([id/0]).
