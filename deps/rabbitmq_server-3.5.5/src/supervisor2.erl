@@ -137,7 +137,7 @@
 -record(state, {name,
 		strategy               :: strategy(),
 		children = []          :: [child_rec()],
-		dynamics               :: ?DICT:dict:dict() | ?SETS:sets:set(),
+		dynamics               :: dict:dict() | sets:set(),
 		intensity              :: non_neg_integer(),
 		period                 :: pos_integer(),
 		restarts = [],
@@ -201,7 +201,7 @@ behaviour_info(_Other) ->
 -endif.
 start_link(Mod, Args) ->
     gen_server:start_link(?MODULE, {self, Mod, Args}, []).
- 
+
 -ifdef(use_specs).
 -spec start_link(SupName, Module, Args) -> startlink_ret() when
       SupName :: sup_name(),
@@ -210,7 +210,7 @@ start_link(Mod, Args) ->
 -endif.
 start_link(SupName, Mod, Args) ->
     gen_server:start_link(SupName, ?MODULE, {SupName, Mod, Args}, []).
- 
+
 %%% ---------------------------------------------------
 %%% Interface functions.
 %%% ---------------------------------------------------
@@ -329,9 +329,9 @@ cast(Supervisor, Req) ->
     gen_server:cast(Supervisor, Req).
 
 %%% ---------------------------------------------------
-%%% 
+%%%
 %%% Initialize the supervisor.
-%%% 
+%%%
 %%% ---------------------------------------------------
 -ifdef(use_specs).
 -type init_sup_name() :: sup_name() | 'self'.
@@ -448,9 +448,9 @@ do_start_child_i(M, F, A) ->
     end.
 
 %%% ---------------------------------------------------
-%%% 
+%%%
 %%% Callback functions.
-%%% 
+%%%
 %%% ---------------------------------------------------
 -ifdef(use_specs).
 -type call() :: 'which_children' | 'count_children' | {_, _}.	% XXX: refine
@@ -698,7 +698,7 @@ handle_info({delayed_restart, {RestartType, Reason, Child}}, State) ->
 %% this is important.
 
 handle_info(Msg, State) ->
-    error_logger:error_msg("Supervisor received unexpected message: ~p~n", 
+    error_logger:error_msg("Supervisor received unexpected message: ~p~n",
 			   [Msg]),
     {noreply, State}.
 
@@ -795,7 +795,7 @@ update_chsp(OldCh, Children) ->
 	NewC ->
 	    {ok, NewC}
     end.
-    
+
 %%% ---------------------------------------------------
 %%% Start a new child.
 %%% ---------------------------------------------------
@@ -1049,13 +1049,13 @@ do_terminate(Child, _SupName) ->
     Child#child{pid = undefined}.
 
 %%-----------------------------------------------------------------
-%% Shutdowns a child. We must check the EXIT value 
+%% Shutdowns a child. We must check the EXIT value
 %% of the child, because it might have died with another reason than
-%% the wanted. In that case we want to report the error. We put a 
-%% monitor on the child an check for the 'DOWN' message instead of 
-%% checking for the 'EXIT' message, because if we check the 'EXIT' 
-%% message a "naughty" child, who does unlink(Sup), could hang the 
-%% supervisor. 
+%% the wanted. In that case we want to report the error. We put a
+%% monitor on the child an check for the 'DOWN' message instead of
+%% checking for the 'EXIT' message, because if we check the 'EXIT'
+%% message a "naughty" child, who does unlink(Sup), could hang the
+%% supervisor.
 %% Returns: ok | {error, OtherReason}  (this should be reported)
 %%-----------------------------------------------------------------
 shutdown(Pid, brutal_kill) ->
@@ -1068,14 +1068,14 @@ shutdown(Pid, brutal_kill) ->
 		{'DOWN', _MRef, process, Pid, OtherReason} ->
 		    {error, OtherReason}
 	    end;
-	{error, Reason} ->      
+	{error, Reason} ->
 	    {error, Reason}
     end;
 shutdown(Pid, Time) ->
     case monitor_child(Pid) of
 	ok ->
 	    exit(Pid, shutdown), %% Try to shutdown gracefully
-	    receive 
+	    receive
 		{'DOWN', _MRef, process, Pid, shutdown} ->
 		    ok;
 		{'DOWN', _MRef, process, Pid, OtherReason} ->
@@ -1087,14 +1087,14 @@ shutdown(Pid, Time) ->
 			    {error, OtherReason}
 		    end
 	    end;
-	{error, Reason} ->      
+	{error, Reason} ->
 	    {error, Reason}
     end.
 
 %% Help function to shutdown/2 switches from link to monitor approach
 monitor_child(Pid) ->
-    
-    %% Do the monitor operation first so that if the child dies 
+
+    %% Do the monitor operation first so that if the child dies
     %% before the monitoring is done causing a 'DOWN'-message with
     %% reason noproc, we will get the real reason in the 'EXIT'-message
     %% unless a naughty child has already done unlink...
@@ -1104,19 +1104,19 @@ monitor_child(Pid) ->
     receive
 	%% If the child dies before the unlik we must empty
 	%% the mail-box of the 'EXIT'-message and the 'DOWN'-message.
-	{'EXIT', Pid, Reason} -> 
-	    receive 
+	{'EXIT', Pid, Reason} ->
+	    receive
 		{'DOWN', _, process, Pid, _} ->
 		    {error, Reason}
 	    end
-    after 0 -> 
+    after 0 ->
 	    %% If a naughty child did unlink and the child dies before
-	    %% monitor the result will be that shutdown/2 receives a 
+	    %% monitor the result will be that shutdown/2 receives a
 	    %% 'DOWN'-message with reason noproc.
 	    %% If the child should die after the unlink there
 	    %% will be a 'DOWN'-message with a correct reason
-	    %% that will be handled in shutdown/2. 
-	    ok   
+	    %% that will be handled in shutdown/2.
+	    ok
     end.
 
 
@@ -1443,8 +1443,8 @@ validChildType(What) -> throw({invalid_child_type, What}).
 
 validName(_Name) -> true.
 
-validFunc({M, F, A}) when is_atom(M), 
-                          is_atom(F), 
+validFunc({M, F, A}) when is_atom(M),
+                          is_atom(F),
                           is_list(A) -> true;
 validFunc(Func)                      -> throw({invalid_mfa, Func}).
 
@@ -1462,7 +1462,7 @@ validDelay(Delay) when is_number(Delay),
                        Delay >= 0 -> true;
 validDelay(What)                  -> throw({invalid_delay, What}).
 
-validShutdown(Shutdown, _) 
+validShutdown(Shutdown, _)
   when is_integer(Shutdown), Shutdown > 0 -> true;
 validShutdown(infinity, _)             -> true;
 validShutdown(brutal_kill, _)          -> true;
@@ -1488,7 +1488,7 @@ validMods(Mods) -> throw({invalid_modules, Mods}).
 %%% Returns: {ok, State'} | {terminate, State'}
 %%% ------------------------------------------------------
 
-add_restart(State) ->  
+add_restart(State) ->
     I = State#state.intensity,
     P = State#state.period,
     R = State#state.restarts,
