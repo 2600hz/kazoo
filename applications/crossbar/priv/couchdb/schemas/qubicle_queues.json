@@ -20,9 +20,9 @@
             "required": false,
             "type": "integer"
         },
-        "moh": {
+        "hold_treatment": {
             "description": "Media ID (or appropriate media URI) of media to play while caller is on hold.",
-            "name": "Moh",
+            "name": "Hold Treatment",
             "required": false,
             "type": "string"
         },
@@ -34,6 +34,17 @@
             "required": true,
             "type": "string"
         },
+        "queue_router": {
+            "default": "route_round_robin",
+            "description": "The queue router used for routing and delivering calls to recipients",
+            "enum": [
+                "route_round_robin",
+                "route_most_idle"
+            ],
+            "name": "Router",
+            "required": false,
+            "type": "string"
+        },
         "queue_timeout": {
             "default": 3600,
             "description": "The maximum amount of time in seconds that a call will wait in queue.",
@@ -42,16 +53,23 @@
             "required": false,
             "type": "integer"
         },
-        "strategy": {
-            "default": "round_robin",
-            "description": "The queue strategy for connecting agents to callers",
+        "queue_type": {
+            "default": "queue_basic",
+            "description": "The type of queue",
             "enum": [
-                "round_robin",
-                "most_idle"
+                "queue_basic"
             ],
-            "name": "Stategy",
-            "required": false,
+            "name": "Type",
+            "required": true,
             "type": "string"
+        },
+        "tick_time": {
+            "default": 1000,
+            "description": "The time between delivery ticks in milliseconds",
+            "minimum": 250,
+            "name": "Tick Time",
+            "required": false,
+            "type": "integer"
         }
     },
     "required": true,
