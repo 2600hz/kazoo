@@ -1371,6 +1371,7 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, JObj}) ->
                          ], JObj)
     }.
 
+-spec bowout_settings(boolean()) -> wh_proplist().
 bowout_settings('true') ->
     [{<<"Loopback-Bowout">>, <<"true">>}
      ,{<<"Simplify-Loopback">>, <<"true">>}
