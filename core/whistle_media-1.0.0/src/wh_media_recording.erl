@@ -56,6 +56,7 @@
                 ,channel_status_ref        :: reference() | 'undefined'
                 ,time_limit_ref            :: reference() | 'undefined'
                 ,retries = 0               :: integer()
+                ,recording_length          :: integer()
                }).
 -type state() :: #state{}.
 
@@ -133,7 +134,8 @@ handle_call_event(JObj, Props) ->
             gen_listener:cast(Pid, {'record_start', get_response_media(JObj)});
         {<<"call_event">>, <<"RECORD_STOP">>} ->
             lager:debug("record_stop event received"),
-            gen_listener:cast(Pid, {'store_recording', get_response_media(JObj)});
+            RecordingLength = wh_json:get_integer_value(<<"Length">>, JObj),
+            gen_listener:cast(Pid, {'store_recording', get_response_media(JObj), RecordingLength});
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(Pid, 'stop_call');
         {<<"call_event">>, <<"channel_status_resp">>} ->
@@ -305,14 +307,15 @@ handle_cast('stop_call', #state{is_recording='true'
                                 ,format=Format
                                 ,call=Call
                                 ,should_store=Store
+                                ,recording_length=RecordingLength
                                }=State) ->
     lager:debug("recv stop_call event"),
-    save_recording(Call, MediaName, Format, Store),
+    save_recording(Call, MediaName, RecordingLength, Format, Store),
     lager:debug("sent store command"),
     {'noreply', State#state{store_attempted='true'
                             ,is_recording='false'
                            }};
-handle_cast({'store_recording', MediaName}, #state{media_name=MediaName
+handle_cast({'store_recording', MediaName, RecordingLength}, #state{media_name=MediaName
                                                    ,format=Format
                                                    ,call=Call
                                                    ,should_store=Store
@@ -320,9 +323,10 @@ handle_cast({'store_recording', MediaName}, #state{media_name=MediaName
                                                    ,store_attempted='false'
                                                   }=State) ->
     lager:debug("recv store_recording event"),
-    save_recording(Call, MediaName, Format, Store),
+    save_recording(Call, MediaName, RecordingLength, Format, Store),
     {'noreply', State#state{store_attempted='true'
                             ,is_recording='false'
+                            ,recording_length=RecordingLength
                            }};
 handle_cast({'channel_status',<<"active">>}, #state{channel_status_ref='undefined'}=State) ->
     {'noreply', State#state{channel_status_ref=start_check_call_timer()}};
@@ -354,9 +358,10 @@ handle_cast('store_failed', #state{retries=Retries
                                    ,format=Format
                                    ,call=Call
                                    ,should_store=Store
+                                   ,recording_length=RecordingLength
                                   }=State) ->
     lager:debug("store failed, retrying ~p times", [Retries]),
-    save_recording(Call, MediaName, Format, Store),
+    save_recording(Call, MediaName, RecordingLength, Format, Store),
     {'noreply', State#state{retries=Retries - 1}};
 
 handle_cast({'gen_listener',{'created_queue',Queue}}, #state{call=Call}=State) ->
@@ -492,10 +497,10 @@ get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"wav">> = WAV) -> WAV;
 get_format(_) -> get_format('undefined').
 
--spec store_recording_meta(whapps_call:call(), ne_binary(), api_binary()) ->
+-spec store_recording_meta(whapps_call:call(), ne_binary(), ne_binary(), api_binary()) ->
                                   {'ok', wh_json:object()} |
                                   {'error', any()}.
-store_recording_meta(Call, MediaName, Ext) ->
+store_recording_meta(Call, MediaName, RecordingLength, Ext) ->
     AcctDb = whapps_call:account_db(Call),
     CallId = whapps_call:call_id(Call),
 
@@ -514,20 +519,21 @@ store_recording_meta(Call, MediaName, Ext) ->
                     ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
                     ,{<<"call_id">>, CallId}
                     ,{<<"_id">>, get_recording_doc_id(CallId)}
+                    ,{<<"length">>, RecordingLength}
                    ])
                  ,AcctDb
                 ),
     couch_mgr:save_doc(AcctDb, MediaDoc).
 
--spec maybe_store_recording_meta(whapps_call:call(), ne_binary(), api_binary()) ->
+-spec maybe_store_recording_meta(whapps_call:call(), ne_binary(), ne_binary(), api_binary()) ->
                                   {'ok', wh_json:object()} |
                                   {'error', any()}.
-maybe_store_recording_meta(Call, MediaName, Ext) ->
+maybe_store_recording_meta(Call, MediaName, RecordingLength, Ext) ->
     AcctDb = whapps_call:account_db(Call),
     CallId = whapps_call:call_id(Call),
     case couch_mgr:open_doc(AcctDb, get_recording_doc_id(CallId)) of
         {'ok', _JObj}=JObjOK -> JObjOK;
-        _ -> store_recording_meta(Call, MediaName, Ext)
+        _ -> store_recording_meta(Call, MediaName, RecordingLength, Ext)
     end.
 
 
@@ -575,27 +581,28 @@ should_store_recording() ->
         'false' -> 'false'
     end.
 
--spec save_recording(whapps_call:call(), ne_binary(), ne_binary(), store_url()) -> 'ok'.
-save_recording(_Call, MediaName, _Format, 'false') ->
+-spec save_recording(whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), store_url()) -> 'ok'.
+save_recording(_Call, MediaName, _RecordingLength, _Format, 'false') ->
     lager:info("not configured to store recording ~s", [MediaName]);
-save_recording(Call, MediaName, Format, {'true', 'third_party'}) ->
+save_recording(Call, MediaName, RecordingLength, Format, {'true', 'third_party'}) ->
     case whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>) of
         'undefined' ->
             lager:error("no URL for call recording provided, third_party_bigcouch_host undefined");
-        BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost)
+        BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, RecordingLength, Format, BCHost)
     end;
-save_recording(Call, MediaName, Format, {'true', 'local'}) ->
-    {'ok', MediaJObj} = maybe_store_recording_meta(Call, MediaName, Format),
+save_recording(Call, MediaName, RecordingLength, Format, {'true', 'local'}) ->
+    {'ok', MediaJObj} = maybe_store_recording_meta(Call, MediaName, RecordingLength, Format),
     lager:info("stored meta: ~p", [MediaJObj]),
     StoreUrl = store_url(Call, MediaJObj),
     lager:info("store local url: ~s", [StoreUrl]),
     store_recording(MediaName, StoreUrl, Call, 'local');
-save_recording(Call, MediaName, _Format, {'true', 'other', Url}) ->
+
+save_recording(Call, MediaName, _RecordingLength, _Format, {'true', 'other', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(MediaName, Url, Call, 'other').
 
--spec store_recording_to_third_party_bigcouch(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
+-spec store_recording_to_third_party_bigcouch(whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+store_recording_to_third_party_bigcouch(Call, MediaName, RecordingLength, Format, BCHost) ->
     BCPort = whapps_config:get_binary(?CONFIG_CAT, <<"third_party_bigcouch_port">>, <<"5984">>),
     lager:info("storing to third-party bigcouch ~s:~p", [BCHost, BCPort]),
     AcctMODb = wh_util:format_account_modb(kazoo_modb:get_modb(whapps_call:account_db(Call)),'encoded'),
@@ -616,6 +623,7 @@ store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
                     ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
                     ,{<<"call_id">>, CallId}
                     ,{<<"_id">>, MediaDocId}
+                    ,{<<"length">>, RecordingLength}
                    ])
                  ,AcctMODb
                 ),
