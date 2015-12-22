@@ -24,6 +24,7 @@
 -export([summary/0, summary/1
          ,details/0, details/1, details/2
          ,flush/0, flush/1, flush/2
+         ,sync/0
          ,count/0
         ]).
 
@@ -314,6 +315,10 @@ details(Username, Realm) ->
         ],
     print_details(ets:select(?MODULE, MatchSpec, 1)).
 
+-spec sync() -> 'ok'.
+sync() ->
+    gen_server:cast(?MODULE, 'registrar_sync').
+
 -spec flush() -> 'ok'.
 flush() ->
     gen_server:cast(?MODULE, 'flush').
@@ -395,6 +400,10 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('registrar_sync', #state{queue=Q}=State) ->
+    Payload = wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION),
+    wh_amqp_worker:cast(Payload, fun wapi_registration:publish_sync/1),
+    {'noreply', State};
 handle_cast({'insert_registration', Registration}, State) ->
     wh_util:put_callid(Registration#registration.call_id),
     _ = ets:insert(?MODULE, Registration#registration{initial='false'}),
