@@ -25,4 +25,8 @@ deps/erlang_localtime-*/include/tz_index.hrl
 /.edts
 .project
 .settings
+
 sup.bash
+
+_rel/
+relx.config

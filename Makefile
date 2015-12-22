@@ -18,9 +18,13 @@ $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
 
 clean: ACTION = clean
-clean: $(MAKEDIRS)
+clean: $(MAKEDIRS) clean-release
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
+
+clean-release:
+	$(if $(wildcard _rel/), rm -r _rel/)
+	$(if $(wildcard relx.config), rm relx.config)
 
 clean-test : ACTION = clean-test
 clean-test : $(KAZOODIRS)
@@ -77,3 +81,10 @@ sup_completion: kazoo
 	@$(if $(wildcard $(sup_completion_file)), rm $(sup_completion_file))
 	@$(ROOT)/scripts/sup-build-autocomplete.escript $(sup_completion_file) applications/ core/
 	@echo SUP Bash completion file written at $(sup_completion_file)
+
+release: RELX = $(ROOT)/utils/relx/relx
+release: relx.config
+	$(RELX) -v release --config $^ --relname kazoo_whistle_apps
+#	$(RELX) -v release --config $^ --relname kazoo_ecallmgr
+relx.config: relx.config.script
+	$(ROOT)/scripts/script2any.escript relx.config.script

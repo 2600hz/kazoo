@@ -1,0 +1,56 @@
+ToName = fun (Apps) ->
+                 [list_to_atom(hd(string:tokens(App,"-"))) || App <- Apps]
+         end,
+
+Apps = ToName([App || "applications/"++App <- filelib:wildcard("applications/*"), App /= "Makefile"]),
+Core = ToName([App ||         "core/"++App <- filelib:wildcard(        "core/*"), App /= "Makefile"]),
+Deps = ToName([App ||         "deps/"++App <- filelib:wildcard(        "deps/*"), App /= "Makefile"]),
+
+Base = Core
+   ++ Apps
+   %% Both whistle_apps and ecallmgr include apps: whistle_amqp, sasl, crypto
+   -- [ecallmgr, whistle_apps]
+
+   ++ Deps
+   %% Name is amqp_client, not rabbitmq_erlang_client
+   -- [rabbitmq_erlang_client] ++ [amqp_client]
+   %% Manually added: is a dep of RabbitMQ client
+   ++ [rabbit_common]
+   %% exmpp Duplicated modules: tls specified in ssl and exmpp
+   -- [exmpp]
+   %% Name is hep, not hep_erlang
+   -- [hep_erlang] ++ [hep]
+   %% merl Part of OTP since 18
+   ++ case erlang:system_info(otp_release) of
+          [$1,D|_] when D >= $8 ->
+              [];
+          _ ->
+              [merl]
+      end
+   %% mochiweb Duplicated modules: mochijson2 specified in rabbit_common and mochiweb
+   -- [mochiweb]
+   ,
+
+
+[ {lib_dirs, [ "applications"
+             , "core"
+             , "deps"
+             , hd(filelib:wildcard("deps/rabbitmq_erlang_client-*/deps"))
+             ]}
+
+, {include_src, false}
+
+, {default_release, {kazoo_whistle_apps,"4.0.0"}}
+
+%% , {vm_args, "rel/vm.args"}
+%% , {sys_config, "rel/sys.config"}
+
+, {release, {kazoo_whistle_apps,"4.0.0"}
+  , [whistle_apps] ++ Base
+  }
+
+, {release, {kazoo_ecallmgr,"4.0.0"}
+  , [ecallmgr] ++ Base
+  }
+
+].
