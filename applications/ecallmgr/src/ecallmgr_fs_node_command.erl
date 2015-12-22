@@ -4,8 +4,7 @@
 %%% Execute node commands
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
+%%%   Luis Azedo
 %%%
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_node_command).
@@ -63,7 +62,7 @@ reply_success(JObj, Response) ->
     wh_amqp_worker:cast(API, fun(P) -> wapi_switch:publish_reply(Queue, P) end).
 
 
--spec send_http(atom(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec send_http(atom(), file:filename(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 send_http(Node, File, Url, Method, JObj) ->
     lager:debug("processing http_send command : ~s / ~s", [File, Url]),
     Args = <<Url/binary, " ", File/binary>>,

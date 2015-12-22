@@ -308,7 +308,7 @@ publish_command(Req, ContentType) ->
     N = check_fs_node(Req),
     amqp_util:configuration_publish(?FS_COMMAND_KEY(N), Payload, ContentType).
 
--spec publish_reply(api_terms(), binary()) -> 'ok'.
+-spec publish_reply(binary(), api_terms()) -> 'ok'.
 publish_reply(Queue, Req) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?FSREPLY_COMMAND_VALUES, fun ?MODULE:fs_reply/1),
     amqp_util:targeted_publish(Queue, Payload).
