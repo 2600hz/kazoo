@@ -3,9 +3,10 @@ ROOT = ../..
 REBAR = $(ROOT)/utils/rebar/rebar
 DIALYZER = dialyzer
 
-PA =
+PA = $(shell find $(ROOT)/deps/couchbeam-* -maxdepth 2 -name ebin -print) \
+	$(shell find $(ROOT)/deps/ibrowse-* -maxdepth 2 -name ebin -print)
 
-ERLC_OPTS += +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps -I$(wildcard $(ROOT)/deps/couchbeam-*/include) $(PA)
+ERLC_OPTS += +debug_info +warn_export_all -pa $(PA) -I$(ROOT)/core -I$(ROOT)/deps -I$(wildcard $(ROOT)/deps/couchbeam-*/include)
      # +bin_opt_info
 
 DIRS =  .
