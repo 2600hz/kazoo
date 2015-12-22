@@ -137,12 +137,19 @@
                     ,{{?MODULE, 'handle_reload_gateways'}
                       ,[{<<"switch_event">>, <<"reload_gateways">>}]
                      }
+                    ,{'ecallmgr_fs_node_command'
+                      ,[{<<"switch_event">>, <<"command">>}]
+                     }
                     ]).
--define(BINDINGS, [{'switch', [{'restrict_to', ['reload_acls'
-                                                ,'reload_gateways'
-                                               ]}
-                              ]}
-                  ]).
+-define(BINDINGS(Node), [{'switch', [{'node', Node}
+                                      ,{'restrict_to', ['reload_acls'
+                                                        ,'reload_gateways'
+                                                        ,'command'
+                                                       ]
+                                       }
+                                    ]
+                         }
+                        ]).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
@@ -196,7 +203,7 @@ start_link(Node, Options) ->
                   ,(wh_util:to_binary(?MODULE))/binary
                 >>,
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
+                                      ,{'bindings', ?BINDINGS(Node)}
                                       ,{'queue_name', QueueName}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}

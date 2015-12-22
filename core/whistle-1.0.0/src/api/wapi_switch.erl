@@ -14,6 +14,8 @@
 -export([check_sync/1, check_sync_v/1
          ,check_sync_realm/1, check_sync_username/1
         ]).
+-export([fs_command/1, fs_command_v/1]).
+-export([fs_reply/1, fs_reply_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
@@ -22,6 +24,8 @@
 -export([publish_reload_gateways/0]).
 -export([publish_fs_xml_flush/1]).
 -export([publish_check_sync/1, publish_check_sync/2]).
+-export([publish_command/1, publish_command/2]).
+-export([publish_reply/2]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
@@ -66,6 +70,26 @@
                              ,<<".">>
                             )
        ).
+
+%% request fs command
+-define(FS_COMMAND_HEADERS, [<<"Command">>, <<"Args">>]).
+-define(OPTIONAL_FS_COMMAND_HEADERS, [<<"FreeSWITCH-Node">>]).
+-define(FS_COMMAND_VALUES, [{<<"Event-Name">>, <<"command">>}
+                            ,{<<"Event-Category">>, <<"switch_event">>}
+                           ]).
+-define(FS_COMMAND_TYPES, []).
+-define(FS_COMMAND_KEY(N), <<"switch.command.", (amqp_util:encode(N))/binary>>).
+
+%% reply fs command
+-define(FSREPLY_COMMAND_HEADERS, [<<"Command">>, <<"Result">>]).
+-define(OPTIONAL_FSREPLY_COMMAND_HEADERS, [<<"FreeSWITCH-Node">>
+                                           ,<<"Error">>
+                                           ,<<"Response">>
+                                          ]).
+-define(FSREPLY_COMMAND_VALUES, [{<<"Event-Name">>, <<"reply">>}
+                                 ,{<<"Event-Category">>, <<"switch_event">>}
+                                ]).
+-define(FSREPLY_COMMAND_TYPES, []).
 
 %% Request a reload_acls
 -spec reload_acls(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -131,6 +155,38 @@ check_sync_v(Prop) when is_list(Prop) ->
 check_sync_v(JObj) ->
     check_sync_v(wh_json:to_proplist(JObj)).
 
+%% Request a fs command
+-spec fs_command(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+fs_command(Prop) when is_list(Prop) ->
+    case fs_command_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?FS_COMMAND_HEADERS, ?OPTIONAL_FS_COMMAND_HEADERS);
+        'false' -> {'error', "Proplist failed validation for switch command"}
+    end;
+fs_command(JObj) ->
+    fs_command(wh_json:to_proplist(JObj)).
+
+-spec fs_command_v(api_terms()) -> boolean().
+fs_command_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FS_COMMAND_HEADERS, ?FS_COMMAND_VALUES, ?FS_COMMAND_TYPES);
+fs_command_v(JObj) ->
+    fs_command_v(wh_json:to_proplist(JObj)).
+
+%% Reply to fs command
+-spec fs_reply(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+fs_reply(Prop) when is_list(Prop) ->
+    case fs_reply_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?FSREPLY_COMMAND_HEADERS, ?OPTIONAL_FSREPLY_COMMAND_HEADERS);
+        'false' -> {'error', "Proplist failed validation for switch command"}
+    end;
+fs_reply(JObj) ->
+    fs_reply(wh_json:to_proplist(JObj)).
+
+-spec fs_reply_v(api_terms()) -> boolean().
+fs_reply_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FSREPLY_COMMAND_HEADERS, ?FSREPLY_COMMAND_VALUES, ?FSREPLY_COMMAND_TYPES);
+fs_reply_v(JObj) ->
+    fs_reply_v(wh_json:to_proplist(JObj)).
+
 -spec bind_q(ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
@@ -150,6 +206,10 @@ bind_to_q(Q, ['check_sync'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
     'ok' = amqp_util:bind_q_to_configuration(Q, ?CHECK_SYNC_KEY(Realm, Username)),
+    bind_to_q(Q, T, Props);
+bind_to_q(Q, ['command'|T], Props) ->
+    Node = props:get_value('node', Props, <<"*">>),
+    'ok' = amqp_util:bind_q_to_configuration(Q, ?FS_COMMAND_KEY(wh_util:to_binary(Node))),
     bind_to_q(Q, T, Props);
 bind_to_q(_Q, [], _Props) -> 'ok'.
 
@@ -172,6 +232,10 @@ unbind_q_from(Q, ['check_sync'|T], Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     Username = props:get_value('username', Props, <<"*">>),
     'ok' = amqp_util:unbind_q_from_configuration(Q, ?CHECK_SYNC_KEY(Realm, Username)),
+    unbind_q_from(Q, T, Props);
+unbind_q_from(Q, ['command'|T], Props) ->
+    Node = props:get_value('node', Props, <<"*">>),
+    'ok' = amqp_util:unbind_q_from_configuration(Q, ?FS_COMMAND_KEY(wh_util:to_binary(Node))),
     unbind_q_from(Q, T, Props);
 unbind_q_from(_Q, [], _Props) -> 'ok'.
 
@@ -234,3 +298,31 @@ check_sync_username(JObj) ->
 -spec check_sync_value(api_terms(), ne_binary(), fun()) -> api_binary().
 check_sync_value(API, Key, Get) ->
     Get(Key, API).
+
+-spec publish_command(api_terms()) -> 'ok'.
+-spec publish_command(api_terms(), binary()) -> 'ok'.
+publish_command(JObj) ->
+    publish_command(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_command(Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?FS_COMMAND_VALUES, fun ?MODULE:fs_command/1),
+    N = check_fs_node(Req),
+    amqp_util:configuration_publish(?FS_COMMAND_KEY(N), Payload, ContentType).
+
+-spec publish_reply(api_terms(), binary()) -> 'ok'.
+publish_reply(Queue, Req) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?FSREPLY_COMMAND_VALUES, fun ?MODULE:fs_reply/1),
+    amqp_util:targeted_publish(Queue, Payload).
+
+-spec check_fs_node(api_terms()) -> api_binary().
+check_fs_node(Props) when is_list(Props) ->
+    get_value(Props, <<"FreeSWITCH-Node">>, <<"*">>).
+
+-spec get_value(api_terms(), ne_binary(), ne_binary()) -> api_binary().
+get_value(Props, Key, Default) when is_list(Props) ->
+    get_value(Props, Key, fun props:get_value/3, Default);
+get_value(Props, Key, Default) ->
+    get_value(Props, Key, fun wh_json:get_value/3, Default).
+
+-spec get_value(api_terms(), ne_binary(), fun(), ne_binary()) -> api_binary().
+get_value(API, Key, Get, Default) ->
+    Get(Key, API, Default).
