@@ -1,0 +1,8 @@
+.erlang.mk/
+
+rabbit_common.d
+
+# Generated source files.
+include/rabbit_framing.hrl
+src/rabbit_framing_amqp_0_8.erl
+src/rabbit_framing_amqp_0_9_1.erl

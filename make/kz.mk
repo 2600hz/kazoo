@@ -25,7 +25,7 @@ ifeq ($(findstring 18, $(OTP_VSN)), 18)
 endif
 
 
-ELIBS ?= $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
+ELIBS ?= $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_erlang_client-*/deps))
 
 EBINS += $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin) \
 	$(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin)
