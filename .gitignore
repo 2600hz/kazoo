@@ -12,10 +12,8 @@
 *.pid
 *.dump
 deps/*/rebar
-core/*/test/*.beam
 core/*/test/*.app
 applications/*/priv/archive_data/*
-applications/*/test/*.beam
 applications/*/test/*.app
 deps/*/test
 deps/erlydtl-*/src/erlydtl_parser.erl
@@ -49,7 +47,6 @@ deps/rabbit_common-*
 !deps/rabbitmq_server-*/plugins-src/eldap-wrapper/eldap-git/ebin/eldap.app
 !deps/rabbitmq_server-*/plugins-src/erlang-rfc4627-wrapper/erlang-rfc4627-git/ebin/rfc4627_jsonrpc.app
 !deps/rabbitmq_server-*/plugins-src/webmachine-wrapper/webmachine-git/ebin/webmachine.app
-utils/sup/deps/getopt/
 /.edts
 .project
 .settings
