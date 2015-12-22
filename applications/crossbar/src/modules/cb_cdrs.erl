@@ -532,7 +532,7 @@ col_reseller_call_type(JObj, _Timestamp) -> wh_json:get_value([<<"custom_channel
 %% generates a recording_url entry from media_transfer_destination and media_file
 %% @end
 %%--------------------------------------------------------------------
--spec recording_url(api_binary(), api_binary()) -> api_binary().
+-spec recording_url(ne_binary(), ne_binary()) -> api_binary().
 recording_url(_Mediahost, <<>>) -> 'undefined';
 recording_url(<<>>, _Mediafile) -> 'undefined';
 recording_url(Mediahost, Mediafile) ->
