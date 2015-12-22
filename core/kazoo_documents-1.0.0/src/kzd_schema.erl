@@ -12,7 +12,7 @@
 		 properties/2,
 		 max_length/2]).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("kz_documents.hrl").
 
 -define(SCHEMA_KEYWORDS_MAXLENGTH,            <<"maxLength">>).
 
