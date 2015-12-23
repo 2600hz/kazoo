@@ -298,11 +298,12 @@ fix_rerouted_call(ReroutedBy, Call) ->
             OwnerId = cf_attributes:owner_id(C),
             whapps_call:set_owner_id(OwnerId, C);
         {'error', 'not_found'} ->
-            Routines = [fun(C) -> whapps_call:set_authorization(<<"undefined">>, <<"undefined">>, C) end
-                        ,fun(C) -> whapps_call:set_owner_id(<<"undefined">>, C) end
-                        ,fun(C) -> whapps_call:set_account_id(<<"undefined">>, C) end
-                       ],
-            lists:foldl(fun(F, C) -> F(C) end, Call, Routines)
+            Keys = [<<"Account-ID">>
+                    ,<<"Owner-ID">>
+                    ,<<"Authorizing-Type">>
+                    ,<<"Authorizing-ID">>
+                   ],
+            whapps_call:remove_custom_channel_vars(Keys, Call)
     end.
 
 -spec get_rerouted_by(whapps_call:call()) -> api_binary().
