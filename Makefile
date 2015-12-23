@@ -85,6 +85,5 @@ sup_completion: kazoo
 release: RELX = $(ROOT)/utils/relx/relx
 release: relx.config
 	$(RELX) -v release --config $^ --relname kazoo_whistle_apps
-#	$(RELX) -v release --config $^ --relname kazoo_ecallmgr
 relx.config: relx.config.script
 	$(ROOT)/scripts/script2any.escript relx.config.script
