@@ -1,3 +1,2 @@
-.erlang.mk/
-
 amqp_client.d
+.erlang.mk/
