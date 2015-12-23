@@ -238,9 +238,9 @@ process_participant_event(<<"add-member">>, Props, Node, CallId) ->
     _ = publish_new_participant_event(Props, Node),
     'continue';
 process_participant_event(<<"del-member">>, Props, Node, CallId) ->
-    _ = ecallmgr_fs_conferences:participant_destroy(CallId),
     %% TODO: this can be removed once the whapps conf_participant is refactored
     _ = publish_participant_destroy_event(Props, Node),
+    _ = ecallmgr_fs_conferences:participant_destroy(CallId),
     'continue';
 process_participant_event(<<"stop-talking">>, _, _, _) -> 'continue';
 process_participant_event(<<"start-talking">>, _, _, _) -> 'continue';
