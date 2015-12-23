@@ -6,7 +6,8 @@ HEADERS=$(wildcard include/*.hrl)
 OBJECTS=$(SOURCES:src/%.erl=ebin/%.beam)
 DOC_OPTS={def,{version,\"$(VSN)\"}}
 
-all: $(OBJECTS) #test
+all: $(OBJECTS)
+	cp src/merl.app.src ebin/merl.app
 ebin/%.beam: src/%.erl $(HEADERS) Makefile
 	erlc -pz ./priv -pa ./ebin $(ERLC_FLAGS) -o ebin/ $<
 
@@ -22,19 +23,7 @@ priv/merl_transform.beam: src/merl_transform.erl $(HEADERS) Makefile
 clean:
 	-rm -f priv/merl_transform.beam
 	-rm -f $(OBJECTS)
-	(cd examples && make clean)
-
-test:
-	erl -noshell -pa ebin \
-	 -eval 'eunit:test("ebin",[])' \
-	 -s init stop
+	$(if $(wildcard ebin/merl.app), rm ebin/merl.app)
 
 release: clean
 	$(MAKE) ERLC_FLAGS="$(ERLC_FLAGS) -DNOTEST"
-
-docs:
-	erl -pa ./ebin -noshell -eval "edoc:application(merl, \".\", [$(DOC_OPTS)])" -s init stop
-
-.PHONY: examples
-examples:
-	(cd examples && make)

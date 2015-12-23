@@ -7,9 +7,9 @@ MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo
+.PHONY: $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-release release
 
-all : compile
+all: compile
 
 compile: ACTION = all
 compile: $(MAKEDIRS)
@@ -18,7 +18,7 @@ $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
 
 clean: ACTION = clean
-clean: $(MAKEDIRS) clean-release
+clean: $(MAKEDIRS)
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 
@@ -26,8 +26,8 @@ clean-release:
 	$(if $(wildcard _rel/), rm -r _rel/)
 	$(if $(wildcard relx.config), rm relx.config)
 
-clean-test : ACTION = clean-test
-clean-test : $(KAZOODIRS)
+clean-test: ACTION = clean-test
+clean-test: $(KAZOODIRS)
 
 eunit: ACTION = test
 eunit: $(KAZOODIRS)
@@ -41,11 +41,11 @@ test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
 core:
-	$(MAKE) -C core all
+	$(MAKE) -C core/ all
 deps:
-	$(MAKE) -C deps all
+	$(MAKE) -C deps/ all
 apps:
-	$(MAKE) -C applications all
+	$(MAKE) -C applications/ all
 
 kazoo: core apps
 
