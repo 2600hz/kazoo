@@ -2,9 +2,11 @@
 
 .PHONY: compile json compile-test clean clean-test eunit dialyze xref
 
+## pipefail enforces that the command fails even when run through a pipe
 SHELL = /bin/bash -o pipefail
 
 
+## Use pedantic flags when compiling apps from applications/ & core/
 ifeq ($(findstring deps, $(abspath Makefile)), deps)
     KZ_APP_OTPS =
 else
@@ -16,6 +18,7 @@ ERLC_OPTS += $(KZ_APP_OTPS) +debug_info
 # Could use OTP_VERSION, if ≥ 17
 OTP_VSN = $(shell erl -noshell -eval 'io:fwrite("~s\n", [erlang:system_info(otp_release)]).' -s erlang halt)
 
+## Ensure codebase compatibility throughout supported OTP versions
 ifeq ($(findstring 1, $(OTP_VSN)), 1)
     ERLC_OPTS += +nowarn_deprecated_type +nowarn_deprecated_function
 endif
@@ -33,12 +36,14 @@ TEST_EBINS += $(EBINS)
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa test/ $(PA) $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
+## SOURCES provides a way to specify compilation order (left to right)
 SOURCES ?= src/*.erl src/*/*.erl
 TEST_SOURCES = $(SOURCES) test/*.erl
 MODULES = $(shell      find       src/ -name '*.erl' | sed 's%[/.]% %g' | awk -vORS=, '{print $$(NF-1)}' | sed 's/,$$//')
 TEST_MODULES = $(shell find test/ src/ -name '*.erl' | sed 's%[/.]% %g' | awk -vORS=, '{print $$(NF-1)}' | sed 's/,$$//')
 
 
+## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 
 ebin/$(PROJECT).app: $(wildcard $(SOURCES))

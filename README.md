@@ -59,7 +59,7 @@
 
 ### Cloud-Based Telecommunications For Everyone
 
-Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](http://opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](https://www.gnu.org/)/[Linux](https://en.wikipedia.org/wiki/Linux), [Erlang](http://www.erlang.org/), [FreeSWITCH](https://freeswitch.org), [CouchDB](https://couchdb.apache.org) \(specifically [BigCouch](http://bigcouch.cloudant.com)), and [RabbitMQ](https://www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
+Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](//opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](//www.gnu.org/)/[Linux](//en.wikipedia.org/wiki/Linux), [Erlang](//www.erlang.org/), [FreeSWITCH](//freeswitch.org), [CouchDB](//couchdb.apache.org) \(specifically [BigCouch](//bigcouch.cloudant.com)), and [RabbitMQ](//www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
 
 ### What is Kazoo?
 
@@ -108,45 +108,44 @@ No problem!  We have many different places where folks can chip in time. These i
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
     * on IRC (#2600hz on Freenode)
-    * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-users)
-    * our [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev)
-    * our [Forum](http://forum.2600hz.com/)
-* Contribute scripts to the [community repo](https://github.com/2600hz/community-scripts)
+    * our [Users mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-users)
+    * our [Developers mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-dev)
+    * our [Forum](//forum.2600hz.com/)
+* Contribute scripts to the [community repo](//github.com/2600hz/community-scripts)
 * Help with building RPMs, DEBs, and other system packages
-* Browse the open [Issues](https://2600hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
+* Browse the open [Issues](//2600hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
 * Make a sugestion!
 
 ### Internationalization Help
 
 Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
 
-If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples](https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
+If you have a non-US deployment, please consider sharing your system configuration!  We are trying to build [examples](//github.com/2600hz/kazoo/tree/master/applications/crossbar/doc/internationalization) for every locality and fix any deficiencies.
 
 ### I know me some Erlang! How can I contribute?
 
 * Clone the repo
-    * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos
+    * If you're completely new to Git, read Github's [great introduction](//help.github.com/articles/fork-a-repo/) to forking repos
 * Squash a bug, build a feature, etc
-    * Browse the [ticket queue](https://2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
-    * Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
-* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests/)!
+    * Browse the [ticket queue](//2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
+    * Feel free to drop a line to the [dev mailing list](//groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
+* Once you feel the code is ready for inclusion, issue a [pull request](//help.github.com/articles/using-pull-requests/)!
     * Please keep your pull requests focused and specific to the task at hand
     * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
 
 ### Do you know other languages?
 
 * Help us write some automated testing tools
-* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600hz/kazoo-ui)
-* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600hz/kazoo-php-sdk) | [RUBY](https://github.com/2600hz/kazoo-ruby-sdk))
+* Check out our Javascript/HTML/CSS [GUI](//github.com/2600hz/kazoo-ui)
+* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](//github.com/2600hz/kazoo-php-sdk) | [RUBY](//github.com/2600hz/kazoo-ruby-sdk))
 * Check out our Pivot APIs and help us create SDKs in your favorite languages
 * Check out our AMQP APIs and create a WhApp in your favorite language
-* Help out with the [configuration scripts](https://github.com/2600hz/kazoo-configs)
+* Help out with the [configuration scripts](//github.com/2600hz/kazoo-configs)
 
 ## Build Dependencies
 
-* R15B ≤ erlang ≤ 17.5
+* R15B ≤ erlang ≤ 18.2
     * Note: due to an issue with `parse_transform`s, R16B03 won't build ([merl](deps/merl-28e5b3829168199e8475fa91b997e0c03b90d280) needs update)
-    * Note: to build on 17.* Erlang releases you may need to set `ERLC_OPTS` to `'+nowarn_deprecated_type +nowarn_deprecated_function'` (see .travis.yml for more info)
 * python2
 * libxslt
 * gcc-c++
@@ -159,9 +158,26 @@ If you have a non-US deployment, please consider sharing your system configurati
 * make
 * nc
 
+## How to Build
+
+* Once the dependencies are all here, after a fresh `git clone` just `make`.
+* When developing, one can `cd` into any app directory and run:
+    * `make` (`make all` or `make clean`)
+    * `make xref` to look for calls to undefined functions (uses [Xref](//www.erlang.org/doc/apps/tools/xref_chapter.html))
+    * `make dialyze` to statically type-check the app (uses [Dialyzer](//www.erlang.org/doc/man/dialyzer.html))
+    * `make test` runs the app / sub-apps test suite, if any.
+* `make release` will generate a [deployable release](//learnyousomeerlang.com/release-is-the-word), described in `relx.config.script`
+* `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
+
+## How to Use Releases
+
+`make release` creates `relx.config` which [relx](//github.com/erlware/relx/wiki) uses to generate a standalone Erlang VM equipped with Kazoo.
+
+Once built, the VM can be started with `_rel/kazoo_whistle_apps/bin/kazoo_whistle_apps` and stopped like a normal Erlang VM.
+
 ## Learn More
 
-* Join us at [KazooCon!](http://kazoocon.com/) 
+* Join us at [KazooCon!](//kazoocon.com/)
 * Visit http://2600hz.org
 * Read more at http://wiki.2600hz.org
 * Bugs and feature requests http://tickets.2600hz.org
