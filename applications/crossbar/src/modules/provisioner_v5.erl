@@ -338,9 +338,10 @@ settings_feature_keys(JObj) ->
           ,wh_json:new()
           ,FeatureKeys
          ),
-    wh_json:merge_jobjs(wh_json:from_list([{<<"account">>, get_line_key(Brand, Family)}])
-                        ,Keys
-                       ).
+    case get_line_key(Brand, Family) of
+        'undefined' -> Keys;
+        LineKey -> wh_json:set_value(<<"account">>, LineKey, Keys)
+    end.
 
 -spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary()) ->
                              api_object().
@@ -350,38 +351,48 @@ get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
         'undefined' -> 'undefined';
         Presence ->
             wh_json:from_list(
-              [{<<"label">>, <<>>}
-               ,{<<"value">>, Presence}
-               ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-               ,{<<"account">>, get_line_key(Brand, Family)}
-              ])
+              props:filter_undefined(
+                [{<<"label">>, Presence}
+                 ,{<<"value">>, Presence}
+                 ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+                 ,{<<"account">>, get_line_key(Brand, Family)}
+                ])
+             )
     end;
 get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
     wh_json:from_list(
-      [{<<"label">>, Value}
-       ,{<<"value">>, Value}
-       ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-       ,{<<"account">>, get_line_key(Brand, Family)}
-      ]);
+      props:filter_undefined(
+        [{<<"label">>, Value}
+         ,{<<"value">>, Value}
+         ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+         ,{<<"account">>, get_line_key(Brand, Family)}
+        ])
+     );
 get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
             wh_json:from_list(
-              [{<<"label">>, <<>>}
-               ,{<<"value">>, <<"*3", Presence/binary>>}
-               ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-               ,{<<"account">>, get_line_key(Brand, Family)}
-              ])
+              props:filter_undefined(
+                [{<<"label">>, <<"Park ", Presence/binary>>}
+                 ,{<<"value">>, <<"*3", Presence/binary>>}
+                 ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+                 ,{<<"account">>, get_line_key(Brand, Family)}
+                ]
+               )
+             )
     end;
 get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
     wh_json:from_list(
-      [{<<"label">>, <<>>}
-       ,{<<"value">>, <<"*3", Value/binary>>}
-       ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-       ,{<<"account">>, get_line_key(Brand, Family)}
-      ]).
+      props:filter_undefined(
+        [{<<"label">>, <<"Park ", Value/binary>>}
+         ,{<<"value">>, <<"*3", Value/binary>>}
+         ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+         ,{<<"account">>, get_line_key(Brand, Family)}
+        ]
+       )
+     ).
 
 -spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
 get_line_key(<<"yealink">>, _) -> <<"0">>;
