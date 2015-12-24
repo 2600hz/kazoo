@@ -375,7 +375,7 @@ get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) 
         Presence ->
             wh_json:from_list(
               props:filter_undefined(
-                [{<<"label">>, <<"Park ", Presence/binary>>}
+                [{<<"label">>, <<>>}
                  ,{<<"value">>, <<"*3", Presence/binary>>}
                  ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
                  ,{<<"account">>, get_line_key(Brand, Family)}
@@ -386,7 +386,7 @@ get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) 
 get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"label">>, <<"Park ", Value/binary>>}
+        [{<<"label">>, <<>>}
          ,{<<"value">>, <<"*3", Value/binary>>}
          ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
          ,{<<"account">>, get_line_key(Brand, Family)}
