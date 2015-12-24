@@ -26,6 +26,7 @@
          ,flush/0, flush/1, flush/2
          ,sync/0
          ,count/0
+         ,export_registrations/1,import_registrations/1
         ]).
 
 -export([init/1
@@ -386,6 +387,12 @@ init([]) ->
 handle_call('registrar_age', _, #state{started=Started}=State) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
     {'reply', wh_util:current_tstamp() - Started, State};
+handle_call({'import_registrations', Filename}, _, State) ->
+    wh_util:put_callid(?LOG_SYSTEM_ID),
+    {'reply', import_registrations_from_file(Filename), State};
+handle_call({'export_registrations', Filename}, _, State) ->
+    wh_util:put_callid(?LOG_SYSTEM_ID),
+    {'reply', export_registrations_to_file(Filename), State};
 handle_call(_Msg, _From, State) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
     {'noreply', State}.
@@ -1281,3 +1288,38 @@ get_contact_hostport(Uri) ->
         [_, Hostport] -> Hostport;
         _Else -> Uri
     end.
+
+-spec write_terms(list(), list()) -> 'ok' | {'error', atom()}.
+write_terms(Filename, List) ->
+    Text = lists:map(fun(Term) -> io_lib:format("~p.~n", [Term]) end, List),
+    file:write_file(Filename, Text).
+
+-spec export_registrations_to_file(ne_binary()) -> integer().
+export_registrations_to_file(Filename) ->
+    RegList = ets:tab2list(?MODULE),
+    case write_terms(binary_to_list(Filename), RegList) of
+        'ok' -> length(RegList);
+        _ -> 0
+    end.
+
+-spec import_registrations_from_file(ne_binary()) -> integer().
+import_registrations_from_file(Filename) ->
+    case file:consult(binary_to_list(Filename)) of
+        {'ok', ConsultList} ->
+            import_registrations_from_list(ConsultList);
+        _ -> 0
+    end.
+
+-spec import_registrations_from_list(list()) -> integer().
+import_registrations_from_list([]) -> 0;
+import_registrations_from_list([H|T]) ->
+    Inserted = ets:insert_new(?MODULE, H),
+    import_registrations_from_list(T) + case Inserted of true -> 1; _ -> 0 end.
+
+-spec export_registrations(ne_binary()) -> 'ok'.
+export_registrations(Filename) ->
+    gen_server:call(?MODULE, {export_registrations, Filename}).
+
+-spec import_registrations(ne_binary()) -> integer().
+import_registrations(Filename) ->
+    gen_server:call(?MODULE, {import_registrations, Filename}).

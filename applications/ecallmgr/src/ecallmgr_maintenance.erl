@@ -89,6 +89,7 @@
          ,enable_authz/0, enable_local_resource_authz/0
          ,disable_authz/0, disable_local_resource_authz/0
         ]).
+-export([export_registrations/1,import_registrations/1]).
 
 -export([show_channels/0]).
 -export([show_calls/0]).
@@ -727,3 +728,15 @@ hangup_long_running_channels(MaxAge) ->
     io:format("hanging up channels older than ~p seconds~n", [MaxAge]),
     N = ecallmgr_fs_channels:cleanup_old_channels(wh_util:to_integer(MaxAge)),
     io:format("hungup ~p channels~n", [N]).
+
+-spec export_registrations(ne_binary()) -> integer().
+export_registrations(Filename) ->
+    Exported = ecallmgr_registrar:export_registrations(Filename),
+    io:format("exported ~p registrations", [Exported]),
+    Exported.
+
+-spec import_registrations(ne_binary()) -> integer().
+import_registrations(Filename) ->
+    Imported = ecallmgr_registrar:import_registrations(Filename),
+    io:format("imported ~p registrations", [Imported]),
+    Imported.
