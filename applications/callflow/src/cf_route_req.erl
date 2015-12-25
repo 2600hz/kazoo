@@ -240,16 +240,15 @@ get_ringback_media(Flow, JObj) ->
 pre_park_action(Call,JObj) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, 'true')
         andalso whapps_call:inception(Call) =/= 'undefined'
-        andalso whapps_call:authorizing_type(Call) =:= 'undefined'
+        andalso (whapps_call:authorizing_type(Call) =:= 'undefined' orelse whapps_call:authorizing_type(Call) =:= <<"resource">>)
     of
         'false' -> <<"none">>;
-        'true' -> check_dtmf_type(JObj)
+        'true' -> check_dtmf_type(wh_json:get_value(<<"Remote-SDP">>, JObj, <<"101 telephone-event">>)) 
     end.
 
--spec check_dtmf_type(wh_json:object()) -> ne_binary().
-check_dtmf_type(JObj) ->
-    SDPRemote = wh_json:get_value(<<"Remote-SDP">>, JObj),
-    case re:run(SDPRemote, <<"101 telephone-event">>, []) of
+-spec check_dtmf_type(ne_binary()) -> ne_binary().
+check_dtmf_type(SDPRemote) ->
+    case binary:match(SDPRemote, <<"101 telephone-event">>) of
         'nomatch' -> <<"start_dtmf">>;
         _ -> <<"ring_ready">>
     end.
