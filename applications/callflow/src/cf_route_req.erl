@@ -243,7 +243,7 @@ pre_park_action(Call,JObj) ->
         andalso whapps_call:authorizing_type(Call) =:= 'undefined'
     of
         'false' -> <<"none">>;
-        'true' -> check_dtmf_type(JObj) 
+        'true' -> check_dtmf_type(JObj)
     end.
 
 -spec check_dtmf_type(wh_json:object()) -> ne_binary().
