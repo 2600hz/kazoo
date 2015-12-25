@@ -194,7 +194,7 @@ send_route_response(Flow, JObj, Call) ->
               ,{<<"Method">>, <<"park">>}
               ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
               ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
-              ,{<<"Pre-Park">>, pre_park_action(Call)}
+              ,{<<"Pre-Park">>, pre_park_action(Call,JObj)}
               ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
               ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -236,14 +236,22 @@ get_ringback_media(Flow, JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec pre_park_action(whapps_call:call()) -> ne_binary().
-pre_park_action(Call) ->
+-spec pre_park_action(whapps_call:call(), wh_json:object()) -> ne_binary().
+pre_park_action(Call,JObj) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, 'true')
         andalso whapps_call:inception(Call) =/= 'undefined'
         andalso whapps_call:authorizing_type(Call) =:= 'undefined'
     of
         'false' -> <<"none">>;
-        'true' -> <<"ring_ready">>
+        'true' -> check_dtmf_type(JObj) 
+    end.
+
+-spec check_dtmf_type(wh_json:object()) -> ne_binary().
+check_dtmf_type(JObj) ->
+    SDPRemote = wh_json:get_value(<<"Remote-SDP">>, JObj),
+    case re:run(SDPRemote, <<"101 telephone-event">>, []) of
+        'nomatch' -> <<"start_dtmf">>;
+        _ -> <<"ring_ready">>
     end.
 
 %%-----------------------------------------------------------------------------

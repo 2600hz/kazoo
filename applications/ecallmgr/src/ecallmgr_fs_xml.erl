@@ -401,6 +401,7 @@ route_resp_pre_park_action(JObj) ->
     case wh_json:get_value(<<"Pre-Park">>, JObj) of
         <<"ring_ready">> -> action_el(<<"ring_ready">>);
         <<"answer">> -> action_el(<<"answer">>);
+        <<"start_dtmf">> -> action_el(<<"start_dtmf">>);
         _Else -> 'undefined'
     end.
 
