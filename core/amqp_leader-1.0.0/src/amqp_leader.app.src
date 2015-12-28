@@ -1,0 +1,13 @@
+{application, amqp_leader,
+ [
+  {description, ""},
+  {vsn, "1.0.0"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { amqp_leader_app, []}},
+  {env, []}
+ ]}.
