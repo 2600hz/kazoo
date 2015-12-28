@@ -177,7 +177,7 @@ authz_response(JObj, Props, CallId, Node) ->
 
 -spec set_ccv_trunk_usage(wh_json:object(), ne_binary(), atom()) -> 'ok'.
 set_ccv_trunk_usage(JObj, CallId, Node) ->
-    ecallmgr_util:set(Node
+    ecallmgr_fs_command:set(Node
                       ,CallId
                       ,[{Key, TrunkUsage}
                         || Key <- [<<"Account-Trunk-Usage">>
@@ -245,7 +245,7 @@ allow_call(Props, CallId, Node) ->
                          ,{'true', wh_json:from_list(Vars)}
                         ),
     _ = case props:is_true(<<"Call-Setup">>, Props, 'false') of
-            'false' -> ecallmgr_util:set(Node, CallId, Vars);
+            'false' -> ecallmgr_fs_command:set(Node, CallId, Vars);
             'true' -> 'ok'
         end,
     'true'.
@@ -316,7 +316,7 @@ maybe_set_rating_ccvs(Props, JObj, Node) ->
 -spec set_rating_ccvs(wh_json:object(), atom()) -> 'ok'.
 set_rating_ccvs(JObj, Node) ->
     lager:debug("setting rating information"),
-    ecallmgr_util:set(Node
+    ecallmgr_fs_command:set(Node
                       ,wh_json:get_value(<<"Call-ID">>, JObj)
                       ,get_rating_ccvs(JObj)
                      ).
