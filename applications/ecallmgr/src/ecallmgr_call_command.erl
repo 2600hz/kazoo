@@ -146,7 +146,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
                          end
                        ],
             Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
-            _ = ecallmgr_util:set(Node, UUID, Vars),
+            _ = ecallmgr_fs_command:set(Node, UUID, Vars),
 
             MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             RecordingName = ecallmgr_util:recording_filename(MediaName),
@@ -272,7 +272,7 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
             Ringback ->
                 Stream = ecallmgr_util:media_path(Ringback, 'extant', UUID, JObj),
                 lager:debug("custom ringback: ~s", [Stream]),
-                _ = ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
+                _ = ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
         end,
     {<<"ring_ready">>, <<>>};
 
@@ -472,10 +472,10 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         'false' -> {'error', <<"set failed to execute as JObj did not validate">>};
         'true' ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-            _ = ecallmgr_util:set(Node, UUID, ChannelVars),
+            _ = ecallmgr_fs_command:set(Node, UUID, ChannelVars),
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
-            _ = ecallmgr_util:export(Node, UUID, CallVars),
+            _ = ecallmgr_fs_command:export(Node, UUID, CallVars),
 
             {<<"set">>, 'noop'}
     end;
@@ -558,7 +558,7 @@ fixup_redirect_node(Node) ->
 maybe_add_redirect_header(_Node, _UUID, 'undefined') -> 'ok';
 maybe_add_redirect_header(Node, UUID, RedirectServer) ->
     lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
-    ecallmgr_util:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
+    ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -787,9 +787,9 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
             lager:debug("API is skipping control usurp")
     end,
 
-    ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj) ++ Exports),
-    ecallmgr_util:set(Node, UUID, Exports),
-    ecallmgr_util:set(Node, Target, Exports),
+    ecallmgr_fs_command:set(Node, UUID, build_set_args(SetApi, JObj) ++ Exports),
+    ecallmgr_fs_command:set(Node, UUID, Exports),
+    ecallmgr_fs_command:set(Node, Target, Exports),
 
     {Command, Target}.
 
@@ -824,8 +824,8 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
                        ),
     lager:debug("published ~p for ~s~n", [ControlUsurp, Target]),
 
-    ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
-    ecallmgr_util:export(Node, UUID, Exports),
+    ecallmgr_fs_command:set(Node, UUID, build_set_args(SetApi, JObj)),
+    ecallmgr_fs_command:export(Node, UUID, Exports),
     {<<"eavesdrop">>, Target}.
 
 -type set_headers() :: wh_proplist() | [{ne_binary(), api_binary(), ne_binary()},...].
@@ -871,7 +871,7 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             maybe_start_conference_on_our_node(ChanNode, UUID, JObj);
         {'ok', ChanNode} ->
             lager:debug("channel is on same node as conference"),
-            ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
+            ecallmgr_fs_command:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
             maybe_set_nospeak_flags(ChanNode, UUID, JObj),
             {<<"conference">>, Cmd};
         {'ok', ConfNode} ->
@@ -879,14 +879,14 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
             'true' = ecallmgr_channel_move:move(UUID, ChanNode, ConfNode),
             lager:debug("channel has moved to ~s", [ConfNode]),
             maybe_set_nospeak_flags(ConfNode, UUID, JObj),
-            ecallmgr_util:export(ConfNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
+            ecallmgr_fs_command:export(ConfNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
             {<<"conference">>, Cmd, ConfNode}
     end;
 
 get_conference_app(ChanNode, UUID, JObj, 'false') ->
     {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
     maybe_set_nospeak_flags(ChanNode, UUID, JObj),
-    %% ecallmgr_util:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
+    %% ecallmgr_fs_command:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
 
 -spec maybe_start_conference_on_our_node(atom(), ne_binary(), wh_json:object()) ->
@@ -913,12 +913,12 @@ maybe_set_nospeak_flags(Node, UUID, JObj) ->
     case wh_json:is_true(<<"Member-Nospeak">>, JObj) of
         'false' -> 'ok';
         'true' ->
-            ecallmgr_util:set(Node, UUID, [{<<"conference_member_nospeak_relational">>, <<"true">>}])
+            ecallmgr_fs_command:set(Node, UUID, [{<<"conference_member_nospeak_relational">>, <<"true">>}])
     end,
     case wh_json:is_true(<<"Nospeak-Check">>, JObj) of
         'false' -> 'ok';
         'true' ->
-            ecallmgr_util:set(Node, UUID, [{<<"conference_member_nospeak_check">>, <<"true">>}])
+            ecallmgr_fs_command:set(Node, UUID, [{<<"conference_member_nospeak_check">>, <<"true">>}])
     end.
 
 %% [{FreeSWITCH-Flag-Name, Kazoo-Flag-Name}]
@@ -983,7 +983,7 @@ stream_over_http(Node, UUID, File, 'put'=Method, 'store_vm'=Type, JObj) ->
 stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-    ecallmgr_util:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
+    ecallmgr_fs_command:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
     Args = list_to_binary([Url, <<" ">>, File]),
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
     SendAlert = wh_json:is_true(<<"Suppress-Error-Report">>, JObj, 'false'),
@@ -1294,7 +1294,7 @@ play(Node, UUID, JObj) ->
                  end
                ],
     Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
-    _ = ecallmgr_util:set(Node, UUID, Vars),
+    _ = ecallmgr_fs_command:set(Node, UUID, Vars),
 
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     F = ecallmgr_util:media_path(MediaName, 'new', UUID, JObj),
@@ -1342,7 +1342,7 @@ set_terminators(Node, UUID, Ts) ->
     case get_terminators(Ts) of
         'undefined' -> 'ok';
         {K, V} ->
-            case ecallmgr_util:set(Node, UUID, [{K, V}]) of
+            case ecallmgr_fs_command:set(Node, UUID, [{K, V}]) of
                 {'ok', _} -> 'ok';
                 E -> E
             end
@@ -1397,7 +1397,7 @@ set_record_call_vars(Node, UUID, JObj) ->
                         ]
                        ,Routines
                       ),
-    ecallmgr_util:set(Node, UUID, Vars).
+    ecallmgr_fs_command:set(Node, UUID, Vars).
 
 -spec maybe_waste_resources(wh_proplist()) -> wh_proplist().
 maybe_waste_resources(Acc) ->
@@ -1426,12 +1426,12 @@ start_record_call_args(Node, UUID, JObj, RecordingName) ->
     RecordMinSec = wh_json:get_binary_value(<<"Record-Min-Sec">>, JObj),
     SampleRate = get_sample_rate(JObj),
 
-    _ = ecallmgr_util:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
+    _ = ecallmgr_fs_command:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
                                        ,{<<"recording_follow_attxfer">>, FollowTransfer}
                                        ,{<<"Record-Min-Sec">>, RecordMinSec}
                                        ,{<<"record_sample_rate">>, wh_util:to_binary(SampleRate)}
                                       ]),
-    _ = ecallmgr_util:export(
+    _ = ecallmgr_fs_command:export(
           Node
           ,UUID
           ,[{<<"Insert-At">>, wh_json:get_value(<<"Insert-At">>, JObj)}

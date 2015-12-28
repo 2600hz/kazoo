@@ -23,7 +23,7 @@
 -spec call_command(atom(), ne_binary(), wh_json:object()) ->
                        {ne_binary(), ne_binary()}.
 call_command(Node, UUID, JObj) ->
-    _ = ecallmgr_util:set(Node, UUID
+    _ = ecallmgr_fs_command:set(Node, UUID
                           ,[{<<"tts_engine">>, <<"flite">>}
                             ,{<<"tts_voice">>, voice(JObj)}
                            ]),

@@ -85,7 +85,7 @@ handle_ringback(Node, UUID, JObj) ->
         Media ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom ringback: ~s", [Stream]),
-            ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
+            ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
 -spec maybe_early_media(atom(), ne_binary(), wh_json:object()) -> 'ok'.
