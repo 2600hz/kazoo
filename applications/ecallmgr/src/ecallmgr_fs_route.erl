@@ -362,7 +362,7 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
 
     lager:debug("started event ~p and control ~p processes", [_Evt, _Ctl]),
 
-    ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)).
+    ecallmgr_fs_command:set(Node, CallId, wh_json:to_proplist(CCVs)).
 
 -spec start_message_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 start_message_handling(_Node, _FetchId, CallId, JObj) ->

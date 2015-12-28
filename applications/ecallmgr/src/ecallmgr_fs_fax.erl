@@ -25,7 +25,7 @@ receive_fax(Node, UUID, JObj) ->
                           ,<<"Enable-T38-Passthrough">>
                           ,<<"Enable-T38-Gateway">>
                          ])),
-    ecallmgr_util:set(Node, UUID, Sets),
+    ecallmgr_fs_command:set(Node, UUID, Sets),
     Filename = wh_util:to_list(wh_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID))),
     [{<<"playback">>, <<"silence_stream://2000">>}
     ,{<<"rxfax">>, Filename}

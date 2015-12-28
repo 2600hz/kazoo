@@ -578,7 +578,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
 -spec set_music_on_hold(atom(), ne_binary(), api_binary()) -> 'ok'.
 set_music_on_hold(_, _, 'undefined') -> 'ok';
 set_music_on_hold(Node, UUID, Media) ->
-    Resp = ecallmgr_util:set(Node, UUID, [{<<"Hold-Media">>, Media}]),
+    Resp = ecallmgr_fs_command:set(Node, UUID, [{<<"Hold-Media">>, Media}]),
     lager:debug("setting Hold-Media resp: ~p", [Resp]).
 
 -spec bind_to_call_events(ne_binary()) -> 'ok'.
