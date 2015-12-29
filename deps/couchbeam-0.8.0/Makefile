@@ -1,15 +1,12 @@
 PROJECT = couchbeam
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
-DIALYZER = dialyzer
 
-PA = $(shell find $(ROOT)/deps/couchbeam-* -maxdepth 2 -name ebin -print) \
+EBINS = $(shell find $(ROOT)/deps/couchbeam-* -maxdepth 2 -name ebin -print) \
 	$(shell find $(ROOT)/deps/ibrowse-* -maxdepth 2 -name ebin -print)
+PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS += +debug_info +warn_export_all -pa $(PA) -I$(ROOT)/core -I$(ROOT)/deps -I$(wildcard $(ROOT)/deps/couchbeam-*/include)
+ERLC_OPTS += +debug_info +warn_export_all $(PA) -I$(ROOT)/core -I$(ROOT)/deps -Iinclude
      # +bin_opt_info
-
-DIRS =  .
 
 .PHONY: all compile clean
 
@@ -46,8 +43,3 @@ test: clean compile-test eunit
 
 eunit: compile-test
 	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
-
-dialyze:
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
