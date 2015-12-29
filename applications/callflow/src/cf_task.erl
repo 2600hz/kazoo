@@ -147,6 +147,7 @@ handle_info(Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(wh_json:object(), state()) -> {'reply', wh_proplist()}.
+handle_event(_JObj, #state{pid='undefined'}) -> 'ignore';
 handle_event(_JObj, #state{pid=Pid}) ->
     {'reply', [{'cf_task_pid', Pid}]}.
 
