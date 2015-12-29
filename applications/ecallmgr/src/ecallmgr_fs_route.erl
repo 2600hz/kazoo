@@ -226,29 +226,30 @@ init_message_props(Props) ->
 
 -spec add_message_missing_props(wh_proplist()) -> wh_proplist().
 add_message_missing_props(Props) ->
-    lists:foldl(fun({K, _V}= A,B) ->
-                        case props:get_value(K, Props) of
-                            'undefined' -> [A | B];
-                            _Else -> B
-                        end
-                end, Props,
-                [{<<"Call-Direction">>, <<"outbound">>}
-                 ,{<<"Resource-Type">>,<<"sms">>}
-                 ,{<<"Message-ID">>, wh_util:rand_hex_binary(16)}
-                 ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
-                 ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
-                ]).
+    props:insert_values(
+      [{<<"Call-Direction">>, <<"outbound">>}
+      ,{<<"Resource-Type">>,<<"sms">>}
+      ,{<<"Message-ID">>, wh_util:rand_hex_binary(16)}
+      ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
+      ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
+      ]
+      ,Props
+     ).
 
 -spec expand_message_vars(wh_proplist()) -> wh_proplist().
 expand_message_vars(Props) ->
-    lists:foldl(fun({K,V}, Ac) ->
-                        case props:get_value(<<"variable_", K/binary>>, Ac) of
-                            'undefined' -> props:set_value(<<"variable_", K/binary>>, V, Ac);
-                            _ -> Ac
-                        end
-                end, Props,
-                props:filter(fun should_expand_var/1, Props)
-                 ).
+    lists:foldl(fun expand_message_var/2
+                ,Props
+                ,props:filter(fun should_expand_var/1, Props)
+               ).
+
+-spec expand_message_var({ne_binary(), ne_binary()}, wh_proplist()) ->
+                                wh_proplist().
+expand_message_var({K,V}, Ac) ->
+    case props:get_value(<<"variable_", K/binary>>, Ac) of
+        'undefined' -> props:set_value(<<"variable_", K/binary>>, V, Ac);
+        _ -> Ac
+    end.
 
 -spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 process_route_req(Section, Node, FetchId, CallId, Props) ->
@@ -278,17 +279,26 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
-            J = wh_json:set_value(<<"Context">>, hunt_context(Props), JObj),
-            maybe_wait_for_authz(Section, Node, FetchId, CallId, J)
+            ToSet =
+                [{<<"Context">>, hunt_context(Props)}
+                 ,{<<"Remote-SDP">>, remote_sdp(Props)}
+                ],
+            maybe_wait_for_authz(Section, Node, FetchId, CallId
+                                 ,wh_json:set_values(ToSet, JObj)
+                                )
     end.
 
 -spec hunt_context(wh_proplist()) -> api_binary().
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
+-spec remote_sdp(wh_proplist()) -> api_binary().
+remote_sdp(Props) ->
+    props:get_value(<<"variable_switch_r_sdp">>, Props, <<>>).
+
 -spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
-    case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false'))
+    case ecallmgr_config:is_true(<<"authz_enabled">>, 'false')
         andalso wh_json:get_value(<<"Method">>, JObj) =/= <<"error">>
     of
         'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj);
@@ -313,11 +323,12 @@ wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
 -spec reply_forbidden(atom(), atom(), ne_binary()) -> 'ok'.
 reply_forbidden(Section, Node, FetchId) ->
     lager:info("received forbidden route response for ~s, sending 403 Incoming call barred", [FetchId]),
-    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
-                                                  ,{<<"Route-Error-Code">>, <<"403">>}
-                                                  ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
-                                                  ,{<<"Fetch-Section">>, wh_util:to_binary(Section)}
-                                                 ]),
+    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(
+                    [{<<"Method">>, <<"error">>}
+                     ,{<<"Route-Error-Code">>, <<"403">>}
+                     ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
+                     ,{<<"Fetch-Section">>, wh_util:to_binary(Section)}
+                    ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         'ok' -> lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]);
