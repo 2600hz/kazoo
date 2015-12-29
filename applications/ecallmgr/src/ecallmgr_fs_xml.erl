@@ -287,6 +287,7 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
              ,route_resp_ringback(JObj)
              ,route_resp_transfer_ringback(JObj)
              ,route_resp_pre_park_action(JObj)
+             ,may_be_start_dtmf_action(JObj)
              | route_resp_ccvs(JObj) ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
@@ -401,8 +402,22 @@ route_resp_pre_park_action(JObj) ->
     case wh_json:get_value(<<"Pre-Park">>, JObj) of
         <<"ring_ready">> -> action_el(<<"ring_ready">>);
         <<"answer">> -> action_el(<<"answer">>);
-        <<"start_dtmf">> -> action_el(<<"start_dtmf">>);
         _Else -> 'undefined'
+    end.
+
+-spec may_be_start_dtmf_action(wh_json:object()) -> 'undefined' | xml_el().
+may_be_start_dtmf_action(JObj) ->
+    case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
+        'false' -> 'undefined';
+        'true' -> check_dtmf_type(JObj)
+    end.
+
+-spec check_dtmf_type(ne_binary()) -> ne_binary().
+check_dtmf_type(JObj) ->
+    SDPRemote = wh_json:get_value(<<"Remote-SDP">>, JObj, <<"101 telephone-event">>),
+    case binary:match(SDPRemote, <<"101 telephone-event">>) of
+        'nomatch' -> action_el(<<"start_dtmf">>);
+        _ -> 'undefined'
     end.
 
 -spec get_leg_vars(wh_json:object() | wh_proplist()) -> iolist().

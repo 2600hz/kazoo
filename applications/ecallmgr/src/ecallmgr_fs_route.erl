@@ -333,26 +333,14 @@ reply_forbidden(Section, Node, FetchId) ->
 -spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
-    J = case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
-            'false' -> JObj;
-            'true' -> check_dtmf_type(JObj)
-    end,
-    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(J),
+    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
         'ok' ->
             lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]),
             ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
-            maybe_start_call_handling(Node, FetchId, CallId, J)
-    end.
-
--spec check_dtmf_type(ne_binary()) -> ne_binary().
-check_dtmf_type(JObj) ->
-    SDPRemote = wh_json:get_value(<<"Remote-SDP">>, JObj, <<"101 telephone-event">>),
-    case binary:match(SDPRemote, <<"101 telephone-event">>) of
-        'nomatch' -> wh_json:set_value(<<"Pre-Park">>, <<"start_dtmf">>, JObj);
-        _ -> JObj
+            maybe_start_call_handling(Node, FetchId, CallId, JObj)
     end.
 
 -spec maybe_start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
