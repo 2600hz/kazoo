@@ -961,7 +961,7 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                   [{<<"Media-Name">>, MediaName}
                    ,{<<"Stream-Type">>, wh_util:to_binary(Type)}
                    ,{<<"Call-ID">>, CallId}
-                   ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
+                   ,{<<"Msg-ID">>, wh_util:rand_hex_binary(8)}
                    | wh_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
                   ])
                 ,JObj),
