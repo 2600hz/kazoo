@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "notify.callback",
     "description": "Schema for a callback options",
-    "name": "Voicemail Box",
+    "name": "Callback notification options",
     "properties": {
         "attempts": {
             "description": "How many attempts without answer will system do",

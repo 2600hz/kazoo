@@ -226,7 +226,7 @@ time_schedule(Schedule) ->
                                                    + ?SECONDS_IN_DAY * Days)}
     end.
 
--spec schedule({ne_binary(), time(), fun()}) -> {'ok', pid()} | {'error', term()}.
+-spec schedule({ne_binary(), time(), leader_cron_task:execargs()}) -> {'ok', pid()} | {'error', term()}.
 schedule({Name, Time, Action}) ->
     lager:info("scheduling ~p", [Name]),
     leader_cron:schedule_task(Name, Time, Action).
