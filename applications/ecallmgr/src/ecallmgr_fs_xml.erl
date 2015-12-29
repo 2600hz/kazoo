@@ -412,7 +412,7 @@ may_be_start_dtmf_action(JObj) ->
         'true' -> check_dtmf_type(JObj)
     end.
 
--spec check_dtmf_type(ne_binary()) -> ne_binary().
+-spec check_dtmf_type(wh_json:object()) -> 'undefined' | xml_el().
 check_dtmf_type(JObj) ->
     SDPRemote = wh_json:get_value(<<"Remote-SDP">>, JObj, <<"101 telephone-event">>),
     case binary:match(SDPRemote, <<"101 telephone-event">>) of
