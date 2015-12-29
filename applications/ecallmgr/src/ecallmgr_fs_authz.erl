@@ -57,14 +57,15 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
 maybe_authorize_channel(Props, Node) ->
     CallId = kzd_freeswitch:call_id(Props),
 
+    Referred = is_referred(Props),
     case kzd_freeswitch:channel_authorized(Props) of
-        <<"true">> ->
+        <<"true">> when not Referred ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,{'true', wh_json:new()}
                                 ),
             'true';
-        <<"false">> ->
+        <<"false">> when not Referred ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,'false'
@@ -82,6 +83,11 @@ maybe_authorize_channel(Props, Node) ->
                     maybe_channel_recovering(Props, CallId, Node)
             end
     end.
+
+-spec is_referred(wh_proplist()) -> boolean().
+is_referred(Props) ->
+    kzd_freeswitch:ccv(Props, <<"Referred-By">>) =/= 'undefined'
+        orelse kzd_freeswitch:ccv(Props, <<"Referred-To">>) =/= 'undefined'.
 
 -spec maybe_channel_recovering(wh_proplist(), ne_binary(), atom()) -> boolean().
 maybe_channel_recovering(Props, CallId, Node) ->

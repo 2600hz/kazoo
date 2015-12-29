@@ -74,6 +74,7 @@
 -export([set_custom_channel_var/3
          ,insert_custom_channel_var/3
          ,set_custom_channel_vars/2
+         ,remove_custom_channel_vars/2
          ,update_custom_channel_vars/2
          ,custom_channel_var/3
          ,custom_channel_var/2
@@ -824,7 +825,7 @@ set_authorization(AuthorizingType, AuthorizingId, #whapps_call{}=Call)
 
 -spec set_owner_id(ne_binary(), call()) -> call().
 set_owner_id(OwnerId, #whapps_call{}=Call) when is_binary(OwnerId) ->
-    set_custom_channel_var(<<"Owner-Id">>, OwnerId, Call#whapps_call{owner_id=OwnerId}).
+    set_custom_channel_var(<<"Owner-ID">>, OwnerId, Call#whapps_call{owner_id=OwnerId}).
 
 -spec owner_id(call()) -> api_binary().
 owner_id(#whapps_call{owner_id=OwnerId}) -> OwnerId.
@@ -867,6 +868,20 @@ set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->
 -spec from_tag(call()) -> api_binary().
 from_tag(#whapps_call{from_tag=FromTag}) ->
     FromTag.
+
+-spec remove_custom_channel_vars(ne_binaries(), whapps_call:call()) -> whapps_call:call().
+remove_custom_channel_vars(Keys, #whapps_call{}=Call) ->
+    whapps_call_command:set(wh_json:from_list([{Key, <<>>} || Key <- Keys]), 'undefined', Call),
+    handle_ccvs_remove(Keys, Call).
+
+-spec handle_ccvs_remove(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+handle_ccvs_remove(Keys, #whapps_call{ccvs=CCVs}=Call) ->
+    lists:foldl(fun(Key, C) ->
+        case props:get_value(Key, ?SPECIAL_VARS) of
+          'undefined' -> C;
+          Index -> setelement(Index, C, 'undefined')
+        end
+      end, Call#whapps_call{ccvs=wh_json:delete_keys(Keys, CCVs)}, Keys).
 
 -spec set_custom_channel_var(any(), any(), call()) -> call().
 set_custom_channel_var(Key, Value, Call) ->
