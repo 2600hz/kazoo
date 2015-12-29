@@ -178,10 +178,6 @@
                                ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
                                ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
                                ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
-                               ,{<<"effective_callee_id_number">>, <<"effective_callee_id_number">>}
-                               ,{<<"effective_callee_id_name">>, <<"effective_callee_id_name">>}
-                               ,{<<"effective_caller_id_number">>, <<"effective_caller_id_number">>}
-                               ,{<<"effective_caller_id_name">>, <<"effective_caller_id_name">>}
 
                                ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
                                ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}

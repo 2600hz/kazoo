@@ -183,17 +183,14 @@ handle_event(JObj, #state{request_handler=RequestHandler
                          }) ->
     case whapps_util:get_event_type(JObj) of
         {<<"error">>, _} ->
-            <<"execute_extension">> = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
+            <<"bridge">> = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
             lager:debug("channel execution error while waiting for execute extension: ~s"
                         ,[wh_util:to_binary(wh_json:encode(JObj))]),
             gen_listener:cast(RequestHandler, {'local_extension_result', local_extension_error(JObj, Request)});
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            lager:debug("channel was destroy while waiting for execute extension", []),
             gen_listener:cast(RequestHandler, {'local_extension_result', local_extension_success(Request)});
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             <<"bridge">> = wh_json:get_value(<<"Application-Name">>, JObj),
-%%            <<"execute_extension">> = wh_json:get_value(<<"Application-Name">>, JObj),
-            lager:debug("channel execute complete for execute extension", []),
             gen_listener:cast(RequestHandler, {'local_extension_result', local_extension_success(Request)});
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
             CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
