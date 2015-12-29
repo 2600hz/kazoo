@@ -40,7 +40,6 @@
 -define(TEMPLATE_HTML_ACCOUNT, "{% if account %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% endif %}").
 -define(TEMPLATE_HTML_USER, "{% if user %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{user.first_name}} {{user.last_name}}</td></tr><tr><td>Email: </td><td>{{user.email}}</td></tr><tr><td>Timezone: </td><td>{{user.timezone}}</td></tr></table>{% endif %}").
 -define(TEMPLATE_HTML_NUMBERS, "{% if account.pvt_wnm_numbers %}<h2>Phone Numbers</h2><ul>{% for number in account.pvt_wnm_numbers %}<li>{{number}}</li>{% endfor %}</ul>{% endif %}").
--define(TEMPLATE_HTML_SERVICE, "<h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>https://apps.2600hz.com/</td></tr><tr><td>Name: </td><td>VoIP Services</td></tr><tr><td>Service Provider: </td><td>2600hz</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{system.hostname}}</p>").
 
 -define(TEMPLATE_HTML, wh_util:to_binary(
                          lists:flatten(
@@ -56,7 +55,6 @@
                             ,?TEMPLATE_HTML_ACCOUNT
                             ,?TEMPLATE_HTML_USER
                             ,?TEMPLATE_HTML_NUMBERS
-                            ,?TEMPLATE_HTML_SERVICE
                             ,?TEMPLATE_HTML_TAIL
                            ]
                           )
@@ -78,7 +76,6 @@
 -define(TEMPLATE_TEXT_ACCOUNT, "{% if account %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% endif %}").
 -define(TEMPLATE_TEXT_USER, "{% if user %}Admin\nName: {{user.first_name}} {{user.last_name}}\nEmail: {{user.email}}\nTimezone: {{user.timezone}}\n\n{% endif %}").
 -define(TEMPLATE_TEXT_NUMBERS, "{% if account.pvt_wnm_numbers %}Phone Numbers\n{% for number in account.pvt_wnm_numbers %}{{number}}\n{% endfor %}\n{% endif %}").
--define(TEMPLATE_TEXT_SERVICE, "Service\nURL: https://apps.2600hz.com/\nName: VoIP Services\nService Provider: 2600hz\n\nSent from {{system.hostname}}").
 
 -define(TEMPLATE_TEXT, wh_util:to_binary(
                          lists:flatten(
@@ -93,7 +90,6 @@
                             ,?TEMPLATE_TEXT_ACCOUNT
                             ,?TEMPLATE_TEXT_USER
                             ,?TEMPLATE_TEXT_NUMBERS
-                            ,?TEMPLATE_TEXT_SERVICE
                            ]
                           )
                         )
