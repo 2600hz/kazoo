@@ -279,7 +279,7 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
             Routines = [fun(S) -> wh_json:set_value(<<"Context">>, hunt_context(Props), S) end
-                        ,fun(S) -> wh_json:set_value(<<"Remote-SDP">>, hunt_rsdp(Props), S) end],
+                        ,fun(S) -> wh_json:set_value(<<"Remote-SDP">>, remote_sdp(Props), S) end],
             J = lists:foldl(fun(F, Jtemp) -> F(Jtemp) end, JObj, Routines),
             maybe_wait_for_authz(Section, Node, FetchId, CallId, J)
     end.
@@ -288,8 +288,8 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
--spec hunt_rsdp(wh_proplist()) -> api_binary().
-hunt_rsdp(Props) ->
+-spec remote_sdp(wh_proplist()) -> api_binary().
+remote_sdp(Props) ->
     props:get_value(<<"variable_switch_r_sdp">>, Props, <<>>).
 
 -spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
