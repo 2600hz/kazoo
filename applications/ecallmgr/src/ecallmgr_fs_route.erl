@@ -278,13 +278,19 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
-            J = wh_json:set_value(<<"Context">>, hunt_context(Props), JObj),
+            Routines = [fun(S) -> wh_json:set_value(<<"Context">>, hunt_context(Props), S) end
+                        ,fun(S) -> wh_json:set_value(<<"Remote-SDP">>, hunt_rsdp(Props), S) end],
+            J = lists:foldl(fun(F, Jtemp) -> F(Jtemp) end, JObj, Routines),
             maybe_wait_for_authz(Section, Node, FetchId, CallId, J)
     end.
 
 -spec hunt_context(wh_proplist()) -> api_binary().
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
+
+-spec hunt_rsdp(wh_proplist()) -> api_binary().
+hunt_rsdp(Props) ->
+    props:get_value(<<"variable_switch_r_sdp">>, Props, <<>>).
 
 -spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
@@ -327,14 +333,26 @@ reply_forbidden(Section, Node, FetchId) ->
 -spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
-    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
+    J = case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
+            'false' -> JObj;
+            'true' -> check_dtmf_type(JObj)
+    end,
+    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(J),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
         'ok' ->
             lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]),
             ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
-            maybe_start_call_handling(Node, FetchId, CallId, JObj)
+            maybe_start_call_handling(Node, FetchId, CallId, J)
+    end.
+
+-spec check_dtmf_type(ne_binary()) -> ne_binary().
+check_dtmf_type(JObj) ->
+    SDPRemote = wh_json:get_value(<<"Remote-SDP">>, JObj, <<"101 telephone-event">>),
+    case binary:match(SDPRemote, <<"101 telephone-event">>) of
+        'nomatch' -> wh_json:set_value(<<"Pre-Park">>, <<"start_dtmf">>, JObj);
+        _ -> JObj
     end.
 
 -spec maybe_start_call_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
