@@ -25,7 +25,7 @@
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
-    Call = maybe_device_redirected(whapps_call:from_route_req(JObj)),
+    Call = maybe_call_rerouted(whapps_call:from_route_req(JObj)),
     case is_binary(whapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
         andalso callflow_resource_allowed(Call)
@@ -277,14 +277,38 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec maybe_device_redirected(whapps_call:call()) -> whapps_call:call().
-maybe_device_redirected(Call) ->
-    case whapps_call:custom_channel_var(<<"Redirected-By">>, Call) of
+-spec maybe_call_rerouted(whapps_call:call()) -> whapps_call:call().
+maybe_call_rerouted(Call) ->
+    case get_rerouted_by(Call) of
         'undefined' -> Call;
-        Device ->
-            case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Device) of
-                {'ok', EndpointId } ->
-                    whapps_call:set_authorization(<<"device">>, EndpointId, Call);
-                {'error', 'not_found'} -> Call
+        ReroutedBy ->
+            ReOptions = [{'capture', [1], 'binary'}],
+            case catch(re:run(ReroutedBy, <<".*sip:(.*)@.*">>, ReOptions)) of
+                {'match', [Match]} -> fix_rerouted_call(Match, Call);
+                _ -> Call
             end
+    end.
+
+-spec fix_rerouted_call(api_binary(), whapps_call:call()) -> whapps_call:call().
+fix_rerouted_call(ReroutedBy, Call) ->
+    [Username|_] = binary:split(ReroutedBy, <<"@">>),
+    case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Username) of
+        {'ok', EndpointId} ->
+            C = whapps_call:set_authorization(<<"device">>, EndpointId, Call),
+            OwnerId = cf_attributes:owner_id(C),
+            whapps_call:set_owner_id(OwnerId, C);
+        {'error', 'not_found'} ->
+            Keys = [<<"Account-ID">>
+                    ,<<"Owner-ID">>
+                    ,<<"Authorizing-Type">>
+                    ,<<"Authorizing-ID">>
+                   ],
+            whapps_call:remove_custom_channel_vars(Keys, Call)
+    end.
+
+-spec get_rerouted_by(whapps_call:call()) -> api_binary().
+get_rerouted_by(Call) ->
+    case whapps_call:custom_channel_var(<<"Redirected-By">>, Call) of
+        'undefined' -> whapps_call:custom_channel_var(<<"Referred-By">>, Call);
+        RedirectedBy -> RedirectedBy
     end.
