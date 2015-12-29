@@ -1122,7 +1122,7 @@ init(IsDurable, IndexState, DeltaCount, DeltaBytes, Terms,
                                     count        = DeltaCount1,
                                     end_seq_id   = NextSeqId })
             end,
-    Now = now(),
+    Now = erlang:timestamp(),
     IoBatchSize = rabbit_misc:get_env(rabbit, msg_store_io_batch_size,
                                       ?IO_BATCH_SIZE),
 

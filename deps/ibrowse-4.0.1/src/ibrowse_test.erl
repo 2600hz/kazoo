@@ -79,7 +79,7 @@ load_test(Url, NumWorkers, NumReqsPerWorker) when is_list(Url),
     proc_lib:spawn(?MODULE, send_reqs_1, [Url, NumWorkers, NumReqsPerWorker]).
 
 send_reqs_1(Url, NumWorkers, NumReqsPerWorker) ->
-    Start_time = now(),
+    Start_time = erlang:timestamp(),
     ets:new(pid_table, [named_table, public]),
     ets:new(ibrowse_test_results, [named_table, public]),
     ets:new(ibrowse_errors, [named_table, public, ordered_set]),
@@ -89,7 +89,7 @@ send_reqs_1(Url, NumWorkers, NumReqsPerWorker) ->
     spawn_workers(Url, NumWorkers, NumReqsPerWorker),
     log_msg("Finished spawning workers...~n", []),
     do_wait(Url),
-    End_time = now(),
+    End_time = erlang:timestamp(),
     log_msg("All workers are done...~n", []),
     log_msg("ibrowse_test_results table: ~n~p~n", [ets:tab2list(ibrowse_test_results)]),
     log_msg("Start time: ~1000.p~n", [calendar:now_to_local_time(Start_time)]),
@@ -167,7 +167,7 @@ do_send_req_1(Url, NumReqs) ->
 	{error, retry_later} ->
 	    ets:update_counter(ibrowse_test_results, retry_later, 1);
 	Err ->
-	    ets:insert(ibrowse_errors, {now(), Err}),
+	    ets:insert(ibrowse_errors, {erlang:timestamp(), Err}),
 	    ets:update_counter(ibrowse_test_results, other_error, 1),
 	    ok
     end,
@@ -178,7 +178,7 @@ dump_errors() ->
 	0 ->
 	    ok;
 	_ ->
-	    {A, B, C} = now(),
+	    {A, B, C} = erlang:timestamp(),
 	    Filename = lists:flatten(
 			 io_lib:format("ibrowse_errors_~p_~p_~p.txt" , [A, B, C])),
 	    case file:open(Filename, [write, delayed_write, raw]) of

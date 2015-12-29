@@ -58,7 +58,7 @@ new_request(mochiweb, Request) ->
     {Peer, ReqState} = InitReq:get_peer(),
     PeerState = ReqState#wm_reqstate{reqdata=wrq:set_peer(Peer,
                                               ReqState#wm_reqstate.reqdata)},
-    LogData = #wm_log_data{start_time=now(),
+    LogData = #wm_log_data{start_time=erlang:timestamp(),
                            method=Method,
                            headers=Headers,
                            peer=PeerState#wm_reqstate.peer,

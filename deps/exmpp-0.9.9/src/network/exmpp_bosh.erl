@@ -90,7 +90,7 @@ wping(_Pid) ->
 %% don't do anything on init. We establish the connection when the stream start 
 %% is sent                                                                      
 init([ClientPid, StreamRef, URL, Domain, Options]) ->                           
-    {A,B,C} = now(),                                                            
+    {A,B,C} = erlang:timestamp(),                                                            
     random:seed(A,B,C),                                                         
     Rid = 1000 + random:uniform(100000),                                        
     ParsedUrl = parse_url(URL),                                                 

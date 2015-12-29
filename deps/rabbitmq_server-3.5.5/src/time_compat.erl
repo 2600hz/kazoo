@@ -198,7 +198,7 @@ unique_integer(Modifiers) ->
 	error:undef ->
 	    case is_valid_modifier_list(Modifiers) of
 		true ->
-		    %% now() converted to an integer
+		    %% erlang:timestamp() converted to an integer
 		    %% fullfill the requirements of
 		    %% all modifiers: unique, positive,
 		    %% and monotonic...

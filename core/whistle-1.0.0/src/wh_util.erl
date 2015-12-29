@@ -1334,7 +1334,7 @@ elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);
 elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
 elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000000.
 
--spec now() -> wh_now().
+-spec erlang:timestamp() -> wh_now().
 
 -ifdef(OTP_AT_LEAST_18).
 now() -> erlang:timestamp().
