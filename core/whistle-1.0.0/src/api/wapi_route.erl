@@ -56,6 +56,7 @@
                                      ,<<"Body">>
                                      ,<<"From-Tag">>, <<"To-Tag">>
                                      ,<<"Prepend-CID-Name">>
+                                     ,<<"Remote-SDP">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
@@ -123,7 +124,7 @@ has_cost_parameters(JObj) ->
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"route_resp">>}
                             ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>, <<"sms">>]}
-                            ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
+                            ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>, <<"start_dtmf">>]}
                            ]).
 -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
                            ,{<<"Route-Error-Message">>, fun is_binary/1}
