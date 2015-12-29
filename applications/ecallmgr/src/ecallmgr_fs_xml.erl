@@ -287,7 +287,7 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
              ,route_resp_ringback(JObj)
              ,route_resp_transfer_ringback(JObj)
              ,route_resp_pre_park_action(JObj)
-             ,may_be_start_dtmf_action(JObj)
+             ,maybe_start_dtmf_action(JObj)
              | route_resp_ccvs(JObj) ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
@@ -405,8 +405,8 @@ route_resp_pre_park_action(JObj) ->
         _Else -> 'undefined'
     end.
 
--spec may_be_start_dtmf_action(wh_json:object()) -> 'undefined' | xml_el().
-may_be_start_dtmf_action(JObj) ->
+-spec maybe_start_dtmf_action(wh_json:object()) -> 'undefined' | xml_el().
+maybe_start_dtmf_action(JObj) ->
     case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
         'false' -> 'undefined';
         'true' -> check_dtmf_type(JObj)
