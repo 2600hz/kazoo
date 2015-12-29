@@ -123,7 +123,7 @@
 -ifdef(OTP_AT_LEAST_18).
 -type sup_start_flags() :: supervisor:sup_flags().
 -else.
--type sup_start_flags() :: {supervisor:strategy(), non_neg_integer(), non_neg_integer()}.
+-type sup_start_flags() :: {supervisor:strategy(), non_neg_integer(), pos_integer()}.
 -endif.
 -type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
                         'ignore'.
