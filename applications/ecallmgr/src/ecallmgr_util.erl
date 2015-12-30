@@ -250,25 +250,52 @@ custom_channel_vars(Props) ->
     custom_channel_vars(Props, []).
 
 custom_channel_vars(Props, Initial) ->
-    lists:foldl(fun custom_channel_vars_fold/2
-                ,Initial
-                ,Props
-               ).
+    maybe_update_referred_ccv(
+      Props
+      ,lists:foldl(fun custom_channel_vars_fold/2
+                  ,Initial
+                  ,Props
+                  )
+     ).
 
 custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     [{Key, V} | Acc];
 custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     [{Key, V} | Acc];
-custom_channel_vars_fold({<<"variable_sip_h_Referred-By">>, V}, Acc) ->
-    [{<<"Referred-By">>, kz_http:urldecode(V)} | Acc];
-custom_channel_vars_fold({<<"variable_sip_refer_to">>, V}, Acc) ->
-    [{<<"Referred-To">>, kz_http:urldecode(V)} | Acc];
 custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     case props:is_defined(Key, Acc) of
         'true' -> Acc;
         'false' -> [{Key, V} | Acc]
     end;
 custom_channel_vars_fold(_, Acc) -> Acc.
+
+-spec maybe_update_referred_ccv(wh_proplist(), wh_proplist()) -> wh_proplist().
+maybe_update_referred_ccv(Props, CCVs) ->
+    update_referred_by_ccv(
+      props:get_value(<<"variable_sip_h_Referred-By">>, Props)
+      ,update_referred_to_ccv(
+         props:get_value(<<"variable_sip_refer_to">>, Props)
+         ,CCVs
+        )
+     ).
+
+-spec update_referred_by_ccv(api_binary(), wh_proplist()) -> wh_proplist().
+update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
+update_referred_by_ccv(ReferredBy, CCVs) ->
+    props:set_value(
+      <<"Referred-By">>
+      ,kz_http:urldecode(ReferredBy)
+      ,CCVs
+     ).
+
+-spec update_referred_to_ccv(api_binary(), wh_proplist()) -> wh_proplist().
+update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
+update_referred_to_ccv(ReferredTo, CCVs) ->
+    props:set_value(
+      <<"Referred-To">>
+      ,kz_http:urldecode(ReferredTo)
+      ,CCVs
+     ).
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
