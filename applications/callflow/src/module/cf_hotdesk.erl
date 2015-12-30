@@ -167,7 +167,7 @@ require_login_pin(#hotdesk{require_pin='true'
         {'ok', Pin} ->
             maybe_logout_elsewhere(Hotdesk, Call);
         {'ok', _} ->
-            _ = whapps_call_command:play(<<"hotdesk-invalid_entry">>, Call),
+            _ = whapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
             require_login_pin(Hotdesk, Call, Max, Loop + 1);
         {'error', _} ->
             lager:info("caller hungup during login")
