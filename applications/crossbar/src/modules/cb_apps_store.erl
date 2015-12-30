@@ -602,12 +602,14 @@ load_apps_store(Context) ->
     Context1 = crossbar_doc:load(kz_apps_store:id(), Context),
     case {cb_context:resp_status(Context1), cb_context:resp_error_code(Context1)} of
         {'error', 404} ->
+            AccountId = cb_context:account_id(Context),
             cb_context:setters(
-                Context
-                ,[{fun cb_context:set_resp_status/2, 'success'}
-                  ,{fun cb_context:set_resp_data/2, wh_json:new()}
-                ]
-            );
+              Context
+              ,[{fun cb_context:set_resp_status/2, 'success'}
+                ,{fun cb_context:set_resp_data/2, wh_json:new()}
+                ,{fun cb_context:set_doc/2, kz_apps_store:new(AccountId)}
+               ]
+             );
         {'success', _} -> Context1;
         {'error', _} -> Context1
     end.
