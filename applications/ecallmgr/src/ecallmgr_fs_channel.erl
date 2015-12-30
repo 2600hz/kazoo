@@ -224,48 +224,6 @@ to_props(Channel) ->
        ,{<<"group_id">>, Channel#channel.group_id}
       ]).
 
--spec channel_ccvs(channel() | wh_json:object() | wh_proplist()) -> wh_proplist().
-channel_ccvs(Channel)
-  when is_record(Channel, 'channel')  ->
-    props:filter_undefined(
-      [{<<"Account-ID">>, Channel#channel.account_id}
-       ,{<<"Account-Billing">>, Channel#channel.account_billing}
-       ,{<<"Authorizing-ID">>, Channel#channel.authorizing_id}
-       ,{<<"Authorizing-Type">>, Channel#channel.authorizing_type}
-       ,{<<"Owner-ID">>, Channel#channel.owner_id}
-       ,{<<"Resource-ID">>, Channel#channel.resource_id}
-       ,{<<"Presence-ID">>, Channel#channel.presence_id}
-       ,{<<"Fetch-ID">>, Channel#channel.fetch_id}
-       ,{<<"Bridge-ID">>, Channel#channel.bridge_id}
-       ,{<<"Precedence">>, Channel#channel.precedence}
-       ,{<<"Reseller-ID">>, Channel#channel.reseller_id}
-       ,{<<"Reseller-Billing">>, Channel#channel.reseller_billing}
-       ,{<<"Realm">>, Channel#channel.realm}
-       ,{<<"Username">>, Channel#channel.username}
-       ,{<<?CALL_GROUP_ID>>, Channel#channel.group_id}
-      ]);
-channel_ccvs(Props)
-  when is_list(Props)  ->
-    props:filter_undefined(
-      [{<<"Account-ID">>, props:get_value(<<"account_id">>, Props)}
-       ,{<<"Account-Billing">>, props:get_value(<<"account_billing">>, Props)}
-       ,{<<"Authorizing-ID">>, props:get_value(<<"authorizing_id">>, Props)}
-       ,{<<"Authorizing-Type">>, props:get_value(<<"authorizing_type">>, Props)}
-       ,{<<"Owner-ID">>, props:get_value(<<"owner_id">>, Props)}
-       ,{<<"Resource-ID">>, props:get_value(<<"resource_id">>, Props)}
-       ,{<<"Presence-ID">>, props:get_value(<<"presence_id">>, Props)}
-       ,{<<"Fetch-ID">>, props:get_value(<<"fetch_id">>, Props)}
-       ,{<<"Bridge-ID">>, props:get_value(<<"bridge_id">>, Props)}
-       ,{<<"Precedence">>, props:get_value(<<"precedence">>, Props)}
-       ,{<<"Reseller-ID">>, props:get_value(<<"reseller_id">>, Props)}
-       ,{<<"Reseller-Billing">>, props:get_value(<<"reseller_billing">>, Props)}
-       ,{<<"Realm">>, props:get_value(<<"realm">>, Props)}
-       ,{<<"Username">>, props:get_value(<<"username">>, Props)}
-       ,{<<?CALL_GROUP_ID>>, props:get_value(<<"group_id">>, Props)}
-      ]);
-channel_ccvs(JObj) ->
-    channel_ccvs(wh_json:to_proplist(JObj)).
-
 -spec to_api_json(channel()) -> wh_json:object().
 to_api_json(Channel) ->
     wh_json:from_list(to_api_props(Channel)).
@@ -321,6 +279,7 @@ channel_ccvs(#channel{}=Channel) ->
        ,{<<"Reseller-Billing">>, Channel#channel.reseller_billing}
        ,{<<"Realm">>, Channel#channel.realm}
        ,{<<"Username">>, Channel#channel.username}
+       ,{<<?CALL_GROUP_ID>>, Channel#channel.group_id}
       ]);
 channel_ccvs([_|_]=Props) ->
     props:filter_undefined(
@@ -338,6 +297,7 @@ channel_ccvs([_|_]=Props) ->
        ,{<<"Reseller-Billing">>, props:get_value(<<"reseller_billing">>, Props)}
        ,{<<"Realm">>, props:get_value(<<"realm">>, Props)}
        ,{<<"Username">>, props:get_value(<<"username">>, Props)}
+       ,{<<?CALL_GROUP_ID>>, props:get_value(<<"group_id">>, Props)}
       ]);
 channel_ccvs(JObj) ->
     channel_ccvs(wh_json:to_proplist(JObj)).
