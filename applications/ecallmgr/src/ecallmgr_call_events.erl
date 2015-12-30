@@ -609,7 +609,7 @@ generic_call_event_props(Props) ->
      ,{<<"Disposition">>, get_disposition(Props)}
      ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
      ,{<<"Channel-Moving">>, get_channel_moving(Props)}
-     ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+     ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
      ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
                                                         ,<<"Caller-Caller-ID-Number">>
                                                        ], Props)}

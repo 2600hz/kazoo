@@ -183,11 +183,16 @@ get_atom_value(Key, Props, Default) ->
         Val -> wh_util:to_atom(Val)
     end.
 
--spec get_binary_value(wh_proplist_key(), wh_proplist()) -> api_binary().
--spec get_binary_value(wh_proplist_key(), wh_proplist(), Default) ->
+-spec get_binary_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist()) -> api_binary().
+-spec get_binary_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist(), Default) ->
                               ne_binary() | Default.
 get_binary_value(Key, Props) ->
     get_binary_value(Key, Props, 'undefined').
+get_binary_value(Keys, Props, Default) when is_list(Keys) ->
+    case ?MODULE:get_first_defined(Keys, Props) of
+        'undefined' -> Default;
+        V -> wh_util:to_binary(V)
+    end;
 get_binary_value(Key, Props, Default) ->
     case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
