@@ -13,6 +13,8 @@
 -export([
     id/1
     ,is_published/1
+    ,publish/1
+    ,unpublish/1
     ,name/1
     ,i18n/1
     ,tags/1
@@ -75,6 +77,14 @@ id(JObj) ->
 -spec is_published(wh_json:object()) -> boolean().
 is_published(JObj) ->
     wh_json:is_true(?PUBLISHED, JObj, 'true').
+
+-spec publish(wh_json:object()) -> wh_json:object().
+publish(JObj) ->
+    wh_json:set_value(?PUBLISHED, 'true', JObj).
+
+-spec unpublish(wh_json:object()) -> wh_json:object().
+unpublish(JObj) ->
+    wh_json:set_value(?PUBLISHED, 'false', JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -192,4 +202,3 @@ urls(JObj) ->
 -spec account_id(wh_json:object()) -> ne_binary().
 account_id(JObj) ->
     wh_doc:account_id(JObj).
-

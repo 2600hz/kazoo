@@ -188,9 +188,12 @@ filter_apps(AccountId, Apps, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_permissions(wh_json:object(), wh_json:object()) -> wh_json:object().
 add_permissions(App, JObj) ->
-    AppsPerm = kzd_apps_store:apps(JObj),
-    AppPerm = wh_json:get_value(wh_doc:id(App), AppsPerm, wh_json:new()),
-    wh_json:merge_recursive([App, AppPerm]).
+    AppsPerm = kz_apps_store:apps(JObj),
+    case wh_json:get_ne_value(wh_doc:id(App), AppsPerm) of
+        'undefined' -> App;
+        AppPerm ->
+            wh_json:merge_recursive([kzd_app:publish(App), AppPerm])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
