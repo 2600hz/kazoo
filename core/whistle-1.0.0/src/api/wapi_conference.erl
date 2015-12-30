@@ -305,8 +305,8 @@
                                       ]).
 
 %% Conference Participants Event
--define(PARTICIPANTS_EVENT_HEADERS, [<<"Participants">>, <<"Conference-ID">>, <<"Focus">>]).
--define(OPTIONAL_PARTICIPANTS_EVENT_HEADERS, [<<"Switch-Hostname">>, <<"Switch-URL">>, <<"Switch-External-IP">>]).
+-define(PARTICIPANTS_EVENT_HEADERS, [<<"Conference-ID">>, <<"Focus">>]).
+-define(OPTIONAL_PARTICIPANTS_EVENT_HEADERS, [<<"Participants">>, <<"Switch-Hostname">>, <<"Switch-URL">>, <<"Switch-External-IP">>]).
 -define(PARTICIPANTS_EVENT_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                     ,{<<"Event-Name">>, <<"participants_event">>}
                                    ]).
