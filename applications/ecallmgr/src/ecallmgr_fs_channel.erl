@@ -480,10 +480,11 @@ build_channel_resp(FetchId, Props, Node, URL, Channel, ChannelVars) ->
     try_channel_resp(FetchId, Node, Resp).
 
 -spec channel_resp_dialprefix(wh_proplist(), wh_proplist(), wh_proplist()) -> ne_binary().
-channel_resp_dialprefix(ReqProps, _Channel, ChannelVars) ->
+channel_resp_dialprefix(ReqProps, Channel, ChannelVars) ->
     Props = props:filter_undefined(
               [{<<"sip_invite_domain">>, props:get_value(<<"Realm">>, ChannelVars)}
                ,{<<"sip_h_X-Core-UUID">>, props:get_value(<<"Core-UUID">>, ReqProps)}
+               ,{<<"sip_h_X-ecallmgr_", ?CALL_GROUP_ID>>, props:get_value(<<"group_id">>, Channel)}
                ,{<<"sip_h_X-ecallmgr_replaces-call-id">>, props:get_value(<<"replaces-call-id">>, ReqProps)}
                ,{<<"sip_h_X-ecallmgr_refer-from-channel-id">>, props:get_value(<<"refer-from-channel-id">>, ReqProps)}
                ,{<<"sip_h_X-ecallmgr_refer-for-channel-id">>, props:get_value(<<"refer-for-channel-id">>, ReqProps)}
@@ -533,27 +534,6 @@ fetch_remote(UUID) ->
             CCVs = props:get_value(<<"custom_channel_vars">>, Props, []),
             Props ++ CCVs
     end.
-
--spec channel_resp_dialprefix(wh_proplist(), wh_proplist(), wh_proplist()) -> ne_binary().
-channel_resp_dialprefix(ReqProps, Channel, ChannelVars) ->
-    Props = props:filter_undefined(
-              [{<<"sip_invite_domain">>, props:get_value(<<"Realm">>, ChannelVars)}
-               ,{<<"sip_h_X-Core-UUID">>, props:get_value(<<"Core-UUID">>, ReqProps)}
-               ,{<<"sip_h_X-ecallmgr_", ?CALL_GROUP_ID>>, props:get_value(<<"group_id">>, Channel)}
-               ,{<<"sip_h_X-ecallmgr_replaces-call-id">>, props:get_value(<<"replaces-call-id">>, ReqProps)}
-               ,{<<"sip_h_X-ecallmgr_refer-from-channel-id">>, props:get_value(<<"refer-from-channel-id">>, ReqProps)}
-               ,{<<"sip_h_X-ecallmgr_refer-for-channel-id">>, props:get_value(<<"refer-for-channel-id">>, ReqProps)}
-
-               ,{<<"sip_h_X-ecallmgr_Account-ID">>, props:get_value(<<"Account-ID">>, ChannelVars)}
-               ,{<<"sip_h_X-ecallmgr_Realm">>, props:get_value(<<"Realm">>, ChannelVars)}
-              ]),
-    X = string:join(
-          [wh_util:to_list(<<K/binary, "='", (wh_util:to_binary(V))/binary, "'">>)
-           || {K, V}  <- Props
-          ]
-          ,","
-         ),
-    wh_util:to_binary(["[", X, "]"]).
 
 -spec channel_not_found(atom(), ne_binary()) -> 'ok'.
 channel_not_found(Node, FetchId) ->
