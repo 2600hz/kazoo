@@ -604,7 +604,7 @@ props_to_record(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     #channel{uuid=UUID
              ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
-             ,direction=props:get_value(<<"Call-Direction">>, Props)
+             ,direction=kzd_freeswitch:call_direction(Props)
              ,account_id=props:get_value(?GET_CCV(<<"Account-ID">>), Props)
              ,account_billing=props:get_value(?GET_CCV(<<"Account-Billing">>), Props)
              ,authorizing_id=props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props)
@@ -654,7 +654,7 @@ get_realm(Props) ->
 props_to_update(Props) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     props:filter_undefined([{#channel.destination, props:get_value(<<"Caller-Destination-Number">>, Props)}
-                            ,{#channel.direction, props:get_value(<<"Call-Direction">>, Props)}
+                            ,{#channel.direction, kzd_freeswitch:call_direction(Props)}
                             ,{#channel.account_id, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
                             ,{#channel.account_billing, props:get_value(?GET_CCV(<<"Account-Billing">>), Props)}
                             ,{#channel.authorizing_id, props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props)}

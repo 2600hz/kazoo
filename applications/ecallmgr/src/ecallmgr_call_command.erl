@@ -1082,7 +1082,7 @@ build_base_store_event_props(UUID, ChannelProps, MediaTransResults, File, App) -
     props:filter_undefined(
       [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps, Timestamp)}
        ,{<<"Call-ID">>, UUID}
-       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, ChannelProps, <<>>)}
+       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(ChannelProps)}
        ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps, <<"HANGUP">>)}
        ,{<<"Application-Name">>, App}
        ,{<<"Application-Response">>, MediaTransResults}
@@ -1161,7 +1161,7 @@ base_fetch_call_event_props(UUID, ChannelProps) ->
     props:filter_undefined(
       [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, ChannelProps)}
        ,{<<"Call-ID">>, UUID}
-       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, ChannelProps)}
+       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(ChannelProps)}
        ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, ChannelProps)}
        ,{<<"Application-Name">>, <<"fetch">>}
        ,{<<"Application-Response">>, <<>>}
