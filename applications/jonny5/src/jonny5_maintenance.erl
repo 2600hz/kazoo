@@ -8,7 +8,6 @@
 -module(jonny5_maintenance).
 
 -export([flush/0]).
--export([remove_callid/1]).
 -export([authz_summary/0
          ,authz_summary/1
         ]).
@@ -22,10 +21,6 @@
 
 -spec flush() -> 'ok'.
 flush() -> wh_cache:flush_local(?JONNY5_CACHE).
-
--spec remove_callid(ne_binary()) -> 'ok'.
-remove_callid(CallId) ->
-    j5_channels:remove(CallId).
 
 -spec authz_summary() -> 'no_return'.
 authz_summary() ->

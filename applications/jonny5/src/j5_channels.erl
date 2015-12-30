@@ -23,9 +23,9 @@
 -export([account/1]).
 -export([to_props/1]).
 -export([authorized/1]).
--export([remove/1]).
 -export([handle_authz_resp/2]).
 -export([handle_rate_resp/2]).
+-export([handle_channel_destroy/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -84,12 +84,20 @@
                               ,'federate'
                              ]
                     }
+                   ,{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>, <<"CHANNEL_DISCONNECTED">>]}
+                              ,'federate'
+                             ]
+
+                    }
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
                       ,[{<<"authz">>, <<"authz_resp">>}]
                      }
                      ,{{?MODULE, 'handle_rate_resp'}
                        ,[{<<"rate">>, <<"resp">>}]
+                      }
+                     ,{{?MODULE, 'handle_channel_destroy'}
+                       ,[{<<"call_event">>, <<"*">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -442,9 +450,6 @@ to_props(#channel{call_id=CallId
 -spec authorized(wh_json:object()) -> 'ok'.
 authorized(JObj) -> gen_server:cast(?SERVER, {'authorized', JObj}).
 
--spec remove(ne_binary()) -> 'ok'.
-remove(CallId) -> gen_server:cast(?SERVER, {'remove', CallId}).
-
 -spec handle_authz_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_authz_resp(JObj, _Props) ->
     'true' = wapi_authz:authz_resp_v(JObj),
@@ -458,6 +463,13 @@ handle_rate_resp(JObj, Props) ->
     'true' = wapi_rate:resp_v(JObj),
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'rate_resp', JObj}).
+
+-spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_channel_destroy(JObj, Props) ->
+    'true' = wapi_call:event_v(JObj),
+    CallId = kz_call_event:call_id(JObj),
+    Srv = props:get_value('server', Props),
+    gen_server:cast(Srv, {'remove', CallId}).
 
 %%%===================================================================
 %%% gen_server callbacks
