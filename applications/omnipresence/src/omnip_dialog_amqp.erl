@@ -238,6 +238,9 @@ handle_update(_JObj, _State) -> 'ok'.
 handle_update(JObj, State, Expires) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From)),
+    TargetCallId = wh_json:get_value(<<"Target-Call-ID">>, JObj, CallId),
+    wh_util:put_callid(TargetCallId),
 
     case omnip_util:are_valid_uris([To, From]) of
         'true' -> handle_update(JObj, State, From, To, Expires);
