@@ -149,7 +149,7 @@ get_interface_properties(Node, Interface) ->
 %% retrieves the sip address for the 'to' field
 -spec get_sip_to(wh_proplist()) -> ne_binary().
 get_sip_to(Props) ->
-    get_sip_to(Props, props:get_value(<<"Call-Direction">>, Props)).
+    get_sip_to(Props, kzd_freeswitch:call_direction(Props)).
 
 get_sip_to(Props, <<"outbound">>) ->
     case props:get_value(<<"Channel-Presence-ID">>, Props) of
@@ -166,7 +166,7 @@ get_sip_to(Props, _) ->
 -spec get_sip_from(wh_proplist()) -> ne_binary().
 -spec get_sip_from(wh_proplist(), api_binary()) -> ne_binary().
 get_sip_from(Props) ->
-    get_sip_from(Props, props:get_value(<<"Call-Direction">>, Props)).
+    get_sip_from(Props, kzd_freeswitch:call_direction(Props)).
 
 get_sip_from(Props, <<"outbound">>) ->
     case props:get_value(<<"Other-Leg-Channel-Name">>, Props) of

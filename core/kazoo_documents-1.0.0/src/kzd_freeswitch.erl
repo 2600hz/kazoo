@@ -88,7 +88,7 @@ other_leg_call_id(Props) ->
 
 -spec call_direction(wh_proplist()) -> api_binary().
 call_direction(Props) ->
-    props:get_binary_value(<<"Call-Direction">>, Props).
+    props:get_binary_value([<<"Caller-Logical-Direction">>, <<"Call-Direction">>], Props).
 
 -spec resource_type(wh_proplist()) -> api_binary().
 -spec resource_type(wh_proplist(), Default) -> ne_binary() | Default.

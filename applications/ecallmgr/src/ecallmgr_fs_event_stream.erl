@@ -355,7 +355,7 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     wh_util:put_callid(UUID),
     BridgeID = props:get_value(<<"variable_bridge_uuid">>, Props),
     DialPlan = props:get_value(<<"Caller-Dialplan">>, Props),
-    Direction = props:get_value(<<"Call-Direction">>, Props),
+    Direction = kzd_freeswitch:call_direction(Props),
     App = props:get_value(<<"variable_current_application">>, Props),
     Destination = props:get_value(<<"Caller-Destination-Number">>, Props),
 
