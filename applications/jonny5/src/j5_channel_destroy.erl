@@ -25,7 +25,6 @@ handle_req(JObj, _Props) ->
     Request = j5_request:from_jobj(JObj),
     _ = account_reconcile_cdr(Request),
     _ = reseller_reconcile_cdr(Request),
-    j5_channels:remove(j5_request:call_id(Request)),
     'ok'.
 
 %%--------------------------------------------------------------------
