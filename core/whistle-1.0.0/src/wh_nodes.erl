@@ -730,7 +730,7 @@ whapp_info_to_json(#whapp_info{startup=Start}) ->
 -spec get_zone() -> atom().
 get_zone() ->
     case wh_config:get(wh_config:get_node_section_name(), 'zone') of
-        [Zone] -> Zone;
+        [Zone] -> wh_util:to_atom(Zone, 'true');
         _Else -> 'local'
     end.
 
