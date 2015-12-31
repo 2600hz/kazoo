@@ -188,7 +188,7 @@ filter_apps(AccountId, Apps, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_permissions(wh_json:object(), wh_json:object()) -> wh_json:object().
 add_permissions(App, JObj) ->
-    AppsPerm = kz_apps_store:apps(JObj),
+    AppsPerm = kzd_apps_store:apps(JObj),
     case wh_json:get_ne_value(wh_doc:id(App), AppsPerm) of
         'undefined' -> App;
         AppPerm ->
