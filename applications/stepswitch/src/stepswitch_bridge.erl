@@ -29,6 +29,7 @@
 
 -include("stepswitch.hrl").
 -include_lib("whistle/src/wh_json.hrl").
+-include_lib("whistle/include/wapi_offnet_resource.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -record(state, {endpoints = [] :: wh_json:objects()
@@ -338,8 +339,8 @@ build_bridge(#state{endpoints=Endpoints
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-       ,{<<"Outbound-Caller-ID-Number">>, Number}
-       ,{<<"Outbound-Caller-ID-Name">>, Name}
+       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
+       ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
        ,{<<"Caller-ID-Number">>, Number}
        ,{<<"Caller-ID-Name">>, Name}
        ,{<<"Custom-Channel-Vars">>, CCVs}
@@ -362,8 +363,8 @@ build_bridge(#state{endpoints=Endpoints
 -type filter_fun() :: fun(({ne_binary(), ne_binary()}) -> boolean()).
 -spec build_filter_fun(ne_binary(), ne_binary()) -> filter_fun().
 build_filter_fun(Name, Number) ->
-    fun({<<"Outbound-Caller-ID-Number">>, N}) when N =:= Number -> 'false';
-       ({<<"Outbound-Caller-ID-Name">>, N}) when N =:= Name -> 'false';
+    fun({?KEY_OUTBOUND_CALLER_ID_NUMBER, N}) when N =:= Number -> 'false';
+       ({?KEY_OUTBOUND_CALLER_ID_NAME, N}) when N =:= Name -> 'false';
        (_Else) -> 'true'
     end.
 
@@ -383,8 +384,8 @@ format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
 -spec set_endpoint_caller_id(wh_json:object(), api_binary(), api_binary()) -> wh_json:object().
 set_endpoint_caller_id(Endpoint, Name, Number) ->
     wh_json:set_values(props:filter_undefined(
-                         [{<<"Outbound-Caller-ID-Number">>, Number}
-                          ,{<<"Outbound-Caller-ID-Name">>, Name}
+                         [{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
+                          ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
                          ]
                         )
                        ,Endpoint
@@ -404,12 +405,13 @@ format_endpoint(Endpoint, Number, FilterFun, DefaultRealm, SIPHeaders, AccountId
     FilteredEndpoint = wh_json:filter(FilterFun, FormattedEndpoint),
     maybe_endpoint_format_from(FilteredEndpoint, Number, DefaultRealm).
 
+-spec apply_formatters(wh_json:object(), wh_json:object(), ne_binary()) -> wh_json:object().
 apply_formatters(Endpoint, SIPHeaders, AccountId) ->
     stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
-                               ,props:get_value(<<"Formatters">>
-                                               ,endpoint_props(Endpoint, AccountId)
-                                               ,wh_json:new()
-                                               )
+                                ,props:get_value(<<"Formatters">>
+                                                 ,endpoint_props(Endpoint, AccountId)
+                                                 ,wh_json:new()
+                                                )
                                 ,'outbound'
                                ).
 
@@ -681,10 +683,10 @@ send_deny_emergency_notification(OffnetReq) ->
     Props =
         [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
          ,{<<"Account-ID">>, wapi_offnet_resource:account_id(OffnetReq)}
-         ,{<<"Emergency-Caller-ID-Number">>, wapi_offnet_resource:emergency_caller_id_number(OffnetReq)}
-         ,{<<"Emergency-Caller-ID-Name">>, wapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
-         ,{<<"Outbound-Caller-ID-Number">>, wapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
-         ,{<<"Outbound-Caller-ID-Name">>, wapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
+         ,{?KEY_E_CALLER_ID_NUMBER, wapi_offnet_resource:emergency_caller_id_number(OffnetReq)}
+         ,{?KEY_E_CALLER_ID_NAME, wapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
+         ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, wapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
+         ,{?KEY_OUTBOUND_CALLER_ID_NAME, wapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_notifications:publish_denied_emergency_bridge(Props).
