@@ -28,6 +28,7 @@
         ]).
 
 -include("stepswitch.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -record(state, {endpoints = [] :: wh_json:objects()
@@ -330,13 +331,7 @@ build_bridge(#state{endpoints=Endpoints
           ,wapi_offnet_resource:custom_channel_vars(OffnetReq, wh_json:new())
          ),
 
-    EndpointFilter = fun(Element) ->
-                             case Element of
-                                 {<<"Outbound-Caller-ID-Number">>, Number} -> 'false';
-                                 {<<"Outbound-Caller-ID-Name">>, Name}     -> 'false';
-                                 _OtherValues                              -> 'true'
-                             end
-                     end,
+    EndpointFilter = build_filter_fun(Name, Number),
 
     FmtEndpoints = format_endpoints(Endpoints, Number, OffnetReq, EndpointFilter),
 
@@ -364,11 +359,22 @@ build_bridge(#state{endpoints=Endpoints
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec format_endpoints(wh_json:objects(), api_binary(), wapi_offnet_resource:req(), fun()) ->
+-type filter_fun() :: fun(({ne_binary(), ne_binary()}) -> boolean()).
+-spec build_filter_fun(ne_binary(), ne_binary()) -> filter_fun().
+build_filter_fun(Name, Number) ->
+    fun({<<"Outbound-Caller-ID-Number">>, N}) when N =:= Number -> 'false';
+       ({<<"Outbound-Caller-ID-Name">>, N}) when N =:= Name -> 'false';
+       (_Else) -> 'true'
+    end.
+
+-spec format_endpoints(wh_json:objects(), api_binary(), wapi_offnet_resource:req(), filter_fun()) ->
                               wh_json:objects().
-format_endpoints(Endpoints, Number, OffnetReq, Filter) ->
+format_endpoints(Endpoints, Number, OffnetReq, FilterFun) ->
     DefaultRealm = default_realm(OffnetReq),
-    [format_endpoint(Endpoint, Number, DefaultRealm, Filter)
+    SIPHeaders = stepswitch_util:get_sip_headers(OffnetReq),
+    AccountId = wapi_offnet_resource:account_id(OffnetReq),
+
+    [format_endpoint(Endpoint, Number, FilterFun, DefaultRealm, SIPHeaders, AccountId)
      || Endpoint <- Endpoints
     ].
 
@@ -379,10 +385,44 @@ default_realm(OffnetReq) ->
         Realm -> Realm
     end.
 
--spec format_endpoint(wh_json:object(), api_binary(), api_binary(), fun()) -> wh_json:object().
-format_endpoint(Endpoint, Number, DefaultRealm, Filter) ->
-    FilteredEndpoint = wh_json:filter(Filter, Endpoint),
+-spec format_endpoint(wh_json:object(), api_binary(), filter_fun(), api_binary(), wh_json:object(), ne_binary()) ->
+                             wh_json:object().
+format_endpoint(Endpoint, Number, FilterFun, DefaultRealm, SIPHeaders, AccountId) ->
+    FormattedEndpoint = apply_formatters(Endpoint, SIPHeaders, AccountId),
+    FilteredEndpoint = wh_json:filter(FilterFun, FormattedEndpoint),
     maybe_endpoint_format_from(FilteredEndpoint, Number, DefaultRealm).
+
+apply_formatters(Endpoint, SIPHeaders, AccountId) ->
+    stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
+                               ,props:get_value(<<"Formatters">>
+                                               ,endpoint_props(Endpoint, AccountId)
+                                               ,wh_json:new()
+                                               )
+                                ,'outbound'
+                               ).
+
+-spec endpoint_props(wh_json:object(), api_binary()) -> wh_proplist().
+endpoint_props(Endpoint, AccountId) ->
+    ResourceId = wh_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
+    case wh_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
+        'true' ->
+            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId));
+        'false' ->
+            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
+    end.
+
+-spec empty_list_on_undefined(wh_proplist() | 'undefined') -> wh_proplist().
+empty_list_on_undefined('undefined') -> [];
+empty_list_on_undefined(L) -> L.
+
+-spec maybe_add_sip_headers(wh_json:object(), wh_json:object()) -> wh_json:object().
+maybe_add_sip_headers(Endpoint, SIPHeaders) ->
+    LocalSIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, wh_json:new()),
+
+    case wh_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
+        ?EMPTY_JSON_OBJECT -> Endpoint;
+        MergedHeaders -> wh_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
+    end.
 
 -spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
                                         wh_json:object().
