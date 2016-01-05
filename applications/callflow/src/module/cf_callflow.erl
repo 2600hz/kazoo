@@ -21,15 +21,6 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    case whapps_call_command:b_channel_status(Call) of
-        {'ok', _} -> maybe_branch_callflow(Data, Call);
-        {'error', _} ->
-            lager:debug("refusing to branch callflow for non-exstant call", []),
-            cf_exe:hard_stop(Call)
-    end.
-
--spec maybe_branch_callflow(wh_json:object(), whapps_call:call()) -> 'ok'.
-maybe_branch_callflow(Data, Call) ->
     Id = wh_doc:id(Data),
     case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Id) of
         {'error', R} ->
