@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2015, 2600Hz INC
+%%% @copyright (C) 2013-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -18,7 +18,11 @@
 -include("../crossbar.hrl").
 
 -define(PRESENTITY, <<"presentity">>).
-
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".presence">>).
+-define(PRESENTITY_KEY, <<"include_presentity">>).
+-define(PRESENTITY_CFG_KEY, <<"query_", (?PRESENTITY_KEY)/binary>>).
+-define(ACCOUNT_CFG(A, S, K, D), whapps_account_config:get_global(A, S, K, D)).
+-define(QUERY_PRESENTITY(A), ?ACCOUNT_CFG(A, ?MOD_CONFIG_CAT, ?PRESENTITY_CFG_KEY, 'false')).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -85,21 +89,43 @@ validate_thing(Context, ?HTTP_GET) ->
 validate_thing(Context, ?HTTP_POST) ->
     validate_thing_reset(Context, cb_context:req_nouns(Context)).
 
+-spec validate_search(cb_context:context()) -> cb_context:context().
 validate_search(Context) ->
-    validate_search(Context, cb_context:req_param(Context, <<"type">>)).
+    Funs = [fun search_req/1
+            | maybe_include_presentities(Context)
+           ],
+    search(Context, Funs).
 
-validate_search(Context, ?PRESENTITY) ->
-    validate_presentity_search(Context);
-validate_search(Context, _Type) ->
-    case search_req(Context) of
-        {'ok', JObj} ->
-            cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_data/2, JObj}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ]
-                              );
-        {'error', Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
+-spec maybe_include_presentities(cb_context:context()) -> list().
+maybe_include_presentities(Context) ->
+    Default = ?QUERY_PRESENTITY(cb_context:account_id(Context)),
+    case wh_util:is_true(cb_context:req_param(Context, ?PRESENTITY_KEY, Default)) of
+        'true' -> [fun presentity_search_req/1];
+        'false' -> []
+    end.
+
+-spec search(cb_context:context(), list()) -> cb_context:context().
+search(Context, Funs) ->
+    Self = self(),
+    lists:foreach(fun(Fun) -> search_spawn(Self, Fun, Context) end, Funs),
+    search_collect(Context, wh_json:new(), length(Funs)).
+
+-spec search_spawn(pid(), fun(), cb_context:context()) -> any().
+search_spawn(Pid, Fun, Context) ->
+    F = fun() -> Pid ! Fun(Context) end,
+    wh_util:spawn(F).
+
+-spec search_collect(cb_context:context(), wh_json:object(), integer()) -> cb_context:context().
+search_collect(Context, JObj, 0) ->
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_data/2, JObj}
+                          ,{fun cb_context:set_resp_status/2, 'success'}
+                        ]
+                      );
+search_collect(Context, JObj, N) ->
+    receive
+        {'ok', Reply} -> search_collect(Context, wh_json:merge_jobjs(Reply, JObj), N - 1)
+    after 1000 -> search_collect(Context, JObj, N - 1)
     end.
 
 -spec search_req(cb_context:context()) ->
@@ -183,20 +209,6 @@ add_subscription(Subscription, Acc, Key) ->
                         )
                       ,Acc
                      ).
-
--spec validate_presentity_search(cb_context:context()) ->
-                                        cb_context:context().
-validate_presentity_search(Context) ->
-    case presentity_search_req(Context) of
-        {'ok', JObj} ->
-            cb_context:setters(Context
-                               ,[{fun cb_context:set_resp_data/2, JObj}
-                                 ,{fun cb_context:set_resp_status/2, 'success'}
-                                ]
-                              );
-        {'error', Reason} ->
-            crossbar_util:response('error', wh_util:to_binary(Reason), 500, Context)
-    end.
 
 -spec presentity_search_req(cb_context:context()) ->
                                    {'ok', wh_json:object()} |
