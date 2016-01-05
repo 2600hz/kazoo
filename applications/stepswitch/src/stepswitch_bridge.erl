@@ -333,7 +333,7 @@ build_bridge(#state{endpoints=Endpoints
 
     EndpointFilter = build_filter_fun(Name, Number),
 
-    FmtEndpoints = format_endpoints(Endpoints, Number, OffnetReq, EndpointFilter),
+    FmtEndpoints = format_endpoints(Endpoints, Name, Number, OffnetReq, EndpointFilter),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
@@ -367,16 +367,28 @@ build_filter_fun(Name, Number) ->
        (_Else) -> 'true'
     end.
 
--spec format_endpoints(wh_json:objects(), api_binary(), wapi_offnet_resource:req(), filter_fun()) ->
+-spec format_endpoints(wh_json:objects(), api_binary(), api_binary(), wapi_offnet_resource:req(), filter_fun()) ->
                               wh_json:objects().
-format_endpoints(Endpoints, Number, OffnetReq, FilterFun) ->
+format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
     DefaultRealm = default_realm(OffnetReq),
     SIPHeaders = stepswitch_util:get_sip_headers(OffnetReq),
     AccountId = wapi_offnet_resource:account_id(OffnetReq),
 
-    [format_endpoint(Endpoint, Number, FilterFun, DefaultRealm, SIPHeaders, AccountId)
+    [format_endpoint(set_endpoint_caller_id(Endpoint, Name, Number)
+                     ,Number, FilterFun, DefaultRealm, SIPHeaders, AccountId
+                    )
      || Endpoint <- Endpoints
     ].
+
+-spec set_endpoint_caller_id(wh_json:object(), api_binary(), api_binary()) -> wh_json:object().
+set_endpoint_caller_id(Endpoint, Name, Number) ->
+    wh_json:set_values(props:filter_undefined(
+                         [{<<"Outbound-Caller-ID-Number">>, Number}
+                          ,{<<"Outbound-Caller-ID-Name">>, Name}
+                         ]
+                        )
+                       ,Endpoint
+                      ).
 
 -spec default_realm(wapi_offnet_resource:req()) -> api_binary().
 default_realm(OffnetReq) ->
