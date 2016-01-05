@@ -114,7 +114,7 @@ handle_sms_req(OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_force_outbound(wh_proplist(), wapi_offnet_resource:req()) -> any().
+-spec maybe_force_outbound(number_properties(), wapi_offnet_resource:req()) -> any().
 maybe_force_outbound(Props, OffnetReq) ->
     case wh_number_properties:should_force_outbound(Props)
         orelse wapi_offnet_resource:force_outbound(OffnetReq, 'false')
@@ -131,7 +131,7 @@ maybe_force_outbound(Props, OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_force_outbound_sms(wh_proplist(), wapi_offnet_resource:req()) -> any().
+-spec maybe_force_outbound_sms(number_properties(), wapi_offnet_resource:req()) -> any().
 maybe_force_outbound_sms(Props, OffnetReq) ->
     case props:get_is_true('force_outbound', Props)
         orelse wapi_offnet_resource:force_outbound(OffnetReq, 'false')
@@ -188,7 +188,7 @@ maybe_sms(Number, OffnetReq) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_extension(wh_proplist(), wapi_offnet_resource:req()) -> any().
+-spec local_extension(number_properties(), wapi_offnet_resource:req()) -> any().
 local_extension(Props, OffnetReq) -> stepswitch_request_sup:local_extension(Props, OffnetReq).
 
 %%--------------------------------------------------------------------
@@ -197,7 +197,7 @@ local_extension(Props, OffnetReq) -> stepswitch_request_sup:local_extension(Prop
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec local_sms(wh_proplist(), wapi_offnet_resource:req()) -> 'ok'.
+-spec local_sms(number_properties(), wapi_offnet_resource:req()) -> 'ok'.
 local_sms(Props, OffnetReq) -> stepswitch_local_sms:local_message_handling(Props, OffnetReq).
 
 %%--------------------------------------------------------------------

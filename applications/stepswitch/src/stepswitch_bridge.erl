@@ -15,7 +15,6 @@
          ,bridge_outbound_cid_number/1
          ,bridge_emergency_cid_name/1
          ,bridge_outbound_cid_name/1
-         ,default_realm/1
         ]).
 
 -export([init/1
@@ -28,6 +27,7 @@
         ]).
 
 -include("stepswitch.hrl").
+-include_lib("whistle/include/wapi_offnet_resource.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -record(state, {endpoints = [] :: wh_json:objects()
@@ -356,21 +356,13 @@ build_bridge(#state{endpoints=Endpoints
           ,wapi_offnet_resource:custom_channel_vars(OffnetReq, wh_json:new())
          ),
 
-    EndpointFilter = fun(Element) ->
-                             case Element of
-                                 {<<"Outbound-Caller-ID-Number">>, Number} -> 'false';
-                                 {<<"Outbound-Caller-ID-Name">>, Name}     -> 'false';
-                                 _OtherValues                              -> 'true'
-                             end
-                     end,
-
-    FmtEndpoints = format_endpoints(Endpoints, Number, OffnetReq, EndpointFilter),
+    FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-       ,{<<"Outbound-Caller-ID-Number">>, Number}
-       ,{<<"Outbound-Caller-ID-Name">>, Name}
+       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
+       ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
        ,{<<"Caller-ID-Number">>, Number}
        ,{<<"Caller-ID-Name">>, Name}
        ,{<<"Custom-Channel-Vars">>, CCVs}
@@ -390,77 +382,10 @@ build_bridge(#state{endpoints=Endpoints
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec format_endpoints(wh_json:objects(), api_binary(), wapi_offnet_resource:req(), fun()) ->
-                              wh_json:objects().
-format_endpoints(Endpoints, Number, OffnetReq, Filter) ->
-    DefaultRealm = default_realm(OffnetReq),
-    [format_endpoint(Endpoint, Number, DefaultRealm, Filter)
-     || Endpoint <- Endpoints
-    ].
-
--spec default_realm(wapi_offnet_resource:req()) -> api_binary().
-default_realm(OffnetReq) ->
-    case wapi_offnet_resource:from_uri_realm(OffnetReq) of
-        'undefined' -> wapi_offnet_resource:account_realm(OffnetReq);
-        Realm -> Realm
-    end.
-
--spec format_endpoint(wh_json:object(), api_binary(), api_binary(), fun()) -> wh_json:object().
-format_endpoint(Endpoint, Number, DefaultRealm, Filter) ->
-    FilteredEndpoint = wh_json:filter(Filter, Endpoint),
-    maybe_endpoint_format_from(FilteredEndpoint, Number, DefaultRealm).
-
--spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
-                                        wh_json:object().
-maybe_endpoint_format_from(Endpoint, Number, DefaultRealm) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
-    case wh_json:is_true(<<"Format-From-URI">>, CCVs) of
-        'true' -> endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs);
-        'false' ->
-            wh_json:set_value(<<"Custom-Channel-Vars">>
-                              ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                   ]
-                                                   ,CCVs
-                                                  )
-                              ,Endpoint
-                             )
-    end.
-
--spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary(), wh_json:object()) ->
-                                  wh_json:object().
-endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs) ->
-    case wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm) of
-        <<_/binary>> = Realm ->
-            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
-            lager:debug("setting resource ~s from-uri to ~s"
-                        ,[wh_json:get_value(<<"Resource-ID">>, CCVs)
-                          ,FromURI
-                         ]),
-            UpdatedCCVs = wh_json:set_value(<<"From-URI">>, FromURI, CCVs),
-            wh_json:set_value(<<"Custom-Channel-Vars">>
-                              ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                   ]
-                                                   ,UpdatedCCVs
-                                                  )
-                              ,Endpoint
-                             );
-        _ ->
-            wh_json:set_value(<<"Custom-Channel-Vars">>
-                              ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                   ]
-                                                   ,CCVs
-                                                  )
-                              ,Endpoint
-                             )
-    end.
-
 -spec bridge_from_uri(api_binary(), wapi_offnet_resource:req()) ->
                              api_binary().
 bridge_from_uri(Number, OffnetReq) ->
-    Realm = default_realm(OffnetReq),
+    Realm = stepswitch_util:default_realm(OffnetReq),
 
     case (whapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
           orelse wapi_offnet_resource:format_from_uri(OffnetReq)
@@ -655,10 +580,10 @@ send_deny_emergency_notification(OffnetReq) ->
     Props =
         [{<<"Call-ID">>, wapi_offnet_resource:call_id(OffnetReq)}
          ,{<<"Account-ID">>, wapi_offnet_resource:account_id(OffnetReq)}
-         ,{<<"Emergency-Caller-ID-Number">>, wapi_offnet_resource:emergency_caller_id_number(OffnetReq)}
-         ,{<<"Emergency-Caller-ID-Name">>, wapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
-         ,{<<"Outbound-Caller-ID-Number">>, wapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
-         ,{<<"Outbound-Caller-ID-Name">>, wapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
+         ,{?KEY_E_CALLER_ID_NUMBER, wapi_offnet_resource:emergency_caller_id_number(OffnetReq)}
+         ,{?KEY_E_CALLER_ID_NAME, wapi_offnet_resource:emergency_caller_id_name(OffnetReq)}
+         ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, wapi_offnet_resource:outbound_caller_id_number(OffnetReq)}
+         ,{?KEY_OUTBOUND_CALLER_ID_NAME, wapi_offnet_resource:outbound_caller_id_name(OffnetReq)}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_notifications:publish_denied_emergency_bridge(Props).
