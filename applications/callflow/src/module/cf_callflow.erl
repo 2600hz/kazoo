@@ -25,7 +25,7 @@ handle(Data, Call) ->
         {'ok', _} -> maybe_branch_callflow(Data, Call);
         {'error', _} ->
             lager:debug("refusing to branch callflow for non-exstant call", []),
-            cf_exe:stop(Call)
+            cf_exe:hard_stop(Call)
     end.
 
 -spec maybe_branch_callflow(wh_json:object(), whapps_call:call()) -> 'ok'.
