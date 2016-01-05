@@ -15,7 +15,6 @@
          ,bridge_outbound_cid_number/1
          ,bridge_emergency_cid_name/1
          ,bridge_outbound_cid_name/1
-         ,default_realm/1
         ]).
 
 -export([init/1
@@ -28,7 +27,6 @@
         ]).
 
 -include("stepswitch.hrl").
--include_lib("whistle/src/wh_json.hrl").
 -include_lib("whistle/include/wapi_offnet_resource.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
@@ -332,9 +330,7 @@ build_bridge(#state{endpoints=Endpoints
           ,wapi_offnet_resource:custom_channel_vars(OffnetReq, wh_json:new())
          ),
 
-    EndpointFilter = build_filter_fun(Name, Number),
-
-    FmtEndpoints = format_endpoints(Endpoints, Name, Number, OffnetReq, EndpointFilter),
+    FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
 
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
@@ -360,135 +356,10 @@ build_bridge(#state{endpoints=Endpoints
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--type filter_fun() :: fun(({ne_binary(), ne_binary()}) -> boolean()).
--spec build_filter_fun(ne_binary(), ne_binary()) -> filter_fun().
-build_filter_fun(Name, Number) ->
-    fun({?KEY_OUTBOUND_CALLER_ID_NUMBER, N}) when N =:= Number -> 'false';
-       ({?KEY_OUTBOUND_CALLER_ID_NAME, N}) when N =:= Name -> 'false';
-       (_Else) -> 'true'
-    end.
-
--spec format_endpoints(wh_json:objects(), api_binary(), api_binary(), wapi_offnet_resource:req(), filter_fun()) ->
-                              wh_json:objects().
-format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
-    DefaultRealm = default_realm(OffnetReq),
-    SIPHeaders = stepswitch_util:get_sip_headers(OffnetReq),
-    AccountId = wapi_offnet_resource:account_id(OffnetReq),
-
-    [format_endpoint(set_endpoint_caller_id(Endpoint, Name, Number)
-                     ,Number, FilterFun, DefaultRealm, SIPHeaders, AccountId
-                    )
-     || Endpoint <- Endpoints
-    ].
-
--spec set_endpoint_caller_id(wh_json:object(), api_binary(), api_binary()) -> wh_json:object().
-set_endpoint_caller_id(Endpoint, Name, Number) ->
-    wh_json:set_values(props:filter_undefined(
-                         [{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
-                          ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
-                         ]
-                        )
-                       ,Endpoint
-                      ).
-
--spec default_realm(wapi_offnet_resource:req()) -> api_binary().
-default_realm(OffnetReq) ->
-    case wapi_offnet_resource:from_uri_realm(OffnetReq) of
-        'undefined' -> wapi_offnet_resource:account_realm(OffnetReq);
-        Realm -> Realm
-    end.
-
--spec format_endpoint(wh_json:object(), api_binary(), filter_fun(), api_binary(), wh_json:object(), ne_binary()) ->
-                             wh_json:object().
-format_endpoint(Endpoint, Number, FilterFun, DefaultRealm, SIPHeaders, AccountId) ->
-    FormattedEndpoint = apply_formatters(Endpoint, SIPHeaders, AccountId),
-    FilteredEndpoint = wh_json:filter(FilterFun, FormattedEndpoint),
-    maybe_endpoint_format_from(FilteredEndpoint, Number, DefaultRealm).
-
--spec apply_formatters(wh_json:object(), wh_json:object(), ne_binary()) -> wh_json:object().
-apply_formatters(Endpoint, SIPHeaders, AccountId) ->
-    stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
-                                ,props:get_value(<<"Formatters">>
-                                                 ,endpoint_props(Endpoint, AccountId)
-                                                 ,wh_json:new()
-                                                )
-                                ,'outbound'
-                               ).
-
--spec endpoint_props(wh_json:object(), api_binary()) -> wh_proplist().
-endpoint_props(Endpoint, AccountId) ->
-    ResourceId = wh_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
-    case wh_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
-        'true' ->
-            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId));
-        'false' ->
-            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
-    end.
-
--spec empty_list_on_undefined(wh_proplist() | 'undefined') -> wh_proplist().
-empty_list_on_undefined('undefined') -> [];
-empty_list_on_undefined(L) -> L.
-
--spec maybe_add_sip_headers(wh_json:object(), wh_json:object()) -> wh_json:object().
-maybe_add_sip_headers(Endpoint, SIPHeaders) ->
-    LocalSIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, wh_json:new()),
-
-    case wh_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
-        ?EMPTY_JSON_OBJECT -> Endpoint;
-        MergedHeaders -> wh_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
-    end.
-
--spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
-                                        wh_json:object().
-maybe_endpoint_format_from(Endpoint, Number, DefaultRealm) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
-    case wh_json:is_true(<<"Format-From-URI">>, CCVs) of
-        'true' -> endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs);
-        'false' ->
-            wh_json:set_value(<<"Custom-Channel-Vars">>
-                              ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                   ]
-                                                   ,CCVs
-                                                  )
-                              ,Endpoint
-                             )
-    end.
-
--spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary(), wh_json:object()) ->
-                                  wh_json:object().
-endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs) ->
-    case wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm) of
-        <<_/binary>> = Realm ->
-            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
-            lager:debug("setting resource ~s from-uri to ~s"
-                        ,[wh_json:get_value(<<"Resource-ID">>, CCVs)
-                          ,FromURI
-                         ]),
-            UpdatedCCVs = wh_json:set_value(<<"From-URI">>, FromURI, CCVs),
-            wh_json:set_value(<<"Custom-Channel-Vars">>
-                              ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                   ]
-                                                   ,UpdatedCCVs
-                                                  )
-                              ,Endpoint
-                             );
-        _ ->
-            wh_json:set_value(<<"Custom-Channel-Vars">>
-                              ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                   ]
-                                                   ,CCVs
-                                                  )
-                              ,Endpoint
-                             )
-    end.
-
 -spec bridge_from_uri(api_binary(), wapi_offnet_resource:req()) ->
                              api_binary().
 bridge_from_uri(Number, OffnetReq) ->
-    Realm = default_realm(OffnetReq),
+    Realm = steoswitch_util:default_realm(OffnetReq),
 
     case (whapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
           orelse wapi_offnet_resource:format_from_uri(OffnetReq)
