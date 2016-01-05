@@ -262,13 +262,16 @@ build_originate(#state{endpoints=Endpoints
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                    ]),
     Application = wh_json:get_value(<<"Application-Name">>, OffnetReq, <<"park">>),
+
+    FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, CIDName, CIDNum, OffnetReq),
+
     props:filter_undefined(
       [{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Application-Name">>, Application}
        ,{<<"Msg-ID">>, MsgId}
        ,{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
        ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
-       ,{<<"Endpoints">>, Endpoints}
+       ,{<<"Endpoints">>, FmtEndpoints}
        ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
        ,{<<"Caller-ID-Number">>, CIDNum}
@@ -320,7 +323,7 @@ originate_caller_id(OffnetReq) ->
 originate_timeout(Request) ->
     lager:debug("attempt to connect to resources timed out"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_api:msg_id(Request, <<>>)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(Request)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, <<"originate request timed out">>}
@@ -332,7 +335,7 @@ originate_timeout(Request) ->
 originate_error(JObj, OffnetReq) ->
     lager:debug("error during originate request: ~s", [wh_util:to_binary(wh_json:encode(JObj))]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
-     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq, <<>>)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
@@ -344,7 +347,7 @@ originate_error(JObj, OffnetReq) ->
 originate_success(JObj, OffnetReq) ->
     lager:debug("originate request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
-     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq, <<>>)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"SUCCESS">>}
      ,{<<"Response-Code">>, <<"sip:200">>}
      ,{<<"Resource-Response">>, JObj}
@@ -355,7 +358,7 @@ originate_success(JObj, OffnetReq) ->
 originate_failure(JObj, OffnetReq) ->
     lager:debug("originate request failed: ~s", [wh_json:get_value(<<"Application-Response">>, JObj)]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
-     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq, <<>>)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, wh_json:get_first_defined([<<"Application-Response">>
                                                           ,<<"Hangup-Cause">>
                                                          ], JObj)}
