@@ -294,9 +294,9 @@ fix_rerouted_call(ReroutedBy, Call) ->
     [Username|_] = binary:split(ReroutedBy, <<"@">>),
     case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Username) of
         {'ok', EndpointId} ->
-            C = whapps_call:set_authorization(<<"device">>, EndpointId, Call),
-            OwnerId = cf_attributes:owner_id(C),
-            whapps_call:set_owner_id(OwnerId, C);
+            maybe_set_reroute_owner(
+              whapps_call:set_authorization(<<"device">>, EndpointId, Call)
+             );
         {'error', 'not_found'} ->
             Keys = [<<"Account-ID">>
                     ,<<"Owner-ID">>
@@ -304,6 +304,15 @@ fix_rerouted_call(ReroutedBy, Call) ->
                     ,<<"Authorizing-ID">>
                    ],
             whapps_call:remove_custom_channel_vars(Keys, Call)
+    end.
+
+-spec maybe_set_reroute_owner(whapps_call:call()) -> whapps_call:call().
+maybe_set_reroute_owner(Call) ->
+    case cf_attributes:owner_id(Call) of
+        'undefined' ->
+            whapps_call:remove_custom_channel_vars([<<"Owner-ID">>], Call);
+        OwnerId ->
+            whapps_call:set_owner_id(OwnerId, Call)
     end.
 
 -spec get_rerouted_by(whapps_call:call()) -> api_binary().
