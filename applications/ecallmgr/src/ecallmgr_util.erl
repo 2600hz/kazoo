@@ -13,7 +13,6 @@
 
 -export([send_cmd/4]).
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
--export([bridge_export/3]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
@@ -404,38 +403,6 @@ maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
     maybe_sanitize_fs_value(Key, wh_util:to_binary(Val));
 maybe_sanitize_fs_value(_, Val) -> Val.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec bridge_export(atom(), ne_binary(), wh_proplist()) -> send_cmd_ret().
-bridge_export(_, _, []) -> 'ok';
-bridge_export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
-    BridgeExports = get_fs_keys_and_values(UUID, Props),
-    ecallmgr_fs_command:bridge_export(Node, UUID, [{<<"alert_info">>, <<"intercom">>}
-                                                   ,get_fs_key_and_value(K, V, UUID)
-                                                   | BridgeExports
-                                                  ]
-                                     );
-bridge_export(Node, UUID, Props) ->
-    BridgeExports = get_fs_keys_and_values(UUID, Props),
-    ecallmgr_fs_command:bridge_export(Node, UUID, BridgeExports).
-
--spec get_fs_keys_and_values(ne_binary(), wh_proplist()) -> wh_proplist().
-get_fs_keys_and_values(UUID, Props) ->
-    lists:foldl(fun(P, A) -> get_fs_kvs_fold(P, A, UUID) end, [], Props).
-
--spec get_fs_kvs_fold({ne_binary(), wh_json:json_term()}, wh_proplist(), ne_binary()) ->
-                             wh_proplist().
-get_fs_kvs_fold({K, V}, Acc, UUID) ->
-    case get_fs_key_and_value(K, V, UUID) of
-        'skip' -> Acc;
-        {_FSKey, _FSVal}=T -> [T | Acc];
-        [] -> Acc;
-        [_|_]=L -> L ++ Acc
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
