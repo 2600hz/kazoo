@@ -34,7 +34,7 @@ Base = [ {'++', Core}
        , {'--', [mochiweb]}
        ],
 LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
-Based = lists:foldl(LeftAssocAsItShouldBe, [], Base),
+Based = lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) ),
 
 
 [ {lib_dirs, [ "applications"
@@ -45,10 +45,9 @@ Based = lists:foldl(LeftAssocAsItShouldBe, [], Base),
 
 , {include_src, false}
 
-, {default_release, {kazoo_whistle_apps,"4.0.0"}}
-
 %% , {vm_args, "rel/vm.args"}
 %% , {sys_config, "rel/sys.config"}
+
 
 , {release, {kazoo_whistle_apps,"4.0.0"}
   , [whistle_apps] ++ Based
