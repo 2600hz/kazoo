@@ -1,14 +1,8 @@
-/*
-Section: ACDC
-Title: Architecture
-Language: en-US
-*/
-
-# Agents
+### Architecture
 
 Agents represent the endpoints that a call in a queue will try to connect with.
 
-## Agent process layout
+#### Agent process layout
 
 Agents are comprised of two processes, a gen_listener (named process) and a gen_fsm. A supervisor ensures that the gen_listener and gen_fsm are kept alive together. A supervisor above that manages the list of agents.
 
@@ -20,7 +14,7 @@ Agents are comprised of two processes, a gen_listener (named process) and a gen_
                         \|---[acdc_agent]
                         \|---[acdc_agent_fsm]
 
-### Agent FSM
+##### Agent FSM
 
 init -1-> sync -2-> ready -3-> ringing ---\
                      ^                     !
@@ -36,11 +30,11 @@ init -1-> sync -2-> ready -3-> ringing ---\
 6. Call has unbridged/hungup
 7. Wrapup timer has expired
 
-## Agent message processing
+#### Agent message processing
 
 The interplay between AMQP messages, the agent process, and the agent FSM process
 
-### Member Connect Requests
+##### Member Connect Requests
 
               AMQP                      Erlang
 [Queue]                    [Agent]                     [AgentFSM]
@@ -52,7 +46,7 @@ The interplay between AMQP messages, the agent process, and the agent FSM proces
 
 An agent will respond to all connect requests while in the *ready* state. The acdc_agent will pass along the member_connect_req to the FSM. If the FSM is in the *ready* state, the FSM will pass the request JSON to the agent process to send the member_connect_resp message. If the FSM is in any other state, the member_connect_req payload will be ignored.
 
-### Member Connect Win
+##### Member Connect Win
 
               AMQP                      Erlang
 [Queue]                    [Agent]                     [AgentFSM]
@@ -77,7 +71,7 @@ An agent will respond to all connect requests while in the *ready* state. The ac
 
 When an agent receives a member_connect_win while in the *ready* state, the FSM will instruct the agent process to bridge to the agent's endpoint(s) and enter the *ringing* state. The agent process binds to the call events and attempts the bridge. Once the bridge is established, the FSM will instruct the agent process to send a member_connect_accepted and move to the *answered* state. On receiving a hangup event, the FSM will instruct the agent process to unbind from call events and will start the wrapup timer and enter the *wrapup* state. Once the timer fires, the FSM will return to the *ready* state.
 
-### Member Connect Win (fail to bridge)
+##### Member Connect Win (fail to bridge)
 
               AMQP                      Erlang
 [Queue]                    [Agent]                     [AgentFSM]
@@ -96,7 +90,7 @@ When an agent receives a member_connect_win while in the *ready* state, the FSM 
 
 When an agent is in the *ready* state, receives a member_connect_win, attempts to bridge, and the bridge fails, the agent FSM will instruct the agent process to send a member_connect_retry, unbind from the call events, and return the FSM to the *ready* state.
 
-### Member Connect Win (not in *ready* state)
+##### Member Connect Win (not in *ready* state)
 
               AMQP                      Erlang
 [Queue]                    [Agent]                     [AgentFSM]
@@ -110,11 +104,11 @@ When an agent is in the *ready* state, receives a member_connect_win, attempts t
 If a member_connect_win is received when _not_ in the *ready* state, reply with the member_connect_retry immediately.
 
 
-# Agents Manager
+### Agents Manager
 
 Agent login requires starting an agent process group; the Agents Manager process will take care of handling agent process group startup. Agent logout requires stopping the agent process group; Agents Manager will ensure the agent process group has terminated.
 
-## Agents Manager process layout
+#### Agents Manager process layout
 
 [acdc_sup]
    \|
@@ -122,7 +116,7 @@ Agent login requires starting an agent process group; the Agents Manager process
    \|----[acdc_queues_sup]
    \|----[acdc_agents_mgr]
 
-## Agents Manager message processing
+#### Agents Manager message processing
 
 CF: Callflow action (for now, other mechanisms possible later)
 AsM: acdc_agents_mgr
@@ -130,7 +124,7 @@ AsSup: acdc_agents_sup
 ASup: acdc_agent_sup
 APG: Agent Process Group - acdc_agent, acdc_agent_fsm
 
-### Agent Login
+##### Agent Login
 
             AMQP               Erlang
 [CF]                 [AsM]                [AsSup]           [ASup]           [APG]
@@ -141,7 +135,7 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
                                               -- start_child -->
                                                                -- start_link -->
 
-### Agent Logout
+##### Agent Logout
 
             AMQP               Erlang
 [CF]                 [AsM]                [AsSup]           [ASup]           [APG]
@@ -152,7 +146,7 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
                                               -- terminate -->
                                                                -- terminate -->
 
-### Agent Pause
+##### Agent Pause
 
             AMQP               Erlang
 [CF]                 [AsM]                [AsSup]           [ASup]           [APG]
@@ -163,7 +157,7 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
                                               -- pause -->
                                                                -- pause -->
 
-### Agent Resume
+##### Agent Resume
 
             AMQP               Erlang
 [CF]                 [AsM]                [AsSup]           [ASup]           [APG]
@@ -174,16 +168,16 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
                                               -- resume -->
                                                                -- resume -->
 
-### Agent Stats
+##### Agent Stats
 
 The various agent processes and FSMs will send stats to the Agents Manager process, which will record them to a Folsom table. Queries from interested parties (like Crossbar) will send AMQP requests which the Agent Manager will respond to as well.
 
 
-# Queues
+### Queues
 
 A queue provides ordering of calls through it.
 
-## Queue process layout
+#### Queue process layout
 
  [acdc_queues_sup]
          \|
@@ -200,7 +194,7 @@ A queue provides ordering of calls through it.
                                             \|----acdc_queue_shared
                                             \|----acdc_queue_fsm
 
-### Queue Startup
+##### Queue Startup
 
 When acdc_init starts up (last child of acdc_sup), it iterates through each account. In each account, iterate over the queues available.
 
@@ -223,11 +217,11 @@ acdc_queue_listener is the AMQP arm of the worker, listening for and delivering 
 acdc_queue_fsm is the brains of the worker. It tracks what state the member call is in, which agent to respond with a Win to, etc.
 acdc_queue_shared is an AMQP listener for member_call payloads. It has the special restrictions of QoS of 1, and no auto-acking of payloads. When the FSM is finished with a member call, it is via acdc_queue_shared that the payload is ACK'd and the worker moves to the next call.
 
-### Queue - Shared
+##### Queue - Shared
 
 Because of the need to not auto-ack member call payloads, the consumption of messages from the shared AMQP queue necessitated moving that queue management into its own gen_listener, while messages betweem the queue process and agent processes flow unimpeded on the acdc_queue process's AMQP queue. The acdc_queue_shared routing is still passed to acdc_queue_handlers, to be fed into the acdc_queue_fsm process.
 
-### Queue FSM
+##### Queue FSM
 
  init ---> sync -1-> ready -2-> member_connect_req --\
                        ^                  4          3
@@ -240,11 +234,11 @@ Because of the need to not auto-ack member call payloads, the consumption of mes
 5. member_connect_accepted received from winning agent process
 
 
-## Queue message processing
+#### Queue message processing
 
 The interplay between member_call requests (from callflow initially), the queue, queue fsm, and agent processes.
 
-### Member Call Requests
+##### Member Call Requests
 
             AMQP               Erlang                      AMQP                    AMQP
 [CF]                 [Queue]             [QueueFSM]                  [Agents]                [Agent]
@@ -273,7 +267,7 @@ The queue process sends the member_connect_req, and collects member_connect_resp
 
 Once the agent process has connected the caller to the agent endpoint, the queue process will receive a member_connect_accepted payload. The queue process hands this off to the FSM, which lets the queue process know it can ACK the member_call payload (and allow the AMQP queue to send the next member_call to the next consumer). The queue process unbinds from the call events.
 
-### Member Call Requests (Agent Retry)
+##### Member Call Requests (Agent Retry)
 
             AMQP               Erlang                      AMQP                    AMQP
 [CF]                 [Queue]             [QueueFSM]                  [Agents]                [Agent]
@@ -295,7 +289,7 @@ Once the agent process has connected the caller to the agent endpoint, the queue
                                        {member_conn_req}
 This flow diagram shows how a queue reacts to a member_connect_retry (sent by the winning agent for a variety of reasons). The diagram loops back at the FSM re-entering the *member_conn_req* state.
 
-### Member Call Requests (Call hungup)
+##### Member Call Requests (Call hungup)
 
             AMQP               Erlang                      AMQP                    AMQP
 [Call]              [Queue]             [QueueFSM]                  [Agents]                [Agent]
@@ -327,11 +321,11 @@ This diagram shows how the FSM reacts to receiving a HANGUP either during:
  *member_conn_req*: ignores member_connect_resps, unbinds from the call events, and ACKs the member_call so the queue can progress
  *member_conning*: ignores member_connect_accepted/retry messages, unbinds from the call events, and ACKs teh member_call
 
-# Supervisors
+### Supervisors
 
 A supervisor is able to listen/coach an agent while on the phone with a customer.
 
-## Supervisor process layout
+#### Supervisor process layout
 
 Similar to agent processes. The FSM will manage the lifecycle of a coach/whisper/listen
 
@@ -343,4 +337,4 @@ Similar to agent processes. The FSM will manage the lifecycle of a coach/whisper
                       \|----acdc_super_listener
                       \|----acdc_super_fsm
 
-### Supervisor startup
+##### Supervisor startup
