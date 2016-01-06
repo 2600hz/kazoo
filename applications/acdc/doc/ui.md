@@ -1,8 +1,2 @@
-/*
-Section: ACDC
-Title: UI Updates
-Language: en-US
-*/
-
-# UI Updates
+### UI Updates
 No restriction on agents. They are agents if they have a non-empty queues list. All users are allowed to be an agent.

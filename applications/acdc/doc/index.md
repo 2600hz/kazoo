@@ -1,16 +1,10 @@
-/*
-Section: ACDC
-Title: Automatic Call Distributor
-Language: en-US
-*/
-
-# ACDc *Your friendly automatic call distribution commander*
+### ACDc *Your friendly automatic call distribution commander*
 
 First, the "commander" part is a stretch, I know.
 
 High level concepts involved here are queues and agents. There's a many-many relationship between queues and agents: a queue can have many agents, and an agent can be part of many queues. As such, there needs to be a distinct differentiation between what an agent is responsible for and what a queue tracks.
 
-## Agents
+#### Agents
 
 An agent represents an account user with a device (and possibly many devices). The agent tracks:
 
@@ -21,7 +15,7 @@ An agent represents an account user with a device (and possibly many devices). T
 5. the agent id
 6. the agent's account db
 
-### Agent Statuses
+##### Agent Statuses
 
 *init*: the agent process is starting up. Will not accept member connection requests.
 
@@ -37,7 +31,7 @@ An agent represents an account user with a device (and possibly many devices). T
 
 *paused*: the agent is on break or otherwise not taking calls. An optional timer can be set to limit how long the agent may remain in the paused state.
 
-### Agent Process Initialization
+##### Agent Process Initialization
 
 An agent can be represented by one or more Erlang processes, on any number of nodes, and in any one of the statuses above. As such, startup of the agent process is a tricky matter.
 
@@ -57,7 +51,7 @@ If a sync_resp is in the *wrapup* status, the resp should include the time left 
 
 If a sync_resp is in the *paused* status, the resp should include the time left (if on a timed break). If no time is included, the initializing agent process will enter the *paused* status indefinitely, until an agent_status event instructs the agent process to come back to *ready*.
 
-### Happy case for a member call
+##### Happy case for a member call
 
 agent status: *ready*
 Agent process receives a member_connect_req message off the message bus. Agent publishes a member_connect_resp to the requesting queue's AMQP queue and enters the *waiting* state.
@@ -74,7 +68,7 @@ Agent process monitors the call's event stream, waiting for a hangup event. Upon
 agent status: *wrapup*
 Queue may optionally specify a wrapup_timeout, delaying how long an agent must wait before returning to *ready*.
 
-#### An attempt at a message flowchart
+###### An attempt at a message flowchart
 
 Q = A queue in an account
 AX(Y)(S) = Agent with id X, process Y, status S
@@ -117,11 +111,11 @@ Q <--- member_hungup --- A1(_)(Wr)
 5. Agent's wrapup timer expires, enters *ready* status
 Q                        A1(_)(R)
 
-## Queues
+#### Queues
 
 Queues manage the dispersal of member calls to agents. Because the queue won't know if an agent is busy in another queue, the queue will broadcast a member_connect_req to all known agents. The queue will collect member_connect_resps and choose one agent, based on routing strategy, to send the member_connect_win message. If the agent is unable to connect the call and send the queue a member_connected, the agent will attempt the next appropriate member_connect_resp. If the list is exhausted, the queue will wait a configurable amount of time before sending another member_connect_req and repeating the process.
 
-### Queue Process Initialization
+##### Queue Process Initialization
 
 As with agents, multiple queue processes can (and should) be started per acdc queue. The challenge becomes how to coordinate member calls being distributed to agents with multiple queue processes running for the same queue.
 
@@ -131,7 +125,7 @@ Startup of a queue process should declare the AMQP queue as acdc.queue.ACCT.QID 
 
 Of course, communication with the agent processes will occur with the queue processes dedicated AMQP queue. So each queue process will consume from both the shared AMQP queue and from their own private AMQP queue.
 
-### Queue Call Handling
+##### Queue Call Handling
 
 1. member_call published from callflow module to shared AMQP queue acdc.queue.ACCT.QID
 CF -- member_call --> Q1(1)
