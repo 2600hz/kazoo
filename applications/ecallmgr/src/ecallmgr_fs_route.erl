@@ -329,7 +329,8 @@ reply_forbidden(Section, Node, FetchId) ->
                      ,{<<"Route-Error-Code">>, <<"403">>}
                      ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
                      ,{<<"Fetch-Section">>, wh_util:to_binary(Section)}
-                    ], []),
+                    ]
+                    , []),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         'ok' -> lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]);
