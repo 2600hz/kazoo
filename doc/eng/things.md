@@ -27,7 +27,7 @@ curl -x GET \
 }
 ```
 
-##### Create a new Thing
+#### Create a new Thing
 
 If your client supports it, the full URI of the successfully-created thing will be in the `Location` header
 
@@ -46,7 +46,7 @@ curl -X PUT \
 }
 ```
 
-##### Get the details of a Thing
+#### Get the details of a Thing
 
 > GET /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
@@ -64,7 +64,7 @@ curl -X GET \
 }
 ```
 
-##### Edit the details of a Thing
+#### Edit the details of a Thing
 
 > POST /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
@@ -83,7 +83,7 @@ curl -X POST
 }
 ```
 
-##### Patch a field in a Thing
+#### Patch a field in a Thing
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
@@ -103,7 +103,7 @@ curl -X PATCH
 }
 ```
 
-##### Delete a Thing
+#### Delete a Thing
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
@@ -122,7 +122,7 @@ curl -X DELETE
 }
 ```
 
-##### Execute the stuff of a Thing
+#### Execute the stuff of a Thing
 
 When you want to get stuff done for a thing!
 
