@@ -56,7 +56,7 @@ bridge(Endpoints, OffnetReq) ->
                                                   )
                           ).
 
--spec local_extension(wh_proplist(), wapi_offnet_resource:req()) -> sup_startchild_ret().
+-spec local_extension(number_properties(), wapi_offnet_resource:req()) -> sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     supervisor:start_child(?MODULE
                            ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)

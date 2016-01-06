@@ -158,7 +158,7 @@ maybe_replace(JObj, Key, _Value, Formatter) ->
         Replace -> wh_json:set_value(Key, Replace, JObj)
     end.
 
--spec maybe_match_invite_format(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:objects()) ->
+-spec maybe_match_invite_format(wh_json:object(), ne_binary(), wh_json:json_term(), wh_json:object()) ->
                                        ffun_return().
 maybe_match_invite_format(JObj, Key, Value, Formatter) ->
     case maybe_match_invite_format(JObj, Formatter) of
