@@ -6,13 +6,12 @@ Things do stuff. The more things you have, the more stuff you can do.
 
 #### Schema
 
-Key | Description | Type | Required
---- | ----------- | ---- | --------
-name | The name of the thing | string(32) | Y
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+name | The name of the thing | string(32) | | Y
+stuff | A list of stuff to do | array(string()) | [] | N
 
-#### API Reference
-
-##### Get a summary list of Things
+#### Get a summary list of Things
 
 > GET /v2/accounts/{ACCOUNT_ID}/things
 
