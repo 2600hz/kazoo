@@ -359,7 +359,7 @@ build_bridge(#state{endpoints=Endpoints
 -spec bridge_from_uri(api_binary(), wapi_offnet_resource:req()) ->
                              api_binary().
 bridge_from_uri(Number, OffnetReq) ->
-    Realm = steoswitch_util:default_realm(OffnetReq),
+    Realm = stepswitch_util:default_realm(OffnetReq),
 
     case (whapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
           orelse wapi_offnet_resource:format_from_uri(OffnetReq)
