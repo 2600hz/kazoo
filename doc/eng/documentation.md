@@ -1,6 +1,6 @@
 # How to Write Documentation for Kazoo!
 
-Consistentcy in documentation is a win for everyone, including your future self. Write the docs! We're here to help.
+Consistency in documentation is a win for everyone, including your future self. Write the docs! We're here to help.
 
 ## Rubric
 
