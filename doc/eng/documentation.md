@@ -21,7 +21,7 @@ When writing docs for API endpoints, we'd like to strive for:
 
 * Example request format
 * Example response format
-* Suggeested use cases (brief)
+* Suggested use cases (brief)
 * Links to user guides or tutorials of why to use this endpoint
 * Common pitfalls when using the endpoint
 * Conflicting settings to watch out for
@@ -42,4 +42,4 @@ It would be great to have:
 * Descriptions of the relevant fields (defined in the schema for the resource)
 * Listing of URI segments available, with HTTP methods
 * Code sample for **at least** a cURL command; bonus points if you include PHP SDK equivalents.
-* differences between versions of the endpoint, if any
+* Differences between versions of the endpoint, if any
