@@ -42,6 +42,7 @@
           ,last_sequence = 0                    :: non_neg_integer() | '_'
           ,last_reply = 0                       :: non_neg_integer() | '_'
           ,last_body                            :: api_binary() | '_'
+          ,user_agent                            :: api_binary() | '_'
          }).
 
 -type subscription() :: #omnip_subscription{}.
