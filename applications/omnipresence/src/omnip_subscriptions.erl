@@ -407,6 +407,7 @@ subscribe_to_record(JObj) ->
                         ,subscription_id=wh_json:get_value(<<"Subscription-ID">>, JObj)
                         ,proxy_route= wh_json:get_value(<<"Proxy-Route">>, JObj)
                         ,version=Version
+                        ,user_agent=wh_json:get_binary_value(<<"User-Agent">>, JObj)
                        }.
 
 %%--------------------------------------------------------------------
@@ -437,6 +438,7 @@ subscription_to_json(#omnip_subscription{user=User
                                          ,last_sequence=Sequence
                                          ,last_reply=Reply
                                          ,last_body=Body
+                                         ,user_agent=UA
                                         }) ->
     wh_json:from_list(
       props:filter_undefined(
@@ -458,6 +460,7 @@ subscription_to_json(#omnip_subscription{user=User
                                             ,{<<"reply">>, Reply}
                                             ,{<<"body">>, Body}
                                            ])}
+         ,{<<"user_agent">>, UA}
         ])).
 
 -spec start_expire_ref() -> reference().
