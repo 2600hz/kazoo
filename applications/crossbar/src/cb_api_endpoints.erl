@@ -1,15 +1,14 @@
--mode(compile).
+-module(cb_api_endpoints).
 -compile([debug_info]).
 
--export([main/1]).
+-export([get/0]).
 
 -define(API_PATHS, ['crossbar']).
 
 %% API
 
-main(_) ->
-    [process_application(App) || App <- ?API_PATHS],
-    'ok'.
+get() ->
+    [process_application(App) || App <- ?API_PATHS].
 
 process_application(App) ->
     EBinDir = code:lib_dir(App, 'ebin'),
@@ -32,7 +31,7 @@ process_exports(File, Module, Fs) ->
     end.
 
 process_api_module(File, Module) ->
-    {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(F, ['abstract_code']),
+    {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(File, ['abstract_code']),
     process_api_ast(Module, AST).
 
 process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
@@ -46,8 +45,8 @@ process_api_ast_functions(Module, Functions) ->
     [process_api_ast_function(Module, F, A, Cs) || {F, A, Cs} <- Functions],
     'ok'.
 
-process_api_ast_function(Module, 'allowed_methods', Arity, Clauses) ->
-    Methods = find_http_methods(Clauses),
+process_api_ast_function(_Module, 'allowed_methods', _Arity, Clauses) ->
+    _Methods = find_http_methods(Clauses).
 
 find_http_methods(Clauses) ->
     lists:foldl(fun find_http_methods_from_clause/2, [], Clauses).
@@ -61,22 +60,13 @@ args_list_to_path(Args) ->
     lists:foldl(fun arg_to_path/2, [<<"/">>], Args).
 
 arg_to_path({'var', _, Name}, Acc) ->
-    [atom_to_binary(Name) | Acc].
+    [wh_util:to_binary(Name) | Acc].
 
 find_methods(ClauseBody) ->
     find_methods(ClauseBody, []).
 find_methods(ClauseBody, Acc) ->
     lists:foldl(fun find_methods_in_clause/2, Acc, ClauseBody).
 
-{cons,86,
-          {bin,86,[{bin_element,86,{string,86,"GET"},default,default}]},
-          {cons,86,
-           {bin,86,[{bin_element,86,{string,86,"PUT"},default,default}]},
-           {cons,86,
-            {bin,86,[{bin_element,86,{string,86,"POST"},default,default}]},
-            {cons,86,
-             {bin,86,[{bin_element,86,{string,86,"PATCH"},default,default}]},
-             {nil,86}}}}}
 find_methods_in_clause({'cons',_
                        ,{'bin',_
                         ,[{'bin_element',_,{'string',_,Method},'default','default'}]
@@ -107,34 +97,6 @@ find_methods_in_clause({'case', 83
                 ,Acc0
                 ,CaseClauses
                ).
-
-find_modules(Path) ->
-    case filelib:is_dir(Path) of
-        'false' -> [];
-        'true' ->
-            AccFiles = fun(File, Acc) -> [File|Acc] end,
-            filelib:fold_files(Path, "cb_.+", 'true', AccFiles, [])
-    end.
-
-pp(Atom) when is_atom(Atom) ->
-    atom_to_list(Atom);
-pp({atom,_,Atom}) ->
-    "'" ++ pp(Atom) ++ "'";
-pp({var,_,Atom}) ->
-    pp(Atom);
-pp({bin,_,[{bin_element,_,{var,_,Atom},_,_}]}) ->
-    pp(Atom);
-pp({bin,_,[{bin_element,_,{string,_,Str},_,_}]}) ->
-    "\"" ++ Str ++ "\"";
-
-%% MAY hide those (as its internals)
-pp({nil,_}) ->
-    "[]";
-pp({cons,_,H,T}) ->
-    "[" ++ pp(H) ++ "|" ++ pp(T) ++ "]";
-pp(_E) ->
-    "PLACEHOLDER".
-
 
 %% End of Module
 
