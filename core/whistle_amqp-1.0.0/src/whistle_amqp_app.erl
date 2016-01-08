@@ -13,4 +13,4 @@ start(_StartType, _StartArgs) ->
     whistle_amqp:start_link().
 
 stop(_State) ->
-    ok.
+    'ok'.

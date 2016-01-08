@@ -4,18 +4,9 @@
    ,{vsn, "1.0.0"}
    ,{modules, []}
    ,{registered, []}
-   ,{applications
-     ,[
-       kernel
-       ,stdlib
-       ,crypto
-       ,sasl
-      ]}
-   ,{mod, { kazoo_documents_app
-            ,[
-
-             ]
-          }
-    }
-   ,{env, []}
+   ,{applications, [ kernel
+                   , stdlib
+                   , crypto
+                   , sasl
+                   ]}
  ]}.

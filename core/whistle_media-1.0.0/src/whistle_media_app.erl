@@ -23,6 +23,7 @@
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_Type, _Args) ->
+    %% TODO: just return ..._sup:start_link().
     case whistle_media_sup:start_link() of
         {'ok', P} -> {'ok', P};
         {'error', {'already_started', P} } -> {'ok', P};

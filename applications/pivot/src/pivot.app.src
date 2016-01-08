@@ -4,10 +4,12 @@
   {vsn, "0.5.0"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
                  ]},
-  {mod, { pivot_app, []}},
-  {env, []}
+  {mod, {pivot_app, []}}
  ]}.

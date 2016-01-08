@@ -4,10 +4,12 @@
   {vsn, "0.0.1"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
                  ]},
-  {mod, { skel_app, []}},
-  {env, []}
+  {mod, {skel_app, []}}
  ]}.

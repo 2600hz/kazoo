@@ -4,10 +4,16 @@
   {vsn, "1.0.0"},
   {registered, []},
   {modules, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , inets
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
+                 , ranch
+                 , cowboy
+                 , escalus
                  ]},
-  {mod, { fax_app, []}},
-  {env, []}
+  {mod, {fax_app, []}}
  ]}.

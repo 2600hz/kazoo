@@ -5,10 +5,14 @@
   ,{vsn, "1.0.0"}
   ,{modules, []}
   ,{registered, [couch_mgr]}
-  ,{applications, [
-                    kernel
-                   ,stdlib
+  ,{applications, [ kernel
+                  , stdlib
+                  , sasl
+                  , crypto
+                  , public_key
+                  , ibrowse
+                  , couchbeam
+                  , lager
                   ]}
-  ,{mod, { whistle_couch_app, []}}
-  ,{env, []}
+  ,{mod, {whistle_couch_app, []}}
  ]}.

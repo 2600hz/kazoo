@@ -4,10 +4,13 @@
   {vsn, "0.0.1"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , lager
+                 , gproc
+                 , whistle_amqp
+                 , whistle_couch
                  ]},
-  {mod, { webhooks_app, []}},
-  {env, []}
+  {mod, {webhooks_app, []}}
  ]}.

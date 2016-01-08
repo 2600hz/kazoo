@@ -4,10 +4,13 @@
   {vsn, "1.0.0"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
+                 , folsom
                  ]},
-  {mod, { hangups_app, []}},
-  {env, []}
+  {mod, {hangups_app, []}}
  ]}.

@@ -4,10 +4,12 @@
   {vsn, "1"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
                  ]},
-  {mod, { milliwatt_app, []}},
-  {env, []}
+  {mod, {milliwatt_app, []}}
  ]}.

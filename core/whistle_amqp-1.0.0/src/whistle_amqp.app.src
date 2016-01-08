@@ -4,10 +4,10 @@
   ,{vsn, "0.5.2"}
   ,{modules, []}
   ,{registered, []}
-  ,{applications, [
-		   kernel
-		   ,stdlib
-		  ]}
-  ,{mod, { whistle_amqp_app, []}}
-  ,{env, []}
+  ,{applications, [ kernel
+                  , stdlib
+		  , sasl
+                  , amqp_client
+                  ]}
+  ,{mod, {whistle_amqp_app, []}}
  ]}.

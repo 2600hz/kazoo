@@ -4,10 +4,11 @@
   {vsn, "1"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , sasl
+                 , crypto
+                 , whistle_amqp
                  ]},
-  {mod, { stats_app, []}},
-  {env, []}
+  {mod, {stats_app, []}}
  ]}.

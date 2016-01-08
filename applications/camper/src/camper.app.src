@@ -4,10 +4,14 @@
   ,{vsn, "0.1.0"}
   ,{modules, []}
   ,{registered, []}
-  ,{applications, [
-		   kernel
-		   ,stdlib
-		  ]}
-  ,{mod, { camper_app, []} }
-  ,{env, []}
+  ,{applications, [ kernel
+                  , stdlib
+		  , crypto
+                  , lager
+                  , whistle_amqp
+                  , whistle_couch
+                  , callflow
+                  , stepswitch
+                  ]}
+  ,{mod, {camper_app, []}}
  ]}.

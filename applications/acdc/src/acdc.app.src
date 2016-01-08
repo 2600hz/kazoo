@@ -4,10 +4,13 @@
   {vsn, "1"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , inets
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
                  ]},
-  {mod, { acdc_app, []}},
-  {env, []}
+  {mod, {acdc_app, []}}
  ]}.

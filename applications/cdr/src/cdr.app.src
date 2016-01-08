@@ -4,10 +4,12 @@
   ,{vsn, "0.4.1"}
   ,{modules, []}
   ,{registered, []}
-  ,{applications, [
-                   kernel,
-                   stdlib
+  ,{applications, [ kernel
+                  , stdlib
+                  , crypto
+                  , lager
+                  , whistle_amqp
+                  , whistle_couch
                   ]}
-  ,{mod, { cdr_app, []}}
-  ,{env, []}
+  ,{mod, {cdr_app, []}}
  ]}.

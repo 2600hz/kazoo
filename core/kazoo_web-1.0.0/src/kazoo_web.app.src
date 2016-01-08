@@ -1,12 +1,9 @@
 {application, kazoo_web, [
     {description, "Utility functions for HTTP / HTML manipulation"},
     {vsn, "1.0.0"},
-    {registered, []},
     {modules, []},
-    {applications, [
-        kernel,
-        stdlib
-    ]},
-    {mod, {kazoo_web_app, []}},
-    {env, []}
+    {registered, []},
+    {applications, [ kernel
+                   , stdlib
+                   ]}
 ]}.

@@ -4,10 +4,13 @@
   {vsn, "0.0.3"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , inets
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
                  ]},
-  {mod, { registrar_app, []} },
-  {env, []}
+  {mod, {registrar_app, []}}
  ]}.

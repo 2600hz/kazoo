@@ -13,4 +13,4 @@ start(_StartType, _StartArgs) ->
     whistle_number_manager_sup:start_link().
 
 stop(_State) ->
-    ok.
+    'ok'.

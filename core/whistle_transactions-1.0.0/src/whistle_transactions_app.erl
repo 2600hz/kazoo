@@ -19,12 +19,13 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start/2 :: (_, _) -> {'ok', pid()} | {'error', startlink_err()}.
+-spec start(_, _) -> {'ok', pid()} | {'error', startlink_err()}.
 start(_Type, _Args) ->
+    %% TODO: just return ..._sup:start_link().
     case whistle_transactions_sup:start_link() of
-        {ok, P} -> {ok, P};
-        {error, {already_started, P} } -> {ok, P};
-        {error, _}=E -> E
+        {'ok', P} -> {'ok', P};
+        {'error', {'already_started', P} } -> {'ok', P};
+        {'error', _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -33,6 +34,6 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop/1 :: (_) -> 'ok'.
+-spec stop(_) -> 'ok'.
 stop(_State) ->
-    ok.
+    'ok'.

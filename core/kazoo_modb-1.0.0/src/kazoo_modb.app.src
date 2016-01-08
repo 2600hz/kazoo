@@ -1,13 +1,10 @@
 {application, kazoo_modb,
  [
-  {description, "MODb - Month-only databases for accounts"},
+  {description, "MODb - Utilities for an account's month-only database"},
   {vsn, "0.0.1"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {mod, { kazoo_modb_app, []}},
-  {env, []}
+  {applications, [ kernel
+                 , stdlib
+                 ]}
  ]}.

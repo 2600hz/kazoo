@@ -4,10 +4,14 @@
   {vsn, "0.1.0"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
+                 , inets
+                 , ssl
                  ]},
-  {mod, { stepswitch_app, []}},
-  {env, []}
+  {mod, {stepswitch_app, []}}
  ]}.

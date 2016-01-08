@@ -4,10 +4,12 @@
   ,{vsn, "3.0.0"}
   ,{modules, []}
   ,{registered, []}
-  ,{applications, [
-		   kernel
-		   ,stdlib
-		  ]}
-  ,{mod, { callflow_app, []} }
-  ,{env, []}
+  ,{applications, [ kernel
+                  , stdlib
+		  , crypto
+                  , lager
+                  , whistle_amqp
+                  , whistle_couch
+                  ]}
+  ,{mod, {callflow_app, []}}
  ]}.

@@ -4,10 +4,8 @@
   {vsn, "1"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                ]},
-  {mod, { whistle_stats_app, []}},
-  {env, []}
+  {applications, [ kernel
+                 , stdlib
+                 ]},
+  {mod, {whistle_stats_app, []}}
  ]}.

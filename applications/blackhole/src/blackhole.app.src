@@ -4,10 +4,19 @@
   {vsn, "1"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+                 , inets
+                 , lager
+                 , whistle_amqp
+                 , whistle_couch
+                 , kazoo_bindings
+                 , ranch
+                 , cowboy
+                 , public_key
+                 , ssl
+                 , socketio
                  ]},
-  {mod, {blackhole_app, []}},
-  {env, []}
+  {mod, {blackhole_app, []}}
  ]}.

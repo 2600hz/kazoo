@@ -18,15 +18,15 @@
 %% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
     wh_amqp_sup:start_link().
 
--spec start/0 :: () -> 'ok' | {'error', any()}.
+-spec start() -> 'ok' | {'error', any()}.
 start() ->
     _ = start_deps(),
-    application:start(whistle_amqp, permanent).
+    application:start(?MODULE, 'permanent').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,9 +34,9 @@ start() ->
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
--spec stop/0 :: () -> 'ok'.
+-spec stop() -> 'ok'.
 stop() ->
-    application:stop(whistle_amqp).
+    application:stop(?MODULE).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -44,7 +44,7 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> 'ok'.
+-spec start_deps() -> 'ok'.
 start_deps() ->
-    _ = [wh_util:ensure_started(App) || App <- [sasl, amqp_client]],
-    ok.
+    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'amqp_client']],
+    'ok'.

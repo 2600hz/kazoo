@@ -5,16 +5,17 @@
    ,{vsn, "0.8.4"}
    ,{modules, []}
    ,{registered, []}
-   ,{applications, [
-                    kernel
-                    ,stdlib
+   ,{applications, [ kernel
+                   , stdlib
+                   , crypto
+                   , lager
+                   , gproc
+                   , ibrowse
+                   , whistle_config
+                   , whistle_amqp
+                   , whistle_stats
+                   , sasl
                    ]}
-   ,{included_applications, [
-                             crypto
-                             ,sasl
-                             ,lager
-                             ,whistle_amqp
-                            ]}
    ,{mod, {ecallmgr_app, []}}
    ,{env, [{reloader, false}]}
   ]}.

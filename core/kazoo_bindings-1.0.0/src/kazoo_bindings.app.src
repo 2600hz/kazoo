@@ -4,10 +4,8 @@
   {vsn, "1.0.0"},
   {modules, []},
   {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
                  ]},
-  {mod, { kazoo_bindings_app, []}},
-  {env, []}
+  {mod, {kazoo_bindings_app, []}}
  ]}.
