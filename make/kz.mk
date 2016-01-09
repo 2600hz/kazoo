@@ -13,7 +13,7 @@ else
     KZ_APP_OTPS = -Werror +warn_export_all +warn_unused_import
 endif
 
-ERLC_OPTS += $(KZ_APP_OTPS) +debug_info
+ERLC_OPTS += $(KZ_APP_OTPS) +debug_info -Iinclude -Isrc
 
 # Could use OTP_VERSION, if ≥ 17
 OTP_VSN = $(shell erl -noshell -eval 'io:fwrite("~s\n", [erlang:system_info(otp_release)]).' -s erlang halt)

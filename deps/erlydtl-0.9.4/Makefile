@@ -3,8 +3,6 @@ PROJECT = erlydtl
 
 EBINS = $(shell find $(ROOT)/deps/merl-* -maxdepth 2 -name ebin)
 
-ERLC_OPTS += -Iinclude
-
 CLEAN_MOAR = clean-parser
 
 all: compile

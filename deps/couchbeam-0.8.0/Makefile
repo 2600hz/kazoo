@@ -1,11 +1,8 @@
 ROOT = ../..
 PROJECT = couchbeam
 
-EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps -maxdepth 2 -name ebin)
-
-ERLC_OPTS += -I$(ROOT)/core -I$(ROOT)/deps -I$(wildcard $(ROOT)/deps/couchbeam-*/include)
-     # +bin_opt_info
+EBINS = $(shell find $(ROOT)/deps/couchbeam-* -maxdepth 2 -name ebin) \
+	$(shell find $(ROOT)/deps/ibrowse-* -maxdepth 2 -name ebin)
 
 all: compile
 

@@ -1,11 +1,7 @@
 ROOT = ../..
 PROJECT = gproc
 
-EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps -maxdepth 2 -name ebin)
-
-ERLC_OPTS += -I$(ROOT)/core -I$(ROOT)/deps -I$(wildcard $(ROOT)/deps/gproc-*/include)
-     # +bin_opt_info
+EBINS = $(shell find $(ROOT)/deps/gen_leader-* -maxdepth 2 -name ebin)
 
 all: compile
 

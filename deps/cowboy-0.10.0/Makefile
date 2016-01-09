@@ -1,11 +1,7 @@
 ROOT = ../..
 PROJECT = cowboy
 
-EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps -maxdepth 2 -name ebin)
-
-ERLC_OPTS += -I$(ROOT)/deps
-     # +bin_opt_info
+EBINS = $(shell find $(ROOT)/deps/cowlib-* -maxdepth 2 -name ebin)
 
 SOURCES = src/cowboy_middleware.erl src/cowboy_sub_protocol.erl src/*.erl
 

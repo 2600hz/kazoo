@@ -8,7 +8,7 @@ TEST_EBINS = $(shell find $(ROOT)/deps/goldrush-* -maxdepth 2 -name ebin) \
 	$(shell find $(ROOT)/deps/lager_syslog-* -maxdepth 2 -name ebin) \
 	$(shell find $(ROOT)/deps/erlang-syslog-* -maxdepth 2 -name ebin)
 
-ERLC_OPTS += +"{parse_transform, lager_transform}" -Iinclude -Iplugins/include
+ERLC_OPTS += +"{parse_transform, lager_transform}" -Iplugins/include
 
 SOURCES = src/*.erl plugins/src/*.erl
 
