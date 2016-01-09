@@ -30,8 +30,6 @@ Base = [ {'++', Core}
                     true  -> [merl];
                     false -> []
                 end}
-         %% mochiweb Duplicated modules: mochijson2 specified in rabbit_common and mochiweb
-       , {'--', [mochiweb]}
        ],
 LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
 Based = lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) ),
@@ -45,9 +43,10 @@ Based = lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) ),
 
 , {include_src, false}
 
-%% , {vm_args, "rel/vm.args"}
-%% , {sys_config, "rel/sys.config"}
+, {extended_start_script, true}
 
+%% , {vm_args, "rel/vm.args"}
+%% , {sys_config, "sys.config"}
 
 , {release, {kazoo_whistle_apps,"4.0.0"}
   , [whistle_apps] ++ Based
