@@ -30,10 +30,17 @@ Base = [ {'++', Core}
                     true  -> [merl];
                     false -> []
                 end}
+         %% skel Not a real app
+       , {'--', [skel]}
        ],
 LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
 Based = lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) ),
 
+Config = "/etc/kazoo/app.config", %% SHOULD rename app.config to sys.config as OTP prefers it.
+case filelib:is_regular(Config) of
+    true ->  [{sys_config, Config}];
+    false -> [{sys_config, "rel/sys.config"}]
+end ++
 
 [ {lib_dirs, [ "applications"
              , "core"
@@ -45,8 +52,8 @@ Based = lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) ),
 
 , {extended_start_script, true}
 
-%% , {vm_args, "rel/vm.args"}
-%% , {sys_config, "sys.config"}
+, {vm_args, "rel/vm.args"}
+
 
 , {release, {kazoo_whistle_apps,"4.0.0"}
   , [whistle_apps] ++ Based

@@ -7,7 +7,7 @@ MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-release release
+.PHONY: $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-releases releases
 
 all: compile
 
@@ -22,9 +22,9 @@ clean: $(MAKEDIRS)
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 
-clean-release:
+clean-releases:
 	$(if $(wildcard _rel/), rm -r _rel/)
-	$(if $(wildcard relx.config), rm relx.config)
+	$(if $(wildcard rel/relx.config), rm rel/relx.config)
 
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
@@ -82,9 +82,16 @@ sup_completion: kazoo
 	@$(ROOT)/scripts/sup-build-autocomplete.escript $(sup_completion_file) applications/ core/
 	@echo SUP Bash completion file written at $(sup_completion_file)
 
-release: RELX = $(ROOT)/utils/relx/relx
-release: relx.config
-	$(RELX) --config $^ -V 2 release --relname kazoo_ecallmgr
-	$(RELX) --config $^ -V 2 release --relname kazoo_whistle_apps
-relx.config: relx.config.src
-	$(ROOT)/scripts/src2any.escript relx.config.src
+REL_WHAPPS = kazoo_whistle_apps
+REL_ECLMGR = kazoo_ecallmgr
+releases: RELX ?= $(ROOT)/utils/relx/relx
+releases: rel/relx.config
+	$(RELX) --config $< -V 2 release --relname $(REL_WHAPPS)
+	$(RELX) --config $< -V 2 release --relname $(REL_ECLMGR)
+rel/relx.config: rel/relx.config.src
+	$(ROOT)/scripts/src2any.escript $<
+
+whapps_start:
+	RELX_REPLACE_OS_VARS=true KZname=whistle_apps _rel/$(REL_WHAPPS)/bin/$(REL_WHAPPS) foreground "$$@"
+ecallmgr_start:
+	RELX_REPLACE_OS_VARS=true KZname=ecallmgr _rel/$(REL_ECLMGR)/bin/$(REL_ECLMGR) foreground "$$@"
