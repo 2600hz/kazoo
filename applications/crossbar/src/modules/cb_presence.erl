@@ -18,10 +18,10 @@
 -include("../crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".presence">>).
+
 -define(PRESENTITY_KEY, <<"include_presentity">>).
--define(PRESENTITY_CFG_KEY, <<"query_", (?PRESENTITY_KEY)/binary>>).
--define(ACCOUNT_CFG(A, S, K, D), whapps_account_config:get_global(A, S, K, D)).
--define(QUERY_PRESENTITY(A), ?ACCOUNT_CFG(A, ?MOD_CONFIG_CAT, ?PRESENTITY_CFG_KEY, 'false')).
+-define(PRESENTITY_CFG_KEY, <<"query_include_presentity">>).
+
 -define(PRESENCE_QUERY_TIMEOUT_KEY, <<"query_presence_timeout">>).
 -define(PRESENCE_QUERY_DEFAULT_TIMEOUT, 1000).
 -define(PRESENCE_QUERY_TIMEOUT, whapps_config:get_integer(?MOD_CONFIG_CAT
@@ -103,9 +103,14 @@ validate_search(Context) ->
            ],
     search(Context, Funs).
 
+
+-spec should_include_presentity(ne_binary()) -> boolean().
+should_include_presentity(AccountId) ->
+    wh_util:is_true(whapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, ?PRESENTITY_CFG_KEY, 'false')).
+
 -spec maybe_include_presentities(cb_context:context()) -> list().
 maybe_include_presentities(Context) ->
-    Default = ?QUERY_PRESENTITY(cb_context:account_id(Context)),
+    Default = should_include_presentity(cb_context:account_id(Context)),
     case wh_util:is_true(cb_context:req_param(Context, ?PRESENTITY_KEY, Default)) of
         'true' -> [fun presentity_search_req/1];
         'false' -> []
