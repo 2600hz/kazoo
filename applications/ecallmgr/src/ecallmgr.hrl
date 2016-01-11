@@ -430,7 +430,6 @@
 -define(SEPARATOR_SINGLE, <<"|">>).
 
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
--define(CHANNEL_LOOPBACK_HEADER_PREFIX, "FSLoopBack-").
 
 -define(ECALLMGR_HRL, 'true').
 -endif.
