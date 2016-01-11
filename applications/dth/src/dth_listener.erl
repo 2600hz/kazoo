@@ -36,9 +36,9 @@
                   ]).
 
 -define(SERVER, ?MODULE).
--define(BLACKLIST_REFRESH, 60000).
+-define(BLACKLIST_REFRESH, 60 * ?MILLISECONDS_IN_SECOND).
 
--record(state, {wsdl_model = 'undefined' :: 'undefined' | any()
+-record(state, {wsdl_model = 'undefined' :: 'undefined' | #wsdl{}
                 ,dth_cdr_url = <<>> :: binary()
                }).
 
@@ -55,7 +55,7 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
+                                     ,{'bindings', ?BINDINGS}
                                      ], []).
 
 %%%===================================================================
@@ -74,26 +74,31 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    gen_listener:cast(self(), 'blacklist_refresh'),
+
     {'ok', Configs} = file:consult([code:priv_dir('dth'), "/startup.config"]),
     URL = props:get_value('dth_cdr_url', Configs),
 
-    erlang:send_after(0, self(), 'blacklist_refresh'),
+    {'ok', #state{wsdl_model=maybe_init_model()
+                 ,dth_cdr_url=URL
+                 }}.
 
+-spec maybe_init_model() -> 'undefined' | #wsdl{}.
+maybe_init_model() ->
     WSDLFile = [code:priv_dir('dth'), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir('dth', 'include'), "/dthsoap.hrl"],
 
-    'true' = filelib:is_regular(WSDLFile),
-
-    case filelib:is_regular(WSDLHrlFile) of
-        'true' -> 'ok';
-        'false' ->
+    case {filelib:is_regular(WSDLFile), filelib:is_regular(WSDLHrlFile)} of
+        {'false', _} ->
+            lager:warning("DTH can't startup properly: failed to find WSDL ~p", [WSDLFile]),
+            'undefined';
+        {'true', 'true'} ->
+            detergent:initModel(WSDLFile);
+        {'true', 'false'} ->
             'true' = filelib:is_regular(WSDLFile),
-            'ok' = detergent:write_hrl(WSDLFile, WSDLHrlFile)
-    end,
-
-    {'ok', #state{wsdl_model=detergent:initModel(WSDLFile)
-                ,dth_cdr_url=URL
-               }}.
+            'ok' = detergent:write_hrl(WSDLFile, WSDLHrlFile),
+            detergent:initModel(WSDLFile)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -122,6 +127,13 @@ handle_call(_Req, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('blacklist_refresh', #state{wsdl_model='undefined'}=State) ->
+    gen_listener:delayed_cast(self(), 'blacklist_refresh', ?BLACKLIST_REFRESH),
+    {'noreply', State#state{wsdl_model=maybe_init_model()}};
+handle_cast('blacklist_refresh', #state{wsdl_model=WSDL}=State) ->
+    gen_listener:delayed_cast(self(), 'blacklist_refresh', ?BLACKLIST_REFRESH),
+    _ = wh_util:spawn(fun refresh_blacklist/1, [WSDL]),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -135,10 +147,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('blacklist_refresh', #state{wsdl_model=WSDL}=State) ->
-    erlang:send_after(?BLACKLIST_REFRESH, self(), 'blacklist_refresh'),
-    _ = wh_util:spawn(fun refresh_blacklist/1, [WSDL]),
-    {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
