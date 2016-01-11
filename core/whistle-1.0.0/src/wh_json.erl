@@ -52,7 +52,7 @@
          ,get_private_keys/1
         ]).
 -export([set_value/3, set_values/2
-         ,insert_value/3
+         ,insert_value/3, insert_values/2
          ,new/0
         ]).
 -export([delete_key/2, delete_key/3, delete_keys/2]).
@@ -661,6 +661,17 @@ insert_value(Key, Value, JObj) ->
         'undefined' -> set_value(Key, Value, JObj);
         _V -> JObj
     end.
+
+-spec insert_values(json_proplist(), object()) -> object().
+insert_values(KVs, JObj) ->
+    lists:foldl(fun insert_value_fold/2
+                ,JObj
+                ,KVs
+               ).
+
+-spec insert_value_fold({key(), json_term()}, object()) -> object().
+insert_value_fold({Key, Value}, JObj) ->
+    insert_value(Key, Value, JObj).
 
 -spec set_value(key(), json_term(), object() | objects()) -> object() | objects().
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
