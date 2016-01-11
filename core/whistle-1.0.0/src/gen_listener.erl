@@ -91,6 +91,7 @@
 -export([handle_event/4
          ,handle_return/4
          ,client_handle_event/6
+         ,delayed_cast/3
         ]).
 -export([distribute_event/3]).
 
