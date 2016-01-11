@@ -79,9 +79,7 @@ init([]) ->
     {'ok', Configs} = file:consult([code:priv_dir('dth'), "/startup.config"]),
     URL = props:get_value('dth_cdr_url', Configs),
 
-    {'ok', #state{wsdl_model=maybe_init_model()
-                 ,dth_cdr_url=URL
-                 }}.
+    {'ok', #state{dth_cdr_url=URL}}.
 
 -spec maybe_init_model() -> 'undefined' | #wsdl{}.
 maybe_init_model() ->
