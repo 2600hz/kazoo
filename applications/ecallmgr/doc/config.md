@@ -51,3 +51,4 @@ Version: 3.19
 |`max_channel_cleanup_timeout_ms`|integer()|60000|Time, in milliseconds, to check for too-old channels and remove them
 |`publish_channel_reconnect`|boolean()|`false`|Whether to publish a call event related to a node reconnecting (apps may need to check for their channel if the CHANNEL_DESTROY was missed)
 |`max_channel_update_s`|integer()|0|Limit, in seconds, to channel duration (0 for no limit). Channels exceeding this limit will be killed.
+|`should_detect_inband_dtmf`|boolean()|`false`|Whether to start the DTMF detection if telephone-event 101 isn't offered in the SDP.

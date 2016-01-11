@@ -279,10 +279,7 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
-            ToSet =
-                [{<<"Context">>, hunt_context(Props)}
-                 ,{<<"Remote-SDP">>, remote_sdp(Props)}
-                ],
+            ToSet = [{<<"Context">>, hunt_context(Props)}] ++ remote_sdp(Props),
             maybe_wait_for_authz(Section, Node, FetchId, CallId
                                  ,wh_json:set_values(ToSet, JObj)
                                 )
@@ -292,9 +289,12 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
--spec remote_sdp(wh_proplist()) -> api_binary().
+-spec remote_sdp(wh_proplist()) -> wh_proplist().
 remote_sdp(Props) ->
-    props:get_value(<<"variable_switch_r_sdp">>, Props, <<>>).
+    case props:get_value(<<"variable_switch_r_sdp">>, Props, <<>>) of
+        <<>> -> [];
+        RemoteSDP -> [{<<"Remote-SDP">>, RemoteSDP}]
+    end.
 
 -spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
