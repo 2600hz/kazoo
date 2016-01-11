@@ -233,13 +233,13 @@ default_realm(OffnetReq) ->
 
 -spec set_endpoint_caller_id(wh_json:object(), api_binary(), api_binary()) -> wh_json:object().
 set_endpoint_caller_id(Endpoint, Name, Number) ->
-    wh_json:set_values(props:filter_undefined(
-                         [{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
-                          ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
-                         ]
-                        )
-                       ,Endpoint
-                      ).
+    wh_json:insert_values(props:filter_undefined(
+                            [{?KEY_OUTBOUND_CALLER_ID_NUMBER, Number}
+                            ,{?KEY_OUTBOUND_CALLER_ID_NAME, Name}
+                            ]
+                           )
+                          ,Endpoint
+                         ).
 
 -spec format_endpoint(wh_json:object(), api_binary(), filter_fun(), api_binary(), wh_json:object(), ne_binary()) ->
                              wh_json:object().
