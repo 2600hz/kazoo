@@ -13,26 +13,49 @@
 
 -export([start/2]).
 -export([stop/1]).
+-export([start_link/0]).
 
-%% ===================================================================
 %% Application callbacks
-%% ===================================================================
-%%--------------------------------------------------------------------
+
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
-%%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> ecallmgr:start_link().
+%% @doc Implement the application start behaviour
+-spec start(application:start_type(), any()) -> {'ok', pid()} |
+                                                {'ok', pid(), any()} |
+                                                {'error', startlink_err()}.
+start(_StartType, _StartArgs) -> start_link().
+
+%% @public
+%% @doc Implement the application stop behaviour
+-spec stop(any()) -> 'ok'.
+stop(_State) ->
+    exit(whereis('ecallmgr_sup'), 'shutdown'),
+    'ok'.
+
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
-%%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> ecallmgr:stop().
+%% @doc Starts the app for inclusion in a supervisor tree
+-spec start_link() -> startlink_ret().
+start_link() ->
+    _ = declare_exchanges(),
+    ecallmgr_sup:start_link().
+
+%% @private
+%% @doc Ensures that all exchanges used are declared
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_authn:declare_exchanges(),
+    _ = wapi_authz:declare_exchanges(),
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_conference:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_media:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_rate:declare_exchanges(),
+    _ = wapi_registration:declare_exchanges(),
+    _ = wapi_resource:declare_exchanges(),
+    _ = wapi_route:declare_exchanges(),
+    _ = wapi_sysconf:declare_exchanges(),
+    _ = wapi_sms:declare_exchanges(),
+    _ = wapi_presence:declare_exchanges(),
+    wapi_self:declare_exchanges().
