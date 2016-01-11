@@ -11,6 +11,7 @@
                   , lager
                   , whistle_amqp
                   , whistle_couch
+                  , detergent
                   ]}
   ,{mod, {dth_app, []}}
  ]}.
