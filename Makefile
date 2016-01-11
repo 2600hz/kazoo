@@ -7,7 +7,7 @@ MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS) core deps apps xref dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-releases releases
+.PHONY: $(MAKEDIRS) core deps apps xref xref_releases dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-releases releases rl
 
 all: compile
 
@@ -49,6 +49,30 @@ apps:
 
 kazoo: core apps
 
+
+REL_WHAPPS = whistle_apps
+REL_ECLMGR = ecallmgr
+releases: RELX ?= $(ROOT)/utils/relx/relx
+releases: rel/relx.config
+	$(RELX) --config $< -V 2 release --relname kazoo_$(REL_WHAPPS)
+	$(RELX) --config $< -V 2 release --relname kazoo_$(REL_ECLMGR)
+rel/relx.config: rel/relx.config.src
+	$(ROOT)/scripts/src2any.escript $<
+
+whapps_start: ACT = start
+whapps_start: rl
+
+ecallmgr_start: ACT = start
+ecallmgr_start: REL = $(REL_ECLMGR)
+ecallmgr_start: rl
+
+## More at //relx/priv/templates/extended_bin
+rl: ACT ?= foreground # start attach stop console
+rl: REL ?= $(REL_WHAPPS)
+rl:
+	RELX_REPLACE_OS_VARS=true KZname=$(REL) _rel/kazoo_$(REL)/bin/kazoo_$(REL) $(ACT) "$$@"
+
+
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
 $(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
@@ -72,26 +96,17 @@ dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: $(PLT)
 	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
-xref: TO_XREF = $(shell find $(ROOT) -name ebin)
+
+xref: TO_XREF ?= $(shell find $(ROOT) -name ebin)
 xref:
 	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
+
+xref_releases: TO_XREF = $(shell find $(ROOT)/_rel/kazoo_$(REL_WHAPPS)/lib) $(shell find $(ROOT)/_rel/kazoo_$(REL_ECLMGR)/lib)
+xref_releases: xref
+
 
 sup_completion: sup_completion_file = $(ROOT)/sup.bash
 sup_completion: kazoo
 	@$(if $(wildcard $(sup_completion_file)), rm $(sup_completion_file))
 	@$(ROOT)/scripts/sup-build-autocomplete.escript $(sup_completion_file) applications/ core/
 	@echo SUP Bash completion file written at $(sup_completion_file)
-
-REL_WHAPPS = kazoo_whistle_apps
-REL_ECLMGR = kazoo_ecallmgr
-releases: RELX ?= $(ROOT)/utils/relx/relx
-releases: rel/relx.config
-	$(RELX) --config $< -V 2 release --relname $(REL_WHAPPS)
-	$(RELX) --config $< -V 2 release --relname $(REL_ECLMGR)
-rel/relx.config: rel/relx.config.src
-	$(ROOT)/scripts/src2any.escript $<
-
-whapps_start:
-	RELX_REPLACE_OS_VARS=true KZname=whistle_apps _rel/$(REL_WHAPPS)/bin/$(REL_WHAPPS) foreground "$$@"
-ecallmgr_start:
-	RELX_REPLACE_OS_VARS=true KZname=ecallmgr _rel/$(REL_ECLMGR)/bin/$(REL_ECLMGR) foreground "$$@"

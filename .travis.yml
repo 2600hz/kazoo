@@ -37,5 +37,6 @@ after_success:
   - files="$(git diff --name-only master... | grep -v deps/)" || true
   - ./scripts/check-dialyzer.escript $files
   - make release
+  - make xref_releases
   - ERL_LIBS="$HOME/proper" make eunit
   - ./scripts/check-whitespace.sh core/ applications/
