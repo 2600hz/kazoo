@@ -39,24 +39,11 @@ start_link() ->
 start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_WHAPPS].
 
--spec start_app(atom() | nonempty_string() | ne_binary()) ->
-                       'ok' | 'error' | 'exists'.
+-spec start_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
 start_app(App) when not is_atom(App) ->
     start_app(wh_util:to_atom(App, 'true'));
-start_app(App) ->
-    case lists:keyfind(App, 1, application:which_applications()) of
-        {App, _Desc, _Ver} ->
-            lager:info("Kazoo app ~s already running (~s)", [App, _Ver]),
-            'exists';
-        'false' ->
-            case application:start(App) of
-                'ok' ->
-                    lager:info("Kazoo app ~s is now running", [App]);
-                {'error', _R} ->
-                    lager:error("Kazoo app ~s failed to start: ~p", [App, _R]),
-                    'error'
-            end
-    end.
+start_app(App) when is_atom(App) ->
+    wh_util:ensure_started(App).
 
 -spec stop_app(atom() | nonempty_string() | ne_binary()) ->
                       'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
@@ -73,7 +60,7 @@ stop_app(App) ->
     end.
 
 -spec restart_app(atom() | nonempty_string() | ne_binary()) ->
-                         'ok' | 'error' | 'exists'.
+                         'ok' | {'error', any()}.
 restart_app(App) when not is_atom(App) ->
     restart_app(wh_util:to_atom(App, 'true'));
 restart_app(App) when is_atom(App) ->
@@ -145,7 +132,7 @@ initialize_whapps() ->
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, ?DEFAULT_WHAPPS),
     StartWhApps = [wh_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
 
-    _ = [?MODULE:start_app(A) || A <- StartWhApps],
+    _ = [start_app(A) || A <- StartWhApps],
     lager:notice("auto-started whapps ~p", [StartWhApps]).
 
 -spec list_apps() -> atoms().
