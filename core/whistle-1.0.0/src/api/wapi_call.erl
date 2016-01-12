@@ -97,7 +97,7 @@
                                       ,<<"From-Tag">>, <<"To-Tag">>
                                       ,<<"Intercepted-By">>
                                       ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                      ,<<"Switch-URL">>, <<"Switch-URI">>, <<"Switch-Node">>
+                                      ,<<"Switch-URL">>, <<"Switch-URI">>
                                       ,<<"Parking-Slot">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).

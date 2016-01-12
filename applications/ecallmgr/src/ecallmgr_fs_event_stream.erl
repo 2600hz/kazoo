@@ -179,7 +179,7 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                                  ,{<<"Switch-URI">>, SwitchURI}
-                                                 ,{<<"Switch-Node">>, wh_util:to_binary(Node)}
+                                                 ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
                                                 ]
                                                ) ++ Props ,
             _ = wh_util:spawn(fun process_stream/4, [EventName, UUID, EventProps, Node]),
