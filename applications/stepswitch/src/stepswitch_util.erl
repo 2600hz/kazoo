@@ -126,7 +126,7 @@ correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
     MinCorrection = whapps_config:get_integer(?SS_CONFIG_CAT, <<"min_shortdial_correction">>, 2),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length >= MinCorrection ->
-            Correction = binary:part(CIDNum, 0, Length),
+            Correction = wh_util:truncate_right_binary(CIDNum, Length),
             CorrectedNumber = wnm_util:to_e164(<<Correction/binary, Number/binary>>),
             lager:debug("corrected shortdial ~s via CID ~s to ~s"
                        ,[Number, CIDNum, CorrectedNumber]),

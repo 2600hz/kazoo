@@ -105,7 +105,7 @@ try_all(Data, Field) ->
         <<Field:FieldSz/binary, _/binary>> ->
             case binary:split(Data, <<": ">>) of
                 [_Key, Value0] ->
-                    binary:part(Value0, {0, byte_size(Value0)});
+                    wh_util:truncate_right_binary(Value0, byte_size(Value0));
                 _ ->
                     'false'
             end;

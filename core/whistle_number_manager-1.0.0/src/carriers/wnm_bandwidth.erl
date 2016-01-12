@@ -88,7 +88,7 @@ find_numbers(<<NPA:3/binary>>, Quanity, _) ->
             {'ok', wh_json:from_list(Resp)}
     end;
 find_numbers(Search, Quanity, _) ->
-    NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
+    NpaNxx = wh_util:truncate_right_binary(Search, 6),
     Props = [{'npaNxx', [wh_util:to_list(NpaNxx)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}
             ],

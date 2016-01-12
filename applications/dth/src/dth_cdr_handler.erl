@@ -144,10 +144,10 @@ get_from_user(JObj) ->
 
 -spec get_account_code(wh_json:object()) -> ne_binary().
 get_account_code(JObj) ->
-    AccountID = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
-                    AID when erlang:byte_size(AID) < 18 -> AID;
-                    AID -> binary:part(AID, {erlang:byte_size(AID), -17})
-                end,
+    AccountID = wh_util:truncate_left_binary(
+                    wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
+                    ,17
+                ),
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
         'undefined' -> AccountID;
         _Else -> << AccountID/binary, "-IN">>
