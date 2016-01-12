@@ -267,19 +267,6 @@
                                ,{<<"RECORD_SOFTWARE">>, <<"RECORD_SOFTWARE">>}
                               ]).
 
--define(CUSTOM_SIP_VARS, [<<"sip_h_X-ecallmgr_Account-ID">>
-                         ,<<"sip_h_X-ecallmgr_Authorizing-Type">>
-                         ,<<"sip_h_X-ecallmgr_Authorizing-ID">>
-                         ,<<"sip_h_X-ecallmgr_Username">>
-                         ,<<"sip_h_X-ecallmgr_Realm">>
-                         ,<<"sip_h_X-ecallmgr_Account-Realm">>
-                         ,<<"sip_h_X-ecallmgr_Account-Name">>
-                         ,<<"sip_h_X-ecallmgr_Presence-ID">>
-                         ,<<"sip_h_X-ecallmgr_Owner-ID">>
-                         ,<<"sip_h_X-AUTH-IP">>
-                         ,<<"sip_h_X-AUTH-PORT">>
-                        ]).
-
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
 %% Dialplan-related applications
 %% convert from FS-named applications to Kazoo-named Dialplan applications
