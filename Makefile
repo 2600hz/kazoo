@@ -58,29 +58,18 @@ rel/relx.config: rel/relx.config.src
 
 ## More at //relx/priv/templates/extended_bin
 kz: ACT ?= foreground # start attach stop console
-kz: REL ?= $(REL_WHAPPS)
 kz:
-	RELX_REPLACE_OS_VARS=true KZname=$(REL) _rel/kazoo/bin/kazoo $(ACT) "$$@"
+	RELX_REPLACE_OS_VARS=true KZname=kazoo _rel/kazoo/bin/kazoo $(ACT) "$$@"
 
-REL_WHAPPS = whistle_apps
-REL_ECLMGR = ecallmgr
 releases: RELX ?= $(ROOT)/utils/relx/relx
 releases: rel/relx.config
-	$(RELX) --config $< -V 2 release --relname kazoo_$(REL_WHAPPS)
-	$(RELX) --config $< -V 2 release --relname kazoo_$(REL_ECLMGR)
-
-whapps_start: ACT = start
-whapps_start: rl
-ecallmgr_start: ACT = start
-ecallmgr_start: REL = $(REL_ECLMGR)
-ecallmgr_start: rl
+	$(RELX) --config $< -V 2 release --relname kazoo
 
 ## More at //relx/priv/templates/extended_bin
 rl: ACT ?= foreground # start attach stop console
-rl: REL ?= $(REL_WHAPPS)
+rl: REL ?= kazoo
 rl:
-	RELX_REPLACE_OS_VARS=true KZname=$(REL) _rel/kazoo_$(REL)/bin/kazoo_$(REL) $(ACT) "$$@"
-
+	RELX_REPLACE_OS_VARS=true KZname=$(REL) _rel/$(REL)/bin/$(REL) $(ACT) "$$@"
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
