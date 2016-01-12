@@ -16,12 +16,7 @@ core/*/test/*.app
 applications/*/priv/archive_data/*
 applications/*/test/*.app
 deps/*/test
-deps/*/exmaples
-deps/erlydtl-*/src/erlydtl_parser.erl
-deps/zucchini-1.0.0/src/zucchini_lexer.erl
-deps/zucchini-1.0.0/src/zucchini_parser.erl
-deps/slex-*/src/slex_parser.erl
-deps/slex-*/src/slex_scanner.erl
+deps/*/examples
 deps/erlang_localtime-*/include/tz_index.hrl
 /.edts
 .project
@@ -30,4 +25,4 @@ deps/erlang_localtime-*/include/tz_index.hrl
 sup.bash
 
 _rel/
-relx.config
+rel/relx.config
