@@ -190,7 +190,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec refresh_blacklist(any()) -> 'ok'.
 refresh_blacklist(WSDL) ->
-    {'ok', _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
+    case detergent:call(WSDL, "GetBlockList", []) of
+        {'ok', _, [Response]}  -> refresh_blacklist_response(Response);
+        {'error', 'req_timedout'} ->
+            lager:info("failed to call WSDL, request timed out");
+        {'error', _E} -> lager:info("failed to call WSDL: ~p", [_E])
+    end.
+
+refresh_blacklist_response(Response) ->
     BlockListEntries = get_blocklist_entries(Response),
     lager:debug("Entries: ~p", [BlockListEntries]),
     wh_cache:store_local(?DTH_CACHE, dth_util:blacklist_cache_key(), BlockListEntries).
