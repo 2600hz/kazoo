@@ -7,7 +7,7 @@ MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS) core deps apps xref xref_releases dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-releases releases rl
+.PHONY: $(MAKEDIRS) core deps apps xref xref_release xref_releases dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-releases release kz releases rl
 
 all: compile
 
@@ -50,18 +50,27 @@ apps:
 kazoo: core apps
 
 
+release: RELX ?= $(ROOT)/utils/relx/relx
+release: rel/relx.config
+	$(RELX) --config $< -V 2 release --relname kazoo
+rel/relx.config: rel/relx.config.src
+	$(ROOT)/scripts/src2any.escript $<
+
+## More at //relx/priv/templates/extended_bin
+kz: ACT ?= foreground # start attach stop console
+kz: REL ?= $(REL_WHAPPS)
+kz:
+	RELX_REPLACE_OS_VARS=true KZname=$(REL) _rel/kazoo/bin/kazoo $(ACT) "$$@"
+
 REL_WHAPPS = whistle_apps
 REL_ECLMGR = ecallmgr
 releases: RELX ?= $(ROOT)/utils/relx/relx
 releases: rel/relx.config
 	$(RELX) --config $< -V 2 release --relname kazoo_$(REL_WHAPPS)
 	$(RELX) --config $< -V 2 release --relname kazoo_$(REL_ECLMGR)
-rel/relx.config: rel/relx.config.src
-	$(ROOT)/scripts/src2any.escript $<
 
 whapps_start: ACT = start
 whapps_start: rl
-
 ecallmgr_start: ACT = start
 ecallmgr_start: REL = $(REL_ECLMGR)
 ecallmgr_start: rl
@@ -100,6 +109,9 @@ dialyze: $(PLT)
 xref: TO_XREF ?= $(shell find $(ROOT) -name ebin)
 xref:
 	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
+
+xref_release: TO_XREF = $(shell find $(ROOT)/_rel/kazoo/lib)
+xref_release: xref
 
 xref_releases: TO_XREF = $(shell find $(ROOT)/_rel/kazoo_$(REL_WHAPPS)/lib) $(shell find $(ROOT)/_rel/kazoo_$(REL_ECLMGR)/lib)
 xref_releases: xref

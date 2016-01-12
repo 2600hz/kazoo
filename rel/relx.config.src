@@ -63,4 +63,8 @@ end ++
   , [ecallmgr] ++ Based
   }
 
+, {release, {kazoo,"4.0.0"}
+  , [whistle_apps, ecallmgr] ++ Based
+  }
+
 ].
