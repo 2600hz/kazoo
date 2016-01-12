@@ -54,15 +54,6 @@ end ++
 
 , {vm_args, "rel/vm.args"}
 
-
-, {release, {kazoo_whistle_apps,"4.0.0"}
-  , [whistle_apps] ++ Based
-  }
-
-, {release, {kazoo_ecallmgr,"4.0.0"}
-  , [ecallmgr] ++ Based
-  }
-
 , {release, {kazoo,"4.0.0"}
   , [whistle_apps, ecallmgr] ++ Based
   }
