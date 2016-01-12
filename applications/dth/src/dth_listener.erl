@@ -188,7 +188,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec refresh_blacklist(any()) -> 'ok'.
+-spec refresh_blacklist(#wsdl{}) -> 'ok'.
 refresh_blacklist(WSDL) ->
     case detergent:call(WSDL, "GetBlockList", []) of
         {'ok', _, [Response]}  -> refresh_blacklist_response(Response);
@@ -197,6 +197,7 @@ refresh_blacklist(WSDL) ->
         {'error', _E} -> lager:info("failed to call WSDL: ~p", [_E])
     end.
 
+-spec refresh_blacklist_response(#'p:GetBlockListResponse'{}) -> 'ok'.
 refresh_blacklist_response(Response) ->
     BlockListEntries = get_blocklist_entries(Response),
     lager:debug("Entries: ~p", [BlockListEntries]),
