@@ -838,8 +838,19 @@ maybe_start_call_recording(RecordCall, Call) ->
 
 -spec start_call_recording(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 start_call_recording(Data, Call) ->
-    cf_event_handler_sup:new('wh_media_recording', ?RECORDING_ARGS(Call, Data)),
+    Mod = recording_module(Call),
+    Name = event_listener_name(Call, Mod),
+    X = cf_event_handler_sup:new(Name, Mod, ?RECORDING_ARGS(Call, Data)),
+    lager:debug("started ~s process ~s : ~p", [Mod, Name, X]),
     Call.
+
+-spec recording_module(whapps_call:call()) -> atom().
+recording_module(Call) ->
+    AccountId = whapps_call:account_id(Call),
+    case whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, <<"recorder_module">>) of
+        'undefined' -> whapps_config:get_atom(?CF_CONFIG_CAT, <<"recorder_module">>, 'wh_media_recording');
+        Mod -> wh_util:to_atom(Mod, 'true')
+    end.
 
 -spec start_event_listener(whapps_call:call(), atom(), list()) ->
           {'ok', pid()} | {'error', any()}.
