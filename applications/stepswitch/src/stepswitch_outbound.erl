@@ -66,9 +66,31 @@ handle_originate_req(OffnetReq) ->
     lager:debug("received outbound audio resource request for ~s from account ~s"
                 ,[Number, wapi_offnet_resource:account_id(OffnetReq)]
                ),
-    maybe_originate(Number
-                    ,wapi_offnet_resource:set_outbound_call_id(OffnetReq, wh_util:rand_hex_binary(8))
-                   ).
+    handle_originate_req(Number, maybe_add_call_id(wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq) , OffnetReq)).
+
+-spec handle_originate_req(ne_binary(), wh_json:object()) -> any().
+handle_originate_req(Number, JObj) ->
+    case stepswitch_util:lookup_number(Number) of
+        {'ok', AccountId, Props} ->
+            maybe_force_originate_outbound(wh_number_properties:set_account_id(Props, AccountId), JObj);
+        _ -> maybe_originate(Number, JObj)
+    end.
+
+-spec maybe_add_call_id(api_binary(), wh_json:object()) -> wh_json:object().
+maybe_add_call_id('undefined', JObj) ->
+    wh_json:set_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), JObj);
+maybe_add_call_id(_, JObj) -> JObj.
+
+-spec maybe_force_originate_outbound(wh_proplist(), wh_json:object()) -> any().
+maybe_force_originate_outbound(Props, JObj) ->
+    case wh_number_properties:should_force_outbound(Props)
+        orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+    of
+        'false' -> local_originate(Props, JObj);
+        'true' ->
+            Number = wh_number_properties:number(Props),
+            maybe_originate(Number, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -191,6 +213,56 @@ maybe_originate(Number, OffnetReq) ->
         Endpoints -> stepswitch_request_sup:originate(Endpoints, OffnetReq)
     end.
 
+-spec local_originate(wh_proplist(), wh_json:object()) -> any().
+local_originate(Props, JObj) ->
+    Endpoints = [create_loopback_endpoint(Props, JObj)],
+    J = wh_json:set_value(<<"Simplify-Loopback">>, <<"false">>, JObj),
+    stepswitch_request_sup:originate(Endpoints, J).
+
+-spec local_originate_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.
+local_originate_caller_id(JObj) ->
+    {wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
+                                ,<<"Emergency-Caller-ID-Number">>
+                               ], JObj)
+     ,wh_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
+                                 ,<<"Emergency-Caller-ID-Name">>
+                                ], JObj)
+    }.
+
+-spec get_account_realm(ne_binary()) -> ne_binary().
+get_account_realm(AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:realm(JObj, AccountId);
+        _ -> AccountId
+    end.
+
+-spec create_loopback_endpoint(wh_proplist(), wh_json:object()) -> any().
+create_loopback_endpoint(Props, JObj) ->
+    {CIDNum, CIDName} = local_originate_caller_id(JObj),
+    lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+    Number = props:get_value('number', Props),
+    AccountId = props:get_value('account_id', Props),
+    Realm = get_account_realm(AccountId),
+    CCVs = props:filter_undefined(
+                   [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
+                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
+                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, "true"}
+                    ,{<<"Resource-ID">>, AccountId}
+                   ]),
+    Endpoint = wh_json:from_list(
+                 props:filter_undefined(
+                   [{<<"Invite-Format">>, <<"loopback">>}
+                    ,{<<"Route">>,  Number}
+                    ,{<<"To-DID">>, Number}
+                    ,{<<"To-Realm">>, Realm}
+                    ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                    ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                    ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
+                    ,{<<"Caller-ID-Name">>, CIDName}
+                    ,{<<"Caller-ID-Number">>, CIDNum}
+                    ,{<<"Ignore-Early-Media">>, 'true'}
+                   ])),
+    Endpoint.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

@@ -545,7 +545,10 @@ get_channel_vars(JObj, FetchId) ->
 maybe_add_loopback(JObj, Props) ->
     case wh_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj) of
         'undefined' -> Props;
-        Simplify -> [{<<"Loopback-Bowout">>, Simplify} | Props]
+        Simplify -> [{<<"Simplify-Loopback">>, Simplify}
+                     ,{<<"Loopback-Bowout">>, Simplify}
+                     | Props
+                    ]
     end.
 
 -spec originate_execute(atom(), ne_binary(), pos_integer()) ->

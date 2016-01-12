@@ -251,6 +251,8 @@
          ,<<"dialplan">> %% errors are sent with this
         ]).
 
+-define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
+
 -type xml_thing() :: xml_el() | xml_text().
 -type xml_things() :: xml_els() | xml_texts().
 
@@ -347,6 +349,7 @@
 
 -type wh_node() :: #wh_node{}.
 -type wh_nodes() :: [wh_node()].
+
 
 -define(WHISTLE_TYPES_INCLUDED, 'true').
 -endif.

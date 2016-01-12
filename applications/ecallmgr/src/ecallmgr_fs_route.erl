@@ -255,7 +255,7 @@ expand_message_var({K,V}, Ac) ->
 process_route_req(Section, Node, FetchId, CallId, Props) ->
     wh_util:put_callid(CallId),
     case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
-        'false' -> search_for_route(Section, Node, FetchId, CallId, Props);
+        'false' -> search_for_route(Section, Node, FetchId, CallId, ecallmgr_fs_loopback:filter(Node, CallId, Props));
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = wh_json:from_list([{<<"Routes">>, []}
