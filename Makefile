@@ -95,7 +95,7 @@ $(PLT):
 	done
 build-plt: $(PLT)
 
-dialyze-kazoo: TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin) $(shell find $(ROOT)/core -name ebin)
+dialyze-kazoo: TO_DIALYZE  = $(shell find $(ROOT)/applications $(ROOT)/core -name ebin)
 dialyze-kazoo: dialyze
 dialyze-apps:  TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin)
 dialyze-apps: dialyze
@@ -106,15 +106,13 @@ dialyze: $(PLT)
 	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
 
-xref: TO_XREF ?= $(shell find $(ROOT) -name ebin)
+xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
 	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
 
-xref_release: TO_XREF = $(shell find $(ROOT)/_rel/kazoo/lib)
-xref_release: xref
-
-xref_releases: TO_XREF = $(shell find $(ROOT)/_rel/kazoo_$(REL_WHAPPS)/lib) $(shell find $(ROOT)/_rel/kazoo_$(REL_ECLMGR)/lib)
-xref_releases: xref
+xref_release: TO_XREF = $(shell find $(ROOT)/_rel/kazoo/lib -name ebin)
+xref_release:
+	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
 
 
 sup_completion: sup_completion_file = $(ROOT)/sup.bash
