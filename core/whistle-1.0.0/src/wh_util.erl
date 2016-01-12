@@ -55,6 +55,8 @@
          ,strip_binary/1, strip_binary/2
          ,strip_left_binary/2, strip_right_binary/2
          ,suffix_binary/2
+         ,truncate_binary/2, truncate_binary/3
+         ,truncate_left_binary/2, truncate_right_binary/2
         ]).
 
 -export([clean_binary/1, clean_binary/2
@@ -1047,10 +1049,38 @@ strip_right_binary(<<C, B/binary>>, C) ->
 strip_right_binary(<<A, B/binary>>, C) -> <<A, (strip_right_binary(B, C))/binary>>;
 strip_right_binary(<<>>, _) -> <<>>.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Ensure a binary is a maximum given size, truncating it if not.
+%% @end
+%%--------------------------------------------------------------------
+-spec truncate_binary(binary(), non_neg_integer()) -> binary().
+-spec truncate_binary(binary(), non_neg_integer(), 'left' | 'right') -> binary().
+truncate_binary(Bin, Size) ->
+    truncate_binary(Bin, Size, 'right').
+
+truncate_binary(Bin, Size, 'left') ->
+    truncate_left_binary(Bin, Size);
+truncate_binary(Bin, Size, 'right') ->
+    truncate_right_binary(Bin, Size).
+
+-spec truncate_left_binary(binary(), non_neg_integer()) -> binary().
+truncate_left_binary(Bin, Size) when byte_size(Bin) > Size ->
+    binary:part(Bin, {byte_size(Bin), -Size});
+truncate_left_binary(Bin, _) ->
+    Bin.
+
+-spec truncate_right_binary(binary(), non_neg_integer()) -> binary().
+truncate_right_binary(Bin, Size) when byte_size(Bin) > Size ->
+    binary:part(Bin, {0, Size});
+truncate_right_binary(Bin, _) ->
+    Bin.
+
 -spec suffix_binary(binary(), binary()) -> boolean().
 suffix_binary(<<>>, _Bin) -> 'false';
 suffix_binary(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
-    try binary:part(Bin, byte_size(Bin), (byte_size(Suffix) * -1)) =:= Suffix of
+    try truncate_left_binary(Bin, byte_size(Suffix)) =:= Suffix of
         Bool -> Bool
     catch
         _:_ -> 'false'

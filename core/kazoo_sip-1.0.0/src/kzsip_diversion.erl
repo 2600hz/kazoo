@@ -282,8 +282,7 @@ parse_single_quoted_param(<<C, Quoted/binary>>, Acc) ->
 
 -spec maybe_unquote(ne_binary()) -> ne_binary().
 maybe_unquote(<<"\"", Value/binary>>) ->
-    Length = byte_size(Value),
-    binary:part(Value, 0, Length-1);
+    wh_util:truncate_right_binary(Value, byte_size(Value)-1);
 maybe_unquote(Value) -> Value.
 
 -spec to_binary(wh_json:object()) -> ne_binary().

@@ -296,7 +296,7 @@ make_request(Number, JObj) ->
             'undefined';
         {'ok', {Status, _, ResponseBody}} when size (ResponseBody) > 18 ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
-            binary:part(ResponseBody, 0, 18);
+            wh_util:truncate_right_binary(ResponseBody, 18);
         {'ok', {Status, _, ResponseBody}} ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             ResponseBody;
