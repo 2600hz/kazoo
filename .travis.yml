@@ -10,7 +10,6 @@ notifications:
 otp_release:
   - 18.2
 
-
 addons:
   apt:
     packages:
