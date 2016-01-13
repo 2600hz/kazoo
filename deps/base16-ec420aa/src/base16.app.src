@@ -2,9 +2,7 @@
  [
   {description, "Base16 encoding and decoding"},
   {vsn, "ec420aa"},
-  {modules, [base16]},
-  {registered, []},
+  {modules, []},
   {applications, [kernel,
-                  stdlib]},
-  {env, []}
+                  stdlib]}
  ]}.

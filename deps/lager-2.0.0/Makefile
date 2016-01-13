@@ -1,10 +1,8 @@
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
+PROJECT = lager
+
+SOURCES = src/lager_util.erl src/*.erl
 
 all: compile
 
-compile:
-	@$(REBAR) compile
-
-clean:
-	@$(REBAR) clean
+-include $(ROOT)/make/kz.mk

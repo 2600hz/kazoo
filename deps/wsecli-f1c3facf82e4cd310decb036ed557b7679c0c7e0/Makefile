@@ -1,10 +1,8 @@
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
+PROJECT = wsecli
+
+EBINS = $(wildcard $(ROOT)/deps/wsock-*/ebin)
 
 all: compile
 
-compile:
-	@$(REBAR) compile
-
-clean:
-	@$(REBAR) clean
+-include $(ROOT)/make/kz.mk

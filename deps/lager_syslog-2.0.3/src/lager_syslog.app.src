@@ -5,9 +5,10 @@
   {description, "Syslog backend for Lager"},
   {vsn, "2.0.3"},
   {modules, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {applications, [ kernel
+                 , stdlib
+                 , lager
+                 , syslog
                  ]},
   {registered, []}
  ]}.

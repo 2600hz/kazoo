@@ -11,6 +11,5 @@
 		ssl,
 		cowboy
 	]},
-	{mod, {socketio, []}},
-	{env, []}
+	{mod, {socketio, []}}
 ]}.

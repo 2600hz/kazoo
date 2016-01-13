@@ -1,17 +1,10 @@
 ROOT = ../..
-PROJECT = erlydtl
-
-EBINS = $(wildcard $(ROOT)/deps/merl-*/ebin)
-
-COMPILE_MOAR = src/erlydtl_parser.erl
-CLEAN_MOAR = clean-parser
+REBAR = $(ROOT)/utils/rebar/rebar
 
 all: compile
 
--include $(ROOT)/make/kz.mk
+compile:
+	@$(REBAR) compile
 
-src/erlydtl_parser.erl: src/erlydtl_parser.yrl
-	erlc -o src/ $^
-
-clean-parser:
-	$(if $(wildcard src/erlydtl_parser.erl), rm src/erlydtl_parser.erl)
+clean:
+	@$(REBAR) clean

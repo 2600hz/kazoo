@@ -5,14 +5,12 @@
   {description, "An erlang SMTP server/client framework"},
   {vsn, "0.9.0"},
   {modules, []},
-  {applications, [
-                  kernel,
+  {applications, [ kernel,
                   stdlib,
                   crypto,
                   asn1,
                   public_key,
                   ssl
-                 ]},
-  {registered, []}
+                 ]}
  ]
 }.

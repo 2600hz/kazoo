@@ -1,9 +1,7 @@
 {application, bear,
  [
-  {description, ""},
+  {description, "bear"},
   {vsn, "0.8.0"},
   {modules, []},
-  {registered, []},
-  {applications, []},
-  {env, []}
+  {applications, [kernel, stdlib]}
  ]}.
