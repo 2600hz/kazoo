@@ -3,7 +3,6 @@
   {description, "pusher - wake the dead"},
   {vsn, "1.0.0"},
   {modules, []},
-  {registered, []},
   {applications, [ kernel
                  , stdlib
                  , public_key
@@ -14,6 +13,8 @@
                  , lager
                  , whistle_amqp
                  , whistle_couch
+                 , apns
+                 , gcm
                  ]},
   {mod, {pusher_app, []}}
  ]}.
