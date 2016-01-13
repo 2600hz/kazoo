@@ -2,11 +2,19 @@
  [
   {description, ""},
   {vsn, "1.0.0"},
-  {modules, []},
+  {modules, [amqp_leader_app
+             ,amqp_leader
+             ,amqp_leader_listener
+             ,amqp_leader_proc
+             ,amqp_leader_proc_sup
+             ,amqp_leader_sup
+            ]},
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  lager,
+                  whistle_amqp
                  ]},
   {mod, { amqp_leader_app, []}},
   {env, []}
