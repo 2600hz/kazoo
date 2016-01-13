@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = whistle_transactions
 
-ELIBS = $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/core))
+EBINS = $(wildcard $(ROOT)/core/whistle_transactions-*/ebin)
 
 all: compile
 
