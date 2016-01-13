@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = hangups
 
-EBINS = $(shell find $(ROOT)/deps/folsom-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/deps/folsom-*/ebin)
 
 all: compile
 

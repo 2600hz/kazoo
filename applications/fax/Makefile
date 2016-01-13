@@ -1,10 +1,10 @@
 ROOT = ../..
 PROJECT = fax
 
-EBINS = $(shell find $(ROOT)/core/kazoo_oauth-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/gen_smtp-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/escalus-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/exml-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/core/kazoo_oauth-*/ebin) \
+	$(wildcard $(ROOT)/deps/gen_smtp-*/ebin) \
+	$(wildcard $(ROOT)/deps/escalus-*/ebin) \
+	$(wildcard $(ROOT)/deps/exml-*/ebin)
 
 all: compile
 

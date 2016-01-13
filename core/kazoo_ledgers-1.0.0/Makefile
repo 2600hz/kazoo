@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = kazoo_ledgers
 
-EBINS = $(shell find $(ROOT)/core/kazoo_ledgers-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/core/kazoo_ledgers-*/ebin)
 
 all: compile
 

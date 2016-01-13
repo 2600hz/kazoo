@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = gproc
 
-EBINS = $(shell find $(ROOT)/deps/gen_leader-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/deps/gen_leader-*/ebin)
 
 all: compile
 

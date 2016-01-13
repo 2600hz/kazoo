@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = dth
 
-EBINS = $(shell find $(ROOT)/deps/detergent-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/deps/detergent-*/ebin)
 
 all: compile
 

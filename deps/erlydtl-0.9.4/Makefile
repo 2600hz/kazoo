@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = erlydtl
 
-EBINS = $(shell find $(ROOT)/deps/merl-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/deps/merl-*/ebin)
 
 COMPILE_MOAR = src/erlydtl_parser.erl
 CLEAN_MOAR = clean-parser

@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = couchbeam
 
-EBINS = $(shell find $(ROOT)/deps/couchbeam-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/ibrowse-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/deps/couchbeam-*/ebin) \
+	$(wildcard $(ROOT)/deps/ibrowse-*/ebin)
 
 all: compile
 

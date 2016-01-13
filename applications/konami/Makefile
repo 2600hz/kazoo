@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = konami
 
-EBINS = $(shell find $(ROOT)/core/whistle_apps-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/nksip-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/core/whistle_apps-*/ebin) \
+	$(wildcard $(ROOT)/deps/nksip-*/ebin)
 
 all: compile
 

@@ -30,8 +30,8 @@ endif
 
 ELIBS ?= $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_erlang_client-*/deps))
 
-EBINS += $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin)
+EBINS += $(wildcard $(ROOT)/deps/lager-*/ebin) \
+	$(wildcard $(ROOT)/core/whistle-*/ebin)
 TEST_EBINS += $(EBINS)
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa test/ $(PA) $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))

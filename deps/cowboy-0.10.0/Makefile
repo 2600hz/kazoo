@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = cowboy
 
-EBINS = $(shell find $(ROOT)/deps/cowlib-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/deps/cowlib-*/ebin)
 
 SOURCES = src/cowboy_middleware.erl src/cowboy_sub_protocol.erl src/*.erl
 

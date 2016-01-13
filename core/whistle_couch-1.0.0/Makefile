@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = whistle_couch
 
-EBINS = $(shell find $(ROOT)/core/whistle_number_manager-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/couchbeam-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/core/whistle_number_manager-*/ebin) \
+	$(wildcard $(ROOT)/deps/couchbeam-*/ebin)
 
 SOURCES = src/wh_gen_changes.erl src/*.erl
 

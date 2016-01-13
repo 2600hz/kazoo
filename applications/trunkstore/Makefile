@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = trunkstore
 
-EBINS = $(shell find $(ROOT)/core/whistle_number_manager-* -maxdepth 2 -name ebin) \
+EBINS = $(wildcard $(ROOT)/core/whistle_number_manager-*/ebin) \
 	$(shell find $(ROOT)/deps/rabbitmq_erlang_client-* -name ebin)
 
 all: compile

@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = doodle
 
-EBINS = $(shell find $(ROOT)/core/whistle_apps-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/core/whistle_number_manager-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/core/whistle_apps-*/ebin) \
+	$(wildcard $(ROOT)/core/whistle_number_manager-*/ebin)
 
 all: compile
 

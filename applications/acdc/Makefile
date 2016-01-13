@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = acdc
 
-EBINS = $(shell find $(ROOT)/core/whistle_apps-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/core/whistle_couch-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/core/whistle_apps-*/ebin) \
+	$(wildcard $(ROOT)/core/whistle_couch-*/ebin)
 
 all: compile
 

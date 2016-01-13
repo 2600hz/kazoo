@@ -1,12 +1,12 @@
 ROOT = ../..
 PROJECT = nksip
 
-EBINS = $(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/wsock-* -maxdepth 2 -name ebin)
+EBINS = $(wildcard $(ROOT)/deps/lager-*/ebin) \
+	$(wildcard $(ROOT)/deps/wsock-*/ebin)
 
-TEST_EBINS = $(shell find $(ROOT)/deps/goldrush-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/lager_syslog-* -maxdepth 2 -name ebin) \
-	$(shell find $(ROOT)/deps/erlang-syslog-* -maxdepth 2 -name ebin)
+TEST_EBINS = $(wildcard $(ROOT)/deps/goldrush-*/ebin) \
+	$(wildcard $(ROOT)/deps/lager_syslog-*/ebin) \
+	$(wildcard $(ROOT)/deps/erlang-syslog-*/ebin)
 
 ERLC_OPTS += +"{parse_transform, lager_transform}" -Iplugins/include
 
