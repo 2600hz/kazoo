@@ -6,29 +6,27 @@
 SHELL = /bin/bash -o pipefail
 
 
-## Use pedantic flags when compiling apps from applications/ & core/
-ifeq ($(findstring deps, $(abspath Makefile)), deps)
-    KZ_APP_OTPS =
-else
-    KZ_APP_OTPS = -Werror +warn_export_all +warn_unused_import
-endif
-
-ERLC_OPTS += $(KZ_APP_OTPS) +debug_info -Iinclude -Isrc
-
 # Could use OTP_VERSION, if ≥ 17
 OTP_VSN = $(shell erl -noshell -eval 'io:fwrite("~s\n", [erlang:system_info(otp_release)]).' -s erlang halt)
 
 ## Ensure codebase compatibility throughout supported OTP versions
 ifeq ($(findstring 1, $(OTP_VSN)), 1)
-    ERLC_OPTS += +nowarn_deprecated_type +nowarn_deprecated_function
+    KZ_APP_OTPS += +nowarn_deprecated_type +nowarn_deprecated_function
 endif
 
 ifeq ($(findstring 18, $(OTP_VSN)), 18)
-    ERLC_OPTS += -DOTP_AT_LEAST_18
+    KZ_APP_OTPS += -DOTP_AT_LEAST_18
 endif
 
+## Use pedantic flags when compiling apps from applications/ & core/
+ifeq ($(findstring deps, $(abspath Makefile)), deps)
+    KZ_APP_OTPS =
+else
+    KZ_APP_OTPS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars
+endif
 
-ELIBS ?= $(ERL_LIBS):$(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_erlang_client-*/deps))
+ERLC_OPTS += $(KZ_APP_OTPS) +debug_info -Iinclude -Isrc
+
 
 EBINS += $(wildcard $(ROOT)/deps/lager-*/ebin) \
 	$(wildcard $(ROOT)/core/whistle-*/ebin)
@@ -46,7 +44,7 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 
 ebin/$(PROJECT).app: $(wildcard $(SOURCES))
 	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%[/.]% %g;s/ebin\|beam//g;s/   /, /g'`\]}/" src/$(PROJECT).app.src > $@
 
 
@@ -60,7 +58,7 @@ compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
 test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(wildcard $(TEST_SOURCES))
 	@mkdir -p test/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -o test/ $(TEST_SOURCES)
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -o test/ $(TEST_SOURCES)
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%[/.]% %g;s/ebin\|beam//g;s/   /, /g'`\]}/" src/$(PROJECT).app.src > $@
 
 
