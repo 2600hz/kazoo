@@ -73,7 +73,7 @@ clean-test: $(CLEAN_MOAR)
 test: clean-test eunit
 
 eunit: compile-test
-	erl -noshell $(TEST_PA) -pa test/ -eval "case eunit:test([`echo test/*.beam | sed 's%[/.]% %g;s/ebin\|beam//g;s/   /, /g'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	erl -noshell $(TEST_PA) -pa test/ -eval "case eunit:test([`echo test/*.beam | sed 's%\.beam test/%, %g;s%test/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 
 PLT ?= $(ROOT)/.kazoo.plt
