@@ -16,7 +16,7 @@ ifeq ($(USR_INCLUDE),)
 	USR_INCLUDE = /usr/lib/erlang/usr/include
 endif
 
-ERL_INTERFACE := $(shell find $USR_INCLUDE/../../ -type d -name 'erl_interface-*')
+ERL_INTERFACE := $(shell find $(USR_INCLUDE)/../../ -type d -name 'erl_interface-*')
 ifeq ($(ERL_INTERFACE),)
 	ERL_INTERFACE := $(wildcard $(USR_INCLUDE)/../../lib/erl_interface-*)
 endif
