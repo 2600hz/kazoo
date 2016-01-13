@@ -13,6 +13,8 @@ Deps = ToName([App ||         "deps/"++App <- filelib:wildcard(        "deps/*")
 
 Base = [ {'++', Core}
        , {'++', Apps}
+         %% skel Not a real app
+       , {'--', [skel]}
          %% Both whistle_apps and ecallmgr include apps: whistle_amqp, sasl, crypto
        , {'--', [ecallmgr, whistle_apps]}
 
@@ -23,15 +25,11 @@ Base = [ {'++', Core}
        , {'++', [rabbit_common]}
          %% exmpp Duplicated modules: tls specified in ssl and exmpp
        , {'--', [exmpp]}
-         %% Name is hep, not hep_erlang
-       , {'--', [hep_erlang]}, {'++', [hep]}
          %% merl Part of OTP since 18
        , {'--', case Is_OTP_GE_18 of
                     true  -> [merl];
                     false -> []
                 end}
-         %% skel Not a real app
-       , {'--', [skel]}
        ],
 LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
 Based = lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) ),
