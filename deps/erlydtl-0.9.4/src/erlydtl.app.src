@@ -3,5 +3,6 @@
  [{description, "Django Template Language for Erlang"},
   {vsn, "0.9.4"},
   {modules, []},
+  {registered, []},
   {applications, [kernel, stdlib, compiler, syntax_tools]}
  ]}.

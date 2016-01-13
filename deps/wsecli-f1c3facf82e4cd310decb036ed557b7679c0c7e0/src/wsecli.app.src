@@ -3,6 +3,7 @@
   {description, "A WebSocket Erlang Client"},
   {vsn, "1"},
   {modules, []},
+  {registered, []},
   {applications, [ kernel
                  , stdlib
                  ]},
