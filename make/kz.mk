@@ -37,10 +37,8 @@ PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa test/ $(PA) $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
 ## SOURCES provides a way to specify compilation order (left to right)
-SOURCES ?= src/*.erl src/*/*.erl
-TEST_SOURCES = $(SOURCES) test/*.erl
-MODULES = $(shell      find       src/ -name '*.erl' | sed 's%[/.]% %g' | awk -vORS=, '{print $$(NF-1)}' | sed 's/,$$//')
-TEST_MODULES = $(shell find test/ src/ -name '*.erl' | sed 's%[/.]% %g' | awk -vORS=, '{print $$(NF-1)}' | sed 's/,$$//')
+SOURCES     ?= src/*.erl $(if $(wildcard src/*/*.erl), src/*/*.erl)
+TEST_SOURCES = $(SOURCES) $(if $(wildcard test/*.erl), test/*.erl)
 
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
@@ -48,8 +46,8 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 
 ebin/$(PROJECT).app: $(wildcard $(SOURCES))
 	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $?
-	@sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' src/$(PROJECT).app.src > $@
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
+	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%[/.]% %g;s/ebin\|beam//g;s/   /, /g'`\]}/" src/$(PROJECT).app.src > $@
 
 
 json: JSON = $(if $(wildcard priv/), $(shell find priv/ -name '*.json'))
@@ -62,8 +60,8 @@ compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
 test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(wildcard $(TEST_SOURCES))
 	@mkdir -p test/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -o test/ $?
-	@sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' src/$(PROJECT).app.src > $@
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -o test/ $(TEST_SOURCES)
+	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%[/.]% %g;s/ebin\|beam//g;s/   /, /g'`\]}/" src/$(PROJECT).app.src > $@
 
 
 clean: clean-test
@@ -78,7 +76,7 @@ clean-test: $(CLEAN_MOAR)
 test: clean-test eunit
 
 eunit: compile-test
-	erl -noshell $(TEST_PA) -pa test/ -eval 'case eunit:test([$(TEST_MODULES)], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end.'
+	erl -noshell $(TEST_PA) -pa test/ -eval "case eunit:test([`echo test/*.beam | sed 's%[/.]% %g;s/ebin\|beam//g;s/   /, /g'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 
 PLT ?= $(ROOT)/.kazoo.plt
