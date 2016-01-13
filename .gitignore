@@ -18,6 +18,8 @@ applications/*/test/*.app
 deps/*/test
 deps/*/examples
 deps/erlang_localtime-*/include/tz_index.hrl
+deps/zucchini-*/src/zucchini_lexer.erl
+deps/zucchini-*/src/zucchini_parser.erl
 /.edts
 .project
 .settings
