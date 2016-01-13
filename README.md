@@ -1,4 +1,4 @@
-## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo)
+## Kazoo [![Build Status](https://travis-ci.org/2600hz/kazoo.svg?branch=master)](https://travis-ci.org/2600hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600hz/kazoo/badge/pr)](http://issuestats.com/github/2600hz/kazoo) [![Issue Stats](http://issuestats.com/github/2600hz/kazoo/badge/issue)](http://issuestats.com/github/2600hz/kazoo)
 
 ````
     ... ........                                                
