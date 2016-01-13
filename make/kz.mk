@@ -15,15 +15,14 @@ endif
 
 ERLC_OPTS += $(KZ_APP_OTPS) +debug_info -Iinclude -Isrc
 
-# Could use OTP_VERSION, if ≥ 17
-OTP_VSN = $(shell erl -noshell -eval 'io:fwrite("~s\n", [erlang:system_info(otp_release)]).' -s erlang halt)
-
 ## Ensure codebase compatibility throughout supported OTP versions
-ifeq ($(findstring 1, $(OTP_VSN)), 1)
+ERTS_VSN = $(shell erl +V 2>&1 | cut -d' ' -f6)
+# Note: R15B03-1's ERTS version is 5.x
+ifeq ($(findstring 6., $(ERTS_VSN)), 6.)
     ERLC_OPTS += +nowarn_deprecated_type +nowarn_deprecated_function
 endif
 
-ifeq ($(findstring 18, $(OTP_VSN)), 18)
+ifeq ($(findstring 7., $(ERTS_VSN)), 7.)
     ERLC_OPTS += -DOTP_AT_LEAST_18
 endif
 
