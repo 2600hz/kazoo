@@ -276,7 +276,7 @@ route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
-    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
+    Context = hunt_context(Props),
     ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
@@ -288,7 +288,7 @@ route_resp_xml(<<"park">>, _Routes, JObj, Props) ->
              ,route_resp_ringback(JObj)
              ,route_resp_transfer_ringback(JObj)
              ,route_resp_pre_park_action(JObj)
-             ,maybe_start_dtmf_action(JObj)
+             ,maybe_start_dtmf_action(Props)
              | route_resp_ccvs(JObj) ++ unset_custom_sip_headers(Props) ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
@@ -325,11 +325,11 @@ route_resp_xml(<<"chatplan_error">>, _Routes, JObj, _Props) ->
     SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"sms">>, _Routes, JObj, _Props) ->
+route_resp_xml(<<"sms">>, _Routes, _JObj, Props) ->
     lager:debug("creating a chatplan XML response"),
     StopActionEl = action_el(<<"stop">>, <<"stored">>),
     StopExtEl = extension_el(<<"chat plan">>, <<"false">>, [condition_el([StopActionEl])]),
-    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
+    Context = hunt_context(Props),
     ContextEl = context_el(Context, [StopExtEl]),
     SectionEl = section_el(<<"chatplan">>, <<"Chat Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
@@ -411,19 +411,18 @@ route_resp_pre_park_action(JObj) ->
         _Else -> 'undefined'
     end.
 
--spec maybe_start_dtmf_action(wh_json:object()) -> 'undefined' | xml_el().
-maybe_start_dtmf_action(JObj) ->
+-spec maybe_start_dtmf_action(wh_proplist()) -> 'undefined' | xml_el().
+maybe_start_dtmf_action(Props) ->
     case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
         'false' -> 'undefined';
-        'true' -> check_dtmf_type(JObj)
+        'true' -> check_dtmf_type(Props)
     end.
 
--spec check_dtmf_type(wh_json:object()) -> 'undefined' | xml_el().
-check_dtmf_type(JObj) ->
-    SDPRemote = wh_json:get_value(<<"Remote-SDP">>, JObj, <<"101 telephone-event">>),
-    case binary:match(SDPRemote, <<"101 telephone-event">>) of
-        'nomatch' -> action_el(<<"start_dtmf">>);
-        _ -> 'undefined'
+-spec check_dtmf_type(wh_proplist()) -> 'undefined' | xml_el().
+check_dtmf_type(Props) ->
+    case props:get_value(<<"variable_switch_r_sdp">>, Props, <<"101 telephone-event">>) of
+        <<"101 telephone-event">> -> io:format("undefined ~n~n"),'undefined';
+        _ -> io:format("start_dtmf ~n~n"), action_el(<<"start_dtmf">>)
     end.
 
 -spec get_leg_vars(wh_json:object() | wh_proplist()) -> iolist().
@@ -624,6 +623,10 @@ arrange_acl_node({_, JObj}, Dict) ->
             lager:debug("creating new list xml for ~s", [AclList]),
             orddict:store(AclList, prepend_child(acl_list_el(AclList), NodeEl), Dict)
     end.
+
+-spec hunt_context(wh_proplist()) -> api_binary().
+hunt_context(Props) ->
+    props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
 %%%-------------------------------------------------------------------
 %% XML record creators and helpers

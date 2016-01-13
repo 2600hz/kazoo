@@ -260,7 +260,6 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = wh_json:from_list([{<<"Routes">>, []}
                                       ,{<<"Method">>, <<"park">>}
-                                      ,{<<"Context">>, hunt_context(Props)}
                                      ]),
             reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
@@ -279,22 +278,9 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
-            ToSet = [{<<"Context">>, hunt_context(Props)}] ++ remote_sdp(Props),
             maybe_wait_for_authz(Section, Node, FetchId, CallId
-                                 ,wh_json:set_values(ToSet, JObj)
-                                 ,Props
-                                )
-    end.
-
--spec hunt_context(wh_proplist()) -> api_binary().
-hunt_context(Props) ->
-    props:get_first_defined([<<"Hunt-Context">>, <<"Caller-Context">>], Props, ?DEFAULT_FREESWITCH_CONTEXT).
-
--spec remote_sdp(wh_proplist()) -> wh_proplist().
-remote_sdp(Props) ->
-    case props:get_value(<<"variable_switch_r_sdp">>, Props, <<>>) of
-        <<>> -> [];
-        RemoteSDP -> [{<<"Remote-SDP">>, RemoteSDP}]
+                                 , JObj
+                                 , Props)
     end.
 
 -spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
@@ -337,7 +323,7 @@ reply_forbidden(Section, Node, FetchId) ->
         {'error', Reason} -> lager:debug("node ~s rejected our ~s route unauthz: ~p", [Node, Section, Reason])
     end.
 
--spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+-spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
 reply_affirmative(Section, Node, FetchId, CallId, PreFetchJObj, Props) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
     JObj = wh_json:set_value(<<"Fetch-Section">>, wh_util:to_binary(Section), PreFetchJObj),
