@@ -171,13 +171,42 @@ If you have a non-US deployment, please consider sharing your system configurati
 
 ## How to Use Releases
 
-`make release` creates `relx.config` which [relx](//github.com/erlware/relx/wiki) uses to generate a standalone Erlang VM equipped with Kazoo.
+`make build-release` creates `re/relx.config` which [relx](//github.com/erlware/relx/wiki) uses to generate a standalone Erlang VM equipped with Kazoo.
+Two other files are used to declare configuration:
+    * `rel/vm.args`
+    * `rel/sys.config` (or `/etc/kazoo/app.config` when present)
 
-Once built, the VM can be started with `_rel/kazoo_whistle_apps/bin/kazoo_whistle_apps` and stopped like a normal Erlang VM.
+Once built, start a release in "attached mode":
+
+```
+$ make release
+# which is equivalent to
+$ make ACT=console REL=whistle_apps release
+```
+
+The following commands service the release:
+
+```
+$ make ACT=start REL=whistle_apps release
+```
+
+```
+$ make ACT=attach REL=whistle_apps release
+```
+
+```
+$ make ACT=stop REL=whistle_apps release
+```
+
+The release will be started with the `erl` option `-name $REL@$the-machine-hostname.tld`.
+
+Information on Erlang releases and live-updates:
+    * [LYSE's first chapter on releases](http://www.erlang.org/doc/design_principles/release_structure.html)
+    * [OTP's man page on releases](http://www.erlang.org/doc/design_principles/release_structure.html)
 
 ## Learn More
 
-* Join us at [KazooCon!](//kazoocon.com/)
+* Join us at [KazooCon!](http://kazoocon.com/)
 * Visit http://2600hz.org
 * Read more at http://wiki.2600hz.org
 * Bugs and feature requests http://tickets.2600hz.org

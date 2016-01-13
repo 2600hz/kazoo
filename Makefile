@@ -1,4 +1,5 @@
 ROOT = .
+RELX = $(ROOT)/utils/relx/relx
 
 KAZOODIRS = core/Makefile \
 	    applications/Makefile
@@ -7,7 +8,7 @@ MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS) core deps apps xref xref_release xref_releases dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-releases release kz releases rl
+.PHONY: $(MAKEDIRS) core deps apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-release build-release tar-release release
 
 all: compile
 
@@ -21,10 +22,6 @@ clean: ACTION = clean
 clean: $(MAKEDIRS)
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
-
-clean-releases:
-	$(if $(wildcard _rel/), rm -r _rel/)
-	$(if $(wildcard rel/relx.config), rm rel/relx.config)
 
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
@@ -50,26 +47,23 @@ apps:
 kazoo: core apps
 
 
-release: RELX ?= $(ROOT)/utils/relx/relx
-release: rel/relx.config
-	$(RELX) --config $< -V 2 release --relname kazoo
+clean-release:
+	$(if $(wildcard _rel/), rm -r _rel/)
+	$(if $(wildcard rel/relx.config), rm rel/relx.config)
+
+build-release: rel/relx.config
+	$(RELX) --config $< -V 2 release --relname 'kazoo'
+tar-release: rel/relx.config
+	$(RELX) --config $< -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
 
-## More at //relx/priv/templates/extended_bin
-kz: ACT ?= foreground # start attach stop console
-kz:
-	RELX_REPLACE_OS_VARS=true KZname=kazoo _rel/kazoo/bin/kazoo $(ACT) "$$@"
+## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
+release: ACT ?= console # start | attach | stop | console | foreground
+release: REL ?= whistle_apps # whistle_apps | ecallmgr
+release:
+	@RELX_REPLACE_OS_VARS=true KZname=$(REL) _rel/kazoo/bin/kazoo $(ACT) "$$@"
 
-releases: RELX ?= $(ROOT)/utils/relx/relx
-releases: rel/relx.config
-	$(RELX) --config $< -V 2 release --relname kazoo
-
-## More at //relx/priv/templates/extended_bin
-rl: ACT ?= foreground # start attach stop console
-rl: REL ?= kazoo
-rl:
-	RELX_REPLACE_OS_VARS=true KZname=$(REL) _rel/$(REL)/bin/$(REL) $(ACT) "$$@"
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
