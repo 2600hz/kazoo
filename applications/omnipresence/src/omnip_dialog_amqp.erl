@@ -352,10 +352,12 @@ maybe_send_update(User, Props) ->
 -spec send_update(binaries(), wh_proplist()) -> 'ok'.
 send_update([], _Props) -> 'ok';
 send_update(Stalkers, Props) ->
-    lager:debug("sending amqp dialog update state ~p for ~s/~s", [props:get_value(<<"State">>, Props)
-                                                                  ,props:get_value(<<"From-User">>, Props)
-                                                                  ,props:get_value(<<"To-User">>, Props)
-                                                                 ]),
+    lager:debug("sending amqp dialog update state ~p for ~s/~s to ~p",
+                  [props:get_value(<<"State">>, Props)
+                   ,props:get_value(<<"From-User">>, Props)
+                   ,props:get_value(<<"To-User">>, Props)
+                   ,Stalkers
+                  ]),
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),
     _ = [wh_amqp_worker:cast(Props
                              ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
