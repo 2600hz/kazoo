@@ -33,7 +33,7 @@ after_success:
   - make xref
   - make build-plt
   - git fetch origin master:master
-  - files="$(git diff --name-only master... | grep -v deps/)" || true
+  - files="$(git diff --name-only master... -- application/ core/)" || true
   - ./scripts/check-dialyzer.escript $files
   - make build-release
   - ERL_LIBS="$HOME/proper" make eunit
