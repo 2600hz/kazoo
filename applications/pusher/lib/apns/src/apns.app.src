@@ -3,10 +3,9 @@
   {description, ""},
   {vsn, "1.0.2"},
   {modules, []},
-  {applications, [
-                  kernel,
-                  stdlib,
-                  ssl
+  {applications, [ kernel
+                 , stdlib
+                 , ssl
                  ]},
   {mod, {apns, []}}
  ]}.
