@@ -27,8 +27,11 @@
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_StartType, _StartArgs) ->
-    io:format("starting app ~p ~p~n", [_StartType, _StartArgs]),
-    whistle_apps:start_link().
+    case application:get_env('reloader') of
+        {'ok', 'true'} -> reloader:start();
+        _ -> 'ok'
+    end,
+    whistle_apps_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -37,4 +40,5 @@ start(_StartType, _StartArgs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(any()) -> 'ok'.
-stop(_State) -> whistle_apps:stop().
+stop(_State) ->
+    exit(whereis('whistle_apps_sup'), 'shutdown').
