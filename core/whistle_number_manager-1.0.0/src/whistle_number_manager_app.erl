@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2013-2016, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(whistle_number_manager_app).
 
 -behaviour(application).
@@ -13,4 +22,4 @@ start(_StartType, _StartArgs) ->
     whistle_number_manager_sup:start_link().
 
 stop(_State) ->
-    'ok'.
+    exit(whereis('whistle_number_manager_sup'), 'shutdown').
