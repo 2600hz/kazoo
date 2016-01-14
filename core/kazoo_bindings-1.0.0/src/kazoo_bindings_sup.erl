@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,11 +20,14 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER(?ID)
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv', [[{'table_id', kazoo_bindings:table_id()}
-                                                       ,{'table_options', kazoo_bindings:table_options()}
-                                                       ,{'find_me_function', fun kazoo_bindings:find_me_function/0}
-                                                       ,{'gift_data', kazoo_bindings:gift_data()}
-                                                      ]])
+                   ,?WORKER_ARGS('kazoo_etsmgr_srv'
+                                ,[
+                                  [{'table_id', kazoo_bindings:table_id()}
+                                  ,{'table_options', kazoo_bindings:table_options()}
+                                  ,{'find_me_function', fun kazoo_bindings:find_me_function/0}
+                                  ,{'gift_data', kazoo_bindings:gift_data()}
+                                  ]
+                                 ])
                   ]).
 
 %% ===================================================================

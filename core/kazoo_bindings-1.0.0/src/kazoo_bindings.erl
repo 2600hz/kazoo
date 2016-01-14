@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
@@ -671,7 +671,7 @@ log_function_clause(M, F, Lenth, ST) ->
     lager:debug("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
     wh_util:log_stacktrace(ST).
 
--spec map_processor(ne_binary(), payload(), kz_bindings()) -> any().
+-spec map_processor(ne_binary(), payload(), kz_bindings()) -> list().
 map_processor(Routing, Payload, Bindings) when not is_list(Payload) ->
     map_processor(Routing, [Payload], Bindings);
 map_processor(Routing, Payload, Bindings) ->

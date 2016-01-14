@@ -6,6 +6,9 @@
   {registered, []},
   {applications, [ kernel
                  , stdlib
+                 , lager
+                 , whistle
+                 , kazoo_etsmgr
                  ]},
   {mod, {kazoo_bindings_app, []}}
  ]}.

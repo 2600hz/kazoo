@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -30,7 +30,6 @@ start(_Type, _Args) -> kazoo_bindings_sup:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(any()) -> 'true'.
 stop(_State) ->
-    _ = exit(whereis('kazoo_bindings_sup'), 'shutdown'),
-    'ok'.
+    _ = exit(whereis('kazoo_bindings_sup'), 'shutdown').
