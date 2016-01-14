@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Utilities shared by a subset of whapps
 %%% @end
@@ -158,9 +158,10 @@ get_master_account_id() ->
 find_master_account_id({'error', _}=E) -> E;
 find_master_account_id({'ok', []}) -> {'error', 'no_accounts'};
 find_master_account_id({'ok', Accounts}) ->
-    {'ok', OldestAccountId}=Ok = find_oldest_doc([wh_json:get_value(<<"doc">>, Account)
-                                                  || Account <- Accounts
-                                                 ]),
+    {'ok', OldestAccountId}=Ok =
+        find_oldest_doc([wh_json:get_value(<<"doc">>, Account)
+                         || Account <- Accounts
+                        ]),
     lager:debug("setting ~s.master_account_id to ~s", [?WH_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
     {'ok', _} = whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
     Ok.
@@ -221,9 +222,10 @@ find_oldest_doc([First|Docs]) ->
 get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
-    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>, [{'startkey', <<"account/">>}
-                                                       ,{'endkey', <<"account/\ufff0">>}
-                                                      ]),
+    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>
+                                          ,[{'startkey', <<"account/">>}
+                                            ,{'endkey', <<"account/\ufff0">>}
+                                           ]),
     [wh_util:format_account_id(Id, Encoding)
      || Db <- Dbs,
         is_account_db((Id = wh_doc:id(Db)))
@@ -231,7 +233,8 @@ get_all_accounts(Encoding) ->
 
 -spec get_all_accounts_and_mods() -> ne_binaries().
 -spec get_all_accounts_and_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().
-get_all_accounts_and_mods() -> get_all_accounts_and_mods(?REPLICATE_ENCODING).
+get_all_accounts_and_mods() ->
+    get_all_accounts_and_mods(?REPLICATE_ENCODING).
 
 get_all_accounts_and_mods(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
@@ -262,10 +265,15 @@ get_all_account_mods() ->
 
 get_all_account_mods(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
-    [wh_util:format_account_modb(Db, Encoding) || Db <- Databases, is_account_mod(Db)].
+    [wh_util:format_account_modb(Db, Encoding)
+     || Db <- Databases,
+        is_account_mod(Db)
+    ].
 
--spec get_account_mods(ne_binary()) -> ne_binaries().
--spec get_account_mods(ne_binary(), 'unencoded' | 'encoded' | 'raw') -> ne_binaries().
+-spec get_account_mods(ne_binary()) ->
+                              ne_binaries().
+-spec get_account_mods(ne_binary(), 'unencoded' | 'encoded' | 'raw') ->
+                              ne_binaries().
 get_account_mods(AccountId) ->
     get_account_mods(AccountId, ?REPLICATE_ENCODING).
 
@@ -318,8 +326,9 @@ get_account_by_ip(IP) ->
             {'ok', props:get_value(<<"Account-ID">>, AccountCCVs)}
     end.
 
--spec get_ccvs_by_ip(ne_binary()) -> {'ok', wh_proplist()} |
-                                     {'error', 'not_found'}.
+-spec get_ccvs_by_ip(ne_binary()) ->
+                            {'ok', wh_proplist()} |
+                            {'error', 'not_found'}.
 get_ccvs_by_ip(IP) ->
     case wh_cache:peek_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP)) of
         {'ok', {'error', 'not_found'}=E} -> E;
@@ -619,30 +628,22 @@ amqp_pool_collect(Api, PubFun, Until, Timeout) ->
 get_destination(JObj, Cat, Key) ->
     case whapps_config:get(Cat, Key, <<"Request">>) of
         <<"To">> ->
-            case try_split(<<"To">>, JObj) of
-                {_,_}=UserRealm -> UserRealm;
-                'undefined' ->
-                    case try_split(<<"Request">>, JObj) of
-                        {_,_}=UserRealm -> UserRealm;
-                        'undefined' ->
-                            {wh_json:get_value(<<"To-DID">>, JObj)
-                             ,wh_json:get_value(<<"To-Realm">>, JObj)
-                            }
-                    end
-            end;
-        _ ->
-            case try_split(<<"Request">>, JObj) of
-                {_,_}=UserRealm -> UserRealm;
-                'undefined' ->
-                    case try_split(<<"To">>, JObj) of
-                        {_,_}=UserRealm -> UserRealm;
-                        'undefined' ->
-                            {wh_json:get_value(<<"To-DID">>, JObj)
-                             ,wh_json:get_value(<<"To-Realm">>, JObj)
-                            }
-                    end
-            end
+            get_destination(JObj, [<<"To">>, <<"Request">>]);
+        _Else ->
+            get_destination(JObj, [<<"Request">>, <<"To">>])
     end.
+
+-spec get_destination(wh_json:object(), ne_binaries()) ->
+                             {ne_binary(), ne_binary()}.
+get_destination(JObj, [Key|Keys]) ->
+    case try_split(Key, JObj) of
+        {_,_}=UserRealm -> UserRealm;
+        'undefined' -> get_destination(JObj, Keys)
+    end;
+get_destination(JObj, []) ->
+    {wh_json:get_value(<<"To-DID">>, JObj)
+     ,wh_json:get_value(<<"To-Realm">>, JObj)
+    }.
 
 -spec try_split(api_binary()) ->
                        {ne_binary(), ne_binary()} |
