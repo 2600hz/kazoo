@@ -1,10 +1,15 @@
 {application, kazoo_oauth,
  [
   {description, "OAuth Utilities"},
-  {vsn, "1.0.0"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, []},
   {applications, [ kernel
                  , stdlib
+                 , public_key
+                 , ibrowse
+                 , lager
+                 , whistle
+                 , whistle_couch
                  ]}
  ]}.
