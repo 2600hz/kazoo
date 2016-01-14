@@ -1,12 +1,16 @@
 {application, kazoo_ips
  ,[
    {description, "Kazoo Dedicated IP Management"}
-   ,{vsn, "1.0.0"}
+   ,{vsn, "4.0.0"}
    ,{modules, []}
    ,{registered, []}
    ,{applications, [ kernel
                    , stdlib
                    , crypto
                    , sasl
+                   , lager
+                   , whistle
+                   , whistle_couch
+                   , whistle_services
                    ]}
  ]}.
