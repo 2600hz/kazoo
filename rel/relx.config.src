@@ -15,8 +15,8 @@ Base = [ {'++', Core}
        , {'++', Apps}
          %% skel Not a real app
        , {'--', [skel]}
-         %% Both whistle_apps and ecallmgr include apps: whistle_amqp, sasl, crypto
-       , {'--', [ecallmgr, whistle_apps]}
+         %% whistle_apps include apps: whistle_amqp, sasl, crypto
+       , {'--', [whistle_apps]}
 
        , {'++', Deps}
          %% Name is amqp_client, not rabbitmq_erlang_client
@@ -53,7 +53,7 @@ end ++
 , {vm_args, "rel/vm.args"}
 
 , {release, {kazoo,"4.0.0"}
-  , [whistle_apps, ecallmgr] ++ Based
+  , [whistle_apps] ++ Based
   }
 
 ].
