@@ -1,7 +1,7 @@
 {application, kazoo_caches,
  [
   {description, "Caches - Make sure system caches are available for system processes"},
-  {vsn, "0.0.1"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, []},
   {applications, [ kernel
