@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz
+%%% @copyright (C) 2015-2016, 2600Hz
 %%% @doc HTTP helper functions for Kazoo
 %%%
 %%% @contributors
@@ -7,13 +7,12 @@
 %%%-------------------------------------------------------------------
 -module(kz_http).
 
--export([
-    urldecode/1,
-    urlencode/1,
-    parse_query_string/1,
-    urlsplit/1,
-    urlunsplit/1
-]).
+-export([urldecode/1
+         ,urlencode/1
+         ,parse_query_string/1
+         ,urlsplit/1
+         ,urlunsplit/1
+        ]).
 
 %%--------------------------------------------------------------------
 %% @doc URL decodes a URL encoded string
@@ -259,4 +258,3 @@ urlunsplit({S, N, P, Q, F}) ->
     Uf = case F of <<>> -> <<>>; _ -> <<$#, F/binary>> end,
 
     <<Us/binary, N/binary, P/binary, Uq/binary, Uf/binary>>.
-

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz
+%%% @copyright (C) 2015-2016, 2600Hz
 %%% @doc HML helper functions for Kazoo
 %%%
 %%% @contributors
@@ -7,9 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_html).
 
--export([
-    escape/1
-]).
+-export([escape/1]).
 
 %%--------------------------------------------------------------------
 %% @doc Escapes an HTML string
@@ -33,4 +31,3 @@ escape(<<$&, R/binary>>, Acc) ->
 
 escape(<<H, R/binary>>, Acc) ->
     escape(R, <<Acc/binary, H>>).
-
