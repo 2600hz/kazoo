@@ -6,6 +6,7 @@
   {registered, []},
   {applications, [ kernel
                  , stdlib
+                 , whistle_couch
                  ]},
   {mod, {whistle_services_app, []}}
  ]}.
