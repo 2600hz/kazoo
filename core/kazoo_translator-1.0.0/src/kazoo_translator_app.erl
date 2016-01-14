@@ -14,5 +14,6 @@
 start(_StartType, _StartArgs) ->
     kazoo_translator_sup:start_link().
 
--spec stop(any()) -> 'ok'.
-stop(_State) -> 'ok'.
+-spec stop(any()) -> 'true'.
+stop(_State) ->
+    exit(whereis('kazoo_translator_sup'), 'shutdown').
