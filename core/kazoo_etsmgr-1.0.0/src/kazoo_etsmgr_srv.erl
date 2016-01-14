@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%% Manage the ETS table separate from the main process to use the ETS table
 %%% Protects against the main writer dying
@@ -36,15 +36,14 @@
 -define(SERVER, ?MODULE).
 -define(TABLE_DATA, 0).
 
--type start_args() :: [{'table_id', atom()} |
-                       {'table_options', list()} |
-                       {'gift_data', any()} |
-                       {'find_me_function', find_me_fun()}
-                       ,...
-                      ].
+-type start_arg() :: {'table_id', atom()} |
+                     {'table_options', list()} |
+                     {'gift_data', any()} |
+                     {'find_me_function', find_me_fun()}.
+-type start_args() :: [start_arg()].
 
 -type find_me_fun() :: fun(() -> pid()).
--export_type([start_args/0
+-export_type([start_arg/0, start_args/0
               ,find_me_fun/0
              ]).
 
@@ -76,6 +75,7 @@ start_link(Name, Opts) ->
     'true' = valid_options(Opts),
     gen_server:start_link({'local', Name}, ?MODULE, [Opts], []).
 
+-spec valid_options(start_args()) -> boolean().
 valid_options(Opts) ->
     (TID = props:get_value('table_id', Opts)) =/= 'undefined'
         andalso is_atom(TID)
