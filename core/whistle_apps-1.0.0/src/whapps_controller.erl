@@ -69,24 +69,21 @@ restart_app(App) when is_atom(App) ->
     start_app(App).
 
 -define(HIDDEN_APPS
-        ,['amqp_client','asn1'
-          ,'cowboy','cowlib','crypto'
+        ,['amqp_client','apn','asn1'
+          ,'compiler','cowboy','cowlib','couchbeam','crypto'
           ,'folsom'
-          ,'gproc'
+          ,'gcm','goldrush','gproc'
           ,'ibrowse','inets'
           ,'kazoo_bindings','kazoo_caches','kazoo_token_buckets','kernel'
           ,'lager'
           ,'nksip'
           ,'public_key'
-          ,'ranch'
-          ,'sasl','socketio','ssl','stdlib','syslog'
+          ,'rabbit_common','ranch'
+          ,'sasl','socketio','ssl','stdlib','syntax_tools','syslog'
           ,'webseq'
-          ,'whistle_amqp','whistle_apps','whistle_couch'
-          ,'whistle_stats','whistle_config'
-          ,'escalus','exml','couchbeam'
+          ,'whistle_amqp','whistle_apps','whistle_config','whistle_couch'
+          ,'whistle_services','whistle_stats'
           ,'xmerl'
-          ,'goldrush'
-          ,'compiler', 'syntax_tools'
          ]).
 
 -spec running_apps() -> atoms() | string().
