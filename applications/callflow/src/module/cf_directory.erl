@@ -155,6 +155,9 @@ collect_digits(Call, State, CurrUsers, DTMF) ->
 	{'ok', <<>>} ->
 	    whapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
 	    directory_start(Call, State, CurrUsers);
+        {'ok', <<"0">>} ->
+            lager:info("caller chose to return to the main menu"),
+            cf_exe:continue(Call);
 	{'ok', DTMFS} ->
 	    maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
     end.
