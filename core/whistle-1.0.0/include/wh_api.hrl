@@ -59,7 +59,7 @@
                          ]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
                                    ,<<"Geo-Location">>, <<"Access-Group">>
-                                   ,<<"Tenant-ID">>, ?KEY_NODE, ?KEY_SERVER_ID
+                                   ,?KEY_NODE, ?KEY_SERVER_ID
                                    ,<<"Defer-Response">>
                                   ]).
 -define(DEFAULT_VALUES, [{?KEY_NODE, wh_util:to_binary(node())}
