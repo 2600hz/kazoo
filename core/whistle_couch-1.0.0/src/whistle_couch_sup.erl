@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz, INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -22,7 +22,8 @@
                       ,'channel_reconnect_flush'
                      ]).
 
--define(CHILDREN, [?CACHE_ARGS(?WH_COUCH_CACHE, ?CACHE_PROPS)
+-define(CHILDREN, [?WORKER('whistle_couch_init')
+                   ,?CACHE_ARGS(?WH_COUCH_CACHE, ?CACHE_PROPS)
                    ,?SUPER('wh_couch_connection_sup')
                    ,?SUPER('wh_change_handler_sup')
                    ,?WORKER('wh_couch_connections')

@@ -2,9 +2,9 @@
  [
    {description, "Simplified interface to CouchDB"}
   ,{id, "14f7c3cd-06f0-40a8-b750-2fda4cb06ea7"}
-  ,{vsn, "1.0.0"}
+  ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, [couch_mgr]}
+  ,{registered, [couch_mgr, couch_compactor_fsm]}
   ,{applications, [ kernel
                   , stdlib
                   , sasl
@@ -12,6 +12,7 @@
                   , public_key
                   , ibrowse
                   , couchbeam
+                  , lager
                   , whistle_amqp
                   ]}
   ,{mod, {whistle_couch_app, []}}

@@ -19,7 +19,7 @@
 -spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> whistle_couch:start_link().
+start(_StartType, _StartArgs) -> whistle_couch_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -27,5 +27,6 @@ start(_StartType, _StartArgs) -> whistle_couch:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> whistle_couch:stop().
+-spec stop(any()) -> 'true'.
+stop(_State) ->
+    exit(whereis('whistle_couch_sup'), 'shutdown').
