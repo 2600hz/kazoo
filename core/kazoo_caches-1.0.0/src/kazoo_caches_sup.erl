@@ -20,7 +20,8 @@
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
+-define(CHILDREN, [?WORKER('kazoo_caches_init')
+                   ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
                    ,?CACHE(?WHAPPS_CALL_CACHE)
                   ]).
 

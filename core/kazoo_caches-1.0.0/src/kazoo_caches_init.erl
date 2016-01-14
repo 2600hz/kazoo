@@ -5,32 +5,29 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(kazoo_caches_app).
-
--behaviour(application).
+-module(kazoo_caches_init).
 
 -include_lib("whistle/include/wh_types.hrl").
 
--export([start/2, stop/1]).
+-export([start_link/0]).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Implement the application start behaviour
+%% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_Type, _Args) ->
-    kazoo_caches_sup:start_link().
+-spec start_link() -> startlink_ret().
+start_link() ->
+    _ = declare_exchanges(),
+    'ignore'.
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
-%% Implement the application stop behaviour
+%% Ensures that all exchanges used are declared
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'true'.
-stop(_State) ->
-    exit(whereis('kazoo_caches_sup'), 'shutdown').
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    wapi_self:declare_exchanges().
