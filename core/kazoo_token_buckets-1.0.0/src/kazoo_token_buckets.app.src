@@ -1,13 +1,16 @@
 {application, kazoo_token_buckets,
  [
   {description, "Token Buckets - Throttling mechanism"},
-  {vsn, "1.0.0"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, []},
   {applications, [ kernel
                  , stdlib
                  , crypto
                  , lager
+                 , whistle
+                 , kazoo_etsmgr
+                 , whistle_config
                  ]},
   {mod, {kazoo_token_buckets_app, []}}
  ]}.

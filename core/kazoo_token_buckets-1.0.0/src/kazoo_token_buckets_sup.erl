@@ -19,11 +19,14 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?SUPER('kz_buckets_sup')
                    ,?WORKER('kz_buckets')
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv', [[{'table_id', kz_buckets:table_id()}
-                                                       ,{'table_options', kz_buckets:table_options()}
-                                                       ,{'find_me_function', fun ?MODULE:buckets_srv/0}
-                                                       ,{'gift_data', kz_buckets:gift_data()}
-                                                     ]])
+                   ,?WORKER_ARGS('kazoo_etsmgr_srv'
+                                ,[
+                                  [{'table_id', kz_buckets:table_id()}
+                                  ,{'table_options', kz_buckets:table_options()}
+                                  ,{'find_me_function', fun ?MODULE:buckets_srv/0}
+                                  ,{'gift_data', kz_buckets:gift_data()}
+                                  ]
+                                 ])
                   ]).
 
 %% ===================================================================

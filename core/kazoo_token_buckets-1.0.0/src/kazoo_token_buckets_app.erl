@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -22,7 +22,7 @@
 -spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_Type, _Args) -> kazoo_token_buckets:start_link().
+start(_Type, _Args) -> kazoo_token_buckets_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -30,5 +30,6 @@ start(_Type, _Args) -> kazoo_token_buckets:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> kazoo_token_buckets:stop().
+-spec stop(any()) -> 'true'.
+stop(_State) ->
+    exit(whereis('kazoo_token_buckets_sup'), 'shutdown').
