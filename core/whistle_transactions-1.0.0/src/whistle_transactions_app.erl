@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -21,12 +21,7 @@
 %%--------------------------------------------------------------------
 -spec start(_, _) -> {'ok', pid()} | {'error', startlink_err()}.
 start(_Type, _Args) ->
-    %% TODO: just return ..._sup:start_link().
-    case whistle_transactions_sup:start_link() of
-        {'ok', P} -> {'ok', P};
-        {'error', {'already_started', P} } -> {'ok', P};
-        {'error', _}=E -> E
-    end.
+    whistle_transactions_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,6 +29,6 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(_) -> 'ok'.
+-spec stop(_) -> 'true'.
 stop(_State) ->
-    'ok'.
+    exit(whereis('whistle_transactions_sup'), 'shutdown').
