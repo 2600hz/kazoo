@@ -54,19 +54,9 @@ stop() ->
 %%--------------------------------------------------------------------
 -spec start_deps() -> 'ok'.
 start_deps() ->
-    whistle_apps_deps:ensure(),
+    application:ensure_all_started(?MODULE),
     case application:get_env('reloader') of
         {'ok', 'true'} -> reloader:start();
         _ -> 'ok'
     end,
-    _ = [wh_util:ensure_started(A) || A <- ['sasl'
-                                            ,'crypto'
-                                            ,'gproc'
-                                            ,'lager'
-                                            ,'whistle_config'
-                                            ,'kazoo_caches'
-                                            ,'kazoo_token_buckets'
-                                            ,'whistle_amqp'
-                                            ,'whistle_couch'
-                                           ]],
     'ok'.
