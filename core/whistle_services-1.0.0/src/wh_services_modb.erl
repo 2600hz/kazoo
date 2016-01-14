@@ -15,7 +15,8 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    kazoo_modb:add_routine(?MODULE),
+    _Pid = spawn('kazoo_modb', 'add_routine', [?MODULE]),
+    io:format("started add_rountine in ~p~n", [_Pid]),
     'ignore'.
 
 -spec modb(ne_binary()) -> 'ok'.

@@ -75,10 +75,14 @@ clean(Account) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
+    io:format("getting ~s sync_services~n", [?WHS_CONFIG_CAT]),
     case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, 'false') of
-        'false' -> {'ok', #state{}};
+        'false' ->
+            io:format("not starting sync services~n"),
+            {'ok', #state{}};
         'true' ->
             _Ref = start_sync_service_timer(),
+            io:format("started sync services ~p", [_Ref]),
             {'ok', #state{}}
     end.
 
