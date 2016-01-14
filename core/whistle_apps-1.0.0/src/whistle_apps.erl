@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014 2600Hz, INC
+%%% @copyright (C) 2011-2016 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -8,6 +8,7 @@
 -module(whistle_apps).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -export([start_link/0
          ,start/0
@@ -22,7 +23,9 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
+    io:format("starting deps~n"),
     _ = start_deps(),
+    io:format("starting supervisor~n"),
     whistle_apps_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -33,6 +36,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec start() -> 'ok' | {'error', any()}.
 start() ->
+    io:format("starting application ~s~n", [?MODULE]),
     application:start(?MODULE).
 
 %%--------------------------------------------------------------------
@@ -54,7 +58,9 @@ stop() ->
 %%--------------------------------------------------------------------
 -spec start_deps() -> 'ok'.
 start_deps() ->
+    io:format("ensuring all started~n"),
     application:ensure_all_started(?MODULE),
+    io:format("checkint env for reloader~n"),
     case application:get_env('reloader') of
         {'ok', 'true'} -> reloader:start();
         _ -> 'ok'

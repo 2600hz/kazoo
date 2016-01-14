@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2016, 2600hz INC
 %%% @doc
 %%%
 %%% @end
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whistle_apps_app).
 
@@ -25,7 +26,9 @@
 -spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> whistle_apps:start_link().
+start(_StartType, _StartArgs) ->
+    io:format("starting app ~p ~p~n", [_StartType, _StartArgs]),
+    whistle_apps:start_link().
 
 %%--------------------------------------------------------------------
 %% @public

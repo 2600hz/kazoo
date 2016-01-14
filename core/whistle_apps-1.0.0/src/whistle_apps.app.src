@@ -9,6 +9,7 @@
                   , stdlib
                   , sasl
                   , crypto
+                  , lager
                   , ibrowse
                   , whistle_amqp
                   , whistle_couch
