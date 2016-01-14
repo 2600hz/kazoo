@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2016, 2600hz, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%% Jon Blanton <jon@2600hz.com>
+%%%   Jon Blanton <jon@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(whistle_stats_app).
 
@@ -20,14 +20,11 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start/2 :: (_, _) -> {'ok', pid()} | {'error', startlink_err()}.
+-spec start(_, _) ->
+                   {'ok', pid()} |
+                   {'error', startlink_err()}.
 start(_Type, _Args) ->
-    %% TODO: just return ..._sup:start_link().
-    case whistle_stats_sup:start_link() of
-        {ok, P} -> {ok, P};
-        {error, {already_started, P} } -> {ok, P};
-        {error, _}=E -> E
-    end.
+    whistle_stats_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,6 +32,6 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop/1 :: (_) -> 'ok'.
+-spec stop(_) -> 'true'.
 stop(_State) ->
-    ok.
+    exit(whereis('whistle_stats_sup'), 'shutdown').
