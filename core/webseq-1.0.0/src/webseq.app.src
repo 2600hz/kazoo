@@ -1,12 +1,16 @@
 {application, webseq,
  [ {description, "Web Sequence Diagram Builder"}
- , {vsn, "1.0.0"}
+ , {vsn, "4.0.0"}
  , {modules, []}
  , {registered, []}
  , {applications, [ kernel
                   , stdlib
                   , crypto
                   , sasl
+                  , gproc
+                  , lager
+                  , whistle
+                  , whistle_couch
                   ]}
  , {mod, {webseq_app, []}}
  ]}.
