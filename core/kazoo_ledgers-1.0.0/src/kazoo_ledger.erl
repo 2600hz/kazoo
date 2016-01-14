@@ -1,23 +1,22 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600HZ, INC
+%%% @copyright (C) 2011-2016, 2600HZ, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%% Peter Defebvre
+%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(kazoo_ledger).
 
 -include("kzl.hrl").
 
--export([
-    new/0, save/1
-    ,name/1, set_name/2
-    ,amount/1, set_amount/2
-    ,description/1, set_description/2
-    ,account/1, set_account/2
-    ,type/1, set_type/2
-]).
+-export([new/0, save/1
+         ,name/1, set_name/2
+         ,amount/1, set_amount/2
+         ,description/1, set_description/2
+         ,account/1, set_account/2
+         ,type/1, set_type/2
+        ]).
 
 -export([from_json/1, to_json/1, to_public_json/1]).
 
@@ -36,7 +35,9 @@ new() -> #kz_ledger{}.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(ledger()) -> {'ok', ledger()} | {'error', any()}.
+-spec save(ledger()) ->
+                  {'ok', ledger()} |
+                  {'error', any()}.
 save(Ledger) ->
     JObj = to_json(Ledger),
     AccountId = account(Ledger),
@@ -118,13 +119,12 @@ set_type(L, Type) ->
 %%--------------------------------------------------------------------
 -spec from_json(wh_json:object()) -> ledger().
 from_json(JObj) ->
-    #kz_ledger{
-        name=wh_json:get_value(?PVT_NAME, JObj)
-        ,amount=wh_json:get_value(?PVT_AMOUNT, JObj)
-        ,description=wh_json:get_value(?PVT_DESC, JObj)
-        ,account=wh_json:get_value(?PVT_ACCOUNT, JObj)
-        ,type=wh_json:get_value(?PVT_LEDGER_TYPE, JObj)
-    }.
+    #kz_ledger{name=wh_json:get_value(?PVT_NAME, JObj)
+              ,amount=wh_json:get_value(?PVT_AMOUNT, JObj)
+              ,description=wh_json:get_value(?PVT_DESC, JObj)
+              ,account=wh_json:get_value(?PVT_ACCOUNT, JObj)
+              ,type=wh_json:get_value(?PVT_LEDGER_TYPE, JObj)
+              }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,17 +134,17 @@ from_json(JObj) ->
 -spec to_json(ledger()) -> wh_json:object().
 to_json(Ledger) ->
     wh_json:from_list(
-        props:filter_undefined([
-            {?PVT_NAME, name(Ledger)}
-            ,{?PVT_AMOUNT, amount(Ledger)}
-            ,{?PVT_DESC, description(Ledger)}
-            ,{?PVT_ACCOUNT, account(Ledger)}
-            ,{?PVT_LEDGER_TYPE, type(Ledger)}
-            ,{?PVT_TYPE, ?LEDGER_TYPE}
-            ,{?PVT_CREATED, wh_util:current_tstamp()}
-            ,{?PVT_UPDATED, wh_util:current_tstamp()}
+      props:filter_undefined(
+        [{?PVT_NAME, name(Ledger)}
+         ,{?PVT_AMOUNT, amount(Ledger)}
+         ,{?PVT_DESC, description(Ledger)}
+         ,{?PVT_ACCOUNT, account(Ledger)}
+         ,{?PVT_LEDGER_TYPE, type(Ledger)}
+         ,{?PVT_TYPE, ?LEDGER_TYPE}
+         ,{?PVT_CREATED, wh_util:current_tstamp()}
+         ,{?PVT_UPDATED, wh_util:current_tstamp()}
         ])
-    ).
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -154,11 +154,11 @@ to_json(Ledger) ->
 -spec to_public_json(ledger()) -> wh_json:object().
 to_public_json(Ledger) ->
     wh_json:from_list(
-        props:filter_undefined([
-            {<<"name">>, name(Ledger)}
-            ,{<<"amount">>, amount(Ledger)}
-            ,{<<"description">>, description(Ledger)}
-            ,{<<"account_id">>, account(Ledger)}
-            ,{<<"type">>, type(Ledger)}
+      props:filter_undefined(
+        [{<<"name">>, name(Ledger)}
+         ,{<<"amount">>, amount(Ledger)}
+         ,{<<"description">>, description(Ledger)}
+         ,{<<"account_id">>, account(Ledger)}
+         ,{<<"type">>, type(Ledger)}
         ])
-    ).
+     ).
