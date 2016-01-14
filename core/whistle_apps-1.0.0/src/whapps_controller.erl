@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -39,14 +39,17 @@ start_link() ->
 start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_WHAPPS].
 
--spec start_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
+-spec start_app(atom() | nonempty_string() | ne_binary()) ->
+                       'ok' |
+                       {'error', any()}.
 start_app(App) when not is_atom(App) ->
     start_app(wh_util:to_atom(App, 'true'));
 start_app(App) when is_atom(App) ->
     wh_util:ensure_started(App).
 
 -spec stop_app(atom() | nonempty_string() | ne_binary()) ->
-                      'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+                      'ok' |
+                      {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 stop_app(App) when not is_atom(App) ->
     stop_app(wh_util:to_atom(App));
 stop_app(App) ->
@@ -60,7 +63,8 @@ stop_app(App) ->
     end.
 
 -spec restart_app(atom() | nonempty_string() | ne_binary()) ->
-                         'ok' | {'error', any()}.
+                         'ok' |
+                         {'error', any()}.
 restart_app(App) when not is_atom(App) ->
     restart_app(wh_util:to_atom(App, 'true'));
 restart_app(App) when is_atom(App) ->
@@ -99,24 +103,26 @@ running_apps(Verbose) ->
 
 -spec running_apps_verbose() -> atoms() | string().
 running_apps_verbose() ->
-    case [wh_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
-          || {App, Desc, Vsn} <- application:which_applications(),
-             not lists:member(App, ?HIDDEN_APPS)
-         ]
-    of
+    case get_running_apps() of
         [] -> "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
-        Resp -> Resp
+        Resp ->
+            [wh_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
+             || {App, Desc, Vsn} <- Resp
+            ]
     end.
+
+-spec get_running_apps() -> [{atom(), string(), _}].
+get_running_apps() ->
+    [AppData
+     || {App, _Desc, _Vsn}=AppData <- application:which_applications(),
+        not lists:member(App, ?HIDDEN_APPS)
+    ].
 
 -spec running_apps_list() -> atoms() | string().
 running_apps_list() ->
-    case [App
-          || {App, _, _} <- application:which_applications(),
-             not lists:member(App, ?HIDDEN_APPS)
-         ]
-    of
+    case get_running_apps() of
         [] -> "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
-        Resp -> Resp
+        Resp -> [App || {App, _Desc, _Vsn} <- Resp]
     end.
 
 -spec initialize_whapps() -> 'ok'.
@@ -134,15 +140,11 @@ initialize_whapps() ->
 
 -spec list_apps() -> atoms().
 list_apps() ->
-    case [App
-          || {App, _, _} <- application:which_applications(),
-             not lists:member(App, ?HIDDEN_APPS)
-         ]
-    of
+    case get_running_apps() of
         [] ->
             WhApps = whapps_config:get(?MODULE, <<"whapps">>, ?DEFAULT_WHAPPS),
             [wh_util:to_atom(WhApp, 'true') || WhApp <- WhApps];
-        Resp -> Resp
+        Resp -> [App || {App, _, _} <- Resp]
     end.
 
 %%%===================================================================
