@@ -1,11 +1,20 @@
 {application, whistle_media,
  [
   {description, "Whistle Media provides support for generating media URLs as well as proxing media files"},
-  {vsn, "1"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, []},
   {applications, [ kernel
                  , stdlib
+                 , crypto
+                 , cowboy
+                 , lager
+                 , whistle
+                 , whistle_amqp
+                 , whistle_couch
+                 , whistle_config
+                 , kazoo_documents
+                 , kazoo_modb
                  ]},
   {mod, {whistle_media_app, []}}
  ]}.

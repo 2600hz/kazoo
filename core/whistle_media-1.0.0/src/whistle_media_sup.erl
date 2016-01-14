@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -16,11 +16,14 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('media_mgr_cache')
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv', [[{'table_id', wh_media_map:table_id()}
-                                                       ,{'table_options', wh_media_map:table_options()}
-                                                       ,{'find_me_function', fun wh_media_map:find_me_function/0}
-                                                       ,{'gift_data', wh_media_map:gift_data()}
-                                                      ]])
+                   ,?WORKER_ARGS('kazoo_etsmgr_srv'
+                                ,[
+                                  [{'table_id', wh_media_map:table_id()}
+                                  ,{'table_options', wh_media_map:table_options()}
+                                  ,{'find_me_function', fun wh_media_map:find_me_function/0}
+                                  ,{'gift_data', wh_media_map:gift_data()}
+                                  ]
+                                 ])
                    ,?WORKER('wh_media_map')
                    ,?SUPER('wh_media_cache_sup')
                    ,?WORKER('wh_media_proxy')

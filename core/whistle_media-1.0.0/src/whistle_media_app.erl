@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -23,12 +23,7 @@
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_Type, _Args) ->
-    %% TODO: just return ..._sup:start_link().
-    case whistle_media_sup:start_link() of
-        {'ok', P} -> {'ok', P};
-        {'error', {'already_started', P} } -> {'ok', P};
-        {'error', _}=E -> E
-    end.
+    whistle_media_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -36,7 +31,7 @@ start(_Type, _Args) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(any()) -> 'true'.
 stop(_State) ->
     wh_media_proxy:stop(),
-    'ok'.
+    exit(whereis('whistle_media_sup'), 'shutdown').

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013 2600Hz INC
+%%% @copyright (C) 2010-2016 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -17,10 +17,6 @@
 -spec start_link() -> 'ignore'.
 start_link() ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
-
-    _ = application:start('crypto'),
-    _ = application:start('ranch'),
-    _ = application:start('cowboy'),
 
     Dispatch = cowboy_router:compile([
                                       {'_', [{<<"/store/[...]">>, 'wh_media_store_proxy', []}
