@@ -11,10 +11,12 @@
                   , crypto
                   , lager
                   , ibrowse
+                  , whistle
                   , whistle_amqp
                   , whistle_couch
                   , whistle_config
                   , whistle_services
+                  , kazoo_documents
                   ]}
   ,{mod, {whistle_apps_app, []}}
   ,{env, [{reloader, false}]} % set to true to enable reloader
