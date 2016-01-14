@@ -35,6 +35,6 @@ start(_StartType, _StartArgs) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(any()) -> 'true'.
 stop(_State) ->
     exit(whereis('whistle_config_sup'), 'shutdown').

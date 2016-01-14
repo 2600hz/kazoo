@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -45,8 +45,10 @@
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_string(config_category(), config_key()) -> api_string().
--spec get_string(config_category(), config_key(), Default) -> nonempty_string() | Default.
--spec get_string(config_category(), config_key(), Default, ne_binary()) -> nonempty_string() | Default.
+-spec get_string(config_category(), config_key(), Default) ->
+                        nonempty_string() | Default.
+-spec get_string(config_category(), config_key(), Default, ne_binary()) ->
+                        nonempty_string() | Default.
 get_string(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
