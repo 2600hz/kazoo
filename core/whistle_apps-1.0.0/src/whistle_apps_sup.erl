@@ -29,10 +29,8 @@
 -define(CHILDREN, [?CACHE_ARGS(?WHAPPS_GETBY_CACHE, ?CACHE_GETBY_PROPS)
                    ,?WORKER('wh_nodes')
                    ,?WORKER('wh_hooks_listener')
-                   ,?WORKER('wh_cache')
                    ,?WORKER('whistle_apps_init')
                    ,?WORKER('whapps_controller')
-                   ,?SUPER('whistle_services_sup')
                   ]).
 
 %% ===================================================================
