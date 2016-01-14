@@ -74,11 +74,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
+    wh_util:spawn(fun load_schedules/0),
     %% we should wait about 7-10 seconds before gen_leader syncronization
     %% and leader election
     %% after gen_leader syncronization this task will be scheduled only once
-    leader_cron:schedule_task('load_schedules', {'oneshot', 60000}
-                             ,{'gen_listener', 'cast', [?MODULE, 'load_schedules']}),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -292,3 +291,9 @@ time_tokens_to_binary(Tokens) when is_list(Tokens) ->
 -spec unknown_type(api_binary()) -> 'ok'.
 unknown_type(Type) ->
     lager:warning("no function for type ~p", [Type]).
+
+load_schedules() ->
+    timer:sleep(60 * ?MILLISECONDS_IN_SECOND),
+    leader_cron:schedule_task('load_schedules', {'oneshot', 60000}
+                             ,{'gen_listener', 'cast', [?MODULE, 'load_schedules']}),
+    'normal'.
