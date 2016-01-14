@@ -10,9 +10,9 @@
                   , sasl
                   , crypto
                   , ibrowse
-                  , whistle_config
                   , whistle_amqp
                   , whistle_couch
+                  , whistle_config
                   , whistle_services
                   ]}
   ,{mod, {whistle_apps_app, []}}
