@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whistle_config_app).
 
@@ -25,7 +26,8 @@
 -spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> whistle_config:start_link().
+start(_StartType, _StartArgs) ->
+    whistle_config_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,4 +36,5 @@ start(_StartType, _StartArgs) -> whistle_config:start_link().
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(any()) -> 'ok'.
-stop(_State) -> whistle_config:stop().
+stop(_State) ->
+    exit(whereis('whistle_config_sup'), 'shutdown').

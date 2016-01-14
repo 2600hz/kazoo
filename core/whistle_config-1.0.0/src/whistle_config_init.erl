@@ -5,14 +5,11 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(whistle_config).
+-module(whistle_config_init).
 
 -include("whistle_config.hrl").
 
--export([start_link/0
-         ,start/0
-         ,stop/0
-        ]).
+-export([start_link/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -22,30 +19,8 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    _ = start_deps(),
-    io:format("starting ~s sup", [?MODULE]),
-    whistle_config_sup:start_link().
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Starts the application
-%% @end
-%%--------------------------------------------------------------------
--spec start() -> 'ok' | {'error', any()}.
-start() ->
-    application:start(?MODULE).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Stop the app
-%% @end
-%%--------------------------------------------------------------------
--spec stop() -> 'ok'.
-stop() ->
-    exit(whereis('whistle_config_sup'), 'shutdown'),
-    'ok'.
+    spawn(fun set_env/0),
+    'ignore'.
 
 ini_file() ->
     case os:getenv(?CONFIG_FILE_ENV) of
@@ -74,17 +49,4 @@ load_file(File) ->
 set_env() ->
    {'ok', X} = load_file(ini_file()),
     lager:debug("spawning setting of config env for ~p", [X]),
-    spawn('application', 'set_env', ['whistle_config', 'wh_config', X]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Ensures that all dependencies for this app are already running
-%% @end
-%%--------------------------------------------------------------------
--spec start_deps() -> 'ok'.
-start_deps() ->
-    io:format("setting env~n"),
-    _Set = set_env(),
-    io:format("set ~p~nensuring all started for ~s~n", [_Set, ?MODULE]),
-    application:ensure_all_started(?MODULE).
+    application:set_env('whistle_config', 'wh_config', X).

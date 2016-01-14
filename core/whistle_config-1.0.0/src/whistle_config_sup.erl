@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -15,8 +15,7 @@
 
 -include("whistle_config.hrl").
 
-
--define(CHILDREN, []).
+-define(CHILDREN, [?WORKER('whistle_config_init')]).
 
 %% ===================================================================
 %% API functions

@@ -5,11 +5,7 @@
  , {registered, []}
  , {applications, [ kernel
                   , stdlib
-                  , crypto
-                  , sasl
-                    %% , gproc
-                    %% , lager
-                    %% , whistle_couch
+                  , whistle_couch
                   ]}
  , {mod, {whistle_config_app, []}}
  ]}.
