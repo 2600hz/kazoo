@@ -21,10 +21,6 @@
 %%--------------------------------------------------------------------
 -spec start(_, _) -> {'ok', pid()} | {'error', startlink_err()}.
 start(_Type, _Args) ->
-    %% TODO: just return ..._sup:start_link().
-    io:format("ensure whistle_services deps started~n"),
-    application:ensure_all_started('whistle_services'),
-    io:format("ensure whistle_services sup started~n"),
     whistle_services_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -35,4 +31,4 @@ start(_Type, _Args) ->
 %%--------------------------------------------------------------------
 -spec stop(_) -> 'ok'.
 stop(_State) ->
-    'ok'.
+    exit(whereis('whistle_services_sup'), 'shutdown').
