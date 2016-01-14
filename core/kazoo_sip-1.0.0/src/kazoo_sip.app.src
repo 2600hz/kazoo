@@ -1,10 +1,13 @@
 {application, kazoo_sip,
  [
-  {description, "SIP Utilities"},
-  {vsn, "1.0.0"},
+  {description, "Kazoo SIP Utilities"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, []},
   {applications, [ kernel
                  , stdlib
+                 , lager
+                 , whistle
+                 , whistle_number_manager
                  ]}
  ]}.
