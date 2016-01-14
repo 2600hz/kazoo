@@ -32,7 +32,7 @@ Base = [ {'++', Core}
                 end}
        ],
 LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
-Based = lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) ),
+Based = [{A, 'load'} || A <- lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) )],
 
 Config = "/etc/kazoo/app.config", %% SHOULD rename app.config to sys.config as OTP prefers it.
 case filelib:is_regular(Config) of
