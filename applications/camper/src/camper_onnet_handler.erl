@@ -25,6 +25,8 @@
 -include("camper.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RINGING_TIMEOUT, 30).
 
 -record('state', {'requests' :: dict:dict()
@@ -70,15 +72,11 @@ available_device(AccountId, SIPName) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
