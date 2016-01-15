@@ -106,7 +106,6 @@ curl -x GET \
 }
 ```
 
-
 #### Debit an account
 
 Only for super duper admins and resellers.
