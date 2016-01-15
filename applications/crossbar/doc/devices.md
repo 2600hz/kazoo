@@ -368,6 +368,9 @@ Key | Type | Description
 `media` | `string('bypass', 'process')` | Toggle whether to go peer-to-peer([bypass](https://freeswitch.org/confluence/display/FREESWITCH/Bypass+Media+Overview) with the RTP
 `number_filter` | `boolean()`, `regex()` | If true, remove non-alphanumeric characters. If a regex, use the first capture group as the "number" to dial.
 `timeout` | `integer(3..)` | In seconds, how long to ring the device(s) (defaults to 30)
+=======
+#### Presence / BLF
+>>>>>>> slate: indent headings to conform to template
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
 

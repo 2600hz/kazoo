@@ -1,5 +1,4 @@
 
-
 ### Working with reverse proxies (HAProxy, Nginx, etc)
 
 #### Configuring list allowed proxies
