@@ -9,9 +9,14 @@
                  , crypto
                  , inets
                  , lager
+                 , gproc
+                 , ibrowse
+                 , whistle
                  , whistle_amqp
                  , whistle_couch
+                 , kazoo_modb
                  , whistle_apps
+                 , webseq
                  ]},
   {mod, {acdc_app, []}}
  ]}.
