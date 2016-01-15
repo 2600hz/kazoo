@@ -26,6 +26,8 @@
 
 -include("callflow.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {call :: whapps_call:call()}).
 -type state() :: #state{}.
 
@@ -47,13 +49,11 @@
 -define(CONSUME_OPTIONS, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the listener and binds to the call channel destroy events
-%% @end
+%% @doc Starts the listener and binds to the call channel destroy events
 %%--------------------------------------------------------------------
 -spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include

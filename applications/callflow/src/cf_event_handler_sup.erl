@@ -12,6 +12,8 @@
 
 -include("callflow.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([new/3]).
@@ -20,29 +22,25 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("callflow.hrl").
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec new(any(), atom(), list()) -> sup_startchild_ret().
 new(Name, M, A) ->
-    supervisor:start_child(?MODULE, ?WORKER_NAME_ARGS_TYPE(Name, M, A, 'temporary')).
+    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(Name, M, A, 'temporary')).
 
 -spec workers() -> pids().
 workers() ->
-    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 -spec worker(ne_binary()) -> api_pid().
 worker(Name) ->
