@@ -18,7 +18,7 @@
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
 %%% @copyright (C) 2012, Jeremy Raymond
 %%% @doc
-%%% The leader_cron_task module provides different methods for scheduling
+%%% The amqp_cron_task module provides different methods for scheduling
 %%% a task to be executed periodically in the future. The supported methods
 %%% are one shot, sleeper, and cron mode.
 %%%
@@ -81,7 +81,7 @@
 %%% Created :  1 Feb 2012 by Jeremy Raymond <jeraymond@gmail.com>
 %%%-------------------------------------------------------------------
 
--module(leader_cron_task).
+-module(amqp_cron_task).
 
 -behaviour(gen_server).
 
@@ -498,13 +498,13 @@ extract_integers(Spec, Min, Max, Acc) ->
 -define(LONG_SLEEP_TIME, 100000000).
 
 sleep_accounting_for_max(TimeInMillis) ->
-       case (TimeInMillis > ?LONG_SLEEP_TIME) of 
+       case (TimeInMillis > ?LONG_SLEEP_TIME) of
 	       true -> timer:sleep(TimeInMillis rem ?LONG_SLEEP_TIME), long_sleep(TimeInMillis div ?LONG_SLEEP_TIME);
 	       false -> timer:sleep(TimeInMillis)
        end.
 
 long_sleep(0) -> ok;
-long_sleep(Chunks) -> 
+long_sleep(Chunks) ->
 	timer:sleep(?LONG_SLEEP_TIME),
 	long_sleep(Chunks - 1).
 
@@ -521,89 +521,89 @@ long_sleep(Chunks) ->
 oneshot_anon_test() ->
     Schedule = {oneshot, 500},
     Fun = fun(T) -> timer:sleep(T) end,
-    {ok, Pid} = leader_cron_task:start_link(Schedule, {Fun, [500]}),
-    {_, _, TaskPid} = leader_cron_task:status(Pid),
-    ?assertMatch({waiting, 500, _}, leader_cron_task:status(Pid)),
+    {ok, Pid} = amqp_cron_task:start_link(Schedule, {Fun, [500]}),
+    {_, _, TaskPid} = amqp_cron_task:status(Pid),
+    ?assertMatch({waiting, 500, _}, amqp_cron_task:status(Pid)),
     timer:sleep(550),
-    ?assertMatch({running, 500, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({running, 500, _}, amqp_cron_task:status(Pid)),
     ?assertEqual(true, is_process_alive(TaskPid)),
     timer:sleep(550),
-    ?assertMatch({done, 500, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({done, 500, _}, amqp_cron_task:status(Pid)),
     ?assertEqual(false, is_process_alive(TaskPid)).
 
 oneshot_millis_test() ->
     Schedule = {oneshot, 500},
-    {ok, Pid} = leader_cron_task:start_link(Schedule, {timer, sleep, [500]}),
-    {_, _, TaskPid} = leader_cron_task:status(Pid),
-    ?assertMatch({waiting, 500, _}, leader_cron_task:status(Pid)),
+    {ok, Pid} = amqp_cron_task:start_link(Schedule, {timer, sleep, [500]}),
+    {_, _, TaskPid} = amqp_cron_task:status(Pid),
+    ?assertMatch({waiting, 500, _}, amqp_cron_task:status(Pid)),
     timer:sleep(550),
-    ?assertMatch({running, 500, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({running, 500, _}, amqp_cron_task:status(Pid)),
     ?assertEqual(true, is_process_alive(TaskPid)),
     timer:sleep(550),
-    ?assertMatch({done, 500, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({done, 500, _}, amqp_cron_task:status(Pid)),
     ?assertEqual(false, is_process_alive(TaskPid)).
 
 oneshot_datetime_test() ->
     DateTime = advance_seconds(calendar:universal_time(), 2),
     Schedule = {oneshot, DateTime},
-    {ok, Pid} = leader_cron_task:start_link(Schedule, {timer, sleep, [500]}),
-    {_, _, TaskPid} = leader_cron_task:status(Pid),
-    ?assertMatch({waiting, DateTime, _}, leader_cron_task:status(Pid)),
+    {ok, Pid} = amqp_cron_task:start_link(Schedule, {timer, sleep, [500]}),
+    {_, _, TaskPid} = amqp_cron_task:status(Pid),
+    ?assertMatch({waiting, DateTime, _}, amqp_cron_task:status(Pid)),
     timer:sleep(2100),
-    ?assertMatch({running, DateTime, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({running, DateTime, _}, amqp_cron_task:status(Pid)),
     ?assertEqual(true, is_process_alive(TaskPid)),
     timer:sleep(550),
-    ?assertMatch({done, DateTime, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({done, DateTime, _}, amqp_cron_task:status(Pid)),
     ?assertEqual(false, is_process_alive(TaskPid)).
 
 oneshot_in_the_past_test() ->
     DateTime = {{1970, 1, 1}, {1, 1, 1}},
     Schedule = {oneshot, DateTime},
-    {ok, Pid} = leader_cron_task:start_link(Schedule, {timer, sleep, [500]}),
-    {_, _, TaskPid} = leader_cron_task:status(Pid),
+    {ok, Pid} = amqp_cron_task:start_link(Schedule, {timer, sleep, [500]}),
+    {_, _, TaskPid} = amqp_cron_task:status(Pid),
     timer:sleep(500),
-    ?assertMatch({error, _, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({error, _, _}, amqp_cron_task:status(Pid)),
     ?assertEqual(false, is_process_alive(TaskPid)).
 
 nominal_sleeper_workflow_test() ->
     Schedule = {sleeper, 1000},
-    {ok, Pid} = leader_cron_task:start_link(
+    {ok, Pid} = amqp_cron_task:start_link(
 		  Schedule,
 		  {timer, sleep, [1000]}),
-    {_, _, TaskPid} = leader_cron_task:status(Pid),
-    ?assertMatch({running, 1000, _}, leader_cron_task:status(Pid)),
+    {_, _, TaskPid} = amqp_cron_task:status(Pid),
+    ?assertMatch({running, 1000, _}, amqp_cron_task:status(Pid)),
     timer:sleep(1500),
-    ?assertMatch({waiting, 1000, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({waiting, 1000, _}, amqp_cron_task:status(Pid)),
     timer:sleep(1000),
-    ?assertMatch({running, 1000, _}, leader_cron_task:status(Pid)),
+    ?assertMatch({running, 1000, _}, amqp_cron_task:status(Pid)),
     ?assertEqual(true, is_process_alive(TaskPid)),
-    ?assertEqual(ok, leader_cron_task:stop(Pid)),
+    ?assertEqual(ok, amqp_cron_task:stop(Pid)),
     timer:sleep(100),
     ?assertEqual(false, is_process_alive(TaskPid)),
     ?assertException(exit,
 		     {noproc,{gen_server,call,[Pid, status]}},
-		     leader_cron_task:status(Pid)).
+		     amqp_cron_task:status(Pid)).
 
 nominal_cron_workflow_test_() ->
     {timeout, 90,
      fun() ->
 	     Schedule = {cron, {all, all, all, all, all}},
-	     {ok, Pid} = leader_cron_task:start_link(
+	     {ok, Pid} = amqp_cron_task:start_link(
 			   Schedule,
 			   {timer, sleep, [5000]}),
 	     Current = calendar:universal_time(),
 	     Next = next_valid_datetime(Schedule, Current),
 	     WaitFor = time_to_wait_millis(Current, Next),
-	     ?assertMatch({waiting, Next, _}, leader_cron_task:status(Pid)),
+	     ?assertMatch({waiting, Next, _}, amqp_cron_task:status(Pid)),
 	     timer:sleep(WaitFor + 2000),
-	     ?assertMatch({running, Next, _}, leader_cron_task:status(Pid)),
+	     ?assertMatch({running, Next, _}, amqp_cron_task:status(Pid)),
 	     timer:sleep(4000),
 	     Next1 = next_valid_datetime(Schedule, Next),
-	     ?assertMatch({waiting, Next1, _}, leader_cron_task:status(Pid)),
-	     ?assertEqual(ok, leader_cron_task:stop(Pid)),
+	     ?assertMatch({waiting, Next1, _}, amqp_cron_task:status(Pid)),
+	     ?assertEqual(ok, amqp_cron_task:stop(Pid)),
 	     ?assertException(exit,
 			      {normal,{gen_server,call,[Pid, status]}},
-			      leader_cron_task:status(Pid))
+			      amqp_cron_task:status(Pid))
      end}.
 
 invalid_range_test() ->

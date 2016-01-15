@@ -1,6 +1,8 @@
-# leader_cron
+This is port of [https://github.com/jeraymond/leader_cron](leader cron) to use `amqp_leader` instead of `gen_leader`.
 
-leader_cron provides a distributed task scheduler for executing task
+# amqp_cron
+
+amqp_cron provides a distributed task scheduler for executing task
 periodically in an Erlang cluster
 
 Participating members of the cluster elect a leader node. The leader node
@@ -18,16 +20,16 @@ milliseconds
 
 ## Usage
 
-Startup leader_cron on each participating node (do this on all nodes):
+Startup amqp_cron on each participating node (do this on all nodes):
 
 ```erlang
-leader_cron:start_link(['node1@127.0.0.1', 'node2@127.0.0.1']).
+amqp_cron:start_link().
 ```
 
 Schedule tasks from any node. Here a cron style schedule is defined.
 
 ```erlang
-leader_cron:schedule_task({cron, {[5], all, all, all, all}},
+amqp_cron:schedule_task({cron, {[5], all, all, all, all}},
                           {io, format, [user, "It is 5 past the hour", []]}).
 ```
 
@@ -37,11 +39,11 @@ leader node at 5 minutes past every hour.
 You can also schedule anonymous functions:
 ```erlang
 F = fun(Device, Format, Args) -> io:format(Device, Format, Args) end,
-leader_cron:schedule_task({cron, {[5], all, all, all, all}},
+amqp_cron:schedule_task({cron, {[5], all, all, all, all}},
                           {F, [user, "It is 5 past the hour", []]}).
 ```
 
-See the `leader_cron_task` module for full scheduling details (or `make doc`).
+See the `amqp_cron_task` module for full scheduling details (or `make doc`).
 
 ## Building
 

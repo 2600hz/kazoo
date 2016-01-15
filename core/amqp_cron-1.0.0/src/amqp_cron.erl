@@ -18,30 +18,30 @@
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
 %%% @copyright (C) 2012, Jeremy Raymond
 %%% @doc
-%%% The leader_cron module provides a distrubuted task scheduler for
+%%% The amqp_cron module provides a distrubuted task scheduler for
 %%% executing tasks periodically. The connected nodes elect a leader
 %%% to manage task scheduling and execution. Should the current leader
 %%% become unavailable a new leader node is elected who resumes task
 %%% execution responsibilities.
 %%%
 %%% There are several different ways to specify the schedule for a task.
-%%% See {@link leader_cron_task} for details.
+%%% See {@link amqp_cron_task} for details.
 %%%
 %%% Each node that is part of the scheduling cluster must be working
 %%% with the same list of nodes as given to {@link start_link/1}. If
-%%% the node list needs to change <code>leader_cron</code> must be
+%%% the node list needs to change <code>amqp_cron</code> must be
 %%% stopped on all nodes. Once stopped everywhere restart
-%%% <code>leader_cron</code> with the new node list. Rolling updates
+%%% <code>amqp_cron</code> with the new node list. Rolling updates
 %%% currently are not supported.
 %%%
-%%% @see leader_cron_task
+%%% @see amqp_cron_task
 %%%
 %%% @end
 %%% Created : 31 Jan 2012 by Jeremy Raymond <jeraymond@gmail.com>
 %%%-------------------------------------------------------------------
--module(leader_cron).
+-module(amqp_cron).
 
--behaviour(gen_leader).
+-behaviour(amqp_leader).
 
 %% API
 -export([start_link/1,
@@ -77,8 +77,8 @@
 %% The task pid() or name.
 
 -type task() :: {ident(),
-                 leader_cron_task:schedule(),
-                 leader_cron_task:execargs()}.
+                 amqp_cron_task:schedule(),
+                 amqp_cron_task:execargs()}.
 %% Task definition.
 
 -record(state, {tasks = [], is_leader = false}).
@@ -91,7 +91,7 @@
 %% @doc
 %% Creates a linked process to manage scheduled tasks in coordination
 %% with the given nodes. The current node must be part of the node
-%% list. Each leader_cron node must be working with the same list of
+%% list. Each amqp_cron node must be working with the same list of
 %% nodes to coordinate correctly.
 %%
 %% @end
@@ -120,15 +120,15 @@ status() ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Schedules a task. See {@link leader_cron_task} for scheduling
+%% Schedules a task. See {@link amqp_cron_task} for scheduling
 %% details.
 %%
 %% @end
 %%--------------------------------------------------------------------
 
 -spec schedule_task(Schedule, Exec) -> {ok, pid()} | {error, term()} when
-      Schedule :: leader_cron_task:schedule(),
-      Exec :: leader_cron_task:execargs().
+      Schedule :: amqp_cron_task:schedule(),
+      Exec :: amqp_cron_task:execargs().
 
 schedule_task(Schedule, Exec) ->
     amqp_leader_proc:leader_call(?SERVER, {schedule, {undefined, Schedule, Exec}}).
@@ -136,7 +136,7 @@ schedule_task(Schedule, Exec) ->
 %%--------------------------------------------------------------------
 %% @doc
 %% Schedules a named task. There cannot be more than one task with
-%% a given name at any one time. See {@link leader_cron_task} for
+%% a given name at any one time. See {@link amqp_cron_task} for
 %% scheduling details.
 %%
 %% The name 'undefined' is reserved for all unnamed tasks and cannot
@@ -147,8 +147,8 @@ schedule_task(Schedule, Exec) ->
 
 -spec schedule_task(ident(), Schedule, Exec) ->
 			   {ok, pid()} | {error, term()} when
-      Schedule :: leader_cron_task:schedule(),
-      Exec :: leader_cron_task:execargs().
+      Schedule :: amqp_cron_task:schedule(),
+      Exec :: amqp_cron_task:execargs().
 
 schedule_task(Name, Schedule, Exec) when
       is_binary(Name); is_atom(Name), Name /= undefined ->
@@ -175,8 +175,8 @@ cancel_task(Ident) ->
 %%--------------------------------------------------------------------
 
 -spec task_status(ident()) -> {Status, ScheduleTime, TaskPid} when
-      Status :: leader_cron_task:status(),
-      ScheduleTime :: leader_cron_task:datetime(),
+      Status :: amqp_cron_task:status(),
+      ScheduleTime :: amqp_cron_task:datetime(),
       TaskPid :: pid().
 
 task_status(Ident) ->
@@ -256,7 +256,7 @@ handle_leader_call({cancel, Pid}, _From, State, Election) ->
 			  false ->
 			      {{error, no_such_pid}, State};
 			  {_, Pid, _, _} ->
-			      ok = leader_cron_task:stop(Pid),
+			      ok = amqp_cron_task:stop(Pid),
 			      Tasks1 = lists:keydelete(Pid, 2, Tasks),
 			      send_tasks(Tasks1, Election),
 			      {ok, State#state{tasks = Tasks1}}
@@ -268,7 +268,7 @@ handle_leader_call({schedule, {Name, Schedule, Exec}}, _From, State, Election) -
         true ->
             {reply, {error, already_exists}, State};
         false ->
-            case leader_cron_task:start_link(Schedule, Exec) of
+            case amqp_cron_task:start_link(Schedule, Exec) of
                 {ok, Pid} ->
                     Task = {Name, Pid, Schedule, Exec},
                     TaskList = [Task|State#state.tasks],
@@ -288,7 +288,7 @@ handle_leader_call({task_status, Name}, From, State, Election) when
             handle_leader_call({task_status, Pid}, From, State, Election)
     end;
 handle_leader_call({task_status, Pid}, _From, State, _Election) ->
-    Status = leader_cron_task:status(Pid),
+    Status = amqp_cron_task:status(Pid),
     {reply, Status, State};
 handle_leader_call(task_list, _From, State, _Election) ->
     Tasks = State#state.tasks,
@@ -371,7 +371,7 @@ stop_tasks(State) ->
     Tasks = State#state.tasks,
     Tasks1 = lists:foldl(
                fun({Name, Pid, Schedule, Exec}, Acc) when node(Pid) == node() ->
-                       ok = leader_cron_task:stop(Pid),
+                       ok = amqp_cron_task:stop(Pid),
                        [{Name, undefined, Schedule, Exec}|Acc];
                   (Task, Acc) ->
                        [Task | Acc]
@@ -385,7 +385,7 @@ start_tasks(State) ->
     TaskList1 = lists:foldl(
 	     fun(Task, Acc) ->
                     {Name, _, Schedule, Exec} = Task,
-                    case leader_cron_task:start_link(Schedule, Exec) of
+                    case amqp_cron_task:start_link(Schedule, Exec) of
                         {ok, Pid} ->
                             [{Name, Pid, Schedule, Exec}|Acc];
                         {error, Reason} ->
@@ -400,9 +400,9 @@ start_tasks(State) ->
 
 remove_task_if_done(Task, Acc) ->
     {_, Pid, _, _} = Task,
-    case leader_cron_task:status(Pid) of
+    case amqp_cron_task:status(Pid) of
 	{done, _, _} ->
-	    ok = leader_cron_task:stop(Pid),
+	    ok = amqp_cron_task:stop(Pid),
 	    Acc;
 	_ ->
 	    [Task|Acc]
@@ -442,10 +442,10 @@ dying_task(TimeToLiveMillis) ->
 all_test_() ->
     {foreach,
      fun() ->
-         leader_cron:start_link([node()]),
-	     Tasks = leader_cron:task_list(),
+         amqp_cron:start_link([node()]),
+	     Tasks = amqp_cron:task_list(),
 	     lists:foreach(fun({_, Pid, _, _}) ->
-				   ok = leader_cron:cancel_task(Pid)
+				   ok = amqp_cron:cancel_task(Pid)
 			   end, Tasks)
      end,
      [
@@ -459,35 +459,35 @@ all_test_() ->
 
 test_single_node_task() ->
     Schedule = {sleeper, 100},
-    Exec = {leader_cron, simple_task, []},
-    {ok, SchedulerPid} = leader_cron:schedule_task(Schedule, Exec),
-    {running, _, TaskPid} = leader_cron:task_status(SchedulerPid),
+    Exec = {amqp_cron, simple_task, []},
+    {ok, SchedulerPid} = amqp_cron:schedule_task(Schedule, Exec),
+    {running, _, TaskPid} = amqp_cron:task_status(SchedulerPid),
     TaskPid ! go,
-    ?assertMatch({waiting, _, TaskPid}, leader_cron:task_status(SchedulerPid)),
+    ?assertMatch({waiting, _, TaskPid}, amqp_cron:task_status(SchedulerPid)),
     ?assertEqual([{undefined, SchedulerPid, Schedule, Exec}],
-		 leader_cron:task_list()),
+		 amqp_cron:task_list()),
     ?assertEqual(true, is_process_alive(TaskPid)),
-    ?assertEqual(ok, leader_cron:cancel_task(SchedulerPid)),
-    ?assertEqual([], leader_cron:task_list()),
+    ?assertEqual(ok, amqp_cron:cancel_task(SchedulerPid)),
+    ?assertEqual([], amqp_cron:task_list()),
     ?assertEqual(false, is_process_alive(TaskPid)).
 
 test_dying_task() ->
     Schedule = {sleeper, 100000},
-    {ok, SchedulerPid} = leader_cron:schedule_task(
-			   Schedule, {leader_cron, dying_task, [100]}),
-    ?assertMatch({running, _, _TPid}, leader_cron:task_status(SchedulerPid)),
+    {ok, SchedulerPid} = amqp_cron:schedule_task(
+			   Schedule, {amqp_cron, dying_task, [100]}),
+    ?assertMatch({running, _, _TPid}, amqp_cron:task_status(SchedulerPid)),
     timer:sleep(200),
-    ?assertMatch({waiting, _, _TPid}, leader_cron:task_status(SchedulerPid)).
+    ?assertMatch({waiting, _, _TPid}, amqp_cron:task_status(SchedulerPid)).
 
 test_done_task_removal() ->
     Schedule = {oneshot, 1},
     Exec = {timer, sleep, [1]},
-    {ok, Pid} = leader_cron:schedule_task(Schedule, Exec),
+    {ok, Pid} = amqp_cron:schedule_task(Schedule, Exec),
     timer:sleep(5),
-    ?assertMatch([_], leader_cron:task_list()),
-    ?assertMatch({done, _, _}, leader_cron:task_status(Pid)),
-    ?assertEqual(ok, leader_cron:remove_done_tasks()),
-    ?assertEqual([], leader_cron:task_list()).
+    ?assertMatch([_], amqp_cron:task_list()),
+    ?assertMatch({done, _, _}, amqp_cron:task_status(Pid)),
+    ?assertEqual(ok, amqp_cron:remove_done_tasks()),
+    ?assertEqual([], amqp_cron:task_list()).
 
 test_single_named_task_with_atom_name() ->
     test_single_named_task(test_task).
@@ -496,21 +496,21 @@ test_single_named_task_with_binary_name() ->
     test_single_named_task(<<"test task">>).
 
 test_single_named_task_with_atom_name_undefined() ->
-    ?assertError(function_clause, leader_cron:schedule_task(undefined, ok, ok)).
+    ?assertError(function_clause, amqp_cron:schedule_task(undefined, ok, ok)).
 
 test_single_named_task(Name) ->
     Schedule = {sleeper, 100},
-    Exec = {leader_cron, simple_task, []},
-    {ok, SchedulerPid} = leader_cron:schedule_task(Name, Schedule, Exec),
-    {error, already_exists} = leader_cron:schedule_task(Name, Schedule, Exec),
-    {running, _, TaskPid} = leader_cron:task_status(Name),
+    Exec = {amqp_cron, simple_task, []},
+    {ok, SchedulerPid} = amqp_cron:schedule_task(Name, Schedule, Exec),
+    {error, already_exists} = amqp_cron:schedule_task(Name, Schedule, Exec),
+    {running, _, TaskPid} = amqp_cron:task_status(Name),
     TaskPid ! go,
-    ?assertMatch({waiting, _, TaskPid}, leader_cron:task_status(Name)),
+    ?assertMatch({waiting, _, TaskPid}, amqp_cron:task_status(Name)),
     ?assertEqual([{Name, SchedulerPid, Schedule, Exec}],
-		 leader_cron:task_list()),
+		 amqp_cron:task_list()),
     ?assertEqual(true, is_process_alive(TaskPid)),
-    ?assertEqual(ok, leader_cron:cancel_task(Name)),
-    ?assertEqual([], leader_cron:task_list()),
+    ?assertEqual(ok, amqp_cron:cancel_task(Name)),
+    ?assertEqual([], amqp_cron:task_list()),
     ?assertEqual(false, is_process_alive(TaskPid)).
 
 -endif.

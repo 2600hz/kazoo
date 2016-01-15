@@ -1,4 +1,4 @@
-{application, leader_cron,
+{application, amqp_cron,
  [
   {description, ""},
   {vsn, "0.2.1"},
@@ -7,7 +7,7 @@
                   kernel,
                   stdlib
                  ]},
-  {modules, [leader_cron, leader_cron_task, leader_cron_app, leader_cron_sup]}
-  {mod, { leader_cron_app, []}},
+  {modules, [amqp_cron, amqp_cron_task, amqp_cron_app, amqp_cron_sup]}
+  {mod, { amqp_cron_app, []}},
   {env, []}
  ]}.

@@ -18,13 +18,13 @@
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
 %%% @copyright (C) 2012, Jeremy Raymond
 %%% @doc
-%%% The {@link leader_cron} supervisor.
-%%% @see leader_cron
+%%% The {@link amqp_cron} supervisor.
+%%% @see amqp_cron
 %%%
 %%% @end
 %%% Created : 31 Jan 2012 by Jeremy Raymond <jeraymond@gmail.com>
 %%%-------------------------------------------------------------------
--module(leader_cron_sup).
+-module(amqp_cron_sup).
 
 -behaviour(supervisor).
 
@@ -42,8 +42,8 @@
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Starts the leader_cron supervisor with the given node list. See
-%% {@link leader_cron:start_link/1}.
+%% Starts the amqp_cron supervisor with the given node list. See
+%% {@link amqp_cron:start_link/1}.
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -77,8 +77,8 @@ init([Nodes]) ->
     Shutdown = 2000,
     Type = worker,
 
-    LeaderCron = {leader_cron, {leader_cron, start_link, [Nodes]},
-		  Restart, Shutdown, Type, [leader_cron]},
+    LeaderCron = {amqp_cron, {amqp_cron, start_link, [Nodes]},
+		  Restart, Shutdown, Type, [amqp_cron]},
 
     {ok, {SupFlags, [LeaderCron]}}.
 

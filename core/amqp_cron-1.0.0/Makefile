@@ -1,15 +1,15 @@
-PROJECT = leader_cron
+PROJECT = amqp_cron
 ROOT = ../..
 DIALYZER = dialyzer
 
 EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps -I$(ROOT)/deps/gproc-0.2.12/include $(PA)
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
      # +bin_opt_info
 
 DIRS =  . \
-        $(ROOT)/deps/gen_leader-0.0.1 \
+        $(ROOT)/core/amqp_leader-1.0.0 \
 
 .PHONY: all compile clean
 
