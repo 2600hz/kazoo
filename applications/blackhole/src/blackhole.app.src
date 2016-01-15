@@ -3,10 +3,15 @@
   {description, "blackhole - websocket"},
   {vsn, "1"},
   {modules, []},
-  {registered, []},
+  {registered, [ blackhole_listener
+               , blackhole_sup
+               , blackhole_tracking
+               ]},
   {applications, [ kernel
                  , stdlib
                  , crypto
+                 , public_key
+                 , ssl
                  , inets
                  , lager
                  , whistle_amqp
@@ -14,8 +19,6 @@
                  , kazoo_bindings
                  , ranch
                  , cowboy
-                 , public_key
-                 , ssl
                  , socketio
                  ]},
   {mod, {blackhole_app, []}}

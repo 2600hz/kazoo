@@ -25,6 +25,8 @@
 
 -include("blackhole.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {}).
 -type state() :: #state{}.
 
@@ -43,14 +45,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
@@ -68,19 +67,19 @@ handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
 
 -spec add_call_binding(ne_binary()) -> 'ok'.
 add_call_binding(AccountId) ->
-    gen_listener:cast(?MODULE, {'add_call_binding', AccountId}).
+    gen_listener:cast(?SERVER, {'add_call_binding', AccountId}).
 
 -spec remove_call_binding(ne_binary()) -> 'ok'.
 remove_call_binding(AccountId) ->
-    gen_listener:cast(?MODULE, {'remove_call_binding', AccountId}).
+    gen_listener:cast(?SERVER, {'remove_call_binding', AccountId}).
 
 -spec add_binding(atom(), wh_proplist()) -> 'ok'.
 add_binding(Wapi, Options) ->
-    gen_listener:add_binding(?MODULE, Wapi, Options).
+    gen_listener:add_binding(?SERVER, Wapi, Options).
 
 -spec remove_binding(atom(), wh_proplist()) -> 'ok'.
 remove_binding(Wapi, Options) ->
-    gen_listener:rm_binding(?MODULE, Wapi, Options).
+    gen_listener:rm_binding(?SERVER, Wapi, Options).
 
 %%%===================================================================
 %%% gen_server callbacks

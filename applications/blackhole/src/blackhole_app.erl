@@ -15,23 +15,21 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
+-spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
-    blackhole:start_link().
+    OK = blackhole_sup:start_link(),
+    _ = blackhole_bindings:init(),
+    OK.
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
 -spec stop(any()) -> 'ok'.
 stop(_State) ->
     cowboy:stop_listener('blackhole'),
-    blackhole:stop().
+    cowboy:stop_listener('socketio_http_listener'),
+    exit(whereis('blackhole_sup'), 'shutdown'),
+    'ok'.
