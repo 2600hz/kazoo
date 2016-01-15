@@ -1095,7 +1095,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
            end,
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, whapps_call:request_user(Call))}
-            ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary, "/context_2">>}
+            ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary>>}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
             ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
@@ -1289,6 +1289,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                ,fun maybe_set_encryption_flags/1
                ,fun set_sip_invite_domain/1
                ,fun maybe_set_call_waiting/1
+               ,fun maybe_auto_answer/1
               ],
     Acc0 = {Endpoint, Call, CallFwd, wh_json:new()},
     {_Endpoint, _Call, _CallFwd, JObj} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
@@ -1350,13 +1351,21 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, JObj}) ->
 
 -spec bowout_settings(boolean()) -> wh_proplist().
 bowout_settings('true') ->
-    [{<<"Loopback-Bowout">>, <<"true">>}
-     ,{<<"Simplify-Loopback">>, <<"true">>}
-    ];
+     [{<<"Simplify-Loopback">>, <<"true">>}
+      ,{<<"Loopback-Bowout">>, <<"true">>}
+     ];
 bowout_settings('false') ->
-    [{<<"Loopback-Bowout">>, <<"false">>}
-     ,{<<"Simplify-Loopback">>, <<"true">>}
-    ].
+     [{<<"Simplify-Loopback">>, <<"false">>}
+      ,{<<"Loopback-Bowout">>, <<"true">>}
+     ].
+
+-spec maybe_auto_answer(ccv_acc()) -> ccv_acc().
+maybe_auto_answer({Endpoint, Call, CallFwd, JObj}=Acc) ->
+    case whapps_call:custom_channel_var(<<"Auto-Answer-Loopback">>, Call) of
+        'undefined' -> Acc;
+        AutoAnswer ->
+            {Endpoint, Call, CallFwd, wh_json:set_value(<<"Auto-Answer">>, AutoAnswer, JObj)}
+    end.
 
 -spec maybe_set_confirm_properties(ccv_acc()) -> ccv_acc().
 maybe_set_confirm_properties({Endpoint, Call, CallFwd, JObj}=Acc) ->
