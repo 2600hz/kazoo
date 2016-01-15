@@ -27,10 +27,6 @@
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_StartType, _StartArgs) ->
-    case application:get_env('reloader') of
-        {'ok', 'true'} -> reloader:start();
-        _ -> 'ok'
-    end,
     whistle_apps_sup:start_link().
 
 %%--------------------------------------------------------------------
