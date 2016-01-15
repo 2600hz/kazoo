@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Token restrictions
-Language: en-US
-*/
+
 
 ### Token restrictions
 Module `cb_token_restrictions`.
