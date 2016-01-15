@@ -16,7 +16,7 @@ Dialplan object for devices/users/accounts calling from Amsterdam
 			"prefix": "+31"
 		},
 		"^([1-9]\\d{8,9})$": {
-		    "description": "NL Amsterdam  local",
+		    "description": "NL Amsterdam local",
 			"prefix": "+3120"
 		}
     }
