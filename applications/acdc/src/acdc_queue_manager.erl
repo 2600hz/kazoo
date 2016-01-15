@@ -111,18 +111,14 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(pid(), wh_json:object()) -> startlink_ret().
 start_link(Super, QueueJObj) ->
     AccountId = wh_doc:account_id(QueueJObj),
     QueueId = wh_doc:id(QueueJObj),
 
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
                               ,{'responders', ?RESPONDERS}
                              ]
@@ -131,7 +127,7 @@ start_link(Super, QueueJObj) ->
 
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Super, AccountId, QueueId) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
                               ,{'responders', ?RESPONDERS}
                              ]
@@ -265,14 +261,7 @@ pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Sr
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
 init([Super, QueueJObj]) ->
     AccountId = wh_doc:account_id(QueueJObj),

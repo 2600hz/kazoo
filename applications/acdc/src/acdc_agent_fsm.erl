@@ -71,6 +71,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% When an agent starts up, how long do we wait for other agents to respond with their status?
 -define(SYNC_RESPONSE_TIMEOUT, 5000).
 -define(SYNC_RESPONSE_MESSAGE, 'sync_response_timeout').
@@ -303,8 +305,6 @@ status(FSM) -> gen_fsm:sync_send_event(FSM, 'status').
 %% Creates a gen_fsm process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
-%%
-%% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), wh_json:object()) -> startlink_ret().
@@ -340,7 +340,7 @@ pvt_start_link(_AccountId, 'undefined', Supervisor, _, _) ->
     _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     'ignore';
 pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
-    gen_fsm:start_link(?MODULE, [AccountId, AgentId, Supervisor, Props, IsThief], []).
+    gen_fsm:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
 
 new_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]).

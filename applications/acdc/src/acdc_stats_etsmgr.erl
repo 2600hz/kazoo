@@ -36,14 +36,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(ets:tab(), any()) -> startlink_ret().
 start_link(TableId, TableOptions) ->
-    gen_server:start_link(?MODULE, [TableId, TableOptions], []).
+    gen_server:start_link(?SERVER, [TableId, TableOptions], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -51,15 +48,9 @@ start_link(TableId, TableOptions) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', #state{}}.
 init([TableId, TableOptions]) ->
     process_flag('trap_exit', 'true'),
     wh_util:put_callid(?MODULE),

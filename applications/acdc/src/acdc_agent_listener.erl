@@ -65,6 +65,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {
          call :: whapps_call:call()
          ,acdc_queue_id :: ne_binary() % the ACDc Queue ID
@@ -163,20 +165,14 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(pid(), wh_json:object()) -> startlink_ret().
 start_link(Supervisor, AgentJObj) ->
     AgentId = wh_doc:id(AgentJObj),
     AcctId = account_id(AgentJObj),
 
-    Queues = case wh_json:get_value(<<"queues">>, AgentJObj) of
-                 'undefined' -> [];
-                 Qs -> Qs
-             end,
+    Queues = wh_json:get_value(<<"queues">>, AgentJObj, []),
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
 start_link(Supervisor, _, _AcctId, _AgentId, []) ->
     lager:debug("agent ~s has no queues, not starting", [_AgentId]),
@@ -190,7 +186,7 @@ start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
             'ignore';
         {'ok', _S} ->
             lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
-            gen_listener:start_link(?MODULE
+            gen_listener:start_link(?SERVER
                                     ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
                                       ,{'responders', ?RESPONDERS}
                                      ]
@@ -203,7 +199,7 @@ start_link(Supervisor, ThiefCall, QueueId) ->
     AcctId = whapps_call:account_id(ThiefCall),
 
     lager:debug("starting thief agent ~s(~s)", [AgentId, AcctId]),
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
                               ,{'responders', ?RESPONDERS}
                              ]

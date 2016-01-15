@@ -45,6 +45,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% How long should we wait for a response to our member_connect_req
 -define(COLLECT_RESP_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"queue_collect_resp_timeout">>, 2000)).
 -define(COLLECT_RESP_MESSAGE, 'collect_timer_expired').
@@ -105,13 +107,11 @@
 %% Creates a gen_fsm process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), pid(), wh_json:object()) -> startlink_ret().
 start_link(MgrPid, ListenerPid, QueueJObj) ->
-    gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
+    gen_fsm:start_link(?SERVER, [MgrPid, ListenerPid, QueueJObj], []).
 
 refresh(FSM, QueueJObj) ->
     gen_fsm:send_all_state_event(FSM, {'refresh', QueueJObj}).

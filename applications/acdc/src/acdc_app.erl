@@ -24,10 +24,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> acdc_sup:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    acdc_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public

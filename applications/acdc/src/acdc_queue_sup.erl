@@ -12,6 +12,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/2
          ,stop/1
@@ -28,15 +30,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link(ne_binary(), ne_binary()) -> startlink_ret().
 start_link(AcctId, QueueId) ->
-    supervisor:start_link(?MODULE, [AcctId, QueueId]).
+    supervisor:start_link(?SERVER, [AcctId, QueueId]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Super) ->
@@ -81,10 +79,6 @@ status(Supervisor) ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
 -spec init(list()) -> sup_init_ret().
