@@ -11,6 +11,7 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
+-export([is_up/1]).
 -export([whapp_count/1
          ,whapp_count/2
          ,whapp_oldest_node/1
@@ -95,6 +96,13 @@ start_link() ->
                              ]
                             ,[]
                            ).
+
+-spec is_up(node()) -> boolean().
+is_up(Node) ->
+    case ets:match('wh_nodes', #wh_node{node = Node, expires = '$2', _ = '_'}) of
+        [] -> 'false';
+        [_] -> 'true'
+    end.
 
 -spec whapp_count(text()) -> integer().
 whapp_count(Whapp) ->

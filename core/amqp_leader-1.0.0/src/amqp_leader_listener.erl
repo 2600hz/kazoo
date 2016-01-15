@@ -217,12 +217,12 @@ recv_ready(Ref) ->
 
 -spec ready_when_node_is_up() -> 'true'.
 ready_when_node_is_up() ->
-    case ets:match('wh_nodes', #wh_node{node = node(), expires = '$2', _ = '_'}) of
-        [] ->
+    case wh_nodes:is_up(node()) of
+        'false' ->
             lager:debug("node is not up yet"),
             timer:sleep(1 * ?MILLISECONDS_IN_SECOND),
             ready_when_node_is_up();
-        [_] ->
+        'true' ->
             'true'
     end.
 
