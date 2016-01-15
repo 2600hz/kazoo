@@ -11,6 +11,8 @@
 
 -include("conference.hrl").
 
+-defined(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([init/1]).
 
@@ -35,13 +37,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks

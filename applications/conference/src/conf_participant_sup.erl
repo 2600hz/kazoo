@@ -12,6 +12,8 @@
 
 -include("conference.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([start_participant/1]).
@@ -19,24 +21,20 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(SERVER, ?MODULE).
-
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_participant(whapps_call:call()) -> sup_startchild_ret().
-start_participant(Call) -> supervisor:start_child(?MODULE, [Call]).
+start_participant(Call) ->
+    supervisor:start_child(?SERVER, [Call]).
 
 %%%===================================================================
 %%% Supervisor callbacks
