@@ -8,10 +8,11 @@
                   , stdlib
 		  , crypto
                   , lager
+                  , whistle
                   , whistle_amqp
                   , whistle_couch
+                  , whistle_apps
                   , callflow
-                  , stepswitch
                   ]}
   ,{mod, {camper_app, []}}
  ]}.
