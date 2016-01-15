@@ -1,4 +1,4 @@
-
+### Pivot
 
 The Pivot Crossbar resource allows the client to query and inspect data related to the [Pivot](/applications/pivot) application (real-time call control).
 
@@ -14,7 +14,7 @@ The Pivot endpoint is not loaded on start in a default Kazoo installation.
     * Click the green check box to the right of the input box
     * Click 'Save Document' in top left of the screen
 
-Note: adding cb_pivot to the crossbar system_config doc will not start the endpoint; only on restarting Crossbar will cb_pivot be loaded. Use the *sup* command above to start the endpoint at runtime.
+Note: adding `cb_pivot` to the crossbar `system_config` doc will not start the endpoint; only on restarting Crossbar will `cb_pivot` be loaded. Use the [sup](./sup.md) command above to start the endpoint at runtime.
 
 #### Usage
 
