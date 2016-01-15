@@ -16,7 +16,9 @@
          ,children/0
         ]).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
+
+-define(SERVER, ?MODULE).
 
 %% ===================================================================
 %% API functions
@@ -24,13 +26,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -61,20 +61,20 @@ init([]) ->
 start_child(Module, Args) ->
     Id = ci_parsers_util:make_name(lists:keyfind('parser_args', 1, Args)),
     ChildSpec = ?WORKER_NAME_ARGS(Module, Id, Args),
-    case supervisor:start_child(?MODULE, ChildSpec) of
+    case supervisor:start_child(?SERVER, ChildSpec) of
         {'ok', _Pid} -> {'ok', Id};
         {'error', {'already_started', _Pid}} -> {'ok', Id}
     end.
 
 -spec stop_child(atom()) -> 'ok'.
 stop_child(Id) ->
-    'ok' = supervisor:terminate_child(?MODULE, Id),
-    'ok' = supervisor:delete_child(?MODULE, Id).
+    'ok' = supervisor:terminate_child(?SERVER, Id),
+    'ok' = supervisor:delete_child(?SERVER, Id).
 
 -spec children() -> [atom()].
 children() ->
     [Id
-     || {Id, _Pid, _Type, _Modules} <- supervisor:which_children(?MODULE)
+     || {Id, _Pid, _Type, _Modules} <- supervisor:which_children(?SERVER)
     ].
 
 %% Internals

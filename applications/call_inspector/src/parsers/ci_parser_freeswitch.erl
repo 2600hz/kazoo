@@ -10,7 +10,7 @@
 
 -behaviour(gen_server).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
 
 %% API
 -export([start_link/1]).
@@ -40,12 +40,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link(_) -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(list()) -> startlink_ret().
 start_link(Args) ->
     ServerName = ci_parsers_util:make_name(Args),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
