@@ -11,7 +11,7 @@ Use your account's API token to instruct Crossbar to create an authentication to
 ## The Authentication Process
 
 1. Get your API key for your account:
-    * This value can be obtained by users on an account via the accounts api endpoint `api_key`. 
+    * This value can be obtained by users on an account via the accounts api endpoint `api_key`.
     * This value can also be accessed by system administrators directly from the database by using curl to request the account doc from Couch:
 
             curl -v http://localhost:15984/accounts/{ACCOUNT_ID}
@@ -19,7 +19,7 @@ Use your account's API token to instruct Crossbar to create an authentication to
             "pvt_api_key": "dfdb4869092fcaa210077109e42bdbac255dda8b9fe6eeb962b880bea7f9f372",
             ...
             }
-    
+
 
 2. Send an HTTP PUT:
 
