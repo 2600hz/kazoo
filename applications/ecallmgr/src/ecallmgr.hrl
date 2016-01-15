@@ -202,8 +202,8 @@
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
 
-                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
-                               ,{<<"Simplify-Loopback">>, <<"loopback_bowout">>}
+                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
+                               ,{<<"Simplify-Loopback">>, <<"loopback_bowout_on_execute">>}
 
                                ,{<<"SIP-Invite-Domain">>, <<"sip_invite_domain">>}
                                ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
