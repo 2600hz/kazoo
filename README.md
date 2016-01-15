@@ -207,7 +207,6 @@ Information on Erlang releases and live-updates:
 ## Learn More
 
 * Join us at [KazooCon!](http://kazoocon.com/)
-eration
 * Visit http://2600hz.org
 * Read more at http://wiki.2600hz.org
 * Bugs and feature requests http://tickets.2600hz.org
