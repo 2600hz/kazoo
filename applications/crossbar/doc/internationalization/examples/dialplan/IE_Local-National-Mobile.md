@@ -1,8 +1,4 @@
-/*
-Section: Internationalization
-Title: IE Dialplan example
-Language: en-US
-*/
+
 
 Dialplan object for devices/users/accounts calling in from Ireland
 

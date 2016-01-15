@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Reverse proxy
-Language: en-US
-Version: 3.18
-*/
+
 
 ### Working with reverse proxies (HAProxy, Nginx, etc)
 

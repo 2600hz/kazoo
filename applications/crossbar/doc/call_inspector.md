@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Call Inspector
-Language: en-US
-*/
+
 
 ### The Call Inspector Crossbar resource
 

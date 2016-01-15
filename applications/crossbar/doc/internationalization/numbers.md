@@ -1,8 +1,4 @@
-/*
-Section: Internationalization
-Title: Numbers
-Language: en-US
-*/
+
 
 By default, Kazoo includes appropriate configurations for running the system in the United States. Nothing, however, stops folks from reconfiguring the system to support other country's numbering system.
 
