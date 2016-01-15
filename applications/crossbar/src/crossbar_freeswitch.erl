@@ -30,6 +30,8 @@
 -include("crossbar.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CALLFLOW_VIEW, <<"callflow/listing_by_number">>).
 -define(DEVICES_VIEW, <<"devices/listing_by_owner">>).
 
@@ -66,17 +68,14 @@
 %%%===================================================================
 -spec reset() -> 'ok'.
 reset() ->
-    gen_server:cast(crossbar_sup:find_proc(?MODULE), 'reset').
+    gen_server:cast(crossbar_sup:find_proc(?SERVER), 'reset').
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
