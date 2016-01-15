@@ -33,7 +33,7 @@
 -spec start(any(), any()) ->
     {'ok', pid()} |
     {'error', startlink_err()}.
-start(_, _) -> camper:start_link().
+start(_, _) -> camper_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @private
@@ -44,8 +44,8 @@ start(_, _) -> camper:start_link().
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_) -> camper:stop().
+-spec stop(any()) -> 'true'.
+stop(_) -> exit(whereis('camper_sup'), 'shutdown').
 
 %%%===================================================================
 %%% Internal functions
