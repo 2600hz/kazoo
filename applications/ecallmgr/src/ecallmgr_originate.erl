@@ -212,6 +212,9 @@ handle_cast({'create_uuid'}, #state{node=Node
             maybe_send_originate_uuid(UUID, Pid, State),
             gen_listener:cast(self(), {'build_originate_args'}),
             {'noreply', State1, 'hibernate'};
+        {'error', 'no_server_controller'} ->
+            gen_listener:cast(self(), {'build_originate_args'}),
+            {'noreply', State#state{uuid=UUID}, 'hibernate'};            
         {'error', _E} ->
             lager:debug("failed to start control proc for ~p: ~p", [UUID, _E]),
             {'stop', 'normal', State}
@@ -297,6 +300,11 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
         {'ok', WinningUUID} when is_pid(CtrlPid) ->
             lager:debug("originate completed for other UUID: ~s (not ~s)", [WinningUUID, UUID]),
             _ = publish_originate_resp(ServerId, JObj, WinningUUID),
+            CtrlPids = ecallmgr_call_control:control_procs(WinningUUID),
+            _ = case lists:member(CtrlPid, CtrlPids) of
+                'true' -> 'ok';
+                'false' -> ecallmgr_call_control:stop(CtrlPid)
+            end,
 
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
@@ -545,17 +553,24 @@ get_channel_vars(JObj, FetchId) ->
 maybe_add_loopback(JObj, Props) ->
     case wh_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj) of
         'undefined' -> Props;
-        Simplify -> [{<<"Simplify-Loopback">>, Simplify}
-                     ,{<<"Loopback-Bowout">>, Simplify}
-                     | Props
-                    ]
+        SimpliFly -> add_loopback(wh_util:is_true(SimpliFly)) ++ Props
     end.
+
+-spec add_loopback(boolean()) -> wh_proplist().
+add_loopback('true') ->
+    [{<<"Simplify-Loopback">>, 'true'}
+     ,{<<"Loopback-Bowout">>, 'true'}
+    ];
+add_loopback('false') ->
+    [{<<"Simplify-Loopback">>, 'false'}
+     ,{<<"Loopback-Bowout">>, 'false'}
+    ].
 
 -spec originate_execute(atom(), ne_binary(), pos_integer()) ->
                                {'ok', ne_binary()} |
                                {'error', ne_binary() | 'timeout' | 'crash'}.
 originate_execute(Node, Dialstrings, Timeout) ->
-    lager:debug("executing on ~s: ~s", [Node, Dialstrings]),
+    lager:debug("executing originate on ~s: ~s", [Node, Dialstrings]),
     case freeswitch:api(Node
                         ,'originate'
                         ,wh_util:to_list(Dialstrings)
@@ -785,6 +800,8 @@ find_max_endpoint_timeout([EP|EPs], T) ->
 -spec start_control_process(state()) ->
                                    {'ok', state()} |
                                    {'error', any()}.
+start_control_process(#state{server_id='undefined'}) ->
+    {'error', 'no_server_controller'};
 start_control_process(#state{originate_req=JObj
                              ,node=Node
                              ,uuid={_, Id}=UUID
@@ -794,8 +811,7 @@ start_control_process(#state{originate_req=JObj
                             }=State) ->
     case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ServerId, wh_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
-            CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
-            _ = publish_originate_uuid(ServerId, UUID, JObj, CtrlQ),
+            _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
             lager:debug("started control pid ~p for uuid ~s", [CtrlPid, Id]),
             {'ok', State#state{control_pid=CtrlPid}};
