@@ -23,6 +23,8 @@
 
 -include("dth.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{'dth_cdr_handler'
                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                      }
@@ -35,7 +37,6 @@
                    }
                   ]).
 
--define(SERVER, ?MODULE).
 -define(BLACKLIST_REFRESH, 60 * ?MILLISECONDS_IN_SECOND).
 
 -record(state, {wsdl_model = 'undefined' :: 'undefined' | #wsdl{}
@@ -47,14 +48,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                      ,{'bindings', ?BINDINGS}
                                      ], []).
 
