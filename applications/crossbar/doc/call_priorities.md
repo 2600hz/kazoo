@@ -87,7 +87,7 @@ For example:
 
 Configuration example for broker with enabled `rabbitmq_priority_queue`:
 
-    [root@... ~]# cat /etc/kazoo/rabbitmq/enabled_plugins
+    [root@... ~]### cat /etc/kazoo/rabbitmq/enabled_plugins
     [rabbitmq_management,rabbitmq_priority_queue].
 
 WARNING

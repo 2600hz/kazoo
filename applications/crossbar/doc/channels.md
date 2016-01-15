@@ -6,9 +6,9 @@ Language: en-US
 
 The Channels API allows queries to find active channels for an account, a user, or a device. Given a call-id for a channel, a limited set of commands are allowed to be executed against that channel (such as hangup, transfer, or play media).
 
-## Crossbar
+#### Crossbar
 
-### _GET_ - Fetch account channels
+##### _GET_ - Fetch account channels
 
     curl -v -X GET -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/accounts/{ACCOUNT_ID}/channels'
     {
@@ -33,7 +33,7 @@ The Channels API allows queries to find active channels for an account, a user, 
         "status": "success"
     }
 
-### _GET_ - Fetch User/Device channels
+##### _GET_ - Fetch User/Device channels
 
 * User
 
@@ -44,11 +44,11 @@ The Channels API allows queries to find active channels for an account, a user, 
         curl -v -X GET -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels'
 
 
-### _GET_ - Channel Details
+##### _GET_ - Channel Details
 
         curl -v -X GET -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}'
 
-### _POST_ - Execute an application against a Channel
+##### _POST_ - Execute an application against a Channel
 
      curl -v -X POST -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/accounts/{ACCOUNT_ID}/channels/{CALL_ID} -d '{"data": {"action": "transfer", "target": "2600", "takeback_dtmf": "*1", "moh": "media_id" }}'
 
