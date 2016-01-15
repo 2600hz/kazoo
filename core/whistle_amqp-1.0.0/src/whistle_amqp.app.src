@@ -1,13 +1,16 @@
 {application, whistle_amqp,
  [
   {description, "AMQP client helpers for interacting with a AMQP server"}
-  ,{vsn, "0.5.2"}
+  ,{vsn, "4.0.0"}
   ,{modules, []}
   ,{registered, []}
   ,{applications, [ kernel
                   , stdlib
 		  , sasl
                   , amqp_client
+                  , lager
+                  , poolboy
+                  , whistle
                   ]}
   ,{mod, {whistle_amqp_app, []}}
  ]}.

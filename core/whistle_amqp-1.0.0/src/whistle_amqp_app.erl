@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    whistle_amqp:start_link().
+    wh_amqp_sup:start_link().
 
 stop(_State) ->
-    'ok'.
+    exit(whereis('wh_amqp_sup'), 'shutdown').
