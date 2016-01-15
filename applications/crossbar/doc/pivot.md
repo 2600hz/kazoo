@@ -6,7 +6,7 @@ Language: en-US
 
 The Pivot Crossbar resource allows the client to query and inspect data related to the [Pivot](/applications/pivot) application (real-time call control).
 
-## Enabling in Crossbar
+#### Enabling in Crossbar
 
 The Pivot endpoint is not loaded on start in a default Kazoo installation.
 
@@ -20,7 +20,7 @@ The Pivot endpoint is not loaded on start in a default Kazoo installation.
 
 Note: adding cb_pivot to the crossbar system_config doc will not start the endpoint; only on restarting Crossbar will cb_pivot be loaded. Use the *sup* command above to start the endpoint at runtime.
 
-## Usage
+#### Usage
 
 You will need to edit the "data" object in the "pivot" callflow element to include a "debug" flag:
 
@@ -38,7 +38,7 @@ You will need to edit the "data" object in the "pivot" callflow element to inclu
 
 All calls to this callflow will now store debug logs to the account's current MODb database.
 
-### Query available debugged calls
+##### Query available debugged calls
 
     curl -v -H "X-Auth-Token: {AUTH_TOKEN}" 'http://{CROSSBAR_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug'
     [REQUEST HEADERS]
@@ -54,7 +54,7 @@ All calls to this callflow will now store debug logs to the account's current MO
 
 The `data` key will contain a list of recently debugged calls.
 
-### Query debugged call
+##### Query debugged call
 
 Take a call-id from the list to query for the debugging details:
 

@@ -8,7 +8,7 @@ Resources represent external assets such as TDM hardware, SIP trunks, transcoder
 
 There are two levels of resources, global (or system-wide), and per-account (bring your own carrier). The JSON format for both is identical; only their location in the Kazoo database structure defines whether they are globally available or not.
 
-## Jobs
+#### Jobs
 
 It is possible to add numbers, in bulk, to an account using the Jobs API below. If a job fails to run, there is a recovery process that runs periodically to attempt to resume stalled jobs.
 
@@ -16,21 +16,21 @@ You can configure how frequently the system checks for failed jobs in `system_co
 
 You can configure how what is considered a 'stalled' job by defining how old the job is (the last time the job document was modified) relative to the current time. Configure in `system_config/crossbar.resources`, using the `job_recover_threshold_s` key (defaults to 1 hour). If a job is not completed, and hasn't been modified in over an hour, there's a good chance the job executor died. A new job executor will be started to pick up where the old one left off.
 
-## Crossbar
+#### Crossbar
 
-### URL Structure
+##### URL Structure
 
 When interacting with an account's resources, the URL structure is as one would expect: `/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}`. To modify the global resources, simply omit `/accounts/{ACCOUNT_ID}` from the URL (your auth token must have super-duper admin priviledges).
 
 There are two deprecated API endpoints, `global_resources` and `local_resources`. These should continue to work as before, but it is recommended to use `resources` instead, using the presence of an account id to toggle whether the resource is global or not.
 
-### Account Resources URI
+##### Account Resources URI
 
 `/v2/accounts/{ACCOUNT_ID}/resources`
 
 This URI is used to manipulate the resources available to the account.
 
-#### _GET_ - Fetch account resources:
+###### _GET_ - Fetch account resources:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources'
     {"auth_token": "{AUTH_TOKEN}",
@@ -52,7 +52,7 @@ This URI is used to manipulate the resources available to the account.
      "status": "success"
     }
 
-#### _PUT_ - Update account resources:
+###### _PUT_ - Update account resources:
 
     curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources' -d '{"data":{"name":"Carrier 3", "gateways":[]}}'
     {"auth_token": "{AUTH_TOKEN}",
@@ -80,7 +80,7 @@ This URI is used to manipulate the resources available to the account.
      "status": "success"
     }
 
-#### _GET_ - Fetch details about a resource
+###### _GET_ - Fetch details about a resource
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}'
     {"auth_token": "{AUTH_TOKEN}",
@@ -133,7 +133,7 @@ This URI is used to manipulate the resources available to the account.
      "status": "success"
     }
 
-#### _POST_ - Edit details about a resource
+###### _POST_ - Edit details about a resource
 
     curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}' -d '{"data":{"name":"Carrier 3", "gateways":[{"server":"carrier3.com"}]}}'
     {"auth_token": "{AUTH_TOKEN}"
@@ -171,15 +171,15 @@ This URI is used to manipulate the resources available to the account.
      "status": "success"
     }
 
-#### _DELETE_ - Remove an account resource:
+###### _DELETE_ - Remove an account resource:
 
     curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
-### The JOBS API
+##### The JOBS API
 
 It is helpful to be able to upload a list of numbers to a specific account, versus adding them one after another.
 
-#### _GET_ - List of jobs (pending or completed)
+###### _GET_ - List of jobs (pending or completed)
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs'
     {"auth_token": "{AUTH_TOKEN}",
@@ -212,7 +212,7 @@ Do note you can use the `created_from` and `created_to` flags to change to time 
 
 The keys `failures` and `successes` represent the count of how many numbers failed and succeeded, respectively.
 
-#### _PUT_ - Create a new job to add a list of numbers
+###### _PUT_ - Create a new job to add a list of numbers
 
     curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs' -d '{"data":{"numbers":["+12223334444", "+23334445555"], "resource_id":"{RESOURCE_ID}"}}'
     {"auth_token": "{AUTH_TOKEN}",
@@ -230,7 +230,7 @@ The keys `failures` and `successes` represent the count of how many numbers fail
      "status": "success"
     }
 
-#### _GET_ - Get a job's status and other information
+###### _GET_ - Get a job's status and other information
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}'
     {"auth_token": "{AUTH_TOKEN}",
