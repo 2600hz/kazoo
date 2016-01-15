@@ -21,6 +21,29 @@
 
 -include("whistle_apps.hrl").
 
+
+-define(HIDDEN_APPS
+        ,['amqp_client','apns','asn1'
+          ,'braintree'
+          ,'compiler','cowboy','cowlib','couchbeam','crypto'
+          ,'escalus','exml'
+          ,'folsom'
+          ,'gcm','gen_smtp','goldrush','gproc'
+          ,'ibrowse','inets'
+          ,'kazoo_bindings','kazoo_caches','kazoo_documents','kazoo_modb'
+          ,'kazoo_oauth','kazoo_token_buckets','kernel'
+          ,'lager'
+          ,'nksip'
+          ,'poolboy','public_key'
+          ,'rabbit_common','ranch'
+          ,'sasl','socketio','ssl','stdlib','syntax_tools','syslog'
+          ,'webseq'
+          ,'whistle','whistle_amqp','whistle_apps','whistle_config'
+          ,'whistle_couch','whistle_services','whistle_stats'
+          ,'xmerl'
+         ]).
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -71,24 +94,6 @@ restart_app(App) when is_atom(App) ->
     lager:info("restarting whistle application ~s", [App]),
     _ = stop_app(App),
     start_app(App).
-
--define(HIDDEN_APPS
-        ,['amqp_client','apn','asn1'
-          ,'compiler','cowboy','cowlib','couchbeam','crypto'
-          ,'folsom'
-          ,'gcm','goldrush','gproc'
-          ,'ibrowse','inets'
-          ,'kazoo_bindings','kazoo_caches','kazoo_token_buckets','kernel'
-          ,'lager'
-          ,'nksip'
-          ,'public_key'
-          ,'rabbit_common','ranch'
-          ,'sasl','socketio','ssl','stdlib','syntax_tools','syslog'
-          ,'webseq'
-          ,'whistle_amqp','whistle_apps','whistle_config','whistle_couch'
-          ,'whistle_services','whistle_stats'
-          ,'xmerl'
-         ]).
 
 -spec running_apps() -> atoms() | string().
 -spec running_apps(boolean()) -> atoms() | string().
