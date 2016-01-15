@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Basic Authentication
-Language: en-US
-Version: 3.22
-*/
+
 
 As an alternative for generated Tokens.
 

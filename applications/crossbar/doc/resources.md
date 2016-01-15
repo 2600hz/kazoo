@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Resources
-Language: en-US
-*/
+
 
 Resources represent external assets such as TDM hardware, SIP trunks, transcoders, and other remote termination/originating call services or equipment.
 

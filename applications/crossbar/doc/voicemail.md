@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Voicemails
-Language: en-US
-Version: 3.20
-*/
+
 
 ### Kazoo Voice-mails
 Learn how to use the 2600hz mobile API set to manage voice-mail boxes.

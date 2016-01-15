@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Menus
-Language: en-US
-Version: 3.20
-*/
+
 
 Menus, IVRs, what ever you call them, allow you to create branches in the callflow based on the caller's input.
 

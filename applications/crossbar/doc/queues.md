@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Queues
-Language: en-US
-*/
+
 
 ### Call Queues
 

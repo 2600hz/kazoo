@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Crossbar
-Language: en-US
-*/
+
 
 ### Crossbar
 

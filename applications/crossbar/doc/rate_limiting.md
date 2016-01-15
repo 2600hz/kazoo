@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Rate Limiting
-Language: en-US
-Version: 3.19
-*/
+
 
 API abuse can occur either maliciously or on accident; either way, the API server needs to protect itself from clients consuming too many server resources simultaneously.
 

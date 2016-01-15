@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Apps Store
-Language: en-US
-Version: 3.19
-*/
+
 
 ### Apps Store
 
