@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Iterate over each account, find configured queues and configured
 %%% agents, and start the attendant processes
@@ -21,13 +21,13 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
+    _ = declare_exchanges(),
     _ = wh_util:spawn(fun init_acdc/0, []),
     'ignore'.
 
 -spec init_acdc() -> any().
 init_acdc() ->
     wh_util:put_callid(?MODULE),
-    _ = declare_exchanges(),
     case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
         {'ok', []} ->
             lager:debug("no accounts configured for acdc");
