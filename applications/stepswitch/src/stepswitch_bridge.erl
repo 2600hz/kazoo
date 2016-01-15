@@ -239,9 +239,7 @@ handle_event(JObj, #state{request_handler=RequestHandler
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
             OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
             gen_listener:cast(RequestHandler, {'bridged', OtherLeg});
-        {Cat, Evt, Id} ->
-            lager:debug("~s : ~s : ~s : ~p",[Cat, Evt, Id, JObj])
-            %%'ok'
+        _ -> 'ok'
     end,
     {'reply', []}.
 
