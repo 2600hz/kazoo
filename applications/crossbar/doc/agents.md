@@ -1,5 +1,4 @@
-
-#API for managing agent status
+### API for managing agent status
 This API provides convenient way for agent status management without need to dial feature codes. It's useful for various call center agent/supervisor interfaces.
 
 ##### Log In/Log Out agent to/from some queue
