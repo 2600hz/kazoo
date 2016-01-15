@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Ledgers
-Language: en-US
-Version: 3.22
-*/
+
 
 ### Ledgers
 
