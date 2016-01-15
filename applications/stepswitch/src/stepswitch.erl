@@ -57,7 +57,7 @@ stop() ->
 %%--------------------------------------------------------------------
 -spec start_deps() -> 'ok'.
 start_deps() ->
-    whistle_apps_deps:ensure(),
+    %whistle_apps_deps:ensure(),
     _ = [wh_util:ensure_started(App) || App <- ['crypto'
                                                 ,'lager'
                                                 ,'whistle_amqp'

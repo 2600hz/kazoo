@@ -54,7 +54,7 @@ stop() -> 'ok'.
 -spec start_deps() -> 'ok'.
 start_deps() ->
     %% if started by the whistle_controller, this will exist
-    whistle_apps_deps:ensure(?MODULE),
+    %whistle_apps_deps:ensure(?MODULE),
     _ = [wh_util:ensure_started(App) || App <- ['crypto'
                                                 ,'lager'
                                                 ,'gproc'

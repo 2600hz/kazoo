@@ -42,7 +42,7 @@ stop() ->
 %%--------------------------------------------------------------------
 -spec start_deps() -> 'ok'.
 start_deps() ->
-    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
+    %whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     _ = [wh_util:ensure_started(App) || App <- ['public_key'
                                                 ,'sasl'
                                                 ,'crypto'
