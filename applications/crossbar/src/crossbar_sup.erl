@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -18,6 +18,19 @@
 -export([init/1]).
 
 -include("crossbar.hrl").
+
+-define(CHILDREN
+        ,[?WORKER('crossbar_init')
+          ,?SUPER('crossbar_module_sup')
+         ,?CACHE_ARGS(?CROSSBAR_CACHE
+                     ,[{'origin_bindings'
+                       ,[[{'type', kz_notification:pvt_type()}]]
+                       }
+                      ]
+                     )
+         ,?WORKER('crossbar_cleanup')
+         ]
+       ).
 
 -define(DISPATCH_FILE, [code:lib_dir('crossbar', 'priv'), "/dispatch.conf"]).
 -define(DEFAULT_LOG_DIR, wh_util:to_binary(code:lib_dir('crossbar', 'log'))).
@@ -80,7 +93,4 @@ upgrade() ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
-    {'ok', {{'one_for_one', 10, 10}, [?SUPER('crossbar_module_sup')
-                                      ,?CACHE_ARGS(?CROSSBAR_CACHE, [{'origin_bindings', [[{'type', kz_notification:pvt_type()}]]}])
-                                      ,?WORKER('crossbar_cleanup')
-                                     ]}}.
+    {'ok', {{'one_for_one', 10, 10}, ?CHILDREN}}.

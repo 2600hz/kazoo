@@ -8,9 +8,9 @@
 %%%   James Aimonetti
 %%%   Jon Blanton
 %%%-------------------------------------------------------------------
--module(crossbar).
+-module(crossbar_init).
 
--export([start_link/0, start/0, stop/0
+-export([start_link/0
          ,start_mod/1, stop_mod/1
         ]).
 
@@ -51,36 +51,17 @@ api_version_constraint(_NotVersion) ->
 %% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
+-spec start_link() -> 'ignore'.
 start_link() ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
-    _ = start_deps(),
     _ = declare_exchanges(),
 
     Dispatch = cowboy_router:compile(crossbar_routes()),
 
     maybe_start_plaintext(Dispatch),
     maybe_start_ssl(Dispatch),
-    OK = crossbar_sup:start_link(),
     _ = crossbar_bindings:init(),
-    OK.
-
-start() ->
-    application:start('crossbar').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Stop the app
-%% @end
-%%--------------------------------------------------------------------
--spec stop() -> 'ok'.
-stop() ->
-    cowboy:stop_listener('api_resource'),
-    cowboy:stop_listener('api_resource_ssl'),
-    crossbar_bindings:flush(),
-    exit(whereis('crossbar_sup'), 'shutdown'),
-    'ok'.
+    'ignore'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -106,29 +87,6 @@ stop_mod(CBMod) ->
         'true' -> CBMod:stop();
         'false' -> 'ok'
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Ensures that all dependencies for this app are already running
-%% @end
-%%--------------------------------------------------------------------
--spec start_deps() -> 'ok'.
-start_deps() ->
-    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['crypto'
-                                                ,'public_key'
-                                                ,'ssl'
-                                                ,'inets'
-                                                ,'lager'
-                                                ,'whistle_amqp'
-                                                ,'whistle_couch'
-                                                ,'kazoo_bindings'
-                                                ,'ranch'
-                                                ,'cowlib'
-                                                ,'cowboy'
-                                               ]],
-    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private

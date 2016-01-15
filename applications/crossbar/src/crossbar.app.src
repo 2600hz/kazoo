@@ -1,7 +1,7 @@
 {application, crossbar,
  [
   {description, "Crossbar - REST Interface to the stars"}
-  ,{vsn, "0.3.5"}
+  ,{vsn, "4.0.0"}
   ,{modules, []}
   ,{registered, []}
   ,{applications, [ kernel
@@ -11,12 +11,14 @@
                   , ssl
                   , inets
                   , lager
-                  , whistle_amqp
-                  , whistle_couch
-                  , kazoo_bindings
                   , ranch
                   , cowlib
                   , cowboy
+                  , whistle
+                  , whistle_amqp
+                  , whistle_couch
+                  , kazoo_bindings
+                  , whistle_apps
                   ]}
   ,{mod, {crossbar_app, []}}
  ]}.
