@@ -1,5 +1,4 @@
 
-
 ### Generating an auth token from your API token
 
 Use your account's API token to instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.

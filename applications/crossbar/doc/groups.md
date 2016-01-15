@@ -1,5 +1,4 @@
 
-
 ### Groups
 
 #### Get groups for a given account
