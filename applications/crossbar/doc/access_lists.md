@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: SBC Access lists
-Language: en-US
-Version: 3.20
-*/
+
 
 SBC-level per-account and per-device access lists allow setting individual IP-based access filtering rules which
 significantly increases security for users working on-premise.
