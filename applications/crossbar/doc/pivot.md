@@ -20,6 +20,7 @@ Note: adding `cb_pivot` to the crossbar `system_config` doc will not start the e
 
 You will need to edit the "data" object in the "pivot" callflow element to include a "debug" flag:
 
+```json
     "flow": {
       "data": {
         "method": "GET",
@@ -31,11 +32,13 @@ You will need to edit the "data" object in the "pivot" callflow element to inclu
       "children": {
       }
     }
+```
 
 All calls to this callflow will now store debug logs to the account's current MODb database.
 
 ##### Query available debugged calls
 
+```curl
     curl -v -H "X-Auth-Token: {AUTH_TOKEN}" 'http://{CROSSBAR_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug'
     [REQUEST HEADERS]
     [RESPONSE HEADERS]
@@ -47,6 +50,7 @@ All calls to this callflow will now store debug logs to the account's current MO
      ,"revision": "undefined"
      ,"status": "success"
     }
+```
 
 The `data` key will contain a list of recently debugged calls.
 
@@ -54,6 +58,7 @@ The `data` key will contain a list of recently debugged calls.
 
 Take a call-id from the list to query for the debugging details:
 
+```curl
     curl -v -H "X-Auth-Token: {AUTH_TOKEN}" 'http://{CROSSBAR_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/pivot/debug/829597750%4010.26.0.158'
     {"auth_token": "{AUTH_TOKEN}"
      ,"data": [{"call_id": "829597750@10.26.0.158"
@@ -82,6 +87,7 @@ Take a call-id from the list to query for the debugging details:
       ,"revision": "f231fd438e5ba812cac542bff00e636d"
       ,"status": "success"
      }
+```
 
 Note: You must URL-encode the call-id in the URL. Typically this would just mean converting `@` to `%40', but you'll need to take care depending on how your call-ids are constructed.
 
