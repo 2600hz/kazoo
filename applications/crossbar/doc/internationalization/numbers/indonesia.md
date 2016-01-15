@@ -1,6 +1,4 @@
-/* Section: Internationalization Title: Indonesia _number_manager_  Language: en-US
 
-Contributors: godril-at-otakudang */
 
 #### Indonesia Phone Numbers Explained
 

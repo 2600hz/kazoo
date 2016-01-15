@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Securing Crossbar
-Language: en-US
-*/
+
 
 ### Setup SSL support for Crossbar
 
