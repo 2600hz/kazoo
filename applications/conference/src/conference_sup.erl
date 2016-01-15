@@ -11,7 +11,7 @@
 
 -include("conference.hrl").
 
--defined(SERVER, ?MODULE).
+-define(SERVER, ?MODULE).
 
 -export([start_link/0]).
 -export([init/1]).
