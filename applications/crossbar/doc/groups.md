@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Groups
-Language: en-US
-Version: 3.18
-*/
+
 
 ### Groups
 

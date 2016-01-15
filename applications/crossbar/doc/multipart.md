@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Multi-part Request
-Language: en-US
-Version: 3.20
-*/
+
 
 ### Crossbar Multi-part Request
 

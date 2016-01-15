@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Accounts
-Language: en-US
-*/
+
 
 ### Kazoo Accounts
 Learn how to use the 2600hz mobile API set manage accounts.

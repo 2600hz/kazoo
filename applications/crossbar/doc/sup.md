@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: SUP
-Language: en-US
-*/
+
 
 The SUP API is meant to mirror command-line interactions with the SUP tool. It will only run on the local API server.
 

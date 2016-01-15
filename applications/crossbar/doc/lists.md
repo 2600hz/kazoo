@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Lists
-Language: en-US
-*/
+
 
 ### Lists
 

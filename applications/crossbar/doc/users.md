@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Users
-Language: en-US
-*/
+
 
 ### Kazoo Users
 
