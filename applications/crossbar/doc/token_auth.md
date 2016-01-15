@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Token Authentication
-Language: en-US
-*/
+
 
 Authentication tokens are generated using one of the authentication endpoints exposed by Crossbar. See [User Authentication](./user_authentication.md) and [API Authentication](./api_authentication.md) as examples of generating authentication tokens.
 
