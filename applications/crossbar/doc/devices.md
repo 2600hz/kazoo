@@ -5,10 +5,10 @@ Language: en-US
 Version: 3.20
 */
 
-# Kazoo Devices
+### Kazoo Devices
 Learn how to use the 2600hz mobile API set to activate and manage phones.
 
-## Ringtones
+#### Ringtones
 
 You can setup internal and external ringtones by adding this:
 
@@ -22,11 +22,11 @@ You can setup internal and external ringtones by adding this:
 }
 ```
 
-## Static Presence ID
+#### Static Presence ID
 
 You can set a presence ID at the device level. By adding: `presence_id` field on your device document. This will fix any presence issue regarding inbound/outbound call on a cellphone device.
 
-## QuickCall
+#### QuickCall
 
 Additional info for [QuickCall is on the wiki.](https://2600hz.atlassian.net/wiki/display/APIs/QuickCall+API)
 
@@ -47,7 +47,7 @@ Also under Resource Parameters add "cid-name" info to the "cid-number" info
 
 esoare
 
-## Sync
+#### Sync
 
 Some devices support receiving SIP NOTIFY packets with `event` = `check-sync`. This is typically used to reboot the phone if the configuration has changed. Kazoo will generate the NOTIFY packet if the device is registered.
 
@@ -66,7 +66,7 @@ One can also attempt `check-sync` while updating a device (in the same request) 
 
 If `"sync"` is set to `false` or is not defined, no `check-sync` will be attempted.
 
-## Presence / BLF
+#### Presence / BLF
 
 Occassionally a phone's BLF might be out of sync with the true state of the phone. You can explicitly ask Kazoo to reset the presence status via API to resolve this.
 
@@ -74,7 +74,7 @@ Occassionally a phone's BLF might be out of sync with the true state of the phon
 
 No data payload at this time is required. This will send the appropriate internal command to reset the presence of the device (following `presence_id` if required.
 
-## Load a user's devices
+#### Load a user's devices
 
 Often you'll want to see what devices belong to a user, or devices that a user has hot-desked into.
 
@@ -108,7 +108,7 @@ Often you'll want to see what devices belong to a user, or devices that a user h
 
 Notice that the first device, `{DEVICE_ID_1}` is owned by `{USER_ID}` but the second device, `{DEVICE_ID_2}`, is owned by `{OWNER_ID}` **and** is currently hotdesked to `{USER_ID}` (see the `"hotdesked":true` attribute).
 
-## Create an Authn-By-IP Device
+#### Create an Authn-By-IP Device
 
 Here is a minimal API request that creates a device that will authenticate by IP address instead of username/password:
 
