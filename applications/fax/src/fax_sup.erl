@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -34,7 +34,8 @@
 %%                                  ,{'sessionoptions', [?SMTP_CALLBACK_OPTIONS]}
                                 ]]]).
 
--define(CHILDREN, [?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
+-define(CHILDREN, [?WORKER('fax_init')
+                   ,?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
                    ,?POOL('fax_worker_pool')
                    ,?SUPER('fax_requests_sup')
                    ,?SUPER('fax_xmpp_sup')

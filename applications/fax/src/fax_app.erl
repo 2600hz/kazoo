@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -22,7 +22,7 @@
 -spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_Type, _Args) -> fax:start_link().
+start(_Type, _Args) -> fax_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -30,5 +30,7 @@ start(_Type, _Args) -> fax:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> fax:stop().
+-spec stop(any()) -> 'true'.
+stop(_State) ->
+    'ok' = cowboy:stop_listener('fax_file'),
+    exit(whereis('fax_sup'), 'shutdown').

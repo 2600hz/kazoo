@@ -1,19 +1,26 @@
 {application, fax,
  [
   {description, "Fax - Why is everyone faxinated with fax?"},
-  {vsn, "1.0.0"},
+  {vsn, "4.0.0"},
   {registered, []},
   {modules, []},
   {applications, [ kernel
                  , stdlib
                  , crypto
+                 , public_key
                  , inets
                  , lager
-                 , whistle_amqp
-                 , whistle_couch
                  , ranch
                  , cowboy
                  , escalus
+                 , poolboy
+                 , gen_smtp
+                 , whistle
+                 , whistle_amqp
+                 , whistle_couch
+                 , whistle_apps
+                 , kazoo_modb
+                 , kazoo_oauth
                  ]},
   {mod, {fax_app, []}}
  ]}.
