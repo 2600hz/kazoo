@@ -7,7 +7,6 @@ The transactions endpoint allows you to list debits and credits made to a specif
 #### Schema
     TODO add schema maybe. not sure I completely understand what should go here.
 
-
 #### Get a summary of transactions
 
     Options:  TODO ask how options should be documented.  how are options submitted?
@@ -83,7 +82,6 @@ curl -x GET \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-
      },
     "request_id": "{REQUEST_ID}",
     "status": "success"

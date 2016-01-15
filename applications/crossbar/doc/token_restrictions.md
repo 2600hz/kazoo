@@ -1,5 +1,4 @@
 
-
 ### Token restrictions
 Module `cb_token_restrictions`.
 

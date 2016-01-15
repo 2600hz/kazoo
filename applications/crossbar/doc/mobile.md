@@ -1,5 +1,4 @@
 
-
 ### Mobile APIs
 Learn how to use the 2600hz mobile API set to activate and manage phones.
 
@@ -22,5 +21,3 @@ usually take approximately five minutes to take effect.
 
 
 #### Call Routing
-
-
