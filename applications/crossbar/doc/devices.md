@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Devices
-Language: en-US
-Version: 3.20
-*/
+
 
 ### Kazoo Devices
 Learn how to use the 2600hz mobile API set to activate and manage phones.
