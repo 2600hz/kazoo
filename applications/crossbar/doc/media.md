@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Media
-Language: en-US
-*/
+
 
 Uploading media for custom music on hold, IVR prompts, or TTS (if a proper TTS engine is enabled).
 

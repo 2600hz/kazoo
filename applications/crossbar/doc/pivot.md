@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Pivot
-Language: en-US
-*/
+
 
 The Pivot Crossbar resource allows the client to query and inspect data related to the [Pivot](/applications/pivot) application (real-time call control).
 

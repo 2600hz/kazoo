@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Notifications
-Language: en-US
-Version: 3.19
-*/
+
 
 Allow managing templates for notification emails.
 

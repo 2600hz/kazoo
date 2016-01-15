@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Channels
-Language: en-US
-*/
+
 
 The Channels API allows queries to find active channels for an account, a user, or a device. Given a call-id for a channel, a limited set of commands are allowed to be executed against that channel (such as hangup, transfer, or play media).
 
