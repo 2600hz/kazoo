@@ -43,3 +43,9 @@ It would be great to have:
 * Listing of URI segments available, with HTTP methods
 * Code sample for **at least** a cURL command; bonus points if you include PHP SDK equivalents.
 * Differences between versions of the endpoint, if any
+
+## Tools used
+
+Catologuing some of the tools used:
+
+* Multi-line search/replace of comment sections: `find . -name "*.md" -print | xargs perl -i -pe 'BEGIN {undef $/;} s/\/\*\n.+?\*\///smg'`
