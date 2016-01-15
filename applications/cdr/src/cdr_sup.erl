@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @copyright (c) 2010-2013, 2600Hz
 %%% @doc
@@ -20,6 +19,7 @@
 
 -include("cdr.hrl").
 
+-define(SERVER, ?MODULE).
 
 %% ===================================================================
 %% API functions
@@ -27,7 +27,7 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks

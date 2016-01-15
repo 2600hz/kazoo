@@ -3,7 +3,7 @@
   {description, "Listen and record CDR events into CouchDB"}
   ,{vsn, "0.4.1"}
   ,{modules, []}
-  ,{registered, []}
+  ,{registered, [cdr_sup]}
   ,{applications, [ kernel
                   , stdlib
                   , crypto
