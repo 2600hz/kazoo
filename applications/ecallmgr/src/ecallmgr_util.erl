@@ -252,10 +252,11 @@ custom_channel_vars(Props) ->
 custom_channel_vars(Props, Initial) ->
     maybe_update_referred_ccv(
       Props
-      ,lists:foldl(fun custom_channel_vars_fold/2
+      ,lists:usort(fun({A, _}, {B, _}) -> A =< B end
+                ,lists:foldl(fun custom_channel_vars_fold/2
                   ,Initial
                   ,Props
-                  )
+                  ))
      ).
 
 custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
