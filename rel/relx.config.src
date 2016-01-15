@@ -11,12 +11,14 @@ Apps = ToName([App || "applications/"++App <- filelib:wildcard("applications/*")
 Core = ToName([App ||         "core/"++App <- filelib:wildcard(        "core/*"), App /= "Makefile"]),
 Deps = ToName([App ||         "deps/"++App <- filelib:wildcard(        "deps/*"), App /= "Makefile"]),
 
+AutoStart = [syslog, lager, lager_syslog],
+
 Base = [ {'++', Core}
        , {'++', Apps}
          %% skel Not a real app
        , {'--', [skel]}
-         %% whistle_apps include apps: whistle_amqp, sasl, crypto
-       , {'--', [whistle_apps]}
+         %% auto-start apps
+       , {'--', AutoStart}
 
        , {'++', Deps}
          %% Name is amqp_client, not rabbitmq_erlang_client
@@ -53,7 +55,7 @@ end ++
 , {vm_args, "rel/vm.args"}
 
 , {release, {kazoo,"4.0.0"}
-  , [whistle_apps] ++ Based
+  , AutoStart ++ Based
   }
 
 ].
