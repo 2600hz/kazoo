@@ -1,11 +1,8 @@
+### Call priorities
 
-
-Call priorities
-=================
 Call priorities are designed to help processing important or VIP calls with special care (including "pushing' them through queues). Generally, the higher (larger) priority of a call, the faster it should be answered.
 
-Priority support in Callflows
----------------------------------
+#### Priority support in Callflows
 There is a `call-priority` call time variable that can be set using `cf_set_variable` module:
 
 Usage example for `cf_set_variable` module:
@@ -52,8 +49,7 @@ Usage example for `cf_branch_variable` module:
 	     }
 	 }
 
-Call priority support in ACDC
---------------------------------
+#### Call priority support in ACDC
 
 ACDC application respects call\_priority value in calls and "pushes" the call through the queue until it matches queued call with higher priority (in fact, RabbitMQ queue priorities are used).
 
@@ -86,8 +82,8 @@ Configuration example for broker with enabled `rabbitmq_priority_queue`:
     [root@... ~]### cat /etc/kazoo/rabbitmq/enabled_plugins
     [rabbitmq_management,rabbitmq_priority_queue].
 
-WARNING
---------------
+#### **WARNING**
+
 The following things are really **DANGEROUS** and should be avoided:
 
 * Creating prioritized queues before priorities are enabled in the broker.
