@@ -27,7 +27,7 @@ ifeq ($(USR_INCLUDE),)
 	USR_INCLUDE = /usr/lib/erlang/usr/include
 endif
 
-ERL_INTERFACE := $(find $USR_INCLUDE/../../ -type d -name "erl_interface-*" -print)
+ERL_INTERFACE := $(shell find $(USR_INCLUDE)/../../ -type d -name "erl_interface-*" -print)
 ifeq ($(ERL_INTERFACE),)
 # 3.7.9 is R15B03-1
 # Change to 3.7.20 for 17.5

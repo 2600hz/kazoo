@@ -66,8 +66,11 @@
                 ,self = self()
                 ,stop_on_destroy = 'true' :: boolean()
                 ,destroyed = 'false' :: boolean()
+                ,branch_count :: non_neg_integer()
                }).
 -type state() :: #state{}.
+
+-define(MAX_BRANCH_COUNT, whapps_config:get_integer(?CF_CONFIG_CAT, <<"max_branch_count">>, 50)).
 
 %%%===================================================================
 %%% API
@@ -299,7 +302,9 @@ init([Call]) ->
     CallId = whapps_call:call_id(Call),
     wh_util:put_callid(CallId),
     gen_listener:cast(self(), 'initialize'),
-    {'ok', #state{call=Call}}.
+    {'ok', #state{call=Call
+                  ,branch_count = ?MAX_BRANCH_COUNT
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -413,14 +418,29 @@ handle_cast('continue_on_destroy', State) ->
 handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
-handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
+
+handle_cast({'branch', _NewFlow}, #state{branch_count=BC}=State) when BC =< 0 ->
+    lager:warning("callflow exceeded max branch count, terminating"),
+    {'stop', 'normal', State};
+handle_cast({'branch', NewFlow}, #state{flow=Flow
+                                        ,flows=Flows
+                                        ,branch_count=BC
+                                       }=State) ->
     lager:info("callflow has been branched"),
     case wh_json:get_ne_value([<<"children">>, <<"_">>], Flow) of
         'undefined' ->
-            {'noreply', launch_cf_module(State#state{flow=NewFlow})};
+            {'noreply', launch_cf_module(State#state{flow=NewFlow
+                                                     ,branch_count=BC-1
+                                                    })};
         PrevFlow ->
-            {'noreply', launch_cf_module(State#state{flow=NewFlow, flows=[PrevFlow|Flows]})}
+            {'noreply', launch_cf_module(State#state{flow=NewFlow
+                                                     ,flows=[PrevFlow|Flows]
+                                                     ,branch_count=BC-1
+                                                    }
+                                        )
+            }
     end;
+
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     wh_util:put_callid(NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
