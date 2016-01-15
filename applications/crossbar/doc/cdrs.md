@@ -6,11 +6,11 @@ Language: en-US
 
 CDRs (Call Detail Records) provide a summary view of a call leg.
 
-## CDR structure
+#### CDR structure
 
 The CDR is a list of attributes related to the processing and execution of a call leg. There are a number of properties that will always exist and a handful of fields that will conditionally exist, depending on the type of call made. There is also a sub-object, under the key 'Custom-Channel-Vars', that represent Kazoo-specific key/value pairs.
 
-### Default Properties
+##### Default Properties
 
 These properties should appear in both the summary and detail view for all CDRs:
 
@@ -22,7 +22,7 @@ These properties should appear in both the summary and detail view for all CDRs:
 * hangup\_cause - The reason why the call leg ended. See the [FreeSWITCH Hangup Causes](http://wiki.freeswitch.org/wiki/Hangup_causes) page for descriptions.
 * timestamp - UTC timestamp (in gregorian seconds) of when the CDR was generated
 
-### Conditional Properties
+##### Conditional Properties
 
 The existence of these properties will vary depending on the nature of the call. This list is not meant to be exhaustive:
 
@@ -63,7 +63,7 @@ The existence of these properties will vary depending on the nature of the call.
 * user\_agent - User Agent of the endpoint
 * bridge\_id - Bridge ID
 
-### Kazoo-specific Properties
+##### Kazoo-specific Properties
 
 These are properties set by Kazoo for internal purposes. These are the properties found under the _custom\_channel\_vars_ property at the top-level of the CDR JSON object. The non-exhaustive list of properties:
 
@@ -80,7 +80,7 @@ These are properties set by Kazoo for internal purposes. These are the propertie
 * resource\_id - Resource ID used for the leg; typically a carrier, local or global, that the call was routed to
 * username - the SIP username of the endpoint that started the leg
 
-### Billing-related Properties
+##### Billing-related Properties
 
 These properties relate to how the leg was rated and billed. Some of these properties are not accessible via Crossbar, but may exist on the CDR
 
@@ -94,7 +94,7 @@ These properties relate to how the leg was rated and billed. Some of these prope
 * rate\_minimum - Minimum number of seconds to bill for
 * rate_increment - Increment of seconds to bill for
 
-### Fax-specific Properties
+##### Fax-specific Properties
 
 These properties may exist on a CDR for a fax request (inbound or outbound):
 
@@ -108,7 +108,7 @@ These properties may exist on a CDR for a fax request (inbound or outbound):
 * fax\_success - boolean for whether the fax was considered a success
 * fax\_t38 - boolean for whether the fax T.38 was used
 
-## Crossbar
+#### Crossbar
 
 Using Crossbar to query cdrs is very simple. There are 3 different GETs
 
@@ -116,27 +116,27 @@ Using Crossbar to query cdrs is very simple. There are 3 different GETs
 * GET /v1/accounts/{account\_id}/cdrs/{cdr\_id} - Gets details of the CDR
 * GET /v1/accounts/{account\_id}/users/{user\_id}/cdrs - Gets the current CDRs for the user
 
-### Sample Requests
+##### Sample Requests
 
-#### _GET_ - Fetch account CDRs:
+###### _GET_ - Fetch account CDRs:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
 
-#### _GET_ - Fetch user CDRs:
+###### _GET_ - Fetch user CDRs:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/users/{USER_ID}/cdrs
 
-####  _GET_ - Fetch a CDR:
+######  _GET_ - Fetch a CDR:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
 
-#### _GET_ - Fetch a time-range of CDRs
+###### _GET_ - Fetch a time-range of CDRs
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
 
 &tip All timestamps will be in Gregorian seconds (not Unix epoch).
 
-#### _GET_ - Fetch account CDRs in csv format:
+###### _GET_ - Fetch account CDRs in csv format:
 
     curl -v -X GET -H "Accept: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
 
