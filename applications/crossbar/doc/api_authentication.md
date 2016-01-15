@@ -4,11 +4,11 @@ Title: API Authentication
 Language: en-US
 */
 
-# Generating an auth token from your API token
+### Generating an auth token from your API token
 
 Use your account's API token to instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.
 
-## The Authentication Process
+#### The Authentication Process
 
 1. Get your API key for your account:
     * This value can be obtained by users on an account via the accounts api endpoint `api_key`.
@@ -38,7 +38,7 @@ Use your account's API token to instruct Crossbar to create an authentication to
          ,"status": "success"
         }
 
-### The Response
+##### The Response
 
 * {AUTH_TOKEN}: this is your authentication token to include in future requests
 * {ACCOUNT_ID}: your account's ID, useful for constructing URIs

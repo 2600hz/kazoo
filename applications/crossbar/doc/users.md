@@ -4,13 +4,13 @@ Title: Users
 Language: en-US
 */
 
-# Kazoo Users
+### Kazoo Users
 
 
-## Static Presence ID
+#### Static Presence ID
 You can set a presence ID at the user level. By adding: `presence_id` field on your user document. This will fix any presence issue regarding inbound/outbound call on a cellphone user.
 
-## QuickCall
+#### QuickCall
 
 Additional info for [QuickCall is on the wiki.](https://2600hz.atlassian.net/wiki/display/APIs/QuickCall+API)
 
@@ -33,7 +33,7 @@ Also under Resource Parameters add "cid-name" info to the "cid-number" info
 esoare
 
 
-## Sync
+#### Sync
 
 See [the documentation on devices](../devices.md) for more info on `check-sync`.
 
