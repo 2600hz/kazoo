@@ -1,5 +1,4 @@
 
-
 ### Setup SSL support for Crossbar
 
 &tip All commands are run from $KAZOO/applications/crossbar/priv/ssl/
