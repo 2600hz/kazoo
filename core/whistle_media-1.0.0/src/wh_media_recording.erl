@@ -228,9 +228,9 @@ handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
     lager:debug("record start received but we're already recording"),
     {'noreply', State};
 handle_cast({'record_start', {_, Media}}, #state{media={_, Media}}=State) ->
-    lager:debug("record start received for ~s", [Media),
+    lager:debug("record start received for ~s", [Media]),
     {'noreply', State#state{is_recording='true'}};
-handle_cast({'record_start', {_, Media1}}, #state{media={_, Media2}}=State) ->
+handle_cast({'record_start', _}, State) ->
     {'noreply', State};
 handle_cast({'record_stop', {_, MediaName}=Media, FS},
             #state{media={_, MediaName}
@@ -240,8 +240,6 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS},
     Call1 = whapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
     gen_server:cast(self(), 'store_recording'),
     {'noreply', State#state{media=Media, call=Call1}};
-handle_cast({'record_start', _}, State) ->
-    {'noreply', State};
 handle_cast({'record_stop', _Media, _ChannelState, _FS}, State) ->
     {'noreply', State};
 handle_cast('maybe_start_recording_on_bridge', #state{is_recording='true'}=State) ->
