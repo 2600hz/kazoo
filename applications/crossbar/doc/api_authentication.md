@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: API Authentication
-Language: en-US
-*/
+
 
 ### Generating an auth token from your API token
 
