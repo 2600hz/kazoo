@@ -1,11 +1,4 @@
-/*
-Section: Internationalization
-Title: Amsterdam Dialplan example
-Language: en-US
 
-Contributors:
-    Yumminova.eu
-*/
 
 Dialplan object for devices/users/accounts calling from Amsterdam
 

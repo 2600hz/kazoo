@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Comments
-Language: en-US
-*/
+
 
 Allow you to add comments to "any" documents in Kazoo.
 
