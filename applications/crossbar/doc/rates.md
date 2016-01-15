@@ -1,5 +1,4 @@
 
-
 ### Rates
 
 How much will calls to various prefixes cost, per-minute, if applicable? Manage the rate deck via this API!

@@ -1,5 +1,4 @@
 
-
 ### Kazoo Accounts
 Learn how to use the 2600hz mobile API set manage accounts.
 

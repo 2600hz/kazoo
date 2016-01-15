@@ -1,5 +1,4 @@
 
-
 ### Phone Numbers
 Learn how to use the 2600hz mobile API set to activate and manage numbers.
 

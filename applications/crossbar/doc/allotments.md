@@ -1,5 +1,4 @@
 
-
 ### Allotments
 
 Module `cb_allotments`.
