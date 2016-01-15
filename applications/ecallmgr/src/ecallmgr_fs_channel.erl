@@ -579,7 +579,7 @@ maybe_publish_channel_state(Props, _Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
     %%   becomes disconnected any calls it previsouly controlled will not produce
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
-    case ecallmgr_config:get_boolean(<<"publish_channel_state">>, 'true') of
+    case ecallmgr_config:get_boolean(<<"publish_channel_state">>, 'true', Node) of
         'false' -> 'ok';
         'true' ->
             case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'false') of
@@ -684,9 +684,6 @@ get_other_leg(UUID, Props) ->
     get_other_leg_name(UUID, Props, props:get_value(<<"Other-Leg-Channel-Name">>, Props)).
 
 -spec get_other_leg_name(ne_binary(), wh_proplist(), ne_binary()) -> api_binary().
-get_other_leg_name(UUID, Props, <<"loopback/", _/binary>>) ->
-    %% loopback channel, use channel var BridgeId
-    get_other_leg(UUID, Props, props:get_value(?GET_CCV(<<"Bridge-ID">>), Props));
 get_other_leg_name(UUID, Props, _ChannelName) ->
     get_other_leg(UUID, Props, props:get_first_defined([<<"Other-Leg-Unique-ID">>
                                                         ,<<"Other-Leg-Call-ID">>
