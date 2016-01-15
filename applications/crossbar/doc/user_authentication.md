@@ -1,5 +1,4 @@
 
-
 ### Generating an auth token from credentials
 
 Using your username and password, along with an account identifier, will instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.

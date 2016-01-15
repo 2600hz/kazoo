@@ -1,5 +1,4 @@
 
-
 ### The Call Inspector Crossbar resource
 
 The Call Inspector Crossbar resource allows the client to query and inspect data related to the Call Inspector application.
