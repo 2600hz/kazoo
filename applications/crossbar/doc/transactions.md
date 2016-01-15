@@ -5,11 +5,11 @@ Language: en-US
 Version: 3.20
 */
 
-# Transactions
+### Transactions
 
-## Get transactions
+#### Get transactions
 
-### Request
+##### Request
 
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/transactions`
@@ -19,7 +19,7 @@ Version: 3.20
     - `created_to` {{TIMESTAMP}}
     - `reason` `only_calls`
 
-### Response
+##### Response
 
     {"data": [
         {"description": "monthly rollup",
@@ -46,15 +46,15 @@ Version: 3.20
     }
 
 
-## Get current balance
+#### Get current balance
 
-### Request
+##### Request
 
 - Verb: `GET`
 - Url: `/accounts/{{ACCOUNT_ID}}/transactions/current_balance`
 - Payload: None
 
-### Response
+##### Response
 
     {"data": {
         "balance": 9.18
@@ -62,17 +62,17 @@ Version: 3.20
      "status": "success"
     }
 
-## Debit an account
+#### Debit an account
 
 Only for super duper admins and resellers.
 
-### Request
+##### Request
 
 - Verb: `DELETE`
 - Url: `/accounts/{{ACCOUNT_ID}}/transactions/debit`
 - Payload: `{"data": {"amount": 1} }`
 
-### Response
+##### Response
 
     {"data": {
         "metadata": {

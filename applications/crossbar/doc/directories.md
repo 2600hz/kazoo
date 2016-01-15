@@ -4,11 +4,11 @@ Title: Directories
 Language: en-US
 */
 
-## Directories
+#### Directories
 
-### Create PDF:
+##### Create PDF:
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/directories/{{ID}}/pdf`
@@ -21,6 +21,6 @@ Language: en-US
 }
 ```
 
-#### Response
+###### Response
 
 PDF File
