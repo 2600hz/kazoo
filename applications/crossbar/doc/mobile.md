@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Mobile
-Language: en-US
-*/
+
 
 ### Mobile APIs
 Learn how to use the 2600hz mobile API set to activate and manage phones.
