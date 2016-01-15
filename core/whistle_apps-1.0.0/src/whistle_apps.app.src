@@ -9,7 +9,9 @@
                   , stdlib
                   , sasl
                   , crypto
+                  , syslog
                   , lager
+                  , lager_syslog
                   , ibrowse
                   , whistle
                   , whistle_amqp
