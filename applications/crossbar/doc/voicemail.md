@@ -5,11 +5,11 @@ Language: en-US
 Version: 3.20
 */
 
-# Kazoo Voice-mails
+### Kazoo Voice-mails
 Learn how to use the 2600hz mobile API set to manage voice-mail boxes.
 
 
-## Options
+#### Options
 
 `not_configurable` `true`/`false` : Disallow the user to configure voice-mail via the menu.
 
