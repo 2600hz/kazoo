@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Blacklists
-Language: en-US
-*/
+
 
 A blacklist is a map of caller id numbers that can be then apply to the account to block these callers to call the system.
 

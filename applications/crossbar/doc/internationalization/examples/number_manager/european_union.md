@@ -1,11 +1,4 @@
-/*
-Section: Internationalization
-Title: European Union number_manager sample
-Language: en-US
 
-Contributors:
-    Yumminova.eu
-*/
 
 Configuring the `system_config/number_manager` document for European Union-based installations.
 

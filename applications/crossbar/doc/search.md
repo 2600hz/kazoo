@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Search
-Language: en-US
-*/
+
 
 The Search API allows queries on databases.
 

@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Call Priorities
-Language: en-US
-*/
+
 
 Call priorities
 =================

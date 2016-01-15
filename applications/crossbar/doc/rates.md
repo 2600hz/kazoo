@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Rates
-Language: en-US
-*/
+
 
 ### Rates
 

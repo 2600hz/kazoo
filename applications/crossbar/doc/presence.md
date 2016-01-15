@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Presence
-Language: en-US
-Version: 3.22
-*/
+
 
 Kazoo tracks presence subscriptions and those states can be accessed/manipulated via this API.
 

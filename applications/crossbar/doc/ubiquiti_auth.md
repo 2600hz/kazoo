@@ -1,9 +1,4 @@
-/*
-Category: Crossbar
-Title: Ubiquiti SSO
-Language: en-US
-Version: 3.18
-*/
+
 
 ### Ubiquiti Single Sign On
 

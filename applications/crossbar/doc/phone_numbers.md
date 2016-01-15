@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Phone Numbers
-Language: en-US
-Version: 3.18
-*/
+
 
 ### Phone Numbers
 Learn how to use the 2600hz mobile API set to activate and manage numbers.

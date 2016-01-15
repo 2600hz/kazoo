@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Basics
-Language: en-US
-*/
+
 
 ### Give it a REST
 

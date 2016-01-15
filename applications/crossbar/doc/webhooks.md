@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Webhooks
-Language: en-US
-Version: 3.22
-*/
+
 
 Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting that server of events occuring within Kazoo. Typically, events would be fired for new calls, when a call is answered, and when a call is finished, though other events will be added in the future.
 
