@@ -63,3 +63,27 @@ So given `"pvt_tree":["1", "2", "3"]`, it can be determined that "3" is the pare
     ]
 }
 `````
+
+## The API Key
+
+The API key is used by the api_auth API to obtain an auth_token.  That intended for use by applications talking to kazoo and provides a mechanism for authenticaion that does not require saving a username and password. The api_key can be obtained via the accounts api endpoint api_key. 
+
+## Retrieving the API key
+
+### Request
+
+`GET` request on `http://{SERVER}/v2/accounts/{ACCOUNT_ID}/api_key`
+
+### Response
+
+`````
+{
+    "data": [
+        {
+           "api_key": {ACCOUNT_API_KEY}
+        }
+    ]
+}
+`````
+
+
