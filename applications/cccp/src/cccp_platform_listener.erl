@@ -24,6 +24,8 @@
 
 -include("cccp.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{'cccp_util', 'relay_amqp'},[{<<"call_event">>, <<"*">>}]}
                     ,{{'cccp_util', 'handle_disconnect'},[{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}]}
                     ,{{?MODULE, 'handle_answer'}, [{<<"call_event">>, <<"*">>}]}
@@ -37,20 +39,16 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}]}
                ,{'self', []}
                ],
 
-    gen_listener:start_link(?MODULE, [
-                                      {'bindings', Bindings}
+    gen_listener:start_link(?SERVER, [{'bindings', Bindings}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include

@@ -24,6 +24,8 @@
 
 -include("cccp.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_resource_response'},[{<<"*">>, <<"*">>}]}
                     ,{{'cccp_util', 'relay_amqp'}, [{<<"*">>, <<"*">>}]}
@@ -34,15 +36,11 @@
 -define(CONSUME_OPTIONS, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link([any()]) -> startlink_ret().
+-spec start_link(list()) -> startlink_ret().
 start_link(JObj) ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
@@ -58,6 +56,12 @@ init([JObj]) ->
     AuthDocId = wh_json:get_value(<<"Auth-Doc-Id">>, JObj),
     CallbackDelay = wh_json:get_value(<<"Callback-Delay">>, JObj),
 
+    RealCallbackDelay =
+        case is_integer(CallbackDelay) of
+            'true' -> CallbackDelay * ?MILLISECONDS_IN_SECOND;
+            'false' -> whapps_config:get_integer(?CCCP_CONFIG_CAT, <<"callback_delay">>, 3) * ?MILLISECONDS_IN_SECOND
+        end,
+
     {'ok', #state{customer_number = CustomerNumber
                   ,b_leg_number = BLegNumber
                   ,account_id = AccountId
@@ -65,10 +69,7 @@ init([JObj]) ->
                   ,call = whapps_call:new()
                   ,queue = 'undefined'
                   ,auth_doc_id = AuthDocId
-                  ,callback_delay = case is_integer(CallbackDelay) of
-                                        'true' -> CallbackDelay * ?MILLISECONDS_IN_SECOND;
-                                        'false' -> whapps_config:get_integer(?CCCP_CONFIG_CAT, <<"callback_delay">>, 3) * ?MILLISECONDS_IN_SECOND
-                                    end
+                  ,callback_delay = RealCallbackDelay
                  }}.
 
 %%--------------------------------------------------------------------
