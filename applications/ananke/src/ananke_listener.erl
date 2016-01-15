@@ -177,10 +177,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--type time() :: leader_cron_task:oneshot() | leader_cron_task:cron() | leader_cron_task:sleeper().
+-type time() :: amqp_cron_task:oneshot() | amqp_cron_task:cron() | amqp_cron_task:sleeper().
 -type time_token_value() :: 'all' | integer() | integers().
--type leader_cron_callback() :: {atom(), atom(), list()} | {fun(), list()}.
--spec normalize_schedule(wh_json:object()) -> {ne_binary(), time(), leader_cron_callback()}.
+-type amqp_cron_callback() :: {atom(), atom(), list()} | {fun(), list()}.
+-spec normalize_schedule(wh_json:object()) -> {ne_binary(), time(), amqp_cron_callback()}.
 normalize_schedule(Schedule) ->
     Action = wh_json:get_value(<<"action">>, Schedule),
     ActionType = wh_json:get_value(<<"type">>, Action),
@@ -225,10 +225,10 @@ time_schedule(Schedule) ->
                                                    + ?SECONDS_IN_DAY * Days)}
     end.
 
--spec schedule({ne_binary(), time(), leader_cron_task:execargs()}) -> {'ok', pid()} | {'error', term()}.
+-spec schedule({ne_binary(), time(), amqp_cron_task:execargs()}) -> {'ok', pid()} | {'error', term()}.
 schedule({Name, Time, Action}) ->
     lager:info("scheduling ~p", [Name]),
-    leader_cron:schedule_task(Name, Time, Action).
+    amqp_cron:schedule_task(Name, Time, Action).
 
 -spec get_time_token_value(wh_json:object()) -> fun(({ne_binary(), any()}) -> time_token_value()).
 get_time_token_value(JObj) ->
@@ -249,7 +249,7 @@ parse_time_token(TokenName, Schedule, Default) ->
             wh_util:to_integer(Token)
     end.
 
--spec action_fun(ne_binary(), wh_json:object()) -> leader_cron_callback().
+-spec action_fun(ne_binary(), wh_json:object()) -> amqp_cron_callback().
 action_fun(<<"check_voicemail">>, JObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     VmboxId = wh_json:get_value(<<"vmbox_id">>, JObj),
@@ -294,6 +294,6 @@ unknown_type(Type) ->
 
 load_schedules() ->
     timer:sleep(60 * ?MILLISECONDS_IN_SECOND),
-    leader_cron:schedule_task('load_schedules', {'oneshot', 60000}
+    amqp_cron:schedule_task('load_schedules', {'oneshot', 60000}
                              ,{'gen_listener', 'cast', [?MODULE, 'load_schedules']}),
     'normal'.

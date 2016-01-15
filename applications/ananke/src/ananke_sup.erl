@@ -59,17 +59,17 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    LeaderCronNodes = [node() | get_leader_cron_nodes()],
+    LeaderCronNodes = [node() | get_amqp_cron_nodes()],
     lager:debug("starting leader cron on nodes ~p", [LeaderCronNodes]),
-    LeaderCron = ?WORKER_ARGS('leader_cron', [LeaderCronNodes]),
+    LeaderCron = ?WORKER_ARGS('amqp_cron', [LeaderCronNodes]),
 
     {'ok', {SupFlags, [LeaderCron | ?CHILDREN]}}.
 
 %% This is only for simple configurations.
 %% At the first start one node will be added to config.
 %% After that all whistle_apps nodes will try to syncronize with it.
--spec get_leader_cron_nodes() -> atoms().
-get_leader_cron_nodes() ->
+-spec get_amqp_cron_nodes() -> atoms().
+get_amqp_cron_nodes() ->
     lists:map(fun(X) -> wh_util:to_atom(wh_util:to_list(X), 'true') end
               ,whapps_config:get(?CONFIG_CAT, <<"nodes">>, [node()])
               ) -- [node()].

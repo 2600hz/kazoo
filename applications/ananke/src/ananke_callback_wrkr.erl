@@ -106,12 +106,12 @@ is_resp(JObj) ->
 
 -spec start_originate_timer(integer()) -> pid().
 start_originate_timer(Timeout) ->
-    {'ok', Pid} = leader_cron:schedule_task({'oneshot', Timeout}, {?MODULE, originate, [self()]}),
+    {'ok', Pid} = amqp_cron:schedule_task({'oneshot', Timeout}, {?MODULE, originate, [self()]}),
     Pid.
 
 -spec stop_originate_timer(pid()) -> 'ok' | {'error', term()}.
 stop_originate_timer(Timer) ->
-    leader_cron:cancel_task(Timer).
+    amqp_cron:cancel_task(Timer).
 
 -spec handle_originate_response(wh_json:object(), state()) -> {'stop', 'normal', state()}
                                                              | {'noreply', state()}.
