@@ -5,11 +5,11 @@ Language: en-US
 Version: 3.18
 */
 
-# Ubiquiti Single Sign On
+### Ubiquiti Single Sign On
 
-## Crossbar Requests
+#### Crossbar Requests
 
-### PUT
+##### PUT
 
     curl -v -X PUT -H "Content-Type: application/json" http://crossbar:8000/v2/ubiquiti_auth -d '{"data":{"username":"{USERNAME}", "password":"{PASSWORD}"}}'
     {

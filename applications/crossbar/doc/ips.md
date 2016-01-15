@@ -6,14 +6,14 @@ Language: en-US
 
 The IPs API allows users to list the address assigned to their accounts.  In the future they will be able to fully manage dedicated IPs.
 
-## Schema
+#### Schema
 
 * `ip`: The IP address
 * `zone`: The zone the IP currently routes to, this will be an arbitrary value
 
-## APIs
+#### APIs
 
-### List Assigned IPs
+##### List Assigned IPs
 
 Request:
 
@@ -31,7 +31,7 @@ Responce:
 }
 ```
 
-## List Zones
+#### List Zones
 
 Request:
 
@@ -49,7 +49,7 @@ Responce:
 }
 ```
 
-## List Hosts
+#### List Hosts
 
 Request:
 
@@ -67,7 +67,7 @@ Responce:
 }
 ```
 
-## Get IP Info
+#### Get IP Info
 
 Request:
 
@@ -90,7 +90,7 @@ Responce:
 }
 ```
 
-## Assign IP To Account
+#### Assign IP To Account
 
 Request:
 
@@ -120,7 +120,7 @@ Responce:
 }
 ```
 
-## Assign IPS To Account
+#### Assign IPS To Account
 
 Request:
 
@@ -160,7 +160,7 @@ Responce:
 }
 ```
 
-## Release IP From Account
+#### Release IP From Account
 
 Request:
 

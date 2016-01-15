@@ -6,21 +6,21 @@ Version: 3.23
 */
 
 
-## Comments
+#### Comments
 
 * GET - Get bindings.
 * GET - Get sockets ID.
 * GET - Get socket bindings.
 
-### Fetch bindings:
+##### Fetch bindings:
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/websockets`
 - Payload: None
 
-#### Response
+###### Response
 
 ```json
 {
@@ -39,15 +39,15 @@ Version: 3.23
 }
 ```
 
-### Fetch Sockets ID:
+##### Fetch Sockets ID:
 
-#### Request
+###### Request
 
 - Verb: `GET`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/websockets`
 - Payload: None
 
-#### Response
+###### Response
 
 ```json
 {
@@ -56,15 +56,15 @@ Version: 3.23
 }
 ```
 
-### Fetch Socket Bindings:
+##### Fetch Socket Bindings:
 
-#### Request
+###### Request
 
 - Verb: `PUT`
 - Url: `/v2/accounts/{{ACCOUNT_ID}/websockets/{{ID}}`
 - Payload: None
 
-#### Response
+###### Response
 
 ```json
 {
