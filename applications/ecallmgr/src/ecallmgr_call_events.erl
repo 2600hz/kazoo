@@ -176,11 +176,10 @@ handle_publisher_usurp(JObj, Props) ->
 %%--------------------------------------------------------------------
 -spec init([atom() | ne_binary(),...]) -> {'ok', state()}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
-    try gproc:reg(?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)) of
-        'true' -> init(Node, CallId)
-    catch
-        _E:_R ->
-            lager:debug("failed to register for ~s:~s: ~s:~p", [Node, CallId, _E, _R]),
+    case register_event_process(Node, CallId) of
+        'ok' -> init(Node, CallId);
+        {'error', _R} ->
+            lager:debug("failed to register for ~s:~s: ~p", [Node, CallId, _R]),
             {'stop', 'normal'}
     end.
 
@@ -193,6 +192,13 @@ init(Node, CallId) ->
                   ,call_id=CallId
                   ,ref=wh_util:rand_hex_binary(12)
                  }}.
+-spec register_event_process(atom(), ne_binary()) -> 'ok' | {'error', any()}.
+register_event_process(Node, CallId) ->
+    try gproc:reg(?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)) of
+        'true' -> 'ok'
+    catch
+        _E:R -> {'error', R}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -487,6 +493,7 @@ handle_bowout(Node, Props, ResigningUUID) ->
         {ResigningUUID, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("loopback bowout detected, replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
 
+            register_event_process(Node, AcquiringUUID),
             unregister_for_events(Node, ResigningUUID),
             register_for_events(Node, AcquiringUUID),
 
@@ -632,7 +639,7 @@ generic_call_event_props(Props) ->
      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
      ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
      ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
-     ,{<<"Switch-Node">>, props:get_value(<<"Switch-Node">>, Props)}
+     ,{<<"Switch-Nodename">>, props:get_value(<<"Switch-Nodename">>, Props)}
      ,{<<"Channel-State">>, get_channel_state(Props)}
      ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
      ,{<<"Channel-Name">>, props:get_value(<<"Channel-Name">>, Props)}
@@ -850,6 +857,8 @@ should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false', _) ->
     'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set", _/binary>>, _, _) ->
     'false';
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, _, _) ->
+    'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, 'false', _) ->
     lager:debug("suppressing intercept execute complete in favour the whistle masquerade of this event"),
     'false';
@@ -882,7 +891,7 @@ maybe_skip_loopback(Props) ->
     maybe_skip_loopback(ChannelName, CallFwd, Cause).
 
 -spec maybe_skip_loopback(ne_binary(), boolean(), ne_binary()) -> boolean().
-maybe_skip_loopback(<<"loopback", _/binary>>, 'true', <<"NORMAL", _/binary>>) -> 'false';
+maybe_skip_loopback(<<"loopback", _/binary>>, 'true', <<"NORMAL", _/binary>>) -> 'true';
 maybe_skip_loopback(_, _, _) -> 'true'.
 
 -spec silence_terminated(api_integer() | wh_proplist()) -> api_boolean().
