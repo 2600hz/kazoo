@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: IPs
-Language: en-US
-*/
+
 
 The IPs API allows users to list the address assigned to their accounts.  In the future they will be able to fully manage dedicated IPs.
 

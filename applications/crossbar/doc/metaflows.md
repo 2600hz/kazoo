@@ -1,8 +1,4 @@
-/*
-Section: Crossbar
-Title: Metaflows
-Language: en-US
-*/
+
 
 Metaflows allow functionality to be executed on an in-progress call, triggered by DTMFs from the caller/callee. For instance, a callee could setup a metaflow on their user doc such that when they receive a call, they can press "*9" to initiate a recording of the call.
 
