@@ -4,10 +4,10 @@ Title: Token restrictions
 Language: en-US
 */
 
-# Token restrictions
+### Token restrictions
 Module `cb_token_restrictions`.
 
-## What is it?
+#### What is it?
 Token restrictions - set of rules saved in auth token document. These rules grant access to API URIs.
 **If the token document doesn't have any rules then this module won't apply any restrictions to request.**
 These rules are created when the system creates an auth token.
@@ -15,12 +15,12 @@ Rules can be loaded from system template or account template.
 System template located in `system_config/crossbar.token_restrictions`.
 Account template located in `{ACCOUNT_DB}/token_restrictions`.
 
-## How it works?
+#### How it works?
 When you make request to Crossbar (API), the system loads rules from auth token (used for authentitcation) and tries to apply the rules to URI (`/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/`).
 More information about URI structure can be found [here](basics.md).
 If Crossbar doesn't find a match for all parameters (endpoint name, account id, endpoint arguments, HTTP method), then it halts the request and returns a 403 error.
 
-## Template structure
+#### Template structure
 Each template can have different rules for different authentication methods and user privelege levels.
 
 ```JSON
@@ -72,7 +72,7 @@ Example template:
 }
 ```
 
-## Rules structure (saved in token document)
+#### Rules structure (saved in token document)
 
 ```JSON
 {
@@ -123,9 +123,9 @@ Example template:
 * `ARG_#` - arguments for endpoint separated by `/`
 * `VERB_#` - any appropriate HTTP method (`"GET"`, `"PUT"`, etc)
 
-## Match order
+#### Match order
 
-### Endpoint match
+##### Endpoint match
 At this step module compare resource from URI with resource names in token restrictions.
 If URI is `/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/{MODIFIER}/` then endpoint will be `users`, and `{USER_ID}`, `{MODIFIER}` are arguments of this endpoint.
 Rules applied to the last endpoint in URI.
@@ -150,7 +150,7 @@ You can use "catch all" (`"_"`) endpoint name. First tries exact endpoint name; 
 If a match is not found for the endpoint, this request is halted and a 403 error returned.
 Each endpoint contains a list of objects with rules. Appropriate object is selected by `"allowed_account"` parameter.
 
-### Account match
+##### Account match
 
 After Crossbar finds the endpoint it tries to find rules for the requested account.
 
@@ -187,7 +187,7 @@ List of account IDs set in parameter `"allowed_accounts"`. You can write exact I
 
 The first endpoint-rule object matched to the requested account will be used in the next step of argument matching.
 
-### Endpoint arguments match
+##### Endpoint arguments match
 
 Endpoint argumnets matched with parameter `"rules"`.
 
@@ -253,7 +253,7 @@ For matching more than one argument, you can use `/` to delineate how to process
 * `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{DID}`
 * etc
 
-### HTTP method match
+##### HTTP method match
 If endpoint matching fails to find a match, Crossbar will try to match the HTTP method used.
 
 ```JSON
@@ -282,9 +282,9 @@ If endpoint matching fails to find a match, Crossbar will try to match the HTTP 
 
 List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE") or the "catch all" - `"_"`.
 
-## Manage accounts templates
+#### Manage accounts templates
 
-### Get current account template
+##### Get current account template
 
 `GET /v2/accounts/{ACCOUNT_ID}/token_restrictions` return JSON like this:
 
@@ -311,7 +311,7 @@ List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE")
 
 If the account doesn't have token restrictions, the API will return a 404 error.
 
-### Create/update account template
+##### Create/update account template
 
 `POST /v2/accounts/{ACCOUNT_ID}/token_restrictions`
 
@@ -340,6 +340,6 @@ If the account doesn't have token restrictions, the API will return a 404 error.
 }
 ```
 
-### Delete account template
+##### Delete account template
 
 `DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions`
