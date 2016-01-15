@@ -153,10 +153,9 @@ handle_call_event(JObj, Props) ->
             gen_listener:cast(Pid, {'record_start', get_response_media(JObj)});
         {<<"call_event">>, <<"RECORD_STOP">>} ->
             Media = get_response_media(JObj),
-            ChannelState = wh_json:get_value(<<"Channel-State">>, JObj),
-            FreeSWITCHNode = wh_json:get_value(<<"Switch-Node">>, JObj),
-            gen_listener:cast(Pid, {'record_stop', Media, ChannelState, FreeSWITCHNode});
-        {_Cat, _Evt} -> lager:debug("ignore event ~p/~p", [_Cat, _Evt])
+            FreeSWITCHNode = wh_json:get_value(<<"Switch-Nodename">>, JObj),
+            gen_listener:cast(Pid, {'record_stop', Media, FreeSWITCHNode});
+        {_Cat, _Evt} -> 'ok'
     end.
 
 -spec init(list()) -> {'ok', state()}.
@@ -176,8 +175,8 @@ init([Call, Data]) ->
     AccountDb = wh_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     CallId = whapps_call:call_id(Call),
     DocId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), CallId),
-    MediaId = wh_json:get_value(?RECORDING_ID_KEY, Data, wh_util:rand_hex_binary(16)),
-    MediaName = get_media_name(MediaId, Format),
+    DefaultMediaName = get_media_name(wh_util:rand_hex_binary(16), Format),
+    MediaName = wh_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = get_url(Data),
     ShouldStore = should_store_recording(Url),
 
@@ -229,8 +228,11 @@ handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
     lager:debug("record start received but we're already recording"),
     {'noreply', State};
 handle_cast({'record_start', {_, Media}}, #state{media={_, Media}}=State) ->
+    lager:debug("record start received for ~s", [Media),
     {'noreply', State#state{is_recording='true'}};
-handle_cast({'record_stop', {_, MediaName}=Media, <<"HANGUP">>, FS},
+handle_cast({'record_start', {_, Media1}}, #state{media={_, Media2}}=State) ->
+    {'noreply', State};
+handle_cast({'record_stop', {_, MediaName}=Media, FS},
             #state{media={_, MediaName}
                    ,is_recording='true'
                    ,call=Call
