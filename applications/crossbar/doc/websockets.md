@@ -1,6 +1,5 @@
 
 
-
 #### Comments
 
 * GET - Get bindings.

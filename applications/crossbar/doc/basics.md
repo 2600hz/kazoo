@@ -1,5 +1,4 @@
 
-
 ### Give it a REST
 
 Crossbar is the REST API server, from which developers can build applications that configure Kazoo's myriad services and functionalities.
