@@ -31,7 +31,7 @@ handle(Data, Call, <<"start">>) ->
     RecID = wh_util:rand_hex_binary(16),
     Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = wh_media_recording:get_media_name(RecID, Format),
-    Args = wh_json:set_value(?CF_RECORDING_ID_KEY, RecID, Data),
+    Args = wh_json:set_value(?CF_RECORDING_ID_KEY, MediaName, Data),
     cf_util:start_call_recording(Args, store_recording(MediaName, Call));
 
 handle(_Data, OriginalCall, <<"stop">> = Action) ->
