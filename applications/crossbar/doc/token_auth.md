@@ -10,7 +10,7 @@ Once you have an authentication token, you can access various Crossbar resource 
 
 Authentication tokens refresh their pvt\_modified timestamp each time they are used in an API request. Once an authentication token's pvt\_modified timestamp has passed a configurable timeout (usually one hour), it is automatically cleaned up by the system and no longer valid.
 
-## Token Restrictions
+#### Token Restrictions
 
 The authentication token can be created with restrictions on what resource URIs (and HTTP methods) can be accessed by the requestor. This payload is added to the authentication payload used in any of the authentication methods provided ([User](./user_authentication.md), [API](./api_authentication.md), etc).
 
@@ -59,13 +59,13 @@ This would restrict the authentication token to only be able to access {ACCOUNT_
 
 Here the `#` matches 0 or more segments after `/users`.
 
-## API Endpoint
+#### API Endpoint
 
 URL segment: `/token_auth`
 
-## Sample cURL Requests
+#### Sample cURL Requests
 
-### Delete an authentication token
+##### Delete an authentication token
 
 If you'd like to invalidate an authentication token programmatically (versus letting the system expire the token), you can issue a `DELETE`:
 

@@ -5,18 +5,18 @@ Language: en-US
 Version: 3.18
 */
 
-# Phone Numbers
+### Phone Numbers
 Learn how to use the 2600hz mobile API set to activate and manage numbers.
 
 
-## Check Phone Numbers availability
+#### Check Phone Numbers availability
 
 This API check if the numbers are still available for purchase.
 
 - IN <- List of numbers
 - OUT -> JSON; Key = Number, Value = status
 
-### Request
+##### Request
 
 - Verb: `POST`
 - Url: `/accounts/ACCOUNT_ID/phone_numbers/check`
@@ -30,7 +30,7 @@ This API check if the numbers are still available for purchase.
          }
         }
 
-### Response
+##### Response
 
 ```
 {
@@ -45,7 +45,7 @@ This API check if the numbers are still available for purchase.
 }
 ```
 
-### _GET_ Classifier for a number
+##### _GET_ Classifier for a number
 
     curl -X GET -H "Content-Type: application/json" http://crossbar:8000/v2/phone_numbers/classifiers/4158867900
     {"auth_token": "{AUTH_TOKEN}"
@@ -54,7 +54,7 @@ This API check if the numbers are still available for purchase.
          ,"friendly_name": "US DID"
          ,"name": "did_us"
          ,"number": "4158867900"
-         ,"pretty_print": "SS(###) ### - ####"
+         ,"pretty_print": "SS(###) ##### - ####"
          ,"regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
      }
      ,"request_id": {REQUEST_ID}
@@ -63,15 +63,15 @@ This API check if the numbers are still available for purchase.
     }
 
 
-## Fix Phone Numbers
+#### Fix Phone Numbers
 
-### Request
+##### Request
 
 - Verb: `POST`
 - Url: `v2/accounts/ACCOUNT_ID/phone_numbers/fix`
 - Payload: None
 
-### Response
+##### Response
 
 ```
 {
@@ -80,15 +80,15 @@ This API check if the numbers are still available for purchase.
 }
 ```
 
-## Activate a new phone number
+#### Activate a new phone number
 
     curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     http://server:8000/v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}/activate -d '{}'
 
 
-## E911
+#### E911
 
-### Request
+##### Request
 
 - Verb: `POST`
 - Url: `v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{NUMBER}}`
@@ -110,9 +110,9 @@ This API check if the numbers are still available for purchase.
 }
 ```
 
-### Response
+##### Response
 
-#### Invalid address
+###### Invalid address
 
 ```
 {
@@ -136,7 +136,7 @@ This API check if the numbers are still available for purchase.
     "status": "error"
 }
 ```
-#### Multiple choice
+###### Multiple choice
 
 ```
 {
@@ -173,7 +173,7 @@ This API check if the numbers are still available for purchase.
 }
 ```
 
-#### Success
+###### Success
 
 ```
 {

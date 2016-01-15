@@ -7,7 +7,7 @@ Version: 3.19
 
 Allow managing templates for notification emails.
 
-## Structure
+#### Structure
 
 The structure is really simple:
 
@@ -41,7 +41,7 @@ In addition to the JSON data, templates in various formats can be uploaded (such
 
 The `macros` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
 
-## Crossbar
+#### Crossbar
 
 Using Crossbar to modify notifications is very simple:
 
@@ -52,12 +52,12 @@ Using Crossbar to modify notifications is very simple:
 
 To modify an account notification, the requester must be a reseller of that account or the master account.
 
-### Account Temporal Rules Sets URI
+##### Account Temporal Rules Sets URI
 
 * `/v2/accounts/{ACCOUNT_ID}/notifications`: modify an account's template(s)
 * `/v2/notifications`: Modify the system default templates
 
-#### GET - Fetch available notification templates from the system
+###### GET - Fetch available notification templates from the system
 
 This is the first request to make to see what templates exist on the system to override
 
@@ -118,7 +118,7 @@ To see what notification templates an account over-rides, include the account ID
 
 The key `account_overridden` will exist on any templates that are account-specific.
 
-#### GET - Fetch a notification's configuration
+###### GET - Fetch a notification's configuration
 
 Using the ID from the system listing above, get the template JSON. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
 
@@ -144,7 +144,7 @@ Using the ID from the system listing above, get the template JSON. This document
 
 Performing a GET with an account ID will return the notification object, again with the `account_overridden` flag added if it is account-specific; lack of the key indicates it is the system default notification.
 
-#### PUT - Create a notification template
+###### PUT - Create a notification template
 
 Now that you've fetched the system default template, modify and PUT it back to the account.
 
@@ -194,7 +194,7 @@ Now that you've fetched the system default template, modify and PUT it back to t
 
 This request will fail if `id` does not already exist in the system defaults. To create a new system notification template, a superduper admin can use the above PUT, but to `/v2/notifications` instead of a specific account.
 
-#### GET - Fetch a specific notification
+###### GET - Fetch a specific notification
 
 Now that you've created an account-specific notification, you can fetch it to feed into a WYSIWYG editor or for other purposes:
 
@@ -210,7 +210,7 @@ Now that you've created an account-specific notification, you can fetch it to fe
         "status": "success"
     }
 
-#### POST - Update a notification's config
+###### POST - Update a notification's config
 
 Similar to the PUT, POST will update an existing config:
 
@@ -241,17 +241,17 @@ Similar to the PUT, POST will update an existing config:
 
 Omit `/accounts/{ACCOUNT_ID}` to update the system's version.
 
-#### DELETE - remove a notification template
+###### DELETE - remove a notification template
 
     curl -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type:application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
 Omit the `/accounts/{ACCOUNT_ID}` to remove the system default.
 
-### Template Formats
+##### Template Formats
 
 Creating the configuration documents is all well and good, but it is necessary to be able to attach the templates in their various forms as well. Currently supported formats are `text/html` and `text/plain`.
 
-#### GET - Get notification template:
+###### GET - Get notification template:
 
 When you GET a notification config (`Accept` of `application/json`), get a `templates` list of `Content-Type` atttributes. Use those to fetch a specific template by setting the `Accept` header:
 
@@ -263,7 +263,7 @@ Note that the only difference is the `Accept` attribute. This will determine whi
 
 For clients that do not support setting the `Accept` header, a querystring parameter can be included (eg `http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template.
 
-#### POST - Update notification template:
+###### POST - Update notification template:
 
 ```
 curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID} -d '
@@ -276,7 +276,7 @@ curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://s
 curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain"  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/text -d 'some plain text template code'
 ```
 
-#### _POST_ - Preview a new template
+###### _POST_ - Preview a new template
 
 It can be helpful to preview the resulting email when modifying templates, but before actually saving the template.
 
@@ -285,13 +285,13 @@ It can be helpful to preview the resulting email when modifying templates, but b
 * `html` is the base64 encoded HTML template
 * `plain` is the plain-text template
 
-# Operations considerations
+### Operations considerations
 
 In versions Kazoo prior to 3.19, notification templates were managed and processed by the `notify` app.
 
 All accounts will continue to be processed by the `notify` app until the Crossbar notification APIs are accessed for the first time (for instance, when using the Branding App in Monster). Once a client has accessed the APIs, a flag is set on the account telling the `notify` app to ignore processing and instructs the `teletype` app to process it instead. This allows admins to run both `notify` and `teletyple` concurrently without sending multiple copies of each notification.
 
-## Logs
+#### Logs
 
 * GET - Gets the notification(s) SMTP log.
 
