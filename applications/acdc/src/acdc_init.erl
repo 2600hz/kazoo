@@ -27,6 +27,7 @@ start_link() ->
 -spec init_acdc() -> any().
 init_acdc() ->
     wh_util:put_callid(?MODULE),
+    _ = declare_exchanges(),
     case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
         {'ok', []} ->
             lager:debug("no accounts configured for acdc");
@@ -131,3 +132,17 @@ try_again(AccountId, View, F) ->
               AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
               F(AccountId, couch_mgr:get_results(AccountDb, View, []))
       end).
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_acdc_agent:declare_exchanges(),
+    _ = wapi_acdc_queue:declare_exchanges(),
+    _ = wapi_acdc_stats:declare_exchanges(),
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_conf:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_resource:declare_exchanges(),
+    _ = wapi_route:declare_exchanges(),
+    _ = wapi_presence:declare_exchanges(),
+    wapi_self:declare_exchanges().

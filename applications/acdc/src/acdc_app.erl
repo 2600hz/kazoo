@@ -27,7 +27,7 @@
 -spec start(any(), any()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> acdc:start_link().
+start(_StartType, _StartArgs) -> acdc_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,5 +35,6 @@ start(_StartType, _StartArgs) -> acdc:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_State) -> acdc:stop().
+-spec stop(any()) -> 'true'.
+stop(_State) ->
+    exit(whereis('acdc_sup'), 'shutdown').
