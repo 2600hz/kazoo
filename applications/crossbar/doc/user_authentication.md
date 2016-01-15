@@ -4,11 +4,11 @@ Title: User Authentication
 Language: en-US
 */
 
-# Generating an auth token from credentials
+### Generating an auth token from credentials
 
 Using your username and password, along with an account identifier, will instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.
 
-## The Authentication Process
+#### The Authentication Process
 
 Easy as 1, 2, 3:
 
@@ -36,7 +36,7 @@ Easy as 1, 2, 3:
          ,"status": "success"
         }
 
-### The Response
+##### The Response
 
 * {AUTH_TOKEN}: this is your authentication token to include in future requests
 * {ACCOUNT_ID}: your account's ID, useful for constructing URIs
@@ -44,7 +44,7 @@ Easy as 1, 2, 3:
 * {RESELLER_ID}: The account's reseller account ID, if any
 * {REQUEST_ID}: Useful for debugging requests on your installation
 
-# Password Recovery
+### Password Recovery
 
 Sometimes it is necessary to recover a password.
 
@@ -52,15 +52,15 @@ Sometimes it is necessary to recover a password.
 
 Similar to user authentication, you can supply the account realm, the account name, or a phone number associated with the account to send a password reset to the user's email.
 
-# Getting token auth info
+### Getting token auth info
 
-## Request
+#### Request
 
 - Verb: `GET`
 - Url: `accounts/{ACCOUNT_ID}/user_auth/{AUTH_TOKEN}`
 - Payload: None
 
-## Response
+#### Response
 
 ```
 {
