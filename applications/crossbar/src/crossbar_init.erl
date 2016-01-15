@@ -60,7 +60,6 @@ start_link() ->
 
     maybe_start_plaintext(Dispatch),
     maybe_start_ssl(Dispatch),
-    _ = crossbar_bindings:init(),
     'ignore'.
 
 %%--------------------------------------------------------------------
