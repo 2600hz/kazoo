@@ -114,11 +114,11 @@ handle_originate_execute(JObj, Props) ->
     Srv = props:get_value('server', Props),
     UUID = props:get_value('uuid', Props),
     lager:debug("recv originate_execute for ~s", [UUID]),
-    _ = case wh_json:get_ne_value(<<"Server-ID">>, JObj) of
-            'undefined' -> 'ok';
-            ServerId ->
-                gen_listener:cast(Srv, {'update_server_id', ServerId})
-        end,
+%%     _ = case wh_json:get_binary_value(<<"Server-ID">>, JObj) of
+%%             'undefined' -> 'ok';
+%%             ServerId ->
+%%                 gen_listener:cast(Srv, {'update_server_id', ServerId})
+%%         end,
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
     gen_listener:cast(Srv, {'originate_execute'}).
 
@@ -139,7 +139,7 @@ handle_originate_execute(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Node, JObj]) ->
     _ = wh_util:put_callid(JObj),
-    ServerId = wh_json:get_ne_value(<<"Server-ID">>, JObj),
+    ServerId = wh_json:get_binary_value(<<"Server-ID">>, JObj),
     _ = bind_to_events(freeswitch:version(Node), Node),
     case wapi_resource:originate_req_v(JObj) of
         'false' ->
@@ -711,8 +711,7 @@ publish_error(Error, UUID, Request, ServerId) ->
 cleanup_error(<<"-ERR ", E/binary>>) -> E;
 cleanup_error(E) -> E.
 
--spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
-publish_originate_ready(_, _, _, _, 'undefined') -> 'ok';
+-spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), wh_json:object(), api_binary(), api_binary()) -> 'ok'.
 publish_originate_ready(CtrlQ, {_, UUID}, Request, Q, ServerId) ->
     publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId);
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
@@ -742,7 +741,7 @@ publish_originate_resp(ServerId, JObj, UUID) ->
                               ], JObj),
     wapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_started(api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+-spec publish_originate_started(api_binary(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 publish_originate_started('undefined', _, _, _) -> 'ok';
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = wh_json:from_list(
@@ -754,10 +753,10 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
                ])),
     wapi_resource:publish_originate_started(ServerId, Resp).
 
--spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+-spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 publish_originate_uuid('undefined', _, _, _) -> 'ok';
-publish_originate_uuid(ServerId, {_, UUID}, JObj, CtrlQueue) ->
-    publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue);
+%% publish_originate_uuid(ServerId, {_, UUID}, JObj, CtrlQueue) ->
+%%     publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue);
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
              [{<<"Outbound-Call-ID">>, UUID}
