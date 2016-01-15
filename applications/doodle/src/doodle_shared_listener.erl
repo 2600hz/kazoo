@@ -22,8 +22,9 @@
 -include("doodle.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
--record(state, {}).
+-define(SERVER, ?MODULE).
 
+-record(state, {}).
 
 
 -define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
@@ -48,14 +49,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}

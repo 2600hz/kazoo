@@ -14,6 +14,8 @@
 
 -include("doodle.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(ORIGIN_BINDINGS, [ [{'db', ?WH_SIP_DB }
                             ,{'type', <<"device">>}
                            ]
@@ -34,13 +36,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks

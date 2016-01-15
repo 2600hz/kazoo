@@ -15,6 +15,8 @@
 
 -include("doodle.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(DEFAULT_EXCHANGE, <<"sms">>).
 -define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}] ).
@@ -34,7 +36,7 @@
 %% ===================================================================
 -spec start_inbound_listener(amqp_listener_connection()) -> startlink_ret().
 start_inbound_listener(Connection) ->
-    supervisor:start_child(?MODULE, [Connection]).
+    supervisor:start_child(?SERVER, [Connection]).
 
 -spec start_listeners() -> 'ok'.
 start_listeners() ->
@@ -43,13 +45,11 @@ start_listeners() ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    R = supervisor:start_link({'local', ?MODULE}, ?MODULE, []),
+    R = supervisor:start_link({'local', ?SERVER}, ?MODULE, []),
     case R of
         {'ok', _} -> start_listeners();
         _Other -> lager:error("error starting inbound_listeneres sup : ~p", [_Other])

@@ -23,6 +23,8 @@
 
 -include("doodle.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {connection :: amqp_listener_connection()}).
 
 -define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
@@ -51,11 +53,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(amqp_listener_connection()) -> startlink_ret().
 start_link(#amqp_listener_connection{broker=Broker
@@ -65,7 +63,7 @@ start_link(#amqp_listener_connection{broker=Broker
                                      ,options=Options
                                     }=C) ->
     Exchanges = [{Exchange, Type, Options}],
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS(Exchange)}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', Queue}       % optional to include
