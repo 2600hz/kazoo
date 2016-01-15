@@ -1,5 +1,4 @@
 
-
 ### Call Queues
 
 When you have more callers than agents to handle those calls, you can create a call queue to put the callers on hold while agents process callers in the order they arrived in the call queue.
