@@ -214,7 +214,7 @@ handle_cast({'create_uuid'}, #state{node=Node
             {'noreply', State1, 'hibernate'};
         {'error', 'no_server_controller'} ->
             gen_listener:cast(self(), {'build_originate_args'}),
-            {'noreply', State#state{uuid=UUID}, 'hibernate'};            
+            {'noreply', State#state{uuid=UUID}, 'hibernate'};
         {'error', _E} ->
             lager:debug("failed to start control proc for ~p: ~p", [UUID, _E]),
             {'stop', 'normal', State}
@@ -305,7 +305,6 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
                 'true' -> 'ok';
                 'false' -> ecallmgr_call_control:stop(CtrlPid)
             end,
-
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
             wh_util:put_callid(CallId),
