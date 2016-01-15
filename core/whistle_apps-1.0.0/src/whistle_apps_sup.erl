@@ -45,7 +45,6 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    io:format("starting super~n"),
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec initialize_whapps(atoms()) -> {'error', any()} |
@@ -77,5 +76,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    io:format("starting children ~p~n", [?CHILDREN]),
+
     {'ok', {SupFlags, ?CHILDREN}}.
