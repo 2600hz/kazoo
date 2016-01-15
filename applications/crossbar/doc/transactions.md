@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Transactions
-Language: en-US
-Version: 3.20
-*/
+
 
 ### Transactions
 

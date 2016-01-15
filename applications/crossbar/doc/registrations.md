@@ -1,9 +1,4 @@
-/*
-Section: Crossbar
-Title: Registrations
-Language: en-US
-Version: 3.18
-*/
+
 
 The Registrations API provides an easy way to see and manage current registrations.
 
