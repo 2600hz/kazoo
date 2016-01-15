@@ -396,7 +396,7 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
                     lager:info("caller pressed '~s', redirecting to check voicemail", [Login]),
                     check_mailbox(Box, Call);
                 Operator ->
-                    lager:info("caller choose to ring the operator"),
+                    lager:info("caller chose to ring the operator"),
                     case cf_util:get_operator_callflow(whapps_call:account_id(Call)) of
                         {'ok', Flow} -> {'branch', Flow};
                         {'error', _R} -> record_voicemail(tmp_file(), Box, Call)
@@ -654,7 +654,7 @@ main_menu(#mailbox{keys=#keys{hear_new=HearNew
                 _Else ->  main_menu(Box, Call)
             end;
         {'ok', Configure} ->
-            lager:info("caller choose to change their mailbox configuration"),
+            lager:info("caller chose to change their mailbox configuration"),
             case config_menu(Box, Call) of
                 'ok' -> 'ok';
                 {'error', 'channel_hungup'}=E ->
@@ -750,28 +750,28 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone}=B
              ],
     case message_menu(Prompt, Box, Call) of
         {'ok', 'keep'} ->
-            lager:info("caller choose to save the message"),
+            lager:info("caller chose to save the message"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             _ = set_folder(?VM_FOLDER_SAVED, H, Box, Call),
             play_messages(T, [H|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
-            lager:info("caller choose to listen to previous message"),
+            lager:info("caller chose to listen to previous message"),
             play_prev_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'next'} ->
-            lager:info("caller choose to listen to next message"),
+            lager:info("caller chose to listen to next message"),
             play_next_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'delete'} ->
-            lager:info("caller choose to delete the message"),
+            lager:info("caller chose to delete the message"),
             _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             _ = set_folder(?VM_FOLDER_DELETED, H, Box, Call),
             play_messages(T, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->
-            lager:info("caller choose to return to the main menu"),
+            lager:info("caller chose to return to the main menu"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             _ = set_folder(?VM_FOLDER_SAVED, H, Box, Call),
             'complete';
         {'ok', 'replay'} ->
-            lager:info("caller choose to replay"),
+            lager:info("caller chose to replay"),
             play_messages(Messages, PrevMessages, Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
@@ -885,7 +885,7 @@ handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}}=Box
                         ,_Loop
                         ,Selection
                        ) ->
-    lager:info("caller choose to record their unavailable greeting"),
+    lager:info("caller chose to record their unavailable greeting"),
     case record_unavailable_greeting(tmp_file(), Box, Call) of
         'ok' -> 'ok';
         Else -> config_menu(Else, Call)
@@ -895,7 +895,7 @@ handle_config_selection(#mailbox{keys=#keys{rec_name=Selection}}=Box
                         ,_Loop
                         ,Selection
                        ) ->
-    lager:info("caller choose to record their name"),
+    lager:info("caller chose to record their name"),
     case record_name(tmp_file(), Box, Call) of
         'ok' -> 'ok';
         Else -> config_menu(Else, Call)
@@ -905,7 +905,7 @@ handle_config_selection(#mailbox{keys=#keys{set_pin=Selection}}=Box
                         ,_Loop
                         ,Selection
                        ) ->
-    lager:info("caller choose to change their pin"),
+    lager:info("caller chose to change their pin"),
     case change_pin(Box, Call) of
         {'error', 'channel_hungup'}=E ->
             lager:debug("channel has hungup, done trying to setup mailbox"),
@@ -921,7 +921,7 @@ handle_config_selection(#mailbox{keys=#keys{rec_temporary_unavailable=Selection}
                         ,_Loop
                         ,Selection
                        ) ->
-    lager:info("caller choose to record their temporary unavailable greeting"),
+    lager:info("caller chose to record their temporary unavailable greeting"),
     case record_temporary_unavailable_greeting(tmp_file(), Box, Call) of
         'ok' -> 'ok';
         Box1 -> config_menu(Box1, Call)
@@ -931,7 +931,7 @@ handle_config_selection(#mailbox{keys=#keys{del_temporary_unavailable=Selection}
                         ,_Loop
                         ,Selection
                        ) ->
-    lager:info("caller choose to delete their temporary unavailable greeting"),
+    lager:info("caller chose to delete their temporary unavailable greeting"),
     case delete_temporary_unavailable_greeting(Box, Call) of
         'ok' -> 'ok';
         Box1 -> config_menu(Box1, Call)
@@ -941,7 +941,7 @@ handle_config_selection(#mailbox{keys=#keys{return_main=Selection}}=Box
                         ,_Loop
                         ,Selection
                        ) ->
-    lager:info("caller choose to return to the main menu"),
+    lager:info("caller chose to return to the main menu"),
     Box;
 %% Bulk delete -> delete all voicemails
 %% Reset -> delete all voicemails, greetings, name, and reset pin
@@ -1825,17 +1825,17 @@ review_recording(AttachmentName, AllowOperator
                                            )
     of
         {'ok', Listen} ->
-            lager:info("caller choose to replay the recording"),
+            lager:info("caller chose to replay the recording"),
             _ = whapps_call_command:b_play(AttachmentName, Call),
             review_recording(AttachmentName, AllowOperator, Box, Call);
         {'ok', Record} ->
-            lager:info("caller choose to re-record"),
+            lager:info("caller chose to re-record"),
             {'ok', 'record'};
         {'ok', Save} ->
-            lager:info("caller choose to save the recording"),
+            lager:info("caller chose to save the recording"),
             {'ok', 'save'};
         {'ok', Operator} when AllowOperator ->
-            lager:info("caller choose to ring the operator"),
+            lager:info("caller chose to ring the operator"),
             case cf_util:get_operator_callflow(whapps_call:account_id(Call)) of
                 {'ok', Flow} -> {'branch', Flow};
                 {'error',_R} -> review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
