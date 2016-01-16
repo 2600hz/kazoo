@@ -3,7 +3,7 @@
   {description, "Konami - Map in-call DTMF sequences to call features"},
   {vsn, "0.0.1"},
   {modules, []},
-  {registered, []},
+  {registered, [konami_event_listener, konami_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto
