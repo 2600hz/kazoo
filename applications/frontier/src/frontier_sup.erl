@@ -15,6 +15,8 @@
 
 -include("frontier.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('frontier_init')
                    ,?WORKER('frontier_shared_listener')
@@ -26,13 +28,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
