@@ -3,7 +3,7 @@
   {description, ""},
   {vsn, "1"},
   {modules, []},
-  {registered, []},
+  {registered, [notify_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

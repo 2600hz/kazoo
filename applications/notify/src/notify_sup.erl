@@ -13,6 +13,8 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([listener_proc/0]).
@@ -31,17 +33,15 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec listener_proc() -> {'ok', pid()}.
 listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?SERVER),
                 Mod =:= 'notify_listener'
           ],
     {'ok', P}.
