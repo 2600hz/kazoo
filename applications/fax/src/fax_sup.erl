@@ -11,6 +11,8 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([cache_proc/0]).
 -export([listener_proc/0]).
@@ -51,13 +53,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec cache_proc() -> {'ok', ?FAX_CACHE}.
 cache_proc() ->
@@ -65,13 +65,13 @@ cache_proc() ->
 
 -spec listener_proc() -> {'ok', pid()}.
 listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?SERVER),
                 Mod =:= 'fax_listener'],
     {'ok', P}.
 
 -spec smtp_sessions() -> non_neg_integer().
 smtp_sessions() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?SERVER),
                 Mod =:= 'gen_smtp_server'],
     Sessions = gen_smtp_server:sessions(P),
     length(Sessions).

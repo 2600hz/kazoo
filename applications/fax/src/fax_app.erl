@@ -15,20 +15,15 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_Type, _Args) -> fax_sup:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_Type, _Args) ->
+    fax_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
 -spec stop(any()) -> 'true'.
 stop(_State) ->

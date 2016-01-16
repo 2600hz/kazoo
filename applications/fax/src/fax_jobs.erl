@@ -22,6 +22,8 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(POLLING_INTERVAL, 5000).
 
 -record(state, {jobs=[]}).
@@ -31,14 +33,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks

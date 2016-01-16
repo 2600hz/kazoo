@@ -28,6 +28,8 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {
           call :: whapps_call:call()
          ,action = 'receive' :: 'receive' | 'transmit'
@@ -70,14 +72,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(whapps_call:call(), wh_json:object()) -> startlink_ret().
 start_link(Call, JObj) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS(Call)}
                               ,{'responders', ?RESPONDERS}
                              ]

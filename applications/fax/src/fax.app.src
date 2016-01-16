@@ -2,8 +2,8 @@
  [
   {description, "Fax - Why is everyone faxinated with fax?"},
   {vsn, "4.0.0"},
-  {registered, []},
   {modules, []},
+  {registered, [fax_requests_sup, fax_xmpp_sup, fax_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

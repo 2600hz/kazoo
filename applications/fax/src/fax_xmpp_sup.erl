@@ -12,6 +12,8 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([start_printer/1, stop_printer/1]).
@@ -30,32 +32,30 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_printer(ne_binary()) -> sup_startchild_ret().
 start_printer(PrinterId) ->
-    supervisor:start_child(?MODULE, ?XMPP_PRINTER(PrinterId)).
+    supervisor:start_child(?SERVER, ?XMPP_PRINTER(PrinterId)).
 
 -spec stop_printer(ne_binary()) -> 'ok'.
 stop_printer(PrinterId) ->
     _ = [begin
-             _ = supervisor:terminate_child(?MODULE, Id),
-             supervisor:delete_child(?MODULE, Id)
+             _ = supervisor:terminate_child(?SERVER, Id),
+             supervisor:delete_child(?SERVER, Id)
          end
-         || {Id, _Pid, 'worker', [_]} <- supervisor:which_children(?MODULE),
+         || {Id, _Pid, 'worker', [_]} <- supervisor:which_children(?SERVER),
             (Id == wh_util:to_atom(PrinterId, 'true'))
         ],
     'ok'.
 
 -spec printers() -> [{ne_binary(), pid()},...].
 printers() ->
-    [ {Id, Pid} || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
+    [ {Id, Pid} || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 %% ===================================================================
 %% Supervisor callbacks
