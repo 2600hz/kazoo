@@ -3,7 +3,7 @@
   {description, "Media Manager - Stream media via Shout from Couch"}
   ,{vsn, "0.5.0"}
   ,{modules, []}
-  ,{registered, []}
+  ,{registered, [media_mgr_sup]}
   ,{applications, [ kernel
                   , stdlib
                   , crypto
