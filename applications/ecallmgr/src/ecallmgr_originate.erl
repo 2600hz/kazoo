@@ -114,11 +114,11 @@ handle_originate_execute(JObj, Props) ->
     Srv = props:get_value('server', Props),
     UUID = props:get_value('uuid', Props),
     lager:debug("recv originate_execute for ~s", [UUID]),
-%%     _ = case wh_json:get_binary_value(<<"Server-ID">>, JObj) of
-%%             'undefined' -> 'ok';
-%%             ServerId ->
-%%                 gen_listener:cast(Srv, {'update_server_id', ServerId})
-%%         end,
+    _ = case wh_json:get_ne_binary_value(<<"Server-ID">>, JObj) of
+            'undefined' -> 'ok';
+            ServerId ->
+                gen_listener:cast(Srv, {'update_server_id', ServerId})
+        end,
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
     gen_listener:cast(Srv, {'originate_execute'}).
 
@@ -139,7 +139,7 @@ handle_originate_execute(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Node, JObj]) ->
     _ = wh_util:put_callid(JObj),
-    ServerId = wh_json:get_binary_value(<<"Server-ID">>, JObj),
+    ServerId = wh_json:get_ne_binary_value(<<"Server-ID">>, JObj),
     _ = bind_to_events(freeswitch:version(Node), Node),
     case wapi_resource:originate_req_v(JObj) of
         'false' ->
