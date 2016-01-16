@@ -752,7 +752,8 @@ get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
 local_zone() ->
     case get('amqp_zone') of
         'undefined' ->
-            Zone = gen_listener:call(?MODULE, 'zone'),
+            [Local] = wh_config:get(wh_config:get_node_section_name(), 'zone', ['local']),
+            Zone = wh_util:to_atom(Local, 'true'),
             put('amqp_zone', Zone),
             Zone;
         Zone -> Zone
