@@ -3,7 +3,7 @@
   {description, "milliwatt "},
   {vsn, "1"},
   {modules, []},
-  {registered, []},
+  {registered, [milliwatt_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto
