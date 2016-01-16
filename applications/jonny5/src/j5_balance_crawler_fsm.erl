@@ -30,6 +30,7 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(IS_ENABLED, whapps_config:get_is_true(?APP_NAME, <<"balance_crawler_enabled">>, 'false')).
 -define(CRAWLER_CYCLE_MS, whapps_config:get_integer(?APP_NAME, <<"balance_crawler_cycle_ms">>, ?MILLISECONDS_IN_MINUTE)).
 
@@ -42,12 +43,12 @@
 %% API
 %%====================================================================
 %%--------------------------------------------------------------------
-%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
-%% Description: Starts the server
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     case ?IS_ENABLED of
-        'true' -> gen_fsm:start_link(?MODULE, [], []);
+        'true' -> gen_fsm:start_link(?SERVER, [], []);
         'false' -> 'ignore'
     end.
 
