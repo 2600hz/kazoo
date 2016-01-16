@@ -24,6 +24,8 @@
 
 -include("hangups.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{'hangups_channel_destroy'
                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                      }
@@ -40,15 +42,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
