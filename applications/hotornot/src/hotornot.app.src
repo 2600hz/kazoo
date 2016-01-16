@@ -3,7 +3,7 @@
   {description, "HotOrNot - Rate calls based on prefix"}
   ,{vsn, "0.0.1"}
   ,{modules, []}
-  ,{registered, []}
+  ,{registered, [hotornot_sup]}
   ,{applications, [ kernel
                   , stdlib
 		  , crypto

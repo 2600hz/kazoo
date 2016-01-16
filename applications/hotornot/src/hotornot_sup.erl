@@ -18,27 +18,30 @@
 
 -include("hotornot.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
+-spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% @spec upgrade() -> ok
 %% @doc Add processes if necessary.
 upgrade() ->
     {'ok', {_, Specs}} = init([]),
 
-    Old = sets:from_list([Name || {Name, _, _, _} <- supervisor:which_children(?MODULE)]),
+    Old = sets:from_list([Name || {Name, _, _, _} <- supervisor:which_children(?SERVER)]),
     New = sets:from_list([Name || {Name, _, _, _, _, _} <- Specs]),
     Kill = sets:subtract(Old, New),
 
     lists:foreach(fun (Id) ->
-                          _ = supervisor:terminate_child(?MODULE, Id),
-                          supervisor:delete_child(?MODULE, Id)
+                          _ = supervisor:terminate_child(?SERVER, Id),
+                          supervisor:delete_child(?SERVER, Id)
                   end, sets:to_list(Kill)),
-    lists:foreach(fun(Spec) -> supervisor:start_child(?MODULE, Spec) end, Specs),
+    lists:foreach(fun(Spec) -> supervisor:start_child(?SERVER, Spec) end, Specs),
     'ok'.
 
 %% ===================================================================
