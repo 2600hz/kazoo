@@ -463,7 +463,7 @@ handle_cast({'add_event_listener', {M, A}}, #state{call=Call}=State) ->
             lager:info("failed to spawn ~s:~s: ~p", [M, _R]),
             {'noreply', State}
     end;
-handle_cast('initialize', #state{call=Call}) ->
+handle_cast('initialize', #state{call=Call}=State) ->
     log_call_information(Call),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> whapps_call:kvs_store('consumer_pid', self(), C) end
@@ -472,7 +472,7 @@ handle_cast('initialize', #state{call=Call}) ->
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     _ = wh_util:spawn(fun cf_singular_call_hooks:maybe_hook_call/1, [CallWithHelpers]),
-    {'noreply', #state{call=CallWithHelpers
+    {'noreply', State#state{call=CallWithHelpers
                        ,flow=Flow
                       }};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
