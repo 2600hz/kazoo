@@ -60,7 +60,7 @@ store_recording(MediaId, Call) ->
 retrieve_recording(Call) ->
     case queue:out_r(get_recordings(Call)) of
         {{'value', MediaId}, Q} ->
-            Routines = [{fun whapps_call:kvs_store/3, ?RECORDINGS_KEY, Q}],            
+            Routines = [{fun whapps_call:kvs_store/3, ?RECORDINGS_KEY, Q}],
             {'ok', MediaId, cf_exe:update_call(Call, Routines)};
         {'empty', _} ->
             {'empty', Call}
