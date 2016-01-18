@@ -3,7 +3,7 @@
   {description, ""},
   {vsn, "1.0.2"},
   {modules, []},
-  {registered, []},
+  {registered, [apns_sup]},
   {applications, [ kernel
                  , stdlib
                  , ssl
