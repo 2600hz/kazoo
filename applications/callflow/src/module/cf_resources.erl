@@ -51,6 +51,9 @@ handle(Data, Call) ->
         {<<"NORMAL_CLEARING">>, <<"sip:200">>} ->
             lager:info("completed successful offnet request"),
             cf_exe:stop(UpdatedCall);
+        {<<"NORMAL_CLEARING">>, 'undefined'} ->
+            lager:info("completed successful offnet request"),
+            cf_exe:stop(UpdatedCall);
         {Cause, Code} -> handle_bridge_failure(Cause, Code, UpdatedCall)
     end.
 
