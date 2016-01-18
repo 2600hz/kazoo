@@ -30,6 +30,7 @@
          ,get_media_name/2
          ,get_response_media/1
          ,should_store_recording/1
+         ,stop_recording/1
         ]).
 
 -export([init/1
@@ -232,6 +233,16 @@ handle_cast({'record_start', {_, Media}}, #state{media={_, Media}}=State) ->
     {'noreply', State#state{is_recording='true'}};
 handle_cast({'record_start', _}, State) ->
     {'noreply', State};
+handle_cast('stop_recording', #state{media={_, MediaName}
+                                      ,is_recording='true'
+                                      ,call=Call
+                                     }=State) ->
+    _ = whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"stop">>, Call),
+    lager:debug("sent command to stop recording, waiting for record stop"),
+    {'noreply', State};
+handle_cast('stop_recording', #state{is_recording='false'}=State) ->
+    lager:debug("received stop recording and we're not recording, exiting"),
+    {'stop', 'normal', State};
 handle_cast({'record_stop', {_, MediaName}=Media, FS},
             #state{media={_, MediaName}
                    ,is_recording='true'
@@ -240,7 +251,12 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS},
     Call1 = whapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
     gen_server:cast(self(), 'store_recording'),
     {'noreply', State#state{media=Media, call=Call1}};
-handle_cast({'record_stop', _Media, _ChannelState, _FS}, State) ->
+handle_cast({'record_stop', {_, MediaName}, _FS}, #state{media={_, MediaName}
+                                                         ,is_recording='false'
+                                                        }=State) ->
+    lager:debug("received record_stop but we're not recording, exiting"),
+    {'stop', 'normal', State};
+handle_cast({'record_stop', _Media, _FS}, State) ->
     {'noreply', State};
 handle_cast('maybe_start_recording_on_bridge', #state{is_recording='true'}=State) ->
     {'noreply', State};
@@ -564,3 +580,7 @@ check_store_result(<<"success">>, _JObj) ->
 check_store_result(<<"error">>, JObj) ->
     lager:debug("error ~s received for store", [wh_json:get_value(<<"Error">>, JObj)]),
     gen_server:cast(self(), 'store_failed').
+
+-spec stop_recording(pid()) -> 'ok'.
+stop_recording(Pid) ->
+    gen_server:cast(Pid, 'stop_recording').

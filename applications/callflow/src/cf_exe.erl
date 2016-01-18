@@ -33,6 +33,7 @@
 -export([callid_update/2]).
 -export([add_event_listener/2]).
 -export([next/1, next/2]).
+-export([update_call/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -108,6 +109,11 @@ get_call(Call) ->
 set_call(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     gen_server:cast(Srv, {'set_call', Call}).
+
+-spec update_call(whapps_call:call(), list()) -> whapps_call:call().
+update_call(Call, Routines) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    gen_server:call(Srv, {'update_call', Routines}).
 
 -spec continue(whapps_call:call() | pid()) -> 'ok'.
 -spec continue(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
@@ -321,6 +327,9 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
+    NewCall = whapps_call:exec(Routines, Call),
+    {'reply', NewCall, State#state{call=NewCall}};
 handle_call('get_call', _From, #state{call=Call}=State) ->
     {'reply', {'ok', Call}, State};
 handle_call('callid', _From, #state{call=Call}=State) ->

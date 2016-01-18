@@ -32,13 +32,17 @@ handle(Data, Call, <<"start">>) ->
     Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = wh_media_recording:get_media_name(RecID, Format),
     Args = wh_json:set_value(?CF_RECORDING_ID_KEY, MediaName, Data),
-    cf_util:start_call_recording(Args, store_recording(MediaName, Call));
+    Routines = [{fun store_recording/2, MediaName}],
+    cf_util:start_call_recording(Args, cf_exe:update_call(Call, Routines));
 
-handle(_Data, OriginalCall, <<"stop">> = Action) ->
+handle(_Data, OriginalCall, <<"stop">>) ->
     case retrieve_recording(OriginalCall) of
-        {'ok', MediaId, Call} ->
-            _= whapps_call_command:record_call([{<<"Media-Name">>, MediaId}], Action, Call),
-            lager:debug("send command to stop recording"),
+        {'ok', _MediaName, Call} ->
+            Mod = cf_util:recording_module(Call),
+            case cf_event_handler_sup:worker(cf_util:event_listener_name(Call, Mod)) of
+                'undefined' -> lager:debug("no recording process to stop");
+                RecorderPid -> Mod:stop_recording(RecorderPid)
+            end,
             Call;
         {'empty', Call} ->
             lager:debug("no recording to stop"),
@@ -56,7 +60,8 @@ store_recording(MediaId, Call) ->
 retrieve_recording(Call) ->
     case queue:out_r(get_recordings(Call)) of
         {{'value', MediaId}, Q} ->
-            {'ok', MediaId, whapps_call:kvs_store(?RECORDINGS_KEY, Q, Call)};
+            Routines = [{fun whapps_call:kvs_store/3, ?RECORDINGS_KEY, Q}],            
+            {'ok', MediaId, cf_exe:update_call(Call, Routines)};
         {'empty', _} ->
             {'empty', Call}
     end.
@@ -68,7 +73,10 @@ get_recordings(Call) ->
         Q -> Q
     end.
 
--spec get_action(api_binary()) -> ne_binary().
+-spec get_action(api_object()) -> ne_binary().
 get_action('undefined') -> <<"start">>;
-get_action(<<"stop">>) -> <<"stop">>;
-get_action(_) -> <<"start">>.
+get_action(Data) ->
+    case wh_json:get_value(<<"action">>, Data) of
+        <<"stop">> -> <<"stop">>;
+        _ -> <<"start">>
+    end.

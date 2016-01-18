@@ -48,6 +48,8 @@
 -export([maybe_start_call_recording/2
          ,start_call_recording/2
          ,start_event_listener/3
+         ,recording_module/1
+         ,event_listener_name/2
         ]).
 
 -include("callflow.hrl").
