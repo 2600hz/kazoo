@@ -2,10 +2,14 @@
 
 # Usage:  $0 ‹path to an app›
 
-patterns=( ":start_link\\(\\{'local',\\s*" ":start_link\\(\\{local,\\s*" ':start_link\(' ':start_child\(' ':which_children\(' ':terminate_child\(' ':delete_child\(' ':call\(' ':cast\(' 'gen_listener:[^:\(]+\(' )
-
-
 [[ $# -eq 0 ]] && exit
+
+patterns=( ":start_link\\(\\{'local',\\s*" ":start_link\\(\\{local,\\s*" ':start_link\(' ':start_child\(' ':which_children\(' ':terminate_child\(' ':delete_child\(' ':call\(' ':cast\(' 'gen_listener:[^:\(]+\(' )
+re='('
+for pattern in ${patterns[@]}; do
+    re="$re"$pattern'|'
+done
+re=${re%%|}')'
 
 function registered() {
     local app="${1%%/}"
@@ -17,11 +21,9 @@ function registered() {
         ((errors += 1))
     fi
 
-    for pattern in ${patterns[@]}; do
-        git grep -InE  $pattern'\?MODULE' -- $app/src
-        local count=0; [[ $? -eq 0 ]] && count=$(git grep -InE  $pattern'\?MODULE' -- $app/src | wc -l)
-        ((errors += $count))
-    done
+    git grep -InE $re'\?MODULE' -- $app/src
+    local count=0; [[ $? -eq 0 ]] && count=$(git grep -InE  $re'\?MODULE' -- $app/src | wc -l)
+    ((errors += $count))
 
     local app_src=$app/src/*.app.src
     git grep -InE  '\{registered, \[\]\}' -- $app_src >/dev/null
