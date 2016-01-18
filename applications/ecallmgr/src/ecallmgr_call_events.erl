@@ -571,7 +571,7 @@ process_channel_event(Props) ->
     EventName = get_event_name(Props),
     ApplicationName = get_application_name(Props),
     Masqueraded = is_masquerade(Props),
-    case should_publish(EventName, ApplicationName, Masqueraded, Props) of
+    case should_publish(EventName, ApplicationName, Masqueraded) of
         'false' -> 'ok';
         'true' ->
             Event = create_event(EventName, ApplicationName, Props),
@@ -856,48 +856,34 @@ fax_specific(Props) ->
        ,{<<"Fax-Doc-DB">>, props:get_value(<<"variable_fax_doc_database">>, Props)}
        ]).
 
--spec should_publish(ne_binary(), ne_binary(), boolean(), wh_proplist()) -> boolean().
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false', _) ->
+-spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false') ->
     lager:debug("suppressing bridge execute complete in favour the whistle masquerade of this event"),
     'false';
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set", _/binary>>, _, _) ->
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set", _/binary>>, _) ->
     'false';
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, _, _) ->
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, _) ->
     'false';
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, 'false', _) ->
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, 'false') ->
     lager:debug("suppressing intercept execute complete in favour the whistle masquerade of this event"),
     'false';
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, 'false', _) ->
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, 'false') ->
     lager:debug("suppressing execute_extension execute complete in favour the whistle masquerade of this event"),
     'false';
-should_publish(<<"CHANNEL_EXECUTE", _/binary>>, <<"park">>, _, _) ->
+should_publish(<<"CHANNEL_EXECUTE", _/binary>>, <<"park">>, _) ->
     'false';
-should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _, _) ->
+should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
     props:get_value(Application, ?FS_APPLICATION_NAMES) =/= 'undefined';
-should_publish(_, <<"transfer">>, _, _) ->
+should_publish(_, <<"transfer">>, _) ->
     'true';
-should_publish(<<"CHANNEL_FAX_STATUS">>, _, _, _) ->
+should_publish(<<"CHANNEL_FAX_STATUS">>, _, _) ->
     'true';
-should_publish(<<"FAX_DETECTED">>, _, _, _) ->
+should_publish(<<"FAX_DETECTED">>, _, _) ->
     'true';
-should_publish(<<"DETECTED_TONE">>, _, _, _) ->
+should_publish(<<"DETECTED_TONE">>, _, _) ->
     'true';
-should_publish(<<"CHANNEL_DESTROY">>, _, _, Props) ->
-    Routines = [fun maybe_skip_loopback/1],
-    lists:all(fun(Fun) -> Fun(Props) end, Routines);
-should_publish(EventName, _A, _, _) ->
+should_publish(EventName, _A, _) ->
     lists:member(EventName, ?CALL_EVENTS).
-
--spec maybe_skip_loopback(wh_proplist()) -> boolean().
-maybe_skip_loopback(Props) ->
-    ChannelName = props:get_value(<<"Channel-Name">>, Props),
-    CallFwd = props:is_true(?GET_CCV(<<"Call-Forward">>), Props),
-    Cause = get_hangup_cause(Props),
-    maybe_skip_loopback(ChannelName, CallFwd, Cause).
-
--spec maybe_skip_loopback(ne_binary(), boolean(), ne_binary()) -> boolean().
-maybe_skip_loopback(<<"loopback", _/binary>>, 'true', <<"NORMAL", _/binary>>) -> 'true';
-maybe_skip_loopback(_, _, _) -> 'true'.
 
 -spec silence_terminated(api_integer() | wh_proplist()) -> api_boolean().
 silence_terminated('undefined') -> 'undefined';
