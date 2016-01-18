@@ -1016,13 +1016,22 @@ start_task(Fun, Args, Call) ->
 -spec mailbox(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
                                            {'error', any()}.
 mailbox(AccountDb, VMNumber) ->
+    try wh_util:to_integer(VMNumber) of
+        Number -> maybe_cached_mailbox(AccountDb, Number)
+    catch
+        _E:_R ->  {'error', 'not_found'}
+    end.
+
+-spec maybe_cached_mailbox(ne_binary(), integer()) -> {'ok', wh_json:object()} |
+                                                      {'error', any()}.
+maybe_cached_mailbox(AccountDb, VMNumber) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, ?VM_CACHE_KEY(AccountDb, VMNumber)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} -> get_mailbox(AccountDb, VMNumber)
     end.
 
--spec get_mailbox(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
-                                               {'error', any()}.
+-spec get_mailbox(ne_binary(), integer()) -> {'ok', wh_json:object()} |
+                                             {'error', any()}.
 get_mailbox(AccountDb, VMNumber) ->
     ViewOptions = [{'key', VMNumber}, 'include_docs'],
     case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
