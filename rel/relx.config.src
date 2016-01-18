@@ -46,6 +46,7 @@ end ++
              , "core"
              , "deps"
              , hd(filelib:wildcard("deps/rabbitmq_erlang_client-*/deps"))
+             , "applications/pusher/lib"
              ]}
 
 , {include_src, false}
