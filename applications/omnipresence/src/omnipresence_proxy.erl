@@ -11,6 +11,8 @@
 -include("omnipresence.hrl").
 -include_lib("nksip/include/nksip.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0, stop/0]).
 
 -export([sip_subscribe/2, sip_resubscribe/2, sip_dialog_update/3]).
@@ -28,8 +30,8 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-	lager:info("starting sip callback"),
-     gen_server:start_link({'local', ?MODULE},?MODULE, [], []).
+    lager:info("starting sip callback"),
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %% @doc Stops the SipApp.
 stop() ->

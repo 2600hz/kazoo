@@ -15,20 +15,27 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_Type, _Args) -> omnipresence:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_Type, _Args) ->
+    _ = declare_exchanges(),
+    omnipresence_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
 -spec stop(any()) -> 'ok'.
-stop(_State) -> omnipresence:stop().
+stop(_State) ->
+    exit(whereis('omnipresence_sup'), 'shutdown'),
+    'ok'.
+
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_presence:declare_exchanges(),
+    _ = wapi_omnipresence:declare_exchanges(),
+    wapi_self:declare_exchanges().

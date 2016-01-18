@@ -16,6 +16,7 @@
 
 -include("omnipresence.hrl").
 
+-define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
 -define(DEFAULT_MODULES, [<<"omnip_dialog_amqp">>
@@ -29,13 +30,13 @@
 
 -spec start_module(ne_binary()) -> sup_startchild_ret().
 start_module(Module) ->
-    supervisor:start_child(?MODULE, ?WORKER(wh_util:to_atom(Module, 'true'))).
+    supervisor:start_child(?SERVER, ?WORKER(wh_util:to_atom(Module, 'true'))).
 
 -spec stop_module(ne_binary()) ->  'ok' | {'error', 'not_found' | 'simple_one_for_one'}.
 stop_module(Module) ->
-    case supervisor:terminate_child(?MODULE, wh_util:to_atom(Module, 'true')) of
+    case supervisor:terminate_child(?SERVER, wh_util:to_atom(Module, 'true')) of
         'ok' ->
-            _ = supervisor:delete_child(?MODULE, wh_util:to_atom(Module, 'true')),
+            _ = supervisor:delete_child(?SERVER, wh_util:to_atom(Module, 'true')),
             'ok';
         {'error', _}=E -> E
     end.
@@ -48,13 +49,11 @@ stop_module(Module) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
