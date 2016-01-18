@@ -212,9 +212,6 @@ handle_cast({'create_uuid'}, #state{node=Node
             maybe_send_originate_uuid(UUID, Pid, State),
             gen_listener:cast(self(), {'build_originate_args'}),
             {'noreply', State1, 'hibernate'};
-        {'error', 'no_server_controller'} ->
-            gen_listener:cast(self(), {'build_originate_args'}),
-            {'noreply', State#state{uuid=UUID}, 'hibernate'};
         {'error', _E} ->
             lager:debug("failed to start control proc for ~p: ~p", [UUID, _E]),
             {'stop', 'normal', State}
@@ -798,8 +795,6 @@ find_max_endpoint_timeout([EP|EPs], T) ->
 -spec start_control_process(state()) ->
                                    {'ok', state()} |
                                    {'error', any()}.
-start_control_process(#state{server_id='undefined'}) ->
-    {'error', 'no_server_controller'};
 start_control_process(#state{originate_req=JObj
                              ,node=Node
                              ,uuid={_, Id}=UUID
