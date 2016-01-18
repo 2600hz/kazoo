@@ -49,11 +49,18 @@ maybe_ignore_app(JObj) ->
 -spec maybe_ignore_loopback(wh_json:object()) -> {boolean(), binary()}.
 maybe_ignore_loopback(JObj) ->
     {wh_util:is_true(?IGNORE_LOOPBACK(kz_call_event:account_id(JObj))) andalso
-        wh_json:is_true(<<"Channel-Is-Loopback">>, JObj) andalso
-        wh_json:is_true(<<"Channel-Loopback-Bowout">>, JObj) andalso
-        wh_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj),
+         wh_json:is_true(<<"Channel-Is-Loopback">>, JObj) andalso
+         wh_json:is_true(<<"Channel-Loopback-Bowout">>, JObj) andalso
+         wh_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj) andalso
+         (is_normal_hangup_cause(kz_call_event:hangup_cause(JObj)) orelse
+              wh_json:get_ne_binary_value(<<"Channel-Loopback-Leg">>, JObj) =/= <<"B">>),
      <<"ignoring cdr request for loopback channel">>
     }.
+
+-spec is_normal_hangup_cause(api_binary()) -> boolean().
+is_normal_hangup_cause('undefined') -> 'true';
+is_normal_hangup_cause(<<"NORMAL", _/binary>>) -> 'true';
+is_normal_hangup_cause(_) -> 'false'.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(JObj) ->
