@@ -3,7 +3,7 @@
   {description, "Pivot - Accept 3rd party dialplan commands to control calls"},
   {vsn, "0.5.0"},
   {modules, []},
-  {registered, []},
+  {registered, [pivot_calls_sup, pivot_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto
