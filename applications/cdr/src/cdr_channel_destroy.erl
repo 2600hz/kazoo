@@ -50,7 +50,8 @@ maybe_ignore_app(JObj) ->
 maybe_ignore_loopback(JObj) ->
     {wh_util:is_true(?IGNORE_LOOPBACK(kz_call_event:account_id(JObj))) andalso
         wh_json:is_true(<<"Channel-Is-Loopback">>, JObj) andalso
-        wh_json:is_true(<<"Channel-Loopback-Bowout">>, JObj),
+        wh_json:is_true(<<"Channel-Loopback-Bowout">>, JObj) andalso
+        wh_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj),
      <<"ignoring cdr request for loopback channel">>
     }.
 
