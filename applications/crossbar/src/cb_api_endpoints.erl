@@ -115,8 +115,16 @@ format_path_token(Token) -> Token.
 
 module_name(Module) when is_atom(Module) ->
     module_name(wh_util:to_binary(Module));
-module_name(<<"cb_", Name/binary>>) ->
-    Name.
+module_name(<<_/binary>>=Module) ->
+    case re:run(Module
+                ,<<"^cb_([a-z_]+?)(?:_v([0-9]))?$">>
+               ,[{capture, all_but_first, binary}]
+               )
+    of
+        {'match', [Name]} -> Name;
+        {'match', [Name, Version]} ->
+            <<"v", Version/binary, "/", Name/binary>>
+    end.
 
 %% API
 
