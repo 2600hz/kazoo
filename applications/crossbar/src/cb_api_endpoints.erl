@@ -1,10 +1,126 @@
 -module(cb_api_endpoints).
 -compile([debug_info]).
 
--export([get/0]).
+-compile({'no_auto_import', [get/0]}).
+
+-export([get/0
+         ,to_swagger_json/0
+        ]).
+
+-define(SWAGGER_INFO
+       ,wh_json:from_list([{<<"title">>, <<"Crossbar">>}
+                          ,{<<"description">>, <<"The Crossbar APIs">>}
+                          ,{<<"license">>, wh_json:from_list([{<<"name">>, <<"Mozilla Public License 1.1">>}])}
+                          ,{<<"version">>, <<"2.0">>}
+                          ])
+       ).
+
+to_swagger_json() ->
+    BaseSwagger = read_swagger_json(),
+    BasePaths = wh_json:get_value(<<"paths">>, BaseSwagger, wh_json:new()),
+
+    Paths = format_as_path_centric(get()),
+
+    Swagger = wh_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
+                                 ,{<<"swagger">>, <<"2.0">>}
+                                 ,{<<"info">>, ?SWAGGER_INFO}
+                                 ]
+                                ,BaseSwagger
+                                ),
+    write_swagger_json(Swagger),
+    Swagger.
+
+-define(SWAGGER_JSON, filename:join([code:priv_dir('crossbar')
+                                    ,"couchdb"
+                                    ,"swagger"
+                                    ,"swagger.json"
+                                    ])
+       ).
+
+read_swagger_json() ->
+    case file:read_file(?SWAGGER_JSON) of
+        {'ok', Bin} -> wh_json:decode(Bin);
+        {'error', 'enoent'} -> wh_json:new()
+    end.
+
+write_swagger_json(Swagger) ->
+    'ok' = file:write_file(?SWAGGER_JSON, wh_json:encode(Swagger)).
+
+to_swagger_paths(Paths, BasePaths) ->
+    wh_json:foldl(fun to_swagger_path/3, BasePaths, Paths).
+
+to_swagger_path(Path, PathMeta, Acc) ->
+    Methods = wh_json:get_value(<<"allowed_methods">>, PathMeta, []),
+    lists:foldl(fun(Method, Acc1) ->
+                        wh_json:set_value([Path, Method], wh_json:new(), Acc1)
+                end
+               ,Acc
+               ,Methods
+               ).
+
+format_as_path_centric(Data) ->
+    lists:foldl(fun format_pc_module/2
+                ,wh_json:new()
+                ,Data
+               ).
+
+format_pc_module({Module, Config}, Acc) ->
+    ModuleName = module_name(Module),
+
+    lists:foldl(fun(ConfigData, Acc1) ->
+                        format_pc_config(ConfigData, Acc1, ModuleName)
+                end
+               ,Acc
+               ,Config
+               );
+format_pc_module(_MC, Acc) ->
+    io:format("skipping ~p~n", [_MC]),
+    Acc.
+
+format_pc_config({Callback, Paths}, Acc, ModuleName) ->
+    lists:foldl(fun(Path, Acc1) ->
+                        format_pc_callback(Path, Acc1, ModuleName, Callback)
+                end
+               ,Acc
+               ,Paths
+               ).
+
+format_pc_callback({[], []}, Acc, _ModuleName, _Callback) ->
+    Acc;
+format_pc_callback({Path, []}, Acc, ModuleName, Callback) ->
+    PathName = path_name(Path, ModuleName),
+    wh_json:set_value([PathName, wh_util:to_binary(Callback)], <<"not supported">>, Acc);
+format_pc_callback({Path, Vs}, Acc, ModuleName, Callback) ->
+    PathName = path_name(Path, ModuleName),
+    wh_json:set_value([PathName, wh_util:to_binary(Callback)]
+                     ,[wh_util:to_lower_binary(V) || V <- Vs]
+                     ,Acc
+                     ).
+
+path_name(Path, ModuleName) ->
+    wh_util:join_binary([<<>>, ModuleName | format_path_tokens(Path)], <<"/">>).
+
+format_path_tokens(<<"/">>) -> [];
+format_path_tokens(<<_/binary>> = Token) ->
+    [format_path_token(Token)];
+format_path_tokens(Tokens) ->
+    [format_path_token(Token) || Token <- Tokens, Token =/= <<"/">>].
+
+format_path_token(<<"_">>) ->
+    <<"{ID}">>;
+format_path_token(<<"_", Rest/binary>>) ->
+    <<"{", (wh_util:to_upper_binary(Rest))/binary, "}">>;
+format_path_token(Token) -> Token.
+
+module_name(Module) when is_atom(Module) ->
+    module_name(wh_util:to_binary(Module));
+module_name(<<"cb_", Name/binary>>) ->
+    Name.
 
 %% API
 
+%% get() -> [{module, config()}]
+%% config() :: [{callback(), [{path(), methods()}]}]
 get() ->
     process_application('crossbar').
 
@@ -23,7 +139,7 @@ process_module(File, Acc) ->
     end.
 
 is_api_function({'allowed_methods', _Arity}) -> 'true';
-is_api_function({'content_types_provided', _Arity}) -> 'true';
+%is_api_function({'content_types_provided', _Arity}) -> 'true';
 is_api_function(_) ->  'false'.
 
 process_exports(_File, 'api_resource', _) -> [];
@@ -73,10 +189,7 @@ find_http_methods_from_clause({'clause', _Line, ArgsList, _, ClauseBody}, Method
 args_list_to_path([]) ->
     <<"/">>;
 args_list_to_path(Args) ->
-    wh_util:join_binary(
-      lists:reverse(lists:foldl(fun arg_to_path/2, [<<>>], Args))
-      ,<<"/">>
-     ).
+    lists:reverse(lists:foldl(fun arg_to_path/2, [], Args)).
 
 -define(BINARY(Value), {'bin',_, [{'bin_element', _, {'string', _, Value}, 'default', 'default'}]}).
 -define(VAR_NAME(Name), {'var', _, Name}).
