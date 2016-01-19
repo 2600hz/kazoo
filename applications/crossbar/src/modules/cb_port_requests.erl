@@ -14,7 +14,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,content_types_provided/1, content_types_provided/2, content_types_provided/3, content_types_provided/4
+         ,content_types_provided/3, content_types_provided/4
          ,content_types_accepted/3, content_types_accepted/4
          ,validate/1, validate/2, validate/3, validate/4
          ,get/3
@@ -217,28 +217,16 @@ resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 -spec acceptable_content_types() -> wh_proplist().
 acceptable_content_types() -> ?ATTACHMENT_MIME_TYPES.
 
--spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
--spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(Context) ->
-    Context.
-
-content_types_provided(Context, _Id) ->
-    Context.
-
 content_types_provided(Context, _Id, ?PATH_TOKEN_LOA) ->
-    cb_context:add_content_types_provided(Context, [{'to_binary', ?PDF_CONTENT_TYPES}]);
-content_types_provided(Context, _Id, _) ->
-    Context.
+    cb_context:add_content_types_provided(Context, [{'to_binary', ?PDF_CONTENT_TYPES}]).
 
-content_types_provided(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
+content_types_provided(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     case cb_context:req_verb(Context) of
-        ?HTTP_GET -> content_types_provided_get(Context, Id, AttachmentId);
+        ?HTTP_GET -> content_types_provided_get(Context, _Id, _AttachmentId);
         _Verb -> Context
     end.
 
