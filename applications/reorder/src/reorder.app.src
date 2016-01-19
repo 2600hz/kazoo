@@ -1,7 +1,7 @@
 {application, reorder,
  [
   {description, "Reorder - "},
-  {vsn, "1.0.0"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, [reorder_sup]},
   {applications, [ kernel

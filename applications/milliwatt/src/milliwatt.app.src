@@ -1,7 +1,7 @@
 {application, milliwatt,
  [
   {description, "milliwatt "},
-  {vsn, "1"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, [milliwatt_sup]},
   {applications, [ kernel

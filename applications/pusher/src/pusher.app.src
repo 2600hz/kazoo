@@ -1,7 +1,7 @@
 {application, pusher,
  [
   {description, "pusher - wake the dead"},
-  {vsn, "1.0.0"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, [pm_google, pm_apple, pusher_sup, pusher_module_sup]},
   {applications, [ kernel

@@ -1,7 +1,7 @@
 {application, cdr,
  [
   {description, "Listen and record CDR events into CouchDB"}
-  ,{vsn, "0.4.1"}
+  ,{vsn, "4.0.0"}
   ,{modules, []}
   ,{registered, [cdr_sup]}
   ,{applications, [ kernel

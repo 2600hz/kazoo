@@ -1,7 +1,7 @@
 {application, dth,
  [
   {description, "DTH - Integration with DTH Billing System"}
-  ,{vsn, "0.1.0"}
+  ,{vsn, "4.0.0"}
   ,{modules, []}
   ,{registered, [dth_sup]}
   ,{applications, [ kernel

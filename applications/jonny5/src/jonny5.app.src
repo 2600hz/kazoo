@@ -1,7 +1,7 @@
 {application, jonny5,
  [
   {description, "Jonny 5 - Short circuit accounts exceeding call volume"},
-  {vsn, "1"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, [j5_channels, jonny5_listener, jonny5_sup]},
   {applications, [ kernel

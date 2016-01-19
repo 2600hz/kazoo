@@ -1,6 +1,6 @@
 {application, whistle_config,
  [ {description, "Kazoo Configuration Helper"}
- , {vsn, "1.0.0"}
+ , {vsn, "4.0.0"}
  , {modules, []}
  , {registered, [whistle_config_sup]}
  , {applications, [ kernel

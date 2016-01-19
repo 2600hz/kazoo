@@ -1,7 +1,7 @@
 {application, conference,
  [
   {description, "Conferencing Service Provider"},
-  {vsn, "1.0.0"},
+  {vsn, "4.0.0"},
   {modules, []},
   {registered, [conference_sup, conf_participant_sup]},
   {applications, [ kernel

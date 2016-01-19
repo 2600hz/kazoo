@@ -1,7 +1,7 @@
 {application, camper,
  [
   {description, "Camper - wait for the right moment"}
-  ,{vsn, "0.1.0"}
+  ,{vsn, "4.0.0"}
   ,{modules, []}
   ,{registered, [camper_sup, camper_offnet_sup, camper_onnet_handler]}
   ,{applications, [ kernel
