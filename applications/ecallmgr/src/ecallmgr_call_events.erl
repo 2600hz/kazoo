@@ -744,7 +744,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Remote-SDP">>, props:get_value(<<"variable_switch_r_sdp">>, Props)}
      ,{<<"Local-SDP">>, props:get_value(<<"variable_rtp_local_sdp_str">>, Props)}
      ,{<<"Duration-Seconds">>, props:get_value(<<"variable_duration">>, Props)}
-     ,{<<"Billing-Seconds">>, props:get_value(<<"variable_billsec">>, Props)}
+     ,{<<"Billing-Seconds">>, get_billing_seconds(Props)}
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
      ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
@@ -1020,6 +1020,13 @@ get_disposition(Props) ->
 -spec get_hangup_code(wh_proplist()) -> api_binary().
 get_hangup_code(Props) ->
     kzd_freeswitch:hangup_code(Props).
+
+-spec get_billing_seconds(wh_proplist()) -> api_binary().
+get_billing_seconds(Props) ->
+    case props:get_integer_value(<<"variable_billmsec">>, Props) of
+        'undefined' -> props:get_value(<<"variable_billsec">>, Props);
+        Billmsec -> wh_util:to_binary(wh_util:ceiling(Billmsec / 1000))
+    end.
 
 -spec swap_call_legs(wh_proplist() | wh_json:object()) -> wh_proplist().
 -spec swap_call_legs(wh_proplist(), wh_proplist()) -> wh_proplist().
