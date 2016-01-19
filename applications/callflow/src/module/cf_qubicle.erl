@@ -27,7 +27,7 @@ handle(Data, Call) ->
             whapps_call_command:answer(Call),
             create_session(Call, Config);
 
-        'undefined' ->
+        {'error', 'not_found'} ->
             lager:error("queue is not configured for callflow"),
             cf_exe:continue(Call)
     end.
