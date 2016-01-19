@@ -10,7 +10,7 @@
 
 -export([reconcile/1, reconcile/2]).
 
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

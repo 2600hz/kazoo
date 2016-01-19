@@ -17,7 +17,7 @@
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
--include("../wnm.hrl").
+-include("wnm.hrl").
 
 -define(WNM_BW_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".bandwidth">>).
 

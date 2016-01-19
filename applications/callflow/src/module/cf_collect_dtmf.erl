@@ -15,7 +15,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_collect_dtmf).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

@@ -11,7 +11,7 @@
 
 -export([start/2, stop/1]).
 
--include("../include/whistle_transactions.hrl").
+-include("include/whistle_transactions.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

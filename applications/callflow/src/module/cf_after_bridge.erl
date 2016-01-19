@@ -14,7 +14,7 @@
 
 -module(cf_after_bridge).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

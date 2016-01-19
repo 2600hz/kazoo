@@ -12,7 +12,7 @@
          ,handle_event/2
         ]).
 
--include("../webhooks.hrl").
+-include("webhooks.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
 -define(ID, wh_util:to_binary(?MODULE)).

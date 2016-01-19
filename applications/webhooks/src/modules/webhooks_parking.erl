@@ -12,7 +12,7 @@
          ,handle/2
         ]).
 
--include("../webhooks.hrl").
+-include("webhooks.hrl").
 
 -define(ID, wh_util:to_binary(?MODULE)).
 -define(NAME, <<"parking">>).

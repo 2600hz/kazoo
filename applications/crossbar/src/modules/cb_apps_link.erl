@@ -18,7 +18,7 @@
          ,validate/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 -define(AUTHORIZE, <<"authorize">>).

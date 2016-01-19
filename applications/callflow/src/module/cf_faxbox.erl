@@ -12,7 +12,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_faxbox).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

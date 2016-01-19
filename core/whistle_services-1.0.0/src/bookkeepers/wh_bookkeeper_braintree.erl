@@ -17,7 +17,7 @@
 -export([timestamp_to_braintree/1]).
 
 -include_lib("braintree/include/braintree.hrl").
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 
 -define(TR_DESCRIPTION, <<"braintree transaction">>).
 

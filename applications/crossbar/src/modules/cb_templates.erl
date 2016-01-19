@@ -20,7 +20,7 @@
          ,account_created/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(DB_PREFIX, "template/").
 

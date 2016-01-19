@@ -16,7 +16,7 @@
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle_transactions/include/whistle_transactions.hrl").
 
 -define(CURRENT_BALANCE, <<"current_balance">>).

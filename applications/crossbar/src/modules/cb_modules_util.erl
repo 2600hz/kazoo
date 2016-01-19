@@ -31,7 +31,7 @@
          ,remove_plaintext_password/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
 

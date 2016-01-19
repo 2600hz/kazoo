@@ -11,7 +11,7 @@
 -export([feature_activation_charge/2]).
 -export([phone_number_activation_charge/2]).
 
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(PHONE_NUMBERS, <<"phone_numbers">>).

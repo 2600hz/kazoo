@@ -33,7 +33,7 @@
          ,rollup/2
         ]).
 
--include("../include/whistle_transactions.hrl").
+-include("include/whistle_transactions.hrl").
 
 %% tracked in hundred-ths of a cent
 -define(DOLLAR_TO_UNIT, 10000).

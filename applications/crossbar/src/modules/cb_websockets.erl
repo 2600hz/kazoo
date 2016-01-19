@@ -16,7 +16,7 @@
          ,validate/1, validate/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
 -define(CB_LIST, <<"websockets/crossbar_listing">>).

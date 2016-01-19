@@ -19,7 +19,7 @@
          ,post/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -type endpoints_return() :: {wh_json:objects(), cb_context:context()}.
 

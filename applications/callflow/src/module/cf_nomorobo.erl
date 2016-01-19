@@ -42,7 +42,7 @@
         ]).
 -endif.
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -define(URL, <<"http://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
 

@@ -12,7 +12,7 @@
          ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
--include("../blackhole.hrl").
+-include("blackhole.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
 %%--------------------------------------------------------------------

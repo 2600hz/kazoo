@@ -28,7 +28,7 @@
          ,patch/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).

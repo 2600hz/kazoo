@@ -14,7 +14,7 @@
 -define(ACCOUNTS_DB, <<"accounts">>).
 -define(CATEGORY, <<"ui_apps">>).
 
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzt_twiml).
 
--include("../kzt.hrl").
+-include("kzt.hrl").
 
 -export([exec/2
          ,parse_cmds/1

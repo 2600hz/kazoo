@@ -18,7 +18,7 @@
          ,post/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CREDIT, <<"credit">>).
 -define(DEBIT, <<"debit">>).

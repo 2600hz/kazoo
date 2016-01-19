@@ -10,7 +10,7 @@
          ,bindings_and_responders/0
         ]).
 
--include("../webhooks.hrl").
+-include("webhooks.hrl").
 
 -define(ID, wh_util:to_binary(?MODULE)).
 -define(NAME, <<"channel_bridge">>).

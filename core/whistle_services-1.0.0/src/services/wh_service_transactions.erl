@@ -11,7 +11,7 @@
 -export([current_billing_period/3]).
 -export([reconcile/1]).
 
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

@@ -11,7 +11,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_fax_detect).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

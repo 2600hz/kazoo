@@ -44,7 +44,7 @@
 -export([save/1]).
 -export([service_save/1]).
 
--include("../include/whistle_transactions.hrl").
+-include("include/whistle_transactions.hrl").
 
 -define(WH_SERVICES_DB, <<"services">>).
 

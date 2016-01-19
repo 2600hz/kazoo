@@ -27,7 +27,7 @@
 
 -export_type([analysis/0]).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
 
 -spec new() -> analysis().
 new() -> #ci_analysis{}.

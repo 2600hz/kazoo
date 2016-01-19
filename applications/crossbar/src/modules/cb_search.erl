@@ -17,7 +17,7 @@
          ,authorize/1, authorize/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(QUERY_TPL, <<"search/search_by_">>).
 -define(MULTI, <<"multi">>).

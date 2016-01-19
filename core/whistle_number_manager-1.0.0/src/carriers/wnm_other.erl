@@ -17,7 +17,7 @@
 -export([disconnect_number/1]).
 -export([should_lookup_cnam/0]).
 
--include("../wnm.hrl").
+-include("wnm.hrl").
 
 -define(DEFAULT_COUNTRY, <<"US">>).
 -define(WNM_OTHER_CONFIG_CAT, <<"number_manager.other">>).

@@ -25,7 +25,7 @@
 
 -export([is_unique_realm/2]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 

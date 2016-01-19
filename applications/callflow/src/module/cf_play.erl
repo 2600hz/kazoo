@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_play).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

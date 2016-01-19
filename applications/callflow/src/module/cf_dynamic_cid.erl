@@ -16,7 +16,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_dynamic_cid).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

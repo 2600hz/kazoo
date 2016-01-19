@@ -23,7 +23,7 @@
          ,finish_request/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(COMMENTS, <<"comments">>).
 

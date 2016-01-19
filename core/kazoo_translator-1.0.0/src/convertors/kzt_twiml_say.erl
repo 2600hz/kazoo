@@ -10,7 +10,7 @@
 
 -export([exec/3]).
 
--include("../kzt.hrl").
+-include("kzt.hrl").
 
 -spec exec(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
                   {'ok', whapps_call:call()} |

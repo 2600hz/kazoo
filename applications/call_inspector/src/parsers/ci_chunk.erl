@@ -53,7 +53,7 @@
 
 -export_type([chunk/0]).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
 
 -define(SETTER(Field),
         Field(#ci_chunk{}=Chunk, Value) ->

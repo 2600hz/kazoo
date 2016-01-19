@@ -15,7 +15,7 @@
 -define(ITEM, <<"whitelabel">>).
 -define(DESIGN_DOC, <<"whitelabel/crossbar_listing">>).
 
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

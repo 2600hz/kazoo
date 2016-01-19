@@ -15,7 +15,7 @@
          ,post/1, post/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".presence">>).
 

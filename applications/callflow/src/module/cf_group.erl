@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_group).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 -include_lib("whistle/src/api/wapi_dialplan.hrl").
 
 -export([handle/2]).

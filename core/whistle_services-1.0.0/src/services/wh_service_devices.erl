@@ -10,7 +10,7 @@
 -export([reconcile/1]).
 -export([reconcile/2]).
 
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 
 -define(CATEGORY, <<"devices">>).
 

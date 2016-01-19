@@ -9,7 +9,7 @@
 
 -export([init/2]).
 
--include("../include/whistle_transactions.hrl").
+-include("include/whistle_transactions.hrl").
 
 -define(WH_SERVICES_DB, <<"services">>).
 

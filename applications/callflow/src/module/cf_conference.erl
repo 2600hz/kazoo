@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_conference).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

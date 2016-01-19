@@ -13,7 +13,7 @@
 
 -export([handle/2]).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -define(RECORDINGS_KEY, <<"Recordings">>).
 

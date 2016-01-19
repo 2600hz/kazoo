@@ -12,7 +12,7 @@
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
 
--include("../whistle_services.hrl").
+-include("whistle_services.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

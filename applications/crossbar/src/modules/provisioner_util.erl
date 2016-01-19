@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(provisioner_util).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -export([maybe_provision/1]).
 -export([maybe_delete_provision/1]).

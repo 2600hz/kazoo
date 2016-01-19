@@ -17,7 +17,7 @@
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 
--include("../wnm.hrl").
+-include("wnm.hrl").
 
 -define(WH_INUM,<<"numbers%2Finum">>).
 -define(INUM_VIEW_FILE, <<"views/inum.json">>).

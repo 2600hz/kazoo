@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_callflow).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

@@ -44,8 +44,8 @@
          ,code_change/3
         ]).
 
--include("../include/wh_types.hrl").
--include("../include/wh_log.hrl").
+-include("include/wh_types.hrl").
+-include("include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour

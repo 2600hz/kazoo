@@ -32,7 +32,7 @@
          ,patch/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).

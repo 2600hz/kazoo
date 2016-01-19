@@ -13,7 +13,7 @@
 -export([save/1]).
 -export([delete/1]).
 
--include("../wnm.hrl").
+-include("wnm.hrl").
 
 -define(WNM_DASH_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".dash_e911">>).
 

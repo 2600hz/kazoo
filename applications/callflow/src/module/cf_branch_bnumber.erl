@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_branch_bnumber).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 %% API
 -export([handle/2]).

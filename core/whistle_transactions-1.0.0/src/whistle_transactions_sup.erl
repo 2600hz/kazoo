@@ -12,7 +12,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--include("../include/whistle_transactions.hrl").
+-include("include/whistle_transactions.hrl").
 
 -define(SERVER, ?MODULE).
 

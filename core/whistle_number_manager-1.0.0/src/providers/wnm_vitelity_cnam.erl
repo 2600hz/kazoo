@@ -13,7 +13,7 @@
          ,delete/1
         ]).
 
--include("../wnm.hrl").
+-include("wnm.hrl").
 
 -define(SERVER, ?MODULE).
 

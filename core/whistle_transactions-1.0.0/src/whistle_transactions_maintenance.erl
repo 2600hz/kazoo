@@ -11,7 +11,7 @@
 -export([disable_top_up/0]).
 -export([enable_top_up/0]).
 
--include("../include/whistle_transactions.hrl").
+-include("include/whistle_transactions.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

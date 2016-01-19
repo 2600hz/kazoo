@@ -18,7 +18,7 @@
          ,should_lookup_cnam/0
         ]).
 
--include("../wnm.hrl").
+-include("wnm.hrl").
 
 -define(WNM_SW_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".simwood">>).
 

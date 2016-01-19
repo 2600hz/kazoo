@@ -23,7 +23,7 @@
          ,cleanup/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).

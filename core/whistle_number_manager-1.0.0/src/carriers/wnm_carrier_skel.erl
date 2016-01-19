@@ -16,7 +16,7 @@
          ,should_lookup_cnam/0
         ]).
 
--include("../wnm.hrl").
+-include("wnm.hrl").
 
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', wh_json:object()} |

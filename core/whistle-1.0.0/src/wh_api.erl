@@ -51,8 +51,8 @@
          ,validate_message/4
         ]).
 
--include("../include/wh_api.hrl").
--include("../include/wh_log.hrl").
+-include("include/wh_api.hrl").
+-include("include/wh_log.hrl").
 
 -ifdef(TEST).
 -export([has_any/2, has_all/2]).

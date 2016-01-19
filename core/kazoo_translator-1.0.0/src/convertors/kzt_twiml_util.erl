@@ -26,7 +26,7 @@
          ,reject_status/1
         ]).
 
--include("../kzt.hrl").
+-include("kzt.hrl").
 
 -spec get_terminators(wh_proplist()) -> ne_binaries().
 get_terminators(Props) ->
