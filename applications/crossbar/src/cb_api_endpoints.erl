@@ -52,7 +52,8 @@ to_swagger_paths(Paths, BasePaths) ->
 to_swagger_path(Path, PathMeta, Acc) ->
     Methods = wh_json:get_value(<<"allowed_methods">>, PathMeta, []),
     lists:foldl(fun(Method, Acc1) ->
-                        wh_json:set_value([Path, Method], wh_json:new(), Acc1)
+                        MethodJObj = wh_json:get_value([Path, Method], Acc, wh_json:new()),
+                        wh_json:set_value([Path, Method], MethodJObj, Acc1)
                 end
                ,Acc
                ,Methods
