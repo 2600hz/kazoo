@@ -24,6 +24,7 @@
          ,cleanup_heard_voicemail/1
 
          ,migrate/1
+         ,acceptable_content_types/0
         ]).
 
 -include("crossbar.hrl").
@@ -98,15 +99,18 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec acceptable_content_types() -> wh_proplist().
+acceptable_content_types() -> ?MEDIA_MIME_TYPES.
+
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context,_VMBox, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
-    content_types_provided_for_download(Context, cb_context:req_verb(Context)).
+    content_types_provided_for_vm_download(Context, cb_context:req_verb(Context)).
 
-content_types_provided_for_download(Context, ?HTTP_GET) ->
+content_types_provided_for_vm_download(Context, ?HTTP_GET) ->
     CTP = [{'to_binary', ?MEDIA_MIME_TYPES}],
     cb_context:set_content_types_provided(Context, CTP);
-content_types_provided_for_download(Context, _Verb) ->
+content_types_provided_for_vm_download(Context, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
