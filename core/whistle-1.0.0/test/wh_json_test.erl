@@ -415,6 +415,13 @@ insert_value_test() ->
     ?assertEqual(<<"v1">>, wh_json:get_value(<<"k1">>, NonInsert)),
     ?assertEqual(<<"v3">>, wh_json:get_value(<<"k3">>, Insert)).
 
+insert_values_test() ->
+    JObj = wh_json:decode(<<"{\"k1\":\"v1\",\"k2\":\"v2\"}">>),
+    NonInsert = wh_json:insert_values([{<<"k1">>, <<"v3">>}], JObj),
+    Insert = wh_json:insert_values([{<<"k3">>, <<"v3">>}], JObj),
+    ?assertEqual(<<"v1">>, wh_json:get_value(<<"k1">>, NonInsert)),
+    ?assertEqual(<<"v3">>, wh_json:get_value(<<"k3">>, Insert)).
+
 get_ne_json_object_test() ->
     JObj = wh_json:decode(<<"{\"k1\":\"v1\",\"k2\":\"v2\",\"o1\":{\"k3\":\"v3\"},\"o2\":{}}">>),
     ?assertEqual('undefined'

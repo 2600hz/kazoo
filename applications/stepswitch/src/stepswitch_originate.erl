@@ -24,7 +24,7 @@
 
 -record(state, {msg_id=wh_util:rand_hex_binary(12)
                 ,endpoints = [] :: wh_json:objects()
-                ,resource_req :: wh_json:object()
+                ,resource_req :: wapi_offnet_resource:req()
                 ,request_handler :: pid()
                 ,response_queue :: api_binary()
                 ,queue :: api_binary()
@@ -50,14 +50,14 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(wh_json:objects(), wh_json:object()) -> startlink_ret().
-start_link(Endpoints, JObj) ->
+-spec start_link(wh_json:objects(), wapi_offnet_resource:req()) -> startlink_ret().
+start_link(Endpoints, OffnetReq) ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Endpoints, JObj]).
+                                     ], [Endpoints, OffnetReq]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -74,12 +74,12 @@ start_link(Endpoints, JObj) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Endpoints, JObj]) ->
-    wh_util:put_callid(JObj),
+init([Endpoints, OffnetReq]) ->
+    wh_util:put_callid(OffnetReq),
     {'ok', #state{endpoints=Endpoints
-                  ,resource_req=JObj
+                  ,resource_req=OffnetReq
                   ,request_handler=self()
-                  ,response_queue=wh_json:get_ne_value(<<"Server-ID">>, JObj)
+                  ,response_queue=wh_api:server_id(OffnetReq)
                   ,timeout=erlang:send_after(120000, self(), 'originate_timeout')
                  }}.
 
@@ -138,8 +138,8 @@ handle_cast('answered', #state{timeout=TimerRef}=State) ->
     lager:debug("channel answered, canceling timeout"),
     _ = erlang:cancel_timer(TimerRef),
     {'noreply', State#state{timeout='undefined'}};
-handle_cast({'bind_to_call', 'undefined'}, #state{resource_req=Request}=State) ->
-    gen_listener:cast(self(), {'originate_result', originate_failure(wh_json:new(), Request)}),
+handle_cast({'bind_to_call', 'undefined'}, #state{resource_req=OffnetReq}=State) ->
+    gen_listener:cast(self(), {'originate_result', originate_failure(wh_json:new(), OffnetReq)}),
     {'stop', 'normal', State};
 handle_cast({'bind_to_call', CallId}, State) ->
     wh_util:put_callid(CallId),
@@ -169,9 +169,9 @@ handle_cast(_Msg, State) ->
 handle_info('originate_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
 handle_info('originate_timeout', #state{response_queue=ResponseQ
-                                        ,resource_req=JObj
+                                        ,resource_req=OffnetReq
                                        }=State) ->
-    wapi_offnet_resource:publish_resp(ResponseQ, originate_timeout(JObj)),
+    wapi_offnet_resource:publish_resp(ResponseQ, originate_timeout(OffnetReq)),
     {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled info: ~p", [_Info]),
@@ -186,36 +186,37 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, #state{request_handler=RequestHandler
-                          ,resource_req=Request
+                          ,resource_req=OffnetReq
                           ,msg_id=MsgId
                          }) ->
     case whapps_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             lager:debug("channel was destroy while waiting for execute extension", []),
-            gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, Request)});
+            gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, OffnetReq)});
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-            CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            CallId = kz_call_event:other_leg_call_id(JObj),
             gen_listener:cast(RequestHandler, {'bridged', CallId});
         {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
             gen_listener:cast(RequestHandler, 'answered');
         {<<"resource">>, <<"originate_resp">>} ->
-            MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
-            case wh_json:get_value(<<"Application-Response">>, JObj) =:= <<"SUCCESS">> of
+            MsgId = wh_api:msg_id(JObj),
+            case kz_call_event:application_response(JObj) =:= <<"SUCCESS">> of
                 'true' ->
-                    gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, Request)});
+                    gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, OffnetReq)});
                 'false' ->
-                    gen_listener:cast(RequestHandler, {'originate_result', originate_failure(JObj, Request)})
+                    gen_listener:cast(RequestHandler, {'originate_result', originate_failure(JObj, OffnetReq)})
             end;
         {<<"error">>, <<"originate_resp">>} ->
-            MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+            MsgId = wh_api:msg_id(JObj),
             lager:debug("channel execution error while waiting for originate: ~s"
-                        ,[wh_util:to_binary(wh_json:encode(JObj))]),
-            gen_listener:cast(RequestHandler, {'originate_result', originate_error(JObj, Request)});
+                        ,[wh_json:encode(JObj)]
+                       ),
+            gen_listener:cast(RequestHandler, {'originate_result', originate_error(JObj, OffnetReq)});
         {<<"dialplan">>, <<"originate_ready">>} ->
-            gen_listener:cast(RequestHandler, {'originate_result', originate_ready(JObj, Request)});
+            gen_listener:cast(RequestHandler, {'originate_result', originate_ready(JObj, OffnetReq)});
         _ -> 'ok'
     end,
-    {'reply', []}.
+    'ignore'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -246,59 +247,62 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 build_originate(#state{endpoints=Endpoints
-                       ,resource_req=JObj
+                       ,resource_req=OffnetReq
                        ,queue=Q
                        ,msg_id=MsgId
                       }) ->
-    {CIDNum, CIDName} = originate_caller_id(JObj),
+    {CIDNum, CIDName} = originate_caller_id(OffnetReq),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    AccountId = wh_json:get_value(<<"Account-ID">>, OffnetReq),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, OffnetReq, wh_json:new()),
     CCVUpdates = props:filter_undefined(
                    [{<<"Global-Resource">>, <<"true">>}
                     ,{<<"Account-ID">>, AccountId}
-                    ,{<<"From-URI">>, originate_from_uri(CIDNum, JObj)}
+                    ,{<<"From-URI">>, originate_from_uri(CIDNum, OffnetReq)}
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                    ]),
-    Application = wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>),
+    Application = wh_json:get_value(<<"Application-Name">>, OffnetReq, <<"park">>),
+
+    FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, CIDName, CIDNum, OffnetReq),
+
     props:filter_undefined(
       [{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Application-Name">>, Application}
        ,{<<"Msg-ID">>, MsgId}
-       ,{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
-       ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
-       ,{<<"Existing-Call-ID">>, wh_json:get_value(<<"Existing-Call-ID">>, JObj)}
-       ,{<<"Originate-Immediate">>, wh_json:get_value(<<"Originate-Immediate">>, JObj)}
-       ,{<<"Simplify-Loopback">>, wh_json:get_value(<<"Simplify-Loopback">>, JObj)}
-       ,{<<"Endpoints">>, Endpoints}
+       ,{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+       ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+       ,{<<"Existing-Call-ID">>, wh_json:get_value(<<"Existing-Call-ID">>, OffnetReq)}
+       ,{<<"Originate-Immediate">>, wh_json:get_value(<<"Originate-Immediate">>, OffnetReq)}
+       ,{<<"Simplify-Loopback">>, wh_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
+       ,{<<"Endpoints">>, FmtEndpoints}
        ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
        ,{<<"Caller-ID-Number">>, CIDNum}
        ,{<<"Caller-ID-Name">>, CIDName}
-       ,{<<"Application-Data">>, wh_json:get_value(<<"Application-Data">>, JObj)}
-       ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
-       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
-       ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
-       ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
-       ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-       ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
-       ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
-       ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
-       ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
-       ,{<<"Fax-Timezone">>, wh_json:get_value(<<"Fax-Timezone">>, JObj)}
-       ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-       ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"Custom-SIP-Headers">>, JObj)}
+       ,{<<"Application-Data">>, wh_json:get_value(<<"Application-Data">>, OffnetReq)}
+       ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, OffnetReq)}
+       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, OffnetReq)}
+       ,{<<"Media">>, wh_json:get_value(<<"Media">>, OffnetReq)}
+       ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, OffnetReq)}
+       ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, OffnetReq)}
+       ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, OffnetReq)}
+       ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, OffnetReq)}
+       ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, OffnetReq, CIDNum)}
+       ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, OffnetReq, CIDName)}
+       ,{<<"Fax-Timezone">>, wh_json:get_value(<<"Fax-Timezone">>, OffnetReq)}
+       ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, OffnetReq)}
+       ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"Custom-SIP-Headers">>, OffnetReq)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
        | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec originate_from_uri(ne_binary(), wh_json:object()) -> api_binary().
-originate_from_uri(CIDNum, JObj) ->
+originate_from_uri(CIDNum, OffnetReq) ->
     Realm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                        ,<<"Account-Realm">>
-                                      ], JObj),
+                                      ], OffnetReq),
     case (whapps_config:get_is_true(?SS_CONFIG_CAT, <<"format_from_uri">>, 'false')
-          orelse wh_json:is_true(<<"Format-From-URI">>, JObj))
+          orelse wh_json:is_true(<<"Format-From-URI">>, OffnetReq))
         andalso (is_binary(CIDNum) andalso is_binary(Realm))
     of
         'false' -> 'undefined';
@@ -309,20 +313,20 @@ originate_from_uri(CIDNum, JObj) ->
     end.
 
 -spec originate_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.
-originate_caller_id(JObj) ->
+originate_caller_id(OffnetReq) ->
     {wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                 ,<<"Emergency-Caller-ID-Number">>
-                               ], JObj)
+                               ], OffnetReq)
      ,wh_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
                                  ,<<"Emergency-Caller-ID-Name">>
-                                ], JObj)
+                                ], OffnetReq)
     }.
 
 -spec originate_timeout(wh_json:object()) -> wh_proplist().
 originate_timeout(Request) ->
     lager:debug("attempt to connect to resources timed out"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(Request)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, <<"originate request timed out">>}
@@ -331,22 +335,22 @@ originate_timeout(Request) ->
     ].
 
 -spec originate_error(wh_json:object(), wh_json:object()) -> wh_proplist().
-originate_error(JObj, Request) ->
+originate_error(JObj, OffnetReq) ->
     lager:debug("error during originate request: ~s", [wh_util:to_binary(wh_json:encode(JObj))]),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, JObj, <<"failed to process request">>)}
-     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, Request)}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, OffnetReq)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec originate_success(wh_json:object(), wh_json:object()) -> wh_proplist().
-originate_success(JObj, Request) ->
+originate_success(JObj, OffnetReq) ->
     lager:debug("originate request successfully completed"),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, <<"SUCCESS">>}
      ,{<<"Response-Code">>, <<"sip:200">>}
      ,{<<"Resource-Response">>, JObj}
@@ -354,10 +358,10 @@ originate_success(JObj, Request) ->
     ].
 
 -spec originate_failure(wh_json:object(), wh_json:object()) -> wh_proplist().
-originate_failure(JObj, Request) ->
+originate_failure(JObj, OffnetReq) ->
     lager:debug("originate request failed: ~s", [wh_json:get_value(<<"Application-Response">>, JObj)]),
-    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, Request)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
+    [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq)}
      ,{<<"Response-Message">>, wh_json:get_first_defined([<<"Application-Response">>
                                                           ,<<"Hangup-Cause">>
                                                          ], JObj)}
@@ -367,10 +371,10 @@ originate_failure(JObj, Request) ->
     ].
 
 -spec originate_ready(wh_json:object(), wh_json:object()) -> wh_proplist().
-originate_ready(JObj, Request) ->
+originate_ready(JObj, OffnetReq) ->
     lager:debug("originate is ready to execute"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request)}
+     ,{<<"Msg-ID">>, wh_api:msg_id(OffnetReq)}
      ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
      ,{<<"Response-Message">>, <<"READY">>}
      ,{<<"Resource-Response">>, JObj}

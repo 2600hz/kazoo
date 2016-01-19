@@ -31,7 +31,7 @@
                 ,response_queue :: api_binary()
                 ,queue :: api_binary()
                 ,message = [] :: wh_proplist()
-                ,messages = queue:new() :: queue()
+                ,messages = queue:new() :: queue:queue()
                }).
 -type state() :: #state{}.
 
@@ -386,7 +386,7 @@ build_sms_base({CIDNum, CIDName}, OffnetReq, Q) ->
 maybe_endpoints_format_from([], _ , _) -> [];
 maybe_endpoints_format_from(Endpoints, 'undefined', _) -> Endpoints;
 maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq) ->
-    DefaultRealm = stepswitch_bridge:default_realm(OffnetReq),
+    DefaultRealm = stepswitch_util:default_realm(OffnetReq),
     [maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm)
      || Endpoint <- Endpoints
     ].
@@ -465,7 +465,7 @@ bridge_caller_id(OffnetReq) ->
 -spec bridge_from_uri(api_binary(), wapi_offnet_resource:req()) ->
                              api_binary().
 bridge_from_uri(CIDNum, OffnetReq) ->
-    Realm = stepswitch_bridge:default_realm(OffnetReq),
+    Realm = stepswitch_util:default_realm(OffnetReq),
     case (whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
           orelse wapi_offnet_resource:format_from_uri(OffnetReq)
          )

@@ -16,7 +16,6 @@
         ]).
 
 -include("stepswitch.hrl").
--include_lib("whistle/src/wh_json.hrl").
 
 -define(CONFIG_CAT, <<"number_manager">>).
 
@@ -420,7 +419,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
             Updates = [{<<"Name">>, Name}
                        ,{<<"Weight">>, Weight}
                       ],
-            EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates, OffnetJObj)
+            EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
                             || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, OffnetJObj, [])
                            ],
             maybe_add_proxies(EndpointList, Proxies, Endpoints)
@@ -436,46 +435,10 @@ check_diversion_fields(OffnetJObj) ->
             wapi_offnet_resource:outbound_caller_id_number(OffnetJObj)
     end.
 
--spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist(), wapi_offnet_resource:req()) -> wh_json:object().
-update_endpoint(Endpoint, Updates, CCVUpdates, OffnetJObj) ->
-    Updated = wh_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates)),
-    maybe_apply_formatters(Updated, OffnetJObj).
-
--spec maybe_apply_formatters(wh_json:object(), wapi_offnet_resource:req()) -> wh_json:object().
-maybe_apply_formatters(Endpoint, OffnetJObj) ->
-    SIPHeaders = stepswitch_util:get_sip_headers(OffnetJObj),
-    AccountId = wapi_offnet_resource:account_id(OffnetJObj),
-
-    stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
-                                ,props:get_value(<<"Formatters">>
-                                                 ,endpoint_props(Endpoint, AccountId)
-                                                 ,wh_json:new()
-                                                )
-                                ,'outbound'
-                               ).
-
--spec maybe_add_sip_headers(wh_json:object(), wh_json:object()) -> wh_json:object().
-maybe_add_sip_headers(Endpoint, SIPHeaders) ->
-    LocalSIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, wh_json:new()),
-
-    case wh_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
-        ?EMPTY_JSON_OBJECT -> Endpoint;
-        MergedHeaders -> wh_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
-    end.
-
--spec endpoint_props(wh_json:object(), api_binary()) -> wh_proplist().
-endpoint_props(Endpoint, AccountId) ->
-    ResourceId = wh_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
-    case wh_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
-        'true' ->
-            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId));
-        'false' ->
-            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
-    end.
-
--spec empty_list_on_undefined(wh_proplist() | 'undefined') -> wh_proplist().
-empty_list_on_undefined('undefined') -> [];
-empty_list_on_undefined(L) -> L.
+-spec update_endpoint(wh_json:object(), wh_proplist(), wh_proplist()) ->
+                             wh_json:object().
+update_endpoint(Endpoint, Updates, CCVUpdates) ->
+    wh_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates)).
 
 -spec maybe_add_proxies(wh_json:objects(), wh_proplist(), wh_json:objects()) -> wh_json:objects().
 maybe_add_proxies([], _, Acc) -> Acc;

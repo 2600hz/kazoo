@@ -22,8 +22,8 @@
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
--record(state, {number_props = [] :: wh_proplist()
-                ,resource_req :: api_object()
+-record(state, {number_props = [] :: number_properties()
+                ,resource_req :: wapi_offnet_resource:req()
                 ,request_handler :: pid()
                 ,control_queue :: api_binary()
                 ,response_queue :: api_binary()
@@ -48,9 +48,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(wh_proplist(), wh_json:object()) -> startlink_ret().
-start_link(Props, JObj) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+-spec start_link(number_properties(), wapi_offnet_resource:req()) -> startlink_ret().
+start_link(NumberProps, OffnetReq) ->
+    CallId = wapi_offnet_resource:call_id(OffnetReq),
     Bindings = [{'call', [{'callid', CallId}
                           ,{'restrict_to', [<<"CHANNEL_DESTROY">>
                                             ,<<"CHANNEL_EXECUTE_COMPLETE">>
@@ -64,7 +64,7 @@ start_link(Props, JObj) ->
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Props, JObj]).
+                                     ], [NumberProps, OffnetReq]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -81,16 +81,16 @@ start_link(Props, JObj) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Props, JObj]) ->
-    wh_util:put_callid(JObj),
-    case wh_json:get_ne_value(<<"Control-Queue">>, JObj) of
+init([NumberProps, OffnetReq]) ->
+    wh_util:put_callid(OffnetReq),
+    case wapi_offnet_resource:control_queue(OffnetReq) of
         'undefined' -> {'stop', 'normal'};
         ControlQ ->
-            {'ok', #state{number_props=Props
-                          ,resource_req=JObj
+            {'ok', #state{number_props=NumberProps
+                          ,resource_req=OffnetReq
                           ,request_handler=self()
                           ,control_queue=ControlQ
-                          ,response_queue=wh_json:get_ne_value(<<"Server-ID">>, JObj)
+                          ,response_queue=wh_api:server_id(OffnetReq)
                           ,timeout=erlang:send_after(120000, self(), 'local_extension_timeout')
                          }}
     end.

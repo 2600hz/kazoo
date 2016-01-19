@@ -10,7 +10,6 @@ notifications:
 otp_release:
   - 18.1
   - 17.5
-  - R15B03
 
 addons:
   apt:
