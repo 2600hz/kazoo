@@ -19,6 +19,8 @@
          ,put/1
          ,post/1, post/2
          ,delete/1
+
+         ,acceptable_content_types/0
         ]).
 
 -include("crossbar.hrl").
@@ -171,6 +173,11 @@ authenticate(_Nouns, _Verb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
+-spec acceptable_content_types() -> wh_proplist().
+acceptable_content_types() ->
+    ?WHITELABEL_WELCOME_MIME_TYPES ++ ?WHITELABEL_ICON_MIME_TYPES.
+
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, AttachType) ->
