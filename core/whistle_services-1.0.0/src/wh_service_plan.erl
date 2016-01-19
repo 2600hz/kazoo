@@ -72,7 +72,15 @@ create_items(ServicePlan, ServiceItems, Services) ->
 
 create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId) ->
     ItemPlan = kzd_service_plan:item(ServicePlan, CategoryId, ItemId),
+    create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan).
 
+create_items(ServicePlan, ServiceItems, _Services, _CategoryId, _ItemId, 'undefined') ->
+    AccountId = kzd_service_plan:account_id(ServicePlan),
+    lager:warning("unable to create service plan items (~s/~s) for account ~s", [_CategoryId, _ItemId, AccountId]),
+    lager:warning("account ~s service plan : ~p", [AccountId, ServicePlan]),
+    lager:warning("account ~s services : ~p", [AccountId, _Services]),
+    ServiceItems;
+create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan) ->
     {Rate, Quantity} = get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services),
     lager:debug("for ~s/~s, found rate ~p for quantity ~p", [CategoryId, ItemId, Rate, Quantity]),
 
