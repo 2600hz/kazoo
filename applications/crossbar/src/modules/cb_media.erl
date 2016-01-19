@@ -23,6 +23,8 @@
          ,put/1
          ,post/2, post/3
          ,delete/2, delete/3
+
+         ,acceptable_content_types/0
         ]).
 
 -include("crossbar.hrl").
@@ -32,14 +34,10 @@
 -define(LANGUAGES, <<"languages">>).
 -define(PROMPTS, <<"prompts">>).
 
--define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"x-wav">>}
-                           ,{<<"audio">>, <<"wav">>}
-                           ,{<<"audio">>, <<"mpeg">>}
-                           ,{<<"audio">>, <<"mp3">>}
-                           ,{<<"audio">>, <<"ogg">>}
-                           ,{<<"application">>, <<"base64">>}
-                           ,{<<"application">>, <<"x-base64">>}
-                          ]).
+-define(MEDIA_MIME_TYPES
+       ,?AUDIO_CONTENT_TYPES
+        ++ ?BASE64_CONTENT_TYPES
+       ).
 
 -define(CB_LIST, <<"media/crossbar_listing">>).
 -define(CB_LIST_BY_LANG, <<"media/listing_by_language">>).
@@ -153,14 +151,18 @@ authorize_media(_Context, _Nouns, _AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec acceptable_content_types() -> wh_proplist().
+acceptable_content_types() ->
+    ?MEDIA_MIME_TYPES.
+
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) ->
-                                    cb_context:context().
+-spec content_types_provided_for_media(cb_context:context(), path_token(), path_token(), http_method()) ->
+                                              cb_context:context().
 content_types_provided(Context, MediaId, ?BIN_DATA) ->
-    content_types_provided(Context, cow_qs:urlencode(MediaId), ?BIN_DATA, cb_context:req_verb(Context)).
+    content_types_provided_for_media(Context, cow_qs:urlencode(MediaId), ?BIN_DATA, cb_context:req_verb(Context)).
 
-content_types_provided(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
+content_types_provided_for_media(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
     Context1 = load_media_meta(Context, MediaId),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -174,7 +176,7 @@ content_types_provided(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
             end;
         _Status -> Context1
     end;
-content_types_provided(Context, _MediaId, ?BIN_DATA, _Verb) ->
+content_types_provided_for_media(Context, _MediaId, ?BIN_DATA, _Verb) ->
     Context.
 
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) ->

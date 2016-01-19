@@ -20,6 +20,8 @@
          ,delete/2
 
          ,flush/0
+
+         ,acceptable_content_types/0
         ]).
 
 -ifdef(TEST).
@@ -122,30 +124,35 @@ resource_exists(?CUSTOMER_UPDATE, ?MESSAGE) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+
+-spec acceptable_content_types() -> wh_proplist().
+acceptable_content_types() ->
+    ?NOTIFICATION_MIME_TYPES.
+
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), http_method()) ->
+-spec content_types_provided_for_notifications(cb_context:context(), path_token(), http_method()) ->
                                     cb_context:context().
 content_types_provided(Context, ?SMTP_LOG) ->
     Context;
 content_types_provided(Context, Id) ->
     DbId = kz_notification:db_id(Id),
     ReqVerb = cb_context:req_verb(Context),
-    content_types_provided(maybe_update_db(Context), DbId, ReqVerb).
+    content_types_provided_for_notifications(maybe_update_db(Context), DbId, ReqVerb).
 
-content_types_provided(Context, Id, ?HTTP_GET) ->
+content_types_provided_for_notifications(Context, Id, ?HTTP_GET) ->
     Context1 = read(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_set_content_types(Context1);
         _Status -> Context1
     end;
-content_types_provided(Context, Id, ?HTTP_DELETE) ->
+content_types_provided_for_notifications(Context, Id, ?HTTP_DELETE) ->
     Context1 = read(Context, Id, 'account'),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_set_content_types(Context1);
         _Status -> Context1
     end;
-content_types_provided(Context, _Id, _Verb) ->
+content_types_provided_for_notifications(Context, _Id, _Verb) ->
     Context.
 
 -spec maybe_set_content_types(cb_context:context()) -> cb_context:context().
