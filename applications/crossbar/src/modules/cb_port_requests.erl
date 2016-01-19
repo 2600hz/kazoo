@@ -25,6 +25,8 @@
          ,cleanup/1
          ,find_template/1, find_template/2
          ,authority/1
+
+         ,acceptable_content_types/0
         ]).
 
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
@@ -212,6 +214,9 @@ resource_exists(_Id, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
+-spec acceptable_content_types() -> wh_proplist().
+acceptable_content_types() -> ?ATTACHMENT_MIME_TYPES.
+
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token()) ->

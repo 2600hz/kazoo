@@ -41,9 +41,8 @@
 -define(IMAGE_REQ, <<"image">>).
 -define(TEMPLATE_ATTCH, <<"template">>).
 -define(MIME_TYPES, [{<<"image">>, <<"*">>}
-                     ,{<<"application">>, <<"base64">>}
-                     ,{<<"application">>, <<"x-base64">>}
                      ,{<<"application">>, <<"octet-stream">>}
+                     | ?BASE64_CONTENT_TYPES
                     ]).
 
 %%%===================================================================
@@ -67,11 +66,11 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
+-spec content_types_provided_for_provisioner(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 content_types_provided(Context, PT1, PT2) ->
-    content_types_provided(Context, PT1, PT2, cb_context:req_verb(Context)).
+    content_types_provided_for_provisioner(Context, PT1, PT2, cb_context:req_verb(Context)).
 
-content_types_provided(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
+content_types_provided_for_provisioner(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
     Db = wh_util:format_account_id(cb_context:auth_account_id(Context), 'encoded'),
     case couch_mgr:open_doc(Db, DocId) of
         {'error', _} -> Context;
@@ -81,7 +80,7 @@ content_types_provided(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
             lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end;
-content_types_provided(Context, _, _, _) ->
+content_types_provided_for_provisioner(Context, _, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
