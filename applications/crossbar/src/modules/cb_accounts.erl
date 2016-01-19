@@ -95,13 +95,13 @@ allowed_methods(AccountId) ->
 allowed_methods(_, ?MOVE) ->
     [?HTTP_POST];
 allowed_methods(_, Path) ->
-    Paths =  [?CHILDREN
-              ,?DESCENDANTS
-              ,?SIBLINGS
-              ,?API_KEY
-              ,?TREE
-              ,?PARENTS
-             ],
+    Paths = [?CHILDREN
+             ,?DESCENDANTS
+             ,?SIBLINGS
+             ,?API_KEY
+             ,?TREE
+             ,?PARENTS
+            ],
     case lists:member(Path, Paths) of
         'true' -> [?HTTP_GET];
         'false' -> []
