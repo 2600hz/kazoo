@@ -99,13 +99,13 @@ allowed_methods(_, ?MOVE) ->
 allowed_methods(_, ?RESELLER) ->
     [?HTTP_PUT, ?HTTP_DELETE];
 allowed_methods(_, Path) ->
-    Paths =  [?CHILDREN
-              ,?DESCENDANTS
-              ,?SIBLINGS
-              ,?API_KEY
-              ,?TREE
-              ,?PARENTS
-             ],
+    Paths = [?CHILDREN
+             ,?DESCENDANTS
+             ,?SIBLINGS
+             ,?API_KEY
+             ,?TREE
+             ,?PARENTS
+            ],
     case lists:member(Path, Paths) of
         'true' -> [?HTTP_GET];
         'false' -> []
