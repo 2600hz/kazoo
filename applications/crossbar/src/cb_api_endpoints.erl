@@ -43,8 +43,18 @@ read_swagger_json() ->
         {'error', 'enoent'} -> wh_json:new()
     end.
 
+-define(FORMAT_JSON, filename:join([code:lib_dir('crossbar')
+                                    ,".."
+                                    ,".."
+                                    ,"scripts"
+                                    ,"format-json.sh"
+                                   ])
+       ).
+
 write_swagger_json(Swagger) ->
-    'ok' = file:write_file(?SWAGGER_JSON, wh_json:encode(Swagger)).
+    'ok' = file:write_file(?SWAGGER_JSON, wh_json:encode(Swagger)),
+    Res = os:cmd([?FORMAT_JSON, " ", ?SWAGGER_JSON]),
+    io:format("os returned ~p~n", [Res]).
 
 to_swagger_paths(Paths, BasePaths) ->
     wh_json:foldl(fun to_swagger_path/3, BasePaths, Paths).
