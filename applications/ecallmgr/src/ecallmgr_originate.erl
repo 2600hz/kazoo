@@ -751,8 +751,6 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
 
 -spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 publish_originate_uuid('undefined', _, _, _) -> 'ok';
-%% publish_originate_uuid(ServerId, {_, UUID}, JObj, CtrlQueue) ->
-%%     publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue);
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
              [{<<"Outbound-Call-ID">>, UUID}
