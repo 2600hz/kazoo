@@ -117,8 +117,14 @@ content_types_provided(Context, _, _) ->
 content_types_provided(Context, _, _, _) ->
     Context.
 content_types_provided(Context, _, ?ENTRIES, _, ?VCARD) ->
-    cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
-                                                                   ,{<<"text">>, <<"directory">>}]}]).
+    cb_context:set_content_types_provided(Context
+                                         ,[{'to_binary'
+                                           ,[{<<"text">>, <<"x-vcard">>}
+                                            ,{<<"text">>, <<"directory">>}
+                                            ]
+                                           }
+                                          ]
+                                         ).
 
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().

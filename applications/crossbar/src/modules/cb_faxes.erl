@@ -19,6 +19,8 @@
          ,post/1, post/3
          ,patch/1, patch/3
          ,delete/3, delete/4
+
+         ,acceptable_content_types/0
         ]).
 
 -include("crossbar.hrl").
@@ -41,12 +43,11 @@
 -define(FAX_FILE_TYPE, <<"tiff">>).
 
 -define(ACCEPTED_MIME_TYPES, [{<<"application">>, <<"json">>}
-                              ,{<<"application">>, <<"pdf">>}
-                              ,{<<"image">>, <<"tiff">>}
+                             ,{<<"image">>, <<"tiff">>}
                               | ?MULTIPART_CONTENT_TYPES
+                              ++ ?PDF_CONTENT_TYPES
                              ]).
 -define(ACCEPTED_TYPES, [{'from_binary', ?ACCEPTED_MIME_TYPES}]).
-
 
 -define(OUTGOING_FAX_DOC_MAP, [{<<"created">>, <<"pvt_created">>}
                                ,{<<"delivered">>, fun get_delivered_date/1}
@@ -152,6 +153,10 @@ resource_exists(?OUTGOING, _Id) -> 'true'.
 resource_exists(?INBOX, _Id, ?ATTACHMENT) -> 'true';
 resource_exists(?OUTBOX, _Id, ?ATTACHMENT) -> 'true';
 resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
+
+-spec acceptable_content_types() -> wh_proplist().
+acceptable_content_types() ->
+    ?ACCEPTED_MIME_TYPES.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
