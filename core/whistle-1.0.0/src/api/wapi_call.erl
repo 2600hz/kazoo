@@ -101,7 +101,7 @@
                                       ,<<"Parking-Slot">>
                                       ,<<"Channel-Log">>
                                       ,<<"Channel-Is-Loopback">>
-                                      ,<<"Channel-Loopback-Leg">>, <<"Channel-Loopback-OtherLeg-ID">>
+                                      ,<<"Channel-Loopback-Leg">>, <<"Channel-Loopback-Other-Leg-ID">>
                                       ,<<"Channel-Loopback-Bowout">>, <<"Channel-Loopback-Bowout-Execute">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
