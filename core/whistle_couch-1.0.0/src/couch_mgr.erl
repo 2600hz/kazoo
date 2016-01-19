@@ -86,7 +86,7 @@
               ,couchbeam_error/0
              ]).
 
--include_lib("wh_couch.hrl").
+-include("wh_couch.hrl").
 
 -define(VALID_DBNAME, is_binary(DbName) andalso byte_size(DbName) > 0).
 

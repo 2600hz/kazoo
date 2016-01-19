@@ -46,7 +46,7 @@
          ,rm_change_handler/3
         ]).
 
--include_lib("wh_couch.hrl").
+-include("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
 

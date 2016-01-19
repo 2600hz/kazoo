@@ -28,7 +28,7 @@
 -export([max_postpay/1]).
 -export([disconnect_active_calls/1]).
 
--include_lib("jonny5.hrl").
+-include("jonny5.hrl").
 
 -record(limits, {account_id  :: api_binary()
                  ,account_db :: api_binary()

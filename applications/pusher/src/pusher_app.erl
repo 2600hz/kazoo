@@ -9,7 +9,7 @@
 
 -behaviour(application).
 
--include_lib("pusher.hrl").
+-include("pusher.hrl").
 
 -export([start/2, stop/1]).
 

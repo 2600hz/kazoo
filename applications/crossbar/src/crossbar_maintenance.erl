@@ -35,7 +35,7 @@
 
 -export([init_apps/2, init_app/2]).
 
--include_lib("crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle/include/wh_system_config.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().

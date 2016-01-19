@@ -74,7 +74,7 @@
 %% Settings-related
 -export([max_bulk_insert/0]).
 
--include_lib("wh_couch.hrl").
+-include("wh_couch.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch

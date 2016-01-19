@@ -56,7 +56,7 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--include_lib("ecallmgr.hrl").
+-include("ecallmgr.hrl").
 -include_lib("nksip/include/nksip.hrl").
 
 -define(SERVER, ?MODULE).

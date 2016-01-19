@@ -16,7 +16,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include_lib("wh_couch.hrl").
+-include("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -9,7 +9,7 @@
 
 -module(wh_gen_changes).
 
--include_lib("wh_couch.hrl").
+-include("wh_couch.hrl").
 
 -behavior(gen_server).
 
