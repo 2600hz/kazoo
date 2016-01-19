@@ -291,7 +291,8 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
              | route_resp_ccvs(JObj) ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
-    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ParkExtEl]),
+    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
+    ContextEl = context_el(Context, [ParkExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 

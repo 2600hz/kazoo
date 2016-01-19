@@ -15,7 +15,7 @@
 %% API
 -export([start_link/0]).
 -export([new/3]).
--export([workers/0]).
+-export([workers/0, worker/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -43,6 +43,13 @@ new(Name, M, A) ->
 -spec workers() -> pids().
 workers() ->
     [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
+
+-spec worker(ne_binary()) -> api_pid().
+worker(Name) ->
+    case [Pid || {Worker, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE), Worker =:= Name] of
+        [] -> 'undefined';
+        [P |_] -> P
+    end.
 
 %% ===================================================================
 %% Supervisor callbacks

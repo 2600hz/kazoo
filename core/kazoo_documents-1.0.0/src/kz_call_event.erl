@@ -17,7 +17,7 @@
          ,authorizing_id/1, authorizing_type/1
          ,dtmf_digit/1
          ,event_name/1
-         ,hangup_cause/1, hangup_code/1
+         ,hangup_cause/1, hangup_code/1, disposition/1
          ,application_name/1, application_response/1
          ,response_message/1, response_code/1
          ,account_id/1
@@ -89,6 +89,10 @@ hangup_cause(JObj) ->
 -spec hangup_code(wh_json:object()) -> api_binary().
 hangup_code(JObj) ->
     wh_json:get_value(<<"Hangup-Code">>, JObj).
+
+-spec disposition(wh_json:object()) -> api_binary().
+disposition(JObj) ->
+    wh_json:get_value(<<"Disposition">>, JObj).
 
 -spec application_name(wh_json:object()) -> api_binary().
 application_name(JObj) ->

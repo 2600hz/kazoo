@@ -114,7 +114,7 @@ handle_originate_execute(JObj, Props) ->
     Srv = props:get_value('server', Props),
     UUID = props:get_value('uuid', Props),
     lager:debug("recv originate_execute for ~s", [UUID]),
-    _ = case wh_json:get_ne_value(<<"Server-ID">>, JObj) of
+    _ = case wh_json:get_ne_binary_value(<<"Server-ID">>, JObj) of
             'undefined' -> 'ok';
             ServerId ->
                 gen_listener:cast(Srv, {'update_server_id', ServerId})
@@ -139,7 +139,7 @@ handle_originate_execute(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Node, JObj]) ->
     _ = wh_util:put_callid(JObj),
-    ServerId = wh_json:get_ne_value(<<"Server-ID">>, JObj),
+    ServerId = wh_json:get_ne_binary_value(<<"Server-ID">>, JObj),
     _ = bind_to_events(freeswitch:version(Node), Node),
     case wapi_resource:originate_req_v(JObj) of
         'false' ->
@@ -297,7 +297,11 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
         {'ok', WinningUUID} when is_pid(CtrlPid) ->
             lager:debug("originate completed for other UUID: ~s (not ~s)", [WinningUUID, UUID]),
             _ = publish_originate_resp(ServerId, JObj, WinningUUID),
-
+            CtrlPids = ecallmgr_call_control:control_procs(WinningUUID),
+            _ = case lists:member(CtrlPid, CtrlPids) of
+                'true' -> 'ok';
+                'false' -> ecallmgr_call_control:stop(CtrlPid)
+            end,
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
             wh_util:put_callid(CallId),
@@ -545,17 +549,24 @@ get_channel_vars(JObj, FetchId) ->
 maybe_add_loopback(JObj, Props) ->
     case wh_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj) of
         'undefined' -> Props;
-        Simplify -> [{<<"Simplify-Loopback">>, Simplify}
-                     ,{<<"Loopback-Bowout">>, Simplify}
-                     | Props
-                    ]
+        SimpliFly -> add_loopback(wh_util:is_true(SimpliFly)) ++ Props
     end.
+
+-spec add_loopback(boolean()) -> wh_proplist().
+add_loopback('true') ->
+    [{<<"Simplify-Loopback">>, 'true'}
+     ,{<<"Loopback-Bowout">>, 'true'}
+    ];
+add_loopback('false') ->
+    [{<<"Simplify-Loopback">>, 'false'}
+     ,{<<"Loopback-Bowout">>, 'false'}
+    ].
 
 -spec originate_execute(atom(), ne_binary(), pos_integer()) ->
                                {'ok', ne_binary()} |
                                {'error', ne_binary() | 'timeout' | 'crash'}.
 originate_execute(Node, Dialstrings, Timeout) ->
-    lager:debug("executing on ~s: ~s", [Node, Dialstrings]),
+    lager:debug("executing originate on ~s: ~s", [Node, Dialstrings]),
     case freeswitch:api(Node
                         ,'originate'
                         ,wh_util:to_list(Dialstrings)
@@ -696,8 +707,7 @@ publish_error(Error, UUID, Request, ServerId) ->
 cleanup_error(<<"-ERR ", E/binary>>) -> E;
 cleanup_error(E) -> E.
 
--spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
-publish_originate_ready(_, _, _, _, 'undefined') -> 'ok';
+-spec publish_originate_ready(ne_binary(), created_uuid() | ne_binary(), wh_json:object(), api_binary(), api_binary()) -> 'ok'.
 publish_originate_ready(CtrlQ, {_, UUID}, Request, Q, ServerId) ->
     publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId);
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
@@ -727,7 +737,7 @@ publish_originate_resp(ServerId, JObj, UUID) ->
                               ], JObj),
     wapi_resource:publish_originate_resp(ServerId, Resp).
 
--spec publish_originate_started(api_binary(), ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+-spec publish_originate_started(api_binary(), ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 publish_originate_started('undefined', _, _, _) -> 'ok';
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = wh_json:from_list(
@@ -739,10 +749,8 @@ publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
                ])),
     wapi_resource:publish_originate_started(ServerId, Resp).
 
--spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+-spec publish_originate_uuid(api_binary(), created_uuid() | ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 publish_originate_uuid('undefined', _, _, _) -> 'ok';
-publish_originate_uuid(ServerId, {_, UUID}, JObj, CtrlQueue) ->
-    publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue);
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
              [{<<"Outbound-Call-ID">>, UUID}
@@ -794,8 +802,7 @@ start_control_process(#state{originate_req=JObj
                             }=State) ->
     case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ServerId, wh_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
-            CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
-            _ = publish_originate_uuid(ServerId, UUID, JObj, CtrlQ),
+            _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
             lager:debug("started control pid ~p for uuid ~s", [CtrlPid, Id]),
             {'ok', State#state{control_pid=CtrlPid}};

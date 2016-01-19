@@ -157,6 +157,7 @@
         ]).
 -export([wait_for_headless_application/1, wait_for_headless_application/2
          ,wait_for_headless_application/3, wait_for_headless_application/4
+         ,wait_for_headless_application/5
         ]).
 -export([wait_for_bridge/2, wait_for_bridge/3]).
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
@@ -1384,8 +1385,16 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
     wait_for_headless_application(<<"record">>
                                   ,{<<"RECORD_START">>, <<"RECORD_STOP">>}
                                   ,<<"call_event">>
+                                  ,fun(JObj) -> verify_media_name(JObj, MediaName) end
                                   ,'infinity'
                                  ).
+
+-spec verify_media_name(wh_json:object(), ne_binary()) -> boolean().
+verify_media_name(JObj, MediaName) ->
+    case wh_media_recording:get_response_media(JObj) of
+        {_, MediaName} -> 'true';
+        _ -> 'false'
+    end.
 
 -spec start_record_call(wh_proplist(), whapps_call:call()) -> 'ok'.
 -spec start_record_call(wh_proplist(), api_binary() | pos_integer(), whapps_call:call()) -> 'ok'.
@@ -2289,6 +2298,13 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
                                     ,wh_timeout()
                                    ) ->
                                            wait_for_headless_application_return().
+-spec wait_for_headless_application(ne_binary()
+                                    ,headless_event()
+                                    ,ne_binary()
+                                    ,fun((wh_json:object()) -> boolean())
+                                    ,wh_timeout()
+                                   ) ->
+                                           wait_for_headless_application_return().
 
 wait_for_headless_application(Application) ->
     wait_for_headless_application(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
@@ -2296,8 +2312,10 @@ wait_for_headless_application(Application, Event) ->
     wait_for_headless_application(Application, Event, <<"call_event">>).
 wait_for_headless_application(Application, Event, Type) ->
     wait_for_headless_application(Application, Event, Type, ?DEFAULT_APPLICATION_TIMEOUT).
+wait_for_headless_application(Application, Event, Type, Timeout) ->
+    wait_for_headless_application(Application, Event, Type, fun(_) -> 'true' end, Timeout).
 
-wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Timeout) ->
+wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
         {'ok', JObj} ->
@@ -2312,16 +2330,19 @@ wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Timeou
                     {'error', 'channel_hungup'};
                 {Type, StartEv, Application} ->
                     lager:debug("start event ~s has been received for ~s", [StartEv, Application]),
-                    wait_for_headless_application(Application, StopEv, Type, wh_util:decr_timeout(Timeout, Start));
+                    wait_for_headless_application(Application, StopEv, Type, Fun, wh_util:decr_timeout(Timeout, Start));
                 {Type, StopEv, Application} ->
-                    {'ok', JObj};
+                    case Fun(JObj) of
+                        'true' -> {'ok', JObj};
+                        'false' -> wait_for_headless_application(Application, Event, Type, Fun, wh_util:decr_timeout(Timeout, Start))
+                    end;
                 _T ->
-                    lager:debug("ignore ~p", [_T]),
-                    wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
+                    lager:debug("headless application ~s ignoring ~p", [Application, _T]),
+                    wait_for_headless_application(Application, Event, Type, Fun, wh_util:decr_timeout(Timeout, Start))
             end;
         {'error', _E}=E -> E
     end;
-wait_for_headless_application(Application, Event, Type, Timeout) ->
+wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
         {'ok', JObj} ->
@@ -2331,12 +2352,15 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                     {'error', JObj};
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("destroy occurred, waiting 60000 ms for ~s event", [Application]),
-                    wait_for_headless_application(Application, Event, Type, 60 * ?MILLISECONDS_IN_SECOND);
+                    wait_for_headless_application(Application, Event, Type, Fun, 60 * ?MILLISECONDS_IN_SECOND);
                 {Type, Event, Application} ->
-                    {'ok', JObj};
+                    case Fun(JObj) of
+                        'true' -> {'ok', JObj};
+                        'false' -> wait_for_headless_application(Application, Event, Type, Fun, wh_util:decr_timeout(Timeout, Start))
+                    end;
                 _T ->
                     lager:debug("ignore ~p", [_T]),
-                    wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
+                    wait_for_headless_application(Application, Event, Type, Fun, wh_util:decr_timeout(Timeout, Start))
             end;
         {'error', _E}=E -> E
     end.
@@ -2388,7 +2412,6 @@ wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
     {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
     Start = os:timestamp(),
-
     lager:debug("waiting for bridge for ~p ms", [Timeout]),
     wait_for_bridge(Timeout, Fun, Call, Start, receive_event(Timeout)).
 
@@ -2419,16 +2442,17 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
             %% TODO: reduce log level if no issue is found with
             %%    basing the Result on Disposition
-            lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
+            lager:info("bridge channel destroy completed with result ~s(~s)", [Disposition, Result]),
             {Result, JObj};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
             %% TODO: reduce log level if no issue is found with
             %%    basing the Result on Disposition
-            lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
+            lager:info("bridge channel execute completed with result ~s(~s)", [Disposition, Result]),
             {Result, JObj};
         _E ->
-            lager:debug("unhandled event type: ~p", [_E]),
-            wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
+            NewTimeout = wh_util:decr_timeout(Timeout, Start),
+            NewStart = os:timestamp(),
+            wait_for_bridge(NewTimeout, Fun, Call, NewStart, receive_event(NewTimeout))
     end.
 
 %%--------------------------------------------------------------------
@@ -2599,11 +2623,10 @@ wait_for_fax(Timeout) ->
             end
     end.
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Wait forever for the channel to hangup
+%% retrieves event category, type, application from amqp payload
 %% @end
 %%--------------------------------------------------------------------
 -spec get_event_type(wh_json:object()) -> {api_binary(), api_binary(), api_binary()}.

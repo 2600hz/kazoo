@@ -45,6 +45,15 @@ handle(Data, Call) ->
         {<<"SUCCESS">>, _} ->
             lager:info("completed successful offnet request"),
             cf_exe:stop(UpdatedCall);
+        {<<"TRANSFER">>, _} ->
+            lager:info("completed successful offnet request"),
+            cf_exe:transfer(UpdatedCall);
+        {<<"NORMAL_CLEARING">>, <<"sip:200">>} ->
+            lager:info("completed successful offnet request"),
+            cf_exe:stop(UpdatedCall);
+        {<<"NORMAL_CLEARING">>, 'undefined'} ->
+            lager:info("completed successful offnet request"),
+            cf_exe:stop(UpdatedCall);
         {Cause, Code} -> handle_bridge_failure(Cause, Code, UpdatedCall)
     end.
 
@@ -374,14 +383,20 @@ wait_for_stepswitch(Call) ->
                     maybe_start_offnet_metaflow(Call, kz_call_event:other_leg_call_id(JObj)),
                     wait_for_stepswitch(Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-                    lager:info("recv channel destroy"),
-                    {kz_call_event:hangup_cause(JObj)
-                     ,kz_call_event:hangup_code(JObj)
-                    };
-                _ -> wait_for_stepswitch(Call)
+                    handle_channel_destroy(JObj);
+                {_Cat, _Evt} ->
+                    wait_for_stepswitch(Call)
             end;
         _ -> wait_for_stepswitch(Call)
     end.
+
+handle_channel_destroy(JObj) ->
+    handle_channel_destroy(wh_json:get_value(<<"Channel-Name">>, JObj), JObj).
+
+handle_channel_destroy(<<"loopback", _/binary>>, _JObj) ->
+    {<<"TRANSFER">>, 'ok'};
+handle_channel_destroy(_, JObj) ->
+    {kz_call_event:hangup_cause(JObj), kz_call_event:hangup_code(JObj)}.
 
 -spec maybe_start_offnet_metaflow(whapps_call:call(), ne_binary()) -> 'ok'.
 maybe_start_offnet_metaflow(Call, BridgedTo) ->

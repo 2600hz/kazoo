@@ -33,6 +33,7 @@
 -export([callid_update/2]).
 -export([add_event_listener/2]).
 -export([next/1, next/2]).
+-export([update_call/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -108,6 +109,11 @@ get_call(Call) ->
 set_call(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     gen_server:cast(Srv, {'set_call', Call}).
+
+-spec update_call(whapps_call:call(), list()) -> whapps_call:call().
+update_call(Call, Routines) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    gen_server:call(Srv, {'update_call', Routines}).
 
 -spec continue(whapps_call:call() | pid()) -> 'ok'.
 -spec continue(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
@@ -321,6 +327,9 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
+    NewCall = whapps_call:exec(Routines, Call),
+    {'reply', NewCall, State#state{call=NewCall}};
 handle_call('get_call', _From, #state{call=Call}=State) ->
     {'reply', {'ok', Call}, State};
 handle_call('callid', _From, #state{call=Call}=State) ->
@@ -449,20 +458,9 @@ handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     lager:info("binding to new call events"),
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
     {'noreply', State#state{call=whapps_call:set_call_id(NewCallId, Call)}};
-handle_cast({'add_event_listener', {M, A}}, #state{call=Call}=State) ->
-    lager:debug("trying to start evt listener ~s: ~p", [M, A]),
-    try cf_event_handler_sup:new(event_listener_name(Call, M), M, [whapps_call:clear_helpers(Call) | A]) of
-        {'ok', P} when is_pid(P) ->
-            lager:debug("started event listener ~p from ~s", [P, M]),
-            {'noreply', State};
-        _E ->
-            lager:debug("error starting event listener: ~p", [_E]),
-            {'noreply', State}
-    catch
-        _:_R ->
-            lager:info("failed to spawn ~s:~s: ~p", [M, _R]),
-            {'noreply', State}
-    end;
+handle_cast({'add_event_listener', {Mod, Args}}, #state{call=Call}=State) ->
+    cf_util:start_event_listener(Call, Mod, Args),
+    {'noreply', State};
 handle_cast('initialize', #state{call=Call}=State) ->
     log_call_information(Call),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
@@ -490,10 +488,6 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
-
--spec event_listener_name(whapps_call:call(), atom() | ne_binary()) -> ne_binary().
-event_listener_name(Call, Module) ->
-    <<(whapps_call:call_id_direct(Call))/binary, "-", (wh_util:to_binary(Module))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private

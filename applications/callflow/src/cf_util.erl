@@ -45,6 +45,12 @@
 
 -export([wait_for_noop/2]).
 -export([start_task/3]).
+-export([maybe_start_call_recording/2
+         ,start_call_recording/2
+         ,start_event_listener/3
+         ,recording_module/1
+         ,event_listener_name/2
+        ]).
 
 -include("callflow.hrl").
 -include_lib("whistle/src/wh_json.hrl").
@@ -64,6 +70,7 @@
                                        ,{<<"ZRTP-Enrollment">>, <<"true">>}
                                       ]}
                         ]).
+-define(RECORDING_ARGS(Call, Data), [whapps_call:clear_helpers(Call) , Data]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -823,6 +830,48 @@ encryption_method_map(JObj, Endpoint) ->
                                              ,[]
                                             )
                          ).
+
+-spec maybe_start_call_recording(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+maybe_start_call_recording(RecordCall, Call) ->
+    case wh_util:is_empty(RecordCall) of
+        'true' -> Call;
+        'false' -> start_call_recording(RecordCall, Call)
+    end.
+
+-spec start_call_recording(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+start_call_recording(Data, Call) ->
+    Mod = recording_module(Call),
+    Name = event_listener_name(Call, Mod),
+    X = cf_event_handler_sup:new(Name, Mod, ?RECORDING_ARGS(Call, Data)),
+    lager:debug("started ~s process ~s : ~p", [Mod, Name, X]),
+    Call.
+
+-spec recording_module(whapps_call:call()) -> atom().
+recording_module(Call) ->
+    AccountId = whapps_call:account_id(Call),
+    case whapps_account_config:get(AccountId, ?CF_CONFIG_CAT, <<"recorder_module">>) of
+        'undefined' -> whapps_config:get_atom(?CF_CONFIG_CAT, <<"recorder_module">>, 'wh_media_recording');
+        Mod -> wh_util:to_atom(Mod, 'true')
+    end.
+
+-spec start_event_listener(whapps_call:call(), atom(), list()) ->
+          {'ok', pid()} | {'error', any()}.
+start_event_listener(Call, Mod, Args) ->
+    lager:debug("starting evt listener ~s", [Mod]),
+    Name = event_listener_name(Call, Mod),
+    try cf_event_handler_sup:new(Name, Mod, [whapps_call:clear_helpers(Call) | Args]) of
+        {'ok', P} -> {'ok', P};
+        _E -> lager:debug("error starting event listener ~s: ~p", [Mod, _E]),
+              {'error', _E}
+    catch
+        _:_R ->
+            lager:info("failed to spawn ~s: ~p", [Mod, _R]),
+            {'error', _R}
+    end.
+
+-spec event_listener_name(whapps_call:call(), atom() | ne_binary()) -> ne_binary().
+event_listener_name(Call, Module) ->
+    <<(whapps_call:call_id_direct(Call))/binary, "-", (wh_util:to_binary(Module))/binary>>.
 
 -spec maybe_start_metaflows(whapps_call:call(), wh_json:objects()) -> 'ok'.
 -spec maybe_start_metaflows(whapps_call:call(), wh_json:object(), api_binary()) -> 'ok'.
