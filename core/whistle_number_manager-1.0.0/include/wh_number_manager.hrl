@@ -43,7 +43,7 @@
                  ,current_features = sets:new() :: sets:set()
                  ,number_doc = wh_json:new() :: wh_json:object()
                  ,current_number_doc = wh_json:new() :: wh_json:object()
-                 ,phone_number_docs :: 'undefined' | dict:dict()
+                 ,phone_number_docs :: dict:dict()
                  ,hard_delete = 'false' :: boolean()
                  ,error_jobj = wh_json:new() :: wh_json:object()
                  ,activations = [] :: wh_json:objects()
