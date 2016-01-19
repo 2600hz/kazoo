@@ -3,7 +3,7 @@
   {description, "Expose system configuration in AMQP messaging bus"},
   {vsn, "0.0.3"},
   {modules, []},
-  {registered, []},
+  {registered, [sysconf_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

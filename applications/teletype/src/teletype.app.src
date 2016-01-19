@@ -3,7 +3,7 @@
   {description, "Teletype - Receive events and send them to interested parties"},
   {vsn, "0.0.1"},
   {modules, []},
-  {registered, []},
+  {registered, [teletype_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

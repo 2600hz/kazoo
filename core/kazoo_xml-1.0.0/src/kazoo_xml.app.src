@@ -3,7 +3,7 @@
   {description, "Helpers for manipulating XML records"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
+  {registered, [ ]},
   {applications, [ kernel
                  , stdlib
                  , whistle

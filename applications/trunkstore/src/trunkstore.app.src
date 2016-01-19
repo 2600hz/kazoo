@@ -5,7 +5,7 @@
     {description, "Trunk Store Backend - Authentication and Routing"}
     ,{vsn, "0.3.5"}
     ,{modules, []}
-    ,{registered, []}
+    ,{registered, [ts_offnet_sup, trunkstore_sup, ts_onnet_sup]}
     ,{applications, [ kernel
                     , stdlib
                     , crypto

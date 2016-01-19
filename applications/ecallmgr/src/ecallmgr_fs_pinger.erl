@@ -35,8 +35,9 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
 start_link(Node, Options) ->
-    gen_server:start_link(?MODULE, [Node, Options], []).
+    gen_server:start_link(?SERVER, [Node, Options], []).
 
 %%%===================================================================
 %%% gen_server callbacks

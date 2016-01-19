@@ -19,6 +19,8 @@
 
 -include("wnm.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(ORIGIN_BINDINGS, [[{'type', <<"number">>}]]).
 
 -define(CACHE_NUMBER_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
@@ -32,9 +34,9 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
-
+-spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks

@@ -27,6 +27,7 @@
 -include("amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(START_TIMEOUT, 100).
 -define(MAX_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 -define(MAX_REMOTE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
@@ -36,14 +37,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(wh_amqp_connection()) -> startlink_ret().
 start_link(#wh_amqp_connection{}=Connection) ->
-    gen_server:start_link(?MODULE, [Connection], []).
+    gen_server:start_link(?SERVER, [Connection], []).
 
 -spec get_connection(pid()) -> wh_amqp_connection().
 get_connection(Srv) ->

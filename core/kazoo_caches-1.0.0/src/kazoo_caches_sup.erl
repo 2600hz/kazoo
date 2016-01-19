@@ -14,14 +14,15 @@
 
 -include("kz_caches.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
                           ,[{'db', ?WH_CONFIG_DB}]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('kazoo_caches_init')
-                   ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
+-define(CHILDREN, [?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
                    ,?CACHE(?WHAPPS_CALL_CACHE)
                   ]).
 
@@ -31,13 +32,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks

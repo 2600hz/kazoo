@@ -27,6 +27,8 @@
 
 -include("wnm.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(DISCOVERY_EXPIRY
         ,whapps_config:get_integer(?WNM_CONFIG_CAT, <<"discovery_expiry_d">>, 90)
        ).
@@ -46,18 +48,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 -spec stop() -> 'ok'.
 stop() ->
-    gen_server:cast(?MODULE, 'stop').
+    gen_server:cast(?SERVER, 'stop').
 
 crawl_numbers() ->
     wh_util:put_callid(?MODULE),

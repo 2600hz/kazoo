@@ -17,6 +17,8 @@
 
 -include("webhooks.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(ETSMGR_ARGS
         ,[[{'table_id', webhooks_util:table_id()}
            ,{'find_me_function', fun ?MODULE:listener/0}
@@ -40,24 +42,22 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec listener() -> api_pid().
 listener() ->
-    case child_of_type(?MODULE, 'webhooks_listener') of
+    case child_of_type(?SERVER, 'webhooks_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
 
 -spec shared_listener() -> api_pid().
 shared_listener() ->
-    case child_of_type(?MODULE, 'webhooks_shared_listener') of
+    case child_of_type(?SERVER, 'webhooks_shared_listener') of
         [] -> 'undefined';
         [P] -> P
     end.

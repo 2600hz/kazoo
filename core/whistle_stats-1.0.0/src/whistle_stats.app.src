@@ -3,7 +3,7 @@
   {description, "Whistle Stats - An application for statistics tracking and analytics"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
+  {registered, [whistle_stats_sup, whistle_stats]},
   {applications, [ kernel
                  , stdlib
                  , lager

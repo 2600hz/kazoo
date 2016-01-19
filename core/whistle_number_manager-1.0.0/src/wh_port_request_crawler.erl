@@ -26,6 +26,8 @@
 
 -include("wnm.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(MOD_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".port_request">>).
 
 -record(state, {cleanup_ref :: reference()}).
@@ -35,17 +37,14 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 stop() ->
-    gen_server:cast(?MODULE, 'stop').
+    gen_server:cast(?SERVER, 'stop').
 
 cleanup_timer() ->
     Timeout = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE),

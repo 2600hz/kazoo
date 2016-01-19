@@ -40,6 +40,8 @@
 
 -include("kz_buckets.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(MAX_TOKENS, whapps_config:get_integer(?APP_NAME, [?DEFAULT_APP, <<"max_bucket_tokens">>], 100)).
 -define(MAX_TOKENS(App)
         ,whapps_config:get_integer(?APP_NAME, [App, <<"max_bucket_tokens">>], ?MAX_TOKENS)
@@ -66,14 +68,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -165,7 +164,7 @@ get_bucket(App, Key, 'server') ->
     case ets:lookup(table_id(), {App, Key}) of
         [] -> 'undefined';
         [#bucket{srv=Srv}] ->
-            gen_server:cast(?MODULE, {'bucket_accessed', {App, Key}}),
+            gen_server:cast(?SERVER, {'bucket_accessed', {App, Key}}),
             Srv
     end.
 
@@ -206,7 +205,7 @@ start_bucket(App, Name, MaxTokens, FillRate, FillTime) ->
             lager:debug("bucket exists for (~s, ~s) already", [App, Name]),
             'exists';
         'false' ->
-            gen_server:call(?MODULE, {'start', App, Name, MaxTokens, FillRate, FillTime})
+            gen_server:call(?SERVER, {'start', App, Name, MaxTokens, FillRate, FillTime})
     end.
 
 -define(TOKEN_FORMAT_STRING, " ~20s | ~50.50s | ~15.15s | ~6.6s | ~20.20s |~n").

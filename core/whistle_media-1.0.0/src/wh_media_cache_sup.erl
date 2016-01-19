@@ -36,12 +36,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
@@ -50,7 +47,7 @@ start_link() ->
                               {'error', 'no_file_server'}.
 find_file_server(Id, Doc, Attachment) ->
     Name = [Id, Doc, Attachment],
-    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Name, is_pid(P)] of
+    case [P||{N,P,_,_} <- supervisor:which_children(?SERVER), N =:= Name, is_pid(P)] of
         [] -> {'error', 'no_file_server'};
         [P] -> {'ok', P}
     end.
@@ -62,11 +59,11 @@ start_file_server(Id, Doc, Attachment) ->
     Name = [Id, Doc, Attachment],
     start_file_server(Id, Doc, Attachment, Name).
 start_file_server(Id, Doc, Attachment, Name) ->
-    case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment)) of
+    case supervisor:start_child(?SERVER, ?CHILD(Name, Id, Doc, Attachment)) of
         {'ok', _Pid}=OK -> OK;
         {'error', {'already_started', Pid}} -> {'ok', Pid};
         {'error', 'already_present'} ->
-            _ = supervisor:delete_child(?MODULE, Name),
+            _ = supervisor:delete_child(?SERVER, Name), %% FIXME: this didn't kill the child
             start_file_server(Id, Doc, Attachment, Name);
         {'error', _}=E -> E
     end.
@@ -74,7 +71,7 @@ start_file_server(Id, Doc, Attachment, Name) ->
 -spec find_tts_server(any()) -> {'ok', pid()} |
                                 {'error', 'no_file_server'}.
 find_tts_server(Id) ->
-    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Id, is_pid(P)] of
+    case [P||{N,P,_,_} <- supervisor:which_children(?SERVER), N =:= Id, is_pid(P)] of
         [] -> {'error', 'no_file_server'};
         [P] -> {'ok', P}
     end.
@@ -90,11 +87,11 @@ find_tts_server(Text, JObj) ->
     find_tts_server(Text, JObj, Id).
 
 find_tts_server(Text, JObj, Id) ->
-    case supervisor:start_child(?MODULE, ?CHILD(Id, Text, JObj)) of
+    case supervisor:start_child(?SERVER, ?CHILD(Id, Text, JObj)) of
         {'ok', _Pid}=OK -> OK;
         {'error', {'already_started', Pid}} -> {'ok', Pid};
         {'error', 'already_present'} ->
-            _ = supervisor:delete_child(?MODULE, Id),
+            _ = supervisor:delete_child(?SERVER, Id),
             find_tts_server(Text, JObj, Id);
         {'error', _}=E -> E
     end.
@@ -110,12 +107,8 @@ find_tts_server(Text, JObj, Id) ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
-%% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 10,

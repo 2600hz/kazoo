@@ -11,6 +11,8 @@
 
 -include_lib("wh_couch.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0
          ,init/1
          ,compactor_pid/0
@@ -37,16 +39,15 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec compactor_pid() -> pid() | 'undefined'.
+-spec compactor_pid() -> api_pid().
 compactor_pid() ->
-    case [P || {'couch_compactor_fsm', P, 'worker', _} <- supervisor:which_children('whistle_couch_sup')] of
+    case [P || {'couch_compactor_fsm', P, 'worker', _} <- supervisor:which_children(?SERVER)] of
         [Pid] -> Pid;
         [] -> 'undefined'
     end.

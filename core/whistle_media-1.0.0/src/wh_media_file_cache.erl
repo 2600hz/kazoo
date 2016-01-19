@@ -27,6 +27,8 @@
 
 -include("whistle_media.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(TIMEOUT_LIFETIME, 600 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT_MESSAGE, {'$wh_media_file_cache', 'file_timeout'}).
 
@@ -48,15 +50,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(ne_binary(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Db, Id, Attachment) ->
-    gen_server:start_link(?MODULE, [Db, Id, Attachment, get('callid')], []).
+    gen_server:start_link(?SERVER, [Db, Id, Attachment, get('callid')], []).
 
 -spec single(pid()) -> {wh_json:object(), binary()}.
 single(Srv) -> gen_server:call(Srv, 'single').

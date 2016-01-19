@@ -18,6 +18,8 @@
 
 -include("ts.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
                           ,[{'type', <<"connectivity">>}]
                           ,[{'type', <<"sys_info">>}]
@@ -30,13 +32,12 @@
 %% ===================================================================
 -spec start_link() -> startlink_ret().
 start_link() ->
-    _ = trunkstore:start_deps(),
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
-
+-spec init([]) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
     {'ok', { {'one_for_one', 5, 10}

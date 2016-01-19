@@ -44,6 +44,8 @@
 -include("ecallmgr.hrl").
 -include_lib("nksip/include/nksip.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_reg_query'}
                       ,[{<<"directory">>, <<"reg_query">>}]
                      }
@@ -64,7 +66,6 @@
                                     ]}
                    ,{'self', []}
                   ]).
--define(SERVER, ?MODULE).
 -define(REG_QUEUE_NAME, <<>>).
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
@@ -115,14 +116,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'responders', ?RESPONDERS}
                               ,{'bindings', ?BINDINGS}
@@ -317,11 +315,11 @@ details(Username, Realm) ->
 
 -spec sync() -> 'ok'.
 sync() ->
-    gen_server:cast(?MODULE, 'registrar_sync').
+    gen_server:cast(?SERVER, 'registrar_sync').
 
 -spec flush() -> 'ok'.
 flush() ->
-    gen_server:cast(?MODULE, 'flush').
+    gen_server:cast(?SERVER, 'flush').
 
 -spec flush(text()) -> 'ok'.
 flush(Realm) when not is_binary(Realm)->
@@ -329,7 +327,7 @@ flush(Realm) when not is_binary(Realm)->
 flush(Realm) ->
     case binary:split(Realm, <<"@">>) of
         [Username, Realm] -> flush(Username, Realm);
-        _Else -> gen_server:cast(?MODULE, {'flush', Realm})
+        _Else -> gen_server:cast(?SERVER, {'flush', Realm})
     end.
 
 -spec flush(text() | 'undefined', text()) -> 'ok'.
@@ -340,7 +338,7 @@ flush(Username, Realm) when not is_binary(Realm) ->
 flush(Username, Realm) when not is_binary(Username) ->
     flush(wh_util:to_binary(Username), Realm);
 flush(Username, Realm) ->
-    gen_server:cast(?MODULE, {'flush', Username, Realm}).
+    gen_server:cast(?SERVER, {'flush', Username, Realm}).
 
 -spec count() -> non_neg_integer().
 count() -> ets:info(?MODULE, 'size').
@@ -532,9 +530,9 @@ insert_registration(#registration{expires=0}=Registration) ->
                  ,Registration#registration.contact
                 ]
               ),
-    gen_server:cast(?MODULE, {'delete_registration', Registration});
+    gen_server:cast(?SERVER, {'delete_registration', Registration});
 insert_registration(#registration{initial='true'}=Registration) ->
-    gen_server:cast(?MODULE, {'insert_registration', Registration}),
+    gen_server:cast(?SERVER, {'insert_registration', Registration}),
     lager:info("inserted registration ~s@~s with contact ~s"
                ,[Registration#registration.username
                  ,Registration#registration.realm
@@ -543,7 +541,7 @@ insert_registration(#registration{initial='true'}=Registration) ->
               ),
     initial_registration(Registration);
 insert_registration(#registration{}=Registration) ->
-    gen_server:cast(?MODULE, {'insert_registration', Registration}),
+    gen_server:cast(?SERVER, {'insert_registration', Registration}),
     lager:debug("updated registration ~s@~s with contact ~s"
                 ,[Registration#registration.username
                   ,Registration#registration.realm
@@ -685,7 +683,7 @@ maybe_resp_to_query(JObj) ->
         'false' -> resp_to_query(JObj);
         'true' ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
+                    ,{<<"Registrar-Age">>, gen_server:call(?SERVER, 'registrar_age')}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
@@ -742,13 +740,13 @@ resp_to_query(JObj) ->
     case SelectFun(?MODULE, MatchSpec) of
         [] ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
+                    ,{<<"Registrar-Age">>, gen_server:call(?SERVER, 'registrar_age')}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_err(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         [_|_]=Registrations ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
+                    ,{<<"Registrar-Age">>, gen_server:call(?SERVER, 'registrar_age')}
                     ,{<<"Fields">>, [filter(Fields, wh_json:from_list(to_props(Registration)))
                                      || Registration <- Registrations
                                     ]
@@ -758,7 +756,7 @@ resp_to_query(JObj) ->
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         Count when is_integer(Count) ->
             Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Registrar-Age">>, gen_server:call(?MODULE, 'registrar_age')}
+                    ,{<<"Registrar-Age">>, gen_server:call(?SERVER, 'registrar_age')}
                     ,{<<"Fields">>, []}
                     ,{<<"Count">>, Count}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -1058,7 +1056,7 @@ update_registration(#registration{authorizing_id=AuthorizingId
              ,{#registration.account_realm, AccountRealm}
              ,{#registration.account_name, AccountName}
             ],
-    _ = gen_server:cast(?MODULE, {'update_registration', Id, Props}),
+    _ = gen_server:cast(?SERVER, {'update_registration', Id, Props}),
     Reg.
 
 -spec maybe_send_register_notice(registration()) -> registration().

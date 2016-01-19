@@ -18,12 +18,14 @@
 
 -include("kzt.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks

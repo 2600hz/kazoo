@@ -25,6 +25,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -type created_uuid() :: {'fs' | 'api', ne_binary()}.
 -record(state, {node :: atom()
                 ,server_id :: api_binary()
@@ -62,15 +64,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom(), wh_json:object()) -> startlink_ret().
 start_link(Node, JObj) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', ?QUEUE_NAME}

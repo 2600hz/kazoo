@@ -29,6 +29,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(SEND_INTERVAL, 10 * ?MILLISECONDS_IN_SECOND).
 
 -record(state, {variables=[]
@@ -41,33 +42,30 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
-start_link() ->
-    start_link(?SEND_INTERVAL).
+-spec start_link() -> startlink_ret().
+-spec start_link(pos_integer()) -> startlink_ret().
+start_link() -> start_link(?SEND_INTERVAL).
 start_link(Send_stats) ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [Send_stats], []).
 
 stop() ->
-    gen_server:cast(?MODULE, 'stop').
+    gen_server:cast(?SERVER, 'stop').
 
 getdb() ->
-    gen_server:call(?MODULE, 'get_db').
+    gen_server:call(?SERVER, 'get_db').
 
 increment_counter(Item) -> send_counter(Item, 1).
 
-increment_counter(Realm,Item) ->
-    gen_server:cast(?MODULE, {'add', Realm, Item, 1}).
+increment_counter(Realm, Item) ->
+    gen_server:cast(?SERVER, {'add', Realm, Item, 1}).
 
-send_counter(Item,Value) when is_integer(Value) ->
-    gen_server:cast(?MODULE, {'add', Item, Value}).
+send_counter(Item, Value) when is_integer(Value) ->
+    gen_server:cast(?SERVER, {'add', Item, Value}).
 
-send_absolute(Item,Value) ->
-    gen_server:cast(?MODULE, {'store', Item, Value}).
+send_absolute(Item, Value) ->
+    gen_server:cast(?SERVER, {'store', Item, Value}).
 
 %%%===================================================================
 %%% gen_server callbacks

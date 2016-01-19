@@ -3,7 +3,7 @@
   {description, "Reorder - "},
   {vsn, "1.0.0"},
   {modules, []},
-  {registered, []},
+  {registered, [reorder_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

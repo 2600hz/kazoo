@@ -25,14 +25,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_handler(db() | ne_binary(), wh_proplist()) -> sup_startchild_ret().
 start_handler(DbName, Options) when is_binary(DbName) ->
@@ -51,14 +48,11 @@ start_handler(Db, Options) ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = simple_one_for_one,
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 3,
     MaxSecondsBetweenRestarts = 5,
 
@@ -71,7 +65,7 @@ init([]) ->
     AChild = {wh_change_handler, {wh_change_handler, start_link, []},
               Restart, Shutdown, Type, [wh_change_handler]},
 
-    {ok, {SupFlags, [AChild]}}.
+    {'ok', {SupFlags, [AChild]}}.
 
 %%%===================================================================
 %%% Internal functions

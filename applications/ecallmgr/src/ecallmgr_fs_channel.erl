@@ -51,6 +51,8 @@
 -include("ecallmgr.hrl").
 -include_lib("nksip/include/nksip.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: wh_proplist()
                }).
@@ -60,17 +62,13 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
-start_link(Node) ->
-    start_link(Node, []).
-
+-spec start_link(atom()) -> startlink_ret().
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    gen_server:start_link(?MODULE, [Node, Options], []).
+    gen_server:start_link(?SERVER, [Node, Options], []).
 
 -type fetch_resp() :: wh_json:object() |
                       wh_proplist() |

@@ -34,6 +34,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(TABLE_DATA, 0).
 
 -type start_arg() :: {'table_id', atom()} |
@@ -59,16 +60,12 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(start_args()) -> startlink_ret().
 start_link(Opts) ->
     'true' = valid_options(Opts),
-    gen_server:start_link(?MODULE, [Opts], []).
+    gen_server:start_link(?SERVER, [Opts], []).
 
 -spec start_link(atom(), start_args()) -> startlink_ret().
 start_link(Name, Opts) ->

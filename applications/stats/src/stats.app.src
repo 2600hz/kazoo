@@ -3,7 +3,7 @@
   {description, ""},
   {vsn, "1"},
   {modules, []},
-  {registered, []},
+  {registered, [stats_sup]},
   {applications, [ kernel
                  , stdlib
                  , sasl

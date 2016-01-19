@@ -24,19 +24,17 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec add/1 :: (#wh_amqp_connection{}) -> {'error', _} | {'ok', api_pid()} | {'ok', api_pid(), _}.
+-spec add(#wh_amqp_connection{}) -> {'error', _} | {'ok', api_pid()} | {'ok', api_pid(), _}.
 add(#wh_amqp_connection{}=Connection) ->
     supervisor:start_child(?SERVER, [Connection]).
 
--spec remove/1 :: (pid()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+-spec remove(pid()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove(Connection) when is_pid(Connection) ->
     supervisor:terminate_child(?SERVER, Connection).
 

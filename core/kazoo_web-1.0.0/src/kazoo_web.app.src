@@ -2,7 +2,7 @@
     {description, "Utility functions for HTTP / HTML manipulation"},
     {vsn, "4.0.0"},
     {modules, []},
-    {registered, []},
+    {registered, [ ]},
     {applications, [ kernel
                    , stdlib
                    ]}

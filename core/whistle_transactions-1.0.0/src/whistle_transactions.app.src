@@ -3,7 +3,7 @@
   {description, "Whistle Transactions provide abstract transactions to be sent to bookkeepers for processing"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
+  {registered, [whistle_transactions_sup]},
   {applications, [ kernel
                  , stdlib
                  , lager

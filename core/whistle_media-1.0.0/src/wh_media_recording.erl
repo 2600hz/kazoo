@@ -44,6 +44,8 @@
 
 -include("whistle_media.hrl").
 
+-define(SERVER, ?MODULE).
+
 -type couch_connection() :: wh_couch_connections:couch_connection().
 -type couch_connections() :: wh_couch_connections:couch_connections().
 
@@ -115,7 +117,7 @@
 
 -spec start_link(whapps_call:call(), wh_json:object()) -> startlink_ret().
 start_link(Call, Data) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
@@ -125,7 +127,7 @@ start_link(Call, Data) ->
 -spec start_recording(whapps_call:call(), wh_json:object()) -> no_return().
 start_recording(Call, Data) ->
     {'ok', State} = init([Call, Data]),
-    gen_listener:enter_loop(?MODULE, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
+    gen_listener:enter_loop(?SERVER, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include

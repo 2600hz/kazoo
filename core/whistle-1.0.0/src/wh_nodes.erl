@@ -41,6 +41,8 @@
 -include("../include/wh_types.hrl").
 -include("../include/wh_log.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(BINDINGS, [{'nodes', ['federate']}
                    ,{'self', []}
                   ]).
@@ -79,14 +81,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
@@ -204,7 +203,7 @@ status() ->
                            end
                            ,ets:tab2list(?MODULE)
                           ),
-        print_status(Nodes, gen_listener:call(?MODULE, 'zone'))
+        print_status(Nodes, gen_listener:call(?SERVER, 'zone'))
     catch
         {'EXIT', {'badarg', _}} ->
             io:format("status unknown until node is fully initialized, try again in a moment~n", []),
@@ -310,7 +309,7 @@ status_list([{Whapp, #whapp_info{startup=Started}}|Whapps], Column) ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    gen_listener:cast(?MODULE, 'flush').
+    gen_listener:cast(?SERVER, 'flush').
 
 -spec notify_new() -> 'ok'.
 notify_new() ->
@@ -318,7 +317,7 @@ notify_new() ->
 
 -spec notify_new(pid()) -> 'ok'.
 notify_new(Pid) ->
-    gen_listener:cast(?MODULE, {'notify_new', Pid}).
+    gen_listener:cast(?SERVER, {'notify_new', Pid}).
 
 -spec notify_expire() -> 'ok'.
 notify_expire() ->
@@ -326,7 +325,7 @@ notify_expire() ->
 
 -spec notify_expire(pid()) -> 'ok'.
 notify_expire(Pid) ->
-    gen_listener:cast(?MODULE, {'notify_expire', Pid}).
+    gen_listener:cast(?SERVER, {'notify_expire', Pid}).
 
 -spec handle_advertise(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_advertise(JObj, Props) ->
@@ -801,7 +800,7 @@ whapp_oldest_node(Whapp) ->
 
 -spec whapp_oldest_node(text(), text() | boolean() | atom()) -> api_integer().
 whapp_oldest_node(Whapp, 'false') ->
-    Zone = gen_listener:call(?MODULE, 'zone'),
+    Zone = gen_listener:call(?SERVER, 'zone'),
     MatchSpec = [{#wh_node{whapps='$1'
                            ,node='$2'
                            ,zone = Zone

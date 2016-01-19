@@ -20,6 +20,8 @@
 
 -include("amqp_util.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CONFIG_SECTION, wh_config:get_node_section_name()).
 
 -define(DEFAULT_POOL_SIZE, 150).
@@ -39,7 +41,6 @@
                      ,{'neg_resp_threshold', ?POOL_THRESHOLD}
                     ]]).
 
--define(SERVER, ?MODULE).
 -define(CHILDREN, [?WORKER('wh_amqp_connections')
                    ,?SUPER('wh_amqp_connection_sup')
                    ,?WORKER('wh_amqp_assignments')
@@ -73,13 +74,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec stop_bootstrap() -> 'ok' |
                           {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
@@ -128,11 +127,11 @@ add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
     Exchanges :: exchanges(),
     ServerAck :: boolean().
 add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) ->
-    supervisor:start_child(?MODULE, ?POOL_SPEC(?ATOM(UUID), Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck)).
+    supervisor:start_child(?SERVER, ?POOL_SPEC(?ATOM(UUID), Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck)).
 
 -spec pool_pid(atom() | binary()) -> api_pid().
 pool_pid(Pool) ->
-    case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?MODULE), Id =:= ?ATOM(Pool)] of
+    case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?SERVER), Id =:= ?ATOM(Pool)] of
         [] -> 'undefined';
         [P | _] -> P
     end.
@@ -177,10 +176,10 @@ init([]) ->
         end,
 
     PoolArgs = [{'worker_module', 'wh_amqp_worker'}
-               ,{'name', {'local', ?POOL_NAME}}
-               ,{'size', PoolSize}
-               ,{'max_overflow', PoolOverflow}
-               ,{'neg_resp_threshold', PoolThreshold}
+                ,{'name', {'local', ?POOL_NAME}}
+                ,{'size', PoolSize}
+                ,{'max_overflow', PoolOverflow}
+                ,{'neg_resp_threshold', PoolThreshold}
                ],
 
     Children = ?CHILDREN ++ [?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, [PoolArgs])],

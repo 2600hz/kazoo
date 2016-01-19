@@ -44,9 +44,11 @@
          ,code_change/3
         ]).
 
--define(TAB, ?MODULE).
-
 -include("amqp_util.hrl").
+
+-define(SERVER, ?MODULE).
+
+-define(TAB, ?MODULE).
 
 -record(state, {watchers=sets:new()}).
 -type state() :: #state{}.
@@ -55,13 +57,11 @@
 %%% API
 %%%===================================================================
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
-start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+-spec start_link() -> startlink_ret().
+start_link() ->
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec new(wh_amqp_connection() | text()) ->
                  wh_amqp_connection() |
@@ -94,7 +94,7 @@ add(Broker) -> add(Broker, 'local').
 add(#wh_amqp_connection{broker=Broker, tags=Tags}=Connection, Zone) ->
     case wh_amqp_connection_sup:add(Connection) of
         {'ok', Pid} ->
-            gen_server:cast(?MODULE, {'new_connection', Pid, Broker, Zone, Tags}),
+            gen_server:cast(?SERVER, {'new_connection', Pid, Broker, Zone, Tags}),
             Connection;
         {'error', Reason} ->
             lager:warning("unable to start amqp connection to '~s': ~p"
@@ -153,11 +153,11 @@ remove(<<_/binary>> = Broker) ->
 
 -spec available(pid()) -> 'ok'.
 available(Connection) when is_pid(Connection) ->
-    gen_server:cast(?MODULE, {'connection_available', Connection}).
+    gen_server:cast(?SERVER, {'connection_available', Connection}).
 
 -spec unavailable(pid()) -> 'ok'.
 unavailable(Connection) when is_pid(Connection) ->
-    gen_server:cast(?MODULE, {'connection_unavailable', Connection}).
+    gen_server:cast(?SERVER, {'connection_unavailable', Connection}).
 
 -spec arbitrator_broker() -> api_binary().
 arbitrator_broker() ->
@@ -257,7 +257,7 @@ wait_for_available(Fun, Timeout) ->
     case apply(Fun,[]) of
         'true' -> 'ok';
         'false' ->
-            gen_server:cast(?MODULE, {'add_watcher', Fun, self()}),
+            gen_server:cast(?SERVER, {'add_watcher', Fun, self()}),
             wait_for_notification(Timeout)
     end.
 

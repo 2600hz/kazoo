@@ -242,7 +242,7 @@ start_cleanup_pass(Ref) ->
          || Db <- Dbs
         ],
     lager:debug("pass completed for ~p", [Ref]),
-    gen_server:cast(?MODULE, {'cleanup_finished', Ref}).
+    gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 
 -spec db_routing_key(ne_binary()) -> ne_binary().
 db_routing_key(Db) ->

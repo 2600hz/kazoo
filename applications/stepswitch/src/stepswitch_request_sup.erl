@@ -18,6 +18,8 @@
 
 -include("stepswitch.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CHILDREN, []).
 
 %% ===================================================================
@@ -26,13 +28,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec child_name(wapi_offnet_resource:req()) -> ne_binary().
 child_name(OffnetReq) ->
@@ -48,7 +48,7 @@ outbound_child_name(OffnetReq) ->
 
 -spec bridge(wh_json:objects(), wapi_offnet_resource:req()) -> sup_startchild_ret().
 bridge(Endpoints, OffnetReq) ->
-    supervisor:start_child(?MODULE
+    supervisor:start_child(?SERVER
                            ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
                                                    ,'stepswitch_bridge'
                                                    ,[Endpoints, OffnetReq]
@@ -58,7 +58,7 @@ bridge(Endpoints, OffnetReq) ->
 
 -spec local_extension(number_properties(), wapi_offnet_resource:req()) -> sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
-    supervisor:start_child(?MODULE
+    supervisor:start_child(?SERVER
                            ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
                                                    ,'stepswitch_local_extension'
                                                    ,[Props, OffnetReq]
@@ -69,7 +69,7 @@ local_extension(Props, OffnetReq) ->
 -spec originate(wh_json:objects(), wapi_offnet_resource:req()) ->
                        sup_startchild_ret().
 originate(Endpoints, OffnetReq) ->
-    supervisor:start_child(?MODULE
+    supervisor:start_child(?SERVER
                            ,?WORKER_NAME_ARGS_TYPE(outbound_child_name(OffnetReq)
                                                    ,'stepswitch_originate'
                                                    ,[Endpoints, OffnetReq]
@@ -79,7 +79,7 @@ originate(Endpoints, OffnetReq) ->
 
 -spec sms(wh_json:objects(), wapi_offnet_resource:req()) -> sup_startchild_ret().
 sms(Endpoints, OffnetReq) ->
-    supervisor:start_child(?MODULE
+    supervisor:start_child(?SERVER
                            ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
                                                    ,'stepswitch_sms'
                                                    ,[Endpoints, OffnetReq]

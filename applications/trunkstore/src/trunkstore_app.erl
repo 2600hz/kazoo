@@ -19,9 +19,21 @@
 %% Application callbacks
 %% ===================================================================
 
--spec start(any(), any()) ->
-                   {'ok', pid()} |
-                   {'error', any()}.
-start(_StartType, _StartArgs) -> trunkstore:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    _ = declare_exchanges(),
+    trunkstore_sup:start_link().
 
-stop(_State) -> trunkstore:stop().
+stop(_State) ->
+    exit(whereis('trunkstore_sup'), 'shutdown'),
+    'ok'.
+
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_offnet_resource:declare_exchanges(),
+    _ = wapi_route:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    wapi_self:declare_exchanges().

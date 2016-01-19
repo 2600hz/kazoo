@@ -99,6 +99,8 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(SERVER_RETRY_PERIOD, 30 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT_RETRY_CONN, 5 * ?MILLISECONDS_IN_SECOND).
 -define(CALLBACK_TIMEOUT_MSG, 'callback_timeout').
@@ -202,7 +204,7 @@ start_link(Module, Params, InitArgs) when is_atom(Module),
                                           is_list(Params),
                                           is_list(InitArgs)
                                           ->
-    gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
+    gen_server:start_link(?SERVER, [Module, Params, InitArgs], []).
 
 -spec start_link(gen_server_name() | atom(), atom() | start_params(), start_params() | list(), gen_server_options() | list()) -> startlink_ret().
 start_link(Module, Params, InitArgs, Options) when is_atom(Module),
@@ -210,7 +212,7 @@ start_link(Module, Params, InitArgs, Options) when is_atom(Module),
                                                    is_list(InitArgs),
                                                    is_list(Options)
                                                    ->
-    gen_server:start_link(?MODULE, [Module, Params, InitArgs], Options);
+    gen_server:start_link(?SERVER, [Module, Params, InitArgs], Options);
 start_link(Name, Module, Params, InitArgs) when is_atom(Module),
                                                 is_list(Params),
                                                 is_list(InitArgs)

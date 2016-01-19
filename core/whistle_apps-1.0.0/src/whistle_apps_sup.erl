@@ -15,10 +15,10 @@
          ,start_child/1
         ]).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_databases.hrl").
 -include("whapps_call_command.hrl").
 -include("whistle_apps.hrl").
+
+-define(SERVER, ?MODULE).
 
 -define(ORIGIN_BINDINGS, [[{'type', <<"account">>}
                           ]
@@ -39,22 +39,18 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec initialize_whapps(atoms()) -> {'error', any()} |
-                                    {'ok', api_pid()} |
-                                    {'ok', api_pid(), any()}.
+-spec initialize_whapps(atoms()) -> sup_startchild_ret().
 initialize_whapps(Whapps) ->
-    supervisor:start_child(?MODULE, ?SUPER_ARGS('whapps_sup', Whapps)).
+    supervisor:start_child(?SERVER, ?SUPER_ARGS('whapps_sup', Whapps)).
 
 start_child(Spec) ->
-    supervisor:start_child(?MODULE, Spec).
+    supervisor:start_child(?SERVER, Spec).
 
 %% ===================================================================
 %% Supervisor callbacks

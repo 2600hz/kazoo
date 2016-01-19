@@ -16,6 +16,8 @@
 
 -include("kz_buckets.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?SUPER('kz_buckets_sup')
                    ,?WORKER('kz_buckets')
@@ -35,17 +37,15 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec buckets_srv() -> api_pid().
 buckets_srv() ->
-    case [P || {'kz_buckets', P, _, _} <- supervisor:which_children(?MODULE)] of
+    case [P || {'kz_buckets', P, _, _} <- supervisor:which_children(?SERVER)] of
         [] -> 'undefined';
         [P] -> P
     end.

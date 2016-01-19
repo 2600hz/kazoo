@@ -51,6 +51,8 @@
 
 -include("amqp_util.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(FUDGE, 2600).
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_resp'}
@@ -118,14 +120,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(wh_proplist()) -> startlink_ret().
 start_link(Args) ->
-    gen_listener:start_link(?MODULE, [{'bindings', maybe_bindings(Args)}
+    gen_listener:start_link(?SERVER, [{'bindings', maybe_bindings(Args)}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', maybe_queuename(Args)}
                                       ,{'queue_options', ?QUEUE_OPTIONS}

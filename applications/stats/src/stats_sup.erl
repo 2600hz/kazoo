@@ -15,6 +15,8 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CHILDREN, [?CACHE('stats_cache')
                    ,?WORKER('stats_listener')
                   ]).
@@ -25,13 +27,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks

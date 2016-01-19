@@ -13,16 +13,15 @@
 
 -export([start/2]).
 -export([stop/1]).
--export([start_link/0]).
 
 %% Application callbacks
 
 %% @public
 %% @doc Implement the application start behaviour
--spec start(application:start_type(), any()) -> {'ok', pid()} |
-                                                {'ok', pid(), any()} |
-                                                {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    _ = declare_exchanges(),
+    ecallmgr_sup:start_link().
 
 %% @public
 %% @doc Implement the application stop behaviour
@@ -32,16 +31,6 @@ stop(_State) ->
     'ok'.
 
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc Starts the app for inclusion in a supervisor tree
--spec start_link() -> startlink_ret().
-start_link() ->
-    _ = declare_exchanges(),
-    ecallmgr_sup:start_link().
-
-%% @private
-%% @doc Ensures that all exchanges used are declared
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     _ = wapi_authn:declare_exchanges(),

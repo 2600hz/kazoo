@@ -117,24 +117,24 @@ start_link() ->
 -spec bindings(ne_binary()) -> [{ne_binary(), atoms() | ne_binaries()}].
 bindings() ->
     [{props:get_value('callid', Props), props:get_value('restrict_to', Props)}
-     || {'call', Props} <- gen_listener:bindings(?MODULE)
+     || {'call', Props} <- gen_listener:bindings(?SERVER)
     ].
 
 bindings(CallId) ->
     [{CallId, props:get_value('restrict_to', Props)}
-     || {'call', Props} <- gen_listener:bindings(?MODULE),
+     || {'call', Props} <- gen_listener:bindings(?SERVER),
         props:get_value('callid', Props) =:= CallId
     ].
 
 -spec add_konami_binding(api_binary()) -> 'ok'.
 add_konami_binding('undefined') -> 'ok';
 add_konami_binding(CallId) ->
-    gen_listener:add_binding(?MODULE, ?KONAMI_BINDINGS(CallId)).
+    gen_listener:add_binding(?SERVER, ?KONAMI_BINDINGS(CallId)).
 
 -spec rm_konami_binding(api_binary()) -> 'ok'.
 rm_konami_binding('undefined') -> 'ok';
 rm_konami_binding(<<_/binary>> = CallId) ->
-    gen_listener:rm_binding(?MODULE, ?KONAMI_BINDINGS(CallId)).
+    gen_listener:rm_binding(?SERVER, ?KONAMI_BINDINGS(CallId)).
 
 -spec add_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 -spec add_call_binding(api_binary() | whapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
@@ -142,10 +142,10 @@ add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("add fsm binding for call ~s: ~p", [CallId, ?TRACKED_CALL_EVENTS]),
     catch gproc:reg(?KONAMI_REG({'fsm', CallId})),
-    gen_listener:b_add_binding(?MODULE, ?DYN_BINDINGS(CallId, ?TRACKED_CALL_EVENTS)),
-    gen_listener:b_add_binding(?MODULE, ?META_BINDINGS(CallId));
+    gen_listener:b_add_binding(?SERVER, ?DYN_BINDINGS(CallId, ?TRACKED_CALL_EVENTS)),
+    gen_listener:b_add_binding(?SERVER, ?META_BINDINGS(CallId));
 add_call_binding(Call) ->
-    gen_listener:cast(?MODULE, {'add_account_events', whapps_call:account_id(Call)}),
+    gen_listener:cast(?SERVER, {'add_account_events', whapps_call:account_id(Call)}),
     catch gproc:reg(?KONAMI_REG({'fsm', whapps_call:account_id(Call)})),
     add_call_binding(whapps_call:call_id_direct(Call)).
 
@@ -153,10 +153,10 @@ add_call_binding('undefined', _) -> 'ok';
 add_call_binding(CallId, Events) when is_binary(CallId) ->
     lager:debug("add pid binding for call ~s: ~p", [CallId, Events]),
     catch gproc:reg(?KONAMI_REG({'pid', CallId})),
-    gen_listener:b_add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
-    gen_listener:b_add_binding(?MODULE, ?META_BINDINGS(CallId));
+    gen_listener:b_add_binding(?SERVER, ?DYN_BINDINGS(CallId, Events)),
+    gen_listener:b_add_binding(?SERVER, ?META_BINDINGS(CallId));
 add_call_binding(Call, Events) ->
-    gen_listener:cast(?MODULE, {'add_account_events', whapps_call:account_id(Call)}),
+    gen_listener:cast(?SERVER, {'add_account_events', whapps_call:account_id(Call)}),
     catch gproc:reg(?KONAMI_REG({'fsm', whapps_call:account_id(Call)})),
     add_call_binding(whapps_call:call_id_direct(Call), Events).
 
@@ -195,8 +195,8 @@ really_remove_call_bindings(CallId) ->
     really_remove_call_bindings(CallId, ?TRACKED_CALL_EVENTS).
 
 really_remove_call_bindings(CallId, Events) ->
-    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
-    gen_listener:rm_binding(?MODULE, ?META_BINDINGS(CallId)).
+    gen_listener:rm_binding(?SERVER, ?DYN_BINDINGS(CallId, Events)),
+    gen_listener:rm_binding(?SERVER, ?META_BINDINGS(CallId)).
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
 handle_call_event(JObj, Props) ->
@@ -247,7 +247,7 @@ handle_konami_api(JObj, <<"transferred">> = Event) ->
     relay_to_fsm(Target, Event, JObj).
 
 -spec queue_name() -> ne_binary().
-queue_name() -> gen_listener:queue_name(?MODULE).
+queue_name() -> gen_listener:queue_name(?SERVER).
 
 -spec relay_to_fsms(ne_binary(), ne_binary(), wh_json:object()) -> any().
 relay_to_fsms(CallId, Event, JObj) ->
@@ -297,7 +297,7 @@ pids_for_callid(CallId) ->
 
 -spec originate(api_terms()) -> 'ok'.
 originate(Req) ->
-    gen_listener:cast(?MODULE, {'originate', Req}).
+    gen_listener:cast(?SERVER, {'originate', Req}).
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================

@@ -38,14 +38,13 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(atom()) -> startlink_ret().
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
-start_link(Node, Options) -> gen_server:start_link(?MODULE, [Node, Options], []).
+start_link(Node, Options) ->
+    gen_server:start_link(?SERVER, [Node, Options], []).
 
 %%%===================================================================
 %%% gen_server callbacks

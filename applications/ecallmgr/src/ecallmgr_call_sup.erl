@@ -12,6 +12,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([start_control_process/3
          ,start_control_process/5
@@ -29,13 +31,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 start_event_process(Node, UUID) ->
     ecallmgr_call_event_sup:start_proc([Node, UUID]).
@@ -64,7 +64,7 @@ start_control_process(Node, CallId, FetchId, ControllerQ, CCVs) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

@@ -13,9 +13,7 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the app for inclusion in a supervisor tree
-%% @end
+%% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->

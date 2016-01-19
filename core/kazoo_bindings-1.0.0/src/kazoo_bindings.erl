@@ -60,6 +60,8 @@
 
 -include("kazoo_bindings.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue:queue(), <<"foo.bar">>}
 
 -type payload() :: any().
@@ -224,16 +226,13 @@ matches([B | Bs], [B | Rs]) ->
 matches(_, _) -> 'false'.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
-stop() -> gen_server:cast(?MODULE, 'stop').
+stop() -> gen_server:cast(?SERVER, 'stop').
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -249,7 +248,7 @@ bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) ->
     lager:debug("adding binding ~s for ~s:~s (~p)", [Binding, Module, Fun, Payload]),
-    gen_server:call(?MODULE, {'bind', Binding, Module, Fun, Payload}, 'infinity').
+    gen_server:call(?SERVER, {'bind', Binding, Module, Fun, Payload}, 'infinity').
 
 -type unbind_result() :: {'ok', 'deleted_binding' | 'updated_binding'} |
                          {'error', 'not_found'}.
@@ -268,22 +267,22 @@ unbind([_|_]=Bindings, Module, Fun, Payload) ->
     [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 unbind(Binding, Module, Fun, Payload) ->
     lager:debug("removing binding ~s for ~s:~s (~p)", [Binding, Module, Fun, Payload]),
-    gen_server:call(?MODULE, {'unbind', Binding, Module, Fun, Payload}, 'infinity').
+    gen_server:call(?SERVER, {'unbind', Binding, Module, Fun, Payload}, 'infinity').
 
 
 -spec flush() -> 'ok'.
-flush() -> gen_server:cast(?MODULE, 'flush').
+flush() -> gen_server:cast(?SERVER, 'flush').
 
 -spec flush(ne_binary()) -> 'ok'.
-flush(Binding) -> gen_server:cast(?MODULE, {'flush', Binding}).
+flush(Binding) -> gen_server:cast(?SERVER, {'flush', Binding}).
 
 -spec flush_mod(atom()) -> 'ok'.
-flush_mod(Module) -> gen_server:cast(?MODULE, {'flush_mod', Module}).
+flush_mod(Module) -> gen_server:cast(?SERVER, {'flush_mod', Module}).
 
 -type filter_fun() :: fun((ne_binary(), atom(), atom(), any()) -> boolean()).
 -spec filter(filter_fun()) -> 'ok'.
 filter(Predicate) when is_function(Predicate, 4) ->
-    gen_server:cast(?MODULE, {'filter', Predicate}).
+    gen_server:cast(?SERVER, {'filter', Predicate}).
 
 -spec modules_loaded() -> atoms().
 modules_loaded() ->
@@ -304,7 +303,7 @@ table_options() ->
     ['set', 'named_table', 'protected', {'keypos', #kz_binding.binding}].
 
 -spec find_me_function() -> api_pid().
-find_me_function() ->  whereis(?MODULE).
+find_me_function() ->  whereis(?SERVER).
 
 -spec gift_data() -> 'ok'.
 gift_data() -> 'ok'.

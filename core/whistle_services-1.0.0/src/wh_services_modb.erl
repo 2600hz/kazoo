@@ -13,7 +13,7 @@
 
 -include("whistle_services.hrl").
 
--spec start_link() -> 'ignore'.
+-spec start_link() -> startlink_ret().
 start_link() ->
     _Pid = spawn('kazoo_modb', 'add_routine', [?MODULE]),
     io:format("started add_rountine in ~p~n", [_Pid]),

@@ -31,6 +31,8 @@
 
 -include("amqp_util.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(TAB, ?MODULE).
 -define(SERVER_RETRY_PERIOD, 30 * ?MILLISECONDS_IN_SECOND).
 -record(state, {brokers = ordsets:new()}).
@@ -39,13 +41,11 @@
 %%% API
 %%%===================================================================
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
-start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+-spec start_link() -> startlink_ret().
+start_link() ->
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec find() -> wh_amqp_assignment() | {'error', 'no_channel'}.
 find() -> find(wh_amqp_channel:consumer_pid()).
@@ -80,7 +80,7 @@ get_channel(Consumer, Timeout) when is_pid(Consumer) ->
         #wh_amqp_assignment{channel=Channel}=Assignment
           when is_pid(Channel) -> Assignment;
         #wh_amqp_assignment{} ->
-            gen_server:cast(?MODULE, {'add_watcher', Consumer, self()}),
+            gen_server:cast(?SERVER, {'add_watcher', Consumer, self()}),
             wait_for_assignment(Timeout);
         {'error', 'no_channel'} ->
             request_and_wait(Consumer, wh_amqp_channel:consumer_broker(), Timeout)
@@ -89,22 +89,22 @@ get_channel(Consumer, Timeout) when is_pid(Consumer) ->
 -spec request_channel(pid(), api_binary()) -> wh_amqp_assignment().
 request_channel(Consumer, 'undefined') when is_pid(Consumer) ->
     Broker = wh_amqp_connections:primary_broker(),
-    gen_server:call(?MODULE, {'request_float', Consumer, Broker});
+    gen_server:call(?SERVER, {'request_float', Consumer, Broker});
 request_channel(Consumer, Broker) when is_pid(Consumer) ->
-    gen_server:call(?MODULE, {'request_sticky', Consumer, Broker}).
+    gen_server:call(?SERVER, {'request_sticky', Consumer, Broker}).
 
 -spec add_channel(ne_binary(), pid(), pid()) -> 'ok'.
 add_channel(Broker, Connection, Channel) when is_pid(Channel), is_binary(Broker) ->
     case wh_amqp_connections:primary_broker() =:= Broker of
         'true' ->
-            gen_server:cast(?MODULE, {'add_channel_primary_broker', Broker, Connection, Channel});
+            gen_server:cast(?SERVER, {'add_channel_primary_broker', Broker, Connection, Channel});
         'false' ->
-            gen_server:cast(?MODULE, {'add_channel_alternate_broker', Broker, Connection, Channel})
+            gen_server:cast(?SERVER, {'add_channel_alternate_broker', Broker, Connection, Channel})
     end.
 
 -spec release(pid()) -> 'ok'.
 release(Consumer) ->
-    gen_server:call(?MODULE, {'release_handlers', Consumer}, 'infinity').
+    gen_server:call(?SERVER, {'release_handlers', Consumer}, 'infinity').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -761,7 +761,7 @@ maybe_defer_reassign(#wh_amqp_assignment{}=Assignment
     wh_util:spawn(
       fun() ->
               timer:sleep(?SERVER_RETRY_PERIOD),
-              gen_server:cast(?MODULE, {'maybe_defer_reassign', Assignment})
+              gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})
       end);
 maybe_defer_reassign(#wh_amqp_assignment{timestamp=Timestamp
                                          ,consumer=Consumer
@@ -769,7 +769,7 @@ maybe_defer_reassign(#wh_amqp_assignment{timestamp=Timestamp
                                         }, _) ->
     Props = reassign_props(Type),
     ets:update_element(?TAB, Timestamp, Props),
-    gen_server:cast(?MODULE, {'maybe_reassign', Consumer}).
+    gen_server:cast(?SERVER, {'maybe_reassign', Consumer}).
 
 -spec reassign_props(atom()) -> wh_proplist().
 reassign_props('float') ->
@@ -823,7 +823,7 @@ request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
         #wh_amqp_assignment{channel=Channel}=Assignment
           when is_pid(Channel) -> Assignment;
         #wh_amqp_assignment{} ->
-            gen_server:cast(?MODULE, {'add_watcher', Consumer, self()}),
+            gen_server:cast(?SERVER, {'add_watcher', Consumer, self()}),
             wait_for_assignment(Timeout)
     end.
 

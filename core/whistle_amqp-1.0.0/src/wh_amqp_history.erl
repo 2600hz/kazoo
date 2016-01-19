@@ -31,6 +31,8 @@
 
 -include("amqp_util.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(TAB, ?MODULE).
 
 -record(state, {consumers = sets:new()
@@ -49,13 +51,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
-start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+-spec start_link() -> startlink_ret().
+start_link() ->
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec add_command(wh_amqp_assignment(), wh_amqp_command()) -> 'ok'.
 -spec add_command(wh_amqp_assignment(), wh_amqp_command(), 'sync' | 'async') -> 'ok'.
@@ -80,18 +80,18 @@ add_command(#wh_amqp_assignment{consumer=Consumer}, Command, Method) ->
     end.
 
 send_command(Consumer, Command, 'async') ->
-    gen_server:cast(?MODULE, {'command', Consumer, Command});
+    gen_server:cast(?SERVER, {'command', Consumer, Command});
 send_command(Consumer, Command, 'sync') ->
-    gen_server:call(?MODULE, {'command', Consumer, Command}).
+    gen_server:call(?SERVER, {'command', Consumer, Command}).
 
 -spec update_consumer_tag(pid(), ne_binary(), ne_binary()) -> 'ok'.
 update_consumer_tag(Consumer, OldTag, NewTag) ->
-    gen_server:cast(?MODULE, {'update_consumer_tag', Consumer, OldTag, NewTag}).
+    gen_server:cast(?SERVER, {'update_consumer_tag', Consumer, OldTag, NewTag}).
 
 -spec remove(wh_amqp_assignment() | pid() | 'undefined') -> 'ok'.
 remove(#wh_amqp_assignment{consumer=Consumer}) -> remove(Consumer);
 remove(Consumer) when is_pid(Consumer) ->
-    gen_server:cast(?MODULE, {'remove', Consumer});
+    gen_server:cast(?SERVER, {'remove', Consumer});
 remove(_) -> 'ok'.
 
 -spec get(api_pid()) -> wh_amqp_commands().
@@ -107,11 +107,11 @@ get(Consumer) ->
 
 -spec add_exchange(wh_amqp_exchange()) -> 'ok'.
 add_exchange(#'exchange.declare'{}=Exchange) ->
-    gen_server:cast(?MODULE, {'add_exchange', Exchange}).
+    gen_server:cast(?SERVER, {'add_exchange', Exchange}).
 
 -spec list_exchanges() -> wh_amqp_exchanges().
 list_exchanges() ->
-    gen_server:call(?MODULE, 'list_exchanges').
+    gen_server:call(?SERVER, 'list_exchanges').
 
 -spec list_consume(pid()) -> wh_amqp_commands().
 list_consume(Consumer) ->

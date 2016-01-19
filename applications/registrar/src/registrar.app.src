@@ -3,7 +3,7 @@
   {description, "Registrar For the Stars"},
   {vsn, "0.0.3"},
   {modules, []},
-  {registered, []},
+  {registered, [registrar_sup, registrar_shared_listener_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

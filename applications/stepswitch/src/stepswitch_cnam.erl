@@ -25,6 +25,8 @@
 
 -include("stepswitch.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CONFIG_CAT, <<"stepswitch.cnam">>).
 
 -define(DEFAULT_EXPIRES, 900).
@@ -58,16 +60,12 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(any()) -> startlink_ret().
 start_link(_) ->
     _ = ssl:start(),
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 -spec lookup(wh_json:object() | ne_binary()) -> wh_json:object().
 lookup(<<_/binary>> = Number) ->

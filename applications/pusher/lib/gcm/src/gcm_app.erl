@@ -4,7 +4,7 @@
 
 -export([start/2, stop/1]).
 
--spec start(any(), any()) -> {ok, pid()}.
+-spec start(application:start_type(), any()) -> {ok, pid()}.
 start(_StartType, _StartArgs) ->
     gcm_sup:start_link().
 

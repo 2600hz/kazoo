@@ -16,22 +16,16 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(_, _) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
+-spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
     whistle_stats_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(_) -> 'true'.
+-spec stop(any()) -> 'true'.
 stop(_State) ->
     exit(whereis('whistle_stats_sup'), 'shutdown').

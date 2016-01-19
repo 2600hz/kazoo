@@ -11,6 +11,8 @@
 
 -include_lib("wh_couch.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([add/1]).
 -export([init/1]).
@@ -21,16 +23,14 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 add(Connection) ->
-    supervisor:start_child(?MODULE, [Connection]).
+    supervisor:start_child(?SERVER, [Connection]).
 
 %% ===================================================================
 %% Supervisor callbacks

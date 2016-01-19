@@ -3,7 +3,7 @@
   {description, "MODb - Utilities for an account's month-only database"},
   {vsn, "0.0.1"},
   {modules, []},
-  {registered, []},
+  {registered, [ ]},
   {applications, [ kernel
                  , stdlib
                  , whistle_couch

@@ -24,6 +24,8 @@
 -include("whistle_apps.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% Three main call events
 -define(ALL_EVENTS, [<<"CHANNEL_CREATE">>
                      ,<<"CHANNEL_ANSWER">>
@@ -50,15 +52,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}

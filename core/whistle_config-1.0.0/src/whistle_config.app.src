@@ -2,7 +2,7 @@
  [ {description, "Kazoo Configuration Helper"}
  , {vsn, "1.0.0"}
  , {modules, []}
- , {registered, []}
+ , {registered, [whistle_config_sup]}
  , {applications, [ kernel
                   , stdlib
                   , lager

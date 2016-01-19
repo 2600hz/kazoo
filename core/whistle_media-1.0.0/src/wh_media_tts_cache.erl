@@ -29,6 +29,8 @@
 -include("whistle_media.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
 -define(TIMEOUT_LIFETIME
@@ -52,15 +54,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(ne_binary(), wh_json:object()) -> startlink_ret().
 start_link(Text, JObj) ->
-    gen_server:start_link(?MODULE, [Text, JObj], []).
+    gen_server:start_link(?SERVER, [Text, JObj], []).
 
 -spec single(pid()) -> {wh_json:object(), ne_binary()}.
 single(Srv) -> gen_server:call(Srv, 'single').

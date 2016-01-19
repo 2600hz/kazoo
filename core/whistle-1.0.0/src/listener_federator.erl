@@ -26,6 +26,8 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {parent :: pid()
                 ,broker :: ne_binary()
                 ,self_binary = wh_util:to_binary(pid_to_list(self())) :: ne_binary()
@@ -37,15 +39,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(pid(), ne_binary(), wh_proplist()) -> startlink_ret().
 start_link(Parent, Broker, Params) ->
-    gen_listener:start_link(?MODULE, Params, [Parent, Broker]).
+    gen_listener:start_link(?SERVER, Params, [Parent, Broker]).
 
 -spec broker(server_ref()) -> ne_binary().
 broker(Pid) ->

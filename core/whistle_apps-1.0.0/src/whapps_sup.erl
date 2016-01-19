@@ -11,6 +11,8 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/1]).
 -export([start_app/1]).
 -export([restart_app/1]).
@@ -23,32 +25,27 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link(atoms()) -> startlink_ret().
 start_link(Whapps) ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, [Whapps]).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, [Whapps]).
 
--spec start_app(atom()) ->
-                       {'ok', pid() | 'undefined'} |
-                       {'ok', pid() | 'undefined', any()} |
-                       {'error', any()}.
+-spec start_app(atom()) -> sup_startchild_ret().
 start_app(App) ->
-    supervisor:start_child(?MODULE, ?SUPER(App)).
+    supervisor:start_child(?SERVER, ?SUPER(App)).
 
 -spec restart_app(atom()) ->
                          {'ok', pid() | 'undefined'} |
                          {'ok', pid() | 'undefined', any()} |
                          {'error', any()}.
 restart_app(App) ->
-    _ = supervisor:terminate_child(?MODULE, App),
-    supervisor:restart_child(?MODULE, App).
+    _ = supervisor:terminate_child(?SERVER, App),
+    supervisor:restart_child(?SERVER, App).
 
 stop_app(App) ->
-    _ = supervisor:terminate_child(?MODULE, App),
-    supervisor:delete_child(?MODULE, App).
+    _ = supervisor:terminate_child(?SERVER, App),
+    supervisor:delete_child(?SERVER, App).
 
 %% ===================================================================
 %% Supervisor callbacks

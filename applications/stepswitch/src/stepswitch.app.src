@@ -3,7 +3,7 @@
   {description, "Routes calls comming or going offnet, like a line finder"},
   {vsn, "0.1.0"},
   {modules, []},
-  {registered, []},
+  {registered, [stepswitch_listener, stepswitch_request_sup, stepswitch_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

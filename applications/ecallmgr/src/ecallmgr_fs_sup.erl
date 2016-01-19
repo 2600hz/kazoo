@@ -39,12 +39,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec add_node(atom(), wh_proplist()) ->
                       {'error', any()} |
@@ -52,7 +51,7 @@ start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
                       {'ok', api_pid(), any()}.
 add_node(Node, Options) -> supervisor:start_child(?SERVER, ?NODE(Node, [Node, Options])).
 
-find_node(Node) -> find_node(supervisor:which_children(?MODULE), Node).
+find_node(Node) -> find_node(supervisor:which_children(?SERVER), Node).
 
 find_node([], _) -> 'undefined';
 find_node([{Node, Pid, 'supervisor', _}|_], Node) -> Pid;
@@ -76,7 +75,7 @@ remove_node(Node) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

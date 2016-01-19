@@ -3,7 +3,7 @@
   {description, "Caches - Make sure system caches are available for system processes"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
+  {registered, [kazoo_caches_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

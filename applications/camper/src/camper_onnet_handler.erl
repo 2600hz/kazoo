@@ -64,11 +64,11 @@ set_requestor_queues(S, Val) ->
 
 -spec add_request(wh_json:object()) -> 'ok'.
 add_request(JObj) ->
-    gen_server:cast(?MODULE, {'add_request', JObj}).
+    gen_server:cast(?SERVER, {'add_request', JObj}).
 
 -spec available_device(ne_binary(), ne_binary()) -> 'ok'.
 available_device(AccountId, SIPName) ->
-    gen_server:cast(?MODULE, {'available_device', AccountId, SIPName}).
+    gen_server:cast(?SERVER, {'available_device', AccountId, SIPName}).
 
 
 %%--------------------------------------------------------------------

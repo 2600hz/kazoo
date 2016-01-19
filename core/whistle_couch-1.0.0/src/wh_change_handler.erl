@@ -48,15 +48,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(db(), wh_proplist()) -> startlink_ret().
 start_link(#db{name=DbName}=Db, Options) ->
-    wh_gen_changes:start_link(?MODULE, Db, ['longpoll' % we want the continuous feed
+    wh_gen_changes:start_link(?SERVER, Db, ['longpoll' % we want the continuous feed
                                             ,{'heartbeat', 500} % keep the connection alive
                                             | Options
                                            ], [DbName]).

@@ -28,20 +28,18 @@
 
 -include("wh_couch.hrl").
 
+-define(SERVER, ?MODULE).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(couch_connection()) -> startlink_ret().
 start_link(#wh_couch_connection{}=Connection) ->
-    gen_server:start_link(?MODULE, [Connection], []).
+    gen_server:start_link(?SERVER, [Connection], []).
 
 -spec config() -> couch_connection().
 config() -> config('undefined').

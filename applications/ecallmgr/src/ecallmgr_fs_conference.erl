@@ -26,6 +26,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_command'}
                       ,[{<<"conference">>, <<"command">>}]
                      }
@@ -51,15 +53,13 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
-start_link(Node) ->
-    start_link(Node, []).
-
+-spec start_link(atom()) -> startlink_ret().
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE,
+    gen_listener:start_link(?SERVER,
                             [{'responders', ?RESPONDERS}
                              ,{'bindings', ?BINDINGS}
                              ,{'queue_name', ?QUEUE_NAME}

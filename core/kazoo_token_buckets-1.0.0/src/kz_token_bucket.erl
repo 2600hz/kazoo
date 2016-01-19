@@ -40,6 +40,8 @@
 
 -include("kz_buckets.hrl").
 
+-define(SERVER, ?MODULE).
+
 -ifdef(TEST).
 -define(FILL_TIME, <<"second">>).
 -define(FILL_TIME(App), is_binary(App) andalso ?FILL_TIME).
@@ -67,11 +69,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(pos_integer(), pos_integer()) -> startlink_ret().
 -spec start_link(pos_integer(), pos_integer(), boolean()) -> startlink_ret().
@@ -87,7 +85,7 @@ start_link(Max, FillRate, FillAsBlock, FillTime) when is_integer(FillRate), Fill
                                                      orelse FillTime =:= 'day'
                                                     )
                                                     ->
-    gen_server:start_link(?MODULE, [Max, FillRate, FillAsBlock, FillTime], []).
+    gen_server:start_link(?SERVER, [Max, FillRate, FillAsBlock, FillTime], []).
 
 start_link(Name, Max, FillRate, FillAsBlock, FillTime)
   when is_integer(FillRate), FillRate > 0,

@@ -34,6 +34,8 @@
 -include("whistle_media.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
@@ -59,14 +61,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
@@ -107,7 +106,7 @@ handle_media_doc(JObj, _Props) ->
 handle_media_doc_change(JObj, ?DOC_DELETED) ->
     MediaId = wh_json:get_value(<<"ID">>, JObj),
     Database = wh_json:get_value(<<"Database">>, JObj),
-    gen_listener:cast(?MODULE, {'rm_mapping'
+    gen_listener:cast(?SERVER, {'rm_mapping'
                                 ,wh_util:format_account_id(Database, 'raw')
                                 ,MediaId
                                });
@@ -115,7 +114,7 @@ handle_media_doc_change(JObj, _Change) ->
     {'ok', Doc} = couch_mgr:open_doc(wh_json:get_value(<<"Database">>, JObj)
                                      ,wh_json:get_value(<<"ID">>, JObj)
                                     ),
-    gen_listener:cast(?MODULE, {'add_mapping'
+    gen_listener:cast(?SERVER, {'add_mapping'
                                 ,wh_json:get_first_defined([<<"pvt_account_id">>
                                                             ,<<"pvt_account_db">>
                                                            ]
@@ -136,7 +135,7 @@ table_options() ->
     ].
 
 -spec find_me_function() -> api_pid().
-find_me_function() -> whereis(?MODULE).
+find_me_function() -> whereis(?SERVER).
 
 -spec gift_data() -> 'ok'.
 gift_data() -> 'ok'.
@@ -380,7 +379,7 @@ get_map(AccountId, PromptId) ->
 init_account_map(AccountId, PromptId) ->
     SystemMap = get_map(PromptId),
     MapId = mapping_id(AccountId, PromptId),
-    'true' = gen_listener:call(?MODULE, {'new_map', SystemMap#media_map{
+    'true' = gen_listener:call(?SERVER, {'new_map', SystemMap#media_map{
                                                       id=MapId
                                                       ,account_id=AccountId
                                                      }}).

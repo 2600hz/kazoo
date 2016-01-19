@@ -16,6 +16,8 @@
 
 -include("kazoo_bindings.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(ID, 'kazoo_bindings').
 
 %% Helper macro for declaring children of supervisor
@@ -36,17 +38,15 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec stop() -> 'ok' | {'error', 'not_found'}.
 stop() ->
-    supervisor:terminate_child(?MODULE, ?ID).
+    supervisor:terminate_child(?SERVER, ?ID).
 
 %% ===================================================================
 %% Supervisor callbacks

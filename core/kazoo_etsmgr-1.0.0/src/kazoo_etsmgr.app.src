@@ -3,7 +3,7 @@
    {description, "Kazoo ETS Manager - Protect the ETS"}
    ,{vsn, "4.0.0"}
    ,{modules, []}
-   ,{registered, []}
+   ,{registered, [ ]}
    ,{applications, [ kernel
                    , stdlib
                    , crypto

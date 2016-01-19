@@ -33,6 +33,8 @@
 -include("webhooks.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {}).
 -type state() :: #state{}.
 
@@ -56,16 +58,12 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
     {Bindings, Responders} = load_module_bindings_and_responders(),
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', Bindings}
                               ,{'responders', Responders}
@@ -205,15 +203,15 @@ remove_object_bindings(AccountId) ->
 
 -spec add_account_bindings() -> 'ok'.
 add_account_bindings() ->
-    gen_listener:add_responder(?MODULE
+    gen_listener:add_responder(?SERVER
                               ,{'webhooks_init', 'maybe_init_account'}
                               ,[{<<"configuration">>, ?DB_CREATED}]
                               ),
-    gen_listener:add_binding(?MODULE, ?ACCOUNT_BINDING).
+    gen_listener:add_binding(?SERVER, ?ACCOUNT_BINDING).
 
 -spec remove_account_bindings() -> 'ok'.
 remove_account_bindings() ->
-    gen_listener:rm_binding(?MODULE, ?ACCOUNT_BINDING).
+    gen_listener:rm_binding(?SERVER, ?ACCOUNT_BINDING).
 
 %%%===================================================================
 %%% gen_server callbacks

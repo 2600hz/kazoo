@@ -48,6 +48,8 @@
 
 -include_lib("wh_couch.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export_type([couch_connection/0, couch_connections/0]).
 
 -record(state, {cookie = 'change_me'}).
@@ -57,38 +59,34 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec update(couch_connection()) -> 'ok'.
 update(#wh_couch_connection{}=Connection) ->
-    gen_server:cast(?MODULE, {'update_connection', Connection}).
+    gen_server:cast(?SERVER, {'update_connection', Connection}).
 
 -spec add(couch_connection()) -> 'ok'.
 add(#wh_couch_connection{}=Connection) ->
-    gen_server:cast(?MODULE, {'add_connection', Connection}).
+    gen_server:cast(?SERVER, {'add_connection', Connection}).
 
 -spec add_unique(couch_connection()) -> 'ok'.
 add_unique(#wh_couch_connection{}=Connection) ->
     add_unique(Connection, 'local').
 
--spec add_unique(couch_connection(), term()) -> 'ok'.
+-spec add_unique(couch_connection(), any()) -> 'ok'.
 add_unique(#wh_couch_connection{}=Connection, Tag) ->
     case get_by_tag(Tag) of
-        [] -> gen_server:cast(?MODULE, {'add_connection', Connection#wh_couch_connection{tag=Tag}});
+        [] -> gen_server:cast(?SERVER, {'add_connection', Connection#wh_couch_connection{tag=Tag}});
         _ -> 'ok'
     end.
 
 -spec wait_for_connection() -> 'ok' | 'no_connection'.
--spec wait_for_connection(term()) -> 'ok' | 'no_connection'.
--spec wait_for_connection(term(), wh_timeout()) -> 'ok' | 'no_connection'.
+-spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
+-spec wait_for_connection(any(), wh_timeout()) -> 'ok' | 'no_connection'.
 
 wait_for_connection() ->
     wait_for_connection('local').
@@ -294,7 +292,7 @@ rm_change_handler(DbName, Pid, DocId) ->
 
 -spec get_node_cookie() -> atom().
 get_node_cookie() ->
-    Default = gen_server:call(?MODULE, 'node_cookie'),
+    Default = gen_server:call(?SERVER, 'node_cookie'),
     try whapps_config:get(?CONFIG_CAT, <<"bigcouch_cookie">>, Default) of
         Cookie -> wh_util:to_atom(Cookie, 'true')
     catch
@@ -304,7 +302,7 @@ get_node_cookie() ->
 -spec set_node_cookie(atom()) -> 'ok'.
 set_node_cookie(Cookie) when is_atom(Cookie) ->
     _ = (catch whapps_config:set(?CONFIG_CAT, <<"bigcouch_cookie">>, wh_util:to_binary(Cookie))),
-    gen_server:cast(?MODULE, {'node_cookie', Cookie}).
+    gen_server:cast(?SERVER, {'node_cookie', Cookie}).
 
 %%%===================================================================
 %%% gen_server callbacks

@@ -30,9 +30,7 @@ kazoo_ver('get') ->
     {'value', wh_util:to_list(wh_util:whistle_version())}.
 
 %% @public
-%% @doc
-%% Create the directories and agent configuration files
-%% @end
+%% @doc Create the directories and agent configuration files
 -spec start() -> 'ok'.
 start() ->
     _ = application:start('snmp'),

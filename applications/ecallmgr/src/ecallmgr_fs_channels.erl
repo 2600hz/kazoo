@@ -51,6 +51,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_query_auth_id'}
                       ,[{<<"call_event">>, <<"query_auth_id_req">>}]
                      }
@@ -84,15 +86,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
                                                           ,{'bindings', ?BINDINGS}
                                                           ,{'queue_name', ?QUEUE_NAME}
                                                           ,{'queue_options', ?QUEUE_OPTIONS}
@@ -101,7 +99,7 @@ start_link() ->
 
 -spec sync(atom(), ne_binaries()) -> 'ok'.
 sync(Node, Channels) ->
-    gen_server:cast(?MODULE, {'sync_channels', Node, Channels}).
+    gen_server:cast(?SERVER, {'sync_channels', Node, Channels}).
 
 -spec summary() -> 'ok'.
 summary() ->
@@ -147,15 +145,15 @@ show_all() ->
 
 -spec flush_node(string() | binary() | atom()) -> 'ok'.
 flush_node(Node) ->
-    gen_server:cast(?MODULE, {'flush_node', wh_util:to_atom(Node, 'true')}).
+    gen_server:cast(?SERVER, {'flush_node', wh_util:to_atom(Node, 'true')}).
 
 -spec new(channel()) -> 'ok'.
 new(#channel{}=Channel) ->
-    gen_server:call(?MODULE, {'new_channel', Channel}).
+    gen_server:call(?SERVER, {'new_channel', Channel}).
 
 -spec destroy(ne_binary(), atom()) -> 'ok'.
 destroy(UUID, Node) ->
-    gen_server:cast(?MODULE, {'destroy_channel', UUID, Node}).
+    gen_server:cast(?SERVER, {'destroy_channel', UUID, Node}).
 
 -spec update(ne_binary(), pos_integer(), any()) -> 'ok'.
 update(UUID, Key, Value) ->
@@ -163,7 +161,7 @@ update(UUID, Key, Value) ->
 
 -spec updates(ne_binary(), wh_proplist()) -> 'ok'.
 updates(UUID, Updates) ->
-    gen_server:call(?MODULE, {'channel_updates', UUID, Updates}).
+    gen_server:call(?SERVER, {'channel_updates', UUID, Updates}).
 
 -spec count() -> non_neg_integer().
 count() -> ets:info(?CHANNELS_TBL, 'size').

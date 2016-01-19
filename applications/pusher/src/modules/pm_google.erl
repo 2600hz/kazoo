@@ -1,7 +1,9 @@
 -module(pm_google).
 -behaviour(gen_server).
 
--include("../pusher.hrl").
+-include("pusher.hrl").
+
+-define(SERVER, ?MODULE).
 
 -export([start_link/0]).
 
@@ -18,7 +20,7 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-  gen_server:start_link({'local', ?MODULE}, ?MODULE, [],[]).
+  gen_server:start_link({'local', ?SERVER}, ?MODULE, [],[]).
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->

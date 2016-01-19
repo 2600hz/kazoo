@@ -3,7 +3,7 @@
   {description, "Braintree API interactions"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
+  {registered, [braintree_sup]},
   {applications, [ kernel
                  , stdlib
                  , ibrowse

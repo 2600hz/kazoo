@@ -3,7 +3,7 @@
   {description, "Skel - A skeleton application useful for quickly creating services"},
   {vsn, "0.0.1"},
   {modules, []},
-  {registered, []},
+  {registered, [skel_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto
