@@ -315,22 +315,22 @@ apply_fun(F, S) -> F(S).
 -spec content_types_provided(cb_context:context(), ne_binary()) -> cb_context:context().
 -spec content_types_provided(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 content_types_provided(Context) ->
-    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
-            ,{'to_csv', ?CSV_CONTENT_TYPES}
-           ],
-    cb_context:add_content_types_provided(Context, CTPs).
+    cb_context:add_content_types_provided(Context
+                                         ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                          ]).
 
 content_types_provided(Context, _) ->
-    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
-            ,{'to_csv', ?CSV_CONTENT_TYPES}
-           ],
-    cb_context:add_content_types_provided(Context, CTPs).
+    cb_context:add_content_types_provided(Context
+                                         ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                          ]).
 
 content_types_provided(Context, ?AVAILABLE, _) ->
-    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
-            ,{'to_csv', ?CSV_CONTENT_TYPES}
-           ],
-    cb_context:add_content_types_provided(Context, CTPs).
+    cb_context:add_content_types_provided(Context
+                                         ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                          ]).
 
 %%--------------------------------------------------------------------
 %% @private

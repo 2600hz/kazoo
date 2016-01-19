@@ -77,6 +77,13 @@
                               ,{<<"image">>, <<"gif">>}
                              ]).
 
+-define(AUDIO_CONTENT_TYPES, [{<<"audio">>, <<"x-wav">>}
+                             ,{<<"audio">>, <<"wav">>}
+                             ,{<<"audio">>, <<"mpeg">>}
+                             ,{<<"audio">>, <<"mp3">>}
+                             ,{<<"audio">>, <<"ogg">>}
+                             ]).
+
 -define(BASE64_CONTENT_TYPES, [{<<"application">>, <<"base64">>}
                                ,{<<"application">>, <<"x-base64">>}
                               ]).
