@@ -1,6 +1,6 @@
 {application, notify,
  [
-  {description, ""},
+  {description, "Notify - Kazoo"},
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [notify_sup]},

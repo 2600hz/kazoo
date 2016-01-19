@@ -1,6 +1,6 @@
 {application, stats,
  [
-  {description, ""},
+  {description, "Stats - Kazoo"},
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [stats_sup]},
