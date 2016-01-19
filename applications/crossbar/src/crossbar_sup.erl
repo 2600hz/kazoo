@@ -92,7 +92,7 @@ upgrade() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
     {'ok', {{'one_for_one', 10, 10}, ?CHILDREN}}.
