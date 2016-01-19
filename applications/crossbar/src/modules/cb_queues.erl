@@ -164,10 +164,10 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
                                     cb_context:context().
 content_types_provided(Context) -> Context.
 content_types_provided(Context, ?STATS_PATH_TOKEN) ->
-    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
-            ,{'to_csv', ?CSV_CONTENT_TYPES}
-           ],
-    cb_context:add_content_types_provided(Context, CTPs).
+    cb_context:add_content_types_provided(Context
+                                         ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                          ]).
 
 %%--------------------------------------------------------------------
 %% @public

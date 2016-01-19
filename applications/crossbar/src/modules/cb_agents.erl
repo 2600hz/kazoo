@@ -116,13 +116,14 @@ content_types_provided(Context, ?STATUS_PATH_TOKEN) -> Context;
 content_types_provided(Context, ?STATS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
         ?FORMAT_VERBOSE ->
-            CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
-                    ,{'to_csv', ?CSV_CONTENT_TYPES}
-                   ],
-            cb_context:add_content_types_provided(Context, CTPs);
+            cb_context:add_content_types_provided(Context
+                                                 ,[{'to_json', ?JSON_CONTENT_TYPES}
+                                                  ,{'to_csv', ?CSV_CONTENT_TYPES}
+                                                  ]);
         ?FORMAT_COMPRESSED ->
-            CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}],
-            cb_context:add_content_types_provided(Context, CTPs)
+            cb_context:add_content_types_provided(Context
+                                                 ,[{'to_json', ?JSON_CONTENT_TYPES}]
+                                                 )
     end.
 content_types_provided(Context, ?STATUS_PATH_TOKEN, _) -> Context;
 content_types_provided(Context, _, ?STATUS_PATH_TOKEN) -> Context;
