@@ -14,7 +14,7 @@
 
 -include("whistle_media.hrl").
 
--spec start_link() -> 'ignore'.
+-spec start_link() -> startlink_ret().
 start_link() ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
 

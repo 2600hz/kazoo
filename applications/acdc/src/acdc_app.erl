@@ -34,6 +34,6 @@ start(_StartType, _StartArgs) ->
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'true'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    exit(whereis('acdc_sup'), 'shutdown').
+    'ok'.

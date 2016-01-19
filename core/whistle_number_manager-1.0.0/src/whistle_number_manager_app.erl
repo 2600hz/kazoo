@@ -23,6 +23,6 @@
 start(_StartType, _StartArgs) ->
     whistle_number_manager_sup:start_link().
 
--spec stop(any()) -> 'true'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    exit(whereis('whistle_number_manager_sup'), 'shutdown').
+    'ok'.

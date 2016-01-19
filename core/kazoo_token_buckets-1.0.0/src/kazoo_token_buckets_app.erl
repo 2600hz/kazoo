@@ -25,6 +25,6 @@ start(_Type, _Args) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'true'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    exit(whereis('kazoo_token_buckets_sup'), 'shutdown').
+    'ok'.

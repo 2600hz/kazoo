@@ -25,7 +25,7 @@ start(_Type, _Args) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'true'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    wh_media_proxy:stop(),
-    exit(whereis('whistle_media_sup'), 'shutdown').
+    _ = wh_media_proxy:stop(),
+    'ok'.

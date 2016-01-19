@@ -25,6 +25,6 @@ start(_Type, _Args) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'true'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    _ = exit(whereis('kazoo_bindings_sup'), 'shutdown').
+    'ok'.

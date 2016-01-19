@@ -27,9 +27,8 @@ start(_Type, _Args) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    exit(whereis('milliwatt_sup'), 'shutdown'),
     'ok'.
 
 

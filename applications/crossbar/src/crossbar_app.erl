@@ -29,9 +29,9 @@ start(_StartType, _StartArgs) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'true'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    cowboy:stop_listener('api_resource'),
-    cowboy:stop_listener('api_resource_ssl'),
-    crossbar_bindings:flush(),
-    exit(whereis('crossbar_sup'), 'shutdown').
+    _ = cowboy:stop_listener('api_resource'),
+    _ = cowboy:stop_listener('api_resource_ssl'),
+    _ = crossbar_bindings:flush(),
+    'ok'.

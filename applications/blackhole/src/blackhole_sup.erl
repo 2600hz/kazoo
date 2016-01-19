@@ -32,9 +32,7 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
@@ -51,7 +49,7 @@ start_link() ->
                                             ]
                                       }
                                      ]),
-    Port = whapps_config:get_integer(<<"blackhole">>, <<"port">>, 5555),
+    Port = whapps_config:get_integer(?APP_NAME, <<"port">>, 5555),
     {'ok', _} = cowboy:start_http('socketio_http_listener', 100, [{'port', Port}],
                                   [{'env', [{'dispatch', Dispatch}]}]),
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).

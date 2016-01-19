@@ -26,9 +26,8 @@ start(_Type, _Args) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(any()) -> any().
 stop(_State) ->
-   exit(whereis('pusher_sup'), 'shutdown'),
    'ok'.
 
 

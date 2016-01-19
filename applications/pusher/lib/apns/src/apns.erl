@@ -64,7 +64,7 @@ start() ->
 %% @doc Stops the application
 -spec stop() -> ok.
 stop() ->
-  application:stop(apns).
+    ok.
 
 %% @doc Opens an unnamed connection using the default parameters
 -spec connect() -> {ok, pid()} | {error, Reason::any()}.

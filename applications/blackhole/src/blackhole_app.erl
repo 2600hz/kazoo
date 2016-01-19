@@ -20,16 +20,15 @@
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
     OK = blackhole_sup:start_link(),
-    _ = blackhole_bindings:init(),
+    _ = blackhole_bindings:init(), %% FIXME: the OTP way to supervise this?
     OK.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    cowboy:stop_listener('blackhole'),
-    cowboy:stop_listener('socketio_http_listener'),
-    exit(whereis('blackhole_sup'), 'shutdown'),
+    _ = cowboy:stop_listener('blackhole'),
+    _ = cowboy:stop_listener('socketio_http_listener'),
     'ok'.

@@ -31,10 +31,9 @@ start(_Type, _Args) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
+-spec stop(any()) -> any().
 stop(_State) ->
     _ = wh_media_proxy:stop(),
-    exit(whereis('media_mgr_sup'), 'shutdown'),
     'ok'.
 
 

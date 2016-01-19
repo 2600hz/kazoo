@@ -41,9 +41,9 @@ start(_Type, _Args) ->
 %% any necessary cleaning up. The return value is ignored.
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'true'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    exit(whereis('camper_sup'), 'shutdown').
+    'ok'.
 
 %%%===================================================================
 %%% Internal functions

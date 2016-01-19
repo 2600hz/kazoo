@@ -25,7 +25,7 @@ start(_Type, _Args) ->
 %% @public
 %% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'true'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    'ok' = cowboy:stop_listener('fax_file'),
-    exit(whereis('fax_sup'), 'shutdown').
+    _ = cowboy:stop_listener('fax_file'),
+    'ok'.

@@ -24,8 +24,8 @@ start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     trunkstore_sup:start_link().
 
+-spec stop(any()) -> any().
 stop(_State) ->
-    exit(whereis('trunkstore_sup'), 'shutdown'),
     'ok'.
 
 
