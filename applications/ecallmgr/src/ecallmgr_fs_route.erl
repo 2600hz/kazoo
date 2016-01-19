@@ -336,9 +336,9 @@ reply_forbidden(Section, Node, FetchId) ->
     end.
 
 -spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-reply_affirmative(Section, Node, FetchId, CallId, _JObj) ->
+reply_affirmative(Section, Node, FetchId, CallId, PreFetchJObj) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
-    JObj = wh_json:set_value(<<"Fetch-Section">>, wh_util:to_binary(Section), _JObj),
+    JObj = wh_json:set_value(<<"Fetch-Section">>, wh_util:to_binary(Section), PreFetchJObj),
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
