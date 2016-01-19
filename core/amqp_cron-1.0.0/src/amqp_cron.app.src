@@ -1,0 +1,13 @@
+{application, amqp_cron,
+ [
+  {description, ""},
+  {vsn, "0.2.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {modules, [amqp_cron, amqp_cron_task, amqp_cron_app, amqp_cron_sup]}
+  {mod, { amqp_cron_app, []}},
+  {env, []}
+ ]}.

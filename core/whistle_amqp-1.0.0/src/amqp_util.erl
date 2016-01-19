@@ -96,6 +96,11 @@
 -export([unbind_q_from_registrar/2]).
 -export([registrar_publish/2, registrar_publish/3, registrar_publish/4]).
 
+-export([leader_exchange/0]).
+-export([bind_q_to_leader/2]).
+-export([unbind_q_from_leader/2]).
+-export([leader_publish/2, leader_publish/3, leader_publish/4]).
+
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
@@ -379,6 +384,16 @@ registrar_publish(Routing, Payload, ContentType) ->
 registrar_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_REGISTRAR, Routing, Payload, ContentType, Opts).
 
+-spec leader_publish(ne_binary(), amqp_payload()) -> 'ok'.
+-spec leader_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec leader_publish(ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+leader_publish(Routing, Payload) ->
+    leader_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+leader_publish(Routing, Payload, ContentType) ->
+    leader_publish(Routing, Payload, ContentType, []).
+leader_publish(Routing, Payload, ContentType, Opts) ->
+    basic_publish(?EXCHANGE_LEADER, Routing, Payload, ContentType, Opts).
+
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
 -spec basic_publish(ne_binary(), binary(), amqp_payload()) -> 'ok'.
@@ -499,6 +514,10 @@ conference_exchange() ->
 -spec registrar_exchange() -> 'ok'.
 registrar_exchange() ->
     new_exchange(?EXCHANGE_REGISTRAR, ?TYPE_REGISTRAR).
+
+-spec leader_exchange() -> 'ok'.
+leader_exchange() ->
+    new_exchange(?EXCHANGE_LEADER, ?TYPE_LEADER).
 
 %% A generic Exchange maker
 -spec new_exchange(ne_binary(), ne_binary()) -> 'ok'.
@@ -874,6 +893,14 @@ bind_q_to_conference(Queue, 'command', ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
 bind_q_to_conference(Queue, 'config', ConfProfile) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_CONFIG/binary, ConfProfile/binary>>, ?EXCHANGE_CONFERENCE).
+
+-spec bind_q_to_leader(ne_binary(), ne_binary()) -> 'ok'.
+bind_q_to_leader(Queue, Bind) ->
+    bind_q_to_exchange(Queue, Bind, ?EXCHANGE_LEADER).
+
+-spec unbind_q_from_leader(ne_binary(), ne_binary()) -> 'ok'.
+unbind_q_from_leader(Queue, Bind) ->
+    unbind_q_from_exchange(Queue, Bind, ?EXCHANGE_LEADER).
 
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec bind_q_to_exchange(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
