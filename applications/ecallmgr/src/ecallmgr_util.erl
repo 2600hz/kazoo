@@ -291,7 +291,7 @@ update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCV
 update_referred_by_ccv(ReferredBy, CCVs) ->
     props:set_value(
       <<"Referred-By">>
-      ,kz_http:urldecode(ReferredBy)
+      ,kz_http_util:urldecode(ReferredBy)
       ,CCVs
      ).
 
@@ -300,7 +300,7 @@ update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCV
 update_referred_to_ccv(ReferredTo, CCVs) ->
     props:set_value(
       <<"Referred-To">>
-      ,kz_http:urldecode(ReferredTo)
+      ,kz_http_util:urldecode(ReferredTo)
       ,CCVs
      ).
 
@@ -313,7 +313,7 @@ eventstr_to_proplist(EvtStr) ->
 -spec to_kv(nonempty_string(), nonempty_string()) -> {ne_binary(), ne_binary()}.
 to_kv(X, Separator) ->
     [K, V] = string:tokens(X, Separator),
-    [{V1,[]}] = kz_http:parse_query_string(list_to_binary(V)),
+    [{V1,[]}] = kz_http_util:parse_query_string(list_to_binary(V)),
     {wh_util:to_binary(K), wh_util:to_binary(fix_value(K, V1))}.
 
 fix_value("Event-Date-Timestamp", TStamp) ->

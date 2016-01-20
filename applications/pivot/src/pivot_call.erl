@@ -531,11 +531,11 @@ process_resp(RequesterQ, Call, CT, RespBody) ->
 
 -spec uri(ne_binary(), iolist()) -> ne_binary().
 uri(URI, QueryString) ->
-    case kz_http:urlsplit(URI) of
+    case kz_http_util:urlsplit(URI) of
         {Scheme, Host, Path, <<>>, Fragment} ->
-            kz_http:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+            kz_http_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
-            kz_http:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", QueryString/binary>>, Fragment})
+            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", QueryString/binary>>, Fragment})
     end.
 
 -spec req_params(ne_binary(), whapps_call:call()) -> wh_proplist().

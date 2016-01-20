@@ -256,9 +256,9 @@ should_build_contact_list(Context) ->
 get_provision_defaults(Context) ->
     JObj = cb_context:doc(Context),
 
-    Brand   = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj)),
-    Model   = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"model">>], JObj)),
-    Product = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"product">>], JObj)),
+    Brand   = kz_http_util:urlencode(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj)),
+    Model   = kz_http_util:urlencode(wh_json:get_string_value([<<"properties">>, <<"model">>], JObj)),
+    Product = kz_http_util:urlencode(wh_json:get_string_value([<<"properties">>, <<"product">>], JObj)),
 
     Url = [whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>)
            ,"?request=data"
@@ -336,7 +336,7 @@ do_simple_provision(MACAddress, Context) ->
                     ,{"sip[password]", kz_device:sip_password(JObj)}
                     ,{"submit", "true"}
                    ],
-            Encoded = kz_http:urlencode(Body),
+            Encoded = kz_http_util:urlencode(Body),
             lager:debug("posting to ~s with: ~-300p", [Url, Encoded]),
             Res = ibrowse:send_req(Url, Headers, 'post', Encoded, HTTPOptions),
             lager:debug("response from server: ~p", [Res]),

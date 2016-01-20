@@ -5,7 +5,7 @@
 %%% @contributors
 %%%     Mark Magnusson
 %%%-------------------------------------------------------------------
--module(kz_http).
+-module(kz_http_util).
 
 -export([urldecode/1
          ,urlencode/1

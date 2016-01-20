@@ -42,7 +42,7 @@ open_conn(Host, Port, User, Pass) ->
 -spec start(server(), server(), server()) -> repl_results().
 start(AdminSource, Source, Target) ->
     {'ok', DBs} = couch_util:db_info(Source),
-    [repl_db(AdminSource, Source, Target, kz_http:urlencode(DB)) || DB <- DBs].
+    [repl_db(AdminSource, Source, Target, kz_http_util:urlencode(DB)) || DB <- DBs].
 
 %% url-encoded DB required here
 -spec repl_db(server(), server(), server(), ne_binary()) -> repl_result().

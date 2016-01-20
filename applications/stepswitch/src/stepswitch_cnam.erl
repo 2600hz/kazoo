@@ -312,11 +312,11 @@ get_http_url(JObj) ->
     case binary:match(Template, <<"opencnam">>) of
         'nomatch' -> Url;
         _Else ->
-            case kz_http:urlsplit(Url) of
+            case kz_http_util:urlsplit(Url) of
                 {_Scheme, _Host, _Path, <<>>, _Segment} ->
                     <<Url/binary, "?ref=2600hz&format=pbx">>;
                 {Scheme, Host, Path, QS, Segment} ->
-                    kz_http:urlunsplit({Scheme, Host, Path, <<QS/binary, "&ref=2600hz&format=pbx">>, Segment})
+                    kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&ref=2600hz&format=pbx">>, Segment})
             end
     end.
 
