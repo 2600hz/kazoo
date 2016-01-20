@@ -1179,21 +1179,12 @@ write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
 
 -spec ensure_started(atom()) -> 'ok' | {'error', any()}.
-- ifdef(OTP_AT_LEAST_18).
 ensure_started(App) ->
     case application:ensure_all_started(App) of
         {'ok', _AppNames} -> 'ok';
         {'error', {'already_started', App}} -> 'ok';
         E -> E
     end.
--else.
-ensure_started(App) when is_atom(App) ->
-    case application:start(App) of
-        'ok' -> 'ok';
-        {'error', {'already_started', App}} -> 'ok';
-        E -> E
-    end.
--endif.
 
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
@@ -1334,26 +1325,15 @@ elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);
 elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
 elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000000.
 
--spec erlang:timestamp() -> wh_now().
-
--ifdef(OTP_AT_LEAST_18).
+-spec now() -> wh_now().
 now() -> erlang:timestamp().
+
 -spec now_s(any()) -> gregorian_seconds().
 -spec now_ms(any()) -> pos_integer().
 -spec now_us(any()) -> pos_integer().
 now_s(_) ->  erlang:system_time('seconds').
 now_ms(_) -> erlang:system_time('milli_seconds').
 now_us(_) -> erlang:system_time('micro_seconds').
--else.
-now() -> erlang:timestamp().
--spec now_s(wh_now()) -> gregorian_seconds().
--spec now_ms(wh_now()) -> pos_integer().
--spec now_us(wh_now()) -> pos_integer().
-now_s({_,_,_}=Now) -> unix_seconds_to_gregorian_seconds(now_us(Now) div 1000000).
-now_ms({_,_,_}=Now) -> now_us(Now) div ?MILLISECONDS_IN_SECOND.
-now_us({MegaSecs,Secs,MicroSecs}) ->
-    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
--endif.
 
 -spec format_date() -> binary().
 -spec format_date(gregorian_seconds()) -> binary().
