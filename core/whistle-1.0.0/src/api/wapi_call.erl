@@ -83,7 +83,7 @@
           ,<<"Channel-Call-State">>
           ,<<"Channel-Created-Time">>
           ,<<"Channel-Is-Loopback">>
-          ,<<"Channel-Log">>
+          ,<<"Channel-Debug">>
           ,<<"Channel-Loopback-Bowout">>
           ,<<"Channel-Loopback-Bowout-Execute">>
           ,<<"Channel-Loopback-Leg">>

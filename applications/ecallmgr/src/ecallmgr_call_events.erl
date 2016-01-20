@@ -1157,7 +1157,7 @@ debug_channel_props(Props) ->
 
 debug_channel_props(_Props, 'false') -> [];
 debug_channel_props(Props, 'true') ->
-    [{<<"Channel-Log">>
+    [{<<"Channel-Debug">>
       ,wh_json:from_list(lists:sort(fun sort_debug/2, Props))
      }
     ].
