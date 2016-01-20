@@ -655,7 +655,6 @@ generic_call_event_props(Props) ->
      ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
      ,{<<"Channel-Loopback-Bowout">>, props:get_value(<<"variable_loopback_bowout">>, Props)}
      ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_value(<<"variable_loopback_bowout_on_execute">>, Props)}
-     ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
      | callee_call_event_props(Props)
      ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
