@@ -642,7 +642,6 @@ generic_call_event_props(Props) ->
      ,{<<"Channel-State">>, get_channel_state(Props)}
      ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
      ,{<<"Channel-Name">>, props:get_value(<<"Channel-Name">>, Props)}
-     ,{<<"Channel-Name">>, props:get_value(<<"Channel-Name">>, Props)}
      ,{<<"Channel-Is-Loopback">>, get_is_loopback(props:get_value(<<"variable_is_loopback">>, Props))}
      ,{<<"Channel-Loopback-Leg">>, props:get_value(<<"variable_loopback_leg">>, Props)}
      ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
