@@ -52,6 +52,7 @@
 start(PrinterId) ->
   gen_server:start({'local', wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
 
+-spec start_link(ne_binary()) -> startlink_ret().
 start_link(PrinterId) ->
   gen_server:start_link({'local', wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
 

@@ -21,18 +21,16 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN
-        ,[?WORKER('crossbar_init')
-          ,?SUPER('crossbar_module_sup')
-          ,?CACHE_ARGS(?CROSSBAR_CACHE
-                       ,[{'origin_bindings'
-                          ,[[{'type', kz_notification:pvt_type()}]]
-                         }
-                        ]
-                      )
-          ,?WORKER('crossbar_cleanup')
-          ,?WORKER('crossbar_bindings')
-         ]
+-define(CHILDREN, [?WORKER('crossbar_init')
+                   ,?SUPER('crossbar_module_sup')
+                   ,?CACHE_ARGS(?CROSSBAR_CACHE, [{'origin_bindings'
+                                                   ,[[{'type', kz_notification:pvt_type()}]]
+                                                  }
+                                                 ]
+                               )
+                   ,?WORKER('crossbar_cleanup')
+                   ,?WORKER('crossbar_bindings')
+                  ]
        ).
 
 -define(DISPATCH_FILE, [code:lib_dir('crossbar', 'priv'), "/dispatch.conf"]).
