@@ -7,8 +7,6 @@
   ,{registered, [whistle_apps_sup, wh_hooks_listener, wh_nodes, wh_hooks_shared_listener, whapps_sup]}
   ,{applications, [ kernel
                   , stdlib
-                  , sasl
-                  , crypto
                   , syslog
                   , lager
                   , lager_syslog

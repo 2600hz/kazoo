@@ -1,5 +1,5 @@
-ROOT = ../../../..
-PROJECT = gcm
+ROOT = ../..
+PROJECT = apns
 
 all: compile
 
