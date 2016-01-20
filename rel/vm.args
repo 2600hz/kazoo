@@ -30,3 +30,5 @@
 
 # Increase number of concurrent ports / sockets
 ##-env ERL_MAX_PORTS 4096
+
+-s ${KZname}

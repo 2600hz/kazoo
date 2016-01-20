@@ -11,14 +11,10 @@ Apps = ToName([App || "applications/"++App <- filelib:wildcard("applications/*")
 Core = ToName([App ||         "core/"++App <- filelib:wildcard(        "core/*"), App /= "Makefile"]),
 Deps = ToName([App ||         "deps/"++App <- filelib:wildcard(        "deps/*"), App /= "Makefile"]),
 
-AutoStart = [syslog, lager, lager_syslog],
-
 Base = [ {'++', Core}
        , {'++', Apps}
          %% skel Not a real app
        , {'--', [skel]}
-         %% auto-start apps
-       , {'--', AutoStart}
 
        , {'++', Deps}
          %% Name is amqp_client, not rabbitmq_erlang_client
@@ -46,7 +42,6 @@ end ++
              , "core"
              , "deps"
              , hd(filelib:wildcard("deps/rabbitmq_erlang_client-*/deps"))
-             , "applications/pusher/lib"
              ]}
 
 , {include_src, false}
@@ -56,7 +51,7 @@ end ++
 , {vm_args, "rel/vm.args"}
 
 , {release, {kazoo,"4.0.0"}
-  , AutoStart ++ Based
+  , Based
   }
 
 ].
