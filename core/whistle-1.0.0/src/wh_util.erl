@@ -556,26 +556,19 @@ pad_binary_left(Bin, _Size, _Value) -> Bin.
 %% @public
 %% @doc
 %% Join a binary together with a seperator.
-%% Changed to Accumulator from the binary-contruction for speed reasons:
-%%
-%% Bins = [to_binary(N) || N <- lists:seq(1,10000)]
-%% Old join_binary(Bins): 171.1ms fastest, 221.9ms slowest
-%% New join_binary(Bins):   1.1ms fastest,   2.6ms slowest
-%% Obvious winner
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec join_binary([text() | atom(),...]) -> binary().
 -spec join_binary([text() | atom(),...], binary()) -> binary().
 
-join_binary(Bins) -> join_binary(Bins, <<", ">>, []).
-join_binary(Bins, Sep) -> join_binary(Bins, Sep, []).
-
-join_binary([], _, Acc) -> iolist_to_binary(lists:reverse(Acc));
-join_binary([Bin], _, Acc) ->
-    iolist_to_binary(lists:reverse([to_binary(Bin) | Acc]));
-join_binary([Bin|Bins], Sep, Acc) ->
-    join_binary(Bins, Sep, [Sep, to_binary(Bin) |Acc]).
+join_binary(Bins) -> join_binary(Bins, <<", ">>).
+join_binary([], _) -> <<>>;
+join_binary([Bin], _) -> to_binary(Bin);
+join_binary([Bin|Bins], Sep) ->
+    iolist_to_binary(
+      [to_binary(Bin)] ++ [[Sep, to_binary(B)] || B <- Bins]
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -666,8 +659,7 @@ startup() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given an API JSON object extract the category and name into a
-%% tuple for easy processing
+%% Given an object, extract the category and name into a tuple
 %% @end
 %%--------------------------------------------------------------------
 -spec get_event_type(wh_json:object() | wh_proplist()) -> {api_binary(), api_binary()}.
@@ -690,23 +682,38 @@ get_event_type(JObj) ->
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
-        [#xmlText{value=Value}] ->
-            ?MODULE:to_binary(Value);
-        [#xmlText{}|_]=Values ->
-            iolist_to_binary([?MODULE:to_binary(Value)
-                              || #xmlText{value=Value} <- Values
-                             ]);
-        [#xmlAttribute{value=Value}] ->
-            ?MODULE:to_binary(Value);
-        [#xmlAttribute{}|_]=Values ->
-            iolist_to_binary([?MODULE:to_binary(Value)
-                              || #xmlAttribute{value=Value} <- Values
-                             ]);
+        Elements when is_list(Elements) -> extract_xml_values(Elements);
         _Else -> 'undefined'
     catch
         _E:_R ->
             lager:debug("~s getting value of '~s': ~p", [_E, Path, _R]),
             'undefined'
+    end.
+
+%% @private
+-spec extract_xml_values(xml_els()) -> api_binary().
+extract_xml_values([]) -> 'undefined';
+extract_xml_values(Elements) ->
+    Values = [case Element of
+                  #xmlText{value = Value} -> Value;
+                  #xmlAttribute{value = Value} -> Value;
+                  _ -> <<>> %% Important as xmerl only handles strings
+              end
+              || Element <- Elements],
+    case iolist_to_binary(Values) of
+        <<>> ->
+            %% Note: here we make sure that Values were all either xmlText
+            %%  or xmlAttribute. Thus, if Values is a list of only empty binaries
+            %%  it means that no value field was extracted.
+            %% On the flip side, a "" present in Values means
+            %%  that at least one extracted value was ""
+            %%  and we should return <<>> instead of 'undefined'.
+            IsEmptyBinary = fun (<<>>) -> 'true'; (_) -> 'false' end,
+            case lists:all(IsEmptyBinary, Values) of
+                'true' -> 'undefined';
+                'false' -> <<>>
+            end;
+        Bin -> Bin
     end.
 
 %% must be a term that can be changed to a list
@@ -789,7 +796,7 @@ uri_encode(String) when is_list(String) ->
 uri_encode(Atom) when is_atom(Atom) ->
     to_atom(http_uri:encode(to_list(Atom)), 'true').
 
--spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | binary() | 'undefined') -> ne_binary().
+-spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | ne_binary()) -> ne_binary().
 resolve_uri(Raw, 'undefined') -> to_binary(Raw);
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
@@ -826,10 +833,10 @@ resolve_uri_fold(Segment, [LastToken|DirTokens]=PathTokens) ->
             [Segment|DirTokens]
     end.
 
--spec uri(binary(), ne_binaries()) -> binary().
+-spec uri(ne_binary(), ne_binaries()) -> ne_binary().
 uri(BaseUrl, Tokens) ->
     [Pro, Url] = binary:split(BaseUrl, <<"://">>),
-    Uri = filename:join([Url, filename:join(Tokens)]),
+    Uri = filename:join([Url | Tokens]),
     <<Pro/binary, "://", Uri/binary>>.
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
@@ -982,10 +989,10 @@ is_empty(<<"undefined">>) -> 'true';
 is_empty('null') -> 'true';
 is_empty('false') -> 'true';
 is_empty('undefined') -> 'true';
-is_empty(Float) when is_float(Float), Float == 0.0 -> 'true';
+is_empty(Float) when is_float(Float), Float =:= 0.0 -> 'true';
 is_empty(MaybeJObj) ->
     case wh_json:is_json_object(MaybeJObj) of
-        'false' -> 'false'; %% if not a json object, its not empty
+        'false' -> 'false'; %% if not a json object, it's not empty
         'true' -> wh_json:is_empty(MaybeJObj)
     end.
 
