@@ -237,6 +237,9 @@ calc_service_updates(Context, <<"ips">>) ->
 calc_service_updates(Context, <<"branding">>) ->
     Services = fetch_service(Context),
     wh_service_whitelabel:reconcile(Services, <<"whitelabel">>);
+calc_service_updates(Context, <<"support">>) ->
+    Services = fetch_service(Context),
+    wh_service_ledgers:reconcile(Services, <<"support">>);
 calc_service_updates(_Context, _Type) ->
     lager:warning("unknown type ~p, cannot calculate service updates", [_Type]),
     'undefined'.
