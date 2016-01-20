@@ -68,8 +68,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec stop_bootstrap() -> 'ok' |
-                          {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+-spec stop_bootstrap() -> 'ok' | {'error', any()}.
 stop_bootstrap() ->
     _ = supervisor:terminate_child(?SERVER, 'wh_amqp_bootstrap').
 

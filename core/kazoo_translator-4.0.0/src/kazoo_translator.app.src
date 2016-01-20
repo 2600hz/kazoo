@@ -3,7 +3,7 @@
   {description, "Bridging various call control formats to the 2600hz JSON APIs"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [kazoo_translator_sup]},
+  {registered, [ ]},
   {applications, [ kernel
                  , stdlib
                  , lager
@@ -12,5 +12,4 @@
                  , whistle_amqp
                  , whistle_couch
                  ]},
-  {mod, {kazoo_translator_app, []}}
  ]}.
