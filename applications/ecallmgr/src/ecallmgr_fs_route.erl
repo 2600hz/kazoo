@@ -260,9 +260,8 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = wh_json:from_list([{<<"Routes">>, []}
                                       ,{<<"Method">>, <<"park">>}
-                                      ,{<<"Context">>, hunt_context(Props)}
                                      ]),
-            reply_affirmative(Section, Node, FetchId, CallId, JObj)
+            reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
 
 -spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
@@ -279,34 +278,22 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
-            ToSet = [{<<"Context">>, hunt_context(Props)}] ++ remote_sdp(Props),
             maybe_wait_for_authz(Section, Node, FetchId, CallId
-                                 ,wh_json:set_values(ToSet, JObj)
-                                )
+                                 , JObj
+                                 , Props)
     end.
 
--spec hunt_context(wh_proplist()) -> api_binary().
-hunt_context(Props) ->
-    props:get_first_defined([<<"Hunt-Context">>, <<"Caller-Context">>], Props, ?DEFAULT_FREESWITCH_CONTEXT).
-
--spec remote_sdp(wh_proplist()) -> wh_proplist().
-remote_sdp(Props) ->
-    case props:get_value(<<"variable_switch_r_sdp">>, Props, <<>>) of
-        <<>> -> [];
-        RemoteSDP -> [{<<"Remote-SDP">>, RemoteSDP}]
-    end.
-
--spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
+-spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
+maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props) ->
     case ecallmgr_config:is_true(<<"authz_enabled">>, 'false')
         andalso wh_json:get_value(<<"Method">>, JObj) =/= <<"error">>
     of
-        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj);
-        'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj)
+        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj, Props);
+        'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
 
--spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
+-spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
+wait_for_authz(Section, Node, FetchId, CallId, JObj, Props) ->
     case wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
         {'ok', {'true', AuthzCCVs}} ->
             _ = wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
@@ -315,7 +302,7 @@ wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
                                   ,wh_json:merge_jobjs(CCVs, AuthzCCVs)
                                   ,JObj
                                  ),
-            reply_affirmative(Section, Node, FetchId, CallId, J);
+            reply_affirmative(Section, Node, FetchId, CallId, J, Props);
         _Else -> reply_forbidden(Section, Node, FetchId)
     end.
 
@@ -328,18 +315,19 @@ reply_forbidden(Section, Node, FetchId) ->
                      ,{<<"Route-Error-Code">>, <<"403">>}
                      ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
                      ,{<<"Fetch-Section">>, wh_util:to_binary(Section)}
-                    ]),
+                    ]
+                    , []),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         'ok' -> lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]);
         {'error', Reason} -> lager:debug("node ~s rejected our ~s route unauthz: ~p", [Node, Section, Reason])
     end.
 
--spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-reply_affirmative(Section, Node, FetchId, CallId, PreFetchJObj) ->
+-spec reply_affirmative(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
+reply_affirmative(Section, Node, FetchId, CallId, PreFetchJObj, Props) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
     JObj = wh_json:set_value(<<"Fetch-Section">>, wh_util:to_binary(Section), PreFetchJObj),
-    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj),
+    {'ok', XML} = ecallmgr_fs_xml:route_resp_xml(JObj, Props),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
         {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
