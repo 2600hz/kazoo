@@ -16,6 +16,8 @@
 
 -include("./crossbar.hrl").
 
+-define(USE_COMPRESSION, whapps_config:get_is_true(?CONFIG_CAT, <<"compress_response_body">>, 'true')).
+
 -spec crossbar_routes() -> cowboy_router:routes().
 crossbar_routes() -> [{'_', paths_list()}].
 
@@ -189,6 +191,7 @@ maybe_start_plaintext(Dispatch) ->
                                             ]}
                                     ,{'onrequest', fun on_request/1}
                                     ,{'onresponse', fun on_response/4}
+                                    ,{'compress', ?USE_COMPRESSION}
                                    ]
                                  ) of
                 {'ok', _} ->
@@ -225,6 +228,7 @@ start_ssl(Dispatch) ->
                                              ]}
                                      ,{'onrequest', fun on_request/1}
                                      ,{'onresponse', fun on_response/4}
+                                     ,{'compress', ?USE_COMPRESSION}
                                     ]
                                   )
             of
