@@ -131,7 +131,7 @@ module_name(<<_/binary>>=Module) ->
                ,[{capture, all_but_first, binary}]
                )
     of
-        {'match', [Name]} -> Name;
+        {'match', [Name]} -> <<"v2/", Name/binary>>;
         {'match', [Name, Version]} ->
             <<"v", Version/binary, "/", Name/binary>>
     end.
