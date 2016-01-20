@@ -7,7 +7,6 @@
   {applications, [ kernel
                  , stdlib
                  , public_key
-                 , sasl
                  , crypto
                  , asn1
                  , ssl

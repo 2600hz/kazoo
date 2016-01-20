@@ -7,7 +7,6 @@
   ,{registered, [wh_couch_bootstrap, couch_compactor_fsm, whistle_couch_sup, wh_couch_connection_sup, wh_change_handler_sup, wh_couch_connections]}
   ,{applications, [ kernel
                   , stdlib
-                  , sasl
                   , crypto
                   , public_key
 

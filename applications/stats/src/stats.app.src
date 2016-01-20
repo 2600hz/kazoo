@@ -6,7 +6,6 @@
   {registered, [stats_sup]},
   {applications, [ kernel
                  , stdlib
-                 , sasl
                  , crypto
 
                  , whistle_amqp

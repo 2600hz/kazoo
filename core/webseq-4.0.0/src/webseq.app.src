@@ -6,7 +6,6 @@
  , {applications, [ kernel
                   , stdlib
                   , crypto
-                  , sasl
 
                   , whistle
                   , whistle_couch
