@@ -1263,10 +1263,28 @@ upperbound(DocTimestamp, QSTimestamp) ->
 lowerbound(DocTimestamp, QSTimestamp) ->
     QSTimestamp =< DocTimestamp.
 
+-spec should_filter(binary(), ne_binary()) -> boolean().
 -spec should_filter(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
+should_filter(Val, Val) -> 'true';
+should_filter(Val, FilterVal) ->
+    try wh_json:decode(FilterVal) of
+        List when is_list(List) ->
+            lists:member(Val, List);
+        _Data ->
+            lager:debug("data is not a list: ~p", [_Data]),
+            'false'
+    catch
+        _Error ->
+            lager:error("failed to decode data: ~p", [_Error]),
+            'false'
+    end.
+
 should_filter(Doc, Key, Val) ->
     Keys = binary_key_to_json_key(Key),
-    wh_json:get_binary_value(Keys, Doc, <<>>) =:= wh_util:to_binary(Val).
+    should_filter(
+        wh_json:get_binary_value(Keys, Doc, <<>>)
+        ,wh_util:to_binary(Val)
+    ).
 
 -spec has_key(wh_json:object(), ne_binary()) -> boolean().
 has_key(Doc, Key) ->
