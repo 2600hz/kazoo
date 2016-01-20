@@ -23,8 +23,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER_TYPE('camper_offnet_handler', 'temporary')]).
-
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -60,7 +58,7 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, [?WORKER_TYPE('camper_offnet_handler', 'temporary')]}}.
 
 %%%===================================================================
 %%% Internal functions

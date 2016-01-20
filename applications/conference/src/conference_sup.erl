@@ -16,11 +16,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CACHE, {?CONFERENCE_CACHE, {'wh_cache', 'start_link', [?CONFERENCE_CACHE]}
-                ,'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_cache']
-               }).
-
--define(CHILDREN, [?CACHE
+-define(CHILDREN, [?CACHE(?CONFERENCE_CACHE)
                    ,?SUPER('conf_participant_sup')
                    ,?WORKER('conference_shared_listener')
                    ,?WORKER('conference_listener')

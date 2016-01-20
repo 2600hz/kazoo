@@ -5,11 +5,12 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(apns_queue).
+-behaviour(gen_server).
 -author('Manuel Rubio <manuel@altenwald.com>').
 
 -include("apns.hrl").
 
--behaviour(gen_server).
+-define(SERVER, ?MODULE).
 
 -define(DEFAULT_MAX_ENTRIES, 1000).
 
@@ -53,9 +54,9 @@ fail(QID, ID) ->
     gen_server:call(QID, {fail, ID}).
 
 %% @hidden
--spec start_link() -> {ok, pid()} | {error, {already_started, pid()}}.
+-spec start_link() -> startlink_ret().
 start_link() ->
-  gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Server implementation, a.k.a.: callbacks

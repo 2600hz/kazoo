@@ -1,42 +1,43 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
-%%% Simple-One-For-One strategy for restarting call event processes
+%%%
 %%% @end
 %%% @contributors
+%%%  Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(ecallmgr_originate_sup).
+-module(stepswitch_cnam_pool_sup).
 
 -behaviour(supervisor).
 
 -export([start_link/0]).
--export([start_originate_proc/2]).
 -export([init/1]).
 
--include("ecallmgr.hrl").
+-include("stepswitch.hrl").
 
 -define(SERVER, ?MODULE).
 
-%%%===================================================================
-%%% API functions
-%%%===================================================================
+-define(CHILDREN, [?WORKER_NAME_ARGS('poolboy', ?STEPSWITCH_CNAM_POOL, [[{'name', {'local', ?STEPSWITCH_CNAM_POOL}}
+                                                                         ,{'worker_module', 'stepswitch_cnam'}
+                                                                         ,{'size', 10}
+                                                                         ,{'max_overflow', 50}
+                                                                         ,{'neg_resp_threshold', 1}
+                                                                        ]
+                                                                       ]
+                                    )
+                  ]).
+
 
 %%--------------------------------------------------------------------
+%% @public
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-start_originate_proc(Node, JObj) ->
-    supervisor:start_child(?SERVER, [Node, JObj]).
-
-%%%===================================================================
-%%% Supervisor callbacks
-%%%===================================================================
-
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
@@ -46,14 +47,10 @@ start_originate_proc(Node, JObj) ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = 'simple_one_for_one',
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('ecallmgr_originate', 'transient')]}}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+    {'ok', {SupFlags, ?CHILDREN}}.

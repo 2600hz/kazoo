@@ -13,9 +13,7 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the app for inclusion in a supervisor tree
-%% @end
+%% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
@@ -36,9 +34,7 @@ start_link() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Ensures that all exchanges used are declared
-%% @end
+%% @doc Ensures that all exchanges used are declared
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->

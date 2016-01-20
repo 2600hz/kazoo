@@ -109,12 +109,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
@@ -128,7 +125,8 @@ start_link() ->
                            ).
 
 -spec sync() -> 'ok'.
-sync() -> gen_server:cast(?SERVER, 'synchronize_channels').
+sync() ->
+    gen_server:cast(?SERVER, 'synchronize_channels').
 
 -spec total_calls(ne_binary()) -> non_neg_integer().
 total_calls(AccountId) ->

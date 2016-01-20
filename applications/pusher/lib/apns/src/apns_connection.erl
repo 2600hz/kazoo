@@ -10,6 +10,8 @@
 -include("apns.hrl").
 -include("localized.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/1, start_link/2, init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 -export([send_message/2, stop/1]).
@@ -38,14 +40,13 @@ stop(ConnId) ->
   gen_server:cast(ConnId, stop).
 
 %% @hidden
--spec start_link(atom(), apns:connection()) ->
-  {ok, pid()} | {error, {already_started, pid()}}.
+-spec start_link(atom(), apns:connection()) -> startlink_ret().
 start_link(Name, Connection) ->
-  gen_server:start_link({local, Name}, ?MODULE, Connection, []).
+    gen_server:start_link({'local', Name}, ?MODULE, Connection, []).
 %% @hidden
--spec start_link(apns:connection()) -> {ok, pid()}.
+-spec start_link(apns:connection()) -> startlink_ret().
 start_link(Connection) ->
-  gen_server:start_link(?MODULE, Connection, []).
+    gen_server:start_link(?SERVER, Connection, []).
 
 %% @hidden
 -spec build_payload(apns:msg()) -> iodata().

@@ -22,8 +22,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(XMPP_PRINTER(PrinterId) ,?WORKER_NAME_ARGS('fax_xmpp',wh_util:to_atom(PrinterId, 'true'),[PrinterId])).
-
 -define(CHILDREN, []).
 
 %% ===================================================================
@@ -40,7 +38,9 @@ start_link() ->
 
 -spec start_printer(ne_binary()) -> sup_startchild_ret().
 start_printer(PrinterId) ->
-    supervisor:start_child(?SERVER, ?XMPP_PRINTER(PrinterId)).
+    Name = wh_util:to_atom(PrinterId, 'true'),
+    ChildSpec = ?WORKER_NAME_ARGS('fax_xmpp', Name, [PrinterId]),
+    supervisor:start_child(?SERVER, ChildSpec).
 
 -spec stop_printer(ne_binary()) -> 'ok'.
 stop_printer(PrinterId) ->
@@ -49,7 +49,7 @@ stop_printer(PrinterId) ->
              supervisor:delete_child(?SERVER, Id)
          end
          || {Id, _Pid, 'worker', [_]} <- supervisor:which_children(?SERVER),
-            (Id == wh_util:to_atom(PrinterId, 'true'))
+            Id == wh_util:to_atom(PrinterId, 'true')
         ],
     'ok'.
 

@@ -32,7 +32,7 @@
 start_module(Module) ->
     supervisor:start_child(?SERVER, ?WORKER(wh_util:to_atom(Module, 'true'))).
 
--spec stop_module(ne_binary()) ->  'ok' | {'error', 'not_found' | 'simple_one_for_one'}.
+-spec stop_module(ne_binary()) -> 'ok' | {'error', any()}.
 stop_module(Module) ->
     case supervisor:terminate_child(?SERVER, wh_util:to_atom(Module, 'true')) of
         'ok' ->

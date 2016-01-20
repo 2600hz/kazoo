@@ -22,15 +22,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link(atom(), wh_proplist()) -> startlink_ret().
-start_link(Node, Options) -> supervisor:start_link({'local', sup_name(Node)}
-                                                   ,?MODULE
-                                                   ,[Node, Options]
-                                                  ).
+start_link(Node, Options) ->
+    supervisor:start_link({'local', sup_name(Node)}, ?MODULE, [Node, Options]).
 
 sup_name(Node) ->
     Name = iolist_to_binary([wh_util:to_binary(?MODULE)

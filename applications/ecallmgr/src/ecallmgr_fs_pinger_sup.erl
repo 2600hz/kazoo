@@ -19,28 +19,22 @@
 -export([remove_node/1]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(PINGER(Node, Opts), ?WORKER_NAME_ARGS_TYPE(Node, 'ecallmgr_fs_pinger', [Node, Opts], 'transient')).
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec add_node(atom(), wh_proplist()) -> {'error', any()} |
-                                         {'ok', api_pid()} |
-                                         {'ok', api_pid(), any()}.
+-spec add_node(atom(), wh_proplist()) -> sup_startchild_ret().
 add_node(Node, Options) ->
-    supervisor:start_child(?SERVER, ?PINGER(Node, Options)).
+    ChildSpec = ?WORKER_NAME_ARGS_TYPE(Node, 'ecallmgr_fs_pinger', [Node, Options], 'transient'),
+    supervisor:start_child(?SERVER, ChildSpec).
 
 find_pinger(Node) ->
     Workers = supervisor:which_children('ecallmgr_fs_pinger_sup'),
@@ -51,7 +45,7 @@ find_pinger([{Node, Pid, 'worker', _}|_], Node) -> Pid;
 find_pinger([_|Workers], Node) ->
     find_pinger(Workers, Node).
 
--spec remove_node(atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+-spec remove_node(atom()) -> 'ok' | {'error', any()}.
 remove_node(Node) ->
     _T = supervisor:terminate_child(?SERVER, Node),
     lager:debug("terminated pinger: ~p", [_T]),

@@ -11,14 +11,12 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0
-        ]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -include("pusher.hrl").
--include("supervisor_spec.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -27,11 +25,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
@@ -48,12 +42,9 @@ start_link() ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 1000,

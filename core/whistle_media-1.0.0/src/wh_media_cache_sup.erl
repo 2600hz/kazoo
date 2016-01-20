@@ -24,12 +24,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILD(Name, Id, Doc, Attachment), {Name, {'wh_media_file_cache', 'start_link', [Id, Doc, Attachment]}
-                                           ,'temporary', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_media_file_cache']}
-       ).
--define(CHILD(Name, Text, JObj), {Name, {'wh_media_tts_cache', 'start_link', [Text, JObj]}
-                                  ,'temporary', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['wh_media_tts_cache']}
-       ).
 
 %%%===================================================================
 %%% API functions
@@ -59,7 +53,8 @@ start_file_server(Id, Doc, Attachment) ->
     Name = [Id, Doc, Attachment],
     start_file_server(Id, Doc, Attachment, Name).
 start_file_server(Id, Doc, Attachment, Name) ->
-    case supervisor:start_child(?SERVER, ?CHILD(Name, Id, Doc, Attachment)) of
+    ChildSpec = ?WORKER_NAME_ARGS_TYPE(Name, 'wh_media_file_cache', [Id, Doc, Attachment], 'temporary'),
+    case supervisor:start_child(?SERVER, ChildSpec) of
         {'ok', _Pid}=OK -> OK;
         {'error', {'already_started', Pid}} -> {'ok', Pid};
         {'error', 'already_present'} ->
@@ -87,7 +82,8 @@ find_tts_server(Text, JObj) ->
     find_tts_server(Text, JObj, Id).
 
 find_tts_server(Text, JObj, Id) ->
-    case supervisor:start_child(?SERVER, ?CHILD(Id, Text, JObj)) of
+    ChildSpec = ?WORKER_NAME_ARGS_TYPE(Id, 'wh_media_tts_cache', [Text, JObj], 'temporary'),
+    case supervisor:start_child(?SERVER, ChildSpec) of
         {'ok', _Pid}=OK -> OK;
         {'error', {'already_started', Pid}} -> {'ok', Pid};
         {'error', 'already_present'} ->

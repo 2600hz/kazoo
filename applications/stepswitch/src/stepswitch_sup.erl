@@ -16,16 +16,6 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(POOL(N), {N, {'poolboy', 'start_link', [[{'worker_module', 'stepswitch_cnam'}
-                                                 ,{'name', {'local', N}}
-                                                 ,{'size', 10}
-                                                 ,{'max_overflow', 50}
-                                                 ,{'neg_resp_threshold', 1}
-                                                ]
-                                               ]}
-                  ,'permanent', 5000, 'worker', ['poolboy']
-                 }).
-
 -define(ORIGIN_BINDINGS, [[{'type', <<"resource">>}]
                            ,[{'type', <<"number">>}]
                            ,[{'type', <<"dedicated_ip">>}]
@@ -33,7 +23,7 @@
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 -define(CHILDREN, [?CACHE_ARGS(?STEPSWITCH_CACHE, ?CACHE_PROPS)
-                   ,?POOL(?STEPSWITCH_CNAM_POOL)
+                   ,?SUPER('stepswitch_cnam_pool_sup')
                    ,?SUPER('stepswitch_request_sup')
                    ,?WORKER('stepswitch_listener')
                   ]).

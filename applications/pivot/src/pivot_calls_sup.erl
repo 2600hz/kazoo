@@ -22,9 +22,6 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, 'start_link', []}, Restart, Shutdown, Type, [Name]}).
 
 %% ===================================================================
 %% API functions
@@ -40,11 +37,12 @@ start_link() ->
 
 -spec new(whapps_call:call(), wh_json:object()) -> sup_startchild_ret().
 new(Call, JObj) ->
-    supervisor:start_child(?SERVER, [Call, JObj]).
+    ExtraArgs = [Call, JObj],
+    supervisor:start_child(?SERVER, ExtraArgs).
 
 -spec workers() -> [pid()].
 workers() ->
-    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -67,4 +65,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?CHILD(pivot_call, temporary, 2000, worker)]}}.
+    {'ok', {SupFlags, [?WORKER_TYPE('pivot_call', 'temporary')]}}.

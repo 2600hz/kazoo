@@ -30,11 +30,11 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec add(#wh_amqp_connection{}) -> {'error', _} | {'ok', api_pid()} | {'ok', api_pid(), _}.
+-spec add(#wh_amqp_connection{}) -> sup_startchild_ret().
 add(#wh_amqp_connection{}=Connection) ->
     supervisor:start_child(?SERVER, [Connection]).
 
--spec remove(pid()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+-spec remove(pid()) -> 'ok' | {'error', any()}.
 remove(Connection) when is_pid(Connection) ->
     supervisor:terminate_child(?SERVER, Connection).
 

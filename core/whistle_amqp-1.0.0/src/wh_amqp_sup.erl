@@ -24,22 +24,15 @@
 
 -define(CONFIG_SECTION, wh_config:get_node_section_name()).
 
+-define(POOL_NAME, 'wh_amqp_pool').
+
 -define(DEFAULT_POOL_SIZE, 150).
 -define(DEFAULT_POOL_OVERFLOW, 100).
 -define(DEFAULT_POOL_THRESHOLD, 1).
 
 %%% Move the section to whistle_apps or ecallmgr for per-vm control
--define(POOL_SIZE, wh_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_SIZE)).
--define(POOL_OVERFLOW, wh_config:get_integer(?CONFIG_SECTION, 'pool_overflow', ?DEFAULT_POOL_OVERFLOW)).
--define(POOL_THRESHOLD, wh_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
--define(POOL_NAME, 'wh_amqp_pool').
 
--define(POOL_ARGS, [[{'worker_module', 'wh_amqp_worker'}
-                     ,{'name', {'local', ?POOL_NAME}}
-                     ,{'size', ?POOL_SIZE}
-                     ,{'max_overflow', ?POOL_OVERFLOW}
-                     ,{'neg_resp_threshold', ?POOL_THRESHOLD}
-                    ]]).
+-define(POOL_NAME_ARGS(Name, Args), ?WORKER_NAME_ARGS('poolboy', Name, Args)).
 
 -define(CHILDREN, [?WORKER('wh_amqp_connections')
                    ,?SUPER('wh_amqp_connection_sup')
@@ -48,7 +41,7 @@
                    ,?WORKER('wh_amqp_bootstrap')
                   ]).
 
--define(ATOM(X), wh_util:to_atom(X, 'true')).
+-define(POOL_THRESHOLD, wh_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
 
 -define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges, ServerAck),
         [[{'worker_module', 'wh_amqp_worker'}
@@ -62,11 +55,6 @@
           ,{'amqp_exchanges', Exchanges}
           ,{'amqp_server_confirms', ServerAck}
          ]]).
--define(POOL_SPEC(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck),
-           ?WORKER_NAME_ARGS('poolboy'
-                 ,UUID
-                 ,?ADD_POOL_ARGS(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck))).
-
 
 %% ===================================================================
 %% API functions
@@ -126,12 +114,15 @@ add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges) ->
     Bindings :: wh_proplist(),
     Exchanges :: exchanges(),
     ServerAck :: boolean().
-add_amqp_pool(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) ->
-    supervisor:start_child(?SERVER, ?POOL_SPEC(?ATOM(UUID), Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck)).
+add_amqp_pool(Uuid, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck) ->
+    UUID = wh_util:to_atom(Uuid, 'true'),
+    Args = ?ADD_POOL_ARGS(UUID, Broker, PoolSize, PoolOverflow, Bindings, Exchanges, ServerAck),
+    supervisor:start_child(?SERVER, ?POOL_NAME_ARGS(UUID, Args)).
 
 -spec pool_pid(atom() | binary()) -> api_pid().
 pool_pid(Pool) ->
-    case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?SERVER), Id =:= ?ATOM(Pool)] of
+    ID = wh_util:to_atom(Pool, 'true'),
+    case [ Pid || {Id,Pid,_,_} <- supervisor:which_children(?SERVER), Id == ID] of
         [] -> 'undefined';
         [P | _] -> P
     end.
@@ -158,19 +149,19 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     PoolSize =
-        case wh_config:get(wh_config:get_node_section_name(), 'pool_size') of
-            [] -> ?POOL_SIZE;
+        case wh_config:get(?CONFIG_SECTION, 'pool_size') of
+            [] -> wh_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_SIZE);
             [Size|_] -> wh_util:to_integer(Size)
         end,
 
     PoolOverflow =
-        case wh_config:get(wh_config:get_node_section_name(), 'pool_overflow') of
-            [] -> ?POOL_OVERFLOW;
+        case wh_config:get(?CONFIG_SECTION, 'pool_overflow') of
+            [] -> wh_config:get_integer(?CONFIG_SECTION, 'pool_overflow', ?DEFAULT_POOL_OVERFLOW);
             [Overflow|_] -> wh_util:to_integer(Overflow)
         end,
 
     PoolThreshold =
-        case wh_config:get(wh_config:get_node_section_name(), 'pool_threshold') of
+        case wh_config:get(?CONFIG_SECTION, 'pool_threshold') of
             [] -> ?POOL_THRESHOLD;
             [Threshold|_] -> wh_util:to_integer(Threshold)
         end,
@@ -182,6 +173,6 @@ init([]) ->
                 ,{'neg_resp_threshold', PoolThreshold}
                ],
 
-    Children = ?CHILDREN ++ [?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, [PoolArgs])],
+    Children = ?CHILDREN ++ [?POOL_NAME_ARGS(?POOL_NAME, [PoolArgs])],
 
     {'ok', {SupFlags, Children}}.

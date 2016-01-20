@@ -8,6 +8,7 @@
                  , stdlib
                  , crypto
                  , lager
+                 , poolboy
                  , whistle_amqp
                  , whistle_couch
                  ]},

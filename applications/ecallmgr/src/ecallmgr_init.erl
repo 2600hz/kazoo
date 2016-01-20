@@ -30,6 +30,7 @@
           ,wh_config:get_atom('log', 'error', ['error'])
          }).
 
+-spec start_link() -> startlink_ret().
 start_link() ->
     wh_util:spawn(fun init/0),
     'ignore'.

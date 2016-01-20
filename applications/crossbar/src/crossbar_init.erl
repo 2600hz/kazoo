@@ -47,11 +47,9 @@ api_version_constraint(_NotVersion) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the app for inclusion in a supervisor tree
-%% @end
+%% @doc Starts the app for inclusion in a supervisor tree
 %%--------------------------------------------------------------------
--spec start_link() -> 'ignore'.
+-spec start_link() -> startlink_ret().
 start_link() ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = declare_exchanges(),
@@ -64,9 +62,7 @@ start_link() ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Load a crossbar module's bindings into the bindings server
-%% @end
+%% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
 -spec start_mod(atom() | string() | binary()) -> any().
 start_mod(CBMod) when not is_atom(CBMod) -> start_mod(wh_util:to_atom(CBMod, 'true'));
@@ -74,9 +70,7 @@ start_mod(CBMod) -> CBMod:init().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Load a crossbar module's bindings into the bindings server
-%% @end
+%% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
 -spec stop_mod(atom() | string() | binary()) -> any().
 stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(wh_util:to_atom(CBMod, 'true'));
@@ -89,9 +83,7 @@ stop_mod(CBMod) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Ensures that all exchanges used are declared
-%% @end
+%% @doc Ensures that all exchanges used are declared
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
@@ -110,9 +102,7 @@ declare_exchanges() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Functions for onrequest and onresponse callbacks
-%% @end
+%% @doc Functions for onrequest and onresponse callbacks
 %%--------------------------------------------------------------------
 -spec on_request(cowboy_req:req()) -> cowboy_req:req().
 on_request(Req0) ->

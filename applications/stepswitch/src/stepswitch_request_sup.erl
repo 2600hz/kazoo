@@ -66,8 +66,7 @@ local_extension(Props, OffnetReq) ->
                                                   )
                           ).
 
--spec originate(wh_json:objects(), wapi_offnet_resource:req()) ->
-                       sup_startchild_ret().
+-spec originate(wh_json:objects(), wapi_offnet_resource:req()) -> sup_startchild_ret().
 originate(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
                            ,?WORKER_NAME_ARGS_TYPE(outbound_child_name(OffnetReq)

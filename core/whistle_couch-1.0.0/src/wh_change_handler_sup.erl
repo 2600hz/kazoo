@@ -58,14 +58,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Restart = transient,
-    Shutdown = 2 * ?MILLISECONDS_IN_SECOND,
-    Type = worker,
-
-    AChild = {wh_change_handler, {wh_change_handler, start_link, []},
-              Restart, Shutdown, Type, [wh_change_handler]},
-
-    {'ok', {SupFlags, [AChild]}}.
+    {'ok', {SupFlags, [?WORKER_TYPE('wh_change_handler', 'transient')]}}.
 
 %%%===================================================================
 %%% Internal functions

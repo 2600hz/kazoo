@@ -11,6 +11,7 @@
 -define(APP_VERSION, <<"1.0.0">>).
 
 -define(FAX_CACHE, 'fax_cache').
+-define(FAX_WORKER_POOL, 'fax_worker_pool').
 
 -define(FAX_CHANNEL_DESTROY_PROPS, [<<"Ringing-Seconds">>, <<"Billing-Seconds">>
                                     ,<<"0">>, <<"Duration-Seconds">>

@@ -19,14 +19,6 @@
 -export([smtp_sessions/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(POOL(N),  {N, {'poolboy', 'start_link', [[{'name', {'local', N}}
-                                                  ,{'worker_module', 'fax_worker'}
-                                                  ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
-                                                  ,{'max_overflow', 0}
-                                                 ], []
-                                                ]}
-                   ,'permanent', 'infinity', 'worker', ['poolboy']}).
 
 -define(ORIGIN_BINDINGS, [[{'db', ?WH_FAXES_DB}, {'type', <<"faxbox">>}]]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
@@ -38,7 +30,7 @@
 
 -define(CHILDREN, [?WORKER('fax_init')
                    ,?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
-                   ,?POOL('fax_worker_pool')
+                   ,?SUPER('fax_worker_pool_sup')
                    ,?SUPER('fax_requests_sup')
                    ,?SUPER('fax_xmpp_sup')
                    ,?WORKER('fax_jobs')

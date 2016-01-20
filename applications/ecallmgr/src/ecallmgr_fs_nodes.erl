@@ -708,7 +708,7 @@ maybe_start_node_pinger(#node{node=NodeName, options=Props}=Node) ->
             lager:critical("failed to start fs pinger for node '~s': ~p", [NodeName, _Else])
     end.
 
--spec close_node(fs_node()) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
+-spec close_node(fs_node()) -> 'ok' | {'error', any()}.
 close_node(#node{node=NodeName}) ->
     _ = ecallmgr_fs_sup:remove_node(NodeName),
     ecallmgr_fs_pinger_sup:remove_node(NodeName).

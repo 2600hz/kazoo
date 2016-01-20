@@ -3,15 +3,16 @@
   {description, "Routes calls comming or going offnet, like a line finder"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [stepswitch_listener, stepswitch_request_sup, stepswitch_sup]},
+  {registered, [stepswitch_cnam_pool_sup, stepswitch_listener, stepswitch_request_sup, stepswitch_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto
+                 , ssl
+                 , inets
                  , lager
+                 , poolboy
                  , whistle_amqp
                  , whistle_couch
-                 , inets
-                 , ssl
                  ]},
   {mod, {stepswitch_app, []}}
  ]}.
