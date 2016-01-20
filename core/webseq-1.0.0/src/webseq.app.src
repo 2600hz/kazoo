@@ -12,5 +12,4 @@
                   , whistle
                   , whistle_couch
                   ]}
- , {mod, {webseq_app, []}}
  ]}.
