@@ -38,8 +38,8 @@
          ,code_change/3
         ]).
 
--include("include/wh_types.hrl").
--include("include/wh_log.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 
