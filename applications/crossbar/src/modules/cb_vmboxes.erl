@@ -20,7 +20,7 @@
          ,put/1
          ,post/2, post/4
          ,patch/2
-         ,delete/2, delete/4
+         ,delete/2, delete/3, delete/4
          ,cleanup_heard_voicemail/1
 
          ,migrate/1
@@ -68,7 +68,7 @@ allowed_methods() ->
 allowed_methods(_VMBoxID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
-    [?HTTP_GET].
+    [?HTTP_GET, ?HTTP_DELETE].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
@@ -110,7 +110,7 @@ content_types_provided_for_download(Context, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -145,11 +145,83 @@ validate_vmbox(Context, DocId, ?HTTP_DELETE) ->
     load_vmbox(DocId, Context).
 
 validate(Context, DocId, ?MESSAGES_RESOURCE) ->
-    load_message_summary(DocId, Context).
+    validate_messages(Context, DocId, cb_context:req_verb(Context)).
 
 validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
     validate_message(Context, DocId, MediaId, cb_context:req_verb(Context)).
 
+validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
+    case load_message_binary(DocId, MediaId, Context) of
+        {'true', C1} ->
+            C2 = crossbar_doc:save(C1),
+            update_mwi(
+              cb_context:set_resp_data(C2, cb_context:resp_data(C1))
+             );
+        {_, C} -> C
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+post(Context, _DocId) ->
+    C = crossbar_doc:save(Context),
+    update_mwi(C).
+post(Context, _DocId, ?MESSAGES_RESOURCE, _MediaID) ->
+    C = crossbar_doc:save(Context),
+    update_mwi(C).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec put(cb_context:context()) -> cb_context:context().
+put(Context) ->
+    crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+delete(Context, _DocID) ->
+    C = crossbar_doc:delete(Context),
+    update_mwi(C).
+
+delete(Context, _DocID, ?MESSAGES_RESOURCE) ->
+    C = crossbar_doc:save(Context),
+    update_mwi(C).
+
+delete(Context, _DocID, ?MESSAGES_RESOURCE, _MediaID) ->
+    C = crossbar_doc:save(Context),
+    update_mwi(C).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _Id) ->
+    crossbar_doc:save(Context).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_message(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 validate_message(Context, DocId, MediaId, ?HTTP_GET) ->
     case load_message(DocId, MediaId, 'undefined', Context) of
         {'true', C1} ->
@@ -167,52 +239,54 @@ validate_message(Context, DocId, MediaId, ?HTTP_DELETE) ->
     {_, C} = load_message(DocId, MediaId, Update, Context),
     C.
 
-validate(Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
-    case load_message_binary(DocId, MediaId, Context) of
-        {'true', C1} ->
-            C2 = crossbar_doc:save(C1),
-            update_mwi(
-              cb_context:set_resp_data(C2, cb_context:resp_data(C1))
-             );
-        {_, C} -> C
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_messages(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_messages(Context, DocId, ?HTTP_GET) ->
+    load_message_summary(DocId, Context);
+validate_messages(Context, DocId, ?HTTP_DELETE) ->
+    Context1 = load_vmbox(DocId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Messages = wh_json:get_ne_value(<<"messages">>, cb_context:doc(Context1), []),
+            Filter = cb_context:req_value(Context, <<"folder">>, <<"all">>),
+
+            NMessages = delete_messages(Messages, Filter),
+
+            cb_context:update_doc(
+                Context
+                ,fun(Doc) -> wh_json:set_value(<<"messages">>, NMessages, Doc) end
+            );
+        _Status -> Context1
     end.
 
--spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-post(Context, _DocId) ->
-    C = crossbar_doc:save(Context),
-    update_mwi(C).
-post(Context, _DocId, ?MESSAGES_RESOURCE, _MediaID) ->
-    C = crossbar_doc:save(Context),
-    update_mwi(C).
-
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
-    crossbar_doc:save(Context).
-
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-delete(Context, _DocID) ->
-    C = crossbar_doc:delete(Context),
-    update_mwi(C).
-delete(Context, _DocID, ?MESSAGES_RESOURCE, _MediaID) ->
-    C = crossbar_doc:save(Context),
-    update_mwi(C).
-
--spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _Id) ->
-    crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
-load_vmbox_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+-spec delete_messages(wh_json:objects(), ne_binary()) -> wh_json:objects().
+-spec delete_messages(wh_json:objects(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+delete_messages(Messages, Filter) ->
+    delete_messages(Messages, Filter, []).
+
+delete_messages([], _Filter, NMessages) ->
+    lists:reverse(NMessages);
+delete_messages([Mess|Messages], <<"all">> = Filter, NMessages) ->
+    Mess1 = wh_json:set_value(<<"folder">>, <<"deleted">>, Mess),
+    delete_messages(Messages, Filter, [Mess1|NMessages]);
+delete_messages([Mess|Messages], Filter, NMessages) ->
+    case wh_json:get_value(<<"folder">>, Mess) of
+        Filter ->
+            Mess1 = wh_json:set_value(<<"folder">>, <<"deleted">>, Mess),
+            delete_messages(Messages, Filter, [Mess1|NMessages]);
+        _ ->
+            delete_messages(Messages, Filter, [Mess|NMessages])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -224,6 +298,12 @@ load_vmbox_summary(Context) ->
 validate_request(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec validate_unique_vmbox(api_binary(), cb_context:context()) -> cb_context:context().
 -spec validate_unique_vmbox(api_binary(), cb_context:context(), api_binary()) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context) ->
@@ -244,12 +324,24 @@ validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
             check_vmbox_schema(VMBoxId, C)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec check_vmbox_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_vmbox_schema(VMBoxId, Context) ->
     Context1 = maybe_migrate_notification_emails(Context),
     OnSuccess = fun(C) -> on_successful_validation(VMBoxId, C) end,
     cb_context:validate_request_data(<<"vmboxes">>, Context1, OnSuccess).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_migrate_notification_emails(cb_context:context()) -> cb_context:context().
 maybe_migrate_notification_emails(Context) ->
     ReqData = cb_context:req_data(Context),
@@ -266,6 +358,12 @@ maybe_migrate_notification_emails(Context) ->
         'false' -> Context
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
@@ -283,6 +381,17 @@ on_successful_validation(VMBoxId, Context) ->
 -spec validate_patch(cb_context:context(), ne_binary()) -> cb_context:context().
 validate_patch(Context, DocId)->
     crossbar_doc:patch_and_validate(DocId, Context, fun validate_request/2).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load list of accounts, each summarized.  Or a specific
+%% account summary.
+%% @end
+%%--------------------------------------------------------------------
+-spec load_vmbox_summary(cb_context:context()) -> cb_context:context().
+load_vmbox_summary(Context) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -342,6 +451,12 @@ load_message(DocId, MediaId, UpdateJObj, Context) ->
             {'false', Context1}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec load_message_from_messages(ne_binary(), ne_binary(), api_object(), cb_context:context()) ->
                                         {boolean(), cb_context:context()}.
 -spec load_message_from_messages(api_object(), cb_context:context(), pos_integer()) ->
@@ -397,6 +512,12 @@ load_message_binary(DocId, MediaId, Context) ->
         _Status -> {Update, Context1}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean()) ->
                                               {boolean(), cb_context:context()}.
 -spec load_message_binary_from_message(ne_binary(), cb_context:context(), boolean(), wh_json:object()) ->
@@ -443,13 +564,19 @@ load_message_binary_from_message(MediaId, Context, Update, Media) ->
             }
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec set_bad_media_identifier(cb_context:context(), ne_binary()) -> cb_context:context().
 set_bad_media_identifier(Context, MediaId) ->
     cb_context:add_system_error(
-      'bad_identifier'
-      ,wh_json:from_list([{<<"cause">>, MediaId}])
-      ,Context
-     ).
+        'bad_identifier'
+        ,wh_json:from_list([{<<"cause">>, MediaId}])
+        ,Context
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -460,9 +587,13 @@ set_bad_media_identifier(Context, MediaId) ->
 %%--------------------------------------------------------------------
 -spec get_message_index(ne_binary(), wh_json:objects()) -> 'false' | pos_integer().
 get_message_index(MediaId, Messages) ->
-    case lists:takewhile(fun(Message) ->
-                                 wh_json:get_value(<<"media_id">>, Message) =/= MediaId
-                         end, Messages)
+    case
+        lists:takewhile(
+            fun(Message) ->
+                wh_json:get_value(<<"media_id">>, Message) =/= MediaId
+            end
+            ,Messages
+        )
     of
         Messages -> 'false';
         List -> length(List) + 1
@@ -480,14 +611,11 @@ generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
-
     LocalTime = case localtime:utc_to_local(UTCDateTime, wh_util:to_list(Timezone)) of
                     {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
                     _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
                 end,
-
     Date = wh_util:pretty_print_datetime(LocalTime),
-
     list_to_binary([CallerId, "_", Date, Ext]).
 
 %%--------------------------------------------------------------------
@@ -542,6 +670,12 @@ update_mwi(Context, 'success') ->
 update_mwi(Context, _Status) ->
     Context.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec cleanup_heard_voicemail(ne_binary()) -> 'ok'.
 -spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> 'ok'.
 -spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> 'ok'.
@@ -582,13 +716,23 @@ cleanup_heard_voicemail(AccountDb, Timestamp, Boxes) ->
     _ = [cleanup_voicemail_box(AccountDb, Timestamp, Box) || Box <- Boxes],
     'ok'.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> 'ok'.
 cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
-    case lists:partition(fun(Msg) ->
-                                 %% must be old enough, and not in the NEW folder
-                                 wh_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
-                                     andalso wh_json:get_value(<<"folder">>, Msg) =/= <<"new">>
-                         end, Msgs)
+    case
+        lists:partition(
+            fun(Msg) ->
+                %% must be old enough, and not in the NEW folder
+                wh_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
+                    andalso wh_json:get_value(<<"folder">>, Msg) =/= <<"new">>
+            end
+            ,Msgs
+        )
     of
         {[], _} ->
             lager:debug("there are no old messages to remove from ~s"
@@ -605,15 +749,25 @@ cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
             lager:debug("updated messages in voicemail box ~s", [wh_doc:id(Box2)])
     end.
 
--spec delete_media(ne_binary(), ne_binary()) ->
-                          {'ok', wh_json:object()} |
-                          {'error', _}.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_media(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
 delete_media(AccountDb, MediaId) ->
     {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, MediaId),
     couch_mgr:ensure_saved(AccountDb
                            ,wh_doc:set_soft_deleted(JObj, 'true')
                           ).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_migrate_vm_box(kzd_voicemail_box:doc()) ->
                                   {'true', kzd_voicemail_box:doc()} |
                                   'false'.
@@ -624,6 +778,12 @@ maybe_migrate_vm_box(Box) ->
             {'true', kzd_voicemail_box:set_notification_emails(Box, Emails)}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec migrate(ne_binary()) -> 'ok'.
 migrate(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
@@ -634,6 +794,12 @@ migrate(Account) ->
             maybe_migrate_boxes(AccountDb, Boxes)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_migrate_boxes(ne_binary(), wh_json:objects()) -> 'ok'.
 maybe_migrate_boxes(AccountDb, Boxes) ->
     ToUpdate =
@@ -647,11 +813,15 @@ maybe_migrate_boxes(AccountDb, Boxes) ->
                     ,[]
                     ,Boxes
                    ),
-
     io:format("migrating ~p out of ~p boxes~n", [length(ToUpdate), length(Boxes)]),
-
     maybe_update_boxes(AccountDb, ToUpdate).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_update_boxes(ne_binary(), wh_json:objects()) -> 'ok'.
 maybe_update_boxes(_AccountDb, []) -> 'ok';
 maybe_update_boxes(AccountDb, Boxes) ->
