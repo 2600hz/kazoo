@@ -18,6 +18,10 @@ The enabled Monster UI applications were moved from an object on the account doc
 
 If you plan to support the new API to download the company directory as a PDF you will need to install 'htmldoc' on any server running crossbar.
 
+#### Default WebRTC Port change
+
+The default ports that Kamailio listens to for the WebRTC websocket have changed, this was due to a port conflict on all-in-one installs with TLS enabled Kazoo APIs. The standard HTTP websocket port was 8080 and is now 5064.  The TLS HTTP websocket port was 8443 and is now 5065.  If you would like to continue using the old ports please update "/etc/kazoo/kamailio/local.cfg" after an update to kazoo-configs 3.22.12+
+
 ### 4.0
 
 #### Erlang Version Support
