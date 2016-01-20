@@ -1,9 +1,9 @@
 {application, whistle_transactions,
  [
-  {description, "Whistle Transactions provide abstract transactions to be sent to bookkeepers for processing"},
+  {description, "Abstract transactions to be sent to bookkeepers for processing"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [whistle_transactions_sup]},
+  {registered, [ ]},
   {applications, [ kernel
                  , stdlib
                  , lager
@@ -11,6 +11,5 @@
                  , whistle_couch
                  , whistle_config
                  , kazoo_modb
-                 , whistle_couch
                  ]}
  ]}.
