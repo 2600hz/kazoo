@@ -636,7 +636,6 @@ generic_call_event_props(Props) ->
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
-     ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
      ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
      ,{<<"Switch-Nodename">>, props:get_value(<<"Switch-Nodename">>, Props)}
      ,{<<"Channel-State">>, get_channel_state(Props)}
