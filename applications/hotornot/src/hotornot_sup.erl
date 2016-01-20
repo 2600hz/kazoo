@@ -20,6 +20,10 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?CACHE('hotornot_cache')
+                   ,?WORKER('hotornot_listener')
+                  ]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -47,12 +51,14 @@ upgrade() ->
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
-
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
-    {'ok', { {'one_for_one', 2, 5}
-             ,[
-               ?CACHE('hotornot_cache')
-               ,?WORKER('hotornot_listener')
-              ]
-           } }.
+
+    RestartStrategy = 'one_for_one',
+    MaxRestarts = 2,
+    MaxSecondsBetweenRestarts = 5,
+
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
+    {'ok', {SupFlags, ?CHILDREN}}.

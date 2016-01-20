@@ -22,6 +22,8 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?WORKER_TYPE('cccp_platform_listener', 'temporary')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -57,7 +59,7 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER_TYPE('cccp_platform_listener', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

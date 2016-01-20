@@ -27,6 +27,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?SUPER_TYPE('acdc_queue_sup', 'transient')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -106,7 +108,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?SUPER_TYPE('acdc_queue_sup', 'transient')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

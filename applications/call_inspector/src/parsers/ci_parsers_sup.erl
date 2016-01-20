@@ -20,6 +20,8 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, []).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -53,7 +55,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, []}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 -type parser() :: 'ci_parser_freeswitch' | 'ci_parser_kamailio' | 'ci_parser_hep'.
 -spec start_child(parser(), [{'parser_args',any(),any()} | {'parser_args',any(),any(),any()}]) ->

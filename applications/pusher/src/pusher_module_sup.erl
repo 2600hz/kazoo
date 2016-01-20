@@ -20,6 +20,10 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [ ?WORKER(wh_util:to_atom(Mod, 'true'))
+                    || Mod <- whapps_config:get(?CONFIG_CAT, <<"modules">>, [])
+                  ]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -52,11 +56,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Children = [?WORKER(wh_util:to_atom(Mod, 'true'))
-                || Mod <- whapps_config:get(?CONFIG_CAT, <<"modules">>, [])
-               ],
-    lager:debug("pusher_module_sup init: ~p", [Children]),
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

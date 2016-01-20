@@ -22,6 +22,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?WORKER_TYPE('pivot_call', 'temporary')]).
 
 %% ===================================================================
 %% API functions
@@ -65,4 +66,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('pivot_call', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

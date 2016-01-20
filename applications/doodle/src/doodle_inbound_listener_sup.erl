@@ -31,6 +31,8 @@
 -define(DOODLE_INBOUND_EXCHANGE_TYPE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
 -define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  whapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS_JOBJ)).
 
+-define(CHILDREN, [?WORKER_TYPE('doodle_inbound_listener', 'temporary')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -75,7 +77,7 @@ init([]) ->
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER_TYPE('doodle_inbound_listener', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 -spec default_connection() -> amqp_listener_connection().
 default_connection() ->

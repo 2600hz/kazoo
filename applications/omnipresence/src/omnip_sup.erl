@@ -24,6 +24,10 @@
                           ,<<"omnip_presence_amqp">>
                          ]).
 
+-define(CHILDREN, [ ?WORKER(module(Module))
+                    || Module <- whapps_config:get(?CONFIG_CAT, <<"modules">>, ?DEFAULT_MODULES)
+                  ]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -76,11 +80,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Children = [ ?WORKER(module(Module))
-                 || Module <- whapps_config:get(?CONFIG_CAT, <<"modules">>, ?DEFAULT_MODULES)
-               ],
-
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 -spec module(ne_binary()) -> atom().
 module(<<"omnip_dialog">>) ->

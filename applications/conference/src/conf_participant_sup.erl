@@ -21,6 +21,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?WORKER_TYPE('conf_participant', 'temporary')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -57,4 +59,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('conf_participant', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

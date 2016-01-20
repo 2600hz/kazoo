@@ -23,6 +23,8 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?WORKER_TYPE('kz_token_bucket', 'temporary')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -64,7 +66,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('kz_token_bucket', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

@@ -20,6 +20,8 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?WORKER_TYPE('wh_change_handler', 'transient')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -58,7 +60,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('wh_change_handler', 'transient')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

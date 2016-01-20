@@ -21,6 +21,8 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?WORKER('cdr_listener')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -41,4 +43,4 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER('cdr_listener')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

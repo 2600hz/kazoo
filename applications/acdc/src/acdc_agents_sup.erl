@@ -30,6 +30,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?SUPER_TYPE('acdc_agent_sup', 'transient')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -38,7 +40,8 @@
 %% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec status() -> 'ok'.
 status() ->
@@ -137,7 +140,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?SUPER_TYPE('acdc_agent_sup', 'transient')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

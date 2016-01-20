@@ -26,6 +26,10 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?WORKER_ARGS('acdc_agent_listener', [self() | Args])
+                   ,?WORKER_ARGS('acdc_agent_fsm', [self() | Args])
+                  ]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -122,9 +126,7 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_ARGS('acdc_agent_listener', [self() | Args])
-                       ,?WORKER_ARGS('acdc_agent_fsm', [self() | Args])
-                      ]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

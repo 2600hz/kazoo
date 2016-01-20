@@ -22,6 +22,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
@@ -64,4 +65,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, []}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

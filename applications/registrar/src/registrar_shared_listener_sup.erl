@@ -22,6 +22,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?WORKER('registrar_shared_listener')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -89,4 +91,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER('registrar_shared_listener')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

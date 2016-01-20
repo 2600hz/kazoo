@@ -25,6 +25,10 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?SUPER('acdc_queue_workers_sup')
+                   ,?WORKER_ARGS('acdc_queue_manager', [self() | Args])
+                  ]).
+
 %%%===================================================================
 %%% api functions
 %%%===================================================================
@@ -89,12 +93,7 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [
-                       ?SUPER('acdc_queue_workers_sup')
-                       ,?WORKER_ARGS('acdc_queue_manager', [self() | Args])
-                      ]
-           }
-    }.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

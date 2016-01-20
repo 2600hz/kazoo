@@ -23,6 +23,8 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?WORKER_TYPE('ecallmgr_call_control', 'transient')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -56,7 +58,7 @@ init([]) ->
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER_TYPE('ecallmgr_call_control', 'transient')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

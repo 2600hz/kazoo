@@ -371,8 +371,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     wh_util:put_callid(FSMCallId),
     lager:debug("started acdc agent fsm"),
 
-    Self = self(),
-    _P = wh_util:spawn(fun wait_for_listener/4, [Supervisor, Self, Props, IsThief]),
+    _P = wh_util:spawn(fun wait_for_listener/4, [Supervisor, self(), Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
 
     {'ok', 'wait', #state{account_id = AccountId

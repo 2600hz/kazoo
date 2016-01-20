@@ -18,6 +18,8 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, [?WORKER('wh_amqp_connection')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -56,5 +58,7 @@ init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
+
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER('wh_amqp_connection')]}}.
+
+    {'ok', {SupFlags, ?CHILDREN}}.

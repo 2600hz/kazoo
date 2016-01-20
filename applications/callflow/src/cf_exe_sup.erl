@@ -22,6 +22,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?WORKER_TYPE('cf_exe', 'temporary')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -40,7 +42,7 @@ new(Call) ->
 
 -spec workers() -> pids().
 workers() ->
-    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -63,4 +65,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('cf_exe', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

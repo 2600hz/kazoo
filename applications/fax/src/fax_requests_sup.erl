@@ -22,6 +22,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?WORKER_TYPE('fax_request', 'temporary')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -63,4 +65,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_TYPE('fax_request', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

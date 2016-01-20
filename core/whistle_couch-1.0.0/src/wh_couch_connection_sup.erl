@@ -17,6 +17,8 @@
 -export([add/1]).
 -export([init/1]).
 
+-define(CHILDREN, [?WORKER('wh_couch_connection')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -52,4 +54,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER('wh_couch_connection')]}}.
+
+    {'ok', {SupFlags, ?CHILDREN}}.

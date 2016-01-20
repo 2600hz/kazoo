@@ -24,6 +24,7 @@
 
 -define(SERVER, ?MODULE).
 
+-define(CHILDREN, []).
 
 %%%===================================================================
 %%% API functions
@@ -112,7 +113,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, []}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

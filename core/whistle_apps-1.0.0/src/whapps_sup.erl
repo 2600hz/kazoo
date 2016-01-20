@@ -19,6 +19,8 @@
 -export([stop_app/1]).
 -export([init/1]).
 
+-define(CHILDREN, [?SUPER(Whapp) || Whapp <- Whapps]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -35,10 +37,7 @@ start_link(Whapps) ->
 start_app(App) ->
     supervisor:start_child(?SERVER, ?SUPER(App)).
 
--spec restart_app(atom()) ->
-                         {'ok', pid() | 'undefined'} |
-                         {'ok', pid() | 'undefined', any()} |
-                         {'error', any()}.
+-spec restart_app(atom()) -> sup_startchild_ret().
 restart_app(App) ->
     _ = supervisor:terminate_child(?SERVER, App),
     supervisor:restart_child(?SERVER, App).
@@ -67,6 +66,5 @@ init([Whapps]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?SUPER(Whapp) || Whapp <- Whapps],
 
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
