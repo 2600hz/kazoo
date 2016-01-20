@@ -3,7 +3,7 @@
    {description, "Whistle Helpers"}
    ,{vsn, "4.0.0"}
    ,{modules, []}
-   ,{registered, [wh_nodes]}
+   ,{registered, [ ]}
    ,{applications, [ kernel
                    , stdlib
                    , crypto
