@@ -211,7 +211,7 @@ fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
     successful_hook(Hook);
 fire_hook(_JObj, Hook, _URI, _Method, Retries, {'ok', RespCode, _, RespBody}) ->
     _ = failed_hook(Hook, Retries, RespCode, RespBody),
-    lager:debug("non-200 response code: ~s", [RespCode]);
+    lager:debug("non-200 response code: ~s on account ~s", [RespCode, Hook#webhook.account_id]);
 fire_hook(JObj, Hook, URI, Method, Retries, {'error', 'req_timedout'}) ->
     lager:debug("request timed out to ~s, retrying", [URI]),
     _ = failed_hook(Hook, Retries, <<"request_timed_out">>),
