@@ -7,12 +7,14 @@
   ,{applications, [ kernel
                   , stdlib
 		  , crypto
-                  , lager
+
                   , whistle
                   , whistle_amqp
                   , whistle_couch
                   , whistle_apps
                   , callflow
+
+                  , lager
                   ]}
   ,{mod, {camper_app, []}}
  ]}.

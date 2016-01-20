@@ -6,7 +6,9 @@
   {registered, [ ]},
   {applications, [ kernel
                  , stdlib
-                 , ibrowse
+
                  , whistle_config
+
+                 , ibrowse
                  ]}
  ]}.

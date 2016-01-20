@@ -8,7 +8,10 @@
                  , stdlib
                  , sasl
                  , crypto
+
                  , whistle_amqp
+
+                 , lager
                  ]},
   {mod, {stats_app, []}}
  ]}.

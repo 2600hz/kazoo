@@ -7,10 +7,12 @@
   {applications, [ kernel
                  , stdlib
                  , crypto
-                 , lager
+
                  , whistle_amqp
                  , whistle_couch
                  , webseq
+
+                 , lager
                  ]},
   {mod, {konami_app, []}}
  ]}.

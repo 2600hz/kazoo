@@ -6,6 +6,7 @@
   {registered, [ ]},
   {applications, [ kernel
                  , stdlib
+
                  , whistle
                  ]}
  ]}.

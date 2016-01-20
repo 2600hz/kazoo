@@ -9,18 +9,20 @@
                  , crypto
                  , public_key
                  , inets
-                 , lager
-                 , ranch
-                 , cowboy
-                 , escalus
-                 , poolboy
-                 , gen_smtp
+
                  , whistle
                  , whistle_amqp
                  , whistle_couch
                  , whistle_apps
                  , kazoo_modb
                  , kazoo_oauth
+
+                 , lager
+                 , ranch
+                 , cowboy
+                 , escalus
+                 , poolboy
+                 , gen_smtp
                  ]},
   {mod, {fax_app, []}}
  ]}.

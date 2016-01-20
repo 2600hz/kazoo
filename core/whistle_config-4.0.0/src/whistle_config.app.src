@@ -5,9 +5,11 @@
  , {registered, [whistle_config_sup]}
  , {applications, [ kernel
                   , stdlib
-                  , lager
+
                   , whistle
                   , whistle_couch
+
+                  , lager
                   , zucchini
                   ]}
  , {mod, {whistle_config_app, []}}

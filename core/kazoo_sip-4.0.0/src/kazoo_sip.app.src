@@ -6,8 +6,10 @@
   {registered, [ ]},
   {applications, [ kernel
                  , stdlib
-                 , lager
+
                  , whistle
                  , whistle_number_manager
+
+                 , lager
                  ]}
  ]}.

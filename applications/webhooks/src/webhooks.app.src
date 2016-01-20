@@ -7,10 +7,12 @@
   {applications, [ kernel
                  , stdlib
                  , crypto
-                 , lager
-                 , gproc
+
                  , whistle_amqp
                  , whistle_couch
+
+                 , lager
+                 , gproc
                  ]},
   {mod, {webhooks_app, []}}
  ]}.

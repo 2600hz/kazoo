@@ -8,9 +8,11 @@
                    , stdlib
                    , crypto
                    , sasl
-                   , lager
+
                    , whistle
                    , whistle_couch
                    , whistle_services
+
+                   , lager
                    ]}
  ]}.

@@ -7,9 +7,11 @@
                   , stdlib
                   , crypto
                   , sasl
-                  , gproc
-                  , lager
+
                   , whistle
                   , whistle_couch
+
+                  , gproc
+                  , lager
                   ]}
  ]}.

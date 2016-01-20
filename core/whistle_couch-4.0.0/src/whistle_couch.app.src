@@ -10,10 +10,12 @@
                   , sasl
                   , crypto
                   , public_key
+
+                  , whistle_amqp
+
                   , ibrowse
                   , couchbeam
                   , lager
-                  , whistle_amqp
                   ]}
   ,{mod, {whistle_couch_app, []}}
  ]}.

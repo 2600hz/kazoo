@@ -7,10 +7,12 @@
   {applications, [ kernel
                  , stdlib
                  , crypto
-                 , lager
+
                  , whistle
                  , kazoo_etsmgr
                  , whistle_config
+
+                 , lager
                  ]},
   {mod, {kazoo_token_buckets_app, []}}
  ]}.

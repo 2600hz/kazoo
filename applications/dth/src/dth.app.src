@@ -8,9 +8,11 @@
                   , stdlib
 		  , crypto
                   , inets
-                  , lager
+
                   , whistle_amqp
                   , whistle_couch
+
+                  , lager
                   , detergent
                   ]}
   ,{mod, {dth_app, []}}

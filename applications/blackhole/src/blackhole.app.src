@@ -3,20 +3,19 @@
   {description, "blackhole - websocket"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [ blackhole_listener
-               , blackhole_sup
-               , blackhole_tracking
-               ]},
+  {registered, [blackhole_listener, blackhole_sup, blackhole_tracking]},
   {applications, [ kernel
                  , stdlib
                  , crypto
                  , public_key
                  , ssl
                  , inets
-                 , lager
+
                  , whistle_amqp
                  , whistle_couch
                  , kazoo_bindings
+
+                 , lager
                  , ranch
                  , cowboy
                  , socketio

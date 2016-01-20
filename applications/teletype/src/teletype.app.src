@@ -7,10 +7,12 @@
   {applications, [ kernel
                  , stdlib
                  , crypto
-                 , lager
-                 , poolboy
+
                  , whistle_amqp
                  , whistle_couch
+
+                 , lager
+                 , poolboy
                  ]},
   {mod, {teletype_app, []}}
  ]}.

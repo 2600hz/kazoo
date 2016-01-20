@@ -9,10 +9,12 @@
                  , crypto
                  , ssl
                  , inets
-                 , lager
-                 , poolboy
+
                  , whistle_amqp
                  , whistle_couch
+
+                 , lager
+                 , poolboy
                  ]},
   {mod, {stepswitch_app, []}}
  ]}.

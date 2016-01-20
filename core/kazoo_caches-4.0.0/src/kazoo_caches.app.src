@@ -7,10 +7,12 @@
   {applications, [ kernel
                  , stdlib
                  , crypto
-                 , lager
+
                  , whistle
                  , whistle_amqp
                  , whistle_couch
+
+                 , lager
                  ]},
   {mod, {kazoo_caches_app, []}}
  ]}.

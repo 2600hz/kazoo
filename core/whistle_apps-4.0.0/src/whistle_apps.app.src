@@ -7,16 +7,18 @@
   ,{registered, [whistle_apps_sup, wh_hooks_listener, wh_nodes, wh_hooks_shared_listener, whapps_sup]}
   ,{applications, [ kernel
                   , stdlib
-                  , syslog
-                  , lager
-                  , lager_syslog
-                  , ibrowse
+
                   , whistle
                   , whistle_amqp
                   , whistle_couch
                   , whistle_config
                   , whistle_services
                   , kazoo_documents
+
+                  , syslog
+                  , lager
+                  , lager_syslog
+                  , ibrowse
                   ]}
   ,{mod, {whistle_apps_app, []}}
   ,{env, [{reloader, false}]} % set to true to enable reloader

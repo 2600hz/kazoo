@@ -8,12 +8,14 @@
                    , stdlib
                    , crypto
                    , sasl
-                   , cowboy
-                   , lager
+
                    , whistle
                    , whistle_couch
                    , whistle_config
                    , whistle_services
                    , kazoo_modb
+
+                   , cowboy
+                   , lager
                    ]}
  ]}.

@@ -6,11 +6,13 @@
   {registered, [whistle_services_sup]},
   {applications, [ kernel
                  , stdlib
-                 , lager
+
                  , whistle_couch
                  , whistle_config
                  , kazoo_modb
                  , braintree
+
+                 , lager
                  ]},
   {mod, {whistle_services_app, []}}
  ]}.

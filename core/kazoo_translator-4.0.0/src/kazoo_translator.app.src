@@ -6,10 +6,12 @@
   {registered, [ ]},
   {applications, [ kernel
                  , stdlib
-                 , lager
-                 , ibrowse
+
                  , whistle
                  , whistle_amqp
                  , whistle_couch
+
+                 , lager
+                 , ibrowse
                  ]}
  ]}.

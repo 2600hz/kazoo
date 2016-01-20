@@ -11,11 +11,13 @@
                  , crypto
                  , asn1
                  , ssl
-                 , lager
+
                  , whistle_amqp
                  , whistle_couch
                  , apns
                  , gcm
+
+                 , lager
                  ]},
   {mod, {pusher_app, []}}
  ]}.

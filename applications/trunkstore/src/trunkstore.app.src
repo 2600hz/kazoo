@@ -9,9 +9,11 @@
     ,{applications, [ kernel
                     , stdlib
                     , crypto
-                    , lager
+
                     , whistle_amqp
                     , whistle_couch
+
+                    , lager
                     ]}
     ,{mod, {trunkstore_app, []}}
    ]

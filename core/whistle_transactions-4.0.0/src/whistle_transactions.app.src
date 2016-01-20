@@ -6,10 +6,12 @@
   {registered, [ ]},
   {applications, [ kernel
                  , stdlib
-                 , lager
+
                  , whistle
                  , whistle_couch
                  , whistle_config
                  , kazoo_modb
+
+                 , lager
                  ]}
  ]}.

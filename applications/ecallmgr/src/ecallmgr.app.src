@@ -8,12 +8,14 @@
                   , stdlib
                   , crypto
                   , sasl
-                  , lager
-                  , gproc
-                  , ibrowse
+
                   , whistle_config
                   , whistle_amqp
                   , whistle_stats
+
+                  , lager
+                  , gproc
+                  , ibrowse
                   ]}
  , {mod, {ecallmgr_app, []}}
  , {env, [{reloader, false}]}

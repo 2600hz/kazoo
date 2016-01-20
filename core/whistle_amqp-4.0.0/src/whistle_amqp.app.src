@@ -7,10 +7,12 @@
   ,{applications, [ kernel
                   , stdlib
 		  , sasl
+
+                  , whistle
+
                   , amqp_client
                   , lager
                   , poolboy
-                  , whistle
                   ]}
   ,{mod, {whistle_amqp_app, []}}
  ]}.

@@ -7,9 +7,11 @@
   {applications, [ kernel
                  , stdlib
                  , public_key
-                 , ibrowse
-                 , lager
+
                  , whistle
                  , whistle_couch
+
+                 , ibrowse
+                 , lager
                  ]}
  ]}.

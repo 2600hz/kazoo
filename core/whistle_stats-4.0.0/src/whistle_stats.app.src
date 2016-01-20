@@ -6,9 +6,11 @@
   {registered, [whistle_stats_sup, whistle_stats]},
   {applications, [ kernel
                  , stdlib
-                 , lager
+
                  , whistle
                  , whistle_amqp
+
+                 , lager
                  ]},
   {mod, {whistle_stats_app, []}}
  ]}.

@@ -10,15 +10,17 @@
                   , public_key
                   , ssl
                   , inets
-                  , lager
-                  , ranch
-                  , cowlib
-                  , cowboy
+
                   , whistle
                   , whistle_amqp
                   , whistle_couch
                   , kazoo_bindings
                   , whistle_apps
+
+                  , lager
+                  , ranch
+                  , cowlib
+                  , cowboy
                   ]}
   ,{mod, {crossbar_app, []}}
  ]}.

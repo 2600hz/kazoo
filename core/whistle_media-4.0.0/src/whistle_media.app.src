@@ -7,14 +7,16 @@
   {applications, [ kernel
                  , stdlib
                  , crypto
-                 , cowboy
-                 , lager
+
                  , whistle
                  , whistle_amqp
                  , whistle_couch
                  , whistle_config
                  , kazoo_documents
                  , kazoo_modb
+
+                 , cowboy
+                 , lager
                  ]},
   {mod, {whistle_media_app, []}}
  ]}.
