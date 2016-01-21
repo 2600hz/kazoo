@@ -15,17 +15,6 @@ endif
 
 ERLC_OPTS += $(KZ_APP_OTPS) +debug_info -Iinclude -Isrc
 
-## Ensure codebase compatibility throughout supported OTP versions
-ERTS_VSN = $(shell erl +V 2>&1 | cut -d' ' -f6)
-# Note: R15B03-1's ERTS version is 5.x
-ifeq ($(findstring 6., $(ERTS_VSN)), 6.)
-    ERLC_OPTS += +nowarn_deprecated_type +nowarn_deprecated_function
-endif
-
-ifeq ($(findstring 7., $(ERTS_VSN)), 7.)
-    ERLC_OPTS += -DOTP_AT_LEAST_18
-endif
-
 
 EBINS += $(wildcard $(ROOT)/deps/lager-*/ebin) \
 	$(wildcard $(ROOT)/core/whistle-*/ebin)
