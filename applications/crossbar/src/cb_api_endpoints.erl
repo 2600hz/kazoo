@@ -31,11 +31,15 @@ to_swagger_json() ->
                                 ),
     write_swagger_json(Swagger).
 
+-define(SCHEMAS_PATH(Schema), filename:join([code:priv_dir('crossbar')
+                                            ,"couchdb"
+                                            ,"schemas"
+                                             ,Schema
+                                            ])
+       ).
+
 to_swagger_definitions() ->
-    SchemasPath = filename:join([code:priv_dir('crossbar')
-                                 ,"couchdb"
-                                 ,"schemas"
-                                ]),
+    SchemasPath = ?SCHEMAS_PATH(<<>>),
     filelib:fold_files(SchemasPath, ".json$", 'false', fun process_schema/2, wh_json:new()).
 
 process_schema(SchemaJSONFile, Definitions) ->
@@ -95,6 +99,8 @@ add_swagger_path(Method, Acc, Path, Parameters) ->
     io:format("add ~p~n", [Vs]),
     wh_json:insert_values(Vs, Acc).
 
+maybe_add_schema(_Path, _Method, 'undefined') ->
+    {'undefined', 'undefined'};
 maybe_add_schema(Path, <<"put">> = Method, Parameters) ->
     {[Path, Method, <<"parameters">>], Parameters};
 maybe_add_schema(Path, <<"post">> = Method, Parameters) ->
@@ -103,14 +109,15 @@ maybe_add_schema(_Path, _Method, _Parameters) ->
     {'undefined', 'undefined'}.
 
 swagger_params(PathMeta) ->
-    io:format("pm: ~p~n", [PathMeta]),
-    Schema = wh_json:get_value(<<"schema">>, PathMeta),
-
-    wh_json:from_list([{<<"name">>, Schema}
-                      ,{<<"in">>, <<"body">>}
-                      ,{<<"required">>, 'true'}
-                      ,{<<"schema">>, wh_json:from_list([{<<"$ref">>, <<"#/definitions/", Schema/binary>>}])}
-                      ]).
+    case wh_json:get_value(<<"schema">>, PathMeta) of
+        'undefined' -> 'undefined';
+        Schema ->
+            wh_json:from_list([{<<"name">>, Schema}
+                              ,{<<"in">>, <<"body">>}
+                              ,{<<"required">>, 'true'}
+                              ,{<<"schema">>, wh_json:from_list([{<<"$ref">>, <<"#/definitions/", Schema/binary>>}])}
+                              ])
+    end.
 
 format_as_path_centric(Data) ->
     lists:foldl(fun format_pc_module/2
@@ -146,13 +153,25 @@ format_pc_callback({Path, []}, Acc, _Module, ModuleName, Callback) ->
     wh_json:set_value([PathName, wh_util:to_binary(Callback)], <<"not supported">>, Acc);
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = path_name(Path, ModuleName),
-    wh_json:set_values([{[PathName, wh_util:to_binary(Callback)]
-                        ,[wh_util:to_lower_binary(V) || V <- Vs]
-                        }
-                       ,{[PathName, <<"schema">>], base_module_name(Module)}
-                       ]
+    wh_json:set_values(
+      props:filter_undefined(
+        [{[PathName, wh_util:to_binary(Callback)]
+         ,[wh_util:to_lower_binary(V) || V <- Vs]
+         }
+        ,maybe_include_schema(PathName, Module)
+        ]
+       )
                       ,Acc
-                      ).
+       ).
+
+maybe_include_schema(PathName, Module) ->
+    M = base_module_name(Module),
+    case filelib:is_file(?SCHEMAS_PATH(M)) of
+        'true' ->
+            {[PathName, <<"schema">>], base_module_name(Module)};
+        'false' ->
+            {'undefined', 'undefined'}
+    end.
 
 path_name(Path, ModuleName) ->
     wh_util:join_binary([<<>>, ModuleName | format_path_tokens(Path)], <<"/">>).
@@ -214,7 +233,7 @@ get() ->
 process_application(App) ->
     EBinDir = code:lib_dir(App, 'ebin'),
     io:format("looking in ~p~n", [EBinDir]),
-    filelib:fold_files(EBinDir, "^cb_webh.*.beam$", 'false', fun process_module/2, []).
+    filelib:fold_files(EBinDir, "^cb_.*.beam$", 'false', fun process_module/2, []).
 
 process_module(File, Acc) ->
     io:format("processing file ~p~n", [File]),
