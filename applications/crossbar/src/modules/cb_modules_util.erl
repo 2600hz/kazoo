@@ -331,8 +331,8 @@ originate_quickcall(Endpoints, Call, Context) ->
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
-               ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
-               ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
+               ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_param(Context, <<"cid-name">>, <<"Device QuickCall">>)}
+               ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_param(Context, <<"cid-number">>, whapps_call:request_user(Call))}
                ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
                ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
