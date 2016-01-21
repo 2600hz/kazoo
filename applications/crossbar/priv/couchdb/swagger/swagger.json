@@ -8116,6 +8116,14 @@
             },
             "put": {
                 "description": "Create a new webhook",
+                "parameters": {
+                    "in": "body",
+                    "name": "webhooks",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/webhooks"
+                    }
+                },
                 "produces": [
                     "application/json"
                 ],
@@ -8175,6 +8183,14 @@
             },
             "post": {
                 "description": "Edit the webhook object",
+                "parameters": {
+                    "in": "body",
+                    "name": "webhooks",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/webhooks"
+                    }
+                },
                 "produces": [
                     "application/json"
                 ],
