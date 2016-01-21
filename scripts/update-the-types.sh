@@ -7,7 +7,7 @@ ROOT=(pwd -P)/..
 EXCLUDES="merl.erl"
 
 echo "Looking at $ROOT"
-#rm -f $ROOT/sar.txt
+rm -f $ROOT/sar.txt
 
 function SaRF {
     #SEARCH=$1
@@ -15,7 +15,7 @@ function SaRF {
     #FILE=$3
     #PREFIX=$4
 
-#    echo "'$4' '$1' '$2' in $3" >> $ROOT/sar.txt
+    echo "'$4' '$1' '$2' in $3" >> $ROOT/sar.txt
 
     case ${FILE##*.} in
         erl )
