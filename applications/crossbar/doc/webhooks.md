@@ -146,7 +146,7 @@ curl -v -X POST \
 You can also patch an existing webhook:
 
 ```curl
-curl -v -X POST \
+curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID} \
