@@ -44,7 +44,7 @@ Example:
    "default": {
        "numbers_api_url": "https://api.bandwidth.com/public/v2/numbers.api",
        "developer_key": "XXXXXX",
-       "debug": true,
+       "debug": false,
        "sandbox_provisioning": false,
        "enable_provisioning": true,
        "order_name_prefix": "East coast Kazoo",
