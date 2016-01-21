@@ -41,8 +41,6 @@
 %%%-------------------------------------------------------------------
 -module(amqp_cron).
 
--behaviour(amqp_leader).
-
 %% API
 -export([start_link/1,
 	 status/0,
