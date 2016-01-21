@@ -987,7 +987,17 @@
             }
         },
         "/v2/accounts/{ACCOUNTID}/webhooks/attempts": {
-            "get": {}
+            "get": {
+                "description": "List the attempts Kazoo has made to the external servers",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of objects representing webhook attempts made"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/webhooks/{ID}": {
             "delete": {},
@@ -996,7 +1006,17 @@
             "post": {}
         },
         "/v2/accounts/{ACCOUNTID}/webhooks/{ID}/attempts": {
-            "get": {}
+            "get": {
+                "description": "List the attempts Kazoo has made to the external servers for this webhook",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of objects representing webhook attempts made for this webhook"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/websockets": {
             "get": {}
