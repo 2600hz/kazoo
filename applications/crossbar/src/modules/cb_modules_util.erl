@@ -390,7 +390,7 @@ get_caller_id_name(Context, Default) ->
         CIDName -> wh_util:uri_decode(CIDName)
     end.
 
--spec get_caller_id_number(cb_context:context(). api_binary()) -> api_binary().
+-spec get_caller_id_number(cb_context:context(), api_binary()) -> api_binary().
 get_caller_id_number(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-number">>, Default) of
         'undefined' -> 'undefined';
