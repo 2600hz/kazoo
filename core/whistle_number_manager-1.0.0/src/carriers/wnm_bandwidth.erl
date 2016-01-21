@@ -74,9 +74,9 @@
         Prefix == <<"889">>
        ).
 -define(TOLLFREE_LOGIN,
-        whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"tollfree_login">>, "THE-LOGIN")).
+        whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"tollfree_login">>, <<"tollfree-username">>)).
 -define(TOLLFREE_PASSWORD,
-        whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"tollfree_password">>, "THE-PASSWORD")).
+        whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"tollfree_password">>, <<"tollfree-password">>)).
 -define(BW_URL_V1, "https://api.bandwidth.com/public/voip/v1_1/NumberManagementService.asmx").
 
 %%--------------------------------------------------------------------
@@ -121,9 +121,9 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Opts) ->
     find_numbers(Rest, Quantity, Opts);
 find_numbers(<<"1", Rest/binary>>, Quantity, Opts) ->
     find_numbers(Rest, Quantity, Opts);
-find_numbers(<<Prefix:3/binary,_/binary>>, _, _)
+find_numbers(<<Prefix:3/binary,_/binary>>, Quantity, _)
   when ?IS_US_TOLLFREE(Prefix) ->
-    do_search_tollfree(wh_util:to_list(Prefix));
+    do_search_tollfree(wh_util:to_list(Prefix), Quantity);
 find_numbers(<<NPA:3/binary>>, Quantity, _) ->
     Props = [{'areaCode', [wh_util:to_list(NPA)]}
              ,{'maxQuantity', [wh_util:to_list(Quantity)]}
@@ -147,16 +147,17 @@ do_search_by(ByType, Props) ->
                         Num = wh_json:get_ne_binary_value(<<"e164">>, JObj),
                         {Num, JObj}
                     end
-                    || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
+                    || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)
+                   ],
             {'ok', wh_json:from_list(Resp)}
     end.
 
--spec do_search_tollfree(ne_binary()) -> search_ret().
-do_search_tollfree(TollFreePrefix) ->
+-spec do_search_tollfree(ne_binary(), pos_integer()) -> search_ret().
+do_search_tollfree(TollFreePrefix, Quantity) ->
     case maybe_tollfree_login() of
         {'error', _}=E -> E;
         {'ok', SessionID} ->
-            maybe_tollfree_search(SessionID, TollFreePrefix)
+            maybe_tollfree_search(SessionID, TollFreePrefix, Quantity)
     end.
 
 -spec maybe_tollfree_login() -> {'ok', ne_binary()} | {'error', any()}.
@@ -166,14 +167,14 @@ maybe_tollfree_login() ->
     case post_xml(?BW_URL_V1, Body, AdditionalHeaders) of
         {'error', _}=E -> E;
         {'ok', Xml} ->
-            case wh_util:get_xml_value("//LoginResult/text()", Xml) of
+            case wh_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) of
                 'undefined' -> {'error', 'bw_login_failed'};
                 SessionId -> {'ok', SessionId}
             end
     end.
 
--spec maybe_tollfree_search(ne_binary(), ne_binary()) -> search_ret().
-maybe_tollfree_search(SessionId, Prefix) ->
+-spec maybe_tollfree_search(ne_binary(), ne_binary(), pos_integer()) -> search_ret().
+maybe_tollfree_search(SessionId, Prefix, Quantity) ->
     Body = tollfree_search_body(SessionId, Prefix),
     case post_xml(?BW_URL_V1, Body, []) of
         {'error', _}=E -> E;
@@ -183,10 +184,12 @@ maybe_tollfree_search(SessionId, Prefix) ->
                         Num = wh_json:get_ne_binary_value(<<"number">>, JObj),
                         {Num, JObj}
                     end
-                    || Number <- xmerl_xpath:string("//TelephoneNumber", Xml)],
+                    || Number <- lists:sublist(xmerl_xpath:string("//TelephoneNumber", Xml), Quantity)
+                   ],
             {'ok', wh_json:from_list(Resp)}
     end.
 
+-spec tollfree_login_body() -> iolist().
 tollfree_login_body() ->
     ["<?xml version='1.0' encoding='utf-8'?>"
      "<soap:Envelope xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/'>"
@@ -456,11 +459,14 @@ rate_center_to_json(Xml) ->
 -spec verify_response(xml_el()) -> {'ok', ne_binary()} |
                                    {'error', api_binary() | ne_binaries()}.
 verify_response(Xml) ->
-    case wh_util:get_xml_value("/*/status/text()", Xml) of
-        <<"success">> ->
+    case wh_util:get_xml_value("/*/status/text()", Xml) =:= <<"success">>
+        orelse wh_util:get_xml_value("//LoginResponse/LoginResult/text()", Xml) =/= 'undefined'
+        orelse wh_util:get_xml_value("//SearchTelephoneNumbersResponse/SearchTelephoneNumbersResult", Xml) =/= []
+    of
+        'true' ->
             lager:debug("request was successful"),
             {'ok', Xml};
-        _ ->
+        'false' ->
             lager:debug("request failed"),
             {'error', wh_util:get_xml_value("/*/errors/error/message/text()", Xml)}
     end.
