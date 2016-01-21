@@ -23,13 +23,28 @@ to_swagger_json() ->
     Paths = format_as_path_centric(get()),
 
     Swagger = wh_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
+                                 ,{<<"definitions">>, to_swagger_definitions()}
                                  ,{<<"swagger">>, <<"2.0">>}
                                  ,{<<"info">>, ?SWAGGER_INFO}
                                  ]
                                 ,BaseSwagger
                                 ),
-    write_swagger_json(Swagger),
-    Swagger.
+    write_swagger_json(Swagger).
+
+to_swagger_definitions() ->
+    SchemasPath = filename:join([code:priv_dir('crossbar')
+                                 ,"couchdb"
+                                 ,"schemas"
+                                ]),
+    filelib:fold_files(SchemasPath, ".json$", 'false', fun process_schema/2, wh_json:new()).
+
+process_schema(SchemaJSONFile, Definitions) ->
+    SchemaName = wh_util:to_binary(filename:basename(SchemaJSONFile, ".json")),
+
+    {'ok', SchemaJSON} = file:read_file(SchemaJSONFile),
+    SchemaJObj = wh_json:decode(SchemaJSON),
+
+    wh_json:set_value(SchemaName, SchemaJObj, Definitions).
 
 -define(SWAGGER_JSON, filename:join([code:priv_dir('crossbar')
                                     ,"couchdb"
@@ -62,13 +77,40 @@ to_swagger_paths(Paths, BasePaths) ->
 
 to_swagger_path(Path, PathMeta, Acc) ->
     Methods = wh_json:get_value(<<"allowed_methods">>, PathMeta, []),
+    Parameters = swagger_params(PathMeta),
     lists:foldl(fun(Method, Acc1) ->
-                        MethodJObj = wh_json:get_value([Path, Method], Acc, wh_json:new()),
-                        wh_json:set_value([Path, Method], MethodJObj, Acc1)
+                        add_swagger_path(Method, Acc1, Path, Parameters)
                 end
                ,Acc
                ,Methods
                ).
+
+add_swagger_path(Method, Acc, Path, Parameters) ->
+    MethodJObj = wh_json:get_value([Path, Method], Acc),
+    Vs = props:filter_undefined(
+           [{[Path, Method], MethodJObj}
+           ,maybe_add_schema(Path, Method, Parameters)
+           ]
+          ),
+    io:format("add ~p~n", [Vs]),
+    wh_json:insert_values(Vs, Acc).
+
+maybe_add_schema(Path, <<"put">> = Method, Parameters) ->
+    {[Path, Method, <<"parameters">>], Parameters};
+maybe_add_schema(Path, <<"post">> = Method, Parameters) ->
+    {[Path, Method, <<"parameters">>], Parameters};
+maybe_add_schema(_Path, _Method, _Parameters) ->
+    {'undefined', 'undefined'}.
+
+swagger_params(PathMeta) ->
+    io:format("pm: ~p~n", [PathMeta]),
+    Schema = wh_json:get_value(<<"schema">>, PathMeta),
+
+    wh_json:from_list([{<<"name">>, Schema}
+                      ,{<<"in">>, <<"body">>}
+                      ,{<<"required">>, 'true'}
+                      ,{<<"schema">>, wh_json:from_list([{<<"$ref">>, <<"#/definitions/", Schema/binary>>}])}
+                      ]).
 
 format_as_path_centric(Data) ->
     lists:foldl(fun format_pc_module/2
@@ -80,7 +122,7 @@ format_pc_module({Module, Config}, Acc) ->
     ModuleName = module_name(Module),
 
     lists:foldl(fun(ConfigData, Acc1) ->
-                        format_pc_config(ConfigData, Acc1, ModuleName)
+                        format_pc_config(ConfigData, Acc1, Module, ModuleName)
                 end
                ,Acc
                ,Config
@@ -89,25 +131,28 @@ format_pc_module(_MC, Acc) ->
     io:format("skipping ~p~n", [_MC]),
     Acc.
 
-format_pc_config({Callback, Paths}, Acc, ModuleName) ->
+format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
     lists:foldl(fun(Path, Acc1) ->
-                        format_pc_callback(Path, Acc1, ModuleName, Callback)
+                        format_pc_callback(Path, Acc1, Module, ModuleName, Callback)
                 end
                ,Acc
                ,Paths
                ).
 
-format_pc_callback({[], []}, Acc, _ModuleName, _Callback) ->
+format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) ->
     Acc;
-format_pc_callback({Path, []}, Acc, ModuleName, Callback) ->
+format_pc_callback({Path, []}, Acc, _Module, ModuleName, Callback) ->
     PathName = path_name(Path, ModuleName),
     wh_json:set_value([PathName, wh_util:to_binary(Callback)], <<"not supported">>, Acc);
-format_pc_callback({Path, Vs}, Acc, ModuleName, Callback) ->
+format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = path_name(Path, ModuleName),
-    wh_json:set_value([PathName, wh_util:to_binary(Callback)]
-                     ,[wh_util:to_lower_binary(V) || V <- Vs]
-                     ,Acc
-                     ).
+    wh_json:set_values([{[PathName, wh_util:to_binary(Callback)]
+                        ,[wh_util:to_lower_binary(V) || V <- Vs]
+                        }
+                       ,{[PathName, <<"schema">>], base_module_name(Module)}
+                       ]
+                      ,Acc
+                      ).
 
 path_name(Path, ModuleName) ->
     wh_util:join_binary([<<>>, ModuleName | format_path_tokens(Path)], <<"/">>).
@@ -123,6 +168,15 @@ format_path_token(<<"_">>) ->
 format_path_token(<<"_", Rest/binary>>) ->
     <<"{", (wh_util:to_upper_binary(Rest))/binary, "}">>;
 format_path_token(Token) -> Token.
+
+base_module_name(Module) when is_atom(Module) ->
+    base_module_name(wh_util:to_binary(Module));
+base_module_name(<<_/binary>>=Module) ->
+    {'match', [Name|_]} = re:run(Module
+                                ,<<"^cb_([a-z_]+?)(?:_v([0-9]))?$">>
+                                ,[{'capture', 'all_but_first', 'binary'}]
+                                ),
+    Name.
 
 module_name(Module) when is_atom(Module) ->
     module_name(wh_util:to_binary(Module));
@@ -160,7 +214,7 @@ get() ->
 process_application(App) ->
     EBinDir = code:lib_dir(App, 'ebin'),
     io:format("looking in ~p~n", [EBinDir]),
-    filelib:fold_files(EBinDir, "^cb_.*.beam$", 'false', fun process_module/2, []).
+    filelib:fold_files(EBinDir, "^cb_webh.*.beam$", 'false', fun process_module/2, []).
 
 process_module(File, Acc) ->
     io:format("processing file ~p~n", [File]),
