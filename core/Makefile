@@ -1,6 +1,7 @@
 ROOT = ..
 
-MAKEDIRS = */Makefile
+MAKEDIRS = amqp_leader-*/Makefile \
+	*/Makefile
 
 .PHONY: all compile clean test $(MAKEDIRS)
 

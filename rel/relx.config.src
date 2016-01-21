@@ -2,11 +2,6 @@ ToName = fun (Apps) ->
                  [list_to_atom(hd(string:tokens(App,"-"))) || App <- Apps]
          end,
 
-Is_OTP_GE_18 = case erlang:system_info(otp_release) of
-                   [$1,D|_] when D >= $8 -> true;
-                   _ -> false
-               end,
-
 Apps = ToName([App || "applications/"++App <- filelib:wildcard("applications/*"), App /= "Makefile"]),
 Core = ToName([App ||         "core/"++App <- filelib:wildcard(        "core/*"), App /= "Makefile"]),
 Deps = ToName([App ||         "deps/"++App <- filelib:wildcard(        "deps/*"), App /= "Makefile"]),
@@ -23,11 +18,6 @@ Base = [ {'++', Core}
        , {'++', [rabbit_common]}
          %% exmpp Duplicated modules: tls specified in ssl and exmpp
        , {'--', [exmpp]}
-         %% merl Part of OTP since 18
-       , {'--', case Is_OTP_GE_18 of
-                    true  -> [merl];
-                    false -> []
-                end}
        ],
 LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
 Based = [{A, 'load'} || A <- lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) )],
