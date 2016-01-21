@@ -1,8 +1,6 @@
 {
     "definitions": {
         "access_lists": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "access_lists",
             "additionalProperties": true,
             "description": "Access Control List entries for device or account",
             "name": "ACL Entry",
@@ -38,8 +36,6 @@
             "type": "object"
         },
         "account_rate_limits": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "account_rate_limits",
             "additionalProperties": true,
             "description": "describe limits for SIP requests",
             "name": "Rate limits",
@@ -55,8 +51,6 @@
             "type": "object"
         },
         "accounts": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "accounts",
             "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
             "name": "Account",
             "properties": {
@@ -224,8 +218,6 @@
             "type": "object"
         },
         "acls": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "acls",
             "additionalProperties": false,
             "description": "Access Control List entries",
             "name": "ACL Entry",
@@ -269,8 +261,6 @@
             "type": "object"
         },
         "allotments": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "allotments",
             "description": "",
             "name": "Allotments",
             "patternProperties": {
@@ -331,8 +321,6 @@
             "type": "object"
         },
         "api_auth": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "api_auth",
             "additionalProperties": false,
             "description": "Provides an auth-token via an Account API key",
             "name": "API Auth",
@@ -350,8 +338,6 @@
             "type": "object"
         },
         "app": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "app",
             "additionalProperties": false,
             "description": "Appstore applications",
             "name": "Application",
@@ -480,8 +466,6 @@
             "type": "object"
         },
         "audit_logs": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "audit_logs",
             "description": "Audit log of what caused a billing event to occur",
             "name": "Audit Log",
             "properties": {
@@ -547,8 +531,6 @@
             "type": "object"
         },
         "blacklists": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "blacklists",
             "description": "Schema for a blacklists",
             "name": "Blacklists",
             "properties": {
@@ -572,8 +554,6 @@
             "type": "object"
         },
         "bookkeepers": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "bookkeepers",
             "description": "The bookkeeper modules provided by Kazoo",
             "name": "Bookkeepers",
             "properties": {
@@ -588,8 +568,6 @@
             "type": "object"
         },
         "call_waiting": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "call_waiting",
             "description": "Parameters for server-side call waiting",
             "name": "Call waiting",
             "properties": {
@@ -604,8 +582,6 @@
             "type": "object"
         },
         "caller_id": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "caller_id",
             "description": "Defines caller ID settings based on the type of call being made",
             "name": "Caller ID",
             "properties": {
@@ -680,8 +656,6 @@
             "type": "object"
         },
         "callflows": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows",
             "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
             "name": "Callflow",
             "properties": {
@@ -769,8 +743,6 @@
             "type": "object"
         },
         "callflows.collect_dtmf": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.collect_dtmf",
             "description": "Validator for the Collect DTMF callflow element",
             "properties": {
                 "collection_name": {
@@ -852,8 +824,6 @@
             "type": "object"
         },
         "callflows.conference": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.conference",
             "description": "Validator for the Conference callflow element",
             "properties": {
                 "config": {
@@ -924,8 +894,6 @@
             "type": "object"
         },
         "callflows.language": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.language",
             "description": "Validator for the Language callflow element",
             "properties": {
                 "language": {
@@ -940,8 +908,6 @@
             "type": "object"
         },
         "callflows.lookupcidname": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.lookupcidname",
             "description": "Validator for the Lookup callflow element",
             "properties": {
                 "lists": {
@@ -958,8 +924,6 @@
             "type": "object"
         },
         "callflows.manual_presence": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.manual_presence",
             "description": "Validator for the Manual Presence callflow action",
             "properties": {
                 "presence_id": {
@@ -985,8 +949,6 @@
             "type": "object"
         },
         "callflows.nomorobo": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.nomorobo",
             "description": "Validator for the NoMoRobo callflow action",
             "properties": {
                 "password": {
@@ -1010,8 +972,6 @@
             "type": "object"
         },
         "callflows.pivot": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.pivot",
             "description": "Validator for the Pivot callflow element",
             "properties": {
                 "cdr_url": {
@@ -1062,8 +1022,6 @@
             "type": "object"
         },
         "callflows.record_call": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.record_call",
             "description": "Validator for the Record Call callflow action",
             "properties": {
                 "action": {
@@ -1123,8 +1081,6 @@
             "type": "object"
         },
         "callflows.response": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.response",
             "description": "Validator for the Response callflow action",
             "properties": {
                 "code": {
@@ -1150,8 +1106,6 @@
             "type": "object"
         },
         "callflows.ring_group": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.ring_group",
             "description": "Validator for the Ring Group callflow element",
             "properties": {
                 "endpoints": {
@@ -1241,8 +1195,6 @@
             "type": "object"
         },
         "callflows.send_dtmf": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.send_dtmf",
             "description": "Validator for the Send DTMF callflow action",
             "properties": {
                 "digits": {
@@ -1265,8 +1217,6 @@
             "type": "object"
         },
         "callflows.tts": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "callflows.tts",
             "description": "Validator for the TTS (Text-to-speech) callflow action",
             "properties": {
                 "engine": {
@@ -1306,7 +1256,6 @@
             "type": "object"
         },
         "cccps": {
-            "_id": "cccps",
             "description": "Calling cards callback platform user's info",
             "id": "http://json-schema.org/draft-03/schema#",
             "properties": {
@@ -1341,8 +1290,6 @@
             }
         },
         "cdrs": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "cdr",
             "additionalProperties": false,
             "description": "Call Detail Records",
             "name": "CDR",
@@ -1600,8 +1547,6 @@
             "type": "object"
         },
         "clicktocall": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "clicktocall",
             "description": "Click-to-call allows you to create URLs that can be POSTed to with a phone number or SIP URI and create a phone call from the provided contact information to a destination you have pre-determined.",
             "name": "Click-to-Call",
             "properties": {
@@ -1676,8 +1621,6 @@
             "type": "object"
         },
         "conferences": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "conferences",
             "description": "Schema for conferences",
             "name": "Conference",
             "properties": {
@@ -1826,7 +1769,6 @@
             "type": "object"
         },
         "connectivity": {
-            "_id": "connectivity",
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
             "id": "http://json-schema.org/draft-03/schema#",
             "properties": {
@@ -2086,8 +2028,6 @@
             }
         },
         "device_rate_limits": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "device_rate_limits",
             "additionalProperties": true,
             "description": "describe limits for SIP requests",
             "name": "Rate limits",
@@ -2151,8 +2091,6 @@
             "type": "object"
         },
         "devices": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "devices",
             "description": "A device be it a SIP phone or landline number",
             "name": "Device",
             "properties": {
@@ -2699,8 +2637,6 @@
             "type": "object"
         },
         "dialplans": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "dialplans",
             "additionalProperties": {
                 "properties": {
                     "description": {
@@ -2739,8 +2675,6 @@
             "type": "object"
         },
         "directories": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "directories",
             "description": "Allow a caller to search for a user/device by name instead of extension/DID",
             "name": "Directory",
             "properties": {
@@ -2790,8 +2724,6 @@
             "type": "object"
         },
         "domain_hosts": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "domain_hosts",
             "additionalProperties": false,
             "description": "Domain host settings for white-labelling",
             "name": "domain_hosts",
@@ -2822,8 +2754,6 @@
             }
         },
         "domains": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "domains",
             "description": "Domain settings for white-labelling",
             "name": "domains",
             "properties": {
@@ -2867,8 +2797,6 @@
             }
         },
         "faxbox": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "faxbox",
             "description": "FaxBoxes allow configuration of individual fax virtual machines",
             "name": "Fax Box",
             "properties": {
@@ -3139,8 +3067,6 @@
             "type": "object"
         },
         "faxes": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "faxes",
             "description": "Faxes API allows you to update and access fax jobs for both sending and receiving",
             "name": "Fax",
             "properties": {
@@ -3387,8 +3313,6 @@
             "type": "object"
         },
         "ledgers": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "ledgers",
             "description": "ledgers document",
             "name": "ledgers",
             "properties": {
@@ -3410,8 +3334,6 @@
             "type": "object"
         },
         "limits": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "limits",
             "description": "Limit an account's ability to place concurrent calls using flat rate trunks",
             "name": "Limits",
             "properties": {
@@ -3469,8 +3391,6 @@
             "type": "object"
         },
         "list_entries": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "list_entries",
             "description": "Schema for a match list entries",
             "properties": {
                 "displayname": {
@@ -3534,8 +3454,6 @@
             "type": "object"
         },
         "lists": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "lists",
             "description": "Schema for a match list",
             "properties": {
                 "description": {
@@ -3565,8 +3483,6 @@
             "type": "object"
         },
         "media": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "media",
             "description": "Schema for media",
             "name": "Media",
             "properties": {
@@ -3734,8 +3650,6 @@
             "type": "object"
         },
         "menus": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "menus",
             "description": "Schema for a menus",
             "name": "Menu",
             "properties": {
@@ -3874,8 +3788,6 @@
             "type": "object"
         },
         "metaflows": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "metaflows",
             "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
             "name": "Metaflow",
             "properties": {
@@ -3967,8 +3879,6 @@
             "type": "object"
         },
         "notifications": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "notifications",
             "description": "Notifications templates",
             "name": "Notifications",
             "properties": {
@@ -4128,8 +4038,6 @@
             "type": "object"
         },
         "phone_numbers": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "phone_numbers",
             "description": "Schema for a phone_number",
             "name": "Phone Number",
             "properties": {
@@ -4362,8 +4270,6 @@
             "type": "object"
         },
         "port_requests": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "port_requests",
             "description": "Schema for a port request",
             "name": "Port Request",
             "properties": {
@@ -4503,8 +4409,6 @@
             "type": "object"
         },
         "profile": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "profile",
             "description": "Defines user extended properties",
             "name": "User extended properties",
             "properties": {
@@ -4592,8 +4496,6 @@
             "type": "object"
         },
         "provisioner_v5": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "provisioner_v5",
             "description": "Provisioner schema",
             "name": "Provisioner V5",
             "properties": {
@@ -4768,8 +4670,6 @@
             "type": "object"
         },
         "queue_update": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "queue_update",
             "description": "Schema for queue update request",
             "name": "Call Update",
             "properties": {
@@ -4796,8 +4696,6 @@
             "type": "object"
         },
         "queues": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "queues",
             "description": "Call Queues - FIFO call queues for serializing callers connecting to agents",
             "name": "Call Queue",
             "properties": {
@@ -4933,8 +4831,6 @@
             "type": "object"
         },
         "rates": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "rates",
             "description": "Defines a rate for a given prefix",
             "name": "Rate",
             "properties": {
@@ -5047,8 +4943,6 @@
             "type": "object"
         },
         "resource_jobs": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "resource_jobs",
             "description": "Schema for resource jobs (bulk number uploads)",
             "name": "Resource Job",
             "properties": {
@@ -5080,8 +4974,6 @@
             "type": "object"
         },
         "resources": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "resources",
             "description": "Schema for resources",
             "name": "Resource",
             "properties": {
@@ -5492,8 +5384,6 @@
             "type": "object"
         },
         "service_plans": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "service_plans",
             "description": "Describes services offered to sub-accounts",
             "name": "Service Plan",
             "properties": {
@@ -5524,8 +5414,6 @@
             "type": "object"
         },
         "shared_auth": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "shared_auth",
             "additionalProperties": false,
             "description": "Provides a local auth-token via a shared auth-token",
             "name": "Shared Auth",
@@ -5543,8 +5431,6 @@
             "type": "object"
         },
         "sms": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "sms",
             "description": "sms document",
             "name": "sms",
             "properties": {
@@ -5579,8 +5465,6 @@
             "type": "object"
         },
         "temporal_rules": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "temporal_rules",
             "description": "Schema for a temporal rules",
             "name": "Temporal Rule",
             "properties": {
@@ -5687,8 +5571,6 @@
             "type": "object"
         },
         "temporal_rules_sets": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "temporal_rules_sets",
             "description": "Schema for a temporal rules sets",
             "name": "Temporal Rule Set",
             "properties": {
@@ -5716,8 +5598,6 @@
             "type": "object"
         },
         "token_restrictions": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "token_restrictions",
             "description": "Schema for token restrictions",
             "name": "Token restrictions",
             "properties": {
@@ -5795,7 +5675,6 @@
             "type": "object"
         },
         "trunkstore": {
-            "_id": "trunkstore",
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
             "id": "http://json-schema.org/draft-03/schema#",
             "properties": {
@@ -6080,8 +5959,6 @@
             }
         },
         "ubiquiti_auth": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "ubiquit_auth",
             "description": "Provides an auth-token via Ubiquiti's SSO",
             "name": "Unbiquit Auth",
             "properties": {
@@ -6106,8 +5983,6 @@
             "type": "object"
         },
         "user_auth": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "user_auth",
             "description": "Provides an auth-token via user credentials",
             "name": "User Auth",
             "properties": {
@@ -6160,8 +6035,6 @@
             "type": "object"
         },
         "user_auth_recovery": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "user_auth_recovery",
             "description": "Provides an auth-token via user credentials",
             "name": "Password Recovery",
             "properties": {
@@ -6198,8 +6071,6 @@
             "type": "object"
         },
         "users": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "users",
             "description": "Schema for a user",
             "name": "User",
             "properties": {
@@ -6685,8 +6556,6 @@
             "type": "object"
         },
         "vmboxes": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "vmboxes",
             "description": "Schema for a voicemail box",
             "name": "Voicemail Box",
             "properties": {
@@ -6895,8 +6764,6 @@
             "type": "object"
         },
         "webhook_attempts": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "webhook_attempts",
             "description": "Log of an attempt to send a webhook to a third-party server",
             "name": "Webhook Attempt",
             "properties": {
@@ -6940,8 +6807,6 @@
             "type": "object"
         },
         "webhooks": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "webhooks",
             "description": "Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.",
             "name": "Webhook",
             "properties": {
@@ -7004,8 +6869,6 @@
             "type": "object"
         },
         "whitelabels": {
-            "$schema": "http://json-schema.org/draft-03/schema#",
-            "_id": "whitelabels",
             "description": "Whitelabel settings",
             "name": "Whitelabel",
             "properties": {
