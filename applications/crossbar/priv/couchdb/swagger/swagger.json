@@ -953,7 +953,7 @@
         },
         "/v2/accounts/{ACCOUNTID}/webhooks": {
             "get": {
-                "description": "Listing of webhooks for the account",
+                "description": "Summary listing of webhooks for the account",
                 "produces": [
                     "application/json"
                 ],
@@ -1000,10 +1000,50 @@
             }
         },
         "/v2/accounts/{ACCOUNTID}/webhooks/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
+            "delete": {
+                "description": "Remove the webhook from the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The removed webhook object"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get the webhook details",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The webhook object, in full"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Patch the webhook object",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The patched webhook object, in full"
+                    }
+                }
+            },
+            "post": {
+                "description": "Edit the webhook object",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The edited webhook object, in full"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/webhooks/{ID}/attempts": {
             "get": {
