@@ -48,7 +48,12 @@ process_schema(SchemaJSONFile, Definitions) ->
     {'ok', SchemaJSON} = file:read_file(SchemaJSONFile),
     SchemaJObj = wh_json:decode(SchemaJSON),
 
-    wh_json:set_value(SchemaName, SchemaJObj, Definitions).
+    wh_json:set_value(SchemaName
+                     ,wh_json:delete_keys([<<"_id">>, <<"$schema">>]
+                                         ,SchemaJObj
+                                         )
+                     ,Definitions
+                     ).
 
 -define(SWAGGER_JSON, filename:join([code:priv_dir('crossbar')
                                     ,"couchdb"
