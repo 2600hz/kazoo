@@ -965,13 +965,15 @@
             },
             "patch": {
                 "description": "Re-enable the collection of webhooks",
-                "produces":["application/json"],
-                "responses":{
-                    "200":{
-                        "description":"Result of reenabling hooks"
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Result of reenabling hooks"
                     }
                 }
-            }
+            },
             "put": {
                 "description": "Create a new webhook",
                 "produces": [
