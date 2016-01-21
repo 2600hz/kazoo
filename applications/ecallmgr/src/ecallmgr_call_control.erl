@@ -84,7 +84,7 @@
 -record(state, {
           node :: atom()
          ,call_id :: ne_binary()
-         ,command_q = queue:new() :: queue()
+         ,command_q = queue:new() :: queue:queue()
          ,current_app :: api_binary()
          ,current_cmd :: api_object()
          ,start_time = os:timestamp() :: wh_now()
@@ -656,7 +656,7 @@ handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
         'false' -> State
     end.
 
--spec flush_group_id(queue(), api_binary(), ne_binary()) -> queue().
+-spec flush_group_id(queue:queue(), api_binary(), ne_binary()) -> queue:queue().
 flush_group_id(CmdQ, 'undefined', _) -> CmdQ;
 flush_group_id(CmdQ, GroupId, AppName) ->
     Filter = wh_json:from_list([{<<"Application-Name">>, AppName}
@@ -899,7 +899,7 @@ handle_dialplan(JObj, #state{call_id=CallId
     end.
 
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
--spec insert_command(state(), insert_at_options(), wh_json:object()) -> queue().
+-spec insert_command(state(), insert_at_options(), wh_json:object()) -> queue:queue().
 insert_command(#state{node=Node
                       ,call_id=CallId
                       ,command_q=CommandQ
@@ -962,7 +962,7 @@ execute_queue_commands([Command|Commands], DefJObj, State) ->
             execute_queue_commands(Commands, DefJObj, State)
     end.
 
--spec insert_command_into_queue(queue(), 'tail' | 'head', wh_json:object()) -> queue().
+-spec insert_command_into_queue(queue:queue(), 'tail' | 'head', wh_json:object()) -> queue:queue().
 insert_command_into_queue(Q, Position, JObj) ->
     InsertFun = queue_insert_fun(Position),
     case wh_json:get_value(<<"Application-Name">>, JObj) of
@@ -971,7 +971,7 @@ insert_command_into_queue(Q, Position, JObj) ->
         _Else -> InsertFun(JObj, Q)
     end.
 
--spec insert_queue_command_into_queue(function(), queue(), wh_json:object()) -> queue().
+-spec insert_queue_command_into_queue(function(), queue:queue(), wh_json:object()) -> queue:queue().
 insert_queue_command_into_queue(InsertFun, Q, JObj) ->
     'true' = wapi_dialplan:queue_v(JObj),
     DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)),
@@ -1017,7 +1017,7 @@ queue_insert_fun('head') ->
 %% @end
 %%--------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue('undefined' | list(), queue()) -> queue().
+-spec maybe_filter_queue('undefined' | list(), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->

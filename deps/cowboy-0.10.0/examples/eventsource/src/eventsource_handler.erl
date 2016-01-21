@@ -22,6 +22,6 @@ terminate(_Reason, _Req, _State) ->
 	ok.
 
 id() ->
-	{Mega, Sec, Micro} = erlang:now(),
+	{Mega, Sec, Micro} = erlang:timestamp(),
 	Id = (Mega * 1000000 + Sec) * 1000000 + Micro,
 	integer_to_list(Id, 16).

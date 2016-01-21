@@ -113,7 +113,7 @@ maybe_remove_failure(_K, _AccountId, _HookId) ->
 find_failures(Keys) ->
     dict:to_list(lists:foldl(fun process_failed_key/2, dict:new(), Keys)).
 
--spec process_failed_key(tuple(), dict()) -> dict().
+-spec process_failed_key(tuple(), dict:dict()) -> dict:dict().
 process_failed_key(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
                    ,Dict
                   ) ->

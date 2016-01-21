@@ -16,7 +16,7 @@
 
 -module(ssl_compat).
 
-%% We don't want warnings about the use of erlang:now/0 in
+%% We don't want warnings about the use of erlang:timestamp/0 in
 %% this module.
 -compile(nowarn_deprecated_function).
 

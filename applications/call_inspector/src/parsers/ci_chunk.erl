@@ -334,7 +334,7 @@ c_seq_number(Chunk) ->
 group_by(Fun, List) ->
     dict:to_list(group_as_dict(Fun, List)).
 
--spec group_as_dict(fun((V) -> K), [V]) -> dict() when K :: atom().
+-spec group_as_dict(fun((V) -> K), [V]) -> dict:dict() when K :: atom().
 group_as_dict(Fun, List) ->
     F = fun(Value, Dict) ->
                 case Fun(Value) of

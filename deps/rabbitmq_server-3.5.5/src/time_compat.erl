@@ -33,7 +33,7 @@
 
 -module(time_compat).
 
-%% We don't want warnings about the use of erlang:now/0 in
+%% We don't want warnings about the use of erlang:timestamp/0 in
 %% this module.
 -compile(nowarn_deprecated_function).
 %%
@@ -177,7 +177,7 @@ timestamp() ->
 	erlang:timestamp()
     catch
 	error:undef ->
-	    erlang:now()
+	    erlang:timestamp()
     end.
 
 unique_integer() ->
@@ -185,7 +185,7 @@ unique_integer() ->
 	erlang:unique_integer()
     catch
 	error:undef ->
-	    {MS, S, US} = erlang:now(),
+	    {MS, S, US} = erlang:timestamp(),
 	    (MS*1000000+S)*1000000+US
     end.
 
@@ -198,11 +198,11 @@ unique_integer(Modifiers) ->
 	error:undef ->
 	    case is_valid_modifier_list(Modifiers) of
 		true ->
-		    %% now() converted to an integer
+		    %% erlang:timestamp() converted to an integer
 		    %% fullfill the requirements of
 		    %% all modifiers: unique, positive,
 		    %% and monotonic...
-		    {MS, S, US} = erlang:now(),
+		    {MS, S, US} = erlang:timestamp(),
 		    (MS*1000000+S)*1000000+US;
 		false ->
 		    erlang:error(badarg, [Modifiers])
@@ -280,7 +280,7 @@ integer_time_unit(I) when is_integer(I), I > 0 -> I;
 integer_time_unit(BadRes) -> erlang:error(bad_time_unit, [BadRes]).
 
 erlang_system_time_fallback() ->
-    {MS, S, US} = erlang:now(),
+    {MS, S, US} = erlang:timestamp(),
     (MS*1000000+S)*1000000+US.
 
 os_system_time_fallback() ->

@@ -81,10 +81,10 @@ update_disk_serial() ->
 
 %% Generate an un-hashed guid.
 fresh() ->
-    %% We don't use erlang:now() here because a) it may return
+    %% We don't use erlang:timestamp() here because a) it may return
     %% duplicates when the system clock has been rewound prior to a
     %% restart, or ids were generated at a high rate (which causes
-    %% now() to move ahead of the system time), and b) it is really
+    %% erlang:timestamp() to move ahead of the system time), and b) it is really
     %% slow since it takes a global lock and makes a system call.
     %%
     %% A persisted serial number, the node, and a unique reference

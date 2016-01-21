@@ -254,7 +254,7 @@ init([Args, Owner]) ->
     HostStr = host_to_list(Host),
     OnReplyFun = proplists:get_value(on_reply, Args, fun(_) -> ok end),
     OnConnectFun = proplists:get_value(on_connect, Args, fun(_) -> ok end),
-    {MS, S, MMS} = now(),
+    {MS, S, MMS} = erlang:timestamp(),
     InitRid = MS * 1000000 * 1000000 + S * 1000000 + MMS,
     {ok, Parser} = exml_stream:new_parser(),
     {ok, Client} = fusco_cp:start_link({HostStr, Port, HTTPS},

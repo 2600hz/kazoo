@@ -280,7 +280,7 @@ hipe_compile() ->
     Count = length(HipeModules),
     io:format("~nHiPE compiling:  |~s|~n                 |",
               [string:copies("-", Count)]),
-    T1 = erlang:now(),
+    T1 = erlang:timestamp(),
     PidMRefs = [spawn_monitor(fun () -> [begin
                                              {ok, M} = hipe:c(M, [o3]),
                                              io:format("#")
@@ -291,7 +291,7 @@ hipe_compile() ->
          {'DOWN', MRef, process, _, normal} -> ok;
          {'DOWN', MRef, process, _, Reason} -> exit(Reason)
      end || {_Pid, MRef} <- PidMRefs],
-    T2 = erlang:now(),
+    T2 = erlang:timestamp(),
     Duration = timer:now_diff(T2, T1) div 1000000,
     io:format("|~n~nCompiled ~B modules in ~Bs~n", [Count, Duration]),
     {ok, Count, Duration}.

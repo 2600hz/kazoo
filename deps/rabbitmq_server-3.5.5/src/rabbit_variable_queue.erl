@@ -778,7 +778,7 @@ update_rates(State = #vqstate{ in_counter      =     InCount,
                                                ack_in    =  AckInRate,
                                                ack_out   = AckOutRate,
                                                timestamp = TS }}) ->
-    Now = erlang:now(),
+    Now = erlang:timestamp(),
 
     Rates = #rates { in        = update_rate(Now, TS,     InCount,     InRate),
                      out       = update_rate(Now, TS,    OutCount,    OutRate),
@@ -1122,7 +1122,7 @@ init(IsDurable, IndexState, DeltaCount, DeltaBytes, Terms,
                                     count        = DeltaCount1,
                                     end_seq_id   = NextSeqId })
             end,
-    Now = now(),
+    Now = erlang:timestamp(),
     IoBatchSize = rabbit_misc:get_env(rabbit, msg_store_io_batch_size,
                                       ?IO_BATCH_SIZE),
 

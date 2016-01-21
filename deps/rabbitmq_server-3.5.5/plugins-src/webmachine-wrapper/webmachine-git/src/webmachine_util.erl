@@ -368,14 +368,14 @@ unescape_quoted_string([Char | Rest], Acc) ->
     unescape_quoted_string(Rest, [Char | Acc]).
 
 
-%% @type now() = {MegaSecs, Secs, MicroSecs}
+%% @type erlang:timestamp() = {MegaSecs, Secs, MicroSecs}
 
 %% This is faster than timer:now_diff() because it does not use bignums.
 %% But it returns *milliseconds*  (timer:now_diff returns microseconds.)
 %% From http://www.erlang.org/ml-archive/erlang-questions/200205/msg00027.html
 
-%% @doc  Compute the difference between two now() tuples, in milliseconds.
-%% @spec now_diff_milliseconds(now(), now()) -> integer()
+%% @doc  Compute the difference between two erlang:timestamp() tuples, in milliseconds.
+%% @spec now_diff_milliseconds(erlang:timestamp(), erlang:timestamp()) -> integer()
 now_diff_milliseconds(undefined, undefined) ->
     0;
 now_diff_milliseconds(undefined, T2) ->

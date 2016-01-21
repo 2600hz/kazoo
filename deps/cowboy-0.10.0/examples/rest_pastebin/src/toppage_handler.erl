@@ -17,7 +17,7 @@
 
 init(_Transport, _Req, []) ->
 	% For the random number generator:
-	{X, Y, Z} = now(),
+	{X, Y, Z} = erlang:timestamp(),
 	random:seed(X, Y, Z),
 	{upgrade, protocol, cowboy_rest}.
 

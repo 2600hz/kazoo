@@ -66,7 +66,7 @@ retrieve_recording(Call) ->
             {'empty', Call}
     end.
 
--spec get_recordings(whapps_call:call()) -> queue().
+-spec get_recordings(whapps_call:call()) -> queue:queue().
 get_recordings(Call) ->
     case whapps_call:kvs_fetch(?RECORDINGS_KEY, Call) of
         'undefined' -> queue:new();

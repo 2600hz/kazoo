@@ -857,7 +857,7 @@ as_binary(V) when is_list(V) ->
 -spec(generate_resource/0 :: () -> string()).
 
 generate_resource() ->
-    {A, B, C} = erlang:now(),
+    {A, B, C} = erlang:timestamp(),
     lists:flatten(["exmpp#",
 		   integer_to_list(A),
 		   integer_to_list(B),

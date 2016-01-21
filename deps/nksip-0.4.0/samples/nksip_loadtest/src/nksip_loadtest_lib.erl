@@ -204,10 +204,10 @@ launch(Opts) ->
                 end
             end,
             empty(),
-            Start = now(),
+            Start = erlang:timestamp(),
             [proc_lib:spawn(fun() -> Fun(Pos) end) || Pos <- lists:seq(1, Processes)],
             Ok = wait(Total, 0),
-            Stop = now();
+            Stop = erlang:timestamp();
         full ->
             case NoAutoStart of
                 true -> ok;
@@ -220,10 +220,10 @@ launch(Opts) ->
             end,
             timer:sleep(100),
             empty(),
-            Start = now(),
+            Start = erlang:timestamp(),
             [proc_lib:spawn(fun() -> Fun(Pos) end) || Pos <- lists:seq(1, Processes)],
             Ok = wait(Total, 0),
-            Stop = now(),
+            Stop = erlang:timestamp(),
             case NoAutoStart of
                 true -> ok;
                 false -> ok = stop_clients(Processes)

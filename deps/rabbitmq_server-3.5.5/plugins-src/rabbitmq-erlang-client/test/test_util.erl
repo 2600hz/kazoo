@@ -863,7 +863,7 @@ large_content_test() ->
     {ok, Channel} = amqp_connection:open_channel(Connection),
     #'queue.declare_ok'{queue = Q}
         = amqp_channel:call(Channel, #'queue.declare'{}),
-    {A1,A2,A3} = now(), random:seed(A1, A2, A3),
+    {A1,A2,A3} = erlang:timestamp(), random:seed(A1, A2, A3),
     F = list_to_binary([random:uniform(256)-1 || _ <- lists:seq(1, 1000)]),
     Payload = list_to_binary([[F || _ <- lists:seq(1, 1000)]]),
     Publish = #'basic.publish'{exchange = <<>>, routing_key = Q},

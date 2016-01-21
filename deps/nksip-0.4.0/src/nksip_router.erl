@@ -24,8 +24,6 @@
 
 -behaviour(gen_server).
 
--include_lib("whistle/include/otp_compatibility.hrl").
-
 -export([incoming_sync/1, incoming_sync/4]).
 -export([get_all_calls/0]).
 -export([pending_msgs/0, pending_work/0]).
@@ -69,10 +67,10 @@ incoming_sync(#sipmsg{app_id=AppId, call_id=CallId}=SipMsg) ->
     Name = name(CallId),
     Timeout = nksip_config_cache:sync_call_time(),
     case catch gen_server:call(Name, {incoming, SipMsg}, Timeout) of
-        {'EXIT', Error} -> 
+        {'EXIT', Error} ->
             ?warning(AppId, CallId, "error calling incoming_sync: ~p", [Error]),
             {error, timeout};
-        Result -> 
+        Result ->
             Result
     end.
 
@@ -85,10 +83,10 @@ incoming_sync(AppId, CallId, Transp, Msg) ->
     Name = name(CallId),
     Timeout = nksip_config_cache:sync_call_time(),
     case catch gen_server:call(Name, {incoming, AppId, CallId, Transp, Msg}, Timeout) of
-        {'EXIT', Error} -> 
+        {'EXIT', Error} ->
             ?warning(AppId, CallId, "error calling incoming_sync: ~p", [Error]),
             {error, timeout};
-        Result -> 
+        Result ->
             Result
     end.
 
@@ -127,23 +125,23 @@ pending_msgs() ->
 -record(state, {
     pos :: integer(),
     name :: atom(),
-    pending :: dict()
+    pending :: dict:dict()
 }).
 
 
 %% @private
 start_link(Pos, Name) ->
     gen_server:start_link({local, Name}, ?MODULE, [Pos, Name], []).
-        
-%% @private 
+
+%% @private
 -spec init(term()) ->
     gen_server_init(#state{}).
 
 init([Pos, Name]) ->
     Name = ets:new(Name, [named_table, protected]),
     SD = #state{
-        pos = Pos, 
-        name = Name, 
+        pos = Pos,
+        name = Name,
         pending = dict:new()
     },
     {ok, SD}.
@@ -155,7 +153,7 @@ init([Pos, Name]) ->
 
 handle_call({send_work_sync, AppId, CallId, Work, Caller}, From, SD) ->
     case send_work_sync(AppId, CallId, Work, Caller, From, SD) of
-        {ok, SD1} -> 
+        {ok, SD1} ->
             {noreply, SD1};
         {error, Error} ->
             ?error(AppId, CallId, "error sending work ~p: ~p", [Work, Error]),
@@ -165,7 +163,7 @@ handle_call({send_work_sync, AppId, CallId, Work, Caller}, From, SD) ->
 handle_call({incoming, SipMsg}, _From, SD) ->
     #sipmsg{app_id=AppId, call_id=CallId} = SipMsg,
     case send_work_sync(AppId, CallId, {incoming, SipMsg}, none, none, SD) of
-        {ok, SD1} -> 
+        {ok, SD1} ->
             {reply, ok, SD1};
         {error, Error} ->
             ?error(AppId, CallId, "error processing incoming message: ~p", [Error]),
@@ -174,7 +172,7 @@ handle_call({incoming, SipMsg}, _From, SD) ->
 
 handle_call({incoming, AppId, CallId, Transp, Msg}, _From, SD) ->
     case send_work_sync(AppId, CallId, {incoming, AppId, CallId, Transp, Msg}, none, none, SD) of
-        {ok, SD1} -> 
+        {ok, SD1} ->
             {reply, ok, SD1};
         {error, Error} ->
             ?error(AppId, CallId, "error processing incoming message: ~p", [Error]),
@@ -185,7 +183,7 @@ handle_call({incoming, AppId, CallId, Transp, Msg}, _From, SD) ->
 handle_call(pending, _From, #state{pending=Pending}=SD) ->
     {reply, dict:size(Pending), SD};
 
-handle_call(Msg, _From, SD) -> 
+handle_call(Msg, _From, SD) ->
     lager:error("Module ~p received unexpected call ~p", [?MODULE, Msg]),
     {noreply, SD}.
 
@@ -197,7 +195,7 @@ handle_call(Msg, _From, SD) ->
 handle_cast({incoming, SipMsg}, SD) ->
     #sipmsg{app_id=AppId, call_id=CallId} = SipMsg,
     case send_work_sync(AppId, CallId, {incoming, SipMsg}, none, none, SD) of
-        {ok, SD1} -> 
+        {ok, SD1} ->
             {noreply, SD1};
         {error, Error} ->
             ?error(AppId, CallId, "error processing incoming message: ~p", [Error]),
@@ -232,13 +230,13 @@ handle_info({'DOWN', _MRef, process, Pid, _Reason}, SD) ->
         [{Pid, Id}] ->
             {_, AppId0, CallId0} = Id,
             ?debug(AppId0, CallId0, "Router ~p unregistering call", [Pos]),
-            ets:delete(Name, Pid), 
+            ets:delete(Name, Pid),
             ets:delete(Name, Id);
         [] ->
             ok
     end,
     case dict:find(Pid, Pending) of
-        {ok, {AppId, CallId, WorkList}} -> 
+        {ok, {AppId, CallId, WorkList}} ->
             % We had pending work for this process.
             % Actually, we know the process has stopped normally before processing
             % these requests (it hasn't failed due to an error).
@@ -252,7 +250,7 @@ handle_info({'DOWN', _MRef, process, Pid, _Reason}, SD) ->
             {noreply, SD}
     end;
 
-handle_info(Info, SD) -> 
+handle_info(Info, SD) ->
     lager:warning("Module ~p received unexpected info: ~p", [?MODULE, Info]),
     {noreply, SD}.
 
@@ -269,7 +267,7 @@ code_change(_OldVsn, SD, _Extra) ->
 -spec terminate(term(), #state{}) ->
     gen_server_terminate().
 
-terminate(_Reason, _SD) ->  
+terminate(_Reason, _SD) ->
     ok.
 
 
@@ -277,7 +275,7 @@ terminate(_Reason, _SD) ->
 %% Internal
 %% ===================================================================
 
-%% @private 
+%% @private
 -spec name(nksip:call_id()) ->
     atom().
 
@@ -287,7 +285,7 @@ name(CallId) ->
 
 
 %% @private
--spec send_work_sync(nksip:app_id(), nksip:call_id(), nksip_call_worker:work(), 
+-spec send_work_sync(nksip:app_id(), nksip:call_id(), nksip_call_worker:work(),
                      pid() | none, from(), #state{}) ->
     {ok, #state{}} | {error, looped_process | too_many_calls}.
 
@@ -295,20 +293,20 @@ send_work_sync(AppId, CallId, Work, Caller, From, #state{name=Name}=SD) ->
     case find(Name, AppId, CallId) of
         {ok, Caller} ->
             {error, looped_process};
-        {ok, Pid} -> 
+        {ok, Pid} ->
             {ok, do_send_work_sync(Pid, AppId, CallId, Work, From, SD)};
         not_found ->
             case do_call_start(AppId, CallId, SD) of
-                {ok, Pid} -> 
+                {ok, Pid} ->
                     {ok, do_send_work_sync(Pid, AppId, CallId, Work, From, SD)};
-                {error, Error} -> 
+                {error, Error} ->
                     {error, Error}
             end
    end.
 
 
 %% @private
--spec do_send_work_sync(pid(), nksip:app_id(), nksip:call_id(), nksip_call_worker:work(), 
+-spec do_send_work_sync(pid(), nksip:app_id(), nksip:call_id(), nksip_call_worker:work(),
                         from(), #state{}) ->
     #state{}.
 
@@ -322,7 +320,7 @@ do_send_work_sync(Pid, AppId, CallId, Work, From, #state{pending=Pending}=SD) ->
             dict:store(Pid, {AppId, CallId, [{Ref, From, Work}]}, Pending)
     end,
     SD#state{pending=Pending1}.
-    
+
 
 %% @private
 -spec do_call_start(nksip:app_id(), nksip:call_id(), #state{}) ->
@@ -363,16 +361,16 @@ send_work_async(AppId, CallId, Work) ->
 
 send_work_async(Name, AppId, CallId, Work) ->
     case find(Name, AppId, CallId) of
-        {ok, Pid} -> 
+        {ok, Pid} ->
             nksip_call_srv:async_work(Pid, Work);
-        not_found -> 
-            ?info(AppId, CallId, "trying to send work ~p to deleted call", 
+        not_found ->
+            ?info(AppId, CallId, "trying to send work ~p to deleted call",
                   [work_id(Work)])
    end.
 
 
 %% @private
--spec resend_worklist(nksip:app_id(), nksip:call_id(), 
+-spec resend_worklist(nksip:app_id(), nksip:call_id(),
                       [{reference(), from()|none, nksip_call_worker:work()}], #state{}) ->
     #state{}.
 
@@ -381,8 +379,8 @@ resend_worklist(_AppId, _CallId, [], SD) ->
 
 resend_worklist(AppId, CallId, [{_Ref, From, Work}|Rest], SD) ->
     case send_work_sync(AppId, CallId, Work, none, From, SD) of
-        {ok, SD1} -> 
-            ?debug(AppId, CallId, "resending work ~p from ~p", 
+        {ok, SD1} ->
+            ?debug(AppId, CallId, "resending work ~p from ~p",
                    [work_id(Work), From]),
             resend_worklist(AppId, CallId, Rest, SD1);
         {error, Error} ->
@@ -440,7 +438,7 @@ call_fold(Name) ->
 
 
 %% @private
--spec pos2name(integer()) -> 
+-spec pos2name(integer()) ->
     atom().
 
 % Urgly but speedy
@@ -477,4 +475,3 @@ pos2name(29) -> nksip_router_29;
 pos2name(30) -> nksip_router_30;
 pos2name(31) -> nksip_router_31;
 pos2name(P) -> list_to_atom("nksip_router_"++integer_to_list(P)).
-

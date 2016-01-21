@@ -13,7 +13,7 @@
 cache_for(Req, Headers) ->
     Expires = calendar:gregorian_seconds_to_datetime(
                 calendar:datetime_to_gregorian_seconds(
-                  calendar:now_to_datetime(now())) + ?YEAR),
+                  calendar:now_to_datetime(erlang:timestamp())) + ?YEAR),
     H = [{"Cache-Control", "public, max-age=" ++ integer_to_list(?YEAR)},
          {"Expires",       httpd_util:rfc1123_date(Expires)}],
     {H ++ Headers, Req}.
