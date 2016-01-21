@@ -22,6 +22,7 @@
 -define(VERSION_1, <<"v1">>).
 -define(VERSION_2, <<"v2">>).
 -define(VERSION_SUPPORTED, [?VERSION_1, ?VERSION_2]).
+-define(CURRENT_VERSION, ?VERSION_2).
 
 -define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
