@@ -94,6 +94,8 @@
 
 -export_type([sleeper/0, cron/0, execargs/0, datetime/0, status/0, schedule/0]).
 
+-include_lib("whistle/include/wh_types.hrl").
+
 -define(SERVER, ?MODULE).
 
 -record(state, {
@@ -163,13 +165,12 @@
 %% @end
 %%--------------------------------------------------------------------
 
--spec start_link(Schedule, Exec) -> {ok, pid()} | {error, Reason} when
+-spec start_link(Schedule, Exec) -> startlink_ret() when
       Schedule :: schedule(),
-      Exec :: execargs(),
-      Reason :: term().
+      Exec :: execargs().
 
 start_link(Schedule, Exec) ->
-    gen_server:start_link(?MODULE, [{Schedule, Exec}], []).
+    gen_server:start_link(?SERVER, [{Schedule, Exec}], []).
 
 %%--------------------------------------------------------------------
 %% @doc

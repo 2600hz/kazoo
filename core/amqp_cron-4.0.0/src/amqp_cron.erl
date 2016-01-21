@@ -68,6 +68,8 @@
          code_change/4,
          terminate/2]).
 
+-include_lib("whistle/include/wh_types.hrl").
+
 -define(SERVER, ?MODULE).
 
 -type name() :: atom() | binary().
@@ -96,11 +98,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
-
--spec start_link(Nodes) -> {ok, pid()} | {error, Reason} when
-      Nodes :: [node()],
-      Reason :: term().
-
+-spec start_link([node()]) -> startlink_ret().
 start_link(Nodes) ->
     Opts = [],
     amqp_leader:start_link(?SERVER, Nodes, Opts, ?MODULE, [], []).

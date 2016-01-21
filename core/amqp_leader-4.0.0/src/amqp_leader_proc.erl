@@ -371,7 +371,7 @@ init(#state{callback_module = Mod, name = Name} = State, Arg) ->
         {'EXIT', Reason} -> {'stop', Reason};
         {'ok', ModState} ->
             NewState = State#state{callback_state = ModState},
-            send({Name, 'broadcast'}, {?MODULE, sign(NewState), 'join'}),
+            send({Name, 'broadcast'}, #?MODULE{from=sign(NewState), msg='join'}),
             receive
                 #?MODULE{msg = {'leader', Leader}, from = Leader} ->
                     Routines = [{fun set_leader/2, Leader}

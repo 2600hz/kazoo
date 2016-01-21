@@ -122,7 +122,7 @@
 -type sup_init_ret() :: {'ok', {sup_start_flags(), sup_child_specs()}} |
                         'ignore'.
 
--type sup_child_id() :: pid() | 'undefined'.
+-type sup_child_id() :: api_pid().
 -type sup_startchild_err() :: 'already_present' |
                               {'already_started', sup_child_id()} |
                               any().

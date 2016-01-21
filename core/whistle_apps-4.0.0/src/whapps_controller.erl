@@ -63,7 +63,7 @@ start_default_apps() ->
 start_app(App) when not is_atom(App) ->
     start_app(wh_util:to_atom(App, 'true'));
 start_app(App) when is_atom(App) ->
-    wh_util:ensure_started(App).
+    application:ensure_started(App).
 
 -spec stop_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
 stop_app(App) when not is_atom(App) ->

@@ -22,6 +22,8 @@
 
 -include("amqp_leader.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {self = self()           :: pid()
                 ,name                   :: atom()
                 ,pending = []           :: [{pid(), any()}]
@@ -52,15 +54,11 @@ is_ready() ->
     recv_ready(Ref).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
 start_link(Name) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS(Name)}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(Name)}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME(Name)}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include

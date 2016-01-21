@@ -80,8 +80,6 @@
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
--export([ensure_started/1]).
-
 -export([current_tstamp/0, current_unix_tstamp/0
          ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,unix_timestamp_to_gregorian_seconds/1
@@ -1186,9 +1184,6 @@ whistle_version() ->
 -spec write_pid(ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
-
--spec ensure_started(atom()) -> 'ok' | {'error', any()}.
-ensure_started(App) when is_atom(App) ->
 
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->

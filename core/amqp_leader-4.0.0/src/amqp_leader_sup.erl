@@ -15,6 +15,8 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, []).
 
@@ -24,17 +26,15 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_leader(atom(), atoms(), list(), atom(), list(), list()) -> startlink_ret().
 start_leader(Name, Nodes, Opts, Module, [], []) ->
-    supervisor:start_child(?MODULE
+    supervisor:start_child(?SERVER
                            ,?SUPER_NAME_ARGS_TYPE(Name
                                                   ,'amqp_leader_proc_sup'
                                                   ,[Name, Nodes, Opts, Module, [], []]
@@ -53,7 +53,7 @@ start_leader(Name, Nodes, Opts, Module, [], []) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
     RestartStrategy = 'one_for_one',

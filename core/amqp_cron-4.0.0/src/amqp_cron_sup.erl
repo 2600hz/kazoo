@@ -18,27 +18,47 @@
 %%% @author Jeremy Raymond <jeraymond@gmail.com>
 %%% @copyright (C) 2012, Jeremy Raymond
 %%% @doc
-%%% Starts the amqp_cron application using the currently connected
-%%% nodes as the node list (see {@link amqp_cron}). In general it
-%%% is probably more useful to add {@link amqp_cron} or
-%%% {@link amqp_cron_sup} to your own supervision tree where you
-%%% can more reasonably control the node list.
-%%%
+%%% The {@link amqp_cron} supervisor.
 %%% @see amqp_cron
-%%% @see amqp_cron_sup
 %%%
 %%% @end
 %%% Created : 31 Jan 2012 by Jeremy Raymond <jeraymond@gmail.com>
 %%%-------------------------------------------------------------------
--module(amqp_cron_app).
+-module(amqp_cron_sup).
 
--behaviour(application).
+-behaviour(supervisor).
 
-%% Application callbacks
--export([start/2, stop/1]).
+%% API
+-export([start_link/1]).
+
+%% Supervisor callbacks
+-export([init/1]).
+
+-include_lib("whistle/include/wh_types.hrl").
+
+-define(SERVER, ?MODULE).
+
+-define(CHILDREN, [?WORKER_ARGS('amqp_cron', [Nodes])]).
 
 %%%===================================================================
-%%% Application callbacks
+%%% API functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the amqp_cron supervisor with the given node list. See
+%% {@link amqp_cron:start_link/1}.
+%%
+%% @end
+%%--------------------------------------------------------------------
+
+-spec start_link([node()]) -> startlink_ret().
+
+start_link(Nodes) ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, [Nodes]).
+
+%%%===================================================================
+%%% Supervisor callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -48,25 +68,19 @@
 %% @end
 %%--------------------------------------------------------------------
 
-start(_StartType, _StartArgs) ->
-    case amqp_cron_sup:start_link([node()|nodes()]) of
-	{ok, Pid} ->
-	    {ok, Pid};
-	Error ->
-	    Error
-    end.
+-spec init([node()]) -> sup_init_ret().
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+init([]) ->
+    {error, no_node_list};
+init([Nodes]) ->
+    RestartStrategy = one_for_one,
+    MaxRestarts = 2,
+    MaxSecondsBetweenRestarts = 3600,
 
-stop(_State) ->
-    ok.
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-

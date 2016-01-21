@@ -1,8 +1,7 @@
 ROOT = ../..
 PROJECT = nksip
 
-EBINS = $(wildcard $(ROOT)/deps/lager-*/ebin) \
-	$(wildcard $(ROOT)/deps/wsock-*/ebin)
+EBINS = $(wildcard $(ROOT)/deps/wsock-*/ebin)
 
 TEST_EBINS = $(wildcard $(ROOT)/deps/goldrush-*/ebin) \
 	$(wildcard $(ROOT)/deps/lager_syslog-*/ebin) \
