@@ -7149,7 +7149,16 @@
     "paths": {
         "/v1/accounts/{ACCOUNTID}/devices": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/devices/status": {
             "get": {}
@@ -7157,29 +7166,83 @@
         "/v1/accounts/{ACCOUNTID}/devices/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/devices/{ID}/quickcall/{ID}": {
             "get": {}
         },
         "/v1/accounts/{ACCOUNTID}/limits": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "limits",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/limits"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/lists": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/lists/{LISTID}": {
             "delete": {},
             "get": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/lists/{LISTID}/{ENTRYID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers": {
             "get": {}
@@ -7189,53 +7252,170 @@
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/collection": {
             "delete": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/collection/activate": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}": {
             "delete": {},
             "get": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/activate": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/docs": {
             "get": {}
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/docs/{ID}": {
             "delete": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/identify": {
             "get": {}
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/port": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/reserve": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/users": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "users",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/users"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/users/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "users",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/users"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/users/{ID}/channels": {
             "get": {}
         },
         "/v1/accounts/{ACCOUNTID}/users/{ID}/photo": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "users",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/users"
+                    }
+                }
+            }
         },
         "/v1/accounts/{ACCOUNTID}/users/{ID}/quickcall/{ID}": {
             "get": {}
@@ -7247,19 +7427,55 @@
             "get": {}
         },
         "/v2/accounts": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "accounts",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/accounts"
+                    }
+                }
+            }
         },
         "/v2/accounts/AccountId": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "accounts",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/accounts"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "accounts",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/accounts"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/access_lists": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "access_lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/access_lists"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/acls": {
             "get": {}
@@ -7275,22 +7491,58 @@
         },
         "/v2/accounts/{ACCOUNTID}/agents/status/{ID}": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "agents",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/agents"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/agents/{ID}": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/agents/{ID}/queue_status": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "agents",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/agents"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/agents/{ID}/status": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "agents",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/agents"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/alerts": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "alerts",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/alerts"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/alerts/{ID}": {
             "delete": {},
@@ -7298,7 +7550,16 @@
         },
         "/v2/accounts/{ACCOUNTID}/allotments": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "allotments",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/allotments"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/allotments/consumed": {
             "get": {}
@@ -7311,13 +7572,40 @@
         },
         "/v2/accounts/{ACCOUNTID}/apps_store/blacklist": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "apps_store",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/apps_store"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/apps_store/{ID}": {
             "delete": {},
             "get": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "apps_store",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/apps_store"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "apps_store",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/apps_store"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/apps_store/{ID}/{ID}": {
             "get": {}
@@ -7327,43 +7615,124 @@
         },
         "/v2/accounts/{ACCOUNTID}/blacklists": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "blacklists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/blacklists"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/blacklists/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "blacklists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/blacklists"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/braintree/addresses": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "braintree",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/braintree"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/braintree/addresses/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "braintree",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/braintree"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/braintree/cards": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "braintree",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/braintree"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/braintree/cards/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "braintree",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/braintree"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/braintree/credits": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "braintree",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/braintree"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/braintree/customer": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "braintree",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/braintree"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/braintree/transactions": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "braintree",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/braintree"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/braintree/transactions/{ID}": {
             "get": {}
@@ -7371,7 +7740,16 @@
         "/v2/accounts/{ACCOUNTID}/bulk": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "bulk",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/bulk"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/call_inspector": {
             "get": {}
@@ -7381,23 +7759,68 @@
         },
         "/v2/accounts/{ACCOUNTID}/callflows": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "callflows",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/callflows"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "callflows",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/callflows"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/cccps": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "cccps",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/cccps"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/cccps/{ID}": {
             "delete": {},
             "get": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "cccps",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/cccps"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "cccps",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/cccps"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/cdrs": {
             "get": {}
@@ -7410,21 +7833,57 @@
         },
         "/v2/accounts/{ACCOUNTID}/channels/{ID}": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "channels",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/channels"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/clicktocall": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "clicktocall",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/clicktocall"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/clicktocall/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "clicktocall",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/clicktocall"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/clicktocall/{ID}/connect": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "clicktocall",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/clicktocall"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/clicktocall/{ID}/history": {
             "get": {}
@@ -7432,22 +7891,58 @@
         "/v2/accounts/{ACCOUNTID}/comments": {
             "delete": {},
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "comments",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/comments"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/comments/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "comments",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/comments"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/conferences": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "conferences",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/conferences"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/conferences/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "conferences",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/conferences"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/conferences/{ID}/details": {
             "get": {}
@@ -7456,36 +7951,99 @@
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "configs",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/configs"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "configs",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/configs"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/connectivity": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "connectivity",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/connectivity"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/connectivity/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "connectivity",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/connectivity"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/contact_list": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/devices": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/devices/status": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/devices/{DEVICEID}/sync": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/devices/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/devices/{ID}/quickcall/{ID}": {
             "get": {}
@@ -7495,26 +8053,71 @@
         },
         "/v2/accounts/{ACCOUNTID}/directories": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "directories",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/directories"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/directories/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "directories",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/directories"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/faxboxes": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "faxboxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/faxboxes"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/faxboxes/{BOXID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "faxboxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/faxboxes"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/faxes": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "faxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/faxes"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/faxes/inbox": {
             "get": {}
@@ -7551,13 +8154,31 @@
         },
         "/v2/accounts/{ACCOUNTID}/faxes/outgoing": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "faxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/faxes"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/faxes/outgoing/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "faxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/faxes"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/faxes/smtplog": {
             "get": {}
@@ -7570,43 +8191,124 @@
         },
         "/v2/accounts/{ACCOUNTID}/global_provisioner_templates": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "global_provisioner_templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/global_provisioner_templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/global_provisioner_templates/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "global_provisioner_templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/global_provisioner_templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/global_provisioner_templates/{ID}/image": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "global_provisioner_templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/global_provisioner_templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/groups": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "groups",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/groups"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/groups/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "groups",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/groups"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/hotdesks": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/ips": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "ips",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/ips"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/ips/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "ips",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/ips"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/killio/call": {
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "killio",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/killio"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "killio",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/killio"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/ledgers": {
             "get": {}
@@ -7615,59 +8317,167 @@
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/ledgers/{ID}/credit": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "ledgers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/ledgers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/ledgers/{ID}/debit": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "ledgers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/ledgers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/limits": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "limits",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/limits"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/lists": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/lists/{LISTID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/lists/{LISTID}/entries": {
             "delete": {},
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/lists/{LIST}/entries/{ENTRYID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/lists/{LIST}/entries/{ENTRYID}/photo": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "lists",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/lists"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/lists/{LIST}/entries/{ENTRYID}/vcard": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/local_provisioner_templates": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "local_provisioner_templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/local_provisioner_templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/local_provisioner_templates/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "local_provisioner_templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/local_provisioner_templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/local_provisioner_templates/{ID}/image": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "local_provisioner_templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/local_provisioner_templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/media": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "media",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/media"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/media/languages": {
             "get": {}
@@ -7684,30 +8494,84 @@
         "/v2/accounts/{ACCOUNTID}/media/{MEDIAID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "media",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/media"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/media/{MEDIAID}/raw": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "media",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/media"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/menus": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "menus",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/menus"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/menus/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "menus",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/menus"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/metaflows": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "metaflows",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/metaflows"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/notifications": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "notifications",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/notifications"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/notifications/smtplog": {
             "get": {}
@@ -7718,19 +8582,55 @@
         "/v2/accounts/{ACCOUNTID}/notifications/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "notifications",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/notifications"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/notifications/{ID}/preview": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "notifications",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/notifications"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/onboard": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "onboard",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/onboard"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/check": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/classifiers": {
             "get": {}
@@ -7740,17 +8640,62 @@
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/collection": {
             "delete": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/collection/activate": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/fix": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/locality": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/prefix": {
             "get": {}
@@ -7758,28 +8703,91 @@
         "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}": {
             "delete": {},
             "get": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/docs": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/docs/{ID}": {
             "delete": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/identify": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/port": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/reserve": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/phone_numbers/{PHONENUMBER}/activate": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "phone_numbers",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/phone_numbers"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/pivot": {
             "get": {}
@@ -7792,7 +8800,16 @@
         },
         "/v2/accounts/{ACCOUNTID}/port_requests": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "port_requests",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/port_requests"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/port_requests/canceled": {
             "get": {}
@@ -7815,16 +8832,43 @@
         "/v2/accounts/{ACCOUNTID}/port_requests/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "port_requests",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/port_requests"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "port_requests",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/port_requests"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments/{ATTACHMENTID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "port_requests",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/port_requests"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/canceled": {
             "patch": {}
@@ -7849,17 +8893,53 @@
         },
         "/v2/accounts/{ACCOUNTID}/presence": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "presence",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/presence"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/presence/{EXTENSION}": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "presence",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/presence"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/queues": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "queues",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/queues"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/queues/eavesdrop": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "queues",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/queues"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/queues/stats": {
             "get": {}
@@ -7868,25 +8948,79 @@
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "queues",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/queues"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/queues/{QID}/eavesdrop": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "queues",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/queues"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/queues/{QID}/roster": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "queues",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/queues"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/rate_limits": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "rate_limits",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/rate_limits"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/rates": {
             "get": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "rates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/rates"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "rates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/rates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/rates/number/{ID}": {
             "get": {}
@@ -7895,7 +9029,16 @@
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "rates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/rates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/registrations": {
             "delete": {},
@@ -7909,25 +9052,79 @@
         },
         "/v2/accounts/{ACCOUNTID}/resource_templates": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "resource_templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resource_templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/resource_templates/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "resource_templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resource_templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/resources": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "resources",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resources"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/resources/collection": {
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "resources",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resources"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "resources",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resources"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/resources/jobs": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "resources",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resources"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/resources/jobs/{ID}": {
             "get": {}
@@ -7935,7 +9132,16 @@
         "/v2/accounts/{ACCOUNTID}/resources/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "resources",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/resources"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/search": {
             "get": {}
@@ -7945,7 +9151,16 @@
         },
         "/v2/accounts/{ACCOUNTID}/service_plans": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "service_plans",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/service_plans"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/service_plans/available/{ID}": {
             "get": {}
@@ -7954,22 +9169,67 @@
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/service_plans/override": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "service_plans",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/service_plans"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/service_plans/reconciliation": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "service_plans",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/service_plans"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/service_plans/synchronization": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "service_plans",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/service_plans"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/service_plans/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "service_plans",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/service_plans"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/services": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "services",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/services"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/services/audit": {
             "get": {}
@@ -7981,24 +9241,69 @@
             "nil": {}
         },
         "/v2/accounts/{ACCOUNTID}/signup": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "signup",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/signup"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/signup/{ID}": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "signup",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/signup"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/skels": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "skels",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/skels"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/skels/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "skels",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/skels"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/sms": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "sms",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/sms"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/sms/{ID}": {
             "delete": {},
@@ -8009,32 +9314,86 @@
         },
         "/v2/accounts/{ACCOUNTID}/templates/{ID}": {
             "delete": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "templates",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/templates"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/temporal_rules": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "temporal_rules",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/temporal_rules"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/temporal_rules/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "temporal_rules",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/temporal_rules"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/temporal_rules_sets": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "temporal_rules_sets",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/temporal_rules_sets"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/temporal_rules_sets/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "temporal_rules_sets",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/temporal_rules_sets"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/token_restrictions": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "token_restrictions",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/token_restrictions"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/transactions": {
             "get": {}
@@ -8050,18 +9409,45 @@
         },
         "/v2/accounts/{ACCOUNTID}/users": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "users",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/users"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/users/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "users",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/users"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/users/{ID}/photo": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "users",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/users"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/users/{ID}/quickcall/{ID}": {
             "get": {}
@@ -8071,13 +9457,31 @@
         },
         "/v2/accounts/{ACCOUNTID}/vmboxes": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "vmboxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/vmboxes"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "vmboxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/vmboxes"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages": {
             "delete": {},
@@ -8086,7 +9490,16 @@
         "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "vmboxes",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/vmboxes"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}/raw": {
             "get": {}
@@ -8223,24 +9636,78 @@
         "/v2/accounts/{ACCOUNTID}/whitelabel": {
             "delete": {},
             "get": {},
-            "post": {},
-            "put": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "whitelabel",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/whitelabel"
+                    }
+                }
+            },
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "whitelabel",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/whitelabel"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/whitelabel/domains": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "whitelabel",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/whitelabel"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/whitelabel/icon": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "whitelabel",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/whitelabel"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/whitelabel/logo": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "whitelabel",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/whitelabel"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/whitelabel/welcome": {
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "whitelabel",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/whitelabel"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/whitelabel/{ID}": {
             "get": {}
@@ -8259,16 +9726,52 @@
             "nil": {}
         },
         "/v2/accounts/{ID}/move": {
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "accounts",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/accounts"
+                    }
+                }
+            }
         },
         "/v2/api_auth": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "api_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/api_auth"
+                    }
+                }
+            }
         },
         "/v2/google_auth": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "google_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/google_auth"
+                    }
+                }
+            }
         },
         "/v2/ip_auth": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "ip_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/ip_auth"
+                    }
+                }
+            }
         },
         "/v2/schemas": {
             "get": {}
@@ -8277,7 +9780,16 @@
             "get": {}
         },
         "/v2/schemas/{ID}/validation": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "schemas",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/schemas"
+                    }
+                }
+            }
         },
         "/v2/shared_auth": {
             "delete": {},
@@ -8297,26 +9809,80 @@
         },
         "/v2/system_configs": {
             "get": {},
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "system_configs",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/system_configs"
+                    }
+                }
+            }
         },
         "/v2/system_configs/{ID}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "system_configs",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/system_configs"
+                    }
+                }
+            }
         },
         "/v2/system_configs/{ID}/{NODE}": {
             "delete": {},
             "get": {},
-            "post": {}
+            "post": {
+                "parameters": {
+                    "in": "body",
+                    "name": "system_configs",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/system_configs"
+                    }
+                }
+            }
         },
         "/v2/ubiquiti_auth": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "ubiquiti_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/ubiquiti_auth"
+                    }
+                }
+            }
         },
         "/v2/user_auth": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "user_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/user_auth"
+                    }
+                }
+            }
         },
         "/v2/user_auth/recovery": {
-            "put": {}
+            "put": {
+                "parameters": {
+                    "in": "body",
+                    "name": "user_auth",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/user_auth"
+                    }
+                }
+            }
         },
         "/v2/user_auth/{ID}": {
             "get": {}
