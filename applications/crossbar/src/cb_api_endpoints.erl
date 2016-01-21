@@ -6,6 +6,7 @@
 -export([get/0
          ,to_swagger_json/0
         ]).
+-include("crossbar.hrl").
 
 -define(SWAGGER_INFO
        ,wh_json:from_list([{<<"title">>, <<"Crossbar">>}
@@ -127,13 +128,26 @@ module_name(Module) when is_atom(Module) ->
     module_name(wh_util:to_binary(Module));
 module_name(<<_/binary>>=Module) ->
     case re:run(Module
-                ,<<"^cb_([a-z_]+?)(?:_v([0-9]))?$">>
-               ,[{capture, all_but_first, binary}]
+               ,<<"^cb_([a-z_]+?)(?:_v([0-9]))?$">>
+               ,[{'capture', 'all_but_first', 'binary'}]
                )
     of
-        {'match', [Name]} -> <<"v2/", Name/binary>>;
+        {'match', [<<"about">>]} -> <<?CURRENT_VERSION/binary, "/about">>;
+        {'match', [<<"accounts">>]} -> <<?CURRENT_VERSION/binary, "/accounts">>;
+        {'match', [<<"api_auth">>]} -> <<?CURRENT_VERSION/binary, "/api_auth">>;
+        {'match', [<<"basic_auth">>]} -> <<?CURRENT_VERSION/binary, "/basic_auth">>;
+        {'match', [<<"google_auth">>]} -> <<?CURRENT_VERSION/binary, "/google_auth">>;
+        {'match', [<<"ip_auth">>]} -> <<?CURRENT_VERSION/binary, "/ip_auth">>;
+        {'match', [<<"schemas">>]} -> <<?CURRENT_VERSION/binary, "/schemas">>;
+        {'match', [<<"shared_auth">>]} -> <<?CURRENT_VERSION/binary, "/shared_auth">>;
+        {'match', [<<"sup">>]} -> <<?CURRENT_VERSION/binary, "/sup">>;
+        {'match', [<<"system_configs">>]} -> <<?CURRENT_VERSION/binary, "/system_configs">>;
+        {'match', [<<"token_auth">>]} -> <<?CURRENT_VERSION/binary, "/shared_auth">>;
+        {'match', [<<"ubiquiti_auth">>]} -> <<?CURRENT_VERSION/binary, "/ubiquiti_auth">>;
+        {'match', [<<"user_auth">>]} -> <<?CURRENT_VERSION/binary, "/user_auth">>;
+        {'match', [Name]} -> <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNTID}/", Name/binary>>;
         {'match', [Name, Version]} ->
-            <<"v", Version/binary, "/", Name/binary>>
+            <<"v", Version/binary, "/accounts/{ACCOUNTID}/", Name/binary>>
     end.
 
 %% API
