@@ -383,12 +383,6 @@ get_media(Context) ->
         _Else -> <<"process">>
     end.
 
-%%     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
-%%     Defaults = wh_json:from_list([{<<"cid-name">>, CIDName}
-%%                                   ,{<<"cid-number">>, CIDNumber}
-%%                                  ]),
-
-
 -spec get_caller_id_name(cb_context:context(), api_binary()) -> api_binary().
 get_caller_id_name(Context, Default) ->
     case cb_context:req_value(Context, <<"cid-name">>, Default) of
