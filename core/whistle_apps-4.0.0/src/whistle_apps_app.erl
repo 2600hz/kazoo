@@ -14,21 +14,23 @@
 
 -export([start/2, stop/1]).
 
-%% ===================================================================
+-export([start/0]).
+
+
+start() ->
+    {'ok', _Apps} = application:ensure_all_started('whistle_apps').
+
+
 %% Application callbacks
-%% ===================================================================
-%%--------------------------------------------------------------------
+
 %% @public
 %% @doc Implement the application start behaviour
-%%--------------------------------------------------------------------
 -spec start(application:start_type(), any()) -> startlink_ret().
 start(_StartType, _StartArgs) ->
     whistle_apps_sup:start_link().
 
-%%--------------------------------------------------------------------
 %% @public
 %% @doc Implement the application stop behaviour
-%%--------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
     'ok'.

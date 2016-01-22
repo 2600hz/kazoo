@@ -14,6 +14,13 @@
 -export([start/2]).
 -export([stop/1]).
 
+-export([start/0]).
+
+
+start() ->
+    {'ok', _Apps} = application:ensure_all_started('ecallmgr').
+
+
 %% Application callbacks
 
 %% @public
