@@ -199,7 +199,7 @@ maybe_originate_quickcall(Context) ->
         [] ->
             cb_context:add_system_error('unspecified_fault', Context);
         Endpoints ->
-            originate_quickcall(Endpoints, Call, default_bleg_cid(Call, Context))
+            originate_quickcall(Endpoints, Call, Context)
     end.
 
 -spec create_call_from_context(cb_context:context()) -> whapps_call:call().
@@ -300,16 +300,6 @@ aleg_cid(Number, Call) ->
                ],
     lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
 
--spec default_bleg_cid(whapps_call:call(), cb_context:context()) -> cb_context:context().
-default_bleg_cid(Call, Context) ->
-    {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
-    Defaults = wh_json:from_list([{<<"cid-name">>, CIDName}
-                                  ,{<<"cid-number">>, CIDNumber}
-                                 ]),
-    cb_context:set_query_string(Context
-                                ,wh_json:merge_jobjs(cb_context:query_string(Context), Defaults)
-                               ).
-
 -spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
@@ -324,6 +314,9 @@ originate_quickcall(Endpoints, Call, Context) ->
                 'true' -> wh_util:rand_hex_binary(16);
                 'false' -> cb_context:req_id(Context)
             end,
+
+    {DefaultCIDNumber, DefaultCIDName} = cf_attributes:caller_id(<<"external">>, Call),
+
     Request = [{<<"Application-Name">>, <<"transfer">>}
                ,{<<"Application-Data">>, get_application_data(Context)}
                ,{<<"Msg-ID">>, MsgId}
@@ -331,10 +324,10 @@ originate_quickcall(Endpoints, Call, Context) ->
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
-               ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
-               ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
-               ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
-               ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
+               ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_param(Context, <<"cid-name">>, <<"Device QuickCall">>)}
+               ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_param(Context, <<"cid-number">>, whapps_call:request_user(Call))}
+               ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context, DefaultCIDName)}
+               ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context, DefaultCIDNumber)}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, 'false'}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
@@ -390,16 +383,16 @@ get_media(Context) ->
         _Else -> <<"process">>
     end.
 
--spec get_caller_id_name(cb_context:context()) -> api_binary().
-get_caller_id_name(Context) ->
-    case cb_context:req_value(Context, <<"cid-name">>) of
+-spec get_caller_id_name(cb_context:context(), api_binary()) -> api_binary().
+get_caller_id_name(Context, Default) ->
+    case cb_context:req_value(Context, <<"cid-name">>, Default) of
         'undefined' -> 'undefined';
         CIDName -> wh_util:uri_decode(CIDName)
     end.
 
--spec get_caller_id_number(cb_context:context()) -> api_binary().
-get_caller_id_number(Context) ->
-    case cb_context:req_value(Context, <<"cid-number">>) of
+-spec get_caller_id_number(cb_context:context(), api_binary()) -> api_binary().
+get_caller_id_number(Context, Default) ->
+    case cb_context:req_value(Context, <<"cid-number">>, Default) of
         'undefined' -> 'undefined';
         CIDNumber -> wh_util:uri_decode(CIDNumber)
     end.
