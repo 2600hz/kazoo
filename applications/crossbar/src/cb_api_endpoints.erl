@@ -78,8 +78,7 @@ read_swagger_json() ->
 
 write_swagger_json(Swagger) ->
     'ok' = file:write_file(?SWAGGER_JSON, wh_json:encode(Swagger)),
-    Res = os:cmd([?FORMAT_JSON, " ", ?SWAGGER_JSON]),
-    io:format("os returned ~p~n", [Res]).
+    os:cmd([?FORMAT_JSON, " ", ?SWAGGER_JSON]).
 
 to_swagger_paths(Paths, BasePaths) ->
     wh_json:foldl(fun to_swagger_path/3, BasePaths, Paths).
@@ -101,7 +100,6 @@ add_swagger_path(Method, Acc, Path, Parameters) ->
            ,maybe_add_schema(Path, Method, Parameters)
            ]
           ),
-    io:format("add ~p~n", [Vs]),
     wh_json:insert_values(Vs, Acc).
 
 maybe_add_schema(_Path, _Method, 'undefined') ->
@@ -140,7 +138,6 @@ format_pc_module({Module, Config}, Acc) ->
                ,Config
                );
 format_pc_module(_MC, Acc) ->
-    io:format("skipping ~p~n", [_MC]),
     Acc.
 
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
@@ -237,11 +234,9 @@ get() ->
 
 process_application(App) ->
     EBinDir = code:lib_dir(App, 'ebin'),
-    io:format("looking in ~p~n", [EBinDir]),
     filelib:fold_files(EBinDir, "^cb_.*.beam$", 'false', fun process_module/2, []).
 
 process_module(File, Acc) ->
-    io:format("processing file ~p~n", [File]),
     {'ok', {Module, [{'exports', Fs}]}} = beam_lib:chunks(File, ['exports']),
 
     case process_exports(File, Module, Fs) of
@@ -257,11 +252,8 @@ process_exports(_File, 'api_resource', _) -> [];
 process_exports(_File, 'cb_context', _) -> [];
 process_exports(File, Module, Fs) ->
     case lists:any(fun is_api_function/1, Fs) of
-        'false' ->
-            io:format("skipping non-api module ~s~n", [Module]),
-            'undefined';
-        'true' ->
-            process_api_module(File, Module)
+        'false' -> 'undefined';
+        'true' -> process_api_module(File, Module)
     end.
 
 process_api_module(File, Module) ->
@@ -282,11 +274,9 @@ process_api_ast_functions(Module, Functions) ->
 
 process_api_ast_function(_Module, 'allowed_methods', _Arity, Clauses) ->
     Methods = find_http_methods(Clauses),
-    io:format("found in ~p: ~p~n", [_Module, Methods]),
     {'allowed_methods', Methods};
 process_api_ast_function(_Module, 'content_types_provided', _Arity, Clauses) ->
     ContentTypes = find_http_methods(Clauses),
-    io:format("found ctp in ~p: ~p~n", [_Module, ContentTypes]),
     {'content_types_provided', ContentTypes}.
 
 find_http_methods(Clauses) ->
