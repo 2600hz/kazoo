@@ -113,7 +113,7 @@
                        ,[{<<"call_event">>, <<"*">>}]
                       }
                     ]).
--define(QUEUE_NAME, <<>>).
+-define(QUEUE_NAME(CallId), <<"call_ctl_", CallId/binary>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
@@ -144,7 +144,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
                ],
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
                                       ,{'bindings', Bindings}
-                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_name', ?QUEUE_NAME(CallId)}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ]
@@ -244,6 +244,7 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
     wh_util:put_callid(CallId),
     lager:debug("starting call control listener"),
     gen_listener:cast(self(), 'init'),
+    ecallmgr_fs_channels:update(CallId, #channel.control_q, ?QUEUE_NAME(CallId)),
     {'ok', #state{node=Node
                   ,call_id=CallId
                   ,command_q=queue:new()
