@@ -155,7 +155,7 @@ handle_lists(Data, Call) ->
     [NewCallerIdName, NewCallerIdNumber, Dest] = get_lists_entry(Data, Call),
     proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call).
 
--spec proceed_with_call(ne_binary()|'undefined', ne_binary()|'undefined', any(), wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec proceed_with_call(ne_binary()|'undefined', ne_binary()|'undefined', binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
 proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
                ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
