@@ -622,7 +622,7 @@ prepare_app(Node, UUID, JObj) ->
                         ,interaction_id=CDR
                        }} ->
             lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
-            _ = ecallmgr_fs_command:set(Node, UUID, ?CCV(<<?CALL_INTERACTION_ID>>), CDR),
+            _ = ecallmgr_fs_command:set(Node, UUID, [{?CCV(<<?CALL_INTERACTION_ID>>), CDR}]),
             maybe_answer(Node, UUID, IsAnswered),
             {'execute', Node, UUID, JObj, Target};
         {'ok', #channel{node=OtherNode}} ->
