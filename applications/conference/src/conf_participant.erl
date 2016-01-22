@@ -188,10 +188,10 @@ handle_participants_commands(JObj, Props) ->
 -spec handle_commands(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_commands(JObj, Props) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
-        <<"mute_participant">> -> 
+        <<"mute_participant">> ->
             Srv = props:get_value('server', Props),
             gen_listener:cast(Srv, 'mute_participant_update');
-        <<"unmute_participant">> -> 
+        <<"unmute_participant">> ->
             Srv = props:get_value('server', Props),
             gen_listener:cast(Srv, 'unmute_participant_update');
         _ -> 'ok'
