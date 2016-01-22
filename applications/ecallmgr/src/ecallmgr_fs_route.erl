@@ -410,13 +410,13 @@ route_req_ccvs(FetchId, Props) ->
     {RedirectedBy, RedirectedReason} = get_redirected(Props),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     props:filter_undefined(
-      [{<<?CALL_GROUP_ID>>, props:get_value(<<?CALL_GROUP_ID>>, CCVs, ?CALL_GROUP_DEFAULT)}
+      [{<<?CALL_INTERACTION_ID>>, props:get_value(<<?CALL_INTERACTION_ID>>, CCVs, ?CALL_INTERACTION_DEFAULT)}
        ,{<<"Fetch-ID">>, FetchId}
        ,{<<"Redirected-By">>, RedirectedBy}
        ,{<<"Redirected-Reason">>, RedirectedReason}
        ,{<<"Caller-Privacy-Number">>, ?CALLER_PRIVACY_NUMBER(Props)}
        ,{<<"Caller-Privacy-Name">>, ?CALLER_PRIVACY_NAME(Props)}
-       | props:delete(<<?CALL_GROUP_ID>>, CCVs)
+       | props:delete(<<?CALL_INTERACTION_ID>>, CCVs)
       ]
      ).
 

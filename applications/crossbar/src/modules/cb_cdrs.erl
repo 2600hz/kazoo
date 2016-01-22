@@ -35,11 +35,11 @@
 -define(MAX_BULK, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
--define(CB_GROUP_LIST, <<"cdrs/group_listing">>).
--define(CB_GROUP_LIST_BY_USER, <<"cdrs/group_listing_by_owner">>).
--define(CB_GROUP_LIST_BY_ID, <<"cdrs/group_listing_by_id">>).
+-define(CB_INTERACTION_LIST, <<"cdrs/interaction_listing">>).
+-define(CB_INTERACTION_LIST_BY_USER, <<"cdrs/interaction_listing_by_owner">>).
+-define(CB_INTERACTION_LIST_BY_ID, <<"cdrs/interaction_listing_by_id">>).
 
--define(PATH_GROUP, <<"group">>).
+-define(PATH_INTERACTION, <<"interaction">>).
 -define(PATH_LEGS, <<"legs">>).
 
 -define(KEY_CCV, <<"custom_channel_vars">>).
@@ -102,7 +102,7 @@ to_json({Req, Context}) ->
     Nouns = cb_context:req_nouns(Context),
     case props:get_value(<<"cdrs">>, Nouns, []) of
         [] -> to_json(Req, Context);
-        [?PATH_GROUP] -> to_json(Req, cb_context:store(Context, 'group', 'true'));
+        [?PATH_INTERACTION] -> to_json(Req, cb_context:store(Context, 'interaction', 'true'));
         [_|_] -> {Req, Context}
     end.
 
@@ -126,12 +126,12 @@ to_json(Req0, Context) ->
 pagination({Req, Context}=Payload) ->
     PageSize = cb_context:fetch(Context, 'page_size', 0),
     'ok' = cowboy_req:chunk(<<", \"page_size\": ", (wh_util:to_binary(PageSize))/binary>>, Req),
-    IsGroup = cb_context:fetch(Context, 'group', 'false'),
-    case pagination_key(IsGroup, 'next_start_key', Context) of
+    IsInteraction = cb_context:fetch(Context, 'interaction', 'false'),
+    case pagination_key(IsInteraction, 'next_start_key', Context) of
         'ok' -> 'ok';
         Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (wh_util:to_binary(Next))/binary, "\"">>, Req)
     end,
-    StartKey = pagination_key(IsGroup, 'start_key', Context),
+    StartKey = pagination_key(IsInteraction, 'start_key', Context),
     'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (wh_util:to_binary(StartKey))/binary, "\"">>, Req),
     Payload.
 
@@ -158,7 +158,7 @@ to_csv({Req, Context}) ->
     Nouns = cb_context:req_nouns(Context),
     case props:get_value(<<"cdrs">>, Nouns, []) of
         [] -> to_csv(Req, Context);
-        [?PATH_GROUP] -> to_csv(Req, Context);
+        [?PATH_INTERACTION] -> to_csv(Req, Context);
         [_|_] -> {Req, Context}
     end.
 
@@ -239,13 +239,13 @@ content_types_provided(Context) ->
 validate(Context) ->
     load_cdr_summary(Context, cb_context:req_nouns(Context)).
 
-validate(Context, ?PATH_GROUP) ->
-    load_group_cdr_summary(Context, cb_context:req_nouns(Context));
+validate(Context, ?PATH_INTERACTION) ->
+    load_interaction_cdr_summary(Context, cb_context:req_nouns(Context));
 validate(Context, CDRId) ->
     load_cdr(CDRId, Context).
 
-validate(Context, ?PATH_LEGS, GroupId) ->
-    load_legs(GroupId, Context);
+validate(Context, ?PATH_LEGS, InteractionId) ->
+    load_legs(InteractionId, Context);
 validate(Context, _, _) ->
     cb_context:add_system_error('invalid request', Context).
 
@@ -281,38 +281,38 @@ load_cdr_summary(Context, _Nouns) ->
     lager:debug("invalid URL chain for cdr summary request"),
     cb_context:add_system_error('faulty_request', Context).
 
--spec load_group_cdr_summary(cb_context:context(), req_nouns()) ->
+-spec load_interaction_cdr_summary(cb_context:context(), req_nouns()) ->
                                     cb_context:context().
-load_group_cdr_summary(Context, [_, {?WH_ACCOUNTS_DB, [_]} | _]) ->
-    lager:debug("loading group cdrs for account ~s"
+load_interaction_cdr_summary(Context, [_, {?WH_ACCOUNTS_DB, [_]} | _]) ->
+    lager:debug("loading interaction cdrs for account ~s"
                 ,[cb_context:account_id(Context)]
                ),
     case create_view_options('undefined'
-                             ,fun create_group_view_options/4
+                             ,fun create_interaction_view_options/4
                              ,Context
                             )
     of
         {'ok', ViewOptions} ->
-            load_view(?CB_GROUP_LIST
+            load_view(?CB_INTERACTION_LIST
                       ,props:filter_undefined(ViewOptions)
-                      ,fun group_view_option/2
+                      ,fun interaction_view_option/2
                       ,remove_qs_keys(Context)
                      );
         ErrorContext -> ErrorContext
     end;
-load_group_cdr_summary(Context, [_, {<<"users">>, [UserId] } | _]) ->
-    lager:debug("loading group cdrs for user ~s", [UserId]),
-    case create_view_options(UserId, fun create_group_view_options/4, Context) of
+load_interaction_cdr_summary(Context, [_, {<<"users">>, [UserId] } | _]) ->
+    lager:debug("loading interaction cdrs for user ~s", [UserId]),
+    case create_view_options(UserId, fun create_interaction_view_options/4, Context) of
         {'ok', ViewOptions} ->
-            load_view(?CB_GROUP_LIST_BY_USER
+            load_view(?CB_INTERACTION_LIST_BY_USER
                       ,props:filter_undefined(ViewOptions)
-                      ,fun group_view_option/2
+                      ,fun interaction_view_option/2
                       ,remove_qs_keys(Context)
                      );
         ErrorContext -> ErrorContext
     end;
-load_group_cdr_summary(Context, _Nouns) ->
-    lager:debug("invalid URL chain for group cdr summary request"),
+load_interaction_cdr_summary(Context, _Nouns) ->
+    lager:debug("invalid URL chain for interaction cdr summary request"),
     cb_context:add_system_error('faulty_request', Context).
 
 %%--------------------------------------------------------------------
@@ -355,9 +355,9 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
             ,'descending'
            ]}.
 
--spec create_group_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
+-spec create_interaction_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                  {'ok', crossbar_doc:view_options()}.
-create_group_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
+create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [CreatedTo]}
             ,{'endkey', [CreatedFrom, wh_json:new()]}
             ,{'limit', pagination_page_size(Context)}
@@ -366,7 +366,7 @@ create_group_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
             ,{'reduce', 'true'}
             ,'descending'
            ]};
-create_group_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
+create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [OwnerId, CreatedTo]}
             ,{'endkey', [OwnerId, CreatedFrom, wh_json:new()]}
             ,{'limit', pagination_page_size(Context)}
@@ -428,9 +428,9 @@ view_option(Key, ViewOptions) ->
         Option -> Option
     end.
 
--spec group_view_option('endkey' | 'startkey', crossbar_doc:view_options()) ->
+-spec interaction_view_option('endkey' | 'startkey', crossbar_doc:view_options()) ->
                                gregorian_seconds().
-group_view_option(Key, ViewOptions) ->
+interaction_view_option(Key, ViewOptions) ->
     case props:get_value(Key, ViewOptions) of
         [_, Option, _] -> Option;
         [Option, _] -> Option;
@@ -746,7 +746,7 @@ load_cdr(CDRId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load Legs for a cdr group from the database
+%% Load Legs for a cdr interaction from the database
 %% @end
 %%--------------------------------------------------------------------
 -spec load_legs(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -756,17 +756,17 @@ load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     Context1 = cb_context:set_account_db(Context, AccountDb),
     case couch_mgr:open_cache_doc(AccountDb, DocId) of
         {'ok', JObj} ->
-            load_legs(wh_json:get_value(<<"group_id">>, JObj), Context1);
+            load_legs(wh_json:get_value(<<"interaction_id">>, JObj), Context1);
         _ ->
             lager:debug("error loading legs for cdr id ~p", [DocId]),
             crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context1)
     end;
-load_legs(GroupId, Context) ->
+load_legs(InteractionId, Context) ->
     Options = ['include_docs'
-               ,{'startkey', [GroupId]}
-               ,{'endkey', [GroupId, wh_json:new()]}
+               ,{'startkey', [InteractionId]}
+               ,{'endkey', [InteractionId, wh_json:new()]}
               ],
-    crossbar_doc:load_view(?CB_GROUP_LIST_BY_ID
+    crossbar_doc:load_view(?CB_INTERACTION_LIST_BY_ID
                            ,Options
                            ,Context
                            ,fun normalize_leg_view_results/2

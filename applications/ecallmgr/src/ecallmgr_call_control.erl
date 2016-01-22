@@ -769,8 +769,8 @@ add_leg(Props, LegId, #state{other_legs=Legs
                   end),
             _ = case ecallmgr_fs_channel:fetch(CallId) of
                     {'ok', Channel} ->
-                        CDR = wh_json:get_value(<<"group_id">>, Channel),
-                        ecallmgr_fs_command:set(Node, LegId, ?CCV(<<?CALL_GROUP_ID>>), CDR);
+                        CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+                        ecallmgr_fs_command:set(Node, LegId, ?CCV(<<?CALL_INTERACTION_ID>>), CDR);
                     _ -> 'ok'
                 end,
             State#state{other_legs=[LegId|Legs]}
@@ -1268,10 +1268,10 @@ handle_replaced(Props, #state{fetch_id=FetchId
             {'ok', Channel} = ecallmgr_fs_channel:fetch(ReplacedBy),
             OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),
             OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-            CDR = wh_json:get_value(<<"group_id">>, Channel),
-            wh_cache:store_local(?ECALLMGR_GROUP_CACHE, CallId, CDR),
-            ecallmgr_fs_command:set(Node, OtherUUID, ?CCV(<<?CALL_GROUP_ID>>), CDR),
-            ecallmgr_fs_command:set(Node, OtherLeg, ?CCV(<<?CALL_GROUP_ID>>), CDR),
+            CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+            wh_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+            ecallmgr_fs_command:set(Node, OtherUUID, ?CCV(<<?CALL_INTERACTION_ID>>), CDR),
+            ecallmgr_fs_command:set(Node, OtherLeg, ?CCV(<<?CALL_INTERACTION_ID>>), CDR),
             {'noreply', handle_sofia_replaced(ReplacedBy, State)};
         _Else ->
             lager:info("sofia replaced on our channel but different fetch id~n"),
@@ -1290,13 +1290,13 @@ handle_intercepted(Node, CallId, Props) ->
                 UUID = props:get_value(<<"intercepted_by">>, Props),
                 case ecallmgr_fs_channel:fetch(UUID) of
                     {'ok', Channel} ->
-                        CDR = wh_json:get_value(<<"group_id">>, Channel),
-                        wh_cache:store_local(?ECALLMGR_GROUP_CACHE, CallId, CDR),
-                        ecallmgr_fs_command:set(Node, UUID, ?CCV(<<?CALL_GROUP_ID>>), CDR );
+                        CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+                        wh_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+                        ecallmgr_fs_command:set(Node, UUID, ?CCV(<<?CALL_INTERACTION_ID>>), CDR );
                     _ -> 'ok'
                 end;
             _ ->
                 UUID = props:get_value(<<"intercepted_by">>, Props),
-                CDR = props:get_value(?GET_CCV(<<?CALL_GROUP_ID>>), Props),
-                ecallmgr_fs_command:set(Node, UUID, ?CCV(<<?CALL_GROUP_ID>>), CDR )
+                CDR = props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), Props),
+                ecallmgr_fs_command:set(Node, UUID, ?CCV(<<?CALL_INTERACTION_ID>>), CDR )
         end.

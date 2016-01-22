@@ -106,9 +106,9 @@
           ,<<"From">>
           ,<<"From-Tag">>
           ,<<"From-Uri">>
-          ,<<"Group-ID">>
           ,<<"Hangup-Cause">>
           ,<<"Hangup-Code">> %% Hangup
+          ,<<"Interaction-ID">>
           ,<<"Intercepted-By">>
           ,<<"Length">>
           ,<<"Local-SDP">>

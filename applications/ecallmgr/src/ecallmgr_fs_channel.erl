@@ -24,7 +24,7 @@
          ,renew/2
          ,channel_data/2
          ,get_other_leg/2
-         ,maybe_update_group_id/2
+         ,maybe_update_interaction_id/2
          ,new/2
         ]).
 -export([to_json/1
@@ -221,7 +221,7 @@ to_props(Channel) ->
        ,{<<"to_tag">>, Channel#channel.to_tag}
        ,{<<"from_tag">>, Channel#channel.from_tag}
        ,{<<"elapsed_s">>, wh_util:elapsed_s(Channel#channel.timestamp)}
-       ,{<<"group_id">>, Channel#channel.group_id}
+       ,{<<"interaction_id">>, Channel#channel.interaction_id}
       ]).
 
 -spec to_api_json(channel()) -> wh_json:object().
@@ -259,7 +259,7 @@ to_api_props(Channel) ->
        ,{<<"From-Tag">>, Channel#channel.from_tag}
        ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
        ,{<<"Elapsed-Seconds">>, wh_util:elapsed_s(Channel#channel.timestamp)}
-       ,{<<?CALL_GROUP_ID>>, Channel#channel.group_id}
+       ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
       ]).
 
 -spec channel_ccvs(channel() | wh_json:object() | wh_proplist()) -> wh_proplist().
@@ -279,7 +279,7 @@ channel_ccvs(#channel{}=Channel) ->
        ,{<<"Reseller-Billing">>, Channel#channel.reseller_billing}
        ,{<<"Realm">>, Channel#channel.realm}
        ,{<<"Username">>, Channel#channel.username}
-       ,{<<?CALL_GROUP_ID>>, Channel#channel.group_id}
+       ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
       ]);
 channel_ccvs([_|_]=Props) ->
     props:filter_undefined(
@@ -297,7 +297,7 @@ channel_ccvs([_|_]=Props) ->
        ,{<<"Reseller-Billing">>, props:get_value(<<"reseller_billing">>, Props)}
        ,{<<"Realm">>, props:get_value(<<"realm">>, Props)}
        ,{<<"Username">>, props:get_value(<<"username">>, Props)}
-       ,{<<?CALL_GROUP_ID>>, props:get_value(<<"group_id">>, Props)}
+       ,{<<?CALL_INTERACTION_ID>>, props:get_value(<<"interaction_id">>, Props)}
       ]);
 channel_ccvs(JObj) ->
     channel_ccvs(wh_json:to_proplist(JObj)).
@@ -484,7 +484,7 @@ channel_resp_dialprefix(ReqProps, Channel, ChannelVars) ->
     Props = props:filter_undefined(
               [{<<"sip_invite_domain">>, props:get_value(<<"Realm">>, ChannelVars)}
                ,{<<"sip_h_X-Core-UUID">>, props:get_value(<<"Core-UUID">>, ReqProps)}
-               ,{<<"sip_h_X-ecallmgr_", ?CALL_GROUP_ID>>, props:get_value(<<"group_id">>, Channel)}
+               ,{<<"sip_h_X-ecallmgr_", ?CALL_INTERACTION_ID>>, props:get_value(<<"interaction_id">>, Channel)}
                ,{<<"sip_h_X-ecallmgr_replaces-call-id">>, props:get_value(<<"replaces-call-id">>, ReqProps)}
                ,{<<"sip_h_X-ecallmgr_refer-from-channel-id">>, props:get_value(<<"refer-from-channel-id">>, ReqProps)}
                ,{<<"sip_h_X-ecallmgr_refer-for-channel-id">>, props:get_value(<<"refer-for-channel-id">>, ReqProps)}
@@ -564,7 +564,7 @@ process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     end;
 process_specific_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
     {'ok', Channel} = fetch(UUID, 'record'),
-    wh_cache:store_local(?ECALLMGR_GROUP_CACHE, {'channel', UUID}, Channel),
+    wh_cache:store_local(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}, Channel),
     _ = ecallmgr_fs_channels:destroy(UUID, Node),
     maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
@@ -648,7 +648,7 @@ props_to_record(Props, Node) ->
              ,handling_locally=handling_locally(Props)
              ,to_tag=props:get_value(<<"variable_sip_to_tag">>, Props)
              ,from_tag=props:get_value(<<"variable_sip_from_tag">>, Props)
-             ,group_id=props:get_value(<<?CALL_GROUP_ID>>, CCVs)
+             ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
             }.
 
 -spec handling_locally(wh_proplist()) -> boolean().
@@ -707,7 +707,7 @@ props_to_update(Props) ->
                             ,{#channel.dialplan, props:get_value(<<"Caller-Dialplan">>, Props)}
                             ,{#channel.to_tag, props:get_value(<<"variable_sip_to_tag">>, Props)}
                             ,{#channel.from_tag, props:get_value(<<"variable_sip_from_tag">>, Props)}
-                            ,{#channel.group_id, props:get_value(<<?CALL_GROUP_ID>>, CCVs)}
+                            ,{#channel.interaction_id, props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)}
                             | update_callee(UUID, Props)
                            ]).
 
@@ -767,27 +767,27 @@ maybe_other_bridge_leg(UUID, Props, _, _) ->
         BridgeId -> BridgeId
     end.
 
--spec maybe_update_group_id(wh_proplist(), atom()) -> 'ok'.
-maybe_update_group_id(Props, Node) ->
+-spec maybe_update_interaction_id(wh_proplist(), atom()) -> 'ok'.
+maybe_update_interaction_id(Props, Node) ->
     case props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props) of
         'undefined' -> 'ok';
         RemoteUUID ->
             CoreUUID = props:get_value(<<"Core-UUID">>, Props),
-            maybe_update_group_id(Props, Node, {CoreUUID, RemoteUUID})
+            maybe_update_interaction_id(Props, Node, {CoreUUID, RemoteUUID})
     end.
 
--spec maybe_update_group_id(wh_proplist(), atom(), tuple()) -> 'ok'.
-maybe_update_group_id(_Props, _Node, {CoreUUID, CoreUUID}) -> 'ok';
-maybe_update_group_id(Props, Node, _) ->
+-spec maybe_update_interaction_id(wh_proplist(), atom(), tuple()) -> 'ok'.
+maybe_update_interaction_id(_Props, _Node, {CoreUUID, CoreUUID}) -> 'ok';
+maybe_update_interaction_id(Props, Node, _) ->
     case props:get_value(?GET_CCV_HEADER(<<"replaces-call-id">>), Props) of
         'undefined' -> 'ok';
         CallId ->
-            CDR = props:get_value(?GET_CCV_HEADER(<<?CALL_GROUP_ID>>), Props),
-            wh_cache:store_local(?ECALLMGR_GROUP_CACHE, CallId, CDR),
+            CDR = props:get_value(?GET_CCV_HEADER(<<?CALL_INTERACTION_ID>>), Props),
+            wh_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
             case fetch(CallId) of
                 {'ok', Channel} ->
                     OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),
-                    ecallmgr_fs_command:set(Node, OtherLeg, ?CCV(<<?CALL_GROUP_ID>>), CDR),
+                    ecallmgr_fs_command:set(Node, OtherLeg, ?CCV(<<?CALL_INTERACTION_ID>>), CDR),
                     'ok';
                 _ -> 'ok'
             end

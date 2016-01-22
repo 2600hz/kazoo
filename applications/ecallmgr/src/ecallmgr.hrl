@@ -8,7 +8,7 @@
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
 -define(ECALLMGR_CALL_CACHE, 'ecallmgr_call_cache').
--define(ECALLMGR_GROUP_CACHE, 'ecallmgr_group_cache').
+-define(ECALLMGR_INTERACTION_CACHE, 'ecallmgr_interaction_cache').
 
 -define(CHANNELS_TBL, 'ecallmgr_channels').
 
@@ -80,7 +80,7 @@
                   ,handling_locally = 'false' :: boolean() | '_' %% is this ecallmgr handling the call control?
                   ,to_tag :: api_binary() | '_'
                   ,from_tag :: api_binary() | '_'
-                  ,group_id :: api_binary() | '$5' | '_'
+                  ,interaction_id :: api_binary() | '$5' | '_'
                   ,callee_number :: api_binary() | '$5' | '_'
                   ,callee_name :: api_binary() | '$5' | '_'
                  }).
@@ -446,8 +446,8 @@
 
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
 
--define(CALL_GROUP_ID, "Call-Group-ID").
--define(CALL_GROUP_DEFAULT
+-define(CALL_INTERACTION_ID, "Call-Interaction-ID").
+-define(CALL_INTERACTION_DEFAULT
         ,<<(wh_util:to_binary(wh_util:current_tstamp()))/binary
            ,"-", (wh_util:rand_hex_binary(4))/binary
          >>).

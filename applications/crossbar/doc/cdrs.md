@@ -140,11 +140,11 @@ Using Crossbar to query cdrs is very simple. There are 3 different GETs
 
     curl -v -X GET -H "Accept: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
 
-### Groupped CDRs
+### Interaction CDRs
 
-Crossbar cdrs was extended to provide simplified groupped call detail records. it lists the calls and not the legs
+Crossbar cdrs was extended to provide simplified interaction call detail records. It groups all CDRs that interacted with eachouther to form a list of calls.
 
-* GET /v1/accounts/{account\_id}/cdrs/group - Gets the current groupped CDRs for the account
-* GET /v1/accounts/{account\_id}/cdrs/group/{cdr\_id} - Gets details of the groupped CDR, usually first leg
-* GET /v1/accounts/{account\_id}/cdrs/legs/{cdr\_id} - Gets CDRs for the legs of call group
-* GET /v1/accounts/{account\_id}/users/{user\_id}/cdrs/group - Gets the current groupped CDRs for the user
+* GET /v1/accounts/{account\_id}/cdrs/interaction - Gets the current interaction CDRs for the account
+* GET /v1/accounts/{account\_id}/cdrs/interaction/{cdr\_id} - Gets details of the interaction CDR, usually first leg
+* GET /v1/accounts/{account\_id}/cdrs/legs/{cdr\_id} - Gets CDRs for the legs of call interaction
+* GET /v1/accounts/{account\_id}/users/{user\_id}/cdrs/interaction - Gets the current interaction CDRs for the user

@@ -77,7 +77,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 ,fun set_call_priority/3
                 ,fun maybe_set_e164_destination/3
                 ,fun is_conference/3
-                ,fun set_group/3
+                ,fun set_interaction/3
                 ,fun save_cdr/3
                ],
 
@@ -166,21 +166,21 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
                                   )
     end.
 
--spec set_group(api_binary(), gregorian_seconds(), wh_json:object()) ->
+-spec set_interaction(api_binary(), gregorian_seconds(), wh_json:object()) ->
                        wh_json:object().
-set_group(_AccountId, _Timestamp, JObj) ->
-    GroupKey = [<<"custom_channel_vars">>, <<"call_group_id">>],
-    <<Time:11/binary, "-", Key/binary>> = Group = wh_json:get_value(GroupKey, JObj),
+set_interaction(_AccountId, _Timestamp, JObj) ->
+    InteractionKey = [<<"custom_channel_vars">>, <<"call_interaction_id">>],
+    <<Time:11/binary, "-", Key/binary>> = Interaction = wh_json:get_value(InteractionKey, JObj),
     Timestamp = wh_util:to_integer(Time),
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
 
     wh_json:set_values(
-      [{<<"group_time">>, Timestamp}
-       ,{<<"group_key">>, Key}
-       ,{<<"group_id">>, Group}
+      [{<<"interaction_time">>, Timestamp}
+       ,{<<"interaction_key">>, Key}
+       ,{<<"interaction_id">>, Interaction}
       ]
-      ,wh_json:delete_key(GroupKey, wh_doc:set_id(JObj, DocId))
+      ,wh_json:delete_key(InteractionKey, wh_doc:set_id(JObj, DocId))
      ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().

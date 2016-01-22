@@ -333,7 +333,7 @@ process_stream(EventName, UUID, EventProps, Node) ->
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     wh_util:put_callid(UUID),
     _ = ecallmgr_fs_channel:new(Props, Node),
-    _ = ecallmgr_fs_channel:maybe_update_group_id(Props, Node),
+    _ = ecallmgr_fs_channel:maybe_update_interaction_id(Props, Node),
     maybe_start_event_listener(Node, UUID);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
