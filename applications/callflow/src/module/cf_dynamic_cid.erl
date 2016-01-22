@@ -155,7 +155,7 @@ handle_lists(Data, Call) ->
     [NewCallerIdName, NewCallerIdNumber, Dest] = get_lists_entry(Data, Call),
     proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call).
 
--spec proceed_with_call(any(), any(), any(), wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec proceed_with_call(binary(), binary(), any(), wh_json:object(), whapps_call:call()) -> 'ok'.
 proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
                ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
@@ -272,8 +272,8 @@ get_lists_entry(Data, Call) ->
         {'ok', Entries} ->
 	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
 	    <<CIDKey:2/binary, Dest/binary>> = CaptureGroup,
-            [{NewCallerIdName, NewCallerIdNumber}|_] = [{wh_json:get_value([<<"value">>, <<"cid_name">>], Entry), wh_json:get_value([<<"value">>, <<"cid_number">>], Entry)}
-                                                        || Entry <- Entries, wh_json:get_value([<<"value">>, <<"cid_key">>], Entry) == CIDKey],
+            [{NewCallerIdName, NewCallerIdNumber}|_] = [{wh_json:get_binary_value([<<"value">>, <<"cid_name">>], Entry), wh_json:get_value([<<"value">>, <<"cid_number">>], Entry)}
+                                                        || Entry <- Entries, wh_json:get_binary_value([<<"value">>, <<"cid_key">>], Entry) == CIDKey],
             [NewCallerIdName, NewCallerIdNumber, Dest];
 	{'error', _Reason}=E ->
             lager:info("failed to load match list box ~s: ~p", [ListId, _Reason]),
