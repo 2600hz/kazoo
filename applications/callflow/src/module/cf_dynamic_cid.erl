@@ -63,6 +63,9 @@ handle(Data, Call) ->
         <<"list">> ->
             lager:info("user is choosing a caller id for this call from couchdb doc"),
 	    handle_list(Data, Call);
+        <<"lists">> ->
+            lager:info("using account's lists/entries view to get new cid info"),
+	    handle_lists(Data, Call);
         _ ->
 	    lager:info("user must manually enter on keypad the caller id for this call"),
 	    handle_manual(Data, Call)
@@ -142,28 +145,24 @@ handle_manual(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec handle_list(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle_list(Data, Call) ->
-    CallerIdNumber = whapps_call:caller_id_number(Call),
-    lager:debug("callerid number before this module: ~s ", [CallerIdNumber]),
-
     {NewCidInfo, Dest} = get_list_entry(Data, Call),
-
     NewCallerIdNumber = wh_json:get_value(<<"number">>, NewCidInfo),
     NewCallerIdName = wh_json:get_value(<<"name">>, NewCidInfo),
+    proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call).
 
-    lager:info("setting the caller id number to ~s", [NewCallerIdNumber]),
+-spec handle_lists(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_lists(Data, Call) ->
+    [NewCallerIdName, NewCallerIdNumber, Dest] = get_lists_entry(Data, Call),
+    proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call).
 
+-spec proceed_with_call(binary(), binary(), binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
+proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
                ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
                ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
               ],
-
     cf_exe:set_call(whapps_call:exec(Updates, Call)),
-
-    lager:debug("destination number from cf_capture_group regex: ~s ", [Dest]),
-    Number = wnm_util:to_e164(Dest),
-    lager:info("send the call onto real destination of: ~s", [Number]),
-
-    maybe_route_to_callflow(Data, Call, Number).
+    maybe_route_to_callflow(Data, Call, wnm_util:to_e164(Dest)).
 
 -spec maybe_route_to_callflow(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 maybe_route_to_callflow(Data, Call, Number) ->
@@ -260,6 +259,22 @@ get_list_entry(Data, Call) ->
 	    NewCallerId = wh_json:get_value(CIDKey, JObj),
 	    lager:info("new caller id data : ~p",  [NewCallerId]),
 	    {NewCallerId, Dest};
+	{'error', _Reason}=E ->
+            lager:info("failed to load match list box ~s: ~p", [ListId, _Reason]),
+            E
+    end.
+
+-spec get_lists_entry(wh_json:object(), whapps_call:call()) -> proplist() | {'error', couch_mgr:couchbeam_error()}.
+get_lists_entry(Data, Call) ->
+    ListId = wh_json:get_ne_value(<<"id">>, Data),
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:get_results(AccountDb,<<"lists/entries">>,[{'key', ListId}]) of
+        {'ok', Entries} ->
+	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
+	    <<CIDKey:2/binary, Dest/binary>> = CaptureGroup,
+            [{NewCallerIdName, NewCallerIdNumber}|_] = [{wh_json:get_value([<<"value">>, <<"cid_name">>], Entry), wh_json:get_value([<<"value">>, <<"cid_number">>], Entry)}
+                                                        || Entry <- Entries, wh_json:get_value([<<"value">>, <<"cid_key">>], Entry) == CIDKey],
+            [NewCallerIdName, NewCallerIdNumber, Dest];
 	{'error', _Reason}=E ->
             lager:info("failed to load match list box ~s: ~p", [ListId, _Reason]),
             E

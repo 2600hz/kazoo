@@ -9,7 +9,7 @@ The `dynamic_cid` callflow enables you to change the caller id (CID).
 
 ## Mandatory fields
 
-**action** - Must be set to `manual` or `list`.
+**action** - Must be set to `manual`, `list`, or `lists`.
 
 If undefined, will revert to historical behavior, *manual*.
 
@@ -105,3 +105,24 @@ Length 1 example
    }
 }
 ```
+
+## Lists action mode
+Almost the same as list mode but you can use account''s lists feature to configure entries:
+
+- create list
+````
+http://{SERVER}/v2/accounts/{ACCOUNT_ID}/lists -d '{"data":{"name":"Dynamic CID","description":"List of new callerid name and number entries ","list_type":"dynamic_cid"}}'
+````
+(list_type field is optional here and used just for easier filtering dynamic_cid list among the others)
+
+- create entries
+````
+http://{SERVER}/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries -d '{"data":{"cid_key":"01","cid_name":"My Office CID","cid_number":"+78124906700"}}'
+````
+
+- create callflow dynamic_cid featurecode
+````
+http://{SERVER}/v2/accounts/{ACCOUNT_ID}/callflows -d '{"data":{"flow":{"children":{},"data":{"action":"lists","id":"{LIST_ID}"},"module":"dynamic_cid"},"numbers":[],"patterns":["^\\*69([0-9]{2,})$"],"featurecode":{"number":"69","name":"dynamic_cid"}}}'
+````
+
+CID key length is always 2 in this mode.
