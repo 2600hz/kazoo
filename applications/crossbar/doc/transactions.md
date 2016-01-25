@@ -67,6 +67,48 @@ curl -x GET \
 }
 ```
 
+#### Get monthly recurring transactions
+
+Querystring options:
+    - `created_from` {TIMESTAMP}
+    - `created_to` {TIMESTAMP}
+    - `reason` `only_calls`
+
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
+
+```curl
+curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+
+     },
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+#### Get subscriptions
+
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
+
+```curl
+curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+
+     },
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+
 #### Debit an account
 
 Only for super duper admins and resellers.
@@ -77,7 +119,7 @@ Only for super duper admins and resellers.
 curl -x DELETE \
      -H "X-Auth-Token: {AUTH_TOKEN}" \
      -d '{"data": {"amount": 1} }'
-     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/debit
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -96,3 +138,5 @@ curl -x DELETE \
     "status": "success"
 }
 ```
+
+#### Get transaction details
