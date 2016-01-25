@@ -7,5 +7,7 @@
 -define(APP_VERSION, <<"0.0.1">> ).
 -define(CONFIG_CAT, <<"ananke">>).
 
+-type pos_integers() :: list(pos_integer()).
+
 -define(ANANKE_HRL, 'true').
 -endif.

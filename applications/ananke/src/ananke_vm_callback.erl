@@ -21,8 +21,7 @@
                ,callback_number       :: api_binary()
                ,is_callback_disabled  :: boolean()
                ,vm_number             :: api_binary()
-               ,attempts              :: pos_integer()
-               ,interval              :: pos_integer()
+               ,schedule              :: pos_integers()
                ,call_timeout          :: pos_integer()
                ,realm                 :: api_binary()
               }).
@@ -84,8 +83,8 @@ handle_req(JObj, Props) ->
             IsDisabled = wh_util:is_true(
                               get_first_defined([{<<"disabled">>, VMBoxNotifyJObj}
                                                  ,{<<"disabled">>, UserNotifyJObj}])),
-            Interval = get_interval(VMBoxNotifyJObj, UserNotifyJObj, AccountNotifyJObj),
-            Attempts = get_attempts(VMBoxNotifyJObj, UserNotifyJObj, AccountNotifyJObj),
+
+            Schedule = get_schedule(VMBoxNotifyJObj, UserNotifyJObj, AccountNotifyJObj),
             CallTimeout = get_callback_timeout(VMBoxNotifyJObj, UserNotifyJObj, AccountNotifyJObj),
 
             StartArgs = #args{account_id = AccountId
@@ -94,8 +93,7 @@ handle_req(JObj, Props) ->
                               ,callback_number = Number
                               ,is_callback_disabled = IsDisabled
                               ,vm_number = VMNumber
-                              ,attempts = Attempts
-                              ,interval = Interval
+                              ,schedule = Schedule
                               ,call_timeout = CallTimeout
                               ,realm = Realm
                              },
@@ -156,12 +154,11 @@ maybe_start_caller(StartArgs) ->
 -spec start_caller(#args{}) -> 'ok'.
 start_caller(#args{callback_number = Number
                    ,vm_box_id = VMBoxId
-                   ,attempts = Attempts
-                   ,interval = Interval
+                   ,schedule = Schedule
                   } = StartArgs) ->
     lager:info("starting caller to number ~p", [Number]),
     OriginateReq = build_originate_req(StartArgs),
-    case ananke_callback_sup:start_child({Number, VMBoxId}, OriginateReq, Attempts, Interval) of
+    case ananke_callback_sup:start_child({Number, VMBoxId}, OriginateReq, Schedule) of
         {'ok', _} -> lager:debug("started");
         {'ok', _, _} -> lager:debug("started");
         {'error', {'already_started', _}} -> lager:info("already started");
@@ -230,6 +227,28 @@ get_first_defined([{Keys, JObj} | Rest], Default) ->
     end;
 get_first_defined([], Default) ->
     Default.
+
+-spec get_schedule(wh_json:object(), wh_json:object(), wh_json:object()) -> pos_integers().
+get_schedule(VMBoxJObj, UserJObj, AccountJObj) ->
+    case get_first_defined([{<<"schedule">>, VMBoxJObj}
+                            ,{<<"schedule">>, UserJObj}
+                            ,{<<"schedule">>, AccountJObj}
+                           ],
+                           [])
+    of
+        [] ->
+            Attempts = get_attempts(VMBoxJObj, UserJObj, AccountJObj),
+            Interval = get_interval(VMBoxJObj, UserJObj, AccountJObj),
+            get_schedule_from_attempts_interval(Attempts, Interval);
+        [_ | _] = Schedule ->
+            Schedule
+    end.
+
+-spec get_schedule_from_attempts_interval(integer(), pos_integer()) -> pos_integers().
+get_schedule_from_attempts_interval(Attempts, Interval) when is_integer(Attempts), is_integer(Interval), Interval > 0 ->
+    lists:duplicate(Attempts, Interval);
+get_schedule_from_attempts_interval(_Attempts, _Interval) ->
+    [].
 
 -spec get_interval(wh_json:object(), wh_json:object(), wh_json:object()) -> integer().
 get_interval(VMBoxJObj, UserJObj, AccountJObj) ->

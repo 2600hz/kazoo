@@ -9,7 +9,7 @@
 -module(ananke_callback_sup).
 
 -export([start_link/0
-        ,start_child/4
+        ,start_child/3
         ,delete_child/1
         ,delete_child/2
         ]).
@@ -22,12 +22,12 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec start_child(any(), wh_proplist(), integer(), integer()) ->
+-spec start_child(any(), wh_proplist(), pos_integers()) ->
     sup_startchild_ret().
-start_child(Id, OriginateReq, Attempts, Interval) ->
+start_child(Id, OriginateReq, Schedule) ->
     case supervisor:start_child(?MODULE, {Id
                                           ,{'ananke_callback_wrkr', 'start_link'
-                                            ,[OriginateReq, Attempts, Interval]}
+                                            ,[OriginateReq, Schedule]}
                                           ,'transient'
                                           ,'brutal_kill'
                                           ,'worker'
@@ -36,7 +36,7 @@ start_child(Id, OriginateReq, Attempts, Interval) ->
     of
         {'error', 'already_present'} ->
             _ = supervisor:delete_child(?MODULE, Id),
-            start_child(Id, OriginateReq, Attempts, Interval);
+            start_child(Id, OriginateReq, Schedule);
         Reply -> Reply
     end.
 

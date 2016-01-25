@@ -24,6 +24,15 @@
             "required": false,
             "type": "string"
         },
+        "schedule": {
+            "description": "Schedules interval between callbacks",
+            "required": false,
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "description": "callbacks interval"
+            }
+        },
         "timeout_s": {
             "description": "How long will system wait for answer to callback",
             "required": false,
