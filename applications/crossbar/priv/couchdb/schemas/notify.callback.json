@@ -26,12 +26,12 @@
         },
         "schedule": {
             "description": "Schedules interval between callbacks",
-            "required": false,
-            "type": "array",
             "items": {
-                "type": "integer",
-                "description": "callbacks interval"
-            }
+                "description": "callbacks interval",
+                "type": "integer"
+            },
+            "required": false,
+            "type": "array"
         },
         "timeout_s": {
             "description": "How long will system wait for answer to callback",
