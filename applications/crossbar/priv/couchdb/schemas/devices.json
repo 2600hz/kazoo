@@ -498,9 +498,9 @@
                     "required": false,
                     "type": "string"
                 },
-                "registration_expiration": {
+                "expire_seconds": {
                     "default": 300,
-                    "description": "The time, in seconds, to force registrations to expire",
+                    "description": "The time, in seconds, sent to the provisioner for the registration period that the device should be configured with.",
                     "name": "Minimum Registration (seconds)",
                     "required": false,
                     "type": "integer"
