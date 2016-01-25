@@ -94,7 +94,7 @@ to_swagger_path(Path, PathMeta, Acc) ->
                ).
 
 add_swagger_path(Method, Acc, Path, Parameters) ->
-    MethodJObj = wh_json:get_value([Path, Method], Acc),
+    MethodJObj = wh_json:get_value([Path, Method], Acc, wh_json:new()),
     Vs = props:filter_undefined(
            [{[Path, Method], MethodJObj}
            ,maybe_add_schema(Path, Method, Parameters)
