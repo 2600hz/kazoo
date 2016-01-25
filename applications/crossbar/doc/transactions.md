@@ -10,9 +10,9 @@ The transactions endpoint allows you to list debits and credits made to a specif
 
 #### Get a summary of transactions
 
-    Options:  TODO ask how options should be documented.  how are options submitted? 
-    - `created_from` {{TIMESTAMP}}
-    - `created_to` {{TIMESTAMP}}
+    Options:  TODO ask how options should be documented.  how are options submitted?
+    - `created_from` {TIMESTAMP}
+    - `created_to` {TIMESTAMP}
     - `reason` `only_calls`
 
 > GET /v2/accounts/{ACCOUNT_ID}/transactions
@@ -34,7 +34,7 @@ curl -x GET \
          "code": 9999
         }
         ,{"metadata": {
-            "auth_account_id": "{{AUTH_ACCOUNT_ID}}"
+            "auth_account_id": "{AUTH_ACCOUNT_ID}"
         },
         "id": "7dd1c20894587e9cbacb2d7fa2de80ab",
         "amount": 1.0,
@@ -47,11 +47,11 @@ curl -x GET \
     "request_id": "{REQUEST_ID}",
     "status": "success"
 }
-```     
+```
 
 #### Get current balance
 
-> GET /v2/accounts/{{ACCOUNT_ID}}/transactions/current_balance 
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 
 ```curl
 curl -x GET \
@@ -64,14 +64,14 @@ curl -x GET \
      },
     "request_id": "{REQUEST_ID}",
     "status": "success"
-}     
+}
 ```
 
 #### Debit an account
 
 Only for super duper admins and resellers.
 
-> DELETE /v2/accounts/{{ACCOUNT_ID}}/transactions/debit 
+> DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
 
 ```curl
 curl -x DELETE \
@@ -82,7 +82,7 @@ curl -x DELETE \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "metadata": {
-            "auth_account_id": "{{ACCOUNT_ID}}"
+            "auth_account_id": "{ACCOUNT_ID}"
         },
         "id": "d478a0f74865c8512b71daf82b602b7a",
         "amount": 1.0,
