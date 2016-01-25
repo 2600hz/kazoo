@@ -76,7 +76,7 @@ reasons(Min, Max, [_ | T], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec dollars_to_units(text() | number()) -> integer().
+-spec dollars_to_units(text() | number()) -> wh_transaction:units().
 dollars_to_units(Dollars) when is_number(Dollars) ->
     round(Dollars * ?DOLLAR_TO_UNIT);
 dollars_to_units(Dollars) ->
@@ -88,7 +88,7 @@ dollars_to_units(Dollars) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec units_to_dollars(number()) -> float().
+-spec units_to_dollars(wh_transaction:units()) -> float().
 units_to_dollars(Units) when is_number(Units) ->
     trunc(Units) / ?DOLLAR_TO_UNIT;
 units_to_dollars(Units) ->
@@ -118,14 +118,14 @@ base_call_cost(RateCost, RateMin, RateSurcharge) when is_integer(RateCost),
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec current_balance(ne_binary()) -> integer().
+-spec current_balance(ne_binary()) -> wh_transaction:units().
 current_balance(Account) -> get_balance(Account, []).
 
--spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> integer().
+-spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> wh_transaction:units().
 previous_balance(Account, Year, Month) ->
     get_balance(Account, [{'year', Year}, {'month', Month}]).
 
--spec get_balance(ne_binary(), wh_proplist()) -> integer().
+-spec get_balance(ne_binary(), wh_proplist()) -> wh_transaction:units().
 get_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     case kazoo_modb:get_results(Account, View, ViewOptions) of
@@ -138,13 +138,13 @@ get_balance(Account, ViewOptions) ->
             0
     end.
 
--spec get_balance_from_previous(ne_binary(), wh_proplist()) -> integer().
--spec get_balance_from_previous(ne_binary(), wh_proplist(), integer()) -> integer().
+-spec get_balance_from_previous(ne_binary(), wh_proplist()) -> wh_transaction:units().
+-spec get_balance_from_previous(ne_binary(), wh_proplist(), integer()) -> wh_transaction:units().
 get_balance_from_previous(Account, ViewOptions) ->
-    Retry = props:get_value('retry', ViewOptions, 3),
-    get_balance_from_previous(Account, ViewOptions, Retry).
+    Retries = props:get_value('retry', ViewOptions, 3),
+    get_balance_from_previous(Account, ViewOptions, Retries).
 
-get_balance_from_previous(Account, ViewOptions, Retry) when Retry >= 0 ->
+get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
     {DefaultYear, DefaultMonth, _} = erlang:date(),
     Y = props:get_integer_value('year', ViewOptions, DefaultYear),
     M = props:get_integer_value('month', ViewOptions, DefaultMonth),
@@ -152,15 +152,15 @@ get_balance_from_previous(Account, ViewOptions, Retry) when Retry >= 0 ->
 
     VOptions = [{'year', wh_util:to_binary(Year)}
                 ,{'month', wh_util:pad_month(Month)}
-                ,{'retry', Retry-1}
+                ,{'retry', Retries-1}
                ],
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
     get_balance(Account, VOptions);
-get_balance_from_previous(Account, ViewOptions, _) ->
+get_balance_from_previous(Account, ViewOptions, _Retries) ->
     lager:warning("3 attempt to find balance in previous modb getting from account", []),
     get_balance_from_account(Account, ViewOptions).
 
--spec maybe_rollup(ne_binary(), wh_proplist(), integer()) -> integer().
+-spec maybe_rollup(ne_binary(), wh_proplist(), wh_transaction:units()) -> wh_transaction:units().
 maybe_rollup(Account, ViewOptions, Balance) ->
     case props:get_integer_value('retry', ViewOptions) of
         'undefined' when Balance =< 0 ->
@@ -177,7 +177,7 @@ maybe_rollup(Account, ViewOptions, Balance) ->
             maybe_rollup_previous_month(Account, Balance)
     end.
 
--spec verify_monthly_rollup_exists(ne_binary(), integer()) -> integer().
+-spec verify_monthly_rollup_exists(ne_binary(), wh_transaction:units()) -> wh_transaction:units().
 verify_monthly_rollup_exists(Account, Balance) ->
     case kazoo_modb:open_doc(Account, <<"monthly_rollup">>) of
         {'ok', _} -> Balance;
@@ -188,7 +188,7 @@ verify_monthly_rollup_exists(Account, Balance) ->
         {'error', _R} -> Balance
     end.
 
--spec maybe_rollup_previous_month(ne_binary(), integer()) -> integer().
+-spec maybe_rollup_previous_month(ne_binary(), wh_transaction:units()) -> wh_transaction:units().
 maybe_rollup_previous_month(Account, Balance) ->
     case get_rollup_from_previous(Account) of
         {'error', _} -> Balance;
@@ -198,7 +198,7 @@ maybe_rollup_previous_month(Account, Balance) ->
     end.
 
 -spec get_rollup_from_previous(ne_binary()) ->
-                                      {'ok', integer()} |
+                                      {'ok', wh_transaction:units()} |
                                       {'error', any()}.
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
@@ -222,7 +222,7 @@ get_rollup_from_previous(Account) ->
     end.
 
 -spec get_rollup_balance(ne_binary(), wh_proplist()) ->
-                                {'ok', integer()} |
+                                {'ok', wh_transaction:units()} |
                                 {'error', any()}.
 get_rollup_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
@@ -254,7 +254,7 @@ current_account_dollars(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_balance_from_account(ne_binary(), wh_proplist()) -> integer().
+-spec get_balance_from_account(ne_binary(), wh_proplist()) -> wh_transaction:units().
 get_balance_from_account(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     AccountId = wh_util:format_account_id(Account, 'raw'),
@@ -298,7 +298,7 @@ call_cost(JObj) ->
             RateMin = get_integer_value(<<"Rate-Minimum">>, CCVs),
             Surcharge = get_integer_value(<<"Surcharge">>, CCVs),
             Cost = calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
-            Discount = (get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost,
+            Discount = trunc((get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost),
             lager:info("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps, no charge time ~ps, sub total $~p, discount $~p, total $~p"
                        ,[units_to_dollars(Rate)
                          ,RateIncr, RateMin
