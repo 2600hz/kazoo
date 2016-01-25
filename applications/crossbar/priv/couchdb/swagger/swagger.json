@@ -9267,7 +9267,10 @@
         "/v2/accounts/{ACCOUNTID}/transactions/debit": {
             "delete": {}
         },
-        "/v2/accounts/{ACCOUNTID}/transactions/{ID}": {
+        "/v2/accounts/{ACCOUNTID}/transactions/monthly_recurring": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNTID}/transactions/subscriptions": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/users": {
