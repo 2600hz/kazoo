@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz, INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -13,22 +13,27 @@
 
 -define(WH_SERVICES_DB, <<"services">>).
 
+-type error() :: 'topup_disabled' |
+                 'topup_undefined' |
+                 'amount_undefined' |
+                 'limit_undefined' |
+                 'balance_above_threshold' |
+                 'undefined' |
+                 atom().
+
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec init(api_binary(), integer()) -> 'ok' | 'error'.
+-spec init(api_binary(), integer()) ->
+                  'ok' |
+                  {'error', error()}.
 init(Account, Balance) ->
     case get_top_up(Account) of
-        {'error', 'topup_undefined'} -> 'error';
-        {'error', 'topup_disabled'} ->
-            lager:debug("trying to top up account ~s but top up is disabled", [Account]),
-            'error';
-        {'error', _E} ->
-            lager:error("could not get top up settings for ~s : ~p", [Account, _E]),
-            'error';
+        {'error', _}=E -> E;
         {'ok', Amount, Threshold} ->
             maybe_top_up(Account, wht_util:units_to_dollars(Balance), Amount, Threshold)
     end.
@@ -39,20 +44,18 @@ init(Account, Balance) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_top_up(api_binary() | wh_json:object()) ->
-                        {'error', _} |
+-spec get_top_up(api_binary() | kz_account:doc()) ->
+                        {'error', error()} |
                         {'ok', integer(), integer()}.
 get_top_up(<<_/binary>> = Account) ->
     case whapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of
         'false' -> {'error', 'topup_disabled'};
         'true' ->
-            AccountId = wh_util:format_account_id(Account, 'raw'),
-            AccountDb = wh_util:format_account_id(Account, 'encoded'),
-            case couch_mgr:open_doc(AccountDb, AccountId) of
-                {'error', _}=Error ->
-                    lager:error("could not open account ~s in ~s", [AccountId, AccountDb]),
+            case kz_account:fetch(Account) of
+                {'error', _E}=Error ->
+                    lager:error("could not open account ~s: ~p", [Account, _E]),
                     Error;
-                {'ok', Doc} -> get_top_up(wh_json:get_value(<<"topup">>, Doc))
+                {'ok', AccountJObj} -> get_top_up(wh_json:get_value(<<"topup">>, AccountJObj))
             end
     end;
 get_top_up('undefined') -> {'error', 'topup_undefined'};
@@ -64,7 +67,9 @@ get_top_up(JObj) ->
     of
         {'undefined', _} -> {'error', 'amount_undefined'};
         {_, 'undefined'} -> {'error', 'limit_undefined'};
-        {Amount, Threshold} when Amount > 0 andalso Threshold > 0 -> {'ok', Amount, Threshold};
+        {Amount, Threshold} when Amount > 0
+                                 andalso Threshold > 0 ->
+            {'ok', Amount, Threshold};
         {_, _} -> {'error', 'undefined'}
     end.
 
@@ -74,20 +79,20 @@ get_top_up(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_top_up(ne_binary(), number(), integer(), integer()) -> 'ok' | 'error'.
+-spec maybe_top_up(ne_binary(), number(), integer(), integer()) ->
+                          'ok' |
+                          {'error', error()}.
 maybe_top_up(Account, Balance, Amount, Threshold) when Balance =< Threshold ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {'ok', JObj} ->
-            Transactions = wh_json:get_value(<<"transactions">>, JObj, []),
-            trying_top_up(Account, Amount, Transactions);
-        {'error', _R} ->
-            lager:error("unable to open account ~s services doc: ~p", [Account, _R]),
-            'error'
+    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
+        {'error', _R}=E -> E;
+        {'ok', ServicesJObj} ->
+            Transactions = kzd_services:transactions(ServicesJObj),
+            trying_top_up(Account, Amount, Transactions)
     end;
 maybe_top_up(Account, Balance, _, Threshold) ->
     lager:warning("balance (~p) is still > to threshold (~p) for account ~s", [Balance, Threshold, Account]),
-    'error'.
+    {'error', 'balance_above_threshold'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -95,7 +100,7 @@ maybe_top_up(Account, Balance, _, Threshold) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec trying_top_up(ne_binary(), integer(), wh_json:objects()) -> 'ok' | 'error'.
+-spec trying_top_up(ne_binary(), integer(), wh_json:objects()) -> 'ok'.
 trying_top_up(Account, Amount, []) ->
     lager:info("no top up transactions found, processing..."),
     top_up(Account, Amount);
@@ -104,7 +109,7 @@ trying_top_up(Account, Amount, [JObj|JObjs]) ->
     case wh_transaction:reason(Transaction) =:= <<"topup">> of
         'true' ->
             lager:info("top up for ~s already done, skipping...", [Account]),
-            'error';
+            'ok';
         'false' ->
             trying_top_up(Account, Amount, JObjs)
     end.
@@ -115,14 +120,12 @@ trying_top_up(Account, Amount, [JObj|JObjs]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec top_up(ne_binary(), integer()) -> 'ok' | 'error'.
+-spec top_up(ne_binary(), integer()) -> 'ok' | {'error', any()}.
 top_up(Account, Amount) ->
     Transaction = wh_transaction:debit(Account, wht_util:dollars_to_units(Amount)),
     Transaction1 = wh_transaction:set_reason(<<"topup">>, Transaction),
     case wh_transaction:service_save(Transaction1) of
-        {'error', _E} ->
-            lager:error("fail to top up ~s : ~p", [Account, _E]),
-            'error';
+        {'error', _E}=E -> E;
         {'ok', _} ->
             lager:info("account ~s top up for ~p", [Account, Amount])
     end.
