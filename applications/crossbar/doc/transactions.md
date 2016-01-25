@@ -1,22 +1,29 @@
-
-
 ### Transactions
 
-#### Get transactions
+#### About
 
-##### Request
+The transactions endpoint allows you to list debits and credits made to a specified account
 
-- Verb: `GET`
-- Url: `/accounts/{{ACCOUNT_ID}}/transactions`
-- Payload: None
-- options:
+#### Schema
+    TODO add schema maybe. not sure I completely understand what should go here.
+
+
+#### Get a summary of transactions
+
+    Options:  TODO ask how options should be documented.  how are options submitted? 
     - `created_from` {{TIMESTAMP}}
     - `created_to` {{TIMESTAMP}}
     - `reason` `only_calls`
 
-##### Response
+> GET /v2/accounts/{ACCOUNT_ID}/transactions
 
-    {"data": [
+```curl
+curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
         {"description": "monthly rollup",
          "id": "09dd02e20e07dbb65401802ba20cfb32",
          "amount": 10.179999999999999716,
@@ -37,39 +44,43 @@
         "version": 2,
         "code": 3005
      }],
-     "status": "success"
-    }
-
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```     
 
 #### Get current balance
 
-##### Request
+> GET /v2/accounts/{{ACCOUNT_ID}}/transactions/current_balance 
 
-- Verb: `GET`
-- Url: `/accounts/{{ACCOUNT_ID}}/transactions/current_balance`
-- Payload: None
-
-##### Response
-
-    {"data": {
+```curl
+curl -x GET \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
         "balance": 9.18
      },
-     "status": "success"
-    }
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}     
+```
 
 #### Debit an account
 
 Only for super duper admins and resellers.
 
-##### Request
+> DELETE /v2/accounts/{{ACCOUNT_ID}}/transactions/debit 
 
-- Verb: `DELETE`
-- Url: `/accounts/{{ACCOUNT_ID}}/transactions/debit`
-- Payload: `{"data": {"amount": 1} }`
-
-##### Response
-
-    {"data": {
+```curl
+curl -x DELETE \
+     -H "X-Auth-Token: {AUTH_TOKEN}" \
+     -d '{"data": {"amount": 1} }'
+     http://{SERVER}/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
         "metadata": {
             "auth_account_id": "{{ACCOUNT_ID}}"
         },
@@ -81,5 +92,7 @@ Only for super duper admins and resellers.
         "version": 2,
         "code": 3005
      },
-     "status": "success"
-    }
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
