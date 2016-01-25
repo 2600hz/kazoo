@@ -79,7 +79,9 @@ allowed_methods(?CURRENT_BALANCE) ->
     [?HTTP_GET];
 allowed_methods(?DEBIT) ->
     [?HTTP_DELETE];
-allowed_methods(_) ->
+allowed_methods(?MONTHLY) ->
+    [?HTTP_GET];
+allowed_methods(?SUBSCRIPTIONS) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -229,7 +231,6 @@ validate_transaction(Context, ?DEBIT, ?HTTP_DELETE) ->
     validate_debit(Context);
 validate_transaction(Context, _PathToken, _Verb) ->
     cb_context:add_system_error('bad_identifier',  Context).
-
 
 %%--------------------------------------------------------------------
 %% @private
