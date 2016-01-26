@@ -322,24 +322,30 @@ test_for_low_balance(AccountId, AccountJObj) ->
             'ok'
     end.
 
+-spec maybe_reset_low_balance_sent(kz_account:doc(), 'ok' | 'error') -> 'ok'.
 maybe_reset_low_balance_sent(AccountJObj, 'ok') ->
-    lager:debug("topup succeeded, resetting ~s to 'false'", [?KEY_LOW_BALANCE_SENT]),
     UpdatedAccountJObj = wh_json:set_value(?KEY_LOW_BALANCE_SENT, 'false', AccountJObj),
-    wh_util:account_update(UpdatedAccountJObj);
-maybe_reset_low_balance_sent(_AccountJObj, _TopUpError) ->
-    lager:debug("not resetting ~s, topup error: ~p", [?KEY_LOW_BALANCE_SENT, _TopUpError]).
+    wh_util:account_update(UpdatedAccountJObj),
+    lager:debug("topup succeeded, resetting ~s to 'false'", [?KEY_LOW_BALANCE_SENT]);
+maybe_reset_low_balance_sent(_AccountJObj, Error) ->
+    lager:debug("not resetting ~s, topup error: ~p"
+               ,[?KEY_LOW_BALANCE_SENT, Error]
+               ).
 
 -spec is_account_balance_too_low(wh_transaction:units(), number()) -> boolean().
 is_account_balance_too_low(CurrentBalance, Threshold) ->
     CurrentBalance < wht_util:dollars_to_units(Threshold).
 
--spec maybe_topup_account(ne_binary(), wh_transaction:units()) -> 'ok'.
+-spec maybe_topup_account(ne_binary(), wh_transaction:units()) ->
+                                 'ok' |
+                                 wh_topup:error().
 maybe_topup_account(AccountId, CurrentBalance) ->
     case wh_topup:init(AccountId, CurrentBalance) of
         'ok' ->
             lager:debug("topup successful for ~s", [AccountId]);
-        {'error', _E} ->
-            lager:error("topup failed for ~s: ~p", [AccountId, _E])
+        {'error', Error} ->
+            lager:error("topup failed for ~s: ~p", [AccountId, Error]),
+            Error
     end.
 
 -spec maybe_low_balance_notify(kz_account:doc(), wh_transaction:units()) -> 'ok'.

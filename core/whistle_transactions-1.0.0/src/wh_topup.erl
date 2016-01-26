@@ -13,6 +13,15 @@
 
 -define(WH_SERVICES_DB, <<"services">>).
 
+-type error() :: 'topup_disabled' |
+                 'topup_undefined' |
+                 'amount_undefined' |
+                 'limit_undefined' |
+                 'balance_above_threshold' |
+                 'undefined' |
+                 atom().
+
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -21,7 +30,7 @@
 %%--------------------------------------------------------------------
 -spec init(api_binary(), integer()) ->
                   'ok' |
-                  {'error', any()}.
+                  {'error', error()}.
 init(Account, Balance) ->
     case get_top_up(Account) of
         {'error', _}=E -> E;
@@ -36,7 +45,7 @@ init(Account, Balance) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_top_up(api_binary() | kz_account:doc()) ->
-                        {'error', _} |
+                        {'error', error()} |
                         {'ok', integer(), integer()}.
 get_top_up(<<_/binary>> = Account) ->
     case whapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of
@@ -58,7 +67,9 @@ get_top_up(JObj) ->
     of
         {'undefined', _} -> {'error', 'amount_undefined'};
         {_, 'undefined'} -> {'error', 'limit_undefined'};
-        {Amount, Threshold} when Amount > 0 andalso Threshold > 0 -> {'ok', Amount, Threshold};
+        {Amount, Threshold} when Amount > 0
+                                 andalso Threshold > 0 ->
+            {'ok', Amount, Threshold};
         {_, _} -> {'error', 'undefined'}
     end.
 
@@ -70,13 +81,13 @@ get_top_up(JObj) ->
 %%--------------------------------------------------------------------
 -spec maybe_top_up(ne_binary(), number(), integer(), integer()) ->
                           'ok' |
-                          {'error', any()}.
+                          {'error', error()}.
 maybe_top_up(Account, Balance, Amount, Threshold) when Balance =< Threshold ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R}=E -> E;
-        {'ok', JObj} ->
-            Transactions = wh_json:get_value(<<"transactions">>, JObj, []),
+        {'ok', ServicesJObj} ->
+            Transactions = kzd_services:transactions(ServicesJObj),
             trying_top_up(Account, Amount, Transactions)
     end;
 maybe_top_up(Account, Balance, _, Threshold) ->
