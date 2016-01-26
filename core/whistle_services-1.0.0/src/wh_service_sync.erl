@@ -297,6 +297,8 @@ maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper) ->
             sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions)
     end.
 
+-spec sync_transactions(ne_binary(), kzd_services:doc(), atom(), wh_json:objects()) ->
+                               'ok'.
 sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions) ->
     BillingId = kzd_services:billing_id(ServicesJObj),
     FailedTransactions = Bookkeeper:charge_transactions(BillingId, Transactions),
