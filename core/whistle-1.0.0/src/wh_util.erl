@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -15,6 +15,7 @@
          ,format_account_db/1
          ,format_account_modb/1, format_account_modb/2
          ,normalize_account_name/1
+         ,account_update/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1
@@ -471,11 +472,11 @@ set_allow_number_additions(Account, IsAllowed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_update(wh_json:object()) -> 'ok' | {'error', any()}.
+-spec account_update(kz_account:doc()) -> 'ok' | {'error', any()}.
 -spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
-account_update(JObj) ->
-    AccountDb = wh_doc:account_db(JObj),
-    case couch_mgr:ensure_saved(AccountDb, JObj) of
+account_update(AccountJObj) ->
+    AccountDb = wh_doc:account_db(AccountJObj),
+    case couch_mgr:ensure_saved(AccountDb, AccountJObj) of
         {'error', _R}=E -> E;
         {'ok', SavedJObj} ->
             couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, SavedJObj)

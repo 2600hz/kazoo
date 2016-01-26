@@ -62,7 +62,7 @@
                          ,pvt_status :: api_binary()
                          ,pvt_reason :: api_binary()
                          ,pvt_code :: api_integer()
-                         ,pvt_amount = 0 :: non_neg_integer()
+                         ,pvt_amount = 0 :: units()
                          ,pvt_type :: ne_binary()
                          ,pvt_created :: gregorian_seconds()
                          ,pvt_modified :: gregorian_seconds()
@@ -74,8 +74,12 @@
 
 -type transaction() :: #wh_transaction{}.
 -type transactions() :: [transaction()].
+
+-type units() :: non_neg_integer().
+
 -export_type([transaction/0
               ,transactions/0
+              ,units/0
              ]).
 
 %%--------------------------------------------------------------------

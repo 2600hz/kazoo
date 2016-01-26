@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz, INC
+%%% @copyright (C) 2015-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -24,6 +24,7 @@
          ,quantities/1, quantities/2
          ,category_quantities/2, category_quantities/3
          ,item_quantity/3, item_quantity/4
+         ,transactions/1, transactions/2
         ]).
 
 -export([set_billing_id/2
@@ -36,6 +37,7 @@
          ,set_plans/2
          ,set_plan/3
          ,set_quantities/2
+         ,set_transactions/2
         ]).
 
 -include("kz_documents.hrl").
@@ -53,6 +55,7 @@
 -define(TYPE, <<"service">>).
 -define(PLANS, <<"plans">>).
 -define(QUANTITIES, <<"quantities">>).
+-define(TRANSACTIONS, <<"transactions">>).
 
 -spec billing_id(doc()) -> api_binary().
 -spec billing_id(doc(), Default) -> ne_binary() | Default.
@@ -161,6 +164,13 @@ item_quantity(JObj, CategoryId, ItemId) ->
 item_quantity(JObj, CategoryId, ItemId, Default) ->
     wh_json:get_integer_value([?QUANTITIES, CategoryId, ItemId], JObj, Default).
 
+-spec transactions(doc()) -> wh_json:objects().
+-spec transactions(doc(), Default) -> wh_json:objects() | Default.
+transactions(JObj) ->
+    transactions(JObj, []).
+transactions(JObj, Default) ->
+    wh_json:get_value(?TRANSACTIONS, JObj, Default).
+
 -spec set_is_reseller(doc(), boolean()) -> doc().
 set_is_reseller(JObj, IsReseller) ->
     wh_json:set_value(?IS_RESELLER, IsReseller, JObj).
@@ -198,3 +208,7 @@ set_plan(JObj, PlanId, Plan) ->
 -spec set_quantities(doc(), wh_json:object()) -> wh_json:object().
 set_quantities(JObj, Quantities) ->
     wh_json:set_value(?QUANTITIES, Quantities, JObj).
+
+-spec set_transactions(doc(), wh_json:objects()) -> doc().
+set_transactions(JObj, Transactions) ->
+    wh_json:set_value(?TRANSACTIONS, Transactions, JObj).
