@@ -24,7 +24,17 @@ Also the following fields are checked
 
 If number was determined and notifications are not disabled, the call is being originated. The second leg is voicemail check callflow number.
 
-A call will be attempted `attempts` times every `interval_s` seconds. Call timeout can be adjasted by modifying `timeout_s` option.
+To determinate callbacks `schedule` following fields are checked
+
+* `notify.callback.schedule` in vmbox
+* `voicemail.notify.callback.schedule` in vmbox owner's document
+* `voicemail.notify.callback.schedule` in account document
+
+`schedule` should be array of intervals (in seconds) between callback attempts.
+
+If `schedule` is not found a call will determine schedule from `attempts` and `interval_s` values. In this case call will be attempted `attempts` times every `interval_s` seconds.
+
+Call timeout can be adjasted by modifying `timeout_s` option.
 
 These parameters can be set in (first one that's set wins).
 
