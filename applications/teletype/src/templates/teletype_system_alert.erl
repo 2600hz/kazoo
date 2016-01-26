@@ -145,7 +145,7 @@ handle_req_as_http(JObj, Url, UseEmail) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = wh_json:encode(JObj),
 
-    case ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Encoded) of
+    case kz_http:req('post', wh_util:to_list(Url), Headers, [], Encoded) of
         {'ok', "2" ++ _, _ResponseHeaders, _ResponseBody} ->
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);
         _Error ->

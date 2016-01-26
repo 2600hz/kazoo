@@ -1701,19 +1701,19 @@ notify(Url, 'get', Data) ->
 
 -spec notify(iolist(), [], 'get' | 'post', binary(), wh_proplist()) -> 'ok'.
 notify(Uri, Headers, Method, Body, Opts) ->
-    case ibrowse:send_req(wh_util:to_list(Uri)
-                          ,Headers
-                          ,Method
-                          ,Body
-                          ,[{'connect_timeout', 200} % wait up to 200ms for connection
-                            | Opts
-                           ]
-                          ,1000
-                         )
+    case kz_http:req(Method
+                     ,wh_util:to_list(Uri)
+                     ,Headers
+                     ,[{'connect_timeout', 200}
+                        ,{'timeout', 1000}
+                        |Opts
+                      ]
+                     ,Body
+                    )
     of
         {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
             lager:debug("~s req to ~s: ~s", [Method, Uri, _Status]);
-        {'error', {'url_parsing_failed',_}} ->
+        {'error', {'malformed_url',_}} ->
             lager:debug("failed to parse the URL ~s", [Uri]);
         {'error', _E} ->
             lager:debug("failed to send request to ~s: ~p", [Uri, _E])

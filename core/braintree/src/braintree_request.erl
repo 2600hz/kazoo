@@ -89,7 +89,7 @@ request(Method, Path, Body) ->
     HTTPOptions = http_options(),
     verbose_debug("Request:~n~s ~s~n~s~n", [Method, Url, Body]),
 
-    case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions) of
+    case kz_http:req(Method, Url, Headers, HTTPOptions, Body) of
         {'ok', "401", _, _Response} ->
             verbose_debug("Response:~n401~n~s~n", [_Response]),
             lager:debug("braintree error response(~pms): 401 Unauthenticated", [wh_util:elapsed_ms(StartTime)]),
@@ -155,7 +155,7 @@ request_headers() ->
 
 -spec http_options() -> [ssl_option() | basic_auth_option()].
 http_options() ->
-    [{'ssl',[{'verify', 0}]}
+    [{'ssl',[{'verify', 'verify_none'}]}
      ,{'basic_auth', {?BT_DEFAULT_PUBLIC_KEY
                       ,?BT_DEFAULT_PRIVATE_KEY
                      }

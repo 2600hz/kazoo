@@ -218,7 +218,7 @@ query_vitelity(N, URI) ->
                             {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
-    case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
+    case kz_http:req('post', wh_util:to_list(URI), []) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
             {'ok', RespXML};

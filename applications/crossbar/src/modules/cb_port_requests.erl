@@ -1600,13 +1600,7 @@ create_qr_code(AccountId, PortRequestId) ->
     CHL = <<AccountId/binary, "-", PortRequestId/binary>>,
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
-    case ibrowse:send_req(wh_util:to_list(Url)
-                          ,[]
-                          ,'get'
-                          ,[]
-                          ,[{'response', 'binary'}]
-                         )
-    of
+    case kz_http:req('get', wh_util:to_list(Url), [] ,[{'body_format', 'binary'}]) of
         {'ok', "200", _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
             [{<<"image">>, base64:encode(RespBody)}];

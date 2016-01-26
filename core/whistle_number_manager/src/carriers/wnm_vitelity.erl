@@ -107,7 +107,7 @@ find(Prefix, Quantity, Opts) ->
                             {'error', any()}.
 query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
-    case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
+    case kz_http:req('post', wh_util:to_list(URI)) of
         {'ok', "200", _RespHeaders, RespXML} ->
             lager:debug("recv 200: ~s", [RespXML]),
             process_xml_resp(Prefix, Quantity, RespXML);
@@ -269,7 +269,7 @@ get_routesip() ->
 -spec query_vitelity(wnm_number(), ne_binary()) -> wnm_number().
 query_vitelity(Number, URI) ->
     lager:debug("querying ~s", [URI]),
-    case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
+    case kz_http:req('post', wh_util:to_list(URI), []) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
             process_xml_resp(Number, RespXML);

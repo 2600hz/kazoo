@@ -43,15 +43,15 @@
 -define(CONNECT_TIMEOUT_MS
         ,whapps_config:get_integer(?APP_NAME, <<"connect_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
        ).
--define(IBROWSE_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}
-                       ,{'response_format', 'binary'}
+-define(HTTP_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}
+                       ,{'body_format', 'binary'}
                       ]).
 
--define(IBROWSE_TIMEOUT_MS
+-define(HTTP_TIMEOUT_MS
         ,whapps_config:get_integer(?APP_NAME, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
        ).
 
--define(IBROWSE_REQ_HEADERS(Hook)
+-define(HTTP_REQ_HEADERS(Hook)
         ,[{"X-Hook-ID", Hook#webhook.hook_id}
           ,{"X-Account-ID", Hook#webhook.account_id}
          ]).
@@ -178,13 +178,11 @@ fire_hook(JObj, Hook, URI, 'get', Retries) ->
               ,URI
               ,'get'
               ,Retries
-              ,ibrowse:send_req(URI ++ [$?|wh_json:to_querystring(JObj)]
-                                ,?IBROWSE_REQ_HEADERS(Hook)
-                                ,'get'
-                                ,[]
-                                ,?IBROWSE_OPTS
-                                ,?IBROWSE_TIMEOUT_MS
-                               )
+              ,kz_http:req('get'
+                           ,URI ++ [$?|wh_json:to_querystring(JObj)]
+                           ,?HTTP_REQ_HEADERS(Hook)
+                           ,?HTTP_OPTS
+                          )
              );
 fire_hook(JObj, Hook, URI, 'post', Retries) ->
     lager:debug("sending event via 'post'(~b): ~s", [Retries, URI]),
@@ -194,25 +192,24 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
               ,URI
               ,'post'
               ,Retries
-              ,ibrowse:send_req(URI
-                                ,[{"Content-Type", "application/x-www-form-urlencoded"}
-                                  | ?IBROWSE_REQ_HEADERS(Hook)
-                                 ]
-                                ,'post'
-                                ,wh_json:to_querystring(JObj)
-                                ,?IBROWSE_OPTS
-                                ,?IBROWSE_TIMEOUT_MS
-                               )
+              ,kz_http:req('post'
+                           ,URI
+                           ,[{"Content-Type", "application/x-www-form-urlencoded"}
+                              | ?HTTP_REQ_HEADERS(Hook)
+                            ]
+                           ,?HTTP_OPTS
+                           ,wh_json:to_querystring(JObj)
+                          )
              ).
 
--spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), ibrowse_ret()) -> 'ok'.
+-spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), kz_http_ret()) -> 'ok'.
 fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
     lager:debug("sent hook call event successfully"),
     successful_hook(Hook);
 fire_hook(_JObj, Hook, _URI, _Method, Retries, {'ok', RespCode, _, RespBody}) ->
     _ = failed_hook(Hook, Retries, RespCode, RespBody),
     lager:debug("non-200 response code: ~s on account ~s", [RespCode, Hook#webhook.account_id]);
-fire_hook(JObj, Hook, URI, Method, Retries, {'error', 'req_timedout'}) ->
+fire_hook(JObj, Hook, URI, Method, Retries, {'error', 'timeout'}) ->
     lager:debug("request timed out to ~s, retrying", [URI]),
     _ = failed_hook(Hook, Retries, <<"request_timed_out">>),
     retry_hook(JObj, Hook, URI, Method, Retries);
@@ -220,7 +217,7 @@ fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', 'retry_later'}) ->
     lager:debug("failed with 'retry_later' to ~s", [URI]),
     _ = failed_hook(Hook, Retries, <<"retry_later">>),
     'ok';
-fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', {'conn_failed', {'error', E}}}) ->
+fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', {'failed_connect', {'error', E}}}) ->
     lager:debug("connection failed with ~p to ~s", [E, URI]),
     _ = failed_hook(Hook, Retries, wh_util:to_binary(E)),
     'ok';

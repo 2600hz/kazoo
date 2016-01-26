@@ -166,7 +166,7 @@ token(#oauth_app{name=AppId
               ,{"refresh_token",wh_util:to_list(RefreshToken)}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=")] end, Fields)), "&"),
-    case ibrowse:send_req(wh_util:to_list(AUTH_URL), Headers, 'post', Body) of
+    case kz_http:req('post', wh_util:to_list(AUTH_URL), Headers, [], Body) of
         {'ok', "200", _RespHeaders, RespXML} ->
             JObj = wh_json:decode(RespXML),
             Token = wh_json:get_value(<<"access_token">>, JObj),
@@ -193,7 +193,7 @@ verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
     end;
 verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
     URL = <<TokenInfoUrl/binary,AccessToken/binary>>,
-    case ibrowse:send_req(wh_util:to_list(URL), [], 'get') of
+    case kz_http:req('get', wh_util:to_list(URL)) of
         {'ok', "200", _RespHeaders, RespXML} ->
             JObj = wh_json:decode(RespXML),
             case wh_json:get_value(<<"error">>, JObj) of
@@ -233,7 +233,7 @@ refresh_token(#oauth_app{name=ClientId
               ,{"code", AuthorizationCode}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, wh_util:to_list(V)], "=") ] end, Fields)),"&"),
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'post', Body) of
+    case kz_http:req('post', wh_util:to_list(URL), Headers, [], Body) of
         {'ok', "200", _RespHeaders, RespXML} -> {'ok', wh_json:decode(RespXML)};
         Else ->
             lager:debug("unable to get new oauth token: ~p", [Else]),

@@ -5,6 +5,10 @@
     {registered, [ ]},
     {applications, [ kernel
                    , stdlib
-
+                   , asn1
+                   , crypto
+                   , public_key
+                   , ssl
+                   , inets
                    ]}
 ]}.

@@ -311,18 +311,17 @@ post_xml(Url, Body, AdditionalHeaders) ->
             ,{"X-BWC-IN-Control-Processing-Type", "process"}
             ,{"Content-Type", "text/xml"}
            ],
-    HTTPOptions = [{'ssl', [{'verify', 0}]}
-                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
+                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ],
-    Timeout = 180 * ?MILLISECONDS_IN_SECOND,
     ?DEBUG_WRITE("Request:~n~s ~s~n~s~n", ['post', Url, Body]),
     UnicodeBody = unicode:characters_to_binary(Body),
-    Resp = ibrowse:send_req(Url, Headers, 'post', UnicodeBody, HTTPOptions, Timeout),
+    Resp = kz_http:req('post', Url, Headers, HTTPOptions, UnicodeBody),
     handle_ibrowse_response(Resp).
 
 -type bw_ret() :: {'ok', ne_binary()} | {'error', any()}.
--spec handle_ibrowse_response(any()) -> bw_ret().
+-spec handle_ibrowse_response(kz_http_ret()) -> bw_ret().
 handle_ibrowse_response({'ok', "401", _, _Response}) ->
     ?DEBUG_APPEND("Response:~n401~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 401 (unauthenticated)"),

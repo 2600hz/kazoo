@@ -15,7 +15,6 @@
 
                   , lager
                   , gproc
-                  , ibrowse
                   ]}
  , {mod, {ecallmgr_app, []}}
  , {env, [{reloader, false}]}

@@ -42,7 +42,7 @@
           text :: ne_binary()
           ,contents = <<>> :: binary()
           ,status :: 'streaming' | 'ready'
-          ,ibrowse_req_id :: ibrowse_req_id()
+          ,kz_http_req_id :: kz_http_req_id()
           ,reqs :: [{pid(), reference()}]
           ,meta :: wh_json:object()
           ,timer_ref :: reference()
@@ -94,7 +94,7 @@ init([Text, JObj]) ->
     Format = wh_json:get_value(<<"Format">>, JObj, <<"wav">>),
     Engine = wh_json:get_value(<<"Engine">>, JObj),
 
-    {'ok', ReqID} = whapps_speech:create(Engine, Text, Voice, Format, [{'stream_to', self()}]),
+    {'ok', ReqID} = whapps_speech:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
 
     MediaName = wh_util:binary_md5(Text),
     lager:debug("text '~s' has id '~s'", [Text, MediaName]),
@@ -103,7 +103,7 @@ init([Text, JObj]) ->
                               ,{<<"media_name">>, MediaName}
                              ]),
 
-    {'ok', #state{ibrowse_req_id = ReqID
+    {'ok', #state{kz_http_req_id = ReqID
                   ,status = 'streaming'
                   ,meta = Meta
                   ,contents = <<>>
@@ -178,24 +178,20 @@ handle_info({'timeout', TRef, ?TIMEOUT_MESSAGE}, #state{timer_ref=TRef}=State) -
     lager:debug("timeout expired, going down"),
     {'stop', 'normal', State};
 
-handle_info({'ibrowse_async_headers', ReqID, "200", Hdrs}, #state{ibrowse_req_id=ReqID
-                                                                  ,timer_ref=TRef
-                                                                 }=State) ->
-    lager:debug("successfully retrieved audio file for tts"),
+handle_info({'http', {ReqID, 'stream_start', Hdrs}}, #state{kz_http_req_id=ReqID
+                                                            ,timer_ref=TRef
+                                                           }=State) ->
+    lager:debug("start retrieving audio file for tts"),
     _ = stop_timer(TRef),
     {'noreply', State#state{meta=wh_json:normalize(wh_json:from_list(kv_to_bin(Hdrs)))
                             ,timer_ref=start_timer()
                            }};
 
-handle_info({'ibrowse_async_headers', ReqID, "202", Hdrs}, #state{ibrowse_req_id=ReqID}=State) ->
-    lager:debug("202 recv for tts request, awaiting further instructions"),
-    {'noreply', State#state{meta=wh_json:normalize(wh_json:from_list(kv_to_bin(Hdrs)))}};
-
-handle_info({'ibrowse_async_response', ReqID, Bin}, #state{ibrowse_req_id=ReqID
-                                                           ,meta=Meta
-                                                           ,contents=Contents
-                                                           ,timer_ref=TRef
-                                                          }=State) ->
+handle_info({'http', {ReqID, 'stream', Bin}}, #state{kz_http_req_id=ReqID
+                                                     ,meta=Meta
+                                                     ,contents=Contents
+                                                     ,timer_ref=TRef
+                                                    }=State) ->
     _ = stop_timer(TRef),
     case wh_json:get_value(<<"content_type">>, Meta) of
         <<"audio/", _/binary>> ->
@@ -208,25 +204,19 @@ handle_info({'ibrowse_async_response', ReqID, Bin}, #state{ibrowse_req_id=ReqID
             {'noreply', State, 'hibernate'}
     end;
 
-handle_info({'ibrowse_async_headers', ReqID, Bin}, #state{ibrowse_req_id=ReqID
-                                                          ,contents=Contents
-                                                         }=State) ->
-    lager:debug("recv ~b bytes", [byte_size(Bin)]),
-    {'noreply', State#state{contents = <<Contents/binary, Bin/binary>>}};
-
-handle_info({'ibrowse_async_response_end', ReqID}, #state{ibrowse_req_id=ReqID
-                                                          ,contents = <<>>
-                                                          ,timer_ref=TRef
-                                                         }=State) ->
+handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_id=ReqID
+                                                                   ,contents = <<>>
+                                                                   ,timer_ref=TRef
+                                                                  }=State) ->
     _ = stop_timer(TRef),
     lager:debug("no tts contents were received, going down"),
     {'stop', 'normal', State};
-handle_info({'ibrowse_async_response_end', ReqID}, #state{ibrowse_req_id=ReqID
-                                                          ,contents=Contents
-                                                          ,meta=Meta
-                                                          ,reqs=Reqs
-                                                          ,timer_ref=TRef
-                                                         }=State) ->
+handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_id=ReqID
+                                                                   ,contents=Contents
+                                                                   ,meta=Meta
+                                                                   ,reqs=Reqs
+                                                                   ,timer_ref=TRef
+                                                                  }=State) ->
     _ = stop_timer(TRef),
     Res = {Meta, Contents},
     _ = [gen_server:reply(From, Res) || From <- Reqs],
@@ -237,6 +227,32 @@ handle_info({'ibrowse_async_response_end', ReqID}, #state{ibrowse_req_id=ReqID
                            }
      ,'hibernate'
     };
+
+handle_info({'http', {ReqID, {{_, StatusCode, _}, Hdrs, Contents}}}, #state{kz_http_req_id=ReqID
+                                                                      ,reqs=Reqs
+                                                                      ,timer_ref=TRef
+                                                                     }=State) ->
+    _ = stop_timer(TRef),
+    Res = {wh_json:normalize(wh_json:from_list(kv_to_bin(Hdrs))), Contents},
+
+    lager:debug("finished receiving file contents with status code ~p", [StatusCode]),
+    _ = [gen_server:reply(From, Res) || From <- Reqs],
+
+    lager:debug("finished receiving file contents"),
+    {'noreply', State#state{status=ready
+                            ,timer_ref=start_timer()
+                           }
+     ,'hibernate'
+    };
+
+handle_info({'http', {ReqID, {'error', Error}}}, #state{kz_http_req_id=ReqID
+                                                        ,contents=Contents
+                                                        ,timer_ref=TRef
+                                                       }=State) ->
+    _ = stop_timer(TRef),
+    lager:info("recv error ~p : collected: ~s", [Error, Contents]),
+    {'stop', 'normal', State};
+
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, 'hibernate'}.

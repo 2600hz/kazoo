@@ -62,10 +62,7 @@ check_numbers(Numbers, _Props) ->
             ReqBody = wh_json:set_value(<<"data">>, FormatedNumbers, wh_json:new()),
             Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/status">>,
             lager:debug("making request to ~s with body ~p", [Uri, ReqBody]),
-            case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
-                {'error', Reason} ->
-                    lager:error("numbers check failed: ~p", [Reason]),
-                    {'error', Reason};
+            case kz_http:req('post', binary:bin_to_list(Uri), [], [], wh_json:encode(ReqBody)) of
                 {'ok', "200", _Headers, Body} ->
                     format_check_numbers(wh_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
@@ -136,10 +133,7 @@ acquire_number(#number{number=Num}=Number) ->
                                         ),
 
             Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/order">>,
-            case ibrowse:send_req(wh_util:to_list(Uri), [], 'put', wh_json:encode(ReqBody)) of
-                {'error', Reason} ->
-                    lager:error("number lookup failed to ~s: ~p", [Uri, Reason]),
-                    wnm_number:error_carrier_fault(Reason, Number);
+            case kz_http:req('put', wh_util:to_list(Uri), [], [], wh_json:encode(ReqBody)) of
                 {'ok', "200", _Headers, Body} ->
                     format_acquire_resp(wh_json:decode(Body), Number);
                 {'ok', _Status, _Headers, Body} ->
@@ -165,10 +159,7 @@ get_numbers(Url, Number, Quantity, Props) ->
     Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     ReqBody = <<"?prefix=", Number/binary, "&limit=", Quantity/binary, "&offset=", Offset/binary>>,
     Uri = <<Url/binary, "/numbers/", Country/binary, "/search", ReqBody/binary>>,
-    case ibrowse:send_req(wh_util:to_list(Uri), [], 'get') of
-        {'error', _Reason} ->
-            lager:error("number lookup error to ~s: ~p", [Uri, _Reason]),
-            {'error', 'non_available'};
+    case kz_http:req('get', wh_util:to_list(Uri)) of
         {'ok', "200", _Headers, Body} ->
             format_numbers_resp(wh_json:decode(Body));
         {'ok', _Status, _Headers, _Body} ->
@@ -201,10 +192,7 @@ get_blocks(Url, Number, Quantity, Props) ->
                             ,"&limit=", Limit/binary>>,
     Uri = <<Url/binary, "/blocks/", Country/binary, "/search", ReqBody/binary>>,
     lager:debug("making request to ~s", [Uri]),
-    case ibrowse:send_req(binary:bin_to_list(Uri), [], 'get') of
-        {'error', Reason} ->
-            lager:error("block lookup error: ~p", [Reason]),
-            {'error', 'non_available'};
+    case kz_http:req('get', binary:bin_to_list(Uri)) of
         {'ok', "200", _Headers, Body} ->
             format_blocks_resp(wh_json:decode(Body));
         {'ok', _Status, _Headers, Body} ->

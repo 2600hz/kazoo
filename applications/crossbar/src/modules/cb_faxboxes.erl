@@ -436,12 +436,12 @@ register_cloud_printer(Context, FaxboxId) ->
     Body = register_body(ResellerId, FaxboxId, Boundary),
     ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
     ContentLength = length(Body),
-    Options = [{'content_type', ContentType}
-               ,{'content_length', ContentLength}
+    Headers = [?GPC_PROXY_HEADER
+               ,{"Content-Type",ContentType}
+               ,{'Content-Length', ContentLength}
               ],
-    Headers = [?GPC_PROXY_HEADER, {"Content-Type",ContentType}],
     Url = wh_util:to_list(?GPC_URL_REGISTER),
-    case ibrowse:send_req(Url, Headers, 'post', Body, Options) of
+    case kz_http:req('post', Url, Headers, [], Body) of
         {'ok', "200", _RespHeaders, RespJSON} ->
             JObj = wh_json:decode(RespJSON),
             case wh_json:is_true(<<"success">>, JObj, 'false') of

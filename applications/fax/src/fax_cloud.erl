@@ -72,7 +72,7 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
     case get_printer_oauth_credentials(PrinterId) of
         {'ok', Authorization} ->
             Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
-            case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
+            case kz_http:req('get', wh_util:to_list(URL), Headers) of
                 {'ok', "200", _RespHeaders, RespBody} ->
                     JObj = wh_json:decode(RespBody),
                     JObjs = wh_json:get_value(<<"jobs">>, JObj, []),
@@ -127,7 +127,7 @@ fetch_ticket(JobId, Authorization) ->
     Headers = [?GPC_PROXY_HEADER
                ,{"Authorization",Authorization}
               ],
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
+    case kz_http:req('get', wh_util:to_list(URL), Headers) of
         {'ok', "200", _RespHeaders, RespBody} ->
             wh_json:decode(RespBody);
         Response ->
@@ -175,7 +175,7 @@ send_update_job_status(JobId, Status, Authorization) ->
 
     Body = props:to_querystring(Fields),
 
-    case ibrowse:send_req(wh_util:to_list(?JOBCTL_URL), Headers, 'post', Body) of
+    case kz_http:req('post', wh_util:to_list(?JOBCTL_URL), Headers, [], Body) of
         {'ok', "200", _RespHeaders, RespBody} ->
             JObj = wh_json:decode(RespBody),
             case wh_json:is_true(<<"success">>, JObj) of
@@ -193,7 +193,7 @@ send_update_job_status(JobId, Status, Authorization) ->
                            {'error', any()}.
 download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
+    case kz_http:req('get', wh_util:to_list(URL), Headers) of
         {'ok', "200", RespHeaders, RespBody} ->
             CT = wh_util:to_binary(props:get_value("Content-Type", RespHeaders)),
             Ext = fax_util:content_type_to_extension(CT),
@@ -399,7 +399,7 @@ check_registration(AppId, <<"registered">>, JObj) ->
     PoolingUrlPart = wh_json:get_value(<<"pvt_cloud_polling_url">>, JObj),
     PoolingUrl = wh_util:to_list(<<PoolingUrlPart/binary, AppId/binary>>),
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
-    case ibrowse:send_req(PoolingUrl, [?GPC_PROXY_HEADER], 'get') of
+    case kz_http:req('get', PoolingUrl, [?GPC_PROXY_HEADER]) of
         {'ok', "200", _RespHeaders, RespXML} ->
             JObjPool = wh_json:decode(RespXML),
             Result = wh_json:get_value(<<"success">>, JObjPool, 'false'),

@@ -207,21 +207,14 @@ emergency_provisioning_request(Verb, Props) ->
                ,{"User-Agent", ?WNM_USER_AGENT}
                ,{"Content-Type", "text/xml"}
               ],
-    HTTPOptions = [{'ssl',[{'verify',0}]}
-                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+    HTTPOptions = [{'ssl',[{'verify','verify_none'}]}
+                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
-    case ibrowse:send_req(wh_util:to_list(URL)
-                          ,Headers
-                          ,'post'
-                          ,unicode:characters_to_binary(Body)
-                          ,HTTPOptions
-                          ,180 * ?MILLISECONDS_IN_SECOND
-                         )
-    of
+    case kz_http:req('post', wh_util:to_list(URL), Headers, HTTPOptions, unicode:characters_to_binary(Body)) of
         {'ok', "401", _, _Response} ->
             ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),

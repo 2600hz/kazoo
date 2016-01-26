@@ -418,12 +418,7 @@ qr_code_image(Text) ->
     CHL = wh_util:uri_encode(Text),
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
-    case ibrowse:send_req(wh_util:to_list(Url)
-                          ,[]
-                          ,'get'
-                          ,[]
-                          ,[{'response', 'binary'}]
-                         )
+    case kz_http:req('get', wh_util:to_list(Url), [] , [{'body_format', 'binary'}])
     of
         {'ok', "200", _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
@@ -449,7 +444,7 @@ post_json(Url, JObj, OnErrorCallback) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = wh_json:encode(JObj),
 
-    case ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Encoded) of
+    case kz_http:req('post', wh_util:to_list(Url), Headers, [], Encoded) of
         {'ok', "2" ++ _, _ResponseHeaders, _ResponseBody} ->
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);
         _Error ->

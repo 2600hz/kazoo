@@ -33,7 +33,7 @@ service_token(#oauth_service_app{private_key=_PrivateKey
               ,{"assertion", wh_util:to_list(wh_util:uri_encode(Assertion))}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=") ] end, Fields)),"&"),
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'post', Body) of
+    case kz_http:req('post', wh_util:to_list(URL), Headers, [], Body) of
         {'ok', "200", _RespHeaders, RespXML} ->
             wh_json:decode(RespXML);
         _Else ->

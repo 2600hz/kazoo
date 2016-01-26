@@ -29,7 +29,7 @@
           ,'escalus','exml'
           ,'folsom'
           ,'gcm','gen_smtp','goldrush','gproc'
-          ,'ibrowse','inets'
+          ,'inets'
           ,'kazoo_bindings','kazoo_caches','kazoo_documents', 'kazoo_etsmgr'
           ,'kazoo_modb'
           ,'kazoo_oauth','kazoo_token_buckets','kernel'

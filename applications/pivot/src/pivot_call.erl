@@ -33,7 +33,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(DEFAULT_OPTS, [{'response_format', 'binary'}]).
+-define(DEFAULT_OPTS, [{'body_format', 'binary'}]).
 
 -type http_method() :: 'get' | 'post'.
 
@@ -42,7 +42,7 @@
                 ,request_format = <<"twiml">> :: api_binary()
                 ,method = 'get' :: http_method()
                 ,call :: whapps_call:call()
-                ,request_id :: ibrowse_req_id()
+                ,request_id :: kz_http_req_id()
                 ,request_params :: wh_json:object()
                 ,response_code :: ne_binary()
                 ,response_headers :: binaries() | ne_binary()
@@ -245,7 +245,7 @@ handle_cast({'cdr', JObj}, #state{cdr_uri=Url
 
     maybe_debug_req(Call, Url, 'post', Headers, Body, Debug),
 
-    case ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Body) of
+    case kz_http:req('post', wh_util:to_list(Url), Headers, [], Body) of
         {'ok', RespCode, RespHeaders, RespBody} ->
             maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
             lager:debug("recv ~s from cdr url ~s", [RespCode, Url]);
@@ -283,81 +283,38 @@ handle_cast(_Req, State) ->
                                      {'stop', any(), state()}.
 handle_info({'stop', _Call}, State) ->
     {'stop', 'normal', State};
-handle_info({'ibrowse_async_headers', ReqId, "200"=StatusCode, Hdrs}
+handle_info({'http', {ReqId, 'stream_start', Hdrs}}
             ,#state{request_id=ReqId
                    }=State) ->
     RespHeaders = normalize_resp_headers(Hdrs),
     lager:debug("recv resp headers"),
-    {'noreply', State#state{
-                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                  ,response_code=wh_util:to_binary(StatusCode)
-                  ,response_headers=RespHeaders
-                 }
-    };
+    {'noreply', State#state{response_headers=RespHeaders}};
 
-handle_info({'ibrowse_async_headers', ReqId, "302"=StatusCode, Hdrs}
-            ,#state{voice_uri=Uri
-                    ,method=Method
-                    ,request_id=ReqId
-                    ,request_params=Params
-                    ,call=Call
-                    ,debug=Debug
-                    ,response_body=RespBody
-                   }=State) ->
-    RespHeaders = normalize_resp_headers(Hdrs),
-    Redirect = props:get_value("location", RespHeaders),
-    lager:info("recv 302: redirect to ~s", [Redirect]),
-    Redirect1 = kzt_util:resolve_uri(Uri, Redirect),
-
-    maybe_debug_resp(Debug, Call, wh_util:to_binary(StatusCode), RespHeaders, RespBody),
-
-    ?MODULE:new_request(self(), Redirect1, Method, Params),
-    {'noreply', State};
-handle_info({'ibrowse_async_headers', ReqId, "4"++_=StatusCode, RespHeaders}
-            ,#state{request_id=ReqId}=State) ->
-    lager:info("recv client failure status code ~s", [StatusCode]),
-    {'noreply', State#state{
-                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                  ,response_code=wh_util:to_binary(StatusCode)
-                  ,response_headers=RespHeaders
-                 }
-    };
-handle_info({'ibrowse_async_headers', ReqId, "5"++_=StatusCode, RespHeaders}
-            ,#state{request_id=ReqId}=State) ->
-    lager:info("recv server failure status code ~s", [StatusCode]),
-    {'noreply', State#state{
-                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                  ,response_code=wh_util:to_binary(StatusCode)
-                  ,response_headers=RespHeaders
-                 }
-    };
-
-handle_info({'ibrowse_async_response', ReqId, {'error', 'connection_closed'}}
+handle_info({'http', {ReqId, {'error', Error}}}
             ,#state{request_id=ReqId
                     ,response_body=_RespBody
                    }=State) ->
-    lager:info("connection closed unexpectedly: collected: ~s", [_RespBody]),
+    lager:info("recv error ~p : collected: ~s", [Error, _RespBody]),
     {'noreply', State};
-handle_info({'ibrowse_async_response', ReqId, Chunk}
+
+handle_info({'http', {ReqId, 'stream', Chunk}}
             ,#state{request_id=ReqId
                     ,response_body=RespBody
                    }=State) ->
     lager:info("adding response chunk: '~s'", [Chunk]),
     {'noreply', State#state{response_body = <<RespBody/binary, Chunk/binary>>}};
 
-handle_info({'ibrowse_async_response_end', ReqId}, #state{request_id=ReqId
-                                                          ,response_code=RespCode
-                                                          ,response_headers=RespHeaders
-                                                          ,response_body=RespBody
-                                                          ,response_content_type=CT
-                                                          ,call=Call
-                                                          ,debug=Debug
-                                                          ,requester_queue=RequesterQ
-                                                         }=State) ->
-    maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
+handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}, #state{request_id=ReqId
+                                                                  ,response_body=RespBody
+                                                                  ,call=Call
+                                                                  ,debug=Debug
+                                                                  ,requester_queue=RequesterQ
+                                                                 }=State) ->
+    RespHeaders = normalize_resp_headers(FinalHeaders),
+    maybe_debug_resp(Debug, Call, <<"200">>, RespHeaders, RespBody),
     HandleArgs = [RequesterQ
                   ,kzt_util:set_amqp_listener(self(), Call)
-                  ,CT
+                  ,props:get_value(<<"content-type">>, RespHeaders)
                   ,RespBody
                  ],
     {Pid, Ref} = wh_util:spawn_monitor(fun handle_resp/4, HandleArgs),
@@ -370,6 +327,26 @@ handle_info({'ibrowse_async_response_end', ReqId}, #state{request_id=ReqId
                             ,response_ref = Ref
                            }
      ,'hibernate'};
+
+handle_info({'http', {ReqId, {{_, "4"++_=StatusCode, _}, RespHeaders, _}}}
+            ,#state{request_id=ReqId}=State) ->
+    lager:info("recv client failure status code ~s", [StatusCode]),
+    {'noreply', State#state{
+                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
+                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_headers=RespHeaders
+                 }
+    };
+handle_info({'http', {ReqId, {{_, "5"++_=StatusCode, _}, RespHeaders, _}}}
+            ,#state{request_id=ReqId}=State) ->
+    lager:info("recv server failure status code ~s", [StatusCode]),
+    {'noreply', State#state{
+                  response_content_type=props:get_value(<<"content-type">>, RespHeaders)
+                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_headers=RespHeaders
+                 }
+    };
+
 handle_info({'DOWN', Ref, 'process', Pid, Reason}, #state{response_pid=Pid
                                                           ,response_ref=Ref
                                                          }=State) ->
@@ -428,7 +405,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec send_req(whapps_call:call(), ne_binary(), http_method(), wh_json:object() | wh_proplist(), boolean()) ->
-                      {'ok', ibrowse_req_id(), whapps_call:call()} |
+                      {'ok', kz_http_req_id(), whapps_call:call()} |
                       {'stop', whapps_call:call()}.
 send_req(Call, Uri, Method, BaseParams, Debug) when not is_list(BaseParams) ->
     send_req(Call, Uri, Method, wh_json:to_proplist(BaseParams), Debug);
@@ -445,22 +422,18 @@ send_req(Call, Uri, 'post', BaseParams, Debug) ->
     send(UpdatedCall, Uri, 'post', Headers, wh_json:to_querystring(Params), Debug).
 
 -spec send(whapps_call:call(), ne_binary(), http_method(), wh_proplist(), iolist(), boolean()) ->
-                  {'ok', ibrowse_req_id(), whapps_call:call()} |
+                  {'ok', kz_http_req_id(), whapps_call:call()} |
                   {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
     lager:info("sending req to ~s(~s): ~s", [Uri, Method, iolist_to_binary(ReqBody)]),
 
     maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, Debug),
 
-    Opts = [{'stream_to', self()}
-            | ?DEFAULT_OPTS
-           ],
-
-    case ibrowse:send_req(wh_util:to_list(Uri), ReqHdrs, Method, ReqBody, Opts) of
-        {'ibrowse_req_id', ReqId} ->
+    case kz_http:async_req(self(), Method, wh_util:to_list(Uri), ReqHdrs, ?DEFAULT_OPTS, ReqBody) of
+        {'http_req_id', ReqId} ->
             lager:debug("response coming in asynchronosly to ~p", [ReqId]),
             {'ok', ReqId, Call};
-        {'error', {'conn_failed', {'error', 'econnrefused'}}} ->
+        {'error', {'failed_connect', {'error', 'econnrefused'}}} ->
             lager:debug("connection to host refused, going down"),
             {'stop', Call};
         {'error', _Reason} ->
