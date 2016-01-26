@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz, INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -19,16 +19,12 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec init(api_binary(), integer()) -> 'ok' | 'error'.
+-spec init(api_binary(), integer()) ->
+                  'ok' |
+                  {'error', any()}.
 init(Account, Balance) ->
     case get_top_up(Account) of
-        {'error', 'topup_undefined'} -> 'error';
-        {'error', 'topup_disabled'} ->
-            lager:debug("trying to top up account ~s but top up is disabled", [Account]),
-            'error';
-        {'error', _E} ->
-            lager:error("could not get top up settings for ~s : ~p", [Account, _E]),
-            'error';
+        {'error', _}=E -> E;
         {'ok', Amount, Threshold} ->
             maybe_top_up(Account, wht_util:units_to_dollars(Balance), Amount, Threshold)
     end.
@@ -39,20 +35,18 @@ init(Account, Balance) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_top_up(api_binary() | wh_json:object()) ->
+-spec get_top_up(api_binary() | kz_account:doc()) ->
                         {'error', _} |
                         {'ok', integer(), integer()}.
 get_top_up(<<_/binary>> = Account) ->
     case whapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of
         'false' -> {'error', 'topup_disabled'};
         'true' ->
-            AccountId = wh_util:format_account_id(Account, 'raw'),
-            AccountDb = wh_util:format_account_id(Account, 'encoded'),
-            case couch_mgr:open_doc(AccountDb, AccountId) of
-                {'error', _}=Error ->
-                    lager:error("could not open account ~s in ~s", [AccountId, AccountDb]),
+            case kz_account:fetch(Account) of
+                {'error', _E}=Error ->
+                    lager:error("could not open account ~s: ~p", [Account, _E]),
                     Error;
-                {'ok', Doc} -> get_top_up(wh_json:get_value(<<"topup">>, Doc))
+                {'ok', AccountJObj} -> get_top_up(wh_json:get_value(<<"topup">>, AccountJObj))
             end
     end;
 get_top_up('undefined') -> {'error', 'topup_undefined'};
