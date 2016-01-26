@@ -314,10 +314,20 @@ test_for_low_balance(AccountId, AccountJObj) ->
     case is_account_balance_too_low(CurrentBalance, Threshold) of
         'true' ->
             maybe_low_balance_notify(AccountJObj, CurrentBalance),
-            maybe_topup_account(AccountId, CurrentBalance);
+            maybe_reset_low_balance_sent(
+              AccountJObj
+              ,maybe_topup_account(AccountId, CurrentBalance)
+             );
         'false' ->
-            maybe_low_balance_notify(AccountJObj, CurrentBalance)
+            'ok'
     end.
+
+maybe_reset_low_balance_sent(AccountJObj, 'ok') ->
+    lager:debug("topup succeeded, resetting ~s to 'false'", [?KEY_LOW_BALANCE_SENT]),
+    UpdatedAccountJObj = wh_json:set_value(?KEY_LOW_BALANCE_SENT, 'false', AccountJObj),
+    wh_util:account_update(UpdatedAccountJObj);
+maybe_reset_low_balance_sent(_AccountJObj, _TopUpError) ->
+    lager:debug("not resetting ~s, topup error: ~p", [?KEY_LOW_BALANCE_SENT, _TopUpError]).
 
 -spec is_account_balance_too_low(wh_transaction:units(), number()) -> boolean().
 is_account_balance_too_low(CurrentBalance, Threshold) ->
@@ -337,7 +347,7 @@ maybe_low_balance_notify(AccountJObj, CurrentBalance) ->
     case wh_json:is_true(?KEY_LOW_BALANCE_SENT, AccountJObj, 'false') of
         'true' -> lager:debug("low balance alert already sent apparently");
         'false' ->
-            notify_of_low_balance(wh_doc:id(AccountJObj), CurrentBalance),
+            _ = notify_of_low_balance(wh_doc:id(AccountJObj), CurrentBalance),
             update_account_low_balance_sent(AccountJObj)
     end.
 
