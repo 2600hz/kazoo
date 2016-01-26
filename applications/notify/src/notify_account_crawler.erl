@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -47,8 +47,8 @@ start_link() ->
 check(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} ->
-            process_account(AccountId, wh_doc:account_db(JObj), JObj);
+        {'ok', AccountJObj} ->
+            process_account(AccountId, wh_doc:account_db(JObj), AccountJObj);
         {'error', _R} ->
             lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
     end;
@@ -147,13 +147,13 @@ handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
--spec check_then_process_account(ne_binary(), {'ok', wh_json:object()} | {'error',any()}) -> 'ok'.
-check_then_process_account(AccountId, {'ok', JObj}) ->
-    case wh_doc:is_soft_deleted(JObj) of
+-spec check_then_process_account(ne_binary(), {'ok', kz_account:doc()} | {'error',any()}) -> 'ok'.
+check_then_process_account(AccountId, {'ok', AccountJObj}) ->
+    case wh_doc:is_soft_deleted(AccountJObj) of
         'true' ->
             lager:debug("not processing account ~p (soft-destroyed)", [AccountId]);
         'false' ->
-            process_account(AccountId, wh_doc:account_db(JObj), JObj)
+            process_account(AccountId, wh_doc:account_db(AccountJObj), AccountJObj)
     end;
 check_then_process_account(AccountId, {'error', _R}) ->
     lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R]).
@@ -186,31 +186,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_account (ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-process_account(AccountId, AccountDb, JObj) ->
+-spec process_account (ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
+process_account(AccountId, AccountDb, AccountJObj) ->
     lager:debug("notify crawler processing account ~s", [AccountId]),
-    _ = maybe_test_for_initial_occurrences(AccountId, AccountDb, JObj),
-    _ = maybe_test_for_low_balance(AccountId, AccountDb, JObj),
-    _ = doodle_maintenance:start_check_sms_by_account(AccountId, JObj),
+    _ = maybe_test_for_initial_occurrences(AccountId, AccountDb, AccountJObj),
+    _ = maybe_test_for_low_balance(AccountId, AccountJObj),
+    _ = doodle_maintenance:start_check_sms_by_account(AccountId, AccountJObj),
     'ok'.
 
--spec maybe_test_for_initial_occurrences(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_test_for_initial_occurrences(AccountId, AccountDb, JObj) ->
+-spec maybe_test_for_initial_occurrences(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
+maybe_test_for_initial_occurrences(AccountId, AccountDb, AccountJObj) ->
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"crawl_for_first_occurrence">>, 'true') of
         'false' -> 'ok';
         'true' ->
-            test_for_initial_occurrences(AccountId, AccountDb, JObj)
+            test_for_initial_occurrences(AccountId, AccountDb, AccountJObj)
     end.
 
--spec test_for_initial_occurrences(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-test_for_initial_occurrences(AccountId, AccountDb, JObj) ->
-    _ = maybe_test_for_registrations(AccountId, AccountDb, JObj),
-    maybe_test_for_initial_call(AccountId, AccountDb, JObj).
+-spec test_for_initial_occurrences(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
+test_for_initial_occurrences(AccountId, AccountDb, AccountJObj) ->
+    _ = maybe_test_for_registrations(AccountId, AccountDb, AccountJObj),
+    maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj).
 
--spec maybe_test_for_registrations(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_test_for_registrations(AccountId, AccountDb, JObj) ->
-    Realm = wh_json:get_ne_value(<<"realm">>, JObj),
-    case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj)
+-spec maybe_test_for_registrations(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
+maybe_test_for_registrations(AccountId, AccountDb, AccountJObj) ->
+    Realm = kz_account:realm(AccountJObj),
+    case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], AccountJObj)
         orelse Realm =:= 'undefined'
     of
         'true' -> 'ok';
@@ -227,7 +227,8 @@ test_for_registrations(AccountId, AccountDb, Realm) ->
           ],
     case whapps_util:amqp_pool_collect(Reg
                                        ,fun wapi_registration:publish_query_req/1
-                                       ,{'ecallmgr', fun wapi_registration:query_resp_v/1})
+                                       ,{'ecallmgr', fun wapi_registration:query_resp_v/1}
+                                      )
     of
         {'error', _} -> 'ok';
         {_, JObjs} ->
@@ -241,27 +242,24 @@ test_for_registrations(AccountId, AccountDb, Realm) ->
 
 -spec handle_initial_registration(ne_binary(), ne_binary()) -> 'ok'.
 handle_initial_registration(AccountId, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            notify_initial_registration(AccountDb, JObj);
+    case kz_account:fetch(AccountId) of
+        {'ok', AccountJObj} ->
+            notify_initial_registration(AccountDb, AccountJObj);
         _E -> 'ok'
     end.
 
--spec notify_initial_registration(ne_binary(), wh_json:object()) -> 'ok'.
-notify_initial_registration(AccountDb, JObj) ->
-    Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]
-                                ,'true'
-                                ,JObj),
-    case couch_mgr:save_doc(AccountDb, Account) of
-        {'ok', _} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Account),
-            notify_first_occurrence:send(<<"registration">>, Account);
-        _E -> 'ok'
-    end.
+-spec notify_initial_registration(ne_binary(), kz_account:doc()) -> 'ok'.
+notify_initial_registration(AccountDb, AccountJObj) ->
+    UpdatedAccountJObj = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]
+                                    ,'true'
+                                    ,AccountJObj
+                                    ),
+    wh_util:update_account(UpdatedAccountJObj),
+    notify_first_occurrence:send(<<"registration">>, UpdatedAccountJObj).
 
--spec maybe_test_for_initial_call(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_test_for_initial_call(AccountId, AccountDb, JObj) ->
-    case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
+-spec maybe_test_for_initial_call(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
+maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj) ->
+    case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], AccountJObj) of
         'true' -> 'ok';
         'false' ->
             lager:debug("looking for initial call in account ~s", [AccountId]),
@@ -282,119 +280,76 @@ test_for_initial_call(AccountId, AccountDb) ->
 
 -spec handle_initial_call(ne_binary(), ne_binary()) -> 'ok'.
 handle_initial_call(AccountId, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            notify_initial_call(AccountDb, JObj);
+    case kz_account:fetch(AccountId) of
+        {'ok', AccountJObj} ->
+            notify_initial_call(AccountDb, AccountJObj);
         _ -> 'ok'
     end.
 
--spec notify_initial_call(ne_binary(), wh_json:object()) -> any().
-notify_initial_call(AccountDb, JObj) ->
-    Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
-                                ,'true'
-                                ,JObj),
-    case couch_mgr:save_doc(AccountDb, Account) of
-        {'ok', _} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Account),
-            notify_first_occurrence:send(<<"call">>, Account);
-        _ -> 'ok'
-    end.
+-spec notify_initial_call(ne_binary(), kz_accuont:doc()) -> any().
+notify_initial_call(AccountDb, AccuontJObj) ->
+    UpdatedAccountJObj = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
+                                           ,'true'
+                                           ,AccountJObj
+                                          ),
+    wh_util:account_update(UpdatedAccountJObj),
+    notify_first_occurrence:send(<<"call">>, UpdatedAccountJObj).
 
--spec maybe_test_for_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_test_for_low_balance(AccountId, AccountDb, JObj) ->
+-spec maybe_test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
+maybe_test_for_low_balance(AccountId, AccountJObj) ->
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"crawl_for_low_balance">>, 'true') of
         'false' -> 'ok';
         'true' ->
-            test_for_low_balance(AccountId, AccountDb, JObj)
+            test_for_low_balance(AccountId, AccountJObj)
     end.
 
--spec test_for_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-test_for_low_balance(AccountId, AccountDb, JObj) ->
+-spec test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
+test_for_low_balance(AccountId, AccountJObj) ->
     Threshold = low_balance_threshold(AccountId),
     CurrentBalance = wht_util:current_balance(AccountId),
     lager:debug("checking if account ~s balance $~w is below $~w"
                ,[AccountId, wht_util:units_to_dollars(CurrentBalance), Threshold]
                ),
-    case CurrentBalance < wht_util:dollars_to_units(Threshold) of
-        'false' ->
-            maybe_reset_low_balance(AccountId, AccountDb, JObj);
+
+    case is_account_balance_too_low(CurrentBalance, Threshold) of
         'true' ->
-            topup_account(AccountId, AccountDb, JObj, CurrentBalance)
+            maybe_low_balance_notify(AccountId, AccountJObj, CurrentBalance),
+            maybe_topup_account(AccountId, CurrentBalance);
+        'false' ->
+            maybe_low_balance_notify(AccountId, AccountJObj, CurrentBalance)
     end.
 
--spec topup_account(ne_binary(), ne_binary()
-                    ,wh_json:object(), integer()) -> 'ok'.
-topup_account(AccountId, AccountDb, JObj, CurrentBalance) ->
+-spec is_account_balance_too_low(wh_transaction:units(), number()) -> boolean().
+is_account_balance_too_low(CurrentBalance, Threshold) ->
+    CurrentBalance < wht_util:dollars_to_units(Threshold).
+
+-spec maybe_topup_account(ne_binary(), wh_transaction:units()) -> 'ok'.
+maybe_topup_account(AccountId, CurrentBalance) ->
     case wh_topup:init(AccountId, CurrentBalance) of
         'ok' ->
             lager:debug("topup successful for ~s", [AccountId]);
-        'error' ->
-            lager:error("topup failed for ~s", [AccountId]),
-            maybe_handle_low_balance(
-                CurrentBalance
-                ,AccountId
-                ,AccountDb
-                ,JObj
-            )
+        {'error', _E} ->
+            lager:error("topup failed for ~s: ~p", [AccountId, _E])
     end.
 
--spec maybe_reset_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_reset_low_balance(AccountId, AccountDb, JObj) ->
-    case wh_json:is_true(?KEY_LOW_BALANCE_SENT, JObj, 'true') of
-        'false' -> 'ok';
-        'true' ->
-            reset_low_balance(AccountId, AccountDb)
-    end.
-
--spec reset_low_balance(ne_binary(), ne_binary()) -> 'ok'.
-reset_low_balance(AccountId, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            lager:debug("reseting low balance sent flag for account ~s", [AccountId]),
-            Account = wh_json:set_value(?KEY_LOW_BALANCE_SENT, 'false', JObj),
-            case couch_mgr:save_doc(AccountDb, Account) of
-                {'ok', _} ->
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Account),
-                    'ok';
-                _E ->
-                    lager:info("unable to reset low balance flag for accounnt ~s: ~p", [AccountId, _E])
-            end;
-        {'error', _} ->
-            'ok'
-    end.
-
--spec maybe_handle_low_balance(integer(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
-    case wh_json:is_true(?KEY_LOW_BALANCE_SENT, JObj)
-        orelse wh_json:get_value(?KEY_LOW_BALANCE_SENT, JObj) =:= 'undefined'
-    of
-        'true' -> 'ok';
+-spec maybe_low_balance_notify(kz_account:doc(), wh_transaction:units()) -> 'ok'.
+maybe_low_balance_notify(AccountJObj, CurrentBalance) ->
+    case wh_json:is_true(?KEY_LOW_BALANCE_SENT, AccountJObj, 'false') of
+        'true' -> lager:debug("low balance alert already sent apparently");
         'false' ->
-            handle_low_balance(CurrentBalance, AccountId, AccountDb)
+            notify_of_low_balance(wh_doc:id(AccountJObj), CurrentBalance),
+            update_account_low_balance_sent(AccountJObj)
     end.
 
--spec handle_low_balance(integer(), ne_binary(), ne_binary()) -> 'ok'.
-handle_low_balance(CurrentBalance, AccountId, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'ok', JObj} ->
-            notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj);
-        _ -> 'ok'
-    end.
+-spec update_account_low_balance_sent(kz_account:doc()) -> 'ok' |
+                                                            {'error', any()}.
+update_account_low_balance_sent(AccountJObj) ->
+    UpdatedAccountJObj = wh_json:set_value(?KEY_LOW_BALANCE_SENT, 'true', AccountJObj),
+    wh_util:update_accuont(UpdatedAccountJObj).
 
--spec notify_low_balance(integer(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
-    Account = wh_json:set_value(?KEY_LOW_BALANCE_SENT
-                                ,'true'
-                                ,JObj
-                               ),
-    case couch_mgr:save_doc(AccountDb, Account) of
-        {'ok', _} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Account),
-            wh_notify:low_balance(CurrentBalance, AccountId);
-        _E ->
-            lager:debug("unable to update low balance flag for account ~s: ~p~n", [AccountId, _E]),
-            'ok'
-    end.
+-spec notify_of_low_balance(ne_binary(), wh_transaction:units()) -> 'ok'.
+notify_of_low_balance(AccountId, CurrentBalance) ->
+    wh_notify:low_balance(CurrentBalance, AccountId).
 
 -spec low_balance_threshold(ne_binary()) -> float().
 low_balance_threshold(Account) ->
