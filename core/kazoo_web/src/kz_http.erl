@@ -77,8 +77,6 @@ async_req(Pid, Method, Url, Hdrs, Opts, Body) ->
 execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Options = get_options(?OPTIONS, Opts),
-
-    io:format("Request ~p~n~n", [Request]),
     handle_response(catch httpc:request(Method, Request, HTTPOptions, Options)).
 
 %%--------------------------------------------------------------------
