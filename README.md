@@ -162,46 +162,12 @@ If you have a non-US deployment, please consider sharing your system configurati
 * Once the dependencies are all here, after a fresh `git clone` just `make`.
 * When developing, one can `cd` into any app directory and run:
     * `make` (`make all` or `make clean`)
-    * `make xref` to look for calls to undefined functions (uses [Xref](//www.erlang.org/doc/apps/tools/xref_chapter.html))
-    * `make dialyze` to statically type-check the app (uses [Dialyzer](//www.erlang.org/doc/man/dialyzer.html))
+    * `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
+    * `make dialyze` to statically type-check the app (uses [Dialyzer](http://www.erlang.org/doc/man/dialyzer.html))
     * `make test` runs the app / sub-apps test suite, if any.
-* `make release` will generate a [deployable release](//learnyousomeerlang.com/release-is-the-word), described in `relx.config.script`
+* `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
+    * [More on using releases with Kazoo](https://github.com/2600hz/kazoo/blob/master/doc/engineering/releases.md)
 * `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
-
-## How to Use Releases
-
-`make build-release` creates `re/relx.config` which [relx](//github.com/erlware/relx/wiki) uses to generate a standalone Erlang VM equipped with Kazoo.
-Two other files are used to declare configuration:
-    * `rel/vm.args`
-    * `rel/sys.config` (or `/etc/kazoo/app.config` when present)
-
-Once built, start a release in "attached mode":
-
-```
-$ make release
-# which is equivalent to
-$ make ACT=console REL=whistle_apps release
-```
-
-The following commands service the release:
-
-```
-$ make ACT=start REL=whistle_apps release
-```
-
-```
-$ make ACT=attach REL=whistle_apps release
-```
-
-```
-$ make ACT=stop REL=whistle_apps release
-```
-
-The release will be started with the `erl` option `-name $REL@$the-machine-hostname.tld`.
-
-Information on Erlang releases and live-updates:
-    * [LYSE's first chapter on releases](http://www.erlang.org/doc/design_principles/release_structure.html)
-    * [OTP's man page on releases](http://www.erlang.org/doc/design_principles/release_structure.html)
 
 ## Learn More
 
