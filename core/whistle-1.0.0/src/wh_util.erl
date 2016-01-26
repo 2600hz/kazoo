@@ -471,21 +471,21 @@ set_allow_number_additions(Account, IsAllowed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec account_update(wh_json:object()) -> 'ok' | {'error', any()}.
+-spec account_update(kz_account:doc()) -> 'ok' | {'error', any()}.
 -spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
-account_update(JObj) ->
-    AccountDb = wh_doc:account_db(JObj),
-    case couch_mgr:ensure_saved(AccountDb, JObj) of
+account_update(AccountJObj) ->
+    AccountDb = wh_doc:account_db(AccountJObj),
+    case couch_mgr:ensure_saved(AccountDb, AccountJObj) of
         {'error', _R}=E -> E;
         {'ok', SavedJObj} ->
             couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, SavedJObj)
     end.
 
-account_update(Account, UpdateFun) ->
-    case kz_account:fetch(Account) of
+account_update(AccountJObj, UpdateFun) ->
+    case kz_account:fetch(AccountJObj) of
         {'error', _R}=E -> E;
-        {'ok', AccountJObj} ->
-            account_update(UpdateFun(AccountJObj))
+        {'ok', UpdatedAccountJObj} ->
+            account_update(UpdateFun(UpdatedAccountJObj))
     end.
 
 %%--------------------------------------------------------------------
