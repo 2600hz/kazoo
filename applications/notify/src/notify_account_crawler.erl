@@ -48,7 +48,7 @@ check(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', AccountJObj} ->
-            process_account(AccountId, wh_doc:account_db(JObj), AccountJObj);
+            process_account(AccountId, wh_doc:account_db(AccountJObj), AccountJObj);
         {'error', _R} ->
             lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
     end;
@@ -236,20 +236,20 @@ test_for_registrations(AccountId, AccountDb, Realm) ->
                 'false' -> 'ok';
                 'true' ->
                     lager:debug("found initial registration for account ~s (~s)", [AccountId, Realm]),
-                    handle_initial_registration(AccountId, AccountDb)
+                    handle_initial_registration(AccountId)
             end
     end.
 
--spec handle_initial_registration(ne_binary(), ne_binary()) -> 'ok'.
-handle_initial_registration(AccountId, AccountDb) ->
+-spec handle_initial_registration(ne_binary()) -> 'ok'.
+handle_initial_registration(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} ->
-            notify_initial_registration(AccountDb, AccountJObj);
+            notify_initial_registration(AccountJObj);
         _E -> 'ok'
     end.
 
--spec notify_initial_registration(ne_binary(), kz_account:doc()) -> 'ok'.
-notify_initial_registration(AccountDb, AccountJObj) ->
+-spec notify_initial_registration(kz_account:doc()) -> 'ok'.
+notify_initial_registration(AccountJObj) ->
     UpdatedAccountJObj = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]
                                     ,'true'
                                     ,AccountJObj
@@ -274,20 +274,20 @@ test_for_initial_call(AccountId, AccountDb) ->
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', [_|_]} ->
             lager:debug("found initial call in account ~s", [AccountId]),
-            handle_initial_call(AccountId, AccountDb);
+            handle_initial_call(AccountId);
         _Else -> 'ok'
     end.
 
--spec handle_initial_call(ne_binary(), ne_binary()) -> 'ok'.
-handle_initial_call(AccountId, AccountDb) ->
+-spec handle_initial_call(ne_binary()) -> 'ok'.
+handle_initial_call(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} ->
-            notify_initial_call(AccountDb, AccountJObj);
+            notify_initial_call(AccountJObj);
         _ -> 'ok'
     end.
 
--spec notify_initial_call(ne_binary(), kz_accuont:doc()) -> any().
-notify_initial_call(AccountDb, AccuontJObj) ->
+-spec notify_initial_call(kz_accuont:doc()) -> any().
+notify_initial_call(AccountJObj) ->
     UpdatedAccountJObj = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
                                            ,'true'
                                            ,AccountJObj
@@ -313,10 +313,10 @@ test_for_low_balance(AccountId, AccountJObj) ->
 
     case is_account_balance_too_low(CurrentBalance, Threshold) of
         'true' ->
-            maybe_low_balance_notify(AccountId, AccountJObj, CurrentBalance),
+            maybe_low_balance_notify(AccountJObj, CurrentBalance),
             maybe_topup_account(AccountId, CurrentBalance);
         'false' ->
-            maybe_low_balance_notify(AccountId, AccountJObj, CurrentBalance)
+            maybe_low_balance_notify(AccountJObj, CurrentBalance)
     end.
 
 -spec is_account_balance_too_low(wh_transaction:units(), number()) -> boolean().
