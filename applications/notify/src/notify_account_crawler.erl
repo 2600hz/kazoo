@@ -254,7 +254,7 @@ notify_initial_registration(AccountJObj) ->
                                     ,'true'
                                     ,AccountJObj
                                     ),
-    wh_util:update_account(UpdatedAccountJObj),
+    wh_util:account_update(UpdatedAccountJObj),
     notify_first_occurrence:send(<<"registration">>, UpdatedAccountJObj).
 
 -spec maybe_test_for_initial_call(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
@@ -286,7 +286,7 @@ handle_initial_call(AccountId) ->
         _ -> 'ok'
     end.
 
--spec notify_initial_call(kz_accuont:doc()) -> any().
+-spec notify_initial_call(kz_account:doc()) -> any().
 notify_initial_call(AccountJObj) ->
     UpdatedAccountJObj = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
                                            ,'true'
@@ -345,7 +345,7 @@ maybe_low_balance_notify(AccountJObj, CurrentBalance) ->
                                                             {'error', any()}.
 update_account_low_balance_sent(AccountJObj) ->
     UpdatedAccountJObj = wh_json:set_value(?KEY_LOW_BALANCE_SENT, 'true', AccountJObj),
-    wh_util:update_accuont(UpdatedAccountJObj).
+    wh_util:account_update(UpdatedAccountJObj).
 
 -spec notify_of_low_balance(ne_binary(), wh_transaction:units()) -> 'ok'.
 notify_of_low_balance(AccountId, CurrentBalance) ->
