@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2015, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -15,6 +15,7 @@
          ,format_account_db/1
          ,format_account_modb/1, format_account_modb/2
          ,normalize_account_name/1
+         ,account_update/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1
@@ -481,11 +482,11 @@ account_update(AccountJObj) ->
             couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, SavedJObj)
     end.
 
-account_update(AccountJObj, UpdateFun) ->
-    case kz_account:fetch(AccountJObj) of
+account_update(Account, UpdateFun) ->
+    case kz_account:fetch(Account) of
         {'error', _R}=E -> E;
-        {'ok', UpdatedAccountJObj} ->
-            account_update(UpdateFun(UpdatedAccountJObj))
+        {'ok', AccountJObj} ->
+            account_update(UpdateFun(AccountJObj))
     end.
 
 %%--------------------------------------------------------------------
