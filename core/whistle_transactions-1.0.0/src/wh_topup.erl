@@ -68,20 +68,20 @@ get_top_up(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_top_up(ne_binary(), number(), integer(), integer()) -> 'ok' | 'error'.
+-spec maybe_top_up(ne_binary(), number(), integer(), integer()) ->
+                          'ok' |
+                          {'error', any()}.
 maybe_top_up(Account, Balance, Amount, Threshold) when Balance =< Threshold ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {'error', _R}=E -> E;
         {'ok', JObj} ->
             Transactions = wh_json:get_value(<<"transactions">>, JObj, []),
-            trying_top_up(Account, Amount, Transactions);
-        {'error', _R} ->
-            lager:error("unable to open account ~s services doc: ~p", [Account, _R]),
-            'error'
+            trying_top_up(Account, Amount, Transactions)
     end;
 maybe_top_up(Account, Balance, _, Threshold) ->
     lager:warning("balance (~p) is still > to threshold (~p) for account ~s", [Balance, Threshold, Account]),
-    'error'.
+    {'error', 'balance_above_threshold'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -89,7 +89,7 @@ maybe_top_up(Account, Balance, _, Threshold) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec trying_top_up(ne_binary(), integer(), wh_json:objects()) -> 'ok' | 'error'.
+-spec trying_top_up(ne_binary(), integer(), wh_json:objects()) -> 'ok'.
 trying_top_up(Account, Amount, []) ->
     lager:info("no top up transactions found, processing..."),
     top_up(Account, Amount);
@@ -98,7 +98,7 @@ trying_top_up(Account, Amount, [JObj|JObjs]) ->
     case wh_transaction:reason(Transaction) =:= <<"topup">> of
         'true' ->
             lager:info("top up for ~s already done, skipping...", [Account]),
-            'error';
+            'ok';
         'false' ->
             trying_top_up(Account, Amount, JObjs)
     end.
@@ -109,14 +109,12 @@ trying_top_up(Account, Amount, [JObj|JObjs]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec top_up(ne_binary(), integer()) -> 'ok' | 'error'.
+-spec top_up(ne_binary(), integer()) -> 'ok' | {'error', any()}.
 top_up(Account, Amount) ->
     Transaction = wh_transaction:debit(Account, wht_util:dollars_to_units(Amount)),
     Transaction1 = wh_transaction:set_reason(<<"topup">>, Transaction),
     case wh_transaction:service_save(Transaction1) of
-        {'error', _E} ->
-            lager:error("fail to top up ~s : ~p", [Account, _E]),
-            'error';
+        {'error', _E}=E -> E;
         {'ok', _} ->
             lager:info("account ~s top up for ~p", [Account, Amount])
     end.
