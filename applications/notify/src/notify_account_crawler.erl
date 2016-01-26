@@ -204,22 +204,22 @@ maybe_test_for_initial_occurrences(AccountId, AccountDb, AccountJObj) ->
 
 -spec test_for_initial_occurrences(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
 test_for_initial_occurrences(AccountId, AccountDb, AccountJObj) ->
-    _ = maybe_test_for_registrations(AccountId, AccountDb, AccountJObj),
+    _ = maybe_test_for_registrations(AccountId, AccountJObj),
     maybe_test_for_initial_call(AccountId, AccountDb, AccountJObj).
 
--spec maybe_test_for_registrations(ne_binary(), ne_binary(), kz_account:doc()) -> 'ok'.
-maybe_test_for_registrations(AccountId, AccountDb, AccountJObj) ->
+-spec maybe_test_for_registrations(ne_binary(), kz_account:doc()) -> 'ok'.
+maybe_test_for_registrations(AccountId, AccountJObj) ->
     Realm = kz_account:realm(AccountJObj),
     case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], AccountJObj)
         orelse Realm =:= 'undefined'
     of
         'true' -> 'ok';
         'false' ->
-            test_for_registrations(AccountId, AccountDb, Realm)
+            test_for_registrations(AccountId, Realm)
     end.
 
--spec test_for_registrations(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-test_for_registrations(AccountId, AccountDb, Realm) ->
+-spec test_for_registrations(ne_binary(), ne_binary()) -> 'ok'.
+test_for_registrations(AccountId, Realm) ->
     lager:debug("looking for any registrations in realm ~s", [Realm]),
     Reg = [{<<"Realm">>, Realm}
            ,{<<"Fields">>, [<<"Account-ID">>]}
