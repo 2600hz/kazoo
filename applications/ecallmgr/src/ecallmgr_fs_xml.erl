@@ -383,13 +383,15 @@ route_resp_ringback(JObj) ->
 route_resp_ccvs(JObj) ->
     case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
         'undefined' -> [];
-        CCVs ->
-            wh_json:foldl(fun route_resp_ccv/3, [], CCVs)
+        CCVs -> [action_el(<<"kz_multiset">>, route_ccvs_list(wh_json:to_proplist(CCVs)) )]
     end.
 
--spec route_resp_ccv(wh_json:key(), wh_json:json_term(), xml_els()) -> xml_els().
-route_resp_ccv(Key, Value, Els) ->
-    [action_el(<<"set">>, ecallmgr_util:get_fs_kv(Key, Value)) | Els].
+-spec route_ccvs_list(wh_proplist()) -> ne_binary().
+route_ccvs_list(CCVs) ->
+    L = [wh_util:to_list(ecallmgr_util:get_fs_kv(K, V))
+         || {K, V} <- CCVs
+        ],
+    wh_util:to_binary(string:join(L, " ")).
 
 -spec route_resp_transfer_ringback(wh_json:object()) -> xml_el().
 route_resp_transfer_ringback(JObj) ->

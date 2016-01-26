@@ -18,6 +18,9 @@
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, ?MILLISECONDS_IN_SECOND).
 
+-define(DEFAULT_DEBUG_CHANNEL, 'false' ).
+-define(DEBUG_CHANNEL, ecallmgr_config:get_boolean(<<"debug_channel">>, ?DEFAULT_DEBUG_CHANNEL) ).
+
 -export([start_link/2]).
 -export([graceful_shutdown/2]).
 -export([shutdown/2]).
@@ -592,12 +595,27 @@ create_event(EventName, ApplicationName, Props) ->
       [{<<"Event-Name">>, EventName}
        |specific_call_event_props(EventName, ApplicationName, Props)
        ++ generic_call_event_props(Props)
+       ++ specific_call_channel_vars_props(EventName, Props)
       ]).
+
+-spec specific_call_channel_vars_props(ne_binary(), wh_proplist()) ->
+                                              wh_proplist().
+specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
+    UUID = get_call_id(Props),
+    Vars = ecallmgr_util:custom_channel_vars(Props),
+    case wh_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, UUID) of
+        {'ok', CDR} ->
+            NewVars = props:set_value(<<?CALL_INTERACTION_ID>>, CDR, Vars),
+            [{<<"Custom-Channel-Vars">>, wh_json:from_list(NewVars)}];
+        _ ->
+            [{<<"Custom-Channel-Vars">>, wh_json:from_list(Vars)}]
+    end;
+specific_call_channel_vars_props(_EventName, Props) ->
+    [{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}].
 
 -spec generic_call_event_props(wh_proplist()) -> wh_proplist().
 generic_call_event_props(Props) ->
-    {Mega,Sec,Micro} = os:timestamp(),
-    Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
+    Timestamp = wh_util:now_us(os:timestamp()),
     FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
     NormalizedFSTimestamp = wh_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
 
@@ -611,28 +629,18 @@ generic_call_event_props(Props) ->
      ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
      ,{<<"Channel-Moving">>, get_channel_moving(Props)}
      ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
-     ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
-                                                        ,<<"Caller-Caller-ID-Number">>
-                                                       ], Props)}
-     ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
-                                                      ,<<"Caller-Caller-ID-Name">>
-                                                     ], Props)}
-     ,{<<"Callee-ID-Number">>, props:get_first_defined([<<"variable_effective_callee_id_number">>
-                                                        ,<<"Caller-Callee-ID-Number">>
-                                                       ], Props)}
-     ,{<<"Callee-ID-Name">>, props:get_first_defined([<<"variable_effective_callee_id_name">>
-                                                      ,<<"Caller-Callee-ID-Name">>
-                                                     ], Props)}
+     ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props)}
+     ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props)}
      ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
      ,{<<"Other-Leg-Call-ID">>, get_other_leg(Props)}
+
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
      ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Replaced-By">>, props:get_first_defined([<<"att_xfer_replaced_by">>, ?ACQUIRED_UUID], Props)}
-     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
@@ -647,7 +655,9 @@ generic_call_event_props(Props) ->
      ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
      ,{<<"Channel-Loopback-Bowout">>, props:get_value(<<"variable_loopback_bowout">>, Props)}
      ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_value(<<"variable_loopback_bowout_on_execute">>, Props)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
+     | callee_call_event_props(Props)
+     ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec publish_event(wh_proplist()) -> 'ok'.
@@ -675,7 +685,7 @@ publish_event(Props) ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
-    wapi_call:publish_event(Props).
+    wh_amqp_worker:cast(Props, fun wapi_call:publish_event/1).
 
 -spec is_masquerade(wh_proplist()) -> boolean().
 is_masquerade(Props) ->
@@ -747,6 +757,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
      ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
+     | debug_channel_props(Props)
     ];
 specific_call_event_props(<<"RECORD_START">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -830,6 +841,7 @@ fax_specific(Props) ->
     props:filter_undefined(
       [{<<"Fax-Success">>, get_fax_success(Props)}
        ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
+       ,{<<"Fax-T38-Used">>, get_fax_t38_used(Props)}
        ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
        ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
        ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
@@ -966,6 +978,13 @@ get_fax_success(Props) ->
         Else -> Else =/= <<"0">>
     end.
 
+-spec get_fax_t38_used(wh_proplist()) -> api_boolean().
+get_fax_t38_used(Props) ->
+    case props:get_value(<<"variable_has_t38">>, Props) of
+        'undefined' -> 'undefined';
+        Else -> wh_util:is_true(Else)
+    end.
+
 -spec get_fax_ecm_used(wh_proplist()) -> api_boolean().
 get_fax_ecm_used(Props) ->
     case props:get_value(<<"variable_fax_ecm_used">>, Props) of
@@ -973,11 +992,21 @@ get_fax_ecm_used(Props) ->
         Else -> Else =/= <<"off">>
     end.
 
+-spec get_serialized_history(wh_proplist()) -> binaries().
+get_serialized_history(Props) ->
+    case kzd_freeswitch:transfer_history(Props) of
+        'undefined' -> [];
+        History when is_binary(History) ->
+            ecallmgr_util:unserialize_fs_array(History);
+        History when is_list(History) ->
+            History
+    end.
+
 -spec get_transfer_history(wh_proplist()) -> api_object().
 get_transfer_history(Props) ->
-    SerializedHistory = kzd_freeswitch:transfer_history(Props),
+    SerializedHistory = get_serialized_history(Props),
     case [HistJObj
-          || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
+          || Trnsf <- SerializedHistory,
              (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined'
          ]
     of
@@ -1005,7 +1034,14 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
              ,{<<"Extension">>, Exten}
             ],
     {Epoch, wh_json:from_list(Trans)};
-create_trnsf_history_object(_) ->
+create_trnsf_history_object([Epoch, CallId, <<"uuid_br">> , OtherLeg]) ->
+    Trans = [{<<"Call-ID">>, CallId}
+             ,{<<"Type">>, <<"bridge">>}
+             ,{<<"Other-Leg">>, OtherLeg}
+            ],
+    {Epoch, wh_json:from_list(Trans)};
+create_trnsf_history_object(_Params) ->
+    lager:debug("unhandled transfer type : ~p", [_Params]),
     'undefined'.
 
 -spec get_hangup_cause(wh_proplist()) -> api_binary().
@@ -1098,3 +1134,32 @@ media_transfer_method(Props) ->
 -spec get_is_loopback(api_binary()) -> atom().
 get_is_loopback('undefined') -> 'undefined';
 get_is_loopback(_) -> 'true'.
+
+-spec callee_call_event_props(wh_proplist()) -> wh_proplist().
+callee_call_event_props(Props) ->
+    UUID = get_call_id(Props),
+    case wh_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}) of
+        {'ok', Channel} when Channel#channel.callee_number =/= 'undefined' ->
+            [{<<"Callee-ID-Number">>, Channel#channel.callee_number}
+             ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}
+            ];
+        _ ->
+            [{<<"Callee-ID-Number">>, kzd_freeswitch:callee_id_number(Props)}
+             ,{<<"Callee-ID-Name">>, kzd_freeswitch:callee_id_name(Props)}
+            ]
+    end.
+
+-spec debug_channel_props(wh_proplist()) -> wh_proplist().
+-spec debug_channel_props(wh_proplist(), boolean()) -> wh_proplist().
+debug_channel_props(Props) ->
+    debug_channel_props(Props, ?DEBUG_CHANNEL).
+
+debug_channel_props(_Props, 'false') -> [];
+debug_channel_props(Props, 'true') ->
+    [{<<"Channel-Debug">>
+      ,wh_json:from_list(lists:sort(fun sort_debug/2, Props))
+     }
+    ].
+
+-spec sort_debug({any(), any()}, {any(), any()}) -> boolean().
+sort_debug({A,_}, {B,_}) -> A =< B.

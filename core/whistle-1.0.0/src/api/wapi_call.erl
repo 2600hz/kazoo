@@ -69,41 +69,77 @@
                                                  ,(amqp_util:encode(CallId))/binary
                                                >>).
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>
-                                      ,<<"Application-Event">>, <<"Application-Data">>
-                                      ,<<"Custom-Channel-Vars">>, <<"Timestamp">>
-                                      ,<<"Channel-State">>, <<"Channel-Call-State">>, <<"Channel-Name">>
-                                      ,<<"Call-Direction">>, <<"Transfer-History">>
-                                      ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
-                                      ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
-                                      ,<<"Other-Leg-Call-ID">> %% BRIDGE
-                                      ,<<"Target-Call-ID">> %% TRANSFEREE
-                                      ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
-                                      ,<<"Terminator">>, <<"Disposition">>
-                                      ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
-                                      ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
-                                      ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
-                                      ,<<"User-Agent">>
-                                      ,<<"Switch-Hostname">>, <<"Group-ID">>
-                                      ,<<"Control-Queue">>, <<"Channel-Moving">>
-                                      ,<<"Conference-Name">>, <<"Conference-Config">>
-                                      ,<<"Replaced-By">>, <<"Remote-SDP">>, <<"Local-SDP">>
-                                      ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
-                                      ,<<"To-Uri">>, <<"From-Uri">>, <<"To">>, <<"From">>, <<"Request">>
-                                      ,<<"Digits-Dialed">>, <<"Presence-ID">>, <<"Media-Server">>
-                                      ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
-                                      ,<<"Callee-ID-Number">>, <<"Callee-ID-Name">>
-                                      ,<<"Custom-SIP-Headers">>, <<"Fax-Info">>
-                                      ,<<"From-Tag">>, <<"To-Tag">>
-                                      ,<<"Intercepted-By">>
-                                      ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                      ,<<"Switch-URL">>, <<"Switch-URI">>
-                                      ,<<"Parking-Slot">>
-                                      ,<<"Channel-Log">>
-                                      ,<<"Channel-Is-Loopback">>
-                                      ,<<"Channel-Loopback-Leg">>, <<"Channel-Loopback-Other-Leg-ID">>
-                                      ,<<"Channel-Loopback-Bowout">>, <<"Channel-Loopback-Bowout-Execute">>
-                                     ]).
+-define(OPTIONAL_CALL_EVENT_HEADERS
+        ,[<<"Application-Data">>
+          ,<<"Application-Event">>
+          ,<<"Application-Name">>
+          ,<<"Application-Response">>
+          ,<<"Billing-Seconds">>
+          ,<<"Call-Direction">>
+          ,<<"Callee-ID-Name">>
+          ,<<"Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>
+          ,<<"Caller-ID-Number">>
+          ,<<"Channel-Call-State">>
+          ,<<"Channel-Created-Time">>
+          ,<<"Channel-Is-Loopback">>
+          ,<<"Channel-Debug">>
+          ,<<"Channel-Loopback-Bowout">>
+          ,<<"Channel-Loopback-Bowout-Execute">>
+          ,<<"Channel-Loopback-Leg">>
+          ,<<"Channel-Loopback-Other-Leg-ID">>
+          ,<<"Channel-Moving">>
+          ,<<"Channel-Name">>
+          ,<<"Channel-State">>
+          ,<<"Conference-Config">>
+          ,<<"Conference-Name">>
+          ,<<"Control-Queue">>
+          ,<<"Custom-Channel-Vars">>
+          ,<<"Custom-SIP-Headers">>
+          ,<<"Detected-Tone">>
+          ,<<"Digits-Dialed">>
+          ,<<"Disposition">>
+          ,<<"DTMF-Digit">> %% DTMF and Tones
+          ,<<"DTMF-Duration">>
+          ,<<"Duration-Seconds">>
+          ,<<"Fax-Info">>
+          ,<<"From">>
+          ,<<"From-Tag">>
+          ,<<"From-Uri">>
+          ,<<"Hangup-Cause">>
+          ,<<"Hangup-Code">> %% Hangup
+          ,<<"Interaction-ID">>
+          ,<<"Intercepted-By">>
+          ,<<"Length">>
+          ,<<"Local-SDP">>
+          ,<<"Media-Server">>
+          ,<<"Other-Leg-Call-ID">> %% BRIDGE
+          ,<<"Other-Leg-Caller-ID-Name">>
+          ,<<"Other-Leg-Caller-ID-Number">>
+          ,<<"Other-Leg-Destination-Number">>
+          ,<<"Other-Leg-Direction">>
+          ,<<"Parking-Slot">>
+          ,<<"Presence-ID">>
+          ,<<"Raw-Application-Data">>
+          ,<<"Raw-Application-Name">>
+          ,<<"Remote-SDP">>
+          ,<<"Replaced-By">>
+          ,<<"Request">>
+          ,<<"Ringing-Seconds">>
+          ,<<"Silence-Terminated">> %% Record-related
+          ,<<"Switch-Hostname">>
+          ,<<"Switch-Nodename">>
+          ,<<"Switch-URI">>
+          ,<<"Switch-URL">>
+          ,<<"Target-Call-ID">> %% TRANSFEREE
+          ,<<"Terminator">>
+          ,<<"Timestamp">>
+          ,<<"To">>
+          ,<<"To-Tag">>
+          ,<<"To-Uri">>
+          ,<<"Transfer-History">>
+          ,<<"User-Agent">>
+         ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                            ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
@@ -120,12 +156,18 @@
 
 %% Channel Status Response
 -define(CHANNEL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
--define(OPTIONAL_CHANNEL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>
-                                               ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                               ,<<"Switch-URL">>, <<"Other-Leg-Call-ID">>
-                                               ,<<"Realm">>, <<"Username">>
-                                               ,<<"From-Tag">>, <<"To-Tag">>
-                                              ]).
+-define(OPTIONAL_CHANNEL_STATUS_RESP_HEADERS
+        ,[<<"Custom-Channel-Vars">>
+          ,<<"Error-Msg">>
+          ,<<"From-Tag">>
+          ,<<"Other-Leg-Call-ID">>
+          ,<<"Realm">>
+          ,<<"Switch-Hostname">>
+          ,<<"Switch-Nodename">>
+          ,<<"Switch-URL">>
+          ,<<"To-Tag">>
+          ,<<"Username">>
+         ]).
 -define(CHANNEL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                      ,{<<"Event-Name">>, <<"channel_status_resp">>}
                                      ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
@@ -150,10 +192,13 @@
 
 %% Query User Channels Req
 -define(QUERY_USER_CHANNELS_REQ_HEADERS, []).
--define(OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS, [<<"Usernames">>, <<"Username">>
-                                                   ,<<"Realm">>, <<"Authorizing-IDs">>
-                                                   ,<<"Active-Only">>
-                                                  ]).
+-define(OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS
+        ,[<<"Active-Only">>
+          ,<<"Authorizing-IDs">>
+          ,<<"Realm">>
+          ,<<"Username">>
+          ,<<"Usernames">>
+         ]).
 -define(QUERY_USER_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                          ,{<<"Event-Name">>, <<"query_user_channels_req">>}
                                         ]).

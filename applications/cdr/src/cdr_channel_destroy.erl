@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% @end
@@ -77,6 +77,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 ,fun set_call_priority/3
                 ,fun maybe_set_e164_destination/3
                 ,fun is_conference/3
+                ,fun set_interaction/3
                 ,fun save_cdr/3
                ],
 
@@ -127,6 +128,9 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
 -spec set_doc_id(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_doc_id(_, Timestamp, JObj) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
+%% we should consider this because there is a lost channel in case of
+%% nightmare transfers
+%%    CallId = wh_util:rand_hex_binary(16),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     wh_doc:set_id(JObj, DocId).
 
@@ -161,6 +165,23 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
                                    ,wh_json:delete_key(CCVKey, JObj)
                                   )
     end.
+
+-spec set_interaction(api_binary(), gregorian_seconds(), wh_json:object()) ->
+                       wh_json:object().
+set_interaction(_AccountId, _Timestamp, JObj) ->
+    InteractionKey = [<<"custom_channel_vars">>, <<"call_interaction_id">>],
+    <<Time:11/binary, "-", Key/binary>> = Interaction = wh_json:get_value(InteractionKey, JObj),
+    Timestamp = wh_util:to_integer(Time),
+    CallId = wh_json:get_value(<<"call_id">>, JObj),
+    DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
+
+    wh_json:set_values(
+      [{<<"interaction_time">>, Timestamp}
+       ,{<<"interaction_key">>, Key}
+       ,{<<"interaction_id">>, Interaction}
+      ]
+      ,wh_json:delete_key(InteractionKey, wh_doc:set_id(JObj, DocId))
+     ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->

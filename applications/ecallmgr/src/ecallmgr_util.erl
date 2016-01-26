@@ -317,7 +317,8 @@ fix_value(_K, V) -> V.
 unserialize_fs_array('undefined') -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, ['global']);
-unserialize_fs_array(_) -> [].
+unserialize_fs_array(Single) ->
+    [Single].
 
 %% convert a raw FS list of vars to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
@@ -775,10 +776,9 @@ maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoin
             <<"sofia/", ?SIP_INTERFACE, "/", Contact/binary>>
     end;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface= <<"sofia/", _/binary>>=SIPInterface}) ->
-    <<(wh_util:strip_right_binary(SIPInterface, <<"/">>))/binary, "/", Contact/binary>>;
+    <<(wh_util:strip_right_binary(SIPInterface, $/))/binary, "/", Contact/binary>>;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<"sofia/", SIPInterface/binary, "/", Contact/binary>>.
-
 
 -spec append_channel_vars(ne_binary(), bridge_endpoint()) -> ne_binary().
 append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'}) ->

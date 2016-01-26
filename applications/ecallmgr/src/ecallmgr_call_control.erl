@@ -1,5 +1,5 @@
 %%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
 %%% A Control Queue is created by the lookup_route function in the
@@ -366,12 +366,15 @@ handle_cast(_, State) ->
 %%--------------------------------------------------------------------
 handle_info({'event', [CallId | Props]}, #state{call_id=CallId
                                                 ,fetch_id=FetchId
+                                                ,node=Node
                                                }=State) ->
     JObj = ecallmgr_call_events:to_json(Props),
     Application = wh_json:get_value(<<"Application-Name">>, JObj),
     case props:get_first_defined([<<"Event-Subclass">>
                                   ,<<"Event-Name">>
-                                 ], Props)
+                                 ]
+                                 ,Props
+                                )
     of
         <<"whistle::", _/binary>> ->
             {'noreply', handle_execute_complete(Application, JObj, State)};
@@ -396,33 +399,35 @@ handle_info({'event', [CallId | Props]}, #state{call_id=CallId
                     {'noreply', State}
             end;
         <<"sofia::replaced">> ->
-            case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
-                FetchId ->
-                    ReplacedBy = props:get_value(<<"att_xfer_replaced_by">>, Props),
-                    {'noreply', handle_sofia_replaced(ReplacedBy, State)};
-                _Else ->
-                    lager:info("sofia replaced on our channel but different fetch id~n"),
-                    {'noreply', State}
-            end;
+            handle_replaced(Props, State);
         <<"sofia::intercepted">> ->
-            lager:debug("sofia::intercepted not handled in call control"),
+            'ok' = handle_intercepted(Node, CallId, Props),
             {'noreply', State};
         <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->
             gen_listener:cast(self(), {'channel_redirected', JObj}),
             {'stop', 'normal', State};
+        <<"sofia::transferor">> ->
+            {'noreply', State};
         _Else ->
             {'noreply', State}
     end;
-handle_info({'event', [_ | Props]}, State) ->
+handle_info({'event', [_X | Props]}, State) ->
     case props:get_first_defined([<<"Event-Subclass">>
                                   ,<<"Event-Name">>
-                                 ], Props)
+                                 ]
+                                 ,Props
+                                )
     of
         <<"CHANNEL_CREATE">> ->
             {'noreply', handle_channel_create(Props, State)};
         <<"CHANNEL_DESTROY">> ->
             {'noreply', handle_channel_destroy(Props, State)};
-        _Else -> {'noreply', State}
+        <<"sofia::transferor">> ->
+            props:to_log(Props, <<"TRANSFEROR OTHER ", _X/binary>>),
+            {'noreply', State};
+        _Else ->
+            lager:debug("CALL CONTROL NOT HANDLED ~s", [_Else]),
+            {'noreply', State}
     end;
 handle_info({'force_queue_advance', CallId}, #state{call_id=CallId}=State) ->
     {'noreply', force_queue_advance(State)};
@@ -702,12 +707,13 @@ forward_queue(#state{call_id = CallId
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_sofia_replaced(ne_binary(), state()) -> state().
-handle_sofia_replaced(CallId, #state{call_id=CallId}=State) -> State;
-handle_sofia_replaced(ReplacedBy, #state{call_id=CallId
-                                         ,node=Node
-                                         ,other_legs=Legs
-                                         ,command_q=CommandQ
-                                        }=State) ->
+handle_sofia_replaced(<<_/binary>> = CallId, #state{call_id=CallId}=State) ->
+    State;
+handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
+                                                        ,node=Node
+                                                        ,other_legs=Legs
+                                                        ,command_q=CommandQ
+                                                       }=State) ->
     lager:info("updating callid from ~s to ~s", [CallId, ReplacedBy]),
     unbind_from_events(Node, CallId),
     unreg_for_call_related_events(CallId),
@@ -748,6 +754,7 @@ handle_channel_create(Props, #state{call_id=CallId}=State) ->
 -spec add_leg(wh_proplist(), ne_binary(), state()) -> state().
 add_leg(Props, LegId, #state{other_legs=Legs
                              ,call_id=CallId
+                             ,node=Node
                             }=State) ->
     case lists:member(LegId, Legs) of
         'true' -> State;
@@ -760,6 +767,12 @@ add_leg(Props, LegId, #state{other_legs=Legs
                           wh_amqp_channel:consumer_pid(ConsumerPid),
                           publish_leg_addition(props:set_value(<<"Other-Leg-Unique-ID">>, CallId, Props))
                   end),
+            _ = case ecallmgr_fs_channel:fetch(CallId) of
+                    {'ok', Channel} ->
+                        CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+                        ecallmgr_fs_command:set(Node, LegId, [{?CCV(<<?CALL_INTERACTION_ID>>), CDR}]);
+                    _ -> 'ok'
+                end,
             State#state{other_legs=[LegId|Legs]}
     end.
 
@@ -1242,3 +1255,48 @@ unreg_for_call_related_events(CallId) ->
     (catch gproc:unreg({'p', 'l', {'call_control', CallId}})),
     (catch gproc:unreg({'p', 'l', ?LOOPBACK_BOWOUT_REG(CallId)})),
     'ok'.
+
+-spec handle_replaced(wh_proplist(), state()) ->
+                             {'noreply', state()}.
+handle_replaced(Props, #state{fetch_id=FetchId
+                              ,node=Node
+                              ,call_id=CallId
+                             }=State) ->
+    case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
+        FetchId ->
+            ReplacedBy = props:get_value(<<"att_xfer_replaced_by">>, Props),
+            {'ok', Channel} = ecallmgr_fs_channel:fetch(ReplacedBy),
+            OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),
+            OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+            CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+            wh_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+            ecallmgr_fs_command:set(Node, OtherUUID, [{?CCV(<<?CALL_INTERACTION_ID>>), CDR}]),
+            ecallmgr_fs_command:set(Node, OtherLeg, [{?CCV(<<?CALL_INTERACTION_ID>>), CDR}]),
+            {'noreply', handle_sofia_replaced(ReplacedBy, State)};
+        _Else ->
+            lager:info("sofia replaced on our channel but different fetch id~n"),
+            {'noreply', State}
+    end.
+
+-spec handle_intercepted(atom(), ne_binary(), wh_proplist()) ->
+                                'ok'.
+handle_intercepted(Node, CallId, Props) ->
+    _ = case {props:get_value(<<"Core-UUID">>, Props)
+              ,props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props)
+             }
+        of
+            {A, A} -> 'ok';
+            {_, 'undefined'} ->
+                UUID = props:get_value(<<"intercepted_by">>, Props),
+                case ecallmgr_fs_channel:fetch(UUID) of
+                    {'ok', Channel} ->
+                        CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+                        wh_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+                        ecallmgr_fs_command:set(Node, UUID, [{?CCV(<<?CALL_INTERACTION_ID>>), CDR}]);
+                    _ -> 'ok'
+                end;
+            _ ->
+                UUID = props:get_value(<<"intercepted_by">>, Props),
+                CDR = props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), Props),
+                ecallmgr_fs_command:set(Node, UUID, [{?CCV(<<?CALL_INTERACTION_ID>>), CDR}])
+        end.
