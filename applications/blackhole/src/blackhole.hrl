@@ -8,7 +8,7 @@
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
 -define(APP_NAME, <<"blackhole">>).
--define(APP_VERSION, <<"1.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 -define(BLACKHOLE_CONFIG_CAT, <<"blackhole">>).
 
 -define(DEFAULT_MODULES, ['bh_token_auth']).

@@ -33,7 +33,7 @@
 -define(STATUS_CANCELED, <<"canceled">>).
 
 -define(APP_NAME, <<"translator">>).
--define(APP_VERSION, <<"0.4.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(DEFAULT_TTS_ENGINE, whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)).
 -define(DEFAULT_TTS_LANG, whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_language">>, <<"en-US">>)).

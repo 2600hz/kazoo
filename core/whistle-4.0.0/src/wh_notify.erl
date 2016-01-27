@@ -24,7 +24,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(APP_NAME, <<"whistle">>).
--define(APP_VERSION, <<"1.2.1">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -spec cnam_request(wh_json:object()) -> 'ok'.
 -spec cnam_request(wh_json:object(), wh_json:object()) -> 'ok'.

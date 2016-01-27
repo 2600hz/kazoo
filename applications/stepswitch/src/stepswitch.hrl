@@ -14,7 +14,7 @@
 -define(LIST_RESOURCES_BY_ID, <<"resources/listing_by_id">>).
 
 -define(APP_NAME, <<"stepswitch">>).
--define(APP_VERSION, <<"0.5.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(SS_CONFIG_CAT, <<"stepswitch">>).
 

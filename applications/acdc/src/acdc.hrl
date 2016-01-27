@@ -7,7 +7,7 @@
 -define(CONFIG_CAT, <<"acdc">>).
 
 -define(APP_NAME, <<"acdc">>).
--define(APP_VERSION, <<"1.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(ACDC_CACHE, 'acdc_cache').
 

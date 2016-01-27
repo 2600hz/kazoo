@@ -17,7 +17,7 @@
 -define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
 
 -define(APP_NAME, <<"crossbar">>).
--define(APP_VERSION, <<"0.8.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(VERSION_1, <<"v1">>).
 -define(VERSION_2, <<"v2">>).

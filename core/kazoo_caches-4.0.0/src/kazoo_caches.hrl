@@ -4,8 +4,5 @@
 
 -include_lib("whistle_apps/src/whistle_apps.hrl").
 
--define(APP_NAME, <<"kazoo_caches">>).
--define(APP_VERSION, <<"0.0.1">> ).
-
 -define(KAZOO_CACHES_HRL, 'true').
 -endif.

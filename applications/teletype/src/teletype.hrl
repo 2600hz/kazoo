@@ -4,7 +4,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"teletype">>).
--define(APP_VERSION, <<"0.0.1">> ).
+-define(APP_VERSION, <<"4.0.0">> ).
 
 -define(PVT_TYPE, kz_notification:pvt_type()).
 

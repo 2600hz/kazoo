@@ -58,7 +58,7 @@
 -define(EXPIRE_PERIOD, 1 * ?MILLISECONDS_IN_SECOND).
 -define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"wh_nodes">>).
--define(APP_VERSION, <<"0.1.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(MEDIA_SERVERS_HEADER, "Media Servers : ").
 -define(MEDIA_SERVERS_LINE, "                ").

@@ -7,7 +7,7 @@
 -define(DEFAULT_TIMEOUT_S, 20).
 
 -define(APP_NAME, <<"whapps_sms_command">>).
--define(APP_VERSION, <<"1.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 
 -define(WHAPPS_SMS_COMMAND_HRL, 'true').

@@ -5,7 +5,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(APP_NAME, <<"cdr">>).
--define(APP_VERSION, <<"0.4.1">>).
+-define(APP_VERSION, <<"4.0.0">>).
 -define(CDR_CACHE, 'cdr_cache').
 -define(MAX_RETRIES, 3).
 
