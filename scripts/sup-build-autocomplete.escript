@@ -45,7 +45,7 @@ dump(CompFile) ->
                     "    local cur prev\n"
                     "    _get_comp_words_by_ref cur prev\n"
                     "\n"
-                    "    local path=.`echo ${COMP_WORDS[*]} | sed 's/ /./g'`.\n"
+                    "    local path=.$(echo ${COMP_WORDS[*]} | sed 's/ /./g').\n"
                     "    # echo $path\n"
                     "\n"
                     "    args() {\n"

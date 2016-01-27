@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cd `dirname $0`
+cd $(dirname $0)
 
 if [ -z "$1" ]; then
     REMOTE_SHELL="whistle_apps@$(hostname -f)"
