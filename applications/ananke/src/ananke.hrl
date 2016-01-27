@@ -8,6 +8,7 @@
 -define(CONFIG_CAT, <<"ananke">>).
 
 -type pos_integers() :: list(pos_integer()).
+-type check_fun() :: 'true' | fun(() -> boolean()) | {Module :: atom(), FunName :: atom(), Args :: list()}.
 
 -define(ANANKE_HRL, 'true').
 -endif.

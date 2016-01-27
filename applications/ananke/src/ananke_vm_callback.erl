@@ -11,6 +11,7 @@
 -export([init/0
          ,handle_req/2
          ,check/2
+         ,has_unread/2
         ]).
 
 -include("ananke.hrl").
@@ -35,15 +36,12 @@ init() ->
 -spec check(ne_binary(), ne_binary()) -> any().
 check(AccountId, VMBoxId) ->
     lager:info("checking vmbox ~p in ~p", [VMBoxId, AccountId]),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
-    case [X || X <- wh_json:get_value(<<"messages">>, VMBox, [])
-               , wh_json:get_value(<<"folder">>, X) =:= <<"new">>]
-    of
-        [] ->
+    case has_unread(AccountId, VMBoxId) of
+        'false' ->
             lager:info("no unread messages");
-        _  ->
+        'true' ->
             lager:info("found unread messages"),
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             handle_req(wh_json:from_list([{<<"Account-ID">>, AccountId}
                                            ,{<<"Account-DB">>, AccountDb}
                                            ,{<<"Voicemail-Box">>, VMBoxId}
@@ -51,10 +49,15 @@ check(AccountId, VMBoxId) ->
                        [{<<"skip_verification">>, 'true'}])
     end.
 
+has_unread(AccountId, VMBoxId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
+    length([X || X <- wh_json:get_value(<<"messages">>, VMBox, []), wh_json:get_value(<<"folder">>, X) =:= <<"new">>]) > 0.
+
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, Props) ->
     'true' = props:get_value(<<"skip_verification">>, Props, 'false')
-                orelse wapi_notifications:voicemail_v(JObj),
+                orelse wapi_notifications:voicemail_saved_v(JObj),
     _ = wh_util:put_callid(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
@@ -153,12 +156,14 @@ maybe_start_caller(StartArgs) ->
 
 -spec start_caller(#args{}) -> 'ok'.
 start_caller(#args{callback_number = Number
+                   ,account_id = AccountId
                    ,vm_box_id = VMBoxId
                    ,schedule = Schedule
                   } = StartArgs) ->
     lager:info("starting caller to number ~p", [Number]),
     OriginateReq = build_originate_req(StartArgs),
-    case ananke_callback_sup:start_child({Number, VMBoxId}, OriginateReq, Schedule) of
+    CheckFun = {?MODULE, has_unread, [AccountId, VMBoxId]},
+    case ananke_callback_sup:start_child({Number, VMBoxId}, OriginateReq, Schedule, CheckFun) of
         {'ok', _} -> lager:debug("started");
         {'ok', _, _} -> lager:debug("started");
         {'error', {'already_started', _}} -> lager:info("already started");

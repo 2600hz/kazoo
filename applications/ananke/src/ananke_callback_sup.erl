@@ -10,6 +10,7 @@
 
 -export([start_link/0
         ,start_child/3
+        ,start_child/4
         ,delete_child/1
         ,delete_child/2
         ]).
@@ -24,10 +25,18 @@ start_link() ->
 
 -spec start_child(any(), wh_proplist(), pos_integers()) ->
     sup_startchild_ret().
+-spec start_child(any(), wh_proplist(), pos_integers(), check_fun()) ->
+    sup_startchild_ret().
 start_child(Id, OriginateReq, Schedule) ->
+    start_child(Id, [OriginateReq, Schedule]).
+
+start_child(Id, OriginateReq, Schedule, CheckFun) ->
+    start_child(Id, [OriginateReq, Schedule, CheckFun]).
+
+-spec start_child(any(), list()) -> sup_startchild_ret().
+start_child(Id, Args) ->
     case supervisor:start_child(?MODULE, {Id
-                                          ,{'ananke_callback_wrkr', 'start_link'
-                                            ,[OriginateReq, Schedule]}
+                                          ,{'ananke_callback_wrkr', 'start_link', Args}
                                           ,'transient'
                                           ,'brutal_kill'
                                           ,'worker'
@@ -36,9 +45,10 @@ start_child(Id, OriginateReq, Schedule) ->
     of
         {'error', 'already_present'} ->
             _ = supervisor:delete_child(?MODULE, Id),
-            start_child(Id, OriginateReq, Schedule);
+            start_child(Id, Args);
         Reply -> Reply
     end.
+
 
 -spec delete_child(any()) -> 'ok' | {'error', any()}.
 delete_child(Pid) when is_pid(Pid) ->
