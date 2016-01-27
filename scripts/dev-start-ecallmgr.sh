@@ -2,7 +2,13 @@
 
 cd $(dirname $0)
 
-export ERL_CRASH_DUMP=$PWD/../$(date +%s)_ecallmgr_erl_crash.dump
-export ERL_LIBS="$ERL_LIBS":$PWD/../deps:$PWD/../core:$PWD/../applications/
+ROOT=$PWD/..
 
-exec erl -name 'ecallmgr' -args_file '/etc/kazoo/vm.args' -s reloader -s ecallmgr
+NODE_NAME=ecallmgr
+
+export ERL_CRASH_DUMP=$ROOT/$(date +%s)_ecallmgr_erl_crash.dump
+
+# Note: 'reloader' isn't started automatically
+# Note: the 'vm.args' file used is 'rel/vm.args'
+
+RELX_REPLACE_OS_VARS=true KZname=$NODE_NAME $ROOT/_rel/kazoo/bin/kazoo 'console' "$$@"
