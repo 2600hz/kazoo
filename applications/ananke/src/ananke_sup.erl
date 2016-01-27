@@ -16,6 +16,7 @@
 
 -include("ananke.hrl").
 
+-define(SERVER, ?MODULE).
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('ananke_listener')]).
 
@@ -31,11 +32,11 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_supervisor(any()) -> sup_startchild_ret().
 start_supervisor(Id) ->
-    supervisor:start_child(?MODULE, ?SUPER(Id)).
+    supervisor:start_child(?SERVER, ?SUPER(Id)).
 
 %% ===================================================================
 %% Supervisor callbacks

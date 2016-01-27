@@ -19,9 +19,11 @@
 
 -include("ananke.hrl").
 
+-define(SERVER, ?MODULE).
+
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec start_child(any(), wh_proplist(), pos_integers()) ->
     sup_startchild_ret().
@@ -35,7 +37,7 @@ start_child(Id, OriginateReq, Schedule, CheckFun) ->
 
 -spec start_child(any(), list()) -> sup_startchild_ret().
 start_child(Id, Args) ->
-    case supervisor:start_child(?MODULE, {Id
+    case supervisor:start_child(?SERVER, {Id
                                           ,{'ananke_callback_wrkr', 'start_link', Args}
                                           ,'transient'
                                           ,'brutal_kill'
@@ -44,7 +46,7 @@ start_child(Id, Args) ->
                                          })
     of
         {'error', 'already_present'} ->
-            _ = supervisor:delete_child(?MODULE, Id),
+            _ = supervisor:delete_child(?SERVER, Id),
             start_child(Id, Args);
         Reply -> Reply
     end.
@@ -52,14 +54,14 @@ start_child(Id, Args) ->
 
 -spec delete_child(any()) -> 'ok' | {'error', any()}.
 delete_child(Pid) when is_pid(Pid) ->
-    case [Id || {Id, Child, _Type, _Modules} <- supervisor:which_children(?MODULE), Child =:= Pid] of
+    case [Id || {Id, Child, _Type, _Modules} <- supervisor:which_children(?SERVER), Child =:= Pid] of
         [Id] ->
             delete_child(Id);
         [] ->
             'ok'
     end;
 delete_child(Id) ->
-    supervisor:delete_child(?MODULE, Id).
+    supervisor:delete_child(?SERVER, Id).
 
 -spec delete_child(any(), non_neg_integer()) -> 'ok'.
 delete_child(Id, Timeout) ->

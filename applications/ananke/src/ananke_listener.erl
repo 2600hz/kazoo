@@ -25,6 +25,7 @@
 
 -record(state, {}).
 
+-define(SERVER, ?MODULE).
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'notifications', [{'restrict_to', ['voicemail_saved']}]}]).
 
@@ -47,7 +48,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
