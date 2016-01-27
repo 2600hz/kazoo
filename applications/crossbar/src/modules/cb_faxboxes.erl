@@ -441,7 +441,7 @@ register_cloud_printer(Context, FaxboxId) ->
                ,{'Content-Length', ContentLength}
               ],
     Url = wh_util:to_list(?GPC_URL_REGISTER),
-    case kz_http:req('post', Url, Headers, [], Body) of
+    case kz_http:post(Url, Headers, Body) of
         {'ok', "200", _RespHeaders, RespJSON} ->
             JObj = wh_json:decode(RespJSON),
             case wh_json:is_true(<<"success">>, JObj, 'false') of

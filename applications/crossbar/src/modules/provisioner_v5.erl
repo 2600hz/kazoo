@@ -196,7 +196,7 @@ check_MAC(MacAddress, AuthToken) ->
     Headers = req_headers(AuthToken),
     UrlString = req_uri('devices', MacAddress),
     lager:debug("pre-provisioning via ~s", [UrlString]),
-    case kz_http:req('get', UrlString, Headers) of
+    case kz_http:get(UrlString, Headers) of
         {'ok', "200", _RespHeaders, JSONStr} ->
             JObj = wh_json:decode(JSONStr),
             wh_json:get_value([<<"data">>, <<"account_id">>], JObj);
@@ -466,26 +466,26 @@ send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("provisioning via ~s: ~s", [UrlString, Data]),
-    Resp = kz_http:req('post', UrlString, Headers, [], Data),
+    Resp = kz_http:post(UrlString, Headers, Data),
     handle_resp(Resp, AccountId, AuthToken);
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("unprovisioning via ~s", [UrlString]),
-    Resp = kz_http:req('delete', UrlString, Headers),
+    Resp = kz_http:delete(UrlString, Headers),
     handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_delete', _, AuthToken, AccountId, _) ->
     Headers = req_headers(AuthToken),
     UrlString = req_uri('accounts', AccountId),
     lager:debug("accounts delete via ~s", [UrlString]),
-    Resp = kz_http:req('delete', UrlString, Headers),
+    Resp = kz_http:delete(UrlString, Headers),
     handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
     Data = wh_json:encode(account_payload(JObj, AccountId)),
     Headers = req_headers(AuthToken),
     UrlString = req_uri('accounts', AccountId),
     lager:debug("account update via ~s: ~s", [UrlString, Data]),
-    Resp = kz_http:req('post', UrlString, Headers, [], Data),
+    Resp = kz_http:post(UrlString, Headers, Data),
     handle_resp(Resp, AccountId, AuthToken).
 
 -spec req_uri('accounts' | 'devices', ne_binary()) -> iolist().

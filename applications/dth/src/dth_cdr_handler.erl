@@ -102,7 +102,7 @@ send_xml(XML, Props) ->
                ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
               ],
 
-    case kz_http:req('post', props:get_value(cdr_url, Props), Headers, [], XML) of
+    case kz_http:post(props:get_value(cdr_url, Props), Headers, XML) of
         {ok, "200", _, RespXML} ->
             lager:debug("XML sent to DTH successfully: ~s", [RespXML]);
         _Resp ->

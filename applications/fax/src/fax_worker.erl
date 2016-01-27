@@ -801,10 +801,9 @@ fetch_document_from_url(JObj) ->
                  ,{"User-Agent", wh_json:get_string_value(<<"user_agent">>, FetchRequest, wh_util:to_list(node()))}
                  ,{"Content-Type", wh_json:get_string_value(<<"content_type">>, FetchRequest, <<"text/plain">>)}
                 ]),
-    Options = [{'body_format', 'binary'}],
     Body = wh_json:get_string_value(<<"content">>, FetchRequest, ""),
     lager:debug("making ~s request to '~s'", [Method, Url]),
-    kz_http:req(Method, Url, Headers, Options, Body).
+    kz_http:req(Method, Url, Headers, Body).
 
 -spec prepare_contents(ne_binary(), wh_proplist(), ne_binary()) ->
                               {'ok', ne_binary()} |

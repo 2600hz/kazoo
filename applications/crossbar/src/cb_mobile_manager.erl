@@ -30,7 +30,7 @@ delete_account(Context) ->
 
             Headers = req_headers(cb_context:auth_token(Context)),
 
-            Resp = kz_http:req('delete', UrlString, Headers),
+            Resp = kz_http:delete(UrlString, Headers),
             handle_resp(Resp)
     end.
 

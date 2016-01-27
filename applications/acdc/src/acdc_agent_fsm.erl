@@ -1704,17 +1704,15 @@ notify(Uri, Headers, Method, Body, Opts) ->
     case kz_http:req(Method
                      ,wh_util:to_list(Uri)
                      ,Headers
+                     ,Body
                      ,[{'connect_timeout', 200}
                         ,{'timeout', 1000}
-                        |Opts
+                        | Opts
                       ]
-                     ,Body
                     )
     of
         {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
             lager:debug("~s req to ~s: ~s", [Method, Uri, _Status]);
-        {'error', {'malformed_url',_}} ->
-            lager:debug("failed to parse the URL ~s", [Uri]);
         {'error', _E} ->
             lager:debug("failed to send request to ~s: ~p", [Uri, _E])
     end.

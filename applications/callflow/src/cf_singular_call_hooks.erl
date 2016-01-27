@@ -91,11 +91,10 @@ send_init_hook(Call) ->
     JObj = wh_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
 
-    case kz_http:req('post'
-                     ,URI
+    case kz_http:post(URI
                      ,[{"Content-Type", "application/json"}]
-                     ,[{'connect_timeout', 5000}, {'timeout', 5000}]
                      ,wh_json:encode(JObj)
+                     ,[{'connect_timeout', 5000}, {'timeout', 5000}]
                     )
     of
         {'error', Reason} ->
@@ -148,11 +147,10 @@ send_end_hook(Call, Event) ->
     JObj = wh_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
 
-    case kz_http:req('post'
-                     ,URI
+    case kz_http:post(URI
                      ,[{"Content-Type", "application/json"}]
-                     ,[{'connect_timeout', 5000}, {'timeout', 5000}]
                      ,wh_json:encode(JObj)
+                     ,[{'connect_timeout', 5000}, {'timeout', 5000}]
                     )
     of
         {'error', Reason} ->

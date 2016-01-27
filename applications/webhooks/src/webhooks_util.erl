@@ -43,9 +43,7 @@
 -define(CONNECT_TIMEOUT_MS
         ,whapps_config:get_integer(?APP_NAME, <<"connect_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
        ).
--define(HTTP_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}
-                       ,{'body_format', 'binary'}
-                      ]).
+-define(HTTP_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}]).
 
 -define(HTTP_TIMEOUT_MS
         ,whapps_config:get_integer(?APP_NAME, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND)
@@ -178,11 +176,7 @@ fire_hook(JObj, Hook, URI, 'get', Retries) ->
               ,URI
               ,'get'
               ,Retries
-              ,kz_http:req('get'
-                           ,URI ++ [$?|wh_json:to_querystring(JObj)]
-                           ,?HTTP_REQ_HEADERS(Hook)
-                           ,?HTTP_OPTS
-                          )
+              ,kz_http:get(URI ++ [$?|wh_json:to_querystring(JObj)], ?HTTP_REQ_HEADERS(Hook), ?HTTP_OPTS)
              );
 fire_hook(JObj, Hook, URI, 'post', Retries) ->
     lager:debug("sending event via 'post'(~b): ~s", [Retries, URI]),
@@ -192,14 +186,13 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
               ,URI
               ,'post'
               ,Retries
-              ,kz_http:req('post'
-                           ,URI
-                           ,[{"Content-Type", "application/x-www-form-urlencoded"}
-                              | ?HTTP_REQ_HEADERS(Hook)
-                            ]
-                           ,?HTTP_OPTS
-                           ,wh_json:to_querystring(JObj)
-                          )
+              ,kz_http:post(URI
+                            ,[{"Content-Type", "application/x-www-form-urlencoded"}
+                               | ?HTTP_REQ_HEADERS(Hook)
+                             ]
+                            ,wh_json:to_querystring(JObj)
+                            ,?HTTP_OPTS
+                           )
              ).
 
 -spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), kz_http_ret()) -> 'ok'.
@@ -209,18 +202,6 @@ fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
 fire_hook(_JObj, Hook, _URI, _Method, Retries, {'ok', RespCode, _, RespBody}) ->
     _ = failed_hook(Hook, Retries, RespCode, RespBody),
     lager:debug("non-200 response code: ~s on account ~s", [RespCode, Hook#webhook.account_id]);
-fire_hook(JObj, Hook, URI, Method, Retries, {'error', 'timeout'}) ->
-    lager:debug("request timed out to ~s, retrying", [URI]),
-    _ = failed_hook(Hook, Retries, <<"request_timed_out">>),
-    retry_hook(JObj, Hook, URI, Method, Retries);
-fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', 'retry_later'}) ->
-    lager:debug("failed with 'retry_later' to ~s", [URI]),
-    _ = failed_hook(Hook, Retries, <<"retry_later">>),
-    'ok';
-fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', {'failed_connect', {'error', E}}}) ->
-    lager:debug("connection failed with ~p to ~s", [E, URI]),
-    _ = failed_hook(Hook, Retries, wh_util:to_binary(E)),
-    'ok';
 fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
     lager:debug("failed to fire hook: ~p", [E]),
     _ = failed_hook(Hook, Retries, E),

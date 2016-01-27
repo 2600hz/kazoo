@@ -214,7 +214,7 @@ emergency_provisioning_request(Verb, Props) ->
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
-    case kz_http:req('post', wh_util:to_list(URL), Headers, HTTPOptions, unicode:characters_to_binary(Body)) of
+    case kz_http:post(wh_util:to_list(URL), Headers, unicode:characters_to_binary(Body), HTTPOptions) of
         {'ok', "401", _, _Response} ->
             ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),

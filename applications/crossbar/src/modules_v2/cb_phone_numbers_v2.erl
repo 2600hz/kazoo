@@ -857,7 +857,7 @@ get_prefix(City) ->
             ReqParam = wh_util:uri_encode(binary:bin_to_list(City)),
             Req = binary:bin_to_list(<<Url/binary, "/", Country/binary, "/city?pattern=">>),
             Uri = lists:append(Req, ReqParam),
-            case kz_http:req('get', Uri, []) of
+            case kz_http:get(Uri) of
                 {'ok', "200", _Headers, Body} ->
                     JObj = wh_json:decode(Body),
                     case wh_json:get_value(<<"data">>, JObj) of
@@ -988,7 +988,7 @@ get_locality(Numbers, UrlType) ->
         Url ->
             ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
             Uri = <<Url/binary, "/locality/metadata">>,
-            case kz_http:req('post', binary:bin_to_list(Uri), [], [], wh_json:encode(ReqBody)) of
+            case kz_http:post(binary:bin_to_list(Uri), [], wh_json:encode(ReqBody)) of
                 {'ok', "200", _Headers, Body} ->
                     handle_locality_resp(wh_json:decode(Body));
                 {'ok', _Status, _, _Body} ->

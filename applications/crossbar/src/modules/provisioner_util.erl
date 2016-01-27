@@ -273,7 +273,7 @@ get_provision_defaults(Context) ->
                  ,{"User-Agent", wh_util:to_list(erlang:node())}
                 ]),
     lager:debug("attempting to pull provisioning configs from ~s", [UrlString]),
-    case kz_http:req('get', UrlString, Headers) of
+    case kz_http:get(UrlString, Headers) of
         {'ok', "200", _, Response} ->
             lager:debug("great success, accquired provisioning template"),
             JResp = wh_json:decode(Response),
@@ -335,7 +335,7 @@ do_simple_provision(MACAddress, Context) ->
                    ],
             Encoded = kz_http_util:urlencode(Body),
             lager:debug("posting to ~s with: ~-300p", [Url, Encoded]),
-            Res = kz_http:req('post', Url, Headers, [], Encoded),
+            Res = kz_http:post(Url, Headers, Encoded),
             lager:debug("response from server: ~p", [Res]),
             'true'
     end.
@@ -396,7 +396,7 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
                          ,{"Content-Type", "application/json"}
                         ]),
             FullUrl = wh_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
-            {'ok', _, _, RawJObj} = kz_http:req('get', FullUrl, Headers, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+            {'ok', _, _, RawJObj} = kz_http:get(FullUrl, Headers, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
             case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
                 'undefined' -> send_to_full_provisioner('post', FullUrl, JObj);
                 404 -> send_to_full_provisioner('put', FullUrl, JObj);
@@ -413,7 +413,7 @@ send_to_full_provisioner(FullUrl) ->
                  ,{"Content-Type", "application/json"}
                 ]),
     lager:debug("making ~s request to ~s", ['delete', FullUrl]),
-    Res = kz_http:req('delete', FullUrl, Headers, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+    Res = kz_http:delete(FullUrl, Headers, [], [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
@@ -427,7 +427,7 @@ send_to_full_provisioner('put', FullUrl, JObj) ->
                 ]),
     Body = wh_util:to_list(wh_json:encode(JObj)),
     lager:debug("making put request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = kz_http:req('put', FullUrl, Headers, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}], Body),
+    Res = kz_http:put(FullUrl, Headers, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true';
 send_to_full_provisioner('post', FullUrl, JObj) ->
@@ -444,7 +444,7 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
     J =  wh_json:from_list(props:filter_undefined(Props)),
     Body = wh_util:to_list(wh_json:encode(J)),
     lager:debug("making post request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = kz_http:req('post', FullUrl, Headers, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}], Body),
+    Res = kz_http:post(FullUrl, Headers, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
@@ -736,13 +736,14 @@ send_provisioning_request(Template, MACAddress) ->
                  ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_referer">>)}
                  ,{"User-Agent", wh_util:to_list(erlang:node())}
                 ]),
-    HTTPOptions = [],
     lager:debug("provisioning via ~s", [UrlString]),
-    case kz_http:req('post', UrlString, Headers, HTTPOptions, ProvisionRequest) of
+    case kz_http:post(UrlString, Headers, ProvisionRequest) of
         {'ok', "200", _, Response} ->
             lager:debug("SUCCESS! BOOM! ~s", [Response]);
         {'ok', Code, _, Response} ->
-            lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response])
+            lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response]);
+        {'error', R} ->
+            lager:debug("ERROR! OH NO! ~p", [R])
     end.
 
 %%--------------------------------------------------------------------

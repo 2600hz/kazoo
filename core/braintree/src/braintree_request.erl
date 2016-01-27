@@ -89,7 +89,7 @@ request(Method, Path, Body) ->
     HTTPOptions = http_options(),
     verbose_debug("Request:~n~s ~s~n~s~n", [Method, Url, Body]),
 
-    case kz_http:req(Method, Url, Headers, HTTPOptions, Body) of
+    case kz_http:req(Method, Url, Headers, Body, HTTPOptions) of
         {'ok', "401", _, _Response} ->
             verbose_debug("Response:~n401~n~s~n", [_Response]),
             lager:debug("braintree error response(~pms): 401 Unauthenticated", [wh_util:elapsed_ms(StartTime)]),

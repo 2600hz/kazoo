@@ -33,8 +33,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(DEFAULT_OPTS, [{'body_format', 'binary'}]).
-
 -type http_method() :: 'get' | 'post'.
 
 -record(state, {voice_uri :: api_binary()
@@ -245,7 +243,7 @@ handle_cast({'cdr', JObj}, #state{cdr_uri=Url
 
     maybe_debug_req(Call, Url, 'post', Headers, Body, Debug),
 
-    case kz_http:req('post', wh_util:to_list(Url), Headers, [], Body) of
+    case kz_http:post(wh_util:to_list(Url), Headers, Body) of
         {'ok', RespCode, RespHeaders, RespBody} ->
             maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
             lager:debug("recv ~s from cdr url ~s", [RespCode, Url]);
@@ -429,13 +427,10 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 
     maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, Debug),
 
-    case kz_http:async_req(self(), Method, wh_util:to_list(Uri), ReqHdrs, ?DEFAULT_OPTS, ReqBody) of
+    case kz_http:async_req(self(), Method, wh_util:to_list(Uri), ReqHdrs, ReqBody) of
         {'http_req_id', ReqId} ->
             lager:debug("response coming in asynchronosly to ~p", [ReqId]),
             {'ok', ReqId, Call};
-        {'error', {'failed_connect', {'error', 'econnrefused'}}} ->
-            lager:debug("connection to host refused, going down"),
-            {'stop', Call};
         {'error', _Reason} ->
             lager:debug("error with req: ~p", [_Reason]),
             {'stop', Call}

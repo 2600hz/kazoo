@@ -90,10 +90,9 @@ nomorobo_req(URI, Data) ->
 
     Options = [{'basic_auth', {Username, Password}}
                ,{'ssl', [{'verify', 'verify_none'}]}
-               ,{'body_format', 'binary'}
               ],
 
-    kz_http:req('get', wh_util:to_list(URI), [], Options).
+    kz_http:get(wh_util:to_list(URI), [], Options).
 
 -spec nomorobo_uri(whapps_call:call()) -> ne_binary().
 nomorobo_uri(Call) ->

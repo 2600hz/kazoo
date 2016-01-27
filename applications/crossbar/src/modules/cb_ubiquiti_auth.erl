@@ -136,12 +136,10 @@ put(Context) ->
 maybe_authenticate_user(Context) ->
     LoginURL = crossbar_util:get_path(?SSO_URL, <<"login">>),
 
-    case kz_http:req('post'
-                     ,wh_util:to_list(LoginURL)
-                     ,[{"Content-Type","application/json"}]
-                     ,[]
-                     ,wh_json:encode(login_req(Context))
-                    )
+    case kz_http:post(wh_util:to_list(LoginURL)
+                      ,[{"Content-Type","application/json"}]
+                      ,wh_json:encode(login_req(Context))
+                     )
     of
         {'ok', "200", RespHeaders, RespBody} ->
             lager:debug("successfully authenticated to '~s'", [LoginURL]),

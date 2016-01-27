@@ -99,7 +99,7 @@ query_simwood(URL, Verb) ->
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'basic_auth', {?SW_AUTH_USERNAME, ?SW_AUTH_PASSWORD}}
                   ],
-    case kz_http:req(Verb, wh_util:to_list(URL), [], HTTPOptions) of
+    case kz_http:req(Verb, wh_util:to_list(URL), [], [], HTTPOptions) of
         {'ok', _Resp, _RespHeaders, Body} ->
             lager:debug("Simwood response ~p: ~p", [_Resp, Body]),
             {'ok', Body};

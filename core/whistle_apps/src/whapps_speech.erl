@@ -95,12 +95,12 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Opts) ->
 
             case props:get_value('receiver', Opts) of
                 Pid when is_pid(Pid) ->
-                    HTTPOptions = [{'body_format', 'binary'} | props:delete('receiver', Opts)],
-                    Response = kz_http:async_req(Pid, 'post', BaseUrl, Headers, HTTPOptions, Body),
+                    HTTPOptions = props:delete('receiver', Opts),
+                    Response = kz_http:async_req(Pid, 'post', BaseUrl, Headers, Body, HTTPOptions),
                     create_response(Engine, Response);
                 _ ->
-                    HTTPOptions = [{'body_format', 'binary'} | props:delete('receiver', Opts)],
-                    Response = kz_http:req('post', BaseUrl, Headers, HTTPOptions, Body),
+                    HTTPOptions = props:delete('receiver', Opts),
+                    Response = kz_http:post(BaseUrl, Headers, Body, HTTPOptions),
                     create_response(Engine, Response)
             end
     end;
@@ -132,12 +132,12 @@ create_voicefabric(Engine, Text, Voice, Opts) ->
 
                     case props:get_value('receiver', Opts) of
                         Pid when is_pid(Pid) ->
-                            HTTPOptions = [{'body_format', 'binary'} | props:delete('receiver', Opts)],
-                            Response = kz_http:async_req(Pid, 'post', BaseUrl, Headers, HTTPOptions, Body),
+                            HTTPOptions = props:delete('receiver', Opts),
+                            Response = kz_http:async_req(Pid, 'post', BaseUrl, Headers, Body, HTTPOptions),
                             create_response(Engine, Response);
                         _ ->
-                            HTTPOptions = [{'body_format', 'binary'} | props:delete('receiver', Opts)],
-                            Response = kz_http:req('post', BaseUrl, Headers, HTTPOptions, Body),
+                            HTTPOptions = props:delete('receiver', Opts),
+                            Response = kz_http:post(BaseUrl, Headers, Body, HTTPOptions),
                             create_response(Engine, Response)
                     end;
                 {'error', Reason} ->
@@ -261,11 +261,11 @@ attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Opts) ->
     lager:debug("req body: ~s", [Body]),
     case props:get_value('receiver', Opts) of
         Pid when is_pid(Pid) ->
-            HTTPOptions = [{'body_format', 'binary'} | props:delete('receiver', Opts)],
-            kz_http:async_req(Pid, 'post', BaseUrl, Headers, HTTPOptions, Body);
+            HTTPOptions = props:delete('receiver', Opts),
+            kz_http:async_req(Pid, 'post', BaseUrl, Headers, Body, HTTPOptions);
         _ ->
-            HTTPOptions = [{'body_format', 'binary'} | props:delete('receiver', Opts)],
-            kz_http:req('post', BaseUrl, Headers, HTTPOptions, Body)
+            HTTPOptions = props:delete('receiver', Opts),
+            kz_http:post(BaseUrl, Headers, Body, HTTPOptions)
     end;
 attempt_asr_freeform(_, _, _, _, _) ->
     {'error', 'unknown_provider'}.
@@ -326,11 +326,11 @@ asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Opts) ->
 
     case props:get_value('receiver', Opts) of
         Pid when is_pid(Pid) ->
-            HTTPOptions = [{'body_format', 'binary'} | props:delete('receiver', Opts)],
-            kz_http:async_req(Pid, 'post', BaseUrl, Headers, HTTPOptions, Body);
+            HTTPOptions = props:delete('receiver', Opts),
+            kz_http:async_req(Pid, 'post', BaseUrl, Headers, Body, HTTPOptions);
         _ ->
-            HTTPOptions = [{'body_format', 'binary'} | props:delete('receiver', Opts)],
-            kz_http:req('post', BaseUrl, Headers, HTTPOptions, Body)
+            HTTPOptions = props:delete('receiver', Opts),
+            kz_http:post(BaseUrl, Headers, Body, HTTPOptions)
     end;
 asr_commands(_, _, _, _, _, _) ->
     {'error', 'unknown_provider'}.

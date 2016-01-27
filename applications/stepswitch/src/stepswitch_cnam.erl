@@ -269,33 +269,26 @@ fetch_cnam(Number, JObj) ->
             CNAM
     end.
 
--spec get_http_request(string(), list(), string()) -> {string(), list()} | {string(), list(), string(), string()}.
-get_http_request(Url, Headers, []) ->
-    {Url, Headers};
-get_http_request(Url, Headers, Body) ->
-    {Url, Headers, wh_util:to_list(?HTTP_ACCEPT_HEADER), Body}.
-
 -spec make_request(ne_binary(), wh_json:object()) -> api_binary().
 make_request(Number, JObj) ->
     Url = wh_util:to_list(get_http_url(JObj)),
-    Body = get_http_body(JObj),
-    Method = get_http_method(),
-    Headers = get_http_headers(),
-    HTTPOptions = get_http_options(Url),
-    HTTPRequest = get_http_request(Url, Headers, Body),
-    Options = [{'body_format', 'binary'}],
-
-    case httpc:request(Method, HTTPRequest, HTTPOptions, Options) of
-        {'ok', {{_, 404, _}, _, _}} ->
+    case kz_http:req(get_http_method()
+                     ,Url
+                     ,get_http_headers()
+                     ,get_http_body(JObj)
+                     ,get_http_options(Url)
+                    )
+    of
+        {'ok', "404", _, _} ->
             lager:debug("cnam lookup for ~s returned 404", [Number]),
             'undefined';
-        {'ok', {Status, _, <<>>}} ->
+        {'ok', Status, _, <<>>} ->
             lager:debug("cnam lookup for ~s returned as ~p and empty body", [Number, Status]),
             'undefined';
-        {'ok', {Status, _, ResponseBody}} when size (ResponseBody) > 18 ->
+        {'ok', Status, _, ResponseBody} when size (ResponseBody) > 18 ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             wh_util:truncate_right_binary(ResponseBody, 18);
-        {'ok', {Status, _, ResponseBody}} ->
+        {'ok', Status, _, ResponseBody} ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             ResponseBody;
         {'error', _R} ->
