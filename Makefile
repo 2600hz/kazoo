@@ -14,6 +14,7 @@ all: compile
 
 compile: ACTION = all
 compile: $(MAKEDIRS)
+	sed "s/$\{KZname\}//" rel/vm.args > rel/dev-vm.args
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
@@ -22,6 +23,7 @@ clean: ACTION = clean
 clean: $(MAKEDIRS)
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
+	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
@@ -62,7 +64,7 @@ rel/relx.config: rel/relx.config.src
 release: ACT ?= console # start | attach | stop | console | foreground
 release: REL ?= whistle_apps # whistle_apps | ecallmgr
 release:
-	@RELX_REPLACE_OS_VARS=true KZname=$(REL) _rel/kazoo/bin/kazoo $(ACT) "$$@"
+	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
 
 
 DIALYZER ?= dialyzer

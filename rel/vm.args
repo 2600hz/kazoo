@@ -1,4 +1,4 @@
--name ${KZname}
+${KZname}
 -setcookie Zhcu56UYhLBWiHmre0aWQngSZcsHqSxqKGIzgE5VU6qLSibqcdqbst84IKxXPxfd
 
 # Tell SASL not to log progress reports, and log SASL errors to a file
@@ -31,4 +31,4 @@
 # Increase number of concurrent ports / sockets
 ##-env ERL_MAX_PORTS 4096
 
--s ${KZname}_app
+-s whistle_apps_app
