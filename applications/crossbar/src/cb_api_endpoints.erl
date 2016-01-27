@@ -5,8 +5,102 @@
 
 -export([get/0
          ,to_swagger_json/0
+         ,schema_to_doc/2
         ]).
+
 -include("crossbar.hrl").
+-include_lib("whistle/src/wh_json.hrl").
+
+-define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+
+%% This looks for "#### Schema" in the doc file and adds the JSON schema formatted as the markdown table
+%% Schema = "vmboxes" or "devices"
+%% Doc = "voicemail.md" or "devices.md"
+-spec schema_to_doc(ne_binary(), ne_binary()) -> 'ok'.
+schema_to_doc(Schema, Doc) ->
+    {'ok', SchemaJObj} = wh_json_schema:load(Schema),
+    Table = schema_to_table(SchemaJObj),
+
+
+    DocFile = filename:join([code:lib_dir('crossbar')
+                             ,"doc"
+                             ,Doc
+                            ]),
+    {'ok', DocContents} = file:read_file(DocFile),
+
+    case binary:split(DocContents, <<?SCHEMA_SECTION/binary, "\n">>) of
+        [Before, After] ->
+            file:write_file(DocFile, [Before, ?SCHEMA_SECTION, Table, $\n, After]);
+        _Else ->
+            io:format("file ~s appears to have a schema section already~n", [DocFile])
+    end.
+
+-define(TABLE_ROW(Key, Description, Type, Default, Required)
+       ,[wh_util:join_binary([Key, Description, Type, Default, Required]
+                             ,<<" | ">>
+                            )
+        ,$\n
+        ]
+       ).
+-define(TABLE_HEADER
+       ,[?TABLE_ROW(<<"Key">>, <<"Description">>, <<"Type">>, <<"Default">>, <<"Required">>)
+         ,?TABLE_ROW(<<"---">>, <<"-----------">>, <<"----">>, <<"-------">>, <<"--------">>)
+        ]).
+
+schema_to_table(SchemaJObj) ->
+    Properties = wh_json:get_value(<<"properties">>, SchemaJObj, wh_json:new()),
+    Reversed = wh_json:foldl(fun property_to_row/3, [?TABLE_HEADER], Properties),
+    lists:reverse(Reversed).
+
+property_to_row(<<_/binary>> = Name, Settings, Acc) ->
+    property_to_row([Name], Settings, Acc);
+property_to_row(Name, Settings, Acc) ->
+    maybe_sub_properties_to_row(wh_json:get_value(<<"type">>, Settings)
+                               ,Name
+                               ,Settings
+                                ,[?TABLE_ROW(cell_wrap(wh_util:join_binary(Name, <<".">>))
+                                            ,wh_json:get_value(<<"description">>, Settings, <<" ">>)
+                                            ,cell_wrap(wh_json:get_value(<<"type">>, Settings))
+                                            ,cell_wrap(wh_json:get_value(<<"default">>, Settings))
+                                            ,cell_wrap(wh_json:get_binary_boolean(<<"required">>, Settings, <<"false">>))
+                                            )
+                                  | Acc
+                                 ]
+                               ).
+
+cell_wrap('undefined') -> <<" ">>;
+cell_wrap([]) -> <<"`[]`">>;
+cell_wrap(<<>>) -> <<"\"\"">>;
+cell_wrap(?EMPTY_JSON_OBJECT) -> <<"`{}`">>;
+cell_wrap(Type) -> [<<"`">>, wh_util:to_binary(Type), <<"`">>].
+
+maybe_sub_properties_to_row(<<"object">>, Names, Settings, Acc0) ->
+    wh_json:foldl(fun(Name, SubSettings, Acc1) ->
+                          property_to_row(Names ++ [Name], SubSettings, Acc1)
+                  end
+                 ,Acc0
+                 ,wh_json:get_value(<<"properties">>, Settings, wh_json:new())
+                 );
+maybe_sub_properties_to_row(<<"array">>, Names, Settings, Acc) ->
+    case wh_json:get_value([<<"items">>, <<"type">>], Settings) of
+        <<"object">> = Type ->
+            maybe_sub_properties_to_row(Type
+                                       ,Names ++ ["[]"]
+                                       ,wh_json:get_value(<<"items">>, Settings, wh_json:new()), Acc
+                                       );
+        <<"string">> = Type ->
+            [?TABLE_ROW(cell_wrap(wh_util:join_binary(Names ++ ["[]"], <<".">>))
+                        ,<<" ">>
+                        ,cell_wrap(Type)
+                        ,<<" ">>
+                        ,cell_wrap(wh_json:get_binary_boolean([<<"items">>, <<"required">>], Settings, <<"false">>))
+                       )
+             | Acc
+            ];
+        _Type -> Acc
+    end;
+maybe_sub_properties_to_row(_Type, _Keys, _Settings, Acc) ->
+    Acc.
 
 -define(SWAGGER_INFO
        ,wh_json:from_list([{<<"title">>, <<"Crossbar">>}
