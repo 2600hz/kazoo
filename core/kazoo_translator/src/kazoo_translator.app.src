@@ -12,6 +12,5 @@
                  , whistle_couch
 
                  , lager
-                 , ibrowse
                  ]}
  ]}.

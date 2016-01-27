@@ -18,7 +18,6 @@
 
                  , lager
                  , gproc
-                 , ibrowse
                  ]},
   {mod, {acdc_app, []}}
  ]}.

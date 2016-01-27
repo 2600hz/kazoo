@@ -13,7 +13,6 @@
                  , whistle_services
                  , whistle_transactions
 
-                 , ibrowse
                  , lager
                  ]},
   {mod, {whistle_number_manager_app, []}}
