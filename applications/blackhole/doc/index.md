@@ -6,6 +6,8 @@ Language: en-US
 
 # Blackhole *Realtime HTTP Websocket Events*
 
+
+
 ## Setting up
 
 1. Start the Blackhole Crossbar module
@@ -32,44 +34,92 @@ From here, you can write your own Javascript callbacks, triggered everytime a re
   </head>
   <body>
     <script>
-      var socket = io.connect('http://{BLACKHOLE_IP_ADDRESS}:5555');
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_CREATE.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_ANSWER.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'call.CHANNEL_DESTROY.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'conference.event.*' });
-      socket.emit('subscribe', { account_id: '{ACCOUNT_ID}', auth_token: '{AUTH_TOKEN}', binding: 'conference.command.{CONFERENCE_ID}' });
+        var socket = io.connect('http://{BLACKHOLE_IP_ADDRESS}:5555');
 
-      socket.on('mute_participant', function (data) {
-        console.log(data);
-      });
-      socket.on('unmute_participant', function (data) {
-        console.log(data);
-      });
-      socket.on('participants_event', function (data) {
-        console.log(data);
-      });
-      socket.on('CHANNEL_CREATE', function (EventJObj) {
-        console.log(EventJObj);
-      });
-      socket.on('CHANNEL_ANSWER', function (EventJObj) {
-        console.log(EventJObj);
-      });
-      socket.on('CHANNEL_DESTROY', function (EventJObj) {
-        console.log(EventJObj);
-      });
+        socket.emit('subscribe', {
+            account_id: '{ACCOUNT_ID}',
+            auth_token: '{AUTH_TOKEN}',
+            binding: 'call.CHANNEL_CREATE.*'
+        });
 
+        socket.emit('subscribe', {
+            account_id: '{ACCOUNT_ID}',
+            auth_token: '{AUTH_TOKEN}',
+            bindings: ['call.CHANNEL_ANSWER.*', 'call.CHANNEL_DESTROY.*']
+        });
 
-      var Events = ['connect', 'error', 'disconnect', 'reconnect', 'reconnect_attempt', 'reconnecting', 'reconnect_error', 'reconnect_failed'];
-      for (idx in Events) {
-        socket.on(Events[idx], function (_evt) { console.log('=ERROR REPORT==== ' + Events[idx]); });
-      }
+        socket.emit('subscribe', {
+            account_id: accountId,
+            auth_token: token,
+            bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
+        });
+
+        socket.on('CHANNEL_CREATE', function(EventJObj) {
+            console.log(EventJObj);
+        });
+
+        socket.on('CHANNEL_ANSWER', function(EventJObj) {
+            console.log(EventJObj);
+        });
+
+        socket.on('CHANNEL_DESTROY', function(EventJObj) {
+            console.log(EventJObj);
+        });
+
+        socket.on('doc_created_user', function(EventJObj) {
+            console.log(EventJObj);
+        });
+
+        socket.on('doc_edited_user', function(EventJObj) {
+            console.log(EventJObj);
+        });
+
+        // socket.emit('unsubscribe', {
+        //     account_id: accountId,
+        //     auth_token: token,
+        //     bindings: ['doc_created.*.user.*', 'doc_edited.*.user.*']
+        // });
+
+        // socket.emit('unsubscribe_all', {
+        //     account_id: accountId,
+        //     auth_token: token
+        // });
+
+        var Events = ['connect', 'error', 'disconnect', 'reconnect', 'reconnect_attempt', 'reconnecting', 'reconnect_error', 'reconnect_failed'];
+
+        for (var idx in Events) {
+            socket.on(Events[idx], function(_evt) {
+                console.log('=ERROR REPORT==== ' + Events[idx]);
+            });
+        }
     </script>
   </body>
 </html>
 ```
+
+You can add one or multiple bindings by using:
+
+`note: binding will be picked first over bindings in case both are added`
+
+``` javascript
+// For one use: binding
+socket.emit('subscribe', {
+    account_id: '{ACCOUNT_ID}',
+    auth_token: '{AUTH_TOKEN}',
+    binding: 'doc_edited.*.user.*'
+});
+
+// For multiple use: bindings
+socket.emit('subscribe', {
+    account_id: '{ACCOUNT_ID}',
+    auth_token: '{AUTH_TOKEN}',
+    bindings: ['doc_edited.*.user.*', 'doc_deleted.*.user.*']
+});
+```
+
 You can also add a friendly name and some metadata to any subscribe command.
 
-```
+``` javascript
 socket.emit('subscribe', {
     account_id: '{ACCOUNT_ID}',
     auth_token: '{AUTH_TOKEN}',
