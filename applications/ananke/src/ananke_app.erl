@@ -23,7 +23,9 @@
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_Type, _Args) -> ananke:start_link().
+start(_Type, _Args) ->
+    _ = declare_exchanges(),
+    ananke_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -32,4 +34,15 @@ start(_Type, _Args) -> ananke:start_link().
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
-stop(_State) -> ananke:stop().
+stop(_State) -> 'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    wapi_self:declare_exchanges(),
+    wapi_notifications:declare_exchanges().
