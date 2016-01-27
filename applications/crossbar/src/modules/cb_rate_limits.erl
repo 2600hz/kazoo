@@ -21,7 +21,7 @@
          ,delete/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(LISTING_BY_OWNER, <<"rate_limits/list_by_owner">>).
 

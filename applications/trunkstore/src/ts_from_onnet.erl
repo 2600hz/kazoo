@@ -17,8 +17,11 @@
 
 -include("ts.hrl").
 
+-define(SERVER, ?MODULE).
+
+-spec start_link(wh_json:object()) -> startlink_ret().
 start_link(RouteReqJObj) ->
-    proc_lib:start_link(?MODULE, 'init', [self(), RouteReqJObj]).
+    proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj]).
 
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),

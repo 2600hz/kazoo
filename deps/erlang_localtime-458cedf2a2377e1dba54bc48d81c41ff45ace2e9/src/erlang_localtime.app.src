@@ -1,9 +1,9 @@
 {application, 'erlang_localtime',
  [
   {description, ""},
-  {applications, [kernel, stdlib]},
   {vsn, "1.0.2"},
+  {modules, []},
   {registered, []},
-  {env, []},
-  {applications, []}
+  {applications, [kernel, stdlib]},
+  {env, []}
  ]}.

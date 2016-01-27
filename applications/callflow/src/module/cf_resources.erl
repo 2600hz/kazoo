@@ -24,7 +24,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_resources).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 -include_lib("whistle/include/wapi_offnet_resource.hrl").
 
 -export([handle/2]).

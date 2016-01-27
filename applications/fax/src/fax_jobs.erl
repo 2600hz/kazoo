@@ -22,6 +22,8 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(POLLING_INTERVAL, 5000).
 
 -record(state, {jobs=[]}).
@@ -31,14 +33,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -87,7 +86,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'job_complete', Worker}, #state{jobs=Jobs}=State) ->
-    poolboy:checkin('fax_worker_pool', Worker),
+    poolboy:checkin(?FAX_WORKER_POOL, Worker),
     {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -156,7 +155,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec distribute_jobs(wh_json:objects()) -> wh_json:objects().
 distribute_jobs([]) -> [];
 distribute_jobs([Job|Jobs]) ->
-    case catch poolboy:checkout('fax_worker_pool', 'false', 1000) of
+    case catch poolboy:checkout(?FAX_WORKER_POOL, 'false', 1000) of
         Worker when is_pid(Worker) ->
             gen_server:cast(Worker, {'attempt_transmission', self(), Job}),
             distribute_jobs(Jobs);

@@ -49,7 +49,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_group_pickup_feature).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

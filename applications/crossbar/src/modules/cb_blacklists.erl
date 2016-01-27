@@ -18,7 +18,7 @@
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"blacklists/crossbar_listing">>).
 

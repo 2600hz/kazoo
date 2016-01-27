@@ -24,6 +24,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {node :: atom()
                 ,options :: wh_proplist()
                }).
@@ -44,20 +46,13 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
 -spec start_link(atom(), wh_proplist()) -> startlink_ret().
-
-start_link(Node) ->
-    start_link(Node, []).
-
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', ?QUEUE_NAME}

@@ -15,7 +15,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_voicemail).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
 -export([handle/2]).

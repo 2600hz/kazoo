@@ -1,0 +1,18 @@
+{application, whistle_services,
+ [
+  {description, "Whistle Services provides billing and service limit support"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [whistle_services_sup]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , whistle_couch
+                 , whistle_config
+                 , kazoo_modb
+                 , braintree
+
+                 , lager
+                 ]},
+  {mod, {whistle_services_app, []}}
+ ]}.

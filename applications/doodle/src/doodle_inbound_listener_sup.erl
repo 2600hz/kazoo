@@ -15,6 +15,8 @@
 
 -include("doodle.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(DEFAULT_EXCHANGE, <<"sms">>).
 -define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}] ).
@@ -29,12 +31,14 @@
 -define(DOODLE_INBOUND_EXCHANGE_TYPE, whapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
 -define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  whapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS_JOBJ)).
 
+-define(CHILDREN, [?WORKER_TYPE('doodle_inbound_listener', 'temporary')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
 -spec start_inbound_listener(amqp_listener_connection()) -> startlink_ret().
 start_inbound_listener(Connection) ->
-    supervisor:start_child(?MODULE, [Connection]).
+    supervisor:start_child(?SERVER, [Connection]).
 
 -spec start_listeners() -> 'ok'.
 start_listeners() ->
@@ -43,13 +47,11 @@ start_listeners() ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    R = supervisor:start_link({'local', ?MODULE}, ?MODULE, []),
+    R = supervisor:start_link({'local', ?SERVER}, ?MODULE, []),
     case R of
         {'ok', _} -> start_listeners();
         _Other -> lager:error("error starting inbound_listeneres sup : ~p", [_Other])
@@ -69,13 +71,13 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?WORKER_TYPE('doodle_inbound_listener', 'temporary')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 -spec default_connection() -> amqp_listener_connection().
 default_connection() ->

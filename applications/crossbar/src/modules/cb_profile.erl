@@ -15,7 +15,7 @@
          ,req_finish/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(TRACE_PATH, whapps_config:get(?CONFIG_CAT, <<"trace_path">>, <<"/tmp">>)).
 

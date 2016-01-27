@@ -32,6 +32,8 @@
 
 -include("pivot.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(DEFAULT_OPTS, [{'response_format', 'binary'}]).
 
 -type http_method() :: 'get' | 'post'.
@@ -60,17 +62,13 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(whapps_call:call(), wh_json:object()) -> startlink_ret().
 start_link(Call, JObj) ->
     CallId = whapps_call:call_id(Call),
 
-    gen_listener:start_link(?MODULE, [{'bindings', [{'call', [{'callid', CallId}]}
+    gen_listener:start_link(?SERVER, [{'bindings', [{'call', [{'callid', CallId}]}
                                                     ,{'self', []}
                                                    ]}
                                       ,{'responders', [{{?MODULE, 'maybe_relay_event'}

@@ -1,13 +1,19 @@
 {application, media_mgr,
  [
   {description, "Media Manager - Stream media via Shout from Couch"}
-  ,{vsn, "0.5.0"}
+  ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, []}
-  ,{applications, [
-		   kernel
-		   ,stdlib
+  ,{registered, [media_mgr_sup]}
+  ,{applications, [ kernel
+                  , stdlib
+                  , crypto
+
+                  , whistle_amqp
+                  , whistle_couch
+
+                  , lager
+                  , cowlib
+                  , cowboy
 		  ]}
-  ,{mod, { media_mgr_app, []} }
-  ,{env, []}
+  ,{mod, {media_mgr_app, []}}
  ]}.

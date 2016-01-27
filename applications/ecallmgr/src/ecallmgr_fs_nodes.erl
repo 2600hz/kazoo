@@ -50,6 +50,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_fs_xml_flush'}
                       ,[{<<"switch_event">>, <<"fs_xml_flush">>}]
                      }
@@ -62,7 +64,6 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--define(SERVER, ?MODULE).
 -define(EXPIRE_CHECK, 60 * ?MILLISECONDS_IN_SECOND).
 
 -record(node, {node :: atom()
@@ -96,7 +97,7 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE
                            , [{'responders', ?RESPONDERS}
                              ,{'bindings', ?BINDINGS}
                              ,{'queue_name', ?QUEUE_NAME}
@@ -115,7 +116,7 @@ add(Node, Opts) when is_list(Opts) -> add(Node, erlang:get_cookie(), Opts);
 add(Node, Cookie) when is_atom(Cookie) -> add(Node, Cookie, [{'cookie', Cookie}]).
 
 add(Node, Cookie, Opts) ->
-    gen_server:call(?MODULE
+    gen_server:call(?SERVER
                     ,{'add_fs_node'
                       ,Node
                       ,Cookie
@@ -127,11 +128,11 @@ add(Node, Cookie, Opts) ->
                    ).
 
 -spec nodeup(atom()) -> 'ok'.
-nodeup(Node) -> gen_server:cast(?MODULE, {'fs_nodeup', Node}).
+nodeup(Node) -> gen_server:cast(?SERVER, {'fs_nodeup', Node}).
 
 %% returns 'ok' or {'error', some_error_atom_explaining_more}
 -spec remove(atom()) -> 'ok'.
-remove(Node) -> gen_server:cast(?MODULE, {'rm_fs_node', Node}).
+remove(Node) -> gen_server:cast(?SERVER, {'rm_fs_node', Node}).
 
 -spec connected() -> atoms() | wh_proplist_kv(atom(), gregorian_seconds()).
 connected() ->
@@ -140,7 +141,7 @@ connected() ->
 -spec connected('false') -> [atom()];
                ('true') -> [{atom(), gregorian_seconds()}].
 connected(Verbose) ->
-    gen_server:call(?MODULE, {'connected_nodes', Verbose}).
+    gen_server:call(?SERVER, {'connected_nodes', Verbose}).
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary(), ne_binary()) -> 'ok'.
@@ -162,7 +163,7 @@ do_flush(Args) ->
     'ok'.
 
 -spec is_node_up(atom()) -> boolean().
-is_node_up(Node) -> gen_server:call(?MODULE, {'is_node_up', Node}).
+is_node_up(Node) -> gen_server:call(?SERVER, {'is_node_up', Node}).
 
 -spec sip_url(text()) -> api_binary().
 sip_url(Node) when not is_atom(Node) ->
@@ -196,18 +197,18 @@ all_nodes_connected() ->
 
 -spec summary() -> 'ok'.
 summary() ->
-    print_summary(gen_server:call(?MODULE, 'nodes')).
+    print_summary(gen_server:call(?SERVER, 'nodes')).
 
 -spec details() -> 'ok'.
 -spec details(text()) -> 'ok'.
 
 details() ->
-    print_details(gen_server:call(?MODULE, 'nodes')).
+    print_details(gen_server:call(?SERVER, 'nodes')).
 
 details(NodeName) when not is_atom(NodeName) ->
     details(wh_util:to_atom(NodeName, 'true'));
 details(NodeName) ->
-    case gen_server:call(?MODULE, {'node', NodeName}) of
+    case gen_server:call(?SERVER, {'node', NodeName}) of
         {'error', 'not_found'} ->
             io:format("Node ~s not found!~n", [NodeName]);
         {'ok', Node} ->
@@ -302,13 +303,13 @@ format_capability(_, []) -> 'undefined'.
 
 -spec set_capability(atom(), ne_binary(), boolean()) -> 'ok'.
 set_capability(Node, Capability, Toggle) when is_boolean(Toggle) ->
-    gen_server:call(?MODULE, {'set_capability', Node, Capability, Toggle}).
+    gen_server:call(?SERVER, {'set_capability', Node, Capability, Toggle}).
 
 -spec add_capability(atom(), wh_json:object()) -> 'ok'.
 add_capability(Node, Capability) ->
     case has_capability(Node, Capability) of
         'true' -> 'ok';
-        'false' -> gen_server:call(?MODULE, {'add_capability', Node, Capability})
+        'false' -> gen_server:call(?SERVER, {'add_capability', Node, Capability})
     end.
 
 capability_to_json(#capability{node=Node
@@ -707,7 +708,7 @@ maybe_start_node_pinger(#node{node=NodeName, options=Props}=Node) ->
             lager:critical("failed to start fs pinger for node '~s': ~p", [NodeName, _Else])
     end.
 
--spec close_node(fs_node()) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
+-spec close_node(fs_node()) -> 'ok' | {'error', any()}.
 close_node(#node{node=NodeName}) ->
     _ = ecallmgr_fs_sup:remove_node(NodeName),
     ecallmgr_fs_pinger_sup:remove_node(NodeName).

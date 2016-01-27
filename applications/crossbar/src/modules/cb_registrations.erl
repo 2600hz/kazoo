@@ -25,7 +25,7 @@
          ,delete/1, delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(MASK_REG_FIELDS, [<<"Account-DB">>
                           ,<<"Account-ID">>

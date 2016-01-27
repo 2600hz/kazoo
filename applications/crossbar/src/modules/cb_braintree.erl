@@ -20,7 +20,7 @@
          ,delete/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle_transactions/include/whistle_transactions.hrl").
 -include_lib("braintree/include/braintree.hrl").
 

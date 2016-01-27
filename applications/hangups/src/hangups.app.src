@@ -1,12 +1,18 @@
 {application, hangups,
  [
   {description, "Listen for abnormal hangups and store them in Couch"},
-  {vsn, "1.0.0"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [hangups_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , whistle_amqp
+                 , whistle_couch
+
+                 , lager
+                 , folsom
                  ]},
-  {mod, { hangups_app, []}},
-  {env, []}
+  {mod, {hangups_app, []}}
  ]}.

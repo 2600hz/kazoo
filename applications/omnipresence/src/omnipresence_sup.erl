@@ -16,6 +16,8 @@
 
 -include("omnipresence.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(SIP_APP, <<"omni">>).
 
 -define(SUBS_ETS_OPTS, [{'table_id', omnip_subscriptions:table_id()}
@@ -39,17 +41,15 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec subscriptions_srv() -> pid() | 'undefined'.
+-spec subscriptions_srv() -> api_pid().
 subscriptions_srv() ->
-    case [P || {_, P, 'worker', ['omnip_subscriptions']} <- supervisor:which_children(?MODULE)] of
+    case [P || {_, P, 'worker', ['omnip_subscriptions']} <- supervisor:which_children(?SERVER)] of
         [] -> 'undefined';
         [Pid] -> Pid
     end.
@@ -67,7 +67,7 @@ subscriptions_srv() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
     RestartStrategy = 'one_for_one',

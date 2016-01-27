@@ -37,6 +37,8 @@
 
 -include("crossbar.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {cleanup_timer_ref=start_cleanup_timer()
                 ,minute_timer_ref=start_minute_timer()
                 ,hour_timer_ref=start_hour_timer()
@@ -54,18 +56,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec status() -> wh_proplist().
 status() ->
-    gen_server:call(?MODULE, 'status').
+    gen_server:call(?SERVER, 'status').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -243,7 +242,7 @@ start_cleanup_pass(Ref) ->
          || Db <- Dbs
         ],
     lager:debug("pass completed for ~p", [Ref]),
-    gen_server:cast(?MODULE, {'cleanup_finished', Ref}).
+    gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 
 -spec db_routing_key(ne_binary()) -> ne_binary().
 db_routing_key(Db) ->

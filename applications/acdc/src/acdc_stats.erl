@@ -60,6 +60,8 @@
 -include("acdc.hrl").
 -include("acdc_stats.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% Public API
 -spec call_waiting(api_binary()
                    ,api_binary()
@@ -267,8 +269,9 @@ call_table_opts() ->
                     ]).
 -define(QUEUE_NAME, <<>>).
 
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', ?QUEUE_NAME}
@@ -319,6 +322,7 @@ find_call(CallId) ->
           ,status_table_id :: ets:table_id()
          }).
 
+-spec init([]) -> {'ok', #state{}}.
 init([]) ->
     wh_util:put_callid(<<"acdc.stats">>),
     couch_mgr:suppress_change_notice(),

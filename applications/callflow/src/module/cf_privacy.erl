@@ -6,7 +6,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_privacy).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

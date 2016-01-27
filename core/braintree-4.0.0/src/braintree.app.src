@@ -1,0 +1,14 @@
+{application, braintree,
+ [
+  {description, "Braintree API interactions"},
+  {vsn, "4.0.0"},
+  {modules, []},
+  {registered, [ ]},
+  {applications, [ kernel
+                 , stdlib
+
+                 , whistle_config
+
+                 , ibrowse
+                 ]}
+ ]}.

@@ -1,13 +1,17 @@
 {application, cdr,
  [
   {description, "Listen and record CDR events into CouchDB"}
-  ,{vsn, "0.4.1"}
+  ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, []}
-  ,{applications, [
-                   kernel,
-                   stdlib
+  ,{registered, [cdr_sup]}
+  ,{applications, [ kernel
+                  , stdlib
+                  , crypto
+
+                  , whistle_amqp
+                  , whistle_couch
+
+                  , lager
                   ]}
-  ,{mod, { cdr_app, []}}
-  ,{env, []}
+  ,{mod, {cdr_app, []}}
  ]}.

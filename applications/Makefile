@@ -1,4 +1,4 @@
-ROOT = ../
+ROOT = ..
 
 MAKEDIRS = */Makefile
 

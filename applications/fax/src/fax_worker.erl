@@ -28,6 +28,8 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {queue_name :: api_binary()
                 ,pool :: api_pid()
                 ,job_id :: api_binary()
@@ -103,14 +105,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(any()) -> startlink_ret().
 start_link(_) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}

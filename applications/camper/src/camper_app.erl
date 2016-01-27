@@ -27,13 +27,11 @@
 %% application. If the application is structured according to the OTP
 %% design principles as a supervision tree, this means starting the
 %% top supervisor of the tree.
-%%
 %% @end
 %%--------------------------------------------------------------------
--spec start(any(), any()) ->
-    {'ok', pid()} |
-    {'error', startlink_err()}.
-start(_, _) -> camper:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_Type, _Args) ->
+    camper_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @private
@@ -41,11 +39,11 @@ start(_, _) -> camper:start_link().
 %% This function is called whenever an application has stopped. It
 %% is intended to be the opposite of Module:start/2 and should do
 %% any necessary cleaning up. The return value is ignored.
-%%
 %% @end
 %%--------------------------------------------------------------------
--spec stop(any()) -> 'ok'.
-stop(_) -> camper:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.
 
 %%%===================================================================
 %%% Internal functions

@@ -46,6 +46,8 @@
 -include("omnipresence.hrl").
 -include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, ?MILLISECONDS_IN_SECOND)).
 -define(EXPIRES_FUDGE, whapps_config:get_integer(?CONFIG_CAT, <<"expires_fudge_s">>, 20)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
@@ -65,14 +67,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec handle_search_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_req(JObj, _Props) ->
@@ -105,13 +104,13 @@ handle_subscribe(JObj, _Props) ->
     case wh_json:get_value(<<"Node">>, JObj) =:= wh_util:to_binary(node()) of
         'true' -> 'ok';
         'false' ->
-            gen_server:call(?MODULE, {'subscribe', subscribe_to_record(JObj)})
+            gen_server:call(?SERVER, {'subscribe', subscribe_to_record(JObj)})
     end.
 
 -spec handle_kamailio_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_kamailio_subscribe(JObj, _Props) ->
     'true' = wapi_omnipresence:subscribe_v(JObj),
-    case gen_server:call(?MODULE, {'subscribe', JObj}) of
+    case gen_server:call(?SERVER, {'subscribe', JObj}) of
         'invalid' -> 'ok';
         {Count, {'unsubscribe', _}} ->
             distribute_subscribe(Count, JObj);
@@ -125,7 +124,7 @@ handle_kamailio_subscribe(JObj, _Props) ->
 
 -spec proxy_subscribe(wh_proplist()) -> 'ok'.
 proxy_subscribe(Props) ->
-    case gen_server:call(?MODULE, {'subscribe', Props}) of
+    case gen_server:call(?SERVER, {'subscribe', Props}) of
         'invalid' -> 'ok';
         {_, {'resubscribe', Subscription}} ->
             _ = resubscribe_notify(Subscription);
@@ -137,14 +136,14 @@ proxy_subscribe(Props) ->
 -spec handle_kamailio_notify(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_kamailio_notify(JObj, _Props) ->
     'true' = wapi_omnipresence:notify_v(JObj),
-    gen_server:call(?MODULE, {'notify', JObj}).
+    gen_server:call(?SERVER, {'notify', JObj}).
 
 -spec handle_sync(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_sync(JObj, _Props) ->
     'true' = wapi_presence:sync_v(JObj),
     Action = wh_json:get_value(<<"Action">>, JObj),
     Node = wh_json:get_value(<<"Node">>, JObj),
-    gen_server:cast(?MODULE, {'sync', {Action, Node}}).
+    gen_server:cast(?SERVER, {'sync', {Action, Node}}).
 
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Iterate over each account, find configured queues and configured
 %%% agents, and start the attendant processes
@@ -21,6 +21,7 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
+    _ = declare_exchanges(),
     _ = wh_util:spawn(fun init_acdc/0, []),
     'ignore'.
 
@@ -131,3 +132,17 @@ try_again(AccountId, View, F) ->
               AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
               F(AccountId, couch_mgr:get_results(AccountDb, View, []))
       end).
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_acdc_agent:declare_exchanges(),
+    _ = wapi_acdc_queue:declare_exchanges(),
+    _ = wapi_acdc_stats:declare_exchanges(),
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_conf:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_resource:declare_exchanges(),
+    _ = wapi_route:declare_exchanges(),
+    _ = wapi_presence:declare_exchanges(),
+    wapi_self:declare_exchanges().

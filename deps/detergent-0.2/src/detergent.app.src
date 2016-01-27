@@ -1,3 +1,9 @@
 {application, detergent,
- [{description, "An emulsifying Erlang SOAP library"},
-  {vsn, "0.2"}]}.
+ [
+  {description, "An emulsifying Erlang SOAP library"},
+  {vsn, "0.2"},
+  {modules, []},
+  {registered, []},
+  {applications, []},
+  {env, []}
+ ]}.

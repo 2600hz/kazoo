@@ -23,6 +23,8 @@
 -include("notify.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".account_crawler">>).
 
 -define(KEY_LOW_BALANCE_SENT, [<<"notifications">>, <<"low_balance">>, <<"sent_low_balance">>]).
@@ -34,14 +36,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 -spec check(ne_binary()) -> 'ok'.
 check(Account) when is_binary(Account) ->

@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_page_group).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

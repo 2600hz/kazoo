@@ -28,6 +28,8 @@
 -include("fax.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(NOTIFY_RESTRICT, ['outbound_fax'
                           ,'outbound_fax_error'
                          ]).
@@ -74,15 +76,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include

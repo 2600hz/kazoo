@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz, INC
+%%% @copyright (C) 2012-2016, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -35,7 +35,7 @@
 
 -export([init_apps/2, init_app/2]).
 
--include_lib("crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle/include/wh_system_config.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
@@ -132,7 +132,7 @@ flush() ->
 %%--------------------------------------------------------------------
 -spec start_module(text()) -> 'ok'.
 start_module(Module) ->
-    try crossbar:start_mod(Module) of
+    try crossbar_init:start_mod(Module) of
         _ -> maybe_autoload_module(wh_util:to_binary(Module))
     catch
         _E:_R ->
@@ -166,7 +166,7 @@ persist_module(Module, Mods) ->
 %%--------------------------------------------------------------------
 -spec stop_module(text()) -> 'ok'.
 stop_module(Module) ->
-    try crossbar:stop_mod(Module) of
+    try crossbar_init:stop_mod(Module) of
         _ ->
             Mods = crossbar_config:autoload_modules(),
             crossbar_config:set_default_autoload_modules(lists:delete(wh_util:to_binary(Module), Mods)),

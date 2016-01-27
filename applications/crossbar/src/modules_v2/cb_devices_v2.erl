@@ -26,7 +26,7 @@
          ,lookup_regs/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
 -define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).

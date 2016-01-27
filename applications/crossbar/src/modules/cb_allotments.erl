@@ -15,7 +15,7 @@
          ,post/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
 -define(LIST_CONSUMED, <<"allotments/consumed">>).

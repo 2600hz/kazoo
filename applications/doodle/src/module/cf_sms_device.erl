@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_sms_device).
 
--include("../doodle.hrl").
+-include("doodle.hrl").
 
 -export([handle/2]).
 

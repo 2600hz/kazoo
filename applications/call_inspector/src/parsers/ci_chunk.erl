@@ -32,6 +32,11 @@
         ]).
 -export([get_dialog_entities/1]).
 
+-ifdef(TEST).
+- export([do_reorder_dialog/2]).
+- export([pick_ref_parser/1]).
+-endif.
+
 -record(ci_chunk, {call_id :: ne_binary()
                   ,data = [] :: ne_binaries()
                   ,timestamp :: number()
@@ -48,7 +53,7 @@
 
 -export_type([chunk/0]).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
 
 -define(SETTER(Field),
         Field(#ci_chunk{}=Chunk, Value) ->

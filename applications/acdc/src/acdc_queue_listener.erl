@@ -51,6 +51,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {
           queue_id :: ne_binary()
           ,account_id :: ne_binary()
@@ -99,15 +101,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(pid(), pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', [{'acdc_queue', [{'restrict_to', ['sync_req']}
                                                             ,{'account_id', AccountId}
                                                             ,{'queue_id', QueueId}
@@ -198,15 +196,9 @@ delivery(Srv) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the listener
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the listener
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', #state{}}.
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->
     wh_util:put_callid(QueueId),
 

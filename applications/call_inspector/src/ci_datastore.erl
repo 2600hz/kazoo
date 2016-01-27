@@ -12,6 +12,8 @@
 
 -include("call_inspector.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([store_chunk/1]).
@@ -47,7 +49,6 @@
 
 -export_type([data/0]).
 
--define(SERVER, ?MODULE).
 -define(CI_DIR, "/tmp/2600hz-call_inspector").
 
 %%%===================================================================
@@ -55,12 +56,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -113,15 +111,9 @@ flush(CallId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', #state{}}.
 init([]) ->
     mkdir(?CI_DIR),
     {'ok', #state{}}.

@@ -36,7 +36,6 @@
 %%% something else executed that might have been related to the main
 %%% application's execute (think set commands, like playback terminators);
 %%% we can note the event happened, and continue looping as we were.
-%%%
 %%% @end
 %%%
 %%% @contributors
@@ -77,6 +76,7 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(KEEP_ALIVE, 2 * ?MILLISECONDS_IN_MINUTE). %% after hangup, keep alive for 2 minutes
 
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
@@ -122,11 +122,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom(), ne_binary(), api_binary(), api_binary(), wh_json:object()) -> startlink_ret().
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
@@ -142,7 +138,7 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
                 ,{'dialplan', []}
                 ,{'self', []}
                ],
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', Bindings}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}

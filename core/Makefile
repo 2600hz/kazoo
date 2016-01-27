@@ -1,4 +1,4 @@
-ROOT = ../
+ROOT = ..
 
 MAKEDIRS = */Makefile
 
@@ -19,7 +19,7 @@ test: ACTION = test
 test: $(MAKEDIRS)
 
 kazoo:
-	$(MAKE) -C whistle-1.0.0 compile
+	$(MAKE) -C $(wildcard whistle-*) compile
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)

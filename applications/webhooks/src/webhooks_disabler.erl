@@ -25,11 +25,13 @@
 
 -include("webhooks.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(EXPIRY_MSG, 'failure_check').
 
--spec start_link() -> 'ignore'.
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 -spec init(any()) -> {'ok', reference()}.
 init(_) ->

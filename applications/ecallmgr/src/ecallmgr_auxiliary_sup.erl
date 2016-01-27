@@ -13,6 +13,8 @@
 -include("ecallmgr.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([cache_proc/0]).
 -export([init/1]).
@@ -43,12 +45,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 cache_proc() -> ?ECALLMGR_UTIL_CACHE.
 
@@ -65,7 +66,7 @@ cache_proc() -> ?ECALLMGR_UTIL_CACHE.
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

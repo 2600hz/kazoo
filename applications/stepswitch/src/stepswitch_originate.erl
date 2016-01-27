@@ -22,6 +22,8 @@
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {msg_id=wh_util:rand_hex_binary(12)
                 ,endpoints = [] :: wh_json:objects()
                 ,resource_req :: wapi_offnet_resource:req()
@@ -44,15 +46,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(wh_json:objects(), wapi_offnet_resource:req()) -> startlink_ret().
 start_link(Endpoints, OffnetReq) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}

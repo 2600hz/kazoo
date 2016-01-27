@@ -39,17 +39,22 @@
          ,system_replace_state/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
+
+-define(SERVER, ?MODULE).
+
+-define(CHILDREN, []). %% FIXME: why is this not a supervisor?
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec start_link() -> startlink_ret().
 start_link() ->
-    proc_lib:start_link(?MODULE, 'init_io', [self()]).
+    proc_lib:start_link(?SERVER, 'init_io', [self()]).
 
 init_io(Parent) ->
     wh_util:put_callid(<<"cb_sup_io_server">>),
-    register(?MODULE, self()),
+    register(?SERVER, self()),
     lager:debug("Acking to ~p", [Parent]),
     Debug = sys:debug_options([]),
     proc_lib:init_ack(Parent, {'ok', self()}),
@@ -108,17 +113,16 @@ format_path_tokens([Module, Function | Args]) -> [Module, Function, Args].
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
-%% @end
+%% @doc Initializes the bindings this module will respond to.
 %%--------------------------------------------------------------------
--spec init() -> 'ok'.
+-spec init() -> sup_init_ret().
 init() ->
-    crossbar_module_sup:start_child(?MODULE),
+    Ret = crossbar_module_sup:start_child(?SERVER),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.sup">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.sup">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.sup">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    Ret.
 
 %%--------------------------------------------------------------------
 %% @public

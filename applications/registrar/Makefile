@@ -1,31 +1,14 @@
-PROJECT = registrar
 ROOT = ../..
-
-EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \
-	$(shell find $(ROOT)/deps/lager-* -maxdepth 2 -name ebin -print)
-PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
-
-ERLC_OPTS += -Werror +debug_info +warn_export_all $(PA)
-
-.PHONY: all compile clean
+PROJECT = registrar
 
 all: compile
 
-MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+# Target to be built by `compile` and `compile-test`
+COMPILE_MOAR = priv/comp128.so
+CLEAN_MOAR = clean-so
 
-compile: ebin/$(PROJECT).app json priv/comp128.so
-	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
-		> ebin/$(PROJECT).app
-	-@$(MAKE) ebin/$(PROJECT).app
+-include $(ROOT)/make/kz.mk
 
-ebin/$(PROJECT).app: src/*.erl
-	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
-
-json: JSON = $(shell find priv/couchdb -name *.json -print)
-json:
-	@$(ROOT)/scripts/format-json.sh $(JSON)
 
 ERL_INCLUDES := $(wildcard $(shell dirname `which erl`)/../erts-*/include)
 ifeq ($(ERL_INCLUDES),)
@@ -35,26 +18,5 @@ endif
 priv/comp128.so: c_src/comp128.c
 	gcc -I$(ERL_INCLUDES) -fpic -shared c_src/comp128.c -o priv/comp128.so
 
-compile-test: test/$(PROJECT).app
-	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
-		> test/$(PROJECT).app
-	-@$(MAKE) test/$(PROJECT).app
-	-@$(MAKE) priv/comp128.so
-
-test/$(PROJECT).app: src/*.erl
-	@mkdir -p test/
-	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
-
-clean:
-	rm -f ebin/*
-	rm -f priv/*.so
-	rm -f erl_crash.dump
-
-clean-test:
-	rm -f test/*.beam test/$(PROJECT).app
-
-test: clean-test compile-test eunit
-
-eunit: compile-test
-	erl -noshell $(PA) -pa test -eval "case eunit:test([$(MODULES)], [verbose]) of 'ok' -> init:stop(); _ -> init:stop(1) end."
+clean-so:
+	$(if $(wildcard priv/comp128.so), rm priv/comp128.so)

@@ -9,16 +9,15 @@
 
 -behaviour(supervisor).
 
--export([start_link/0
-        ]).
+-export([start_link/0]).
 -export([init/1]).
 
 -include("pusher.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?SUPER('apns_sup')
-                   ,?SUPER('gcm_sup')
-                   ,?SUPER('pusher_module_sup')
+-define(CHILDREN, [?SUPER('pusher_module_sup')
                    ,?WORKER('pusher_listener')
                    ,?CACHE(?PUSHER_CACHE)
                   ]).
@@ -29,13 +28,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -50,7 +47,7 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
     RestartStrategy = 'one_for_one',

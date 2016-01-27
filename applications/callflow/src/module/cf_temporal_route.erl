@@ -13,7 +13,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_temporal_route).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 -include("cf_temporal_route.hrl").
 
 -export([handle/2

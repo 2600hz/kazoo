@@ -25,8 +25,9 @@
         ]).
 
 -include("pusher.hrl").
-
 -include_lib("nksip/include/nksip.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {subs_pid :: pid()
                 ,subs_ref :: reference()
@@ -155,15 +156,11 @@ send_reply(Token, JObj) ->
     wh_amqp_worker:cast(Payload, fun(P) -> wapi_pusher:publish_targeted_push_resp(Queue, P) end).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include

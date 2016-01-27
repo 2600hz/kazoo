@@ -1,13 +1,17 @@
 {application, conference,
  [
   {description, "Conferencing Service Provider"},
-  {vsn, "1.0.0"},
+  {vsn, "4.0.0"},
   {modules, []},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
+  {registered, [conference_sup, conf_participant_sup]},
+  {applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , whistle_amqp
+                 , whistle_couch
+
+                 , lager
                  ]},
-  {mod, { conference_app, []}},
-  {env, []}
+  {mod, {conference_app, []}}
  ]}.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2016, 2600Hz
 %%% @doc
 %%% Init to be done
 %%% @end
@@ -30,6 +30,7 @@
           ,wh_config:get_atom('log', 'error', ['error'])
          }).
 
+-spec start_link() -> startlink_ret().
 start_link() ->
     wh_util:spawn(fun init/0),
     'ignore'.

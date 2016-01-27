@@ -25,6 +25,8 @@
 -include("camper.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RINGING_TIMEOUT, 30).
 
 -record('state', {'requests' :: dict:dict()
@@ -62,23 +64,19 @@ set_requestor_queues(S, Val) ->
 
 -spec add_request(wh_json:object()) -> 'ok'.
 add_request(JObj) ->
-    gen_server:cast(?MODULE, {'add_request', JObj}).
+    gen_server:cast(?SERVER, {'add_request', JObj}).
 
 -spec available_device(ne_binary(), ne_binary()) -> 'ok'.
 available_device(AccountId, SIPName) ->
-    gen_server:cast(?MODULE, {'available_device', AccountId, SIPName}).
+    gen_server:cast(?SERVER, {'available_device', AccountId, SIPName}).
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks

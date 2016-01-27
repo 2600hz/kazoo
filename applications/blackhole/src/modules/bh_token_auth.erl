@@ -18,7 +18,7 @@
         ,authenticate/1,authenticate/2
         ]).
 
--include("../blackhole.hrl").
+-include("blackhole.hrl").
 
 %%%===================================================================
 %%% API

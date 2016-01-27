@@ -19,7 +19,7 @@
         ]).
 -endif.
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
 
 -define(VERSION, <<"1">>).

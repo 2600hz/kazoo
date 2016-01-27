@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_move).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

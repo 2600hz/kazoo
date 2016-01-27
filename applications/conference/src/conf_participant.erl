@@ -43,7 +43,7 @@
 
 -include("conference.hrl").
 
--define('SERVER', ?MODULE).
+-define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
                       ,[{<<"call_event">>, <<"*">>}]
@@ -81,18 +81,14 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {'error', Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}]}
                 ,{'self', []}
                ],
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', Bindings}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}

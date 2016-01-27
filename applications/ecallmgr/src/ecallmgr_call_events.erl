@@ -14,6 +14,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(EVENT_CAT, <<"call_event">>).
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, ?MILLISECONDS_IN_SECOND).
@@ -58,8 +60,6 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, [{'no_local', 'true'}]).
 
--define(SERVER, ?MODULE).
-
 -record(state, {
           node :: atom()
           ,call_id :: api_binary()
@@ -79,11 +79,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom(), ne_binary()) -> startlink_ret().
 start_link(Node, CallId) ->
@@ -91,7 +87,7 @@ start_link(Node, CallId) ->
                           ,{'restrict_to', ['publisher_usurp']}
                          ]}
                ],
-    gen_listener:start_link(?MODULE, [{'bindings', Bindings}
+    gen_listener:start_link(?SERVER, [{'bindings', Bindings}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}

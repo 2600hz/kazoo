@@ -12,6 +12,8 @@
 
 -include("reg.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([start_listeners/1, stop_listeners/1, set_listeners/1]).
@@ -20,19 +22,19 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?WORKER('registrar_shared_listener')]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    R = supervisor:start_link({'local', ?MODULE}, ?MODULE, []),
+    R = supervisor:start_link({'local', ?SERVER}, ?MODULE, []),
     case R of
         {'ok', _} -> start_listeners();
         _Other -> lager:error("error starting registrar_listeners sup : ~p", [_Other])
@@ -46,14 +48,14 @@ start_listeners() ->
 -spec start_listeners(integer()) -> 'ok'.
 start_listeners(Count) ->
     lager:debug("starting ~B registrar listeners", [Count]),
-    _ = [supervisor:start_child(?MODULE, []) || _ <- lists:seq(1, Count)],
+    _ = [supervisor:start_child(?SERVER, []) || _ <- lists:seq(1, Count)],
     'ok'.
 
 -spec stop_listeners(integer()) -> 'ok'.
 stop_listeners(Count) ->
     StopList = lists:sublist(workers(), Count),
     lager:debug("stopping ~B registrar listeners", [length(StopList)]),
-    _ = [supervisor:terminate_child(?MODULE, Pid) || Pid <- StopList],
+    _ = [supervisor:terminate_child(?SERVER, Pid) || Pid <- StopList],
     'ok'.
 
 -spec set_listeners(integer()) -> 'ok'.
@@ -66,7 +68,7 @@ set_listeners(Count) ->
 
 -spec workers() -> pids().
 workers() ->
-    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
+    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -81,7 +83,7 @@ workers() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,
@@ -89,4 +91,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER('registrar_shared_listener')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

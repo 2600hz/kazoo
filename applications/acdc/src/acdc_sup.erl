@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz
+%%% @copyright (C) 2012-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -18,6 +18,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CHILDREN, [?CACHE(?ACDC_CACHE)
                    ,?SUPER('acdc_recordings_sup')
                    ,?SUPER('acdc_agents_sup')
@@ -31,13 +33,14 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
+-spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
     RestartStrategy = 'one_for_one',

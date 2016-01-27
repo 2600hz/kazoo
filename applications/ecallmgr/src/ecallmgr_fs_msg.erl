@@ -29,8 +29,6 @@
           ,options :: wh_proplist()
          }).
 
--define(SERVER, ?MODULE).
-
 -define(BINDINGS(Node), [{'sms', [{'route_id', Node}
                                   ,{'restrict_to', ['route']}
                                  ]
@@ -49,24 +47,21 @@
 -include_lib("nksip/include/nksip.hrl").
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
 -spec start_link(atom(), wh_proplist()) -> startlink_ret().
-
-start_link(Node) ->
-    start_link(Node, []).
-
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     NodeBin = wh_util:to_binary(Node),
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'responders', ?RESPONDERS}
                               ,{'bindings', ?BINDINGS(NodeBin)}
                               ,{'queue_name', ?QUEUE_NAME(NodeBin)}

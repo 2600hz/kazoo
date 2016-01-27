@@ -20,6 +20,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -type bindings() :: atom() | [atom(),...] | ne_binary() | ne_binaries().
 
 -record(state, {node :: atom()
@@ -40,15 +42,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom(), bindings(), bindings()) -> startlink_ret().
 start_link(Node, Bindings, Subclasses) ->
-    gen_server:start_link(?MODULE, [Node, Bindings, Subclasses], []).
+    gen_server:start_link(?SERVER, [Node, Bindings, Subclasses], []).
 
 %%%===================================================================
 %%% gen_server callbacks

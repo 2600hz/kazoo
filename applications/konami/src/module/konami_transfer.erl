@@ -36,7 +36,7 @@
          ,code_change/4
         ]).
 
--include("../konami.hrl").
+-include("konami.hrl").
 
 -define(WSD_ENABLED, 'true').
 

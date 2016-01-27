@@ -21,7 +21,7 @@
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("kazoo_oauth/include/kazoo_oauth_types.hrl").
 
 -define(CB_LIST, <<"faxbox/crossbar_listing">>).

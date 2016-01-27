@@ -29,7 +29,6 @@
           ,options :: wh_proplist()
          }).
 
--define(SERVER, ?MODULE).
 -define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
 -define(BINDINGS, [{'presence', [{'restrict_to', ['mwi_update'
@@ -57,26 +56,23 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--include_lib("ecallmgr.hrl").
+-include("ecallmgr.hrl").
 -include_lib("nksip/include/nksip.hrl").
+
+-define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
 -spec start_link(atom(), wh_proplist()) -> startlink_ret().
-
-start_link(Node) ->
-    start_link(Node, []).
-
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'responders', ?RESPONDERS}
                               ,{'bindings', ?BINDINGS}
                               ,{'queue_name', ?QUEUE_NAME}

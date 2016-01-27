@@ -12,7 +12,7 @@
 
 -export([build/1]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -record(contact, {id
                   ,callflow

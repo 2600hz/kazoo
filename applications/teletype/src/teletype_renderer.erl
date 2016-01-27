@@ -11,6 +11,8 @@
 
 -include("teletype.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/1
          ,render/3
         ]).
@@ -25,7 +27,7 @@
 
 -spec start_link(any()) -> startlink_ret().
 start_link(Args) ->
-    gen_server:start_link(?MODULE, [], [Args]).
+    gen_server:start_link(?SERVER, [], [Args]).
 
 -spec render(ne_binary(), binary(), wh_proplist()) ->
                     {'ok', iolist()} |

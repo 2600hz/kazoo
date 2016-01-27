@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -11,20 +11,14 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([cache_proc/0]).
 -export([listener_proc/0]).
 -export([smtp_sessions/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(POOL(N),  {N, {'poolboy', 'start_link', [[{'name', {'local', N}}
-                                                  ,{'worker_module', 'fax_worker'}
-                                                  ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
-                                                  ,{'max_overflow', 0}
-                                                 ], []
-                                                ]}
-                   ,'permanent', 'infinity', 'worker', ['poolboy']}).
 
 -define(ORIGIN_BINDINGS, [[{'db', ?WH_FAXES_DB}, {'type', <<"faxbox">>}]]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
@@ -34,8 +28,9 @@
 %%                                  ,{'sessionoptions', [?SMTP_CALLBACK_OPTIONS]}
                                 ]]]).
 
--define(CHILDREN, [?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
-                   ,?POOL('fax_worker_pool')
+-define(CHILDREN, [?WORKER('fax_init')
+                   ,?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
+                   ,?SUPER('fax_worker_pool_sup')
                    ,?SUPER('fax_requests_sup')
                    ,?SUPER('fax_xmpp_sup')
                    ,?WORKER('fax_jobs')
@@ -50,13 +45,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec cache_proc() -> {'ok', ?FAX_CACHE}.
 cache_proc() ->
@@ -64,13 +57,13 @@ cache_proc() ->
 
 -spec listener_proc() -> {'ok', pid()}.
 listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?SERVER),
                 Mod =:= 'fax_listener'],
     {'ok', P}.
 
 -spec smtp_sessions() -> non_neg_integer().
 smtp_sessions() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?SERVER),
                 Mod =:= 'gen_smtp_server'],
     Sessions = gen_smtp_server:sessions(P),
     length(Sessions).
@@ -88,7 +81,7 @@ smtp_sessions() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
     RestartStrategy = 'one_for_one',

@@ -15,7 +15,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_call_waiting).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

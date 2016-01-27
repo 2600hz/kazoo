@@ -13,7 +13,7 @@
 
 -export([handle/2]).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->

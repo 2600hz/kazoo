@@ -21,7 +21,7 @@
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"resources/crossbar_listing">>).
 -define(JOBS_LIST, <<"resources/jobs_listing">>).

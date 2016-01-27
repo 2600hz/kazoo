@@ -22,6 +22,8 @@
 
 -include("cccp.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(BINDINGS, [{'self', []}
                   ,{'route', []}
                   ,{'conf', [{'doc_type', <<"sys_info">>}]}
@@ -39,15 +41,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include

@@ -25,7 +25,7 @@
          ,delete/2, delete/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).

@@ -30,6 +30,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {fsm_pid :: pid()
                 ,deliveries = [] :: deliveries()
                }).
@@ -61,15 +63,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(server_ref(), ne_binary(), ne_binary(), api_integer()) -> startlink_ret().
 start_link(FSMPid, AcctId, QueueId, Priority) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', wapi_acdc_queue:shared_queue_name(AcctId, QueueId)}

@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_user).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2
          ,get_endpoints/3
