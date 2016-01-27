@@ -9322,23 +9322,65 @@
             "get": {}
         },
         "/v2/accounts/{ACCOUNTID}/vmboxes": {
-            "get": {},
+            "get": {
+                "description": "Summary listing of voicemail boxes for the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of voicemail boxes for the account"
+                    }
+                }
+            },
             "put": {
+                "description": "Create a new voicemail box",
                 "parameters": {
                     "in": "body",
                     "name": "vmboxes",
                     "required": true,
                     "schema": {
                         "$ref": "#/definitions/vmboxes"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The newly created voicemail box"
                     }
                 }
             }
         },
         "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
+            "delete": {
+                "description": "Deletes the voicemail box from the account"
+            },
+            "get": {
+                "description": "Details of the voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A voicemail box document"
+                    }
+                }
+            },
+            "patch": {
+                "description": "Patch an existing voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The updated voicemail box"
+                    }
+                }
+            },
             "post": {
+                "description": "Edit an existing voicemail box",
                 "parameters": {
                     "in": "body",
                     "name": "vmboxes",
@@ -9346,12 +9388,40 @@
                     "schema": {
                         "$ref": "#/definitions/vmboxes"
                     }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The updated voicemail box"
+                    }
                 }
             }
         },
         "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages": {
-            "delete": {},
-            "get": {}
+            "delete": {
+                "description": "Delete all messages in the voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listing of messages, if any are left"
+                    }
+                }
+            },
+            "get": {
+                "description": "Listing of messages contained in the voicemail box",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of messages"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}": {
             "delete": {},
