@@ -25,7 +25,7 @@
 -include("ananke.hrl").
 
 -record(state, {request       :: wh_proplist()
-                ,timer        :: api_pid()
+                ,timer        :: 'undefined' | reference()
                 ,schedule     :: pos_integers()
                 ,check = 'true' :: check_fun()
                }).
@@ -87,7 +87,8 @@ is_resp(JObj) ->
     orelse wh_api:error_resp_v(JObj).
 
 -type routine_ret() :: state() | {'stop', any(), state()} | 'stop' | 'continue'.
--type routine() :: fun((state(), any()) -> routine_ret()).
+-type routine_fun() :: fun((state(), any()) -> routine_ret()).
+-type routine() :: {routine_fun(), any()}.
 -type routines() :: [routine()].
 
 -spec return(state(), routines()) -> {'stop', any(), state()} | {'noreply', state()}.
@@ -158,7 +159,7 @@ start_originate_timer(Timeout) ->
     lager:debug("starting timer ~pms", [Timeout]),
     erlang:send_after(Timeout, self(), 'originate').
 
--spec stop_originate_timer(pid()) -> 'ok' | {'error', term()}.
+-spec stop_originate_timer(reference()) -> 'ok' | {'error', term()}.
 stop_originate_timer('undefined') ->
     'ok';
 stop_originate_timer(Timer) ->
