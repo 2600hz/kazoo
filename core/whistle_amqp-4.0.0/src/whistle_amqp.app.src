@@ -8,6 +8,7 @@
                   , stdlib
 
                   , whistle
+                  , whistle_config
 
                   , amqp_client
                   , lager
