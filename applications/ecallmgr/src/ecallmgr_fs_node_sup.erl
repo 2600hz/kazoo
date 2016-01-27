@@ -108,22 +108,28 @@ init([Node, Options]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     NodeB = wh_util:to_binary(Node),
-    Children = [ begin
-                     Name = wh_util:to_atom(<<NodeB/binary, "_", H/binary>>, 'true'),
-                     Mod = wh_util:to_atom(<<"ecallmgr_fs_", H/binary>>, 'true'),
-                     lager:debug("starting handler ~s", [Name]),
-                     Args = [Node, Options],
-                     case Mod of
-                         'ecallmgr_fs_event_stream_sup' ->
-                             ?SUPER_NAME_ARGS(Name, Mod, Args);
-                         _ ->
-                             ?WORKER_NAME_ARGS(Name, Mod, Args)
-                     end
-                 end
-                 || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)
-               ],
+    Args = [Node, Options],
+    Children = [ child_name(NodeB, Args, H) || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)],
 
     {'ok', {SupFlags, Children}}.
+
+-spec child_name(binary(), list(), binary() | tuple()) -> any().
+child_name(NodeB, Args, {<<"supervisor">>, Module}) ->
+    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?SUPER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, {<<"worker">>, Module}) ->
+    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?WORKER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, <<"event_stream_sup">>=Module) ->
+    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?SUPER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, <<_/binary>>=Module) ->
+    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?WORKER_NAME_ARGS(Mod, Name, Args).
 
 -spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';
