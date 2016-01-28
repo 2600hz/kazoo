@@ -1,7 +1,6 @@
-
 ### Voicemail Boxes
 
-#### About
+#### About Voicemail Boxes
 
 Voicemail boxes store messages, recorded from the caller, for the voicemail box owner to listen to at a later time.
 
@@ -37,4 +36,99 @@ Key | Description | Type | Default | Required
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean` | `false` | `false`
 `timezone` | The default timezone | `string` |   | `false`
 
-#### Create a new Voicemail Box
+
+#### Fetch all the voicemail boxes for the account
+
+> GET /v2/accounts/{ACCOUNTID}/vmboxes
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes
+```
+
+#### Create a new voicemail box
+
+> PUT /v2/accounts/{ACCOUNTID}/vmboxes
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes
+```
+
+#### Remove a voicemail box
+
+> DELETE /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}
+```
+
+#### Fetch a voicemail box
+
+> GET /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}
+```
+
+#### Patch a voicemail box
+
+> PATCH /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}
+```
+
+#### Change a voicemail box's settings
+
+> POST /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}
+```
+
+#### Remove all messages from a voicemail box
+
+> DELETE /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages
+```
+
+#### Fetch all messages for a voicemail box
+
+> GET /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages
+```
+
+#### Remove a message from the voicemail box
+
+> DELETE /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}
+```
+
+#### Fetch a message from the voicemail box
+
+> GET /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}
+```
+
+#### Change a message from a voicemail box
+
+> POST /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}
+```
+
+#### Fetch the raw audio of the message
+
+> GET /v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}/raw
+
+```curl
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}/raw
+```
