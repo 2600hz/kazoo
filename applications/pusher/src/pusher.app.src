@@ -11,6 +11,7 @@
                  , asn1
                  , ssl
 
+                 , whistle_apps
                  , whistle_amqp
                  , whistle_couch
                  , apns

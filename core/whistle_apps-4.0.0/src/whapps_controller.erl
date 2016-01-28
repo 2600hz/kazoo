@@ -60,15 +60,18 @@ start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_WHAPPS].
 
 -spec start_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
-start_app(App) when not is_atom(App) ->
-    start_app(wh_util:to_atom(App, 'true'));
 start_app(App) when is_atom(App) ->
-    application:ensure_started(App).
+    case application:ensure_all_started(App) of
+        {'ok', _}=OK -> OK;
+        {'error', _E}=E ->
+            lager:error("~s could not start: ~p", [App, _E]),
+            E
+    end;
+start_app(App) ->
+    start_app(wh_util:to_atom(App, 'true')).
 
 -spec stop_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
-stop_app(App) when not is_atom(App) ->
-    stop_app(wh_util:to_atom(App));
-stop_app(App) ->
+stop_app(App) when is_atom(App) ->
     case application:stop(App) of
         'ok' -> lager:info("stopped kazoo application ~s", [App]);
         {'error', {'not_started', App}} ->
@@ -76,15 +79,17 @@ stop_app(App) ->
         {'error', _E}=Err ->
             lager:error("error stopping applicaiton ~s: ~p", [App, _E]),
             Err
-    end.
+    end;
+stop_app(App) ->
+    stop_app(wh_util:to_atom(App)).
 
 -spec restart_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
-restart_app(App) when not is_atom(App) ->
-    restart_app(wh_util:to_atom(App, 'true'));
 restart_app(App) when is_atom(App) ->
     lager:info("restarting whistle application ~s", [App]),
     _ = stop_app(App),
-    start_app(App).
+    start_app(App);
+restart_app(App) ->
+    restart_app(wh_util:to_atom(App, 'true')).
 
 -spec running_apps() -> atoms() | string().
 -spec running_apps(boolean()) -> atoms() | string().

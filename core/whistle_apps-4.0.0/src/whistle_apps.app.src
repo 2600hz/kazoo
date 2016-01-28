@@ -9,16 +9,19 @@
                   , stdlib
 
                   , whistle
+                  , whistle_config
                   , whistle_amqp
                   , whistle_couch
-                  , whistle_config
                   , whistle_services
                   , kazoo_documents
+                  , whistle_number_manager
+                  , kazoo_token_buckets
 
                   , syslog
                   , lager
                   , lager_syslog
                   , ibrowse
+                  , gproc
                   ]}
   ,{mod, {whistle_apps_app, []}}
   ,{env, [{reloader, false}]} % set to true to enable reloader
