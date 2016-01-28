@@ -24,6 +24,8 @@
 
 -include("ananke.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {request       :: wh_proplist()
                 ,timer        :: 'undefined' | reference()
                 ,schedule     :: pos_integers()
@@ -45,7 +47,7 @@ start_link(Req, [_ | _] = Schedule, CheckFun) ->
 
 -spec start_link(state()) -> {'ok', pid()} | {'error', term()}.
 start_link(#state{} = State) ->
-    gen_server:start_link(?MODULE, State, []).
+    gen_server:start_link(?SERVER, State, []).
 
 -spec init(state()) -> {'ok', state()}.
 init(#state{schedule = [Interval | Schedule]} = State) ->
