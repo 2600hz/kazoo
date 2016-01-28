@@ -785,7 +785,7 @@ maybe_update_interaction_id(Props, Node, _) ->
             case fetch(CallId) of
                 {'ok', Channel} ->
                     OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),
-                    ecallmgr_fs_command:set(Node, OtherLeg, [{?CCV(<<?CALL_INTERACTION_ID>>), CDR}]),
+                    ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
                     'ok';
                 _ -> 'ok'
             end
