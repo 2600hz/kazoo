@@ -15,6 +15,7 @@
                  , kazoo_modb
                  , whistle_apps
                  , webseq
+                 , kazoo_web
 
                  , lager
                  , gproc

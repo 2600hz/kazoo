@@ -8,5 +8,6 @@
                  , stdlib
 
                  , whistle_config
+                 , kazoo_web
                  ]}
  ]}.

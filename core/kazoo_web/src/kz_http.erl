@@ -229,7 +229,7 @@ handle_bad_response(Reason) ->
         {malformed_url, _, Url} ->
             lager:debug("failed to parse the URL ~p", Url),
             {'error', {malformed_url, Url}};
-        {'error', Error} ->
+        Error ->
             lager:debug("request failed with ~p", [Error]),
             Error
     end.

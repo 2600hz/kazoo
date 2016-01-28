@@ -12,6 +12,7 @@
                   , whistle_config
                   , whistle_amqp
                   , whistle_stats
+                  , kazoo_web
 
                   , lager
                   , gproc

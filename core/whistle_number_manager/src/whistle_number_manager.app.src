@@ -12,6 +12,7 @@
                  , whistle_config
                  , whistle_services
                  , whistle_transactions
+                 , kazoo_web
 
                  , lager
                  ]},
