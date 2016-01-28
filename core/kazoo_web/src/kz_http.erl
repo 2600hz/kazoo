@@ -174,7 +174,7 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
     execute_request(Method, Request, [{receiver, Pid}, {sync, false}, {stream, self} | Options]).
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc Send request using httpc and handle its response
 %% @end
 %%--------------------------------------------------------------------
@@ -235,7 +235,7 @@ handle_bad_response(Reason) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc Build <code>Authorization</code> header using <code>basic_auth</code> option
 %% @end
 %%--------------------------------------------------------------------
@@ -250,7 +250,7 @@ maybe_basic_auth(Headers, Options) ->
             {[BasicAuth | Headers], props:delete('basic_auth', Options)}
     end.
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc Build httpc request argument based on method
 %% @end
 %%--------------------------------------------------------------------
@@ -270,7 +270,7 @@ build_request(Method, Url, Headers, Body) when (Method =:= 'post') orelse
     {Url, Headers, ContentType, Body}.
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc Get options out of a propslist based on options type
 %% Two <code>HTTP_OPTIONS</code> and <code>OPTIONS</code> macros are specify
 %% which type of options should be returned.
