@@ -3,26 +3,26 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--record(kz_ledger, {name :: ne_binary()
-                    ,amount :: integer()
-                    ,description :: api_binary()
-                    ,account :: api_binary()
-                    ,type = <<"debit">> :: ne_binary()
-                   }).
+-define(AMOUNT, <<"amount">>).
+-define(DESC, <<"description">>).
+-define(SRC, <<"source">>).
+-define(SRC_SERVICE, [?SRC, <<"service">>]).
+-define(SRC_ID, [?SRC, <<"id">>]).
+-define(USAGE, <<"usage">>).
+-define(USAGE_TYPE, [?USAGE, <<"type">>]).
+-define(USAGE_QUANTITY, [?USAGE, <<"quantity">>]).
+-define(USAGE_UNIT, [?USAGE, <<"unit">>]).
+-define(PERIOD, <<"period">>).
+-define(PERIOD_START, [?PERIOD, <<"start">>]).
+-define(PERIOD_END, [?PERIOD, <<"end">>]).
+-define(ACCOUNT, <<"account">>).
+-define(ACCOUNT_ID, [?ACCOUNT, <<"id">>]).
+-define(ACCOUNT_NAME, [?ACCOUNT, <<"name">>]).
 
--define(PVT_TYPE, <<"pvt_type">>).
--define(LEDGER_TYPE, <<"ledger">>).
--define(PVT_NAME, <<"pvt_name">>).
--define(PVT_AMOUNT, <<"pvt_amount">>).
--define(PVT_ACCOUNT, <<"pvt_account_id">>).
--define(PVT_DESC, <<"pvt_description">>).
 -define(PVT_LEDGER_TYPE, <<"pvt_ledger_type">>).
--define(PVT_CREATED, <<"pvt_created">>).
--define(PVT_UPDATED, <<"pvt_updated">>).
+-define(PVT_TYPE, <<"ledger">>).
 
-
--type ledger() :: #kz_ledger{}.
-
+-type ledger() :: wh_json:object().
 
 -define(KAZOO_LEDGER_HRL, 'true').
 -endif.
