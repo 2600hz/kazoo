@@ -144,7 +144,7 @@
 -define(SANITY_CHECK_PERIOD, 300 * ?MILLISECONDS_IN_SECOND).
 
 -define(APP_NAME, <<"ecallmgr">>).
--define(APP_VERSION, <<"0.8.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(STARTUP_FILE, [code:lib_dir('ecallmgr', 'priv'), "/startup.config"]).
 -define(SETTINGS_FILE, [code:lib_dir('ecallmgr', 'priv'), "/settings.config"]).

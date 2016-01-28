@@ -128,7 +128,12 @@ initialize_whapps() ->
         'false' -> whapps_maintenance:refresh();
         'true' -> 'ok'
     end,
-    WhApps = whapps_config:get(?MODULE, <<"whapps">>, ?DEFAULT_WHAPPS),
+    WhApps = case os:getenv("KAZOO_APPS", "") of
+                 "" ->
+                     whapps_config:get(?MODULE, <<"whapps">>, ?DEFAULT_WHAPPS);
+                 KAZOO_APPS ->
+                     string:tokens(KAZOO_APPS, ", ")
+             end,
     StartWhApps = [wh_util:to_atom(WhApp, 'true') || WhApp <- WhApps],
 
     _ = [start_app(A) || A <- StartWhApps],

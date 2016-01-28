@@ -25,7 +25,7 @@
 -type cf_api_binary() :: binary() | 'undefined'.
 
 -define(APP_NAME, <<"callflow">>).
--define(APP_VERSION, <<"0.8.2">> ).
+-define(APP_VERSION, <<"4.0.0">> ).
 
 -define(RECORDED_NAME_KEY, [<<"media">>, <<"name">>]).
 -define(CF_RECORDING_ID_KEY, <<"Recording-ID">>).

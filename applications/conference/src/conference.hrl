@@ -5,7 +5,7 @@
 -include_lib("whistle/include/wh_api.hrl").
 
 -define(APP_NAME, <<"conference">>).
--define(APP_VERSION, <<"2.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(CONFIG_CAT, <<"conferences">>).
 

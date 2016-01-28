@@ -45,7 +45,7 @@ fConfigLevel() {
         case $RESP in
             [Ss]* ) LEVEL="system";break;;
             [Gg]* ) LEVEL="global";break;;
-            [Rr]* ) LEVEL="repository";break;;            
+            [Rr]* ) LEVEL="repository";break;;
             * ) clear;fWelcome;;
         esac
     done
@@ -92,7 +92,7 @@ fLineEndingPrefs() {
   git config ${CLEVEL}core.safecrlf true
 }
 
-cd `dirname $0`
+cd $(dirname $0)
 
 clear
 

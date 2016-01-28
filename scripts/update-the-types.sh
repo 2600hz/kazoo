@@ -1,8 +1,8 @@
 #!/bin/bash
 
-pushd `dirname $0` > /dev/null
+pushd $(dirname $0) > /dev/null
 
-ROOT=`pwd -P`/..
+ROOT=(pwd -P)/..
 
 EXCLUDES="merl.erl"
 
@@ -34,7 +34,7 @@ function SaR {
 
     ## now loop through the above array
     for PREFIX in "${prefixes[@]}"; do
-        for FILE in `grep -lr "$PREFIX$SEARCH" $ROOT/{core,applications,deps} --exclude=$EXCLUDES`; do
+        for FILE in $(grep -lr "$PREFIX$SEARCH" $ROOT/{core,applications,deps} --exclude=$EXCLUDES); do
             SaRF $SEARCH $REPLACE $FILE "$PREFIX"
         done
     done

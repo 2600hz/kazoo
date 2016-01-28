@@ -7,7 +7,7 @@
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(APP_NAME, <<"trunkstore">>).
--define(APP_VERSION, <<"0.9.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 %% couch params for the trunk store and its views
 -define(TS_DB, <<"ts">>).

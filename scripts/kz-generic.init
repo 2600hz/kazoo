@@ -11,7 +11,7 @@
 . /etc/rc.d/init.d/functions
 
 KZ_DIR="/opt/kazoo"
-KZ_APP=`basename $0`
+KZ_APP=$(basename $0)
 KZ_APP=${KZ_APP#*-}
 LOCKFILE=${LOCKFILE-/var/lock/subsys/${KZ_APP}}
 USER="kazoo"

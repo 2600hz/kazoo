@@ -7,7 +7,7 @@
 -include_lib("whistle_apps/src/whapps_call_command_types.hrl").
 
 -define(APP_NAME, <<"cccp">>).
--define(APP_VERSION, <<"0.0.1">> ).
+-define(APP_VERSION, <<"4.0.0">> ).
 
 -define(CCCP_CONFIG_CAT, <<"cccp">>).
 

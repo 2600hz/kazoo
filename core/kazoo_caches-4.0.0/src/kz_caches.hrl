@@ -5,7 +5,7 @@
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 -define(APP_NAME, <<"kazoo_caches">>).
--define(APP_VERSION, <<"0.0.1">> ).
+-define(APP_VERSION, <<"4.0.0">> ).
 
 -define(KZ_CACHES_HRL, 'true').
 -endif.

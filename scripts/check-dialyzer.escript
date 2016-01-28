@@ -97,10 +97,10 @@ filter(W) ->
         {warn_callgraph, _, {call_to_missing,[application,ensure_all_started,1]}} -> 'false';
         {warn_matching, {"src/konami_code_fsm.erl",_}, {pattern_match,["pattern 'true'","'false'"]}} -> 'false';
 
-        %% MAYBE remove `error_handling` to disable those
+        %% MAYBE remove error_handling to disable those
         {warn_return_only_exit, {"src/modules/cb_sup.erl",_}, {no_return,[only_explicit,system_terminate,4]}} -> 'false';
 
-        %% Dialyzer says `Server` can't matcch but it can
+        %% Dialyzer says Server can't match but it can
         {warn_matching, {"src/wh_nodes.erl",_}, {pattern_match_cov,["variable Server","{<<_:8,_:_*8>>,<<_:8,_:_*8>>}"]}} -> 'false';
 
         %% ETS false positives, from core/

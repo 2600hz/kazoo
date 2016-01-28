@@ -5,7 +5,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"hangups">>).
--define(APP_VERSION, <<"1.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(HANGUPS_HRL, 'true').
 -endif.

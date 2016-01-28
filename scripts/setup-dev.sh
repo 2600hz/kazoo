@@ -23,6 +23,6 @@ fi
 if ! getent passwd rabbitmq >/dev/null 2>&1; then
     useradd -r -g daemon -M -d /var/lib/rabbitmq -s /sbin/nologin rabbitmq
 else
-    usermod -g daemon -d /var/lib/rabbitmq -s /sbin/nologin rabbitmq                                                                                                                
+    usermod -g daemon -d /var/lib/rabbitmq -s /sbin/nologin rabbitmq
 fi
 

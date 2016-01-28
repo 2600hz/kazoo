@@ -6,7 +6,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"omnipresence">>).
--define(APP_VERSION, <<"1.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(CONFIG_CAT, <<"omnipresence">>).
 -define(CACHE_NAME, 'omnipresence_cache').

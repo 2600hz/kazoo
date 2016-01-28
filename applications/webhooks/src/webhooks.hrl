@@ -5,7 +5,7 @@
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
 -define(APP_NAME, <<"webhooks">>).
--define(APP_VERSION, <<"3.20.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -type http_verb() :: 'get' | 'post'.
 -type hook_retries() :: 1..5.
