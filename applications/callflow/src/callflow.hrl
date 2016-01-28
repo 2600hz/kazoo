@@ -51,5 +51,7 @@
         ,whapps_config:get(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
        ).
 
+-define(RESTRICTED_ENDPOINT_KEY, <<"Restricted-Endpoint-ID">>).
+
 -define(CALLFLOW_HRL, 'true').
 -endif.

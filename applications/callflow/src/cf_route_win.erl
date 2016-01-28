@@ -40,7 +40,14 @@ execute_callflow(JObj, Call) ->
 
 -spec should_restrict_call(whapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
-    case cf_endpoint:get(Call) of
+	DefaultEndpointId = whapps_call:authorizing_id(Call),
+	EndpointId = whapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
+	should_restrict_call(EndpointId, Call).
+
+-spec should_restrict_call(api_binary(), whapps_call:call()) -> boolean().
+should_restrict_call('undefined', _Call) -> 'false';
+should_restrict_call(EndpointId, Call) ->
+    case cf_endpoint:get(EndpointId, Call) of
         {'error', _R} -> 'false';
         {'ok', JObj} -> maybe_service_unavailable(JObj, Call)
     end.
