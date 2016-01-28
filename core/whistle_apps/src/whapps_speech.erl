@@ -381,7 +381,7 @@ create_response(_Engine, {'ok', "200", Headers, Content}) ->
     lager:debug("created speech file ~s of length ~s", [ContentType, ContentLength]),
     {'ok', wh_util:to_binary(ContentType), Content};
 create_response(Engine, {'ok', Code, RespHeaders, Content}) ->
-    lager:warning("creating speech file failed with code ~s: ~s", [Code, Content]),
+    lager:warning("creating speech file failed with code ~p: ~p", [Code, Content]),
     _ = [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
     {'error', 'tts_provider_failure', create_error_response(Engine, RespHeaders, Content)}.
 

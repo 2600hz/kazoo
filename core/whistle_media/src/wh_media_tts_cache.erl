@@ -250,7 +250,7 @@ handle_info({'http', {ReqID, {'error', Error}}}, #state{kz_http_req_id=ReqID
                                                         ,timer_ref=TRef
                                                        }=State) ->
     _ = stop_timer(TRef),
-    lager:info("recv error ~p : collected: ~s", [Error, Contents]),
+    lager:info("recv error ~p : collected: ~p", [Error, Contents]),
     {'stop', 'normal', State};
 
 handle_info(_Info, State) ->

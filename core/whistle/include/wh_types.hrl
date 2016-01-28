@@ -208,15 +208,10 @@
 
 %% kz_http-related types
 -type kz_http_req_id() :: {'http_req_id', reference()} | {'ok', reference()} | reference().
--type kz_http_error() :: {'error'
-                          ,{'error', {string(), wh_proplist(), string() | binary()}}
-                          ,{'error', any()}
-                         }
-                         | {'error', any()}.
 -type kz_http_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
                        {'ok', 'saved_to_file'} |
-                       kz_http_req_id() |
-                       kz_http_error().
+                       {'error', any()} |
+                       kz_http_req_id().
 
 %% XML types
 -type xml_attrib_name() :: atom().
