@@ -62,10 +62,14 @@ rel/relx.config: rel/relx.config.src
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
-release: REL ?= whistle_apps # whistle_apps | ecallmgr
+release: REL ?= whistle_apps # whistle_apps | ecallmgr | …
 release:
+ifeq ($(REL),ecallmgr)
+	@export KAZOO_APPS='ecallmgr'
 	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
-
+else
+	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
+endif
 
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
