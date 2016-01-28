@@ -13,7 +13,6 @@
 -export([exec/2
          ,parse_cmds/1
          ,req_params/1
-         ,exec_gather_els/3
         ]).
 
 -spec parse_cmds(iolist()) -> {'ok', xml_els()} |
@@ -259,6 +258,7 @@ redirect(Call, XmlText, Attrs) ->
               ],
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
+%% @private
 -spec exec_gather_els(pid(), whapps_call:call(), xml_els()) -> 'ok'.
 exec_gather_els(_Parent, _Call, []) ->
     lager:info("finished gather sub elements");
@@ -275,7 +275,7 @@ exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
                              {'ok', whapps_call:call()}.
 exec_gather_els(Call, SubActions) ->
     {_Pid, _Ref}=PidRef =
-        spawn_monitor(?MODULE, 'exec_gather_els', [self(), Call, SubActions]),
+        wh_util:spawn_monitor(fun exec_gather_els/3, [self(), Call, SubActions]),
     lager:debug("started to exec gather els: ~p(~p)", [_Pid, _Ref]),
     {'ok', kzt_util:set_gather_pidref(PidRef, Call)}.
 

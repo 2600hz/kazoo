@@ -180,15 +180,16 @@ launch_task(#state{queue=Q
                    ,callback=Callback
                    ,args=Args
                   }=State) ->
-    Self = self(),
-    {Pid, Ref} = spawn_monitor(
-                   fun() ->
-                           whapps_call:put_callid(Call),
-                           wh_amqp_channel:consumer_pid(Self),
-                           Funs = [{fun whapps_call:kvs_store/3, 'consumer_pid', Self}
-                                   ,{fun whapps_call:set_controller_queue/2, Q}
-                                  ],
-                           apply(Callback, Args ++ [whapps_call:exec(Funs, Call)])
-                   end),
+    {Pid, Ref} = wh_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
     lager:debug("watching task execute in ~p (~p)", [Pid, Ref]),
     State#state{pid=Pid, ref=Ref}.
+
+%% @private
+-spec task_launched(api_binary(), whapps_call:call(), fun(), list(), pid()) -> any().
+task_launched(Q, Call, Callback, Args, Parent) ->
+    whapps_call:put_callid(Call),
+    wh_amqp_channel:consumer_pid(Parent),
+    Funs = [{fun whapps_call:kvs_store/3, 'consumer_pid', Parent}
+            ,{fun whapps_call:set_controller_queue/2, Q}
+           ],
+    apply(Callback, Args ++ [whapps_call:exec(Funs, Call)]).

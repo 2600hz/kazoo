@@ -15,7 +15,7 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-    _Pid = spawn('kazoo_modb', 'add_routine', [?MODULE]),
+    _Pid = wh_util:spawn(fun kazoo_modb:add_routine/1, [?MODULE]),
     io:format("started add_rountine in ~p~n", [_Pid]),
     'ignore'.
 

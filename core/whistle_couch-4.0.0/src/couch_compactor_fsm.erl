@@ -34,9 +34,7 @@
         ]).
 
 %% Internal
--export([compact_shard/4
-         ,rebuild_design_docs/3
-        ]).
+-export([rebuild_design_docs/3]).
 
 %% gen_fsm callbacks
 -export([init/1
@@ -1306,16 +1304,19 @@ rebuild_view(Conn, D, DD, View) ->
 
 -spec compact_shards(server(), server(), list(), list(), list()) -> pid_ref().
 compact_shards(Conn, AdminConn, Node, Ss, DDs) ->
-    PR = spawn_monitor(fun() ->
-                               wh_util:put_callid(Node),
-                               Ps = [spawn_monitor(?MODULE, 'compact_shard', [Conn, AdminConn, Shard, DDs])
-                                     || Shard <- Ss
-                                    ],
-                               lager:debug("shard compaction pids: ~p", [Ps]),
-                               wait_for_pids(?MAX_WAIT_FOR_COMPACTION_PIDS, Ps)
-                       end),
+    PR = wh_util:spawn_monitor(fun compact_shards_task/5, [Conn, AdminConn, Node, Ss, DDs]),
     lager:debug("compacting ~s shards in ~p", [Node, PR]),
     PR.
+
+%% @private
+-spec compact_shards_task(server(), server(), list(), list(), list()) -> 'ok'.
+compact_shards_task(Conn, AdminConn, Node, Ss, DDs) ->
+    wh_util:put_callid(Node),
+    Ps = [wh_util:spawn_monitor(fun compact_shard/4, [Conn, AdminConn, Shard, DDs])
+          || Shard <- Ss
+         ],
+    lager:debug("shard compaction pid_refs: ~p", [Ps]),
+    wait_for_pids(?MAX_WAIT_FOR_COMPACTION_PIDS, Ps).
 
 -spec wait_for_pids(wh_timeout(), pid_refs()) -> 'ok'.
 wait_for_pids(_, []) -> lager:debug("done waiting for compaction pids");
@@ -1333,6 +1334,7 @@ wait_for_pids(MaxWait, [{P,Ref}|Ps]) ->
             wait_for_pids(MaxWait, Ps)
     end.
 
+%% @private
 -spec compact_shard(server(), server(), ne_binary(), ne_binaries()) -> 'ok'.
 compact_shard(Conn, AdminConn, S, DDs) ->
     wh_util:put_callid('compact_shard'),
