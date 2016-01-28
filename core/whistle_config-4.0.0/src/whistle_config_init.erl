@@ -17,7 +17,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    spawn(fun set_env/0),
+	set_env(),
     'ignore'.
 
 ini_file() ->
@@ -46,5 +46,5 @@ load_file(File) ->
 -spec set_env() -> 'ok'.
 set_env() ->
    {'ok', X} = load_file(ini_file()),
-    lager:debug("spawning setting of config env for ~p", [X]),
+    lager:debug("setting config env ~p", [X]),
     application:set_env('whistle_config', 'wh_config', X).
