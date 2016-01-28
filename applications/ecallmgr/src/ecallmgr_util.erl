@@ -376,6 +376,8 @@ get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
 get_fs_key_and_value(<<"Diversions">>, Diversions, _UUID) ->
     lager:debug("setting diversions ~p on the channel", [Diversions]),
     [{<<"sip_h_Diversion">>, D} || D <- Diversions];
+get_fs_key_and_value(<<?CHANNEL_VAR_PREFIX, Key/binary>>=Prefix, Val, _UUID) ->
+    {Prefix, maybe_sanitize_fs_value(Key, Val)};
 get_fs_key_and_value(Key, Val, _UUID) when is_binary(Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
