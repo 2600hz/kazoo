@@ -10,6 +10,7 @@
 
                   , whistle_amqp
                   , whistle_couch
+                  , kazoo_token_buckets
 
                   , lager
                   ]}
