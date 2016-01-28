@@ -2,7 +2,7 @@
 
 # Usage:  $0 ‹path to an app›
 
-[[ $# -eq 0 ]] && exit
+[[ $# -eq 0 ]] && $0 applications/*/ core/*/; exit $?
 
 patterns=( ":start_link\\(\\{'local',\\s*" ":start_link\\(\\{local,\\s*" ':start_link\(' ':start_child\(' ':which_children\(' ':terminate_child\(' ':delete_child\(' ':call\(' ':cast\(' 'gen_listener:[^:\(]+\(' )
 re='('

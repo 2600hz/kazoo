@@ -35,7 +35,6 @@ after_success:
   - git fetch origin master:master
   - files="$(git diff --name-only master... -- application/ core/)" || true
   - ./scripts/check-dialyzer.escript $files
-  - ./scripts/check-app-registered.sh applications/*/ core/*/
   - make build-release
   - ERL_LIBS="$HOME/proper" make eunit
   - ./scripts/check-whitespace.sh core/ applications/
