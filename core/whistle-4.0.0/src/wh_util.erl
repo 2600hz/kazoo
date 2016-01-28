@@ -99,6 +99,7 @@
 -export([put_callid/1, get_callid/0
          ,spawn/1, spawn/2
          ,spawn_link/1, spawn_link/2
+         ,spawn_monitor/2
          ,set_startup/0, startup/0
         ]).
 -export([get_event_type/1]).
@@ -646,6 +647,15 @@ spawn_link(Fun) ->
                          _ = put_callid(CallId),
                          Fun()
                  end).
+
+-spec spawn_monitor(fun(), list()) -> pid_ref().
+spawn_monitor(Fun, Arguments) ->
+    CallId = get_callid(),
+    erlang:spawn_monitor(fun () ->
+                                 _ = put_callid(CallId),
+                                 erlang:apply(Fun, Arguments)
+                         end).
+
 
 -spec set_startup() -> api_seconds().
 set_startup() ->

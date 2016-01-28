@@ -9,10 +9,6 @@
 
 -export([build/1]).
 
--export([resolve_hostname/4
-         ,builder/2
-        ]).
-
 -include("sysconf.hrl").
 
 -define(REQUEST_TIMEOUT, whapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_ms">>, 2 * ?MILLISECONDS_IN_SECOND)).
@@ -28,8 +24,7 @@ build(Node) ->
                 ,fun local_resources/1
                 ,fun sip_auth_ips/1
                ],
-    Self = self(),
-    PidRefs = [spawn_monitor(?MODULE, 'builder', [Self, F]) || F <- Routines],
+    PidRefs = [wh_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     collect(system_config_acls(Node), PidRefs).
 
 -spec collect(wh_json:object(), pid_refs()) ->
@@ -69,10 +64,6 @@ collect(ACLs, PidRefs, Timeout) ->
             ACLs
     end.
 
--spec builder(pid(), fun((pid()) -> any())) -> any().
-builder(Collector, Fun) ->
-    Fun(Collector).
-
 -spec system_config_acls(ne_binary()) -> acls().
 system_config_acls(Node) ->
     whapps_config:get(<<"ecallmgr">>, <<"acls">>, wh_json:new(), Node).
@@ -86,13 +77,11 @@ sip_auth_ips(Collector) ->
         {'ok', JObjs} ->
             {RawIPs, RawHosts} = lists:foldl(fun needs_resolving/2, {[], []}, JObjs),
             _ = [handle_sip_auth_result(Collector, JObj, IPs) || {IPs, JObj} <- RawIPs],
-            PidRefs = [spawn_monitor(?MODULE
-                                     ,'resolve_hostname'
-                                     ,[Collector
-                                       ,Host
-                                       ,JObj
-                                       ,fun handle_sip_auth_result/3
-                                      ])
+            PidRefs = [wh_util:spawn_monitor(fun resolve_hostname/4 ,[Collector
+                                                                      ,Host
+                                                                      ,JObj
+                                                                      ,fun handle_sip_auth_result/3
+                                                                     ])
                        || {Host, JObj} <- RawHosts
                       ],
             wait_for_pid_refs(PidRefs)
@@ -124,6 +113,7 @@ wait_for_pid_refs(PidRefs, Timeout) ->
             lager:debug("timed out waiting for pid refs: ~p", [PidRefs])
     end.
 
+%% @private
 -spec resolve_hostname(pid(), ne_binary(), wh_json:object(), fun()) -> 'ok'.
 resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
     lager:debug("attempting to resolve '~s'", [ResolveMe]),
@@ -197,25 +187,21 @@ handle_resource_result(Collector, JObj, IPs) ->
 
 -spec resource_inbound_ips(pid(), wh_json:object()) -> pid_refs().
 resource_inbound_ips(Collector, JObj) ->
-    [spawn_monitor(?MODULE
-                   ,'resolve_hostname'
-                   ,[Collector
-                     ,IP
-                     ,JObj
-                     ,fun handle_resource_result/3
-                    ])
+    [wh_util:spawn_monitor(fun resolve_hostname/4, [Collector
+                                                    ,IP
+                                                    ,JObj
+                                                    ,fun handle_resource_result/3
+                                                   ])
      || IP <- wh_json:get_value(<<"inbound_ips">>, JObj, [])
     ].
 
 -spec resource_server_ips(pid(), wh_json:object()) -> pid_refs().
 resource_server_ips(Collector, JObj) ->
-    [spawn_monitor(?MODULE
-                   ,'resolve_hostname'
-                   ,[Collector
-                     ,wh_json:get_value(<<"server">>, Gateway)
-                     ,JObj
-                     ,fun handle_resource_result/3
-                    ])
+    [wh_util:spawn_monitor(fun resolve_hostname/4, [Collector
+                                                    ,wh_json:get_value(<<"server">>, Gateway)
+                                                    ,JObj
+                                                    ,fun handle_resource_result/3
+                                                   ])
      || Gateway <- wh_json:get_value(<<"gateways">>, JObj, []),
         wh_json:is_true(<<"enabled">>, Gateway, 'false')
     ].

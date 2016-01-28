@@ -12,7 +12,6 @@
 
 %% API
 -export([start_link/2
-         ,handle_resp/4
          ,maybe_relay_event/2
          ,stop_call/2
          ,new_request/3, new_request/4
@@ -355,13 +354,13 @@ handle_info({'ibrowse_async_response_end', ReqId}, #state{request_id=ReqId
                                                           ,debug=Debug
                                                           ,requester_queue=RequesterQ
                                                          }=State) ->
-    Self = self(),
     maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
-    {Pid, Ref} = spawn_monitor(?MODULE, 'handle_resp', [RequesterQ
-                                                        ,kzt_util:set_amqp_listener(Self, Call)
-                                                        ,CT
-                                                        ,RespBody
-                                                       ]),
+    HandleArgs = [RequesterQ
+                  ,kzt_util:set_amqp_listener(self(), Call)
+                  ,CT
+                  ,RespBody
+                 ],
+    {Pid, Ref} = wh_util:spawn_monitor(fun handle_resp/4, HandleArgs),
     lager:debug("processing resp with ~p(~p)", [Pid, Ref]),
     {'noreply', State#state{request_id = 'undefined'
                             ,request_params = wh_json:new()

@@ -352,7 +352,7 @@ init([]) ->
     _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
     _ = ets:new(?CAPABILITY_TBL, ['bag', 'protected', 'named_table', {'keypos', #capability.node}]),
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
-    InitPidRef = spawn_monitor(fun start_preconfigured_servers/0),
+    InitPidRef = wh_util:spawn_monitor(fun start_preconfigured_servers/0, []),
     {'ok', #state{init_pidref=InitPidRef}}.
 
 %%--------------------------------------------------------------------

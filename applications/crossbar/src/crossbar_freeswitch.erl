@@ -23,8 +23,6 @@
         ]).
 
 
--export([build_freeswitch/1]).
-
 -export([reset/0]).
 
 -include("crossbar.hrl").
@@ -132,7 +130,7 @@ handle_call(_Request, _From, State) ->
 handle_cast('periodic_build', #state{is_running='true'}=State) ->
     {'noreply', State};
 handle_cast('periodic_build', #state{is_running='false'}=State) ->
-    {Pid, Monitor} = spawn_monitor(?MODULE, 'build_freeswitch', [self()]),
+    {Pid, Monitor} = wh_util:spawn_monitor(fun build_freeswitch/1, [self()]),
     lager:debug("started new freeswitch offline configuration builder ~p"
                 ,[Pid]),
     {'noreply', State#state{is_running='true', monitor=Monitor}};
@@ -272,6 +270,7 @@ process_realm(Realm, Dir, Module) ->
                        )
     end.
 
+%% @private
 -spec build_freeswitch(pid()) -> any().
 build_freeswitch(Pid) ->
     WorkDir = setup_directory(),

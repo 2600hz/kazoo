@@ -442,10 +442,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec run_start_cmds(atom(), wh_proplist()) -> pid_ref().
 run_start_cmds(Node, Options) ->
-    Parent = self(),
-    spawn_monitor(fun() ->
-                          run_start_cmds(Node, Options, Parent)
-                  end).
+    wh_util:spawn_monitor(fun run_start_cmds/3, [Node, Options, self()]).
 
 -spec run_start_cmds(atom(), wh_proplist(), pid()) -> any().
 run_start_cmds(Node, Options, Parent) ->

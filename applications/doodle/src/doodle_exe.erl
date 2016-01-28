@@ -653,20 +653,24 @@ cf_module_skip(CFModule, _Call) ->
                              {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = wh_amqp_channel:consumer_pid(),
-    {spawn_monitor(
-       fun() ->
-               _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
-               wh_util:put_callid(whapps_call:call_id_direct(Call)),
-               try CFModule:handle(Data, Call) of
-                   _ -> 'ok'
-               catch
-                   _E:R ->
-                       ST = erlang:get_stacktrace(),
-                       lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-                       wh_util:log_stacktrace(ST),
-                       throw(R)
-               end
-       end), CFModule}.
+    {wh_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
+     ,CFModule
+    }.
+
+%% @private
+-spec cf_module_task(atom(), list(), whapps_call:call(), pid()) -> any().
+cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
+    _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
+    wh_util:put_callid(whapps_call:call_id_direct(Call)),
+    try CFModule:handle(Data, Call) of
+        _ -> 'ok'
+    catch
+        _E:R ->
+            ST = erlang:get_stacktrace(),
+            lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
+            wh_util:log_stacktrace(ST),
+            throw(R)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -189,7 +189,7 @@ handle_info({'give_away', Tbl}, #state{table_id=Tbl
                                        ,find_me_fun=F
                                       }=State) ->
     lager:debug("give away ~p", [Tbl]),
-    {_P, _R}=FindMe = spawn_monitor(?MODULE, 'find_me', [F, self()]),
+    FindMe = wh_util:spawn_monitor(fun find_me/2, [F, self()]),
     lager:debug("finding the successor in ~p", [FindMe]),
     {'noreply', State#state{find_me_pid_ref=FindMe}};
 handle_info({'found_me', Pid}, #state{table_id=Tbl
@@ -217,9 +217,10 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 send_give_away_retry(Tbl) ->
-    _ = erlang:send(self(), {'give_away', Tbl}),
+    self() ! {'give_away', Tbl},
     'ok'.
 
+%% @private
 -spec find_me(find_me_fun(), pid()) -> 'ok'.
 find_me(Fun, Srv) ->
     lager:debug("trying to find successor for ~p", [Srv]),
