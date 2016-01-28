@@ -9,4 +9,6 @@ export ERL_LIBS="$ERL_LIBS":$ROOT/deps:$ROOT/core:$ROOT/applications:$(echo $ROO
 
 NODE_NAME=ecallmgr
 
-exec erl -name $NODE_NAME -args_file $ROOT/rel/dev-vm.args -s reloader -s ecallmgr
+KAZOO_APPS=ecallmgr
+
+exec erl -name $NODE_NAME -args_file $ROOT/rel/dev-vm.args -s reloader
