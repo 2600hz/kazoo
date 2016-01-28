@@ -5,13 +5,106 @@
 
 -export([get/0
          ,to_swagger_json/0
+         ,to_ref_doc/0
          ,schema_to_doc/2
         ]).
 
 -include("crossbar.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
+-define(REF_PATH(Module)
+       ,filename:join([code:lib_dir('crossbar')
+                      ,"doc"
+                      ,"ref"
+                       ,<<Module/binary, ".md">>
+                      ])
+       ).
+
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+
+
+to_ref_doc() ->
+    lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
+
+api_to_ref_doc([]) -> 'ok';
+api_to_ref_doc({Module, Paths}) ->
+    api_to_ref_doc(Module, Paths, module_version(Module)).
+
+api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
+    BaseName = base_module_name(Module),
+    Sections = lists:foldl(fun(K, Acc) ->
+                                   api_path_to_section(Module, K, Acc)
+                           end
+                          ,ref_doc_header(BaseName)
+                          ,Paths
+                          ),
+    Doc = lists:reverse(Sections),
+    DocPath = ?REF_PATH(BaseName),
+    io:format("writing to ~s~n", [DocPath]),
+    'ok' = file:write_file(DocPath, Doc),
+    io:format("wrote ~s to ~s~n", [BaseName, DocPath]);
+api_to_ref_doc(_Module, _Paths, _Version) ->
+    io:format("skipping ~p version ~p~n", [_Module, _Version]).
+
+api_path_to_section(Module, {'allowed_methods', Paths}, Acc) ->
+    ModuleName = path_name(Module),
+    lists:foldl(fun(Path, Acc1) ->
+                        methods_to_section(ModuleName, Path, Acc1)
+                end
+               ,Acc
+               ,Paths
+               );
+api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
+
+
+%% #### Fetch/Create/Change
+%% > Verb Path
+%% ```curl
+%% curl -v http://{SERVER}:8000/Path
+%% ```
+methods_to_section(ModuleName, {Path, Methods}, Acc) ->
+    APIPath = path_name(Path, ModuleName),
+    lists:foldl(fun(Method, Acc1) ->
+                        method_to_section(Method, Acc1, APIPath)
+                end
+               ,Acc
+               ,Methods
+               ).
+
+method_to_section(<<"nil">>, Acc, _APIPath) -> Acc;
+method_to_section(Method, Acc, APIPath) ->
+    [[ "#### ", method_as_action(Method), "\n\n"
+     ,"> ", Method, " ", APIPath, "\n\n"
+     ,"```curl\ncurl -v http://{SERVER}:8000/", APIPath, "\n```\n\n"
+     ]
+     | Acc
+    ].
+
+method_as_action(?HTTP_GET) ->
+    <<"Fetch">>;
+method_as_action(?HTTP_PUT) ->
+    <<"Create">>;
+method_as_action(?HTTP_POST) ->
+    <<"Change">>;
+method_as_action(?HTTP_DELETE) ->
+    <<"Remove">>;
+method_as_action(?HTTP_PATCH) ->
+    <<"Patch">>.
+
+ref_doc_header(BaseName) ->
+    [maybe_add_schema(BaseName)
+    ,["#### About ", wh_util:ucfirst_binary(BaseName), $\n, $\n]
+    ,["### ", wh_util:ucfirst_binary(BaseName), $\n,$\n]
+    ].
+
+maybe_add_schema(BaseName) ->
+    case open_schema(BaseName) of
+        {'ok', SchemaJObj} ->
+            [?SCHEMA_SECTION, schema_to_table(SchemaJObj), "\n\n"];
+        {'error', _} ->
+            io:format("no schema for ~s~n", [BaseName]),
+            [?SCHEMA_SECTION, "\n\n"]
+    end.
 
 %% This looks for "#### Schema" in the doc file and adds the JSON schema formatted as the markdown table
 %% Schema = "vmboxes" or "devices"
@@ -136,12 +229,17 @@ to_swagger_definitions() ->
     SchemasPath = ?SCHEMAS_PATH(<<>>),
     filelib:fold_files(SchemasPath, ".json$", 'false', fun process_schema/2, wh_json:new()).
 
+open_schema(<<C:1/binary, _/binary>> = File) ->
+    case file:read_file(File) of
+        {'ok', SchemaJSON} -> {'ok', wh_json:decode(SchemaJSON)};
+        {'error', 'enoent'} when C =/= <<"/">> ->
+            open_schema(?SCHEMAS_PATH(<<File/binary, ".json">>));
+        {'error', _E}=E -> E
+    end.
+
 process_schema(SchemaJSONFile, Definitions) ->
+    {'ok', SchemaJObj} = open_schema(SchemaJSONFile),
     SchemaName = wh_util:to_binary(filename:basename(SchemaJSONFile, ".json")),
-
-    {'ok', SchemaJSON} = file:read_file(SchemaJSONFile),
-    SchemaJObj = wh_json:decode(SchemaJSON),
-
     wh_json:set_value(SchemaName
                      ,wh_json:delete_keys([<<"_id">>, <<"$schema">>]
                                          ,SchemaJObj
@@ -223,7 +321,7 @@ format_as_path_centric(Data) ->
                ).
 
 format_pc_module({Module, Config}, Acc) ->
-    ModuleName = module_name(Module),
+    ModuleName = path_name(Module),
 
     lists:foldl(fun(ConfigData, Acc1) ->
                         format_pc_config(ConfigData, Acc1, Module, ModuleName)
@@ -293,11 +391,23 @@ base_module_name(<<_/binary>>=Module) ->
                                 ),
     Name.
 
-module_name(Module) when is_atom(Module) ->
-    module_name(wh_util:to_binary(Module));
-module_name(<<_/binary>>=Module) ->
+module_version(Module) when is_atom(Module) ->
+    module_version(wh_util:to_binary(Module));
+module_version(<<_/binary>> = Module) ->
     case re:run(Module
-               ,<<"^cb_([a-z_]+?)(?:_v([0-9]))?$">>
+               ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?$">>
+               ,[{'capture', 'all_but_first', 'binary'}]
+               )
+    of
+        {'match', [_Name, Version]} -> Version;
+        {'match', [_Name]} -> ?CURRENT_VERSION
+    end.
+
+path_name(Module) when is_atom(Module) ->
+    path_name(wh_util:to_binary(Module));
+path_name(<<_/binary>>=Module) ->
+    case re:run(Module
+               ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?$">>
                ,[{'capture', 'all_but_first', 'binary'}]
                )
     of
@@ -316,7 +426,7 @@ module_name(<<_/binary>>=Module) ->
         {'match', [<<"user_auth">>]} -> <<?CURRENT_VERSION/binary, "/user_auth">>;
         {'match', [Name]} -> <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNTID}/", Name/binary>>;
         {'match', [Name, Version]} ->
-            <<"v", Version/binary, "/accounts/{ACCOUNTID}/", Name/binary>>
+            <<Version/binary, "/accounts/{ACCOUNTID}/", Name/binary>>
     end.
 
 %% API
