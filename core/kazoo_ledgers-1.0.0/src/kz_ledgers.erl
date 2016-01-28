@@ -18,13 +18,14 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec get(ne_binary()) -> {'error', any()} | {'ok', wh_json:object()}.
 get(Account) ->
     Options = [
         'reduce'
         ,'group'
         ,{'group_level', 1}
     ],
-    case kazoo_modb:get_results(Account, ?LIST_BY_TYPE, Options) of
+    case kazoo_modb:get_results(Account, ?LIST_BY_SERVICE, Options) of
         {'error', _R}=Error -> Error;
         {'ok', JObjs}->
             Data =
