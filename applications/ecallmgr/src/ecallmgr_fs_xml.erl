@@ -347,7 +347,7 @@ route_resp_xml(<<"sms_error">>, _Routes, JObj, _Props) ->
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 route_resp_bridge_id() ->
-    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)]),
+    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)], 'true'),
     condition_el(Action, ?GET_CCV(<<"Bridge-ID">>), <<"^$">>).
 
 -spec unset_custom_sip_headers(wh_proplist()) -> xml_els().
@@ -876,14 +876,14 @@ extension_el(Children) ->
 extension_el(Name, 'undefined', Children) ->
     #xmlElement{name='extension'
                 ,attributes=[xml_attrib('name', Name)]
-                ,content=Children
+                ,content=[Child || Child <- Children, Child =/= 'undefined']
                };
 extension_el(Name, Continue, Children) ->
     #xmlElement{name='extension'
                 ,attributes=[xml_attrib('name', Name)
                              ,xml_attrib('continue', wh_util:is_true(Continue))
                             ]
-                ,content=Children
+                ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
 -spec condition_el(xml_el() | xml_els() | 'undefined') -> xml_el().
@@ -907,6 +907,7 @@ condition_el(Children, Field, Expression) ->
 
 -spec action_el(xml_attrib_value()) -> xml_el().
 -spec action_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec action_el(xml_attrib_value(), xml_attrib_value(), boolean()) -> xml_el().
 action_el(App) ->
     #xmlElement{name='action'
                 ,attributes=[xml_attrib('application', App)]
@@ -915,6 +916,13 @@ action_el(App, Data) ->
     #xmlElement{name='action'
                 ,attributes=[xml_attrib('application', App)
                              ,xml_attrib('data', Data)
+                            ]
+               }.
+action_el(App, Data, Inline) ->
+    #xmlElement{name='action'
+                ,attributes=[xml_attrib('application', App)
+                             ,xml_attrib('data', Data)
+							 ,xml_attrib('inline', wh_util:to_binary(Inline))
                             ]
                }.
 
