@@ -8,25 +8,25 @@
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/presence
+> GET /v2/accounts/{ACCOUNT_ID}/presence
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/presence
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/presence
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/presence
+> POST /v2/accounts/{ACCOUNT_ID}/presence
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/presence
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/presence
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/presence/{EXTENSION}
+> POST /v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/presence/{EXTENSION}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 ```
 

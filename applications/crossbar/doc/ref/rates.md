@@ -10,7 +10,7 @@ Key | Description | Type | Default | Required
 `description` | Friendly description of the rate | `string` |   | `false`
 `internal_rate_cost` | The per-min rate charged by the upstream provider | `number` |   | `false`
 `iso_country_code` | Country code this rate applies to | `string` |   | `false`
-`options` | List of options this rate is good for, to be matched against a customer's options | `array` |   | `false`
+`options` | List of options this rate is good for, to be matched against a customer's options | `array(string)` |   | `false`
 `options.[]` |   | `string` |   | `false`
 `prefix` | E.164 prefix (ignoring the +) | `integer` |   | `true`
 `rate_cost` | The per-min rate charged to the downstream customer | `number` |   | `true`
@@ -19,72 +19,72 @@ Key | Description | Type | Default | Required
 `rate_name` | Friendly name of the rate | `string` |   | `false`
 `rate_nocharge_time` | If the call duration is shorter than this threshold, the call is not billed | `integer` | `0` | `false`
 `rate_surcharge` | The upfront cost of connecting the call | `number` | `0` | `false`
-`routes` | List of regexs that match valid DIDs for this rate | `array` |   | `false`
+`routes` | List of regexs that match valid DIDs for this rate | `array(string)` |   | `false`
 `routes.[]` |   | `string` |   | `false`
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/rates
+> GET /v2/accounts/{ACCOUNT_ID}/rates
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/rates
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/rates
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/rates
+> POST /v2/accounts/{ACCOUNT_ID}/rates
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/rates
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/rates
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/rates
+> PUT /v2/accounts/{ACCOUNT_ID}/rates
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/rates
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/rates
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/rates/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/rates/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/rates/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/rates/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/rates/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/rates/{ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/rates/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/rates/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/rates/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/rates/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/rates/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/rates/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/rates/number/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/rates/number/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/rates/number/{ID}
 ```
 
