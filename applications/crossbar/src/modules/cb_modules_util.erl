@@ -280,25 +280,28 @@ get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
     end;
 get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
-                                    ,{<<"suppress_clid">>, 'true'}
-                                    ,{<<"source">>, 'cb_users'}
+                                   ,{<<"suppress_clid">>, 'true'}
+                                   ,{<<"source">>, 'cb_users'}
                                    ]),
     lists:foldr(fun(EndpointId, Acc) ->
                         case cf_endpoint:build(EndpointId, Properties, aleg_cid(Number, Call)) of
                             {'ok', Endpoint} -> Endpoint ++ Acc;
                             {'error', _E} -> Acc
                         end
-                end, [], cf_attributes:owned_by(_UserId, <<"device">>, Call));
+                end
+               ,[]
+               ,cf_attributes:owned_by(_UserId, <<"device">>, Call)
+               );
 get_endpoints(_Call, _Context, _ReqNouns) ->
     [].
 
 -spec aleg_cid(ne_binary(), whapps_call:call()) -> whapps_call:call().
 aleg_cid(Number, Call) ->
-    Routines = [fun(C) -> whapps_call:set_custom_channel_var(<<"Retain-CID">>, <<"true">>, C) end
-                ,fun(C) -> whapps_call:set_caller_id_name(<<"QuickCall">>, C) end
-                ,fun(C) -> whapps_call:set_caller_id_number(wh_util:to_binary(Number), C) end
+    Routines = [{fun whapps_call:set_custom_channel_var/3, <<"Retain-CID">>, <<"true">>}
+               ,{fun whapps_call:set_caller_id_name/2, <<"QuickCall">>}
+               ,{fun whapps_call:set_caller_id_number/2, wh_util:to_binary(Number)}
                ],
-    lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
+    whapps_call:exec(Routines, Call).
 
 -spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) ->
                                  cb_context:context().

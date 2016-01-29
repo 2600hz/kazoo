@@ -110,10 +110,14 @@ content_types_provided(Context, _) ->
     Context.
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
-                                                                   ,{<<"text">>, <<"directory">>}]}]);
+                                                                   ,{<<"text">>, <<"directory">>}
+                                                                  ]}
+                                                   ]);
 content_types_provided(Context, _, ?PHOTO) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"octet-stream">>}
-                                                                   ,{<<"application">>, <<"base64">>}]}]);
+                                                                   ,{<<"application">>, <<"base64">>}
+                                                                  ]}
+                                                   ]);
 content_types_provided(Context, _, _) ->
     Context.
 content_types_provided(Context, _, _, _) ->
@@ -132,10 +136,10 @@ content_types_provided(Context, _, _, _) ->
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-resource_exists(_, ?VCARD) -> 'true';
-resource_exists(_, ?PHOTO) -> 'true'.
-resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
+resource_exists(_UserId) -> 'true'.
+resource_exists(_UserId, ?VCARD) -> 'true';
+resource_exists(_UserId, ?PHOTO) -> 'true'.
+resource_exists(_UserId, ?QUICKCALL_PATH_TOKEN, _Number) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -283,7 +287,7 @@ validate_photo(Context, UserId, ?HTTP_POST) ->
     load_user(UserId, Context);
 validate_photo(Context, UserId, ?HTTP_DELETE) ->
     load_user(UserId, Context);
-validate_photo(Context, UserId, _) ->
+validate_photo(Context, UserId, ?HTTP_GET) ->
     load_attachment(UserId, ?PHOTO, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
@@ -528,19 +532,21 @@ check_user_name(UserId, Context) ->
             lager:debug("username ~p is unique", [UserName]),
             check_emergency_caller_id(UserId, Context);
         'false' ->
-            Context1 =
-                cb_context:add_validation_error(
-                    [<<"username">>]
-                    ,<<"unique">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"User name already in use">>}
-                        ,{<<"cause">>, UserName}
-                     ])
-                    ,Context
-                ),
+            Context1 = non_unique_username_error(Context, UserName),
             lager:error("username ~p is already used", [UserName]),
             check_emergency_caller_id(UserId, Context1)
     end.
+
+-spec non_unique_username_error(cb_context:context(), ne_binary()) -> cb_context:context().
+non_unique_username_error(Context, Username) ->
+    cb_context:add_validation_error([<<"username">>]
+                                   ,<<"unique">>
+                                   ,wh_json:from_list(
+                                      [{<<"message">>, <<"User name is not unique for this account">>}
+                                      ,{<<"cause">>, Username}
+                                      ])
+                                   ,Context
+                                   ).
 
 -spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
 check_emergency_caller_id(UserId, Context) ->
@@ -565,11 +571,11 @@ check_user_schema(UserId, Context) ->
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, <<"user">>}],
+    Props = [{<<"pvt_type">>, kzd_user:type()}],
     maybe_import_credintials('undefined'
-                             ,cb_context:set_doc(Context
-                                                 ,wh_json:set_values(Props, cb_context:doc(Context))
-                                                )
+                            ,cb_context:set_doc(Context
+                                               ,wh_json:set_values(Props, cb_context:doc(Context))
+                                               )
                             );
 on_successful_validation(UserId, Context) ->
     maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context)).
@@ -610,16 +616,8 @@ maybe_validate_username(UserId, Context) ->
             manditory_rehash_creds(UserId, NewUsername, Context);
         %% updated username to existing, collect any further errors...
         _Else ->
-            C = cb_context:add_validation_error(
-                    <<"username">>
-                    ,<<"unique">>
-                    ,wh_json:from_list([
-                        {<<"message">>, <<"User name is not unique for this account">>}
-                        ,{<<"cause">>, NewUsername}
-                     ])
-                    ,Context
-                ),
-            manditory_rehash_creds(UserId, NewUsername, C)
+            Context1 = non_unique_username_error(Context, NewUsername),
+            manditory_rehash_creds(UserId, NewUsername, Context1)
     end.
 
 -spec maybe_rehash_creds(api_binary(), api_binary(), cb_context:context()) -> cb_context:context().
@@ -640,16 +638,19 @@ maybe_rehash_creds(UserId, Username, Context) ->
 manditory_rehash_creds(UserId, Username, Context) ->
     case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         'undefined' ->
-            cb_context:add_validation_error(
-                <<"password">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"The password must be provided when updating the user name">>}
-                 ])
-                ,Context
-            );
+            required_password_error(Context);
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
+
+-spec required_password_error(cb_context:context()) -> cb_context:context().
+required_password_error(Context) ->
+    cb_context:add_validation_error(<<"password">>
+                                   ,<<"required">>
+                                   ,wh_json:from_list(
+                                      [{<<"message">>, <<"The password must be provided when updating the user name">>}]
+                                     )
+                                   ,Context
+                                   ).
 
 -spec rehash_creds(api_binary(), api_binary(), ne_binary(), cb_context:context()) ->
                           cb_context:context().
@@ -657,17 +658,19 @@ rehash_creds(_UserId, 'undefined', _Password, Context) ->
     cb_context:add_validation_error(
         <<"username">>
         ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"The user name must be provided when updating the password">>}
-         ])
+        ,wh_json:from_list(
+           [{<<"message">>, <<"The user name must be provided when updating the password">>}]
+          )
         ,Context
-    );
+     );
 rehash_creds(_UserId, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),
     {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
     JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
-                                ,{<<"pvt_sha1_auth">>, SHA1}
-                               ], cb_context:doc(Context)),
+                               ,{<<"pvt_sha1_auth">>, SHA1}
+                               ]
+                              ,cb_context:doc(Context)
+                              ),
     cb_context:set_doc(Context, wh_json:delete_key(<<"password">>, JObj1)).
 
 %%--------------------------------------------------------------------
@@ -731,8 +734,11 @@ set_photo(JObj, Context) ->
 -spec set_org(wh_json:object(), cb_context:context()) -> wh_json:object().
 set_org(JObj, Context) ->
     case wh_json:get_value(<<"org">>
-                           ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
-                                                             ,Context)))
+                          ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
+                                                           ,Context
+                                                           )
+                                         )
+                          )
     of
         'undefined' -> JObj;
         Val -> wh_json:set_value(<<"org">>, Val, JObj)
