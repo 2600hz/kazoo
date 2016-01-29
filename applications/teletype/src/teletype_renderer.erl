@@ -64,9 +64,14 @@ next_renderer(BackoffMs) ->
             next_renderer(BackoffMs * 2);
         P -> P
     catch
+        'exit':{'timeout', {'gen_server', 'call', _Args}} ->
+            lager:critical("render farm overwhelmed!! back off ~b", [BackoffMs]),
+            timer:sleep(BackoffMs),
+            next_renderer(BackoffMs * 2);
         _E:_R ->
             lager:warning("failed to checkout: ~s: ~p", [_E, _R]),
-            throw({'error', 'no_worker'})
+            timer:sleep(BackoffMs),
+            next_renderer(BackoffMs * 2)
     end.
 
 -spec init(list()) -> {'ok', atom()}.
