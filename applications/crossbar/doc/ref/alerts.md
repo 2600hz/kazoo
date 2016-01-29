@@ -8,7 +8,7 @@
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/alerts
+> GET /v2/accounts/{ACCOUNT_ID}/alerts
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/alerts
+> PUT /v2/accounts/{ACCOUNT_ID}/alerts
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/alerts/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/alerts/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts/{ID}
@@ -32,7 +32,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/alerts/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/alerts/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts/{ID}
