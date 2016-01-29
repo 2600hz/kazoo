@@ -2530,6 +2530,13 @@
                             "required": false,
                             "type": "object"
                         },
+                        "expire_seconds": {
+                            "default": 300,
+                            "description": "The time, in seconds, sent to the provisioner for the registration period that the device should be configured with.",
+                            "name": "Minimum Registration (seconds)",
+                            "required": false,
+                            "type": "integer"
+                        },
                         "ignore_completed_elsewhere": {
                             "description": "When set to false the phone should not consider ring group calls answered elsewhere as missed",
                             "name": "Show Calls Answered Elsewhere as Missed?",
@@ -2587,13 +2594,6 @@
                             "name": "Realm",
                             "required": false,
                             "type": "string"
-                        },
-                        "registration_expiration": {
-                            "default": 300,
-                            "description": "The time, in seconds, to force registrations to expire",
-                            "name": "Minimum Registration (seconds)",
-                            "required": false,
-                            "type": "integer"
                         },
                         "route": {
                             "description": "The SIP URL used if the invite format is 'route'",
@@ -7010,296 +7010,107 @@
         "version": "2.0"
     },
     "paths": {
-        "/v1/accounts/{ACCOUNTID}/devices": {
+        "/v1/accounts/{ACCOUNT_ID}/devices": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "devices",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/devices"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/devices/status": {
+        "/v1/accounts/{ACCOUNT_ID}/devices/status": {
             "get": {}
         },
-        "/v1/accounts/{ACCOUNTID}/devices/{ID}": {
+        "/v1/accounts/{ACCOUNT_ID}/devices/{ID}": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "devices",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/devices"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v1/accounts/{ACCOUNTID}/devices/{ID}/quickcall/{ID}": {
+        "/v1/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}": {
             "get": {}
         },
-        "/v1/accounts/{ACCOUNTID}/limits": {
+        "/v1/accounts/{ACCOUNT_ID}/limits": {
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "limits",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/limits"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v1/accounts/{ACCOUNTID}/lists": {
+        "/v1/accounts/{ACCOUNT_ID}/lists": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/lists/{LISTID}": {
+        "/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID}": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/lists/{LISTID}/{ENTRYID}": {
+        "/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/{ENTRY_ID}": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers": {
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers": {
             "get": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/classifiers": {
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/classifiers": {
             "get": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/collection": {
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/collection": {
             "delete": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/collection/activate": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate": {
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}": {
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/activate": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/activate": {
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/docs": {
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs": {
             "get": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/docs/{ID}": {
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}": {
             "delete": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/identify": {
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/identify": {
             "get": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/port": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/port": {
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/phone_numbers/{ID}/reserve": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
+        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve": {
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/users": {
+        "/v1/accounts/{ACCOUNT_ID}/users": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "users",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/users"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v1/accounts/{ACCOUNTID}/users/{ID}": {
+        "/v1/accounts/{ACCOUNT_ID}/users/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "users",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/users"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v1/accounts/{ACCOUNTID}/users/{ID}/channels": {
+        "/v1/accounts/{ACCOUNT_ID}/users/{ID}/channels": {
             "get": {}
         },
-        "/v1/accounts/{ACCOUNTID}/users/{ID}/photo": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "users",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/users"
-                    }
-                }
-            }
+        "/v1/accounts/{ACCOUNT_ID}/users/{ID}/photo": {
+            "post": {}
         },
-        "/v1/accounts/{ACCOUNTID}/users/{ID}/quickcall/{ID}": {
+        "/v1/accounts/{ACCOUNT_ID}/users/{ID}/quickcall/{ID}": {
             "get": {}
         },
-        "/v1/accounts/{ACCOUNTID}/users/{ID}/vcard": {
+        "/v1/accounts/{ACCOUNT_ID}/users/{ID}/vcard": {
             "get": {}
         },
         "/v2/about": {
             "get": {}
         },
         "/v2/accounts": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "accounts",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/accounts"
-                    }
-                }
-            }
+            "put": {}
         },
         "/v2/accounts/AccountId": {
             "delete": {},
@@ -7326,2002 +7137,857 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/access_lists": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "access_lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/access_lists"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/acls": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/agents": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/agents/stats": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/agents/status": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/agents/status/{ID}": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "agents",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/agents"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/agents/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/agents/{ID}/queue_status": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "agents",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/agents"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/agents/{ID}/status": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "agents",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/agents"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/alerts": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "alerts",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/alerts"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/alerts/{ID}": {
-            "delete": {},
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/allotments": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "allotments",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/allotments"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/allotments/consumed": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/apps_link/authorize": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/apps_store": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/apps_store/blacklist": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "apps_store",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/apps_store"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/apps_store/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "apps_store",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/apps_store"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "apps_store",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/apps_store"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/apps_store/{ID}/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/apps_store/{ID}/{ID}/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/blacklists": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "blacklists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/blacklists"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/blacklists/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "blacklists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/blacklists"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/braintree/addresses": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "braintree",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/braintree"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/braintree/addresses/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/access_lists": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "braintree",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/braintree"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/braintree/cards": {
+        "/v2/accounts/{ACCOUNT_ID}/acls": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/agents": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/agents/stats": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/agents/status": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "braintree",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/braintree"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/braintree/cards/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/agents/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/alerts": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/alerts/{ID}": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/allotments": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/allotments/consumed": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/api_key": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/apps_link/authorize": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/apps_store": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "braintree",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/braintree"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/braintree/credits": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "braintree",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/braintree"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/braintree/customer": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "braintree",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/braintree"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/braintree/transactions": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "braintree",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/braintree"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/braintree/transactions/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/bulk": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "bulk",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/bulk"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/call_inspector": {
+        "/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/call_inspector/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/callflows": {
+        "/v2/accounts/{ACCOUNT_ID}/blacklists": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "callflows",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/callflows"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}": {
+        "/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "callflows",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/callflows"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/cccps": {
+        "/v2/accounts/{ACCOUNT_ID}/braintree/addresses": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "cccps",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/cccps"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/cccps/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "cccps",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/cccps"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "cccps",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/cccps"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/cdrs": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/cdrs/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/channels": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/channels/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/braintree/cards": {
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "channels",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/channels"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/clicktocall": {
+        "/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}": {
+            "delete": {},
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "clicktocall",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/clicktocall"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/clicktocall/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/braintree/credits": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/customer": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/transactions": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/bulk": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/call_inspector": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/call_inspector/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/callflows": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "clicktocall",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/clicktocall"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/clicktocall/{ID}/connect": {
+        "/v2/accounts/{ACCOUNT_ID}/cccps": {
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "clicktocall",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/clicktocall"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/clicktocall/{ID}/history": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/comments": {
+        "/v2/accounts/{ACCOUNT_ID}/cccps/{ID}": {
             "delete": {},
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "comments",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/comments"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/comments/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "comments",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/comments"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/conferences": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "conferences",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/conferences"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/conferences/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "conferences",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/conferences"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/conferences/{ID}/details": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/configs/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "configs",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/configs"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "configs",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/configs"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/connectivity": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "connectivity",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/connectivity"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/connectivity/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "connectivity",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/connectivity"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/contact_list": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/devices": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "devices",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/devices"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/devices/status": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/{ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/devices/{DEVICEID}/sync": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "devices",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/devices"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/devices/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "devices",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/devices"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/devices/{ID}/quickcall/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/dialplans": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/directories": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "directories",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/directories"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/directories/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "directories",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/directories"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/faxboxes": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "faxboxes",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/faxboxes"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/faxboxes/{BOXID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "faxboxes",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/faxboxes"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "faxes",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/faxes"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/inbox": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/inbox/{ID}": {
-            "delete": {},
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/inbox/{ID}/attachment": {
-            "delete": {},
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/incoming": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/incoming/{ID}": {
-            "delete": {},
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/incoming/{ID}/attachment": {
-            "delete": {},
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/outbox": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/outbox/{ID}": {
-            "delete": {},
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/outbox/{ID}/attachment": {
-            "delete": {},
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/outgoing": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "faxes",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/faxes"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/outgoing/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "faxes",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/faxes"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/smtplog": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/faxes/smtplog/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/freeswitch": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/global_provisioner_templates": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "global_provisioner_templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/global_provisioner_templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/global_provisioner_templates/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "global_provisioner_templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/global_provisioner_templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/global_provisioner_templates/{ID}/image": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "global_provisioner_templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/global_provisioner_templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/groups": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "groups",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/groups"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/groups/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "groups",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/groups"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/hotdesks": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/ips": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "ips",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/ips"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/ips/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "ips",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/ips"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/killio/call": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "killio",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/killio"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "killio",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/killio"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/ledgers": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/ledgers/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/ledgers/{ID}/credit": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "ledgers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/ledgers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/ledgers/{ID}/debit": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "ledgers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/ledgers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/limits": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "limits",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/limits"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/lists": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/lists/{LISTID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/lists/{LISTID}/entries": {
-            "delete": {},
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/lists/{LIST}/entries/{ENTRYID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/lists/{LIST}/entries/{ENTRYID}/photo": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "lists",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/lists"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/lists/{LIST}/entries/{ENTRYID}/vcard": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/local_provisioner_templates": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "local_provisioner_templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/local_provisioner_templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/local_provisioner_templates/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "local_provisioner_templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/local_provisioner_templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/local_provisioner_templates/{ID}/image": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "local_provisioner_templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/local_provisioner_templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/media": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "media",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/media"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/media/languages": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/media/languages/{LANGUAGE}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/media/prompts": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/media/prompts/{PROMPTID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/media/{MEDIAID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "media",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/media"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/media/{MEDIAID}/raw": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "media",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/media"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/menus": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "menus",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/menus"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/menus/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "menus",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/menus"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/metaflows": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "metaflows",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/metaflows"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/notifications": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "notifications",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/notifications"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/notifications/smtplog": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/notifications/smtplog/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/notifications/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "notifications",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/notifications"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/notifications/{ID}/preview": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "notifications",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/notifications"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/onboard": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "onboard",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/onboard"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/check": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/classifiers": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/classifiers/{PHONENUMBER}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/collection": {
-            "delete": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/collection/activate": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/fix": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/locality": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/prefix": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/docs": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/docs/{ID}": {
-            "delete": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/identify": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/port": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/{ID}/reserve": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/phone_numbers/{PHONENUMBER}/activate": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "phone_numbers",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/phone_numbers"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/pivot": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/pivot/debug/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/pivot/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "port_requests",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/port_requests"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/canceled": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/completed": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/pending": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/rejected": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/scheduled": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/submitted": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "port_requests",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/port_requests"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "port_requests",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/port_requests"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments/{ATTACHMENTID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "port_requests",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/port_requests"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/canceled": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/completed": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/loa": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/pending": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/rejected": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/scheduled": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/port_requests/{ID}/submitted": {
-            "patch": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/presence": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "presence",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/presence"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/presence/{EXTENSION}": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "presence",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/presence"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/queues": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "queues",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/queues"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/queues/eavesdrop": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "queues",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/queues"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/queues/stats": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/queues/{QID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "queues",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/queues"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/queues/{QID}/eavesdrop": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "queues",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/queues"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/queues/{QID}/roster": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "queues",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/queues"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/rate_limits": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "rate_limits",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/rate_limits"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/rates": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "rates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/rates"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "rates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/rates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/rates/number/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/rates/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "rates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/rates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/registrations": {
-            "delete": {},
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/registrations/count": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/registrations/{ID}": {
-            "delete": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/resource_templates": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "resource_templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/resource_templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/resource_templates/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "resource_templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/resource_templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/resources": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "resources",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/resources"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/resources/collection": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "resources",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/resources"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "resources",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/resources"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/resources/jobs": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "resources",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/resources"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/resources/jobs/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/resources/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "resources",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/resources"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/search": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/search/multi": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/service_plans": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "service_plans",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/service_plans"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/service_plans/available/{ID}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/service_plans/current": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/service_plans/override": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "service_plans",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/service_plans"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/service_plans/reconciliation": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "service_plans",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/service_plans"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/service_plans/synchronization": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "service_plans",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/service_plans"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/service_plans/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "service_plans",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/service_plans"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/services": {
-            "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "services",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/services"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/services/audit": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/services/plan": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/services/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/cdrs/{ID}/{ID}": {
             "nil": {}
         },
-        "/v2/accounts/{ACCOUNTID}/signup": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "signup",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/signup"
-                    }
-                }
-            }
+        "/v2/accounts/{ACCOUNT_ID}/channels": {
+            "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/signup/{ID}": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "signup",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/signup"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/skels": {
+        "/v2/accounts/{ACCOUNT_ID}/channels/{ID}": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "skels",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/skels"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/skels/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/children": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "skels",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/skels"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/sms": {
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "sms",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/sms"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/sms/{ID}": {
-            "delete": {},
+        "/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/templates": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/templates/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/comments": {
             "delete": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "templates",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/templates"
-                    }
-                }
-            }
-        },
-        "/v2/accounts/{ACCOUNTID}/temporal_rules": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "temporal_rules",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/temporal_rules"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/temporal_rules/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/comments/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/conferences": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/conferences/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "temporal_rules",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/temporal_rules"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/temporal_rules_sets": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "temporal_rules_sets",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/temporal_rules_sets"
-                    }
-                }
-            }
+        "/v2/accounts/{ACCOUNT_ID}/conferences/{ID}/details": {
+            "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/temporal_rules_sets/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/configs/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "temporal_rules_sets",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/temporal_rules_sets"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/token_restrictions": {
+        "/v2/accounts/{ACCOUNT_ID}/connectivity": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "token_restrictions",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/token_restrictions"
-                    }
-                }
-            }
+            "patch": {},
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/transactions": {
+        "/v2/accounts/{ACCOUNT_ID}/contact_list": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/transactions/current_balance": {
+        "/v2/accounts/{ACCOUNT_ID}/descendants": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/transactions/debit": {
+        "/v2/accounts/{ACCOUNT_ID}/devices": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/status": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/dialplans": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/directories": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/directories/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxboxes": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outgoing": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/freeswitch": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/groups": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/groups/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/hotdesks": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ips": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ips/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/killio/call": {
+            "post": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}/credit": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}/debit": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/limits": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries": {
+            "delete": {},
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/languages": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/prompts": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/menus": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/menus/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/metaflows": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/move": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/smtplog": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/onboard": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/parents": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/check": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection": {
+            "delete": {},
+            "post": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/fix": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}": {
+            "delete": {},
+            "post": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/identify": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/port": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/pivot": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/pivot/debug/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/pivot/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/canceled": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/completed": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/pending": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/rejected": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/submitted": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted": {
+            "patch": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/presence": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/queues": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/queues/eavesdrop": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/queues/stats": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/rate_limits": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/rates": {
+            "get": {},
+            "post": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/rates/number/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/rates/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/registrations": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/registrations/count": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/registrations/{ID}": {
             "delete": {}
         },
-        "/v2/accounts/{ACCOUNTID}/transactions/monthly_recurring": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/transactions/subscriptions": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNTID}/users": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_templates": {
             "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "users",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/users"
-                    }
-                }
-            }
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/users/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/resource_templates/{ID}": {
             "delete": {},
             "get": {},
             "patch": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "users",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/users"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/users/{ID}/photo": {
+        "/v2/accounts/{ACCOUNT_ID}/resources": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resources/collection": {
+            "post": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resources/jobs": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/resources/{ID}": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "users",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/users"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/users/{ID}/quickcall/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/search": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/users/{ID}/vcard": {
+        "/v2/accounts/{ACCOUNT_ID}/search/multi": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/vmboxes": {
+        "/v2/accounts/{ACCOUNT_ID}/service_plans": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/current": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/override": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/synchronization": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/services": {
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/services/audit": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/services/plan": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/services/{ID}": {
+            "nil": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/siblings": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/signup": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/signup/{ID}": {
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/skels": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/skels/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/sms": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/sms/{_ID}": {
+            "delete": {},
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/templates": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/templates/{ID}": {
+            "delete": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/temporal_rules": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/token_restrictions": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/transactions": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/transactions/current_balance": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/transactions/debit": {
+            "delete": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/tree": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users": {
+            "get": {},
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{ID}/photo": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{ID}/quickcall/{ID}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{ID}/vcard": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes": {
             "get": {
                 "description": "Summary listing of voicemail boxes for the account",
                 "produces": [
@@ -9353,7 +8019,7 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}": {
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}": {
             "delete": {
                 "description": "Deletes the voicemail box from the account"
             },
@@ -9399,7 +8065,7 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages": {
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages": {
             "delete": {
                 "description": "Delete all messages in the voicemail box",
                 "produces": [
@@ -9423,7 +8089,7 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}": {
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}": {
             "delete": {},
             "get": {},
             "post": {
@@ -9437,10 +8103,10 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/vmboxes/{VMBOXID}/messages/{MSGID}/raw": {
+        "/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/webhooks": {
+        "/v2/accounts/{ACCOUNT_ID}/webhooks": {
             "get": {
                 "description": "Summary listing of webhooks for the account",
                 "produces": [
@@ -9483,7 +8149,7 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/webhooks/attempts": {
+        "/v2/accounts/{ACCOUNT_ID}/webhooks/attempts": {
             "get": {
                 "description": "List the attempts Kazoo has made to the external servers",
                 "produces": [
@@ -9496,7 +8162,7 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/webhooks/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}": {
             "delete": {
                 "description": "Remove the webhook from the account",
                 "produces": [
@@ -9550,7 +8216,7 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/webhooks/{ID}/attempts": {
+        "/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts": {
             "get": {
                 "description": "List the attempts Kazoo has made to the external servers for this webhook",
                 "produces": [
@@ -9563,99 +8229,48 @@
                 }
             }
         },
-        "/v2/accounts/{ACCOUNTID}/websockets": {
+        "/v2/accounts/{ACCOUNT_ID}/websockets": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/websockets/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/websockets/{ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel": {
             "delete": {},
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "whitelabel",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/whitelabel"
-                    }
-                }
-            },
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "whitelabel",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/whitelabel"
-                    }
-                }
-            }
+            "post": {},
+            "put": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel/domains": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/domains": {
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "whitelabel",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/whitelabel"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel/icon": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/icon": {
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "whitelabel",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/whitelabel"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel/logo": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/logo": {
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "whitelabel",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/whitelabel"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel/welcome": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome": {
             "get": {},
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "whitelabel",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/whitelabel"
-                    }
-                }
-            }
+            "post": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel/{ID}/icon": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel/{ID}/logo": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNTID}/whitelabel/{ID}/welcome": {
+        "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome": {
             "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/{PATH}": {
+            "nil": {}
         },
         "/v2/accounts/{ID}/Path": {
             "get": {},
@@ -9783,6 +8398,16 @@
                     }
                 }
             }
+        },
+        "/v2/system_configs/{_ID}": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/system_configs/{_ID}/{NODE}": {
+            "delete": {},
+            "get": {},
+            "post": {}
         },
         "/v2/ubiquiti_auth": {
             "put": {
