@@ -147,9 +147,9 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_PATCH].
 allowed_methods(?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET];
-allowed_methods(_) ->
+allowed_methods(_WebhookId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
-allowed_methods(_Id, ?PATH_TOKEN_ATTEMPTS) ->
+allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
