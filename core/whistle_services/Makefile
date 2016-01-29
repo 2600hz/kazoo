@@ -1,12 +1,12 @@
 ROOT = ../..
 PROJECT = whistle_services
 
-EBINS = $(wildcard $(ROOT)/core/whistle_transactions-*/ebin) \
-	$(wildcard $(ROOT)/core/braintree-*/ebin) \
-	$(wildcard $(ROOT)/core/whistle_number_manager-*/ebin)
+EBINS = $(ROOT)/core/whistle_transactions/ebin \
+	$(ROOT)/core/braintree/ebin \
+	$(ROOT)/core/whistle_number_manager/ebin
 
-TEST_EBINS = $(wildcard $(ROOT)/core/whistle_couch-*/ebin) \
-	$(wildcard $(ROOT)/core/kazoo_documents-*/ebin) \
+TEST_EBINS = $(ROOT)/core/whistle_couch/ebin \
+	$(ROOT)/core/kazoo_documents/ebin \
 	$(wildcard $(ROOT)/deps/ejson-*/ebin)
 
 all: compile

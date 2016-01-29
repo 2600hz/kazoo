@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = jonny5
 
-EBINS = $(wildcard $(ROOT)/core/whistle_apps-*/ebin)
+EBINS = $(ROOT)/core/whistle_apps/ebin
 
 all: compile
 

@@ -1,13 +1,13 @@
 ROOT = ../..
 PROJECT = whistle_apps
 
-EBINS = $(wildcard $(ROOT)/core/whistle_apps-*/ebin) \
-	$(wildcard $(ROOT)/core/kazoo_caches-*/ebin)
+EBINS = $(ROOT)/core/whistle_apps/ebin \
+	$(ROOT)/core/kazoo_caches/ebin
 
-TEST_EBINS = $(wildcard $(ROOT)/core/whistle_number_manager-*/ebin) \
-	$(wildcard $(ROOT)/core/whistle_config-*/ebin) \
-	$(wildcard $(ROOT)/core/whistle_media-*/ebin) \
-	$(wildcard $(ROOT)/core/whistle_couch-*/ebin)
+TEST_EBINS = $(ROOT)/core/whistle_number_manager/ebin \
+	$(ROOT)/core/whistle_config/ebin \
+	$(ROOT)/core/whistle_media/ebin \
+	$(ROOT)/core/whistle_couch/ebin
 
 all: compile
 

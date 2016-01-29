@@ -16,8 +16,8 @@ endif
 ERLC_OPTS += $(KZ_APP_OTPS) +debug_info -Iinclude -Isrc
 
 
-EBINS += $(wildcard $(ROOT)/deps/lager-*/ebin) \
-	$(wildcard $(ROOT)/core/whistle-*/ebin)
+EBINS += $(ROOT)/core/whistle/ebin \
+	$(wildcard $(ROOT)/deps/lager-*/ebin)
 TEST_EBINS += $(EBINS)
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa test/ $(PA) $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))

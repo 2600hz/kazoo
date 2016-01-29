@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = ecallmgr
 
-EBINS = $(wildcard $(ROOT)/core/kazoo_documents-*/ebin) \
+EBINS = $(ROOT)/core/kazoo_documents/ebin \
 	$(wildcard $(ROOT)/deps/nksip-*/ebin)
 
 all: compile

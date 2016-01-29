@@ -149,7 +149,7 @@ socket.emit('unsubscribe', { auth_token: '{AUTH_TOKEN}' });
 
 The Blackhole application listens to events from AMQP.
 It will send an event to you through Websockets if there is an active binding that matches this event.
-To learn more about how they are routed from your Kazoo cluster to this app, [read on on `wh_hook`](https://github.com/2600hz/kazoo/tree/master/core/whistle_apps-1.0.0/src).
+To learn more about how they are routed from your Kazoo cluster to this app, [read on on `wh_hook`](https://github.com/2600hz/kazoo/tree/master/core/whistle_apps/src).
 
 Events are plain AMQP event messages.
 Here are a few complete `call.*.*` JSON events:

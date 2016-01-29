@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = braintree
 
-EBINS = $(wildcard $(ROOT)/core/braintree-*/ebin)
+EBINS = $(ROOT)/core/braintree/ebin
 
 all: compile
 
