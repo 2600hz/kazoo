@@ -13,198 +13,198 @@ Key | Description | Type | Default | Required
 `bill.postal_code` | The zip/postal code of the billing address the losing carrier has on record | `string` |   | `false`
 `bill.region` | The region (state) of the billing address the losing carrier has on record | `string` |   | `false`
 `bill.street_address` | The address of the billing address the losing carrier has on record | `string` |   | `false`
-`comments` | The history of comments made on a port request | `array` |   | `false`
-`name` | A friendly name for the port request | `string` |   | `true`
+`comments` | The history of comments made on a port request | `array(object)` |   | `false`
+`name` | A friendly name for the port request | `string(1..128)` |   | `true`
 `notifications` | Status notifications | `object` |   | `false`
 `notifications.email` | Email notifications | `object` |   | `false`
-`notifications.email.send_to` | A list or string of email recipent(s) | `stringarray` |   | `false`
+`notifications.email.send_to` | A list or string of email recipent(s) | `string, array(string)` |   | `false`
 `numbers` | The numbers to port in | `object` |   | `true`
-`port_state` | What state the port request is currently in | `string` | `unconfirmed` | `false`
+`port_state` | What state the port request is currently in | `string('unconfirmed', 'pending', 'submitted', 'scheduled', 'completed', 'rejected', 'canceled')` | `unconfirmed` | `false`
 `scheduled_date` | Requested scheduled date in gregorain timestamp | `integer` |   | `false`
 `transfer_date` | Requested transfer date in gregorain timestamp | `integer` |   | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/port_requests
+> PUT /v2/accounts/{ACCOUNT_ID}/port_requests
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/port_requests/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/port_requests/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/canceled
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/canceled
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/rejected
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/rejected
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/completed
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/completed
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/completed
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/completed
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/scheduled
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/scheduled
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/pending
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/pending
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/pending
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/pending
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/submitted
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/submitted
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/{ID}/loa
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/loa
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments
+> PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/port_requests/{ID}/canceled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/canceled
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/port_requests/{ID}/rejected
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/rejected
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/port_requests/{ID}/completed
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/completed
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/port_requests/{ID}/scheduled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/scheduled
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/port_requests/{ID}/pending
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/pending
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/port_requests/{ID}/submitted
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/submitted
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments/{ATTACHMENTID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments/{ATTACHMENTID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments/{ATTACHMENTID}
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments/{ATTACHMENTID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments/{ATTACHMENTID}
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/port_requests/{ID}/attachments/{ATTACHMENTID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 ```
 
