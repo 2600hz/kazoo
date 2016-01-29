@@ -8,13 +8,13 @@ Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting 
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-name | Friendly name for the webhook | string() | | Y
-uri | The 3rd party URI to call out to an event | string() | | Y
-http_verb | The HTTP Verb to send the request with (`get` or `post`) | enum(`get`, `post`) | `post` | N
-hook | The event(s) in Kazoo that will trigger a request to `uri` | string() | | Y
-retries | How many times to retry sending the webhook to `uri` | integer(0..4) | 2 | N
-custom_data | JSON object of custom data to be sent along with the event data to the `uri` | json() | `{}` | N
-enabled | Is this webhook enabled for operation | boolean() | true | N
+`custom_data` | These properties will be added to the event and will overwrite existing values. | `object` |   | `false`
+`enabled` | Is the webhook enabled and running | `boolean` | `true` | `false`
+`hook` | The trigger event for a request being made to 'callback_uri'. | `string` |   | `true`
+`http_verb` | What HTTP method to use when contacting the server | `string('get', 'post')` | `post` | `false`
+`name` | A friendly name for the webhook | `string` |   | `true`
+`retries` | Retry the request this many times (if it fails) | `integer` | `2` | `false`
+`uri` | The 3rd party URI to call out to an event | `string` |   | `true`
 
 #### List Installed Webhooks
 
