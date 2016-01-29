@@ -14,81 +14,81 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/service_plans
+> GET v2/accounts/{ACCOUNT_ID}/service_plans
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/service_plans
+> POST v2/accounts/{ACCOUNT_ID}/service_plans
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/service_plans/override
+> POST v2/accounts/{ACCOUNT_ID}/service_plans/override
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans/override
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/override
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/service_plans/current
+> GET v2/accounts/{ACCOUNT_ID}/service_plans/current
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans/current
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/current
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
+> POST v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
+> POST v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
 ```
 
