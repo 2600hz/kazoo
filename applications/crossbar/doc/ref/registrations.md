@@ -8,7 +8,7 @@
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/registrations
+> DELETE /v2/accounts/{ACCOUNT_ID}/registrations
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/registrations
+> GET /v2/accounts/{ACCOUNT_ID}/registrations
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/registrations/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/registrations/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations/{ID}
@@ -32,7 +32,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/registrations/count
+> GET /v2/accounts/{ACCOUNT_ID}/registrations/count
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/registrations/count

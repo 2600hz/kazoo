@@ -8,7 +8,7 @@
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
+> GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_template
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
+> PUT /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_template
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
@@ -32,7 +32,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_template
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
@@ -40,7 +40,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_template
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}
@@ -48,7 +48,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_template
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image
+> DELETE /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image
@@ -56,7 +56,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_template
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image
+> GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image
@@ -64,7 +64,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_template
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image
+> POST /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{ID}/image

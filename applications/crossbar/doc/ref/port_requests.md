@@ -26,7 +26,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
@@ -34,7 +34,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/port_requests
+> PUT /v2/accounts/{ACCOUNT_ID}/port_requests
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
@@ -42,7 +42,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
@@ -50,7 +50,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
@@ -58,7 +58,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
@@ -66,7 +66,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/canceled
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/canceled
@@ -74,7 +74,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/rejected
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/rejected
@@ -82,7 +82,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/completed
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/completed
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/completed
@@ -90,7 +90,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/completed
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
@@ -98,7 +98,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/pending
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/pending
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
@@ -106,7 +106,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/submitted
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/submitted
@@ -114,7 +114,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
@@ -122,7 +122,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
@@ -130,7 +130,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attach
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
+> PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
@@ -138,7 +138,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attach
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
@@ -146,7 +146,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/cancel
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
@@ -154,7 +154,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/reject
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
@@ -162,7 +162,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/comple
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
@@ -170,7 +170,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/schedu
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
@@ -178,7 +178,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pendin
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
+> PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
@@ -186,7 +186,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submit
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
@@ -194,7 +194,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attach
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
@@ -202,7 +202,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attach
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}

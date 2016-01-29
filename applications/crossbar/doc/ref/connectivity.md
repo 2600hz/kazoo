@@ -30,7 +30,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/connectivity
+> GET /v2/accounts/{ACCOUNT_ID}/connectivity
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity
@@ -38,7 +38,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/connectivity
+> PUT /v2/accounts/{ACCOUNT_ID}/connectivity
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity
@@ -46,7 +46,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
@@ -54,7 +54,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
@@ -62,7 +62,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
@@ -70,7 +70,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{ID}
