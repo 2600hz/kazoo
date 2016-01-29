@@ -12,7 +12,7 @@ Key | Description | Type | Default | Required
 `call_forward.failover` | Enable the call-forwarding parameters if the device is offline | `boolean` | `false` | `false`
 `call_forward.ignore_early_media` | The option to determine if early media from the call forwarded number should ignored | `boolean` | `true` | `false`
 `call_forward.keep_caller_id` | Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used | `boolean` | `true` | `false`
-`call_forward.number` | The number to forward calls to | `string` |   | `false`
+`call_forward.number` | The number to forward calls to | `string(0..35)` |   | `false`
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean` | `true` | `false`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean` | `true` | `false`
 `call_restriction` | Device level call restrictions for each available number classification | `object` | `{}` | `false`
@@ -24,135 +24,135 @@ Key | Description | Type | Default | Required
 `directories` | Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller. | `object` |   | `false`
 `do_not_disturb` |   | `object` |   | `false`
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean` |   | `false`
-`email` | The email of the user | `string` |   | `false`
+`email` | The email of the user | `string(1..254)` |   | `false`
 `enabled` | Determines if the user is currently enabled | `boolean` | `true` | `false`
-`first_name` | The first name of the user | `string` |   | `true`
+`first_name` | The first name of the user | `string(1..128)` |   | `true`
 `hotdesk` | The user hotdesk parameters | `object` | `{}` | `false`
 `hotdesk.enabled` | Determines if the user has hotdesking enabled | `boolean` | `false` | `false`
-`hotdesk.id` | The users hotdesk id | `string` |   | `false`
+`hotdesk.id` | The users hotdesk id | `string(0..15)` |   | `false`
 `hotdesk.keep_logged_in_elsewhere` | Determines if user should be able to login to mutliple phones simultaneously | `boolean` | `false` | `false`
-`hotdesk.pin` | The users hotdesk pin number | `string` |   | `false`
+`hotdesk.pin` | The users hotdesk pin number | `string(4..15)` |   | `false`
 `hotdesk.require_pin` | Determines if user requires a pin to change the hotdesk state | `boolean` | `false` | `false`
 `language` | The language for this user | `string` |   | `false`
-`last_name` | The last name of the user | `string` |   | `true`
+`last_name` | The last name of the user | `string(1..128)` |   | `true`
 `media` | The device media parameters | `object` | `{}` | `false`
 `media.audio` | The audio media parameters | `object` | `{}` | `false`
-`media.audio.codecs` | A list of audio codecs the device supports | `array` | `PCMU` | `false`
+`media.audio.codecs` | A list of audio codecs the device supports | `array(string('OPUS', 'CELT@32000h', 'G7221@32000h', 'G7221@16000h', 'G722', 'speex@32000h', 'speex@16000h', 'PCMU', 'PCMA', 'G729', 'GSM', 'CELT@48000h', 'CELT@64000h', 'G722_16', 'G722_32', 'CELT_48', 'CELT_64', 'Speex', 'speex'))` | `PCMU` | `false`
 `media.audio.codecs.[]` |   | `string` |   | `false`
-`media.bypass_media` | Default bypass media mode | `booleanstring` |   | `false`
+`media.bypass_media` | Default bypass media mode | `boolean, string('true', 'false', 'auto')` |   | `false`
 `media.encryption` |   | `object` | `{}` | `false`
 `media.encryption.enforce_security` |   | `boolean` | `false` | `false`
-`media.encryption.methods` |   | `array` | `[]` | `false`
+`media.encryption.methods` |   | `array(string('zrtp', 'srtp'))` | `[]` | `false`
 `media.encryption.methods.[]` |   | `string` |   | `false`
 `media.fax_option` | Support T.38 | `boolean` |   | `false`
 `media.ignore_early_media` | The option to determine if early media from the device should always be ignored | `boolean` |   | `false`
 `media.progress_timeout` | The progress timeout to apply to the device | `integer` |   | `false`
 `media.video` | The video media parameters | `object` | `{}` | `false`
-`media.video.codecs` | A list of video codecs the device supports | `array` | `[]` | `false`
+`media.video.codecs` | A list of video codecs the device supports | `array(string('H261', 'H263', 'H264', 'VP8'))` | `[]` | `false`
 `media.video.codecs.[]` |   | `string` |   | `false`
 `metaflows` | The device metaflow parameters |   |   | `false`
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object` | `{}` | `false`
-`music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string` |   | `false`
+`music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
 `presence_id` | User's presence ID | `string` |   | `false`
-`priv_level` | The privilege level of the user | `string` | `user` | `false`
+`priv_level` | The privilege level of the user | `string('user', 'admin')` | `user` | `false`
 `profile` | User's profile data | `object` | `{}` | `false`
 `pronounced_name` | Name pronounced by user to introduce himself to conference members | `object` |   | `false`
-`pronounced_name.media_id` | The ID of a media object that should be used as the music on hold | `string` |   | `false`
+`pronounced_name.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
 `require_password_update` | UI flag that the user should update their password. | `boolean` | `false` | `false`
 `ringtones` |   | `object` | `{}` | `false`
-`ringtones.external` | The alert info SIP header added when the call is from internal sources | `string` |   | `false`
-`ringtones.internal` | The alert info SIP header added when the call is from external sources | `string` |   | `false`
+`ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
+`ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
 `timezone` | User's timezone | `string` |   | `false`
-`username` | The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed | `string` |   | `false`
+`username` | The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed | `string(1..256)` |   | `false`
 `verified` | Determines if the user has been verified | `boolean` | `false` | `false`
 `vm_to_email_enabled` | Determines if the user would like voicemails emailed to them | `boolean` | `true` | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/users
+> GET /v2/accounts/{ACCOUNT_ID}/users
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/users
+> PUT /v2/accounts/{ACCOUNT_ID}/users
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/users/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/users/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/users/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/users/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/users/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/users/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/users/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/users/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/users/{ID}/vcard
+> GET /v2/accounts/{ACCOUNT_ID}/users/{ID}/vcard
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}/vcard
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/vcard
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/users/{ID}/photo
+> DELETE /v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}/photo
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/users/{ID}/photo
+> GET /v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}/photo
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/users/{ID}/photo
+> POST /v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}/photo
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/users/{ID}/quickcall/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/users/{ID}/quickcall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/users/{ID}/quickcall/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/quickcall/{ID}
 ```
 

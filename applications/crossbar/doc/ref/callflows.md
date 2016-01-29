@@ -7,64 +7,64 @@
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `featurecode` | When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature | `object` |   | `false`
-`featurecode.name` |   | `string` |   | `false`
-`featurecode.number` |   | `string` |   | `false`
+`featurecode.name` |   | `string(1..128)` |   | `false`
+`featurecode.number` |   | `string(1..30)` |   | `false`
 `flow` | A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to | `object` |   | `true`
 `flow.children` | Children callflows | `object` | `{}` | `false`
 `flow.data` | The data/arguments of the callflow module | `object` | `{}` | `true`
-`flow.module` | The name of the callflow module to excute at this node | `string` |   | `true`
+`flow.module` | The name of the callflow module to excute at this node | `string(1..64)` |   | `true`
 `metaflow` | Actions applied to a call outside of the normal callflow, initiated by the caller(s) |   |   | `false`
-`numbers` | A list of static numbers that the callflow should execute for | `array` | `[]` | `false`
+`numbers` | A list of static numbers that the callflow should execute for | `array(string(1..36))` | `[]` | `false`
 `numbers.[]` |   | `string` |   | `false`
-`patterns` | A list of regular expressions that the callflow should execute for, with optional capture groups | `array` | `[]` | `false`
+`patterns` | A list of regular expressions that the callflow should execute for, with optional capture groups | `array(string(1..))` | `[]` | `false`
 `patterns.[]` |   | `string` |   | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/callflows
+> GET /v2/accounts/{ACCOUNT_ID}/callflows
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/callflows
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/callflows
+> PUT /v2/accounts/{ACCOUNT_ID}/callflows
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/callflows
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}
+> GET /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}
+> POST /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/callflows/{MEDIAID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
