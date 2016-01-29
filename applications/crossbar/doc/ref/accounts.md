@@ -30,7 +30,7 @@ Key | Description | Type | Default | Required
 
 #### Create
 
-> PUT v2/accounts
+> PUT /v2/accounts
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts
@@ -38,7 +38,7 @@ curl -v http://{SERVER}:8000/v2/accounts
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
@@ -46,7 +46,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}
+> GET /v2/accounts/{ACCOUNT_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
@@ -54,7 +54,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
@@ -62,7 +62,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}
+> POST /v2/accounts/{ACCOUNT_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
@@ -70,7 +70,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}
+> PUT /v2/accounts/{ACCOUNT_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
@@ -78,7 +78,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/parents
+> GET /v2/accounts/{ACCOUNT_ID}/parents
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
@@ -86,7 +86,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/tree
+> GET /v2/accounts/{ACCOUNT_ID}/tree
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
@@ -94,7 +94,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/api_key
+> GET /v2/accounts/{ACCOUNT_ID}/api_key
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
@@ -102,7 +102,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/siblings
+> GET /v2/accounts/{ACCOUNT_ID}/siblings
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
@@ -110,7 +110,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/descendants
+> GET /v2/accounts/{ACCOUNT_ID}/descendants
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
@@ -118,7 +118,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/children
+> GET /v2/accounts/{ACCOUNT_ID}/children
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
@@ -126,7 +126,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/move
+> POST /v2/accounts/{ACCOUNT_ID}/move
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/move

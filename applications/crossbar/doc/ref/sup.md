@@ -8,7 +8,7 @@
 
 #### Fetch
 
-> GET v2/sup/{MODULE}
+> GET /v2/sup/{MODULE}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/sup/{MODULE}
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/sup/{MODULE}
 
 #### Fetch
 
-> GET v2/sup/{MODULE}/{FUNCTION}
+> GET /v2/sup/{MODULE}/{FUNCTION}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/sup/{MODULE}/{FUNCTION}
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/sup/{MODULE}/{FUNCTION}
 
 #### Fetch
 
-> GET v2/sup/{MODULE}/{FUNCTION}/{ARGS}
+> GET /v2/sup/{MODULE}/{FUNCTION}/{ARGS}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/sup/{MODULE}/{FUNCTION}/{ARGS}

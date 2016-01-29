@@ -14,7 +14,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/sms
+> GET /v2/accounts/{ACCOUNT_ID}/sms
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
@@ -22,7 +22,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/sms
+> PUT /v2/accounts/{ACCOUNT_ID}/sms
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
@@ -30,7 +30,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/sms/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/sms/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{_ID}
@@ -38,7 +38,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/sms/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/sms/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{_ID}

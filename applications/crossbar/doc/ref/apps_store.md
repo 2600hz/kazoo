@@ -8,7 +8,7 @@
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/apps_store
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
@@ -32,7 +32,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
@@ -40,7 +40,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+> PUT /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
@@ -48,7 +48,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
@@ -56,7 +56,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
+> POST /v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
@@ -64,7 +64,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
@@ -72,7 +72,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}

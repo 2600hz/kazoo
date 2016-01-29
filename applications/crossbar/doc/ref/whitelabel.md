@@ -8,7 +8,7 @@
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/whitelabel
+> DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/whitelabel
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
@@ -32,7 +32,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/whitelabel
+> PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
@@ -40,7 +40,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
@@ -48,7 +48,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel/domains
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
@@ -56,7 +56,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/whitelabel/domains
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
@@ -64,7 +64,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
@@ -72,7 +72,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
@@ -80,7 +80,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel/icon
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
@@ -88,7 +88,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/whitelabel/icon
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
@@ -96,7 +96,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel/logo
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
@@ -104,7 +104,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/whitelabel/logo
+> POST /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
@@ -112,7 +112,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
@@ -120,7 +120,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
@@ -128,7 +128,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
+> GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
