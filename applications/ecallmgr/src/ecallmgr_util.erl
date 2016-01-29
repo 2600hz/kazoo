@@ -195,8 +195,8 @@ get_sip_from(Props, _) ->
 -spec get_sip_request(wh_proplist()) -> ne_binary().
 get_sip_request(Props) ->
     User = props:get_first_defined([<<"Hunt-Destination-Number">>
-                                    ,<<"Caller-Destination-Number">>
-                                    ,<<"sip_to_user">>
+                                    ,<<"variable_sip_req_uri">>
+                                    ,<<"variable_sip_to_user">>
                                    ], Props, <<"nouser">>),
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                      ,<<"variable_sip_auth_realm">>
