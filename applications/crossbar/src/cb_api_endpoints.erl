@@ -40,9 +40,7 @@ api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
                           ),
     Doc = lists:reverse(Sections),
     DocPath = ?REF_PATH(BaseName),
-    io:format("writing to ~s~n", [DocPath]),
-    'ok' = file:write_file(DocPath, Doc),
-    io:format("wrote ~s to ~s~n", [BaseName, DocPath]);
+    'ok' = file:write_file(DocPath, Doc);
 api_to_ref_doc(_Module, _Paths, _Version) ->
     io:format("skipping ~p version ~p~n", [_Module, _Version]).
 
@@ -102,7 +100,6 @@ maybe_add_schema(BaseName) ->
         {'ok', SchemaJObj} ->
             [?SCHEMA_SECTION, schema_to_table(SchemaJObj), "\n\n"];
         {'error', _} ->
-            io:format("no schema for ~s~n", [BaseName]),
             [?SCHEMA_SECTION, "\n\n"]
     end.
 
@@ -153,13 +150,43 @@ property_to_row(Name, Settings, Acc) ->
                                ,Settings
                                 ,[?TABLE_ROW(cell_wrap(wh_util:join_binary(Name, <<".">>))
                                             ,wh_json:get_value(<<"description">>, Settings, <<" ">>)
-                                            ,cell_wrap(wh_json:get_value(<<"type">>, Settings))
+                                            ,cell_wrap(schema_type(Settings))
                                             ,cell_wrap(wh_json:get_value(<<"default">>, Settings))
                                             ,cell_wrap(wh_json:get_binary_boolean(<<"required">>, Settings, <<"false">>))
                                             )
                                   | Acc
                                  ]
                                ).
+
+schema_type(Settings) ->
+    schema_type(Settings, wh_json:get_value(<<"type">>, Settings)).
+schema_type(Settings, <<"array">>) ->
+    case wh_json:get_value([<<"items">>, <<"type">>], Settings) of
+        'undefined' -> <<"array()">>;
+        Type ->
+            ItemType = schema_type(wh_json:get_value(<<"items">>, Settings), Type),
+            <<"array(", ItemType/binary, ")">>
+    end;
+schema_type(Settings, <<"string">>) ->
+    case wh_json:get_value(<<"enum">>, Settings) of
+        L when is_list(L) -> <<"string('", (wh_util:join_binary(L, <<"', '">>))/binary, "')">>;
+        _ -> schema_string_type(Settings)
+    end;
+schema_type(Settings, Types) when is_list(Types) ->
+    wh_util:join_binary([schema_type(Settings, Type) || Type <- Types], <<", ">>);
+schema_type(_Settings, Type) -> Type.
+
+schema_string_type(Settings) ->
+    case {wh_json:get_integer_value(<<"minLength">>, Settings)
+          ,wh_json:get_integer_value(<<"maxLength">>, Settings)
+         }
+    of
+        {'undefined', 'undefined'} -> <<"string">>;
+        {'undefined', MaxLength} -> <<"string(0..", (wh_util:to_binary(MaxLength))/binary, ")">>;
+        {MinLength, 'undefined'} -> <<"string(", (wh_util:to_binary(MinLength))/binary, "..)">>;
+        {Length, Length} -> <<"string(", (wh_util:to_binary(Length))/binary, ")">>;
+        {MinLength, MaxLength} -> <<"string(", (wh_util:to_binary(MinLength))/binary, "..", (wh_util:to_binary(MaxLength))/binary, ")">>
+    end.
 
 cell_wrap('undefined') -> <<" ">>;
 cell_wrap([]) -> <<"`[]`">>;
@@ -378,8 +405,14 @@ format_path_tokens(Tokens) ->
 
 format_path_token(<<"_">>) ->
     <<"{ID}">>;
+format_path_token(<<"AccountId">>) ->
+    <<"{ACCOUNT_ID}">>;
 format_path_token(<<"_", Rest/binary>>) ->
-    <<"{", (wh_util:to_upper_binary(Rest))/binary, "}">>;
+    VarName = wh_util:to_upper_binary(Rest),
+    case binary:split(VarName, <<"ID">>) of
+        [Thing, <<>>] -> <<"{", Thing/binary, "_ID}">>;
+        _ -> <<"{", (VarName)/binary, "}">>
+    end;
 format_path_token(Token) -> Token.
 
 base_module_name(Module) when is_atom(Module) ->
@@ -424,9 +457,9 @@ path_name(<<_/binary>>=Module) ->
         {'match', [<<"token_auth">>]} -> <<?CURRENT_VERSION/binary, "/shared_auth">>;
         {'match', [<<"ubiquiti_auth">>]} -> <<?CURRENT_VERSION/binary, "/ubiquiti_auth">>;
         {'match', [<<"user_auth">>]} -> <<?CURRENT_VERSION/binary, "/user_auth">>;
-        {'match', [Name]} -> <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNTID}/", Name/binary>>;
+        {'match', [Name]} -> <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
         {'match', [Name, Version]} ->
-            <<Version/binary, "/accounts/{ACCOUNTID}/", Name/binary>>
+            <<Version/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>
     end.
 
 %% API
