@@ -1,6 +1,6 @@
 ### Things
 
-#### About
+#### About Things
 
 Things do stuff. The more things you have, the more stuff you can do.
 
@@ -11,7 +11,7 @@ Key | Description | Type | Default | Required
 name | The name of the thing | string(32) | | Y
 stuff | A list of stuff to do | array(string()) | [] | N
 
-#### Get a summary list of Things
+#### Fetch a summary list of Things
 
 > GET /v2/accounts/{ACCOUNT_ID}/things
 
@@ -46,7 +46,7 @@ curl -X PUT \
 }
 ```
 
-#### Get the details of a Thing
+#### Fetch the details of a Thing
 
 > GET /v2/accounts/{ACCOUNT_ID}/things/{THING_ID}
 
