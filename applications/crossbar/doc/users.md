@@ -222,7 +222,7 @@ curl -v -X DELETE \
 }
 ```
 
-#### Fetch
+#### Fetch a user
 
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
@@ -332,7 +332,7 @@ curl -v -X PATCH \
 
 This requires posting the full user's document in the request body
 
-**Sync**: See [the documentation on devices](./devices.md) for more info on `check-sync`. One can add the field `"sync": true` to the JSON document in order to attempt a `check-sync` on every registered device this user has.
+**Sync**: See [the documentation on device sync](#sync) for more info on `check-sync`. One can add the field `"sync": true` to the JSON document in order to attempt a `check-sync` on every registered device this user has.
 
 > POST /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
