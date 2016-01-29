@@ -86,73 +86,73 @@ curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/users/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/users/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/users/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/users/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/users/{ID}/vcard
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/vcard
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
+> DELETE /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
+> POST /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/photo
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/users/{ID}/quickcall/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{ID}/quickcall/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}
 ```
 
