@@ -19,9 +19,11 @@ When writing top-level application docs, we're looking for:
 
 When writing docs for API endpoints, we'd like to strive for:
 
-* Example request format
-* Example response format
+* Example request/response formats
+  * As many as needed to demostrate usage
+* Keep it terse - no storytelling needed. Just the facts ma'am!
 * Suggested use cases (brief)
+  * Bullet list of common ways to use the API
 * Links to user guides or tutorials of why to use this endpoint
 * Common pitfalls when using the endpoint
 * Conflicting settings to watch out for
