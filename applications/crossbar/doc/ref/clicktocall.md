@@ -20,73 +20,73 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/clicktocall
+> GET v2/accounts/{ACCOUNT_ID}/clicktocall
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/clicktocall
+> PUT v2/accounts/{ACCOUNT_ID}/clicktocall
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+> PATCH v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history
+> GET v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
+> GET v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
+> POST v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 ```
 

@@ -25,97 +25,97 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/queues
+> GET v2/accounts/{ACCOUNT_ID}/queues
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/queues
+> PUT v2/accounts/{ACCOUNT_ID}/queues
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+> GET v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+> PATCH v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+> POST v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
+> PUT v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/queues/stats
+> GET v2/accounts/{ACCOUNT_ID}/queues/stats
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/stats
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/stats
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
+> PUT v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+> DELETE v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+> GET v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+> POST v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 ```
 
