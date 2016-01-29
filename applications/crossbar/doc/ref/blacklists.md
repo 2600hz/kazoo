@@ -6,55 +6,55 @@
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`name` | A friendly name for the temporal rule set | `string` |   | `true`
+`name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true`
 `numbers` | Map of caller id number to block | `object` | `{}` | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/blacklists
+> GET /v2/accounts/{ACCOUNT_ID}/blacklists
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/blacklists
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/blacklists
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/blacklists
+> PUT /v2/accounts/{ACCOUNT_ID}/blacklists
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/blacklists
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/blacklists
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/blacklists/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/blacklists/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/blacklists/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/blacklists/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNTID}/blacklists/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/blacklists/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/blacklists/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/blacklists/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 ```
 
