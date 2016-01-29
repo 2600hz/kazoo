@@ -5,7 +5,7 @@
 -sasl sasl_error_logger '{file, "log/error_log.sasl"}'
 -boot start_sasl
 
-#-config /etc/kazoo/app.config
+-config /etc/kazoo/app.config
 
 -kernel inet_dist_listen_min 11500 inet_dist_listen_max 11999
 
