@@ -15,7 +15,7 @@ Key | Description | Type | Default | Required
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/metaflows
+> DELETE /v2/accounts/{ACCOUNT_ID}/metaflows
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
@@ -23,7 +23,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/metaflows
+> GET /v2/accounts/{ACCOUNT_ID}/metaflows
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
@@ -31,7 +31,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/metaflows
+> POST /v2/accounts/{ACCOUNT_ID}/metaflows
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows

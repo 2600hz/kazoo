@@ -8,7 +8,7 @@
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/transactions
+> GET /v2/accounts/{ACCOUNT_ID}/transactions
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
@@ -32,7 +32,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recur
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/transactions/debit
+> DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
@@ -40,7 +40,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+> GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
