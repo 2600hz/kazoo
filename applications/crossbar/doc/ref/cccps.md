@@ -15,49 +15,49 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/cccps
+> GET v2/accounts/{ACCOUNT_ID}/cccps
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/cccps
+> PUT v2/accounts/{ACCOUNT_ID}/cccps
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+> PUT v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 

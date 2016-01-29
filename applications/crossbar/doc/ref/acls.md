@@ -14,9 +14,9 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/acls
+> GET v2/accounts/{ACCOUNT_ID}/acls
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/acls
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/acls
 ```
 

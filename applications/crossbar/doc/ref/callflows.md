@@ -22,49 +22,49 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/callflows
+> GET v2/accounts/{ACCOUNT_ID}/callflows
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/callflows
+> PUT v2/accounts/{ACCOUNT_ID}/callflows
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+> GET v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+> PATCH v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+> POST v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
