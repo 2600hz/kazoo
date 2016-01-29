@@ -404,7 +404,7 @@ N:Three;User
 END:VCARD
 ```
 
-#### Remove
+#### Remove the photo from the user
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
