@@ -11,25 +11,25 @@ Key | Description | Type | Default | Required
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/token_restrictions
+> DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/token_restrictions
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/token_restrictions
+> GET /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/token_restrictions
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/token_restrictions
+> POST /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/token_restrictions
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 

@@ -8,9 +8,9 @@
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/hotdesks
+> GET /v2/accounts/{ACCOUNT_ID}/hotdesks
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/hotdesks
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/hotdesks
 ```
 

@@ -9,7 +9,7 @@ Key | Description | Type | Default | Required
 `app_name` | The Kazoo application that issued the CDR | `string` |   | `false`
 `app_version` | The internal Kazoo version number of the application that issued the CDR | `string` |   | `false`
 `billing_seconds` | The number of seconds the call leg can be billed for (typically from when the call leg is answered | `string` |   | `false`
-`call_direction` | Direction of the call, relative to the media switch | `string` |   | `false`
+`call_direction` | Direction of the call, relative to the media switch | `string('inbound', 'outbound')` |   | `false`
 `call_id` | Unique identifier of the call leg | `string` |   | `true`
 `callee_id_name` | The indicated name of the callee | `string` |   | `false`
 `callee_id_number` | The indicated number of the callee | `string` |   | `false`
@@ -52,25 +52,25 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/cdrs
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cdrs
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/cdrs/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cdrs/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cdrs/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/cdrs/legs/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs/legs/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cdrs/legs/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cdrs/legs/{ID}
 ```
 
