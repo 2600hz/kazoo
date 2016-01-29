@@ -11,9 +11,9 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/dialplans
+> GET v2/accounts/{ACCOUNT_ID}/dialplans
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/dialplans
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/dialplans
 ```
 

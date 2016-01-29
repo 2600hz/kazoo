@@ -15,49 +15,49 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/directories
+> GET v2/accounts/{ACCOUNT_ID}/directories
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/directories
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/directories
+> PUT v2/accounts/{ACCOUNT_ID}/directories
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/directories
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/directories/{ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/directories/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/directories/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/directories/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/directories/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/directories/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/directories/{ID}
+> PATCH v2/accounts/{ACCOUNT_ID}/directories/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/directories/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/directories/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/directories/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/directories/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 ```
 

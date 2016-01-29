@@ -15,25 +15,25 @@ Key | Description | Type | Default | Required
 
 #### Create
 
-> PUT /v2/user_auth
+> PUT v2/user_auth
 
 ```curl
-curl -v http://{SERVER}:8000//v2/user_auth
+curl -v http://{SERVER}:8000/v2/user_auth
 ```
 
 #### Fetch
 
-> GET /v2/user_auth/{ID}
+> GET v2/user_auth/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/user_auth/{ID}
+curl -v http://{SERVER}:8000/v2/user_auth/{ID}
 ```
 
 #### Create
 
-> PUT /v2/user_auth/recovery
+> PUT v2/user_auth/recovery
 
 ```curl
-curl -v http://{SERVER}:8000//v2/user_auth/recovery
+curl -v http://{SERVER}:8000/v2/user_auth/recovery
 ```
 

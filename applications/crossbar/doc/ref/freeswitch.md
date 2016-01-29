@@ -8,9 +8,9 @@
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/freeswitch
+> GET v2/accounts/{ACCOUNT_ID}/freeswitch
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/freeswitch
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/freeswitch
 ```
 
