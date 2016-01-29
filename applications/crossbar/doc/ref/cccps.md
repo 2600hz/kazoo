@@ -10,54 +10,54 @@ Key | Description | Type | Default | Required
 `cid` | CID to authorize | `string` |   | `false`
 `outbound_cid` | CID you would like to call out with | `string` |   | `false`
 `pin` | PIN to authorize | `string` |   | `false`
-`user_id` | The ID of the user object that 'owns' cid/pin | `string` |   | `false`
+`user_id` | The ID of the user object that 'owns' cid/pin | `string(32)` |   | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/cccps
+> GET /v2/accounts/{ACCOUNT_ID}/cccps
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cccps
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/cccps
+> PUT /v2/accounts/{ACCOUNT_ID}/cccps
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cccps
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/cccps/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cccps/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/cccps/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cccps/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/cccps/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cccps/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/cccps/{ID}
+> PUT /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/cccps/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
