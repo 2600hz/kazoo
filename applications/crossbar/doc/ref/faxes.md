@@ -41,7 +41,7 @@ Key | Description | Type | Default | Required
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/faxes
+> PUT /v2/accounts/{ACCOUNT_ID}/faxes
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
@@ -49,7 +49,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/outgoing
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
@@ -57,7 +57,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/faxes/outgoing
+> PUT /v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
@@ -65,7 +65,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/outbox
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox
@@ -73,7 +73,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/incoming
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming
@@ -81,7 +81,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/inbox
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox
@@ -89,7 +89,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/smtplog
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog
@@ -97,7 +97,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
@@ -105,7 +105,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
@@ -113,7 +113,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
@@ -121,7 +121,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
@@ -129,7 +129,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outgoing/{_ID}
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
@@ -137,7 +137,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
@@ -145,7 +145,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
@@ -153,7 +153,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
@@ -161,7 +161,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
@@ -169,7 +169,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
@@ -177,7 +177,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}
@@ -185,7 +185,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/smtplog/{_ID}
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
@@ -193,7 +193,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attac
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attachment
@@ -201,7 +201,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/incoming/{_ID}/attac
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
@@ -209,7 +209,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachm
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachment
@@ -217,7 +217,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/outbox/{_ID}/attachm
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
@@ -225,7 +225,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachme
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
+> GET /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxes/inbox/{_ID}/attachment
