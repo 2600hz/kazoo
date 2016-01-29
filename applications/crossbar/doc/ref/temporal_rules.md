@@ -20,7 +20,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/temporal_rules
+> GET /v2/accounts/{ACCOUNT_ID}/temporal_rules
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
@@ -28,7 +28,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/temporal_rules
+> PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
@@ -36,7 +36,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
@@ -44,7 +44,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
@@ -52,7 +52,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
@@ -60,7 +60,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
