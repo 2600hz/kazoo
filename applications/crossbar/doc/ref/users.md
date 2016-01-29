@@ -70,7 +70,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/users
+> GET /v2/accounts/{ACCOUNT_ID}/users
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users
@@ -78,7 +78,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/users
+> PUT /v2/accounts/{ACCOUNT_ID}/users
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users
@@ -86,7 +86,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
@@ -94,7 +94,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
@@ -102,7 +102,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
@@ -110,7 +110,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
@@ -118,7 +118,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard
@@ -126,7 +126,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
+> DELETE /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
@@ -134,7 +134,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
@@ -142,7 +142,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
+> POST /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
@@ -150,7 +150,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}
+> GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}

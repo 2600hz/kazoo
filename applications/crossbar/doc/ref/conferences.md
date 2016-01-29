@@ -31,7 +31,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/conferences
+> GET /v2/accounts/{ACCOUNT_ID}/conferences
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
@@ -39,7 +39,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/conferences
+> PUT /v2/accounts/{ACCOUNT_ID}/conferences
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
@@ -47,7 +47,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/conferences/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/conferences/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}
@@ -55,7 +55,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/conferences/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/conferences/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}
@@ -63,7 +63,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/conferences/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/conferences/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}
@@ -71,7 +71,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/conferences/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/conferences/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}
@@ -79,7 +79,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/conferences/{ID}/details
+> GET /v2/accounts/{ACCOUNT_ID}/conferences/{ID}/details
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{ID}/details
