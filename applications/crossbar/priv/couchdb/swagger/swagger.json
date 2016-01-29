@@ -7010,102 +7010,6 @@
         "version": "2.0"
     },
     "paths": {
-        "/v1/accounts/{ACCOUNT_ID}/devices": {
-            "get": {},
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/devices/status": {
-            "get": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/devices/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}": {
-            "get": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/limits": {
-            "get": {},
-            "post": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/lists": {
-            "get": {},
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID}": {
-            "delete": {},
-            "get": {},
-            "post": {},
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/{ENTRY_ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers": {
-            "get": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/classifiers": {
-            "get": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/collection": {
-            "delete": {},
-            "post": {},
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate": {
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {},
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/activate": {
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs": {
-            "get": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}": {
-            "delete": {},
-            "post": {},
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/identify": {
-            "get": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/port": {
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve": {
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/users": {
-            "get": {},
-            "put": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/users/{ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/users/{ID}/channels": {
-            "get": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/users/{ID}/photo": {
-            "post": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/users/{ID}/quickcall/{ID}": {
-            "get": {}
-        },
-        "/v1/accounts/{ACCOUNT_ID}/users/{ID}/vcard": {
-            "get": {}
-        },
         "/v2/about": {
             "get": {}
         },
@@ -7985,6 +7889,23 @@
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/users/{ID}/vcard": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}": {
+            "delete": {},
+            "get": {},
+            "patch": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}": {
+            "get": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard": {
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/vmboxes": {
