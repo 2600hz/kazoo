@@ -8,41 +8,41 @@
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/ips
+> GET v2/accounts/{ACCOUNT_ID}/ips
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/ips
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/ips
+> POST v2/accounts/{ACCOUNT_ID}/ips
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/ips
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/ips/{ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/ips/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/ips/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/ips/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/ips/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/ips/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/ips/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/ips/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/ips/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/{ID}
 ```
 

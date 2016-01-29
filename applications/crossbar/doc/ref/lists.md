@@ -13,121 +13,121 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/lists
+> GET v2/accounts/{ACCOUNT_ID}/lists
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/lists
+> PUT v2/accounts/{ACCOUNT_ID}/lists
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+> GET v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+> PATCH v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+> POST v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+> DELETE v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+> GET v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+> PUT v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+> GET v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+> PATCH v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+> POST v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
+> POST v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
+> GET v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
 ```
 
