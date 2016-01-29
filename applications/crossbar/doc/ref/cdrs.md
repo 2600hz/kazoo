@@ -52,7 +52,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/cdrs
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
@@ -60,7 +60,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/cdrs/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/{ID}
@@ -68,7 +68,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/cdrs/legs/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/cdrs/legs/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs/legs/{ID}

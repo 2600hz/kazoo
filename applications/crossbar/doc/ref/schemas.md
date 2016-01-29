@@ -8,7 +8,7 @@
 
 #### Fetch
 
-> GET v2/schemas
+> GET /v2/schemas
 
 ```curl
 curl -v http://{SERVER}:8000/v2/schemas
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/schemas
 
 #### Fetch
 
-> GET v2/schemas/{ID}
+> GET /v2/schemas/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/schemas/{ID}
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/schemas/{ID}
 
 #### Create
 
-> PUT v2/schemas/{ID}/validation
+> PUT /v2/schemas/{ID}/validation
 
 ```curl
 curl -v http://{SERVER}:8000/v2/schemas/{ID}/validation

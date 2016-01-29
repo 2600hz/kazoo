@@ -8,7 +8,7 @@
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/rate_limits
+> DELETE /v2/accounts/{ACCOUNT_ID}/rate_limits
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/rate_limits
+> GET /v2/accounts/{ACCOUNT_ID}/rate_limits
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/rate_limits
+> POST /v2/accounts/{ACCOUNT_ID}/rate_limits
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
