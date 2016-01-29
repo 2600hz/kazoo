@@ -8,17 +8,17 @@
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/websockets
+> GET /v2/accounts/{ACCOUNT_ID}/websockets
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/websockets
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/websockets
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/websockets/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/websockets/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/websockets/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/websockets/{ID}
 ```
 
