@@ -8,7 +8,7 @@
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/killio/call
+> POST /v2/accounts/{ACCOUNT_ID}/killio/call
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/killio/call
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/killio/call
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/killio/call
+> PUT /v2/accounts/{ACCOUNT_ID}/killio/call
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/killio/call

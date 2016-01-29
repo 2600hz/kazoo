@@ -46,7 +46,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/phone_numbers
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers
@@ -54,7 +54,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
@@ -62,7 +62,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
@@ -70,7 +70,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
@@ -78,7 +78,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
@@ -86,7 +86,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/phone_numbers/check
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/check
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/check
@@ -94,7 +94,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/check
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
@@ -102,7 +102,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/locality
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
@@ -110,7 +110,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/prefix
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
+> DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
@@ -118,7 +118,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
@@ -126,7 +126,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
@@ -134,7 +134,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
@@ -142,7 +142,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
@@ -150,7 +150,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/fix
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/identify
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/identify
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/identify
@@ -158,7 +158,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/identif
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs
@@ -166,7 +166,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/port
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/port
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/port
@@ -174,7 +174,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/port
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve
@@ -182,7 +182,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/reserve
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER}/activate
@@ -190,7 +190,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONENUMBER
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONENUMBER}
@@ -198,7 +198,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
@@ -206,7 +206,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/a
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}
@@ -214,7 +214,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{I
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}
@@ -222,7 +222,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{I
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/{ID}/docs/{ID}

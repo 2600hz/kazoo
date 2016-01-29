@@ -75,7 +75,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/devices
+> GET /v2/accounts/{ACCOUNT_ID}/devices
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
@@ -83,7 +83,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/devices
+> PUT /v2/accounts/{ACCOUNT_ID}/devices
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
@@ -91,7 +91,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/devices/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/devices/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
@@ -99,7 +99,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/devices/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/devices/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
@@ -107,7 +107,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/devices/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/devices/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
@@ -115,7 +115,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/devices/status
+> GET /v2/accounts/{ACCOUNT_ID}/devices/status
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/status
@@ -123,7 +123,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/status
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
+> POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
@@ -131,7 +131,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}
