@@ -60,6 +60,9 @@ api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 %% ```curl
 %% curl -v http://{SERVER}:8000/Path
 %% ```
+methods_to_section('undefined', _Path, Acc) ->
+    lager:debug("skipping path ~p", [_Path]),
+    Acc;
 methods_to_section(ModuleName, {Path, Methods}, Acc) ->
     APIPath = path_name(Path, ModuleName),
     lists:foldl(fun(Method, Acc1) ->
@@ -359,6 +362,9 @@ format_pc_module({Module, Config}, Acc) ->
 format_pc_module(_MC, Acc) ->
     Acc.
 
+format_pc_config(_ConfigData, Acc, _Module, 'undefined') ->
+    lager:debug("skipping module ~p", [_Module]),
+    Acc;
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
     lists:foldl(fun(Path, Acc1) ->
                         format_pc_callback(Path, Acc1, Module, ModuleName, Callback)
@@ -458,8 +464,11 @@ path_name(<<_/binary>>=Module) ->
         {'match', [<<"ubiquiti_auth">>]} -> <<?CURRENT_VERSION/binary, "/ubiquiti_auth">>;
         {'match', [<<"user_auth">>]} -> <<?CURRENT_VERSION/binary, "/user_auth">>;
         {'match', [Name]} -> <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
-        {'match', [Name, Version]} ->
-            <<Version/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>
+        {'match', [Name, ?CURRENT_VERSION]} ->
+            <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
+        {'match', _M} ->
+            lager:debug("skipping '~s' for not being in the current version", [Module]),
+            'undefined'
     end.
 
 %% API
