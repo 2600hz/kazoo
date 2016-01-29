@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Users module
 %%%
@@ -85,15 +85,15 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(_) ->
+allowed_methods(_UserId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
-allowed_methods(_, ?PHOTO) ->
+allowed_methods(_UserId, ?PHOTO) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(_, ?VCARD) ->
+allowed_methods(_UserId, ?VCARD) ->
     [?HTTP_GET].
 
-allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
+allowed_methods(_UserId, ?QUICKCALL_PATH_TOKEN, _Number) ->
     [?HTTP_GET].
 
 -spec content_types_provided(cb_context:context()) ->
@@ -257,7 +257,7 @@ validate(Context, UserId, ?VCARD) ->
 validate(Context, UserId, ?PHOTO) ->
     validate_photo(Context, UserId , cb_context:req_verb(Context)).
 
-validate(Context, UserId, ?QUICKCALL_PATH_TOKEN, _) ->
+validate(Context, UserId, ?QUICKCALL_PATH_TOKEN, _Number) ->
     Context1 = crossbar_util:maybe_validate_quickcall(load_user(UserId, Context)),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
