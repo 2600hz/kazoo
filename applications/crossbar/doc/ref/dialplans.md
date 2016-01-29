@@ -6,14 +6,14 @@
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`system` | List of system dial plans | `array` |   | `false`
+`system` | List of system dial plans | `array()` |   | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/dialplans
+> GET /v2/accounts/{ACCOUNT_ID}/dialplans
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/dialplans
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/dialplans
 ```
 

@@ -7,87 +7,87 @@
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bcc` | Bcc email field | `object` |   | `false`
-`bcc.email_addresses` |  | `array` |   | `false`
-`bcc.type` |  | `string` |   | `false`
-`category` | Category of the template, for grouping purposes | `string` |   | `false`
+`bcc.email_addresses` |  | `array()` |   | `false`
+`bcc.type` |  | `string('original', 'specified', 'admins')` |   | `false`
+`category` | Category of the template, for grouping purposes | `string(1..)` |   | `false`
 `cc` | CC email field | `object` |   | `false`
-`cc.email_addresses` |  | `array` |   | `false`
+`cc.email_addresses` |  | `array(string)` |   | `false`
 `cc.email_addresses.[]` |   | `string` |   | `false`
-`cc.type` |  | `string` |   | `false`
+`cc.type` |  | `string('original', 'specified', 'admins')` |   | `false`
 `enabled` | Enable notification | `boolean` | `true` | `false`
-`friendly_name` | Friendly name of the template | `string` |   | `false`
+`friendly_name` | Friendly name of the template | `string(1..)` |   | `false`
 `from` | From: email address | `string` |   | `true`
 `macros` |  | `object` | `{}` | `false`
 `reply_to` | Reply-To: email address | `string` |   | `false`
-`subject` | Email subject | `string` |   | `true`
-`template_charset` |  | `string` | `utf-8` | `false`
+`subject` | Email subject | `string(1..200)` |   | `true`
+`template_charset` |  | `string(1..)` | `utf-8` | `false`
 `to` | To email field | `object` |   | `true`
-`to.email_addresses` |  | `array` |   | `false`
+`to.email_addresses` |  | `array(string)` |   | `false`
 `to.email_addresses.[]` |   | `string` |   | `false`
-`to.type` |  | `string` |   | `false`
+`to.type` |  | `string('original', 'specified', 'admins')` |   | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/notifications
+> GET /v2/accounts/{ACCOUNT_ID}/notifications
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/notifications
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNTID}/notifications
+> PUT /v2/accounts/{ACCOUNT_ID}/notifications
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/notifications
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNTID}/notifications/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/notifications/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/notifications/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/notifications/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/notifications/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/notifications/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/notifications/smtplog
+> GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/notifications/smtplog
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNTID}/notifications/smtplog/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/notifications/smtplog/{ID}
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNTID}/notifications/{ID}/preview
+> POST /v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNTID}/notifications/{ID}/preview
+curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
 ```
 
