@@ -34,7 +34,7 @@ after_success:
   - make xref
   - make build-plt
   - git fetch origin master:master
-  - files="$(git diff --name-only master... | grep -v deps/)" || true
+  - files="$(git diff --name-only 3.22... | grep -v deps/)" || true
   - ./scripts/check-dialyzer.escript $files
   - ERL_LIBS="$HOME/proper" ERLC_OPTS='+nowarn_deprecated_type +nowarn_deprecated_function' make eunit
   - ./scripts/check-whitespace.sh core/ applications/
