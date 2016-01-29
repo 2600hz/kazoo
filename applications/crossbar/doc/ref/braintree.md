@@ -8,7 +8,7 @@
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/braintree/credits
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/credits
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
@@ -16,7 +16,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/braintree/credits
+> PUT /v2/accounts/{ACCOUNT_ID}/braintree/credits
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
@@ -24,7 +24,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/braintree/transactions
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/transactions
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
@@ -32,7 +32,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/braintree/transactions
+> PUT /v2/accounts/{ACCOUNT_ID}/braintree/transactions
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
@@ -40,7 +40,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/braintree/addresses
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
@@ -48,7 +48,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/braintree/addresses
+> PUT /v2/accounts/{ACCOUNT_ID}/braintree/addresses
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
@@ -56,7 +56,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/braintree/cards
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/cards
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
@@ -64,7 +64,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/braintree/cards
+> PUT /v2/accounts/{ACCOUNT_ID}/braintree/cards
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
@@ -72,7 +72,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/braintree/customer
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/customer
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
@@ -80,7 +80,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/braintree/customer
+> POST /v2/accounts/{ACCOUNT_ID}/braintree/customer
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
@@ -88,7 +88,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
@@ -96,7 +96,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
@@ -104,7 +104,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
@@ -112,7 +112,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
@@ -120,7 +120,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
@@ -128,7 +128,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
@@ -136,7 +136,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}

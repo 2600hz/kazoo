@@ -37,7 +37,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/vmboxes
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes
@@ -45,7 +45,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/vmboxes
+> PUT /v2/accounts/{ACCOUNT_ID}/vmboxes
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes
@@ -53,7 +53,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
@@ -61,7 +61,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
@@ -69,7 +69,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
@@ -77,7 +77,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
@@ -85,7 +85,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
@@ -93,7 +93,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/message
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages
@@ -101,7 +101,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/message
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
@@ -109,7 +109,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/message
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
@@ -117,7 +117,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/message
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
+> POST /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}
@@ -125,7 +125,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/message
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw
+> GET /v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VMBOX_ID}/messages/{MSG_ID}/raw

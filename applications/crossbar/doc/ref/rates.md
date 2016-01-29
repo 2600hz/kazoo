@@ -26,7 +26,7 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/rates
+> GET /v2/accounts/{ACCOUNT_ID}/rates
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
@@ -34,7 +34,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/rates
+> POST /v2/accounts/{ACCOUNT_ID}/rates
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
@@ -42,7 +42,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
 
 #### Create
 
-> PUT v2/accounts/{ACCOUNT_ID}/rates
+> PUT /v2/accounts/{ACCOUNT_ID}/rates
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
@@ -50,7 +50,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
 
 #### Remove
 
-> DELETE v2/accounts/{ACCOUNT_ID}/rates/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
@@ -58,7 +58,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/rates/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
@@ -66,7 +66,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 #### Patch
 
-> PATCH v2/accounts/{ACCOUNT_ID}/rates/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
@@ -74,7 +74,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 #### Change
 
-> POST v2/accounts/{ACCOUNT_ID}/rates/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
@@ -82,7 +82,7 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
 
 #### Fetch
 
-> GET v2/accounts/{ACCOUNT_ID}/rates/number/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{ID}
 
 ```curl
 curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{ID}

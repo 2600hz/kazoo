@@ -76,7 +76,7 @@ method_to_section(<<"nil">>, Acc, _APIPath) -> Acc;
 method_to_section(Method, Acc, APIPath) ->
     [[ "#### ", method_as_action(Method), "\n\n"
      ,"> ", Method, " ", APIPath, "\n\n"
-     ,"```curl\ncurl -v http://{SERVER}:8000/", APIPath, "\n```\n\n"
+     ,"```curl\ncurl -v http://{SERVER}:8000", APIPath, "\n```\n\n"
      ]
      | Acc
     ].
@@ -401,8 +401,7 @@ maybe_include_schema(PathName, Module) ->
     end.
 
 path_name(Path, ModuleName) ->
-    io:format("format module ~p: ~p~n", [ModuleName, Path]),
-    wh_util:join_binary([ModuleName | format_path_tokens(Path)], <<"/">>).
+    wh_util:join_binary([<<>>, ModuleName | format_path_tokens(Path)], <<"/">>).
 
 format_path_tokens(<<"/">>) -> [];
 format_path_tokens(<<_/binary>> = Token) ->
