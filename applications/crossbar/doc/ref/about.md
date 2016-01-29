@@ -8,9 +8,9 @@
 
 #### Fetch
 
-> GET /v2/about
+> GET v2/about
 
 ```curl
-curl -v http://{SERVER}:8000//v2/about
+curl -v http://{SERVER}:8000/v2/about
 ```
 
