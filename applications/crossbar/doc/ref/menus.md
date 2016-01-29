@@ -25,49 +25,49 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/menus
+> GET v2/accounts/{ACCOUNT_ID}/menus
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/menus
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/menus
+> PUT v2/accounts/{ACCOUNT_ID}/menus
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/menus
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/menus/{ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/menus/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/menus/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/menus/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/menus/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/menus/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/menus/{ID}
+> PATCH v2/accounts/{ACCOUNT_ID}/menus/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/menus/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/menus/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/menus/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/menus/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{ID}
 ```
 

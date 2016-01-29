@@ -29,65 +29,65 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/notifications
+> GET v2/accounts/{ACCOUNT_ID}/notifications
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/notifications
+> PUT v2/accounts/{ACCOUNT_ID}/notifications
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog
+> GET v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/smtplog
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
+> GET v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
+> POST v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
 ```
 

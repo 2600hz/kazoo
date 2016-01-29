@@ -8,81 +8,81 @@
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents
+> GET v2/accounts/{ACCOUNT_ID}/agents
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/agents/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/stats
+> GET v2/accounts/{ACCOUNT_ID}/agents/stats
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/stats
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/stats
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/status
+> GET v2/accounts/{ACCOUNT_ID}/agents/status
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/status
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+> GET v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+> POST v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+> GET v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+> POST v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 ```
 
