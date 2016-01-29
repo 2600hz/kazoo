@@ -23,89 +23,89 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/media
+> GET v2/accounts/{ACCOUNT_ID}/media
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/media
+> PUT v2/accounts/{ACCOUNT_ID}/media
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+> GET v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+> POST v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/media/prompts
+> GET v2/accounts/{ACCOUNT_ID}/media/prompts
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/prompts
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/media/languages
+> GET v2/accounts/{ACCOUNT_ID}/media/languages
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/languages
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+> GET v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+> POST v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
+> GET v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
+> GET v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
 ```
 

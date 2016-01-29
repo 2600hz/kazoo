@@ -60,81 +60,81 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/resources
+> GET v2/accounts/{ACCOUNT_ID}/resources
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/resources
+> PUT v2/accounts/{ACCOUNT_ID}/resources
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/resources/{ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/resources/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/resources/{ID}
+> GET v2/accounts/{ACCOUNT_ID}/resources/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/resources/{ID}
+> POST v2/accounts/{ACCOUNT_ID}/resources/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/resources/jobs
+> GET v2/accounts/{ACCOUNT_ID}/resources/jobs
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources/jobs
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/resources/jobs
+> PUT v2/accounts/{ACCOUNT_ID}/resources/jobs
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources/jobs
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/resources/collection
+> POST v2/accounts/{ACCOUNT_ID}/resources/collection
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources/collection
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/resources/collection
+> PUT v2/accounts/{ACCOUNT_ID}/resources/collection
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources/collection
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
+> GET v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
 ```
 

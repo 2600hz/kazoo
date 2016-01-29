@@ -401,7 +401,8 @@ maybe_include_schema(PathName, Module) ->
     end.
 
 path_name(Path, ModuleName) ->
-    wh_util:join_binary([<<>>, ModuleName | format_path_tokens(Path)], <<"/">>).
+    io:format("format module ~p: ~p~n", [ModuleName, Path]),
+    wh_util:join_binary([ModuleName | format_path_tokens(Path)], <<"/">>).
 
 format_path_tokens(<<"/">>) -> [];
 format_path_tokens(<<_/binary>> = Token) ->
