@@ -33,7 +33,7 @@ flush(Account) ->
     'ok'.
 
 migrate() ->
-    io:format("This command is ancient, if you REALLY know what you are duing run:~n"),
+    io:format("This command is ancient, if you REALLY know what you are doing run:~n"),
     io:format(" sup trunkstore_maintenance i_understand_migrate~n").
 
 i_understand_migrate() ->
