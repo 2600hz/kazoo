@@ -17,73 +17,73 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/webhooks
+> GET v2/accounts/{ACCOUNT_ID}/webhooks
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/webhooks
+> PATCH v2/accounts/{ACCOUNT_ID}/webhooks
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/webhooks
+> PUT v2/accounts/{ACCOUNT_ID}/webhooks
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+> DELETE v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+> GET v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+> PATCH v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+> POST v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/webhooks/attempts
+> GET v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks/attempts
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
+> GET v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 ```
 

@@ -17,17 +17,17 @@ Key | Description | Type | Default | Required
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/limits
+> GET v2/accounts/{ACCOUNT_ID}/limits
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/limits
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/limits
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/limits
+> POST v2/accounts/{ACCOUNT_ID}/limits
 
 ```curl
-curl -v http://{SERVER}:8000//v2/accounts/{ACCOUNT_ID}/limits
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/limits
 ```
 
