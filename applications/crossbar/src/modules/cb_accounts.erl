@@ -94,22 +94,17 @@ allowed_methods(AccountId) ->
             [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH]
     end.
 
-allowed_methods(_, ?MOVE) ->
+allowed_methods(_AccountId, ?MOVE) ->
     [?HTTP_POST];
-allowed_methods(_, ?RESELLER) ->
+allowed_methods(_AccountId, ?RESELLER) ->
     [?HTTP_PUT, ?HTTP_DELETE];
-allowed_methods(_, Path) ->
-    Paths = [?CHILDREN
-             ,?DESCENDANTS
-             ,?SIBLINGS
-             ,?API_KEY
-             ,?TREE
-             ,?PARENTS
-            ],
-    case lists:member(Path, Paths) of
-        'true' -> [?HTTP_GET];
-        'false' -> []
-    end.
+allowed_methods(_AccountId, ?CHILDREN) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?DESCENDANTS) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?SIBLINGS) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?API_KEY) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?TREE) -> [?HTTP_GET];
+allowed_methods(_AccountId, ?PARENTS) -> [?HTTP_GET];
+allowed_methods(_AccountId, _Path) -> [].
 
 %%--------------------------------------------------------------------
 %% @public
