@@ -8,6 +8,7 @@
 -module(jonny5_maintenance).
 
 -export([flush/0]).
+-export([flush_channels/0]).
 -export([authz_summary/0
          ,authz_summary/1
         ]).
@@ -21,6 +22,9 @@
 
 -spec flush() -> 'ok'.
 flush() -> wh_cache:flush_local(?JONNY5_CACHE).
+
+-spec flush_channels() -> 'ok'.
+flush_channels() -> j5_channels:flush().
 
 -spec authz_summary() -> 'no_return'.
 authz_summary() ->
