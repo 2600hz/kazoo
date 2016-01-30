@@ -224,5 +224,10 @@ send_update(Stalkers, Props) ->
 
 -spec presence_reset(wh_json:object()) -> any().
 presence_reset(JObj) ->
-    User = <<(wh_json:get_value(<<"Username">>, JObj))/binary, "@", (wh_json:get_value(<<"Realm">>, JObj))/binary>>,
-    handle_update(wh_json:new(), User).
+    Username = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    Query = [{<<"Username">>, Username}
+             ,{<<"Realm">>, Realm}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1).

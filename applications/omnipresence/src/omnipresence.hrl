@@ -19,6 +19,7 @@
 -define(DIALOG_EVENT, <<"dialog">>).
 -define(MWI_EVENT, <<"message-summary">>).
 -define(PRESENCE_EVENT, <<"presence">>).
+-define(OMNIPRESENCE_EVENT_ALL, <<"all">>).
 
 -define(FAKE_CALLID(C), wh_util:to_hex_binary(crypto:hash(md5, C))).
 

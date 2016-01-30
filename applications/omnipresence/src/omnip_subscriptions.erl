@@ -34,6 +34,7 @@
          ,cached_terminated_callids/0
          ,handle_sync/2
          ,proxy_subscribe/1
+         ,reset/1
         ]).
 -export([init/1
          ,handle_call/3
@@ -90,6 +91,10 @@ handle_search_req(JObj, _Props) ->
 -spec handle_reset(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
+    reset(JObj).
+
+-spec reset(wh_json:object()) -> 'ok'.
+reset(JObj) ->
     notify_packages({'omnipresence', {'presence_reset', JObj}}).
 
 %% Subscribes work like this:
@@ -526,7 +531,16 @@ find_subscriptions(Event, User) when is_binary(User) ->
 -spec find_user_subscriptions(ne_binary(), ne_binary()) ->
                                      {'ok', subscriptions()} |
                                      {'error', 'not_found'}.
-find_user_subscriptions(Event, User) when is_binary(User) ->
+find_user_subscriptions(?OMNIPRESENCE_EVENT_ALL, User) ->
+    U = wh_util:to_lower_binary(User),
+    MatchSpec = [{#omnip_subscription{normalized_from='$1'
+                                      ,_='_'
+                                     }
+                  ,[{'=:=', '$1', {'const', U}}]
+                  ,['$_']
+                 }],
+    find_user_subscriptions(MatchSpec);
+find_user_subscriptions(Event, User) ->
     U = wh_util:to_lower_binary(User),
     MatchSpec = [{#omnip_subscription{normalized_from='$1'
                                       ,event=Event
@@ -535,9 +549,17 @@ find_user_subscriptions(Event, User) when is_binary(User) ->
                   ,[{'=:=', '$1', {'const', U}}]
                   ,['$_']
                  }],
-    case ets:select(table_id(), MatchSpec) of
+    find_user_subscriptions(MatchSpec).
+
+-spec find_user_subscriptions(ets:match_spec()) -> {'ok', subscriptions()} |
+                                                   {'error', 'not_found'}.
+find_user_subscriptions(MatchSpec) ->
+    try ets:select(table_id(), MatchSpec) of
         [] -> {'error', 'not_found'};
         Subs -> {'ok', Subs}
+    catch
+        _E:_M -> lager:error("error fetching subscriptions : ~p : ~p", [_E, _M]),
+                 {'error', 'not_found'}
     end.
 
 -spec get_stalkers(ne_binary(), ne_binary()) ->
