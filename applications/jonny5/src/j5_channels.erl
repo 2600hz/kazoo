@@ -11,6 +11,7 @@
 
 -export([start_link/0]).
 -export([sync/0]).
+-export([flush/0]).
 -export([total_calls/1]).
 -export([resource_consuming/1]).
 -export([inbound_flat_rate/1]).
@@ -129,6 +130,9 @@ start_link() ->
 
 -spec sync() -> 'ok'.
 sync() -> gen_server:cast(?SERVER, 'synchronize_channels').
+
+-spec flush() -> 'ok'.
+flush() -> gen_server:cast(?SERVER, 'flush_channels').
 
 -spec total_calls(ne_binary()) -> non_neg_integer().
 total_calls(AccountId) ->
@@ -520,6 +524,9 @@ handle_cast({'rate_resp', JObj}, State) ->
     {'noreply', State};
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
+    {'noreply', State};
+handle_cast('flush_channels', State) ->
+    _ = ets:delete_all_objects(?TAB),
     {'noreply', State};
 handle_cast({'wh_nodes', {'expire', #wh_node{node=NodeName, whapps=Whapps}}}
             ,#state{sync_ref=SyncRef}=State
