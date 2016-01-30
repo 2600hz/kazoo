@@ -377,6 +377,7 @@ route_req(CallId, FetchId, Props, Node) ->
     SwitchURI = <<"sip:", SwitchURIHost/binary>>,
     [{<<"Msg-ID">>, FetchId}
      ,{<<"Call-ID">>, CallId}
+     ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
      ,{<<"Caller-ID-Name">>, caller_id_name(Props)}
      ,{<<"Caller-ID-Number">>, caller_id_number(Props)}

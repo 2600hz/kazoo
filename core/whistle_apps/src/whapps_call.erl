@@ -65,6 +65,7 @@
 -export([set_language/2, language/1]).
 -export([set_to_tag/2, to_tag/1]).
 -export([set_from_tag/2, from_tag/1]).
+-export([direction/1]).
 
 -export([set_dtmf_collection/2, set_dtmf_collection/3
          ,get_dtmf_collection/1, get_dtmf_collection/2
@@ -159,6 +160,7 @@
                       ,resource_type :: api_binary()                      %% from route_req
                       ,to_tag :: api_binary()
                       ,from_tag :: api_binary()
+                      ,direction = <<"inbound">> :: ne_binary()
                      }).
 
 -type call() :: #whapps_call{}.
@@ -263,6 +265,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
         ,resource_type = wh_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
         ,to_tag = wh_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
         ,from_tag = wh_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
+        ,direction = wh_json:get_ne_value(<<"Call-Direction">>, RouteReq, direction(Call))
     }.
 
 -spec from_route_win(wh_json:object()) -> call().
@@ -400,6 +403,7 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs
       ,resource_type = wh_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
       ,to_tag = wh_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
       ,from_tag = wh_json:get_ne_value(<<"From-Tag">>, JObj, from_tag(Call))
+      ,direction = wh_json:get_ne_value(<<"Call-Direction">>, JObj, direction(Call))
      }.
 
 %%--------------------------------------------------------------------
@@ -464,6 +468,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Language">>, language(Call)}
      ,{<<"To-Tag">>, to_tag(Call)}
      ,{<<"From-Tag">>, from_tag(Call)}
+     ,{<<"Call-Direction">>, direction(Call)}
     ].
 
 -spec is_call(any()) -> boolean().
@@ -868,6 +873,10 @@ set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->
 -spec from_tag(call()) -> api_binary().
 from_tag(#whapps_call{from_tag=FromTag}) ->
     FromTag.
+
+-spec direction(call()) -> ne_binary().
+direction(#whapps_call{direction=Direction}) ->
+    Direction.
 
 -spec remove_custom_channel_vars(ne_binaries(), whapps_call:call()) -> whapps_call:call().
 remove_custom_channel_vars(Keys, #whapps_call{}=Call) ->
