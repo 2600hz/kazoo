@@ -163,14 +163,14 @@ get_config() ->
 
 -spec get_from_amqp() -> wh_proplist().
 get_from_amqp() ->
-    [{'local', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}].
+    [{'local', wh_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}].
 
 -spec get_from_zone(atom()) -> wh_proplist().
 get_from_zone(ZoneName) ->
     Zones = wh_config:get('zone'),
     Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
     case props:get_value('local', Props, []) of
-        [] -> [{'local', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}|Props];
+        [] -> [{'local', wh_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}|Props];
         _Else -> Props
     end.
 
