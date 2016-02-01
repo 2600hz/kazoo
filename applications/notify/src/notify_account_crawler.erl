@@ -364,7 +364,7 @@ update_account_low_balance_sent(AccountJObj) ->
 
 -spec notify_of_low_balance(ne_binary(), wh_transaction:units()) -> 'ok'.
 notify_of_low_balance(AccountId, CurrentBalance) ->
-    wh_notify:low_balance(CurrentBalance, AccountId).
+    wh_notify:low_balance(AccountId, CurrentBalance).
 
 -spec low_balance_threshold(ne_binary()) -> float().
 low_balance_threshold(Account) ->
