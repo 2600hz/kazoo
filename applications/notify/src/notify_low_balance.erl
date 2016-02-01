@@ -10,7 +10,9 @@
 %%%-------------------------------------------------------------------
 -module(notify_low_balance).
 
--export([init/0, send/2]).
+-export([init/0, send/2
+         ,handle_req/2
+        ]).
 -export([collect_recipients/1]).
 
 
@@ -35,6 +37,12 @@ init() ->
     {'ok', _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
+
+handle_req(JObj, _Props) ->
+    'true' = wapi_notifications:low_balance_v(JObj),
+    send(wh_json:get_integer_value(<<"Current-Balance">>, JObj)
+         ,wh_json:get_value(<<"Account-ID">>, JObj)
+        ).
 
 %%--------------------------------------------------------------------
 %% @public
