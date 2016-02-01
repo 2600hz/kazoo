@@ -40,8 +40,9 @@ init() ->
 
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:low_balance_v(JObj),
+    {'ok', Account} = kz_account:fetch(wh_json:get_value(<<"Account-ID">>, JObj)),
     send(wh_json:get_integer_value(<<"Current-Balance">>, JObj)
-         ,wh_json:get_value(<<"Account-ID">>, JObj)
+         ,Account
         ).
 
 %%--------------------------------------------------------------------
