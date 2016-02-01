@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz Inc
+%%% @copyright (C) 2015-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -15,6 +15,7 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"system_alert">>).
+-define(RENDERER_MODULE_NAME, 'render_system_alert').
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
@@ -119,7 +120,8 @@ init() ->
                                            ,{'cc', ?TEMPLATE_CC}
                                            ,{'bcc', ?TEMPLATE_BCC}
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    build_renderers().
 
 -spec handle_system_alert(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_system_alert(JObj, _Props) ->
@@ -180,8 +182,8 @@ process_req(DataJObj, Templates) ->
              ],
 
     %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
+    RenderedTemplates = [{ContentType, render(ContentType, Macros)}
+                         || {ContentType, _Template} <- Templates
                         ],
 
     {'ok', TemplateMetaJObj} =
@@ -273,3 +275,56 @@ request_macros(DataJObj) ->
                           ,DataJObj
                          )
      ).
+
+-spec build_renderers() -> 'ok'.
+build_renderers() ->
+    [build_renderer(ContentType, Template) ||
+        {ContentType, Template} <- teletype_templates:fetch(?TEMPLATE_ID)
+    ],
+    lager:debug("built renderers for system_alerts").
+
+-spec build_renderer(ne_binary(), iolist()) -> 'ok'.
+build_renderer(ContentType, Template) ->
+    ModuleName = renderer_name(ContentType),
+    case erlydtl:compile_template(Template
+                                 ,ModuleName
+                                 ,[{'out_dir', 'false'}
+                                  ,'return'
+                                  ]
+                                 )
+    of
+        {'ok', Name} ->
+            lager:debug("built system_alerts renderer for ~s", [Name]);
+        {'ok', Name, []} ->
+            lager:debug("built system_alerts renderer for ~s", [Name]);
+        {'ok', Name, Warnings} ->
+            lager:debug("compiling template ~s produced warnings: ~p", [Name, Warnings])
+    end.
+
+-spec renderer_name(ne_binary()) -> atom().
+renderer_name(ContentType) ->
+    wh_util:to_atom(<<(?TEMPLATE_ID)/binary, ContentType/binary>>, 'true').
+
+-spec render(ne_binary(), wh_proplist()) -> {'ok', iolist()} |
+                                            {'error', any()}.
+render(ContentType, Macros) ->
+    ModuleName = renderer_name(ContentType),
+    try ModuleName:render(Macros) of
+        {'ok', _IOList}=OK ->
+            lager:debug("rendered ~s template successfully", [ContentType]),
+            OK;
+        {'error', _E}=E ->
+            lager:debug("failed to render ~s template: ~p", [ContentType, _E]),
+            E
+    catch
+        'error':'undef' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("something in the template ~s is undefined", [ModuleName]),
+            wh_util:log_stacktrace(ST),
+            {'error', 'undefined'};
+        _E:R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("crashed rendering template ~s: ~s: ~p", [ModuleName, _E, R]),
+            wh_util:log_stacktrace(ST),
+            {'error', R}
+    end.
