@@ -15,7 +15,6 @@
 -include("../teletype.hrl").
 
 -define(TEMPLATE_ID, <<"system_alert">>).
--define(RENDERER_MODULE_NAME, 'render_system_alert').
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
