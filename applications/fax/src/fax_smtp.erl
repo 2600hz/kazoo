@@ -700,8 +700,13 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
             Props = props:get_value(<<"disposition-params">>, Parameters, []),
             Filename = wh_util:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
             Ext = filename:extension(Filename),
-            CT = fax_util:extension_to_content_type(Ext),
-            maybe_process_part(CT, Parameters, Body, State);
+            case fax_util:extension_to_content_type(Ext) of
+                <<"application/octet-stream">> ->
+                    lager:debug("unable to determine content-type for extension : ~s", [Ext]),
+                    {'ok', State};
+                CT ->
+                    maybe_process_part(CT, Parameters, Body, State)
+            end;
          _Else ->
             lager:debug("part is not attachment"),
             {'ok', State}
