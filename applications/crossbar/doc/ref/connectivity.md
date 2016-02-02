@@ -25,7 +25,7 @@ Key | Description | Type | Default | Required
 `servers.[].auth.ip` | IP address for this device | `string` |   | `false`
 `servers.[].auth.port` | Port to send SIP traffic for the remote device | `integer` |   | `false`
 `servers.[].name` | Human-friendly name of the server | `string(1..)` |   | `false`
-`servers.[].options` |   |   |   | `false`
+`servers.[].options` |   | `object` |   | `false`
 
 
 #### Fetch
