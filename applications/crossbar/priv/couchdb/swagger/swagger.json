@@ -2033,7 +2033,8 @@
                                 "timeout": {
                                     "description": "The time, in seconds, to wait for an answer from the server",
                                     "type": "integer"
-                                }
+                                },
+                                "type": "object"
                             }
                         },
                         "type": "object"
@@ -6604,7 +6605,8 @@
                 "vm_to_email_enabled": {
                     "default": true,
                     "description": "Determines if the user would like voicemails emailed to them",
-                    "name": "VM To Emain Enabled"
+                    "name": "VM To Emain Enabled",
+                    "type": "boolean"
                 },
                 "voicemail": {
                     "properties": {
