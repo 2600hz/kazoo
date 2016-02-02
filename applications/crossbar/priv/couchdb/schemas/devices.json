@@ -353,6 +353,12 @@
             "required": false,
             "type": "string"
         },
+        "presence_id": {
+            "description": "Static presence ID (used instead of SIP username)",
+            "name": "Presence ID",
+            "required": false,
+            "type": "string"
+        },
         "provision": {
             "description": "Provision data",
             "name": "Provision",
