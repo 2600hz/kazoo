@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = amqp_cron
 
-TEST_EBINS = $(wildcard $(ROOT)/core/amqp_leader-*/ebin)
+TEST_EBINS = $(ROOT)/core/amqp_leader/ebin
 
 all: compile
 

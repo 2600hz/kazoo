@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = whistle_couch
 
-EBINS = $(wildcard $(ROOT)/core/whistle_number_manager-*/ebin) \
+EBINS = $(ROOT)/core/whistle_number_manager/ebin \
 	$(wildcard $(ROOT)/deps/couchbeam-*/ebin)
 
 SOURCES = src/wh_gen_changes.erl src/*.erl

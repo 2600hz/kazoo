@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = kazoo_caches
 
-EBINS = $(wildcard $(ROOT)/core/kazoo_caches-*/ebin)
+EBINS = $(ROOT)/core/kazoo_caches/ebin
 
 all: compile
 

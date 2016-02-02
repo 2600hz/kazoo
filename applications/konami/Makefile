@@ -1,7 +1,7 @@
 ROOT = ../..
 PROJECT = konami
 
-EBINS = $(wildcard $(ROOT)/core/whistle_apps-*/ebin) \
+EBINS = $(ROOT)/core/whistle_apps/ebin \
 	$(wildcard $(ROOT)/deps/nksip-*/ebin)
 
 all: compile
