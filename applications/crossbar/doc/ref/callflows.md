@@ -13,7 +13,7 @@ Key | Description | Type | Default | Required
 `flow.children` | Children callflows | `object` | `{}` | `false`
 `flow.data` | The data/arguments of the callflow module | `object` | `{}` | `true`
 `flow.module` | The name of the callflow module to excute at this node | `string(1..64)` |   | `true`
-`metaflow` | Actions applied to a call outside of the normal callflow, initiated by the caller(s) |   |   | `false`
+`metaflow` | Actions applied to a call outside of the normal callflow, initiated by the caller(s) | `#/definitions/metaflows` |   | `false`
 `numbers` | A list of static numbers that the callflow should execute for | `array(string(1..36))` | `[]` | `false`
 `numbers.[]` |   | `string` |   | `false`
 `patterns` | A list of regular expressions that the callflow should execute for, with optional capture groups | `array(string(1..))` | `[]` | `false`
