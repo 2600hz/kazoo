@@ -78,7 +78,7 @@ next_renderer(BackoffMs) ->
 -spec backoff_fudge() -> pos_integer().
 backoff_fudge() ->
     Fudge = whapps_config:get_integer(?NOTIFY_CONFIG_CAT, <<"backoff_fudge_ms">>, 5000),
-    rand:uniform(Fudge).
+    random:uniform(Fudge).
 
 -spec init(list()) -> {'ok', atom()}.
 init(_) ->
