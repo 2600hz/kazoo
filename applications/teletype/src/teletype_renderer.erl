@@ -62,18 +62,23 @@ next_renderer(BackoffMs) ->
         'full' ->
             lager:critical("render farm pool is full! waiting ~bms", [BackoffMs]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2);
+            next_renderer(BackoffMs * 2 + backoff_fudge());
         P -> P
     catch
         'exit':{'timeout', {'gen_server', 'call', _Args}} ->
             lager:critical("render farm overwhelmed!! back off ~b", [BackoffMs]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2);
+            next_renderer(BackoffMs * 2 + backoff_fudge());
         _E:_R ->
             lager:warning("failed to checkout: ~s: ~p", [_E, _R]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2)
+            next_renderer(BackoffMs * 2) + backoff_fudge()
     end.
+
+-spec backoff_fudge() -> pos_integer().
+backoff_fudge() ->
+    Fudge = whapps_config:get_integer(?NOTIFY_CONFIG_CAT, <<"backoff_fudge_ms">>, 5000),
+    rand:uniform(Fudge).
 
 -spec init(list()) -> {'ok', atom()}.
 init(_) ->
