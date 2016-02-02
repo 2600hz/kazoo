@@ -30,3 +30,4 @@ sup.bash
 _rel/
 rel/relx.config
 rel/dev-vm.args
+rel/vm.args

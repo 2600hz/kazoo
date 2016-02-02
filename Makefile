@@ -14,7 +14,6 @@ all: compile
 
 compile: ACTION = all
 compile: $(MAKEDIRS)
-	sed "s/$\{KZname\}//" rel/vm.args > rel/dev-vm.args
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
@@ -23,7 +22,6 @@ clean: ACTION = clean
 clean: $(MAKEDIRS)
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
-	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
@@ -51,14 +49,20 @@ kazoo: core apps
 
 clean-release:
 	$(if $(wildcard _rel/), rm -r _rel/)
-	$(if $(wildcard rel/relx.config), rm rel/relx.config)
+	$(if $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args), \
+	  rm $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args)  )
 
-build-release: rel/relx.config
+build-release: rel/relx.config rel/vm.args
 	$(RELX) --config $< -V 2 release --relname 'kazoo'
-tar-release: rel/relx.config
+tar-release: rel/relx.config rel/vm.args
 	$(RELX) --config $< -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
+
+rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
+	cp $^ $@
+rel/vm.args: rel/args rel/dev-vm.args
+	( cat $<; echo '$${KZname}' ) > $@
 
 ## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
 release: ACT ?= console # start | attach | stop | console | foreground
