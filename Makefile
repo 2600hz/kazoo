@@ -10,7 +10,7 @@ MAKEDIRS = deps/Makefile \
 
 .PHONY: $(MAKEDIRS) core deps apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-release build-release tar-release release
 
-all: compile
+all: compile rel/dev-vm.args
 
 compile: ACTION = all
 compile: $(MAKEDIRS)
@@ -22,6 +22,7 @@ clean: ACTION = clean
 clean: $(MAKEDIRS)
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
+	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
