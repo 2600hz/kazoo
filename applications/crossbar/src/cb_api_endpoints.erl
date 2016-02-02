@@ -22,7 +22,6 @@
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
 
-
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
@@ -163,6 +162,13 @@ property_to_row(Name, Settings, Acc) ->
 
 schema_type(Settings) ->
     schema_type(Settings, wh_json:get_value(<<"type">>, Settings)).
+schema_type(Settings, 'undefined') ->
+    case wh_json:get_value(<<"$ref">>, Settings) of
+        'undefined' ->
+            io:format("no type or ref in ~p~n", [Settings]),
+            'undefined';
+        Def -> <<"#/definitions/", Def/binary>>
+    end;
 schema_type(Settings, <<"array">>) ->
     case wh_json:get_value([<<"items">>, <<"type">>], Settings) of
         'undefined' -> <<"array()">>;
