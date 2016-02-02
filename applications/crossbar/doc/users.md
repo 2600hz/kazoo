@@ -469,6 +469,7 @@ Key | Type | Description
 
 ```curl
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/quickcall/{NUMBER}
 {
   "auth_token": "{AUTH_TOKEN}",
