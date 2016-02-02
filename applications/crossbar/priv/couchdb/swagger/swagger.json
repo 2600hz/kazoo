@@ -212,6 +212,21 @@
                     "name": "Default Timezone",
                     "required": false,
                     "type": "string"
+                },
+                "voicemail": {
+                    "properties": {
+                        "notify": {
+                            "properties": {
+                                "callback": {
+                                    "$ref": "notify.callback"
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
                 }
             },
             "required": true,
@@ -4037,6 +4052,48 @@
             "required": true,
             "type": "object"
         },
+        "notify.callback": {
+            "description": "Schema for a callback options",
+            "name": "Callback notification options",
+            "properties": {
+                "attempts": {
+                    "description": "How many attempts without answer will system do",
+                    "required": false,
+                    "type": "integer"
+                },
+                "disabled": {
+                    "description": "Determines if the system will call to callback number",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "interval_s": {
+                    "description": "How long will system wait between call back notification attempts",
+                    "required": false,
+                    "type": "integer"
+                },
+                "number": {
+                    "description": "Number for callback notifications about new messages",
+                    "required": false,
+                    "type": "string"
+                },
+                "schedule": {
+                    "description": "Schedules interval between callbacks",
+                    "items": {
+                        "description": "callbacks interval",
+                        "type": "integer"
+                    },
+                    "required": false,
+                    "type": "array"
+                },
+                "timeout_s": {
+                    "description": "How long will system wait for answer to callback",
+                    "required": false,
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "phone_numbers": {
             "description": "Schema for a phone_number",
             "name": "Phone Number",
@@ -6455,7 +6512,7 @@
                     "type": "object"
                 },
                 "presence_id": {
-                    "description": "User's presence ID",
+                    "description": "Static presence ID (used instead of SIP username)",
                     "name": "Presence ID",
                     "required": false,
                     "type": "string"
@@ -6547,9 +6604,22 @@
                 "vm_to_email_enabled": {
                     "default": true,
                     "description": "Determines if the user would like voicemails emailed to them",
-                    "name": "VM To Emain Enabled",
+                    "name": "VM To Emain Enabled"
+                },
+                "voicemail": {
+                    "properties": {
+                        "notify": {
+                            "properties": {
+                                "callback": {
+                                    "$ref": "notify.callback"
+                                }
+                            },
+                            "required": false,
+                            "type": "object"
+                        }
+                    },
                     "required": false,
-                    "type": "boolean"
+                    "type": "object"
                 }
             },
             "required": true,
@@ -6694,6 +6764,15 @@
                     "name": "Is configurable?",
                     "required": false,
                     "type": "boolean"
+                },
+                "notify": {
+                    "properties": {
+                        "callback": {
+                            "$ref": "notify.callback"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
                 },
                 "notify_email_addresses": {
                     "default": [],
