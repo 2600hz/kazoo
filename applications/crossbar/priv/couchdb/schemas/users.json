@@ -477,9 +477,22 @@
         "vm_to_email_enabled": {
             "default": true,
             "description": "Determines if the user would like voicemails emailed to them",
-            "name": "VM To Emain Enabled",
+            "name": "VM To Emain Enabled"
+        },
+        "voicemail": {
+            "properties": {
+                "notify": {
+                    "properties": {
+                        "callback": {
+                            "$ref": "notify.callback"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                }
+            },
             "required": false,
-            "type": "boolean"
+            "type": "object"
         }
     },
     "required": true,
