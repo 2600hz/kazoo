@@ -30,17 +30,20 @@
           ,'folsom'
           ,'gcm','gen_smtp','goldrush','gproc'
           ,'ibrowse','inets'
-          ,'kazoo_bindings','kazoo_caches','kazoo_documents','kazoo_modb'
+          ,'kazoo_bindings','kazoo_caches','kazoo_documents', 'kazoo_etsmgr'
+          ,'kazoo_modb'
           ,'kazoo_oauth','kazoo_token_buckets','kernel'
-          ,'lager'
+          ,'lager', 'lager_syslog'
           ,'nksip'
           ,'poolboy','public_key'
           ,'rabbit_common','ranch'
           ,'sasl','socketio','ssl','stdlib','syntax_tools','syslog'
           ,'webseq'
           ,'whistle','whistle_amqp','whistle_apps','whistle_config'
-          ,'whistle_couch','whistle_services','whistle_stats'
+          ,'whistle_couch','whistle_number_manager'
+          ,'whistle_services','whistle_stats','whistle_transactions'
           ,'xmerl'
+          ,'zucchini'
          ]).
 
 
@@ -107,9 +110,11 @@ running_apps_verbose() ->
     case get_running_apps() of
         [] -> "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
         Resp ->
-            [wh_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
-             || {App, Desc, Vsn} <- Resp
-            ]
+            lists:sort(
+              [wh_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
+               || {App, Desc, Vsn} <- Resp
+              ]
+             )
     end.
 
 -spec get_running_apps() -> [{atom(), string(), _}].
@@ -123,7 +128,7 @@ get_running_apps() ->
 running_apps_list() ->
     case get_running_apps() of
         [] -> "whapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
-        Resp -> [App || {App, _Desc, _Vsn} <- Resp]
+        Resp -> lists:sort([App || {App, _Desc, _Vsn} <- Resp])
     end.
 
 -spec initialize_whapps() -> 'ok'.
