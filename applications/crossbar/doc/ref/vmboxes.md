@@ -24,6 +24,8 @@ Key | Description | Type | Default | Required
 `messages.[].to` | The SIP to header | `string` |   | `false`
 `name` | A friendly name for the voicemail box | `string(1..128)` |   | `true`
 `not_configurable` | Determines if the user can configure this voicemail. | `boolean` | `false` | `false`
+`notify` |   | `object` |   | `false`
+`notify.callback` |   | `#/definitions/notify.callback` |   | `false`
 `notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string)` | `[]` | `false`
 `notify_email_addresses.[]` |   | `string` |   | `false`
 `owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false`

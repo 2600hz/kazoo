@@ -16,7 +16,7 @@ Key | Description | Type | Default | Required
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean` | `true` | `false`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean` | `true` | `false`
 `call_restriction` | Device level call restrictions for each available number classification | `object` | `{}` | `false`
-`call_waiting` |   |   |   | `false`
+`call_waiting` |   | `#/definitions/call_waiting` |   | `false`
 `caller_id` | The device caller ID parameters | `object` | `{}` | `false`
 `contact_list` |   | `object` | `{}` | `false`
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean` |   | `false`
@@ -50,10 +50,10 @@ Key | Description | Type | Default | Required
 `media.video` | The video media parameters | `object` | `{}` | `false`
 `media.video.codecs` | A list of video codecs the device supports | `array(string('H261', 'H263', 'H264', 'VP8'))` | `[]` | `false`
 `media.video.codecs.[]` |   | `string` |   | `false`
-`metaflows` | The device metaflow parameters |   |   | `false`
+`metaflows` | The device metaflow parameters | `#/definitions/metaflows` |   | `false`
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object` | `{}` | `false`
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
-`presence_id` | User's presence ID | `string` |   | `false`
+`presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `priv_level` | The privilege level of the user | `string('user', 'admin')` | `user` | `false`
 `profile` | User's profile data | `object` | `{}` | `false`
 `pronounced_name` | Name pronounced by user to introduce himself to conference members | `object` |   | `false`
@@ -66,6 +66,9 @@ Key | Description | Type | Default | Required
 `username` | The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed | `string(1..256)` |   | `false`
 `verified` | Determines if the user has been verified | `boolean` | `false` | `false`
 `vm_to_email_enabled` | Determines if the user would like voicemails emailed to them | `boolean` | `true` | `false`
+`voicemail` |   | `object` |   | `false`
+`voicemail.notify` |   | `object` |   | `false`
+`voicemail.notify.callback` |   | `#/definitions/notify.callback` |   | `false`
 
 
 #### Fetch
