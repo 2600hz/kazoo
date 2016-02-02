@@ -2459,6 +2459,12 @@
                     "required": false,
                     "type": "string"
                 },
+                "presence_id": {
+                    "description": "Static presence ID (used instead of SIP username)",
+                    "name": "Presence ID",
+                    "required": false,
+                    "type": "string"
+                },
                 "provision": {
                     "description": "Provision data",
                     "name": "Provision",
@@ -7361,22 +7367,108 @@
             "get": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/devices": {
-            "get": {},
-            "put": {}
+            "get": {
+                "description": "Summary listing of devices for the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of devices created for the account"
+                    }
+                }
+            },
+            "put": {
+                "description": "Create a new device",
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The newly created device object"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNT_ID}/devices/status": {
             "get": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}": {
+            "delete": {
+                "description": "Remove the device from the account",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The removed device object"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get the device details",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The device object, in full"
+                    }
+                }
+            },
+            "post": {
+                "description": "Edit the device object",
+                "parameters": {
+                    "in": "body",
+                    "name": "devices",
+                    "required": true,
+                    "schema": {
+                        "$ref": "#/definitions/devices"
+                    }
+                },
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The edited device object, in full"
+                    }
+                }
+            }
+        },
+        "/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}": {
+            "get": {
+                "description": "Execute quickcall to {NUMBER}",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The call initialization details"
+                    }
+                }
+            }
+        },
         "/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync": {
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/devices/{ID}": {
-            "delete": {},
-            "get": {},
-            "post": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}": {
-            "get": {}
+            "post": {
+                "description": "Reset the device by sending a check-sync SIP NOTIFY",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Notice that the check-sync has been sent"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNT_ID}/dialplans": {
             "get": {}
@@ -7960,6 +8052,19 @@
             "get": {},
             "patch": {},
             "post": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices": {
+            "get": {
+                "description": "Summary listing of devices for the user",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A listing of devices created for the user"
+                    }
+                }
+            }
         },
         "/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/photo": {
             "delete": {},
