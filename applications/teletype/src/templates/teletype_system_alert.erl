@@ -309,21 +309,21 @@ renderer_name(ContentType) ->
 render(ContentType, Macros) ->
     ModuleName = renderer_name(ContentType),
     try ModuleName:render(Macros) of
-        {'ok', _IOList}=OK ->
+        {'ok', IOList} ->
             lager:debug("rendered ~s template successfully", [ContentType]),
-            OK;
-        {'error', _E}=E ->
+            iolist_to_binary(IOList);
+        {'error', _E} ->
             lager:debug("failed to render ~s template: ~p", [ContentType, _E]),
-            E
+            throw({'error', 'template_error'})
     catch
         'error':'undef' ->
             ST = erlang:get_stacktrace(),
             lager:debug("something in the template ~s is undefined", [ModuleName]),
             wh_util:log_stacktrace(ST),
-            {'error', 'undefined'};
+            throw({'error', 'template_error'});
         _E:R ->
             ST = erlang:get_stacktrace(),
             lager:debug("crashed rendering template ~s: ~s: ~p", [ModuleName, _E, R]),
             wh_util:log_stacktrace(ST),
-            {'error', R}
+            throw({'error', 'template_error'})
     end.
