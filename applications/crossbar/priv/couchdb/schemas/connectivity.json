@@ -249,7 +249,8 @@
                         "timeout": {
                             "description": "The time, in seconds, to wait for an answer from the server",
                             "type": "integer"
-                        }
+                        },
+                        "type": "object"
                     }
                 },
                 "type": "object"
