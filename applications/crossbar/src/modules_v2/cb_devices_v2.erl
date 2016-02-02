@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Devices module
 %%%
@@ -84,13 +84,13 @@ allowed_methods() ->
 
 allowed_methods(?STATUS_PATH_TOKEN) ->
     [?HTTP_GET];
-allowed_methods(_) ->
+allowed_methods(_DeviceId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 
-allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
+allowed_methods(_DeviceId, ?QUICKCALL_PATH_TOKEN, _Number) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -108,11 +108,11 @@ allowed_methods(_, ?QUICKCALL_PATH_TOKEN, _) ->
 
 resource_exists() -> 'true'.
 
-resource_exists(_) -> 'true'.
+resource_exists(_DeviceId) -> 'true'.
 
 resource_exists(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) -> 'true'.
 
-resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
+resource_exists(_DeviceId, ?QUICKCALL_PATH_TOKEN, _Number) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
