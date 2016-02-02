@@ -50,6 +50,7 @@ Key | Description | Type | Default | Required
 `outbound_flags` | List of flags (features) this device requires when making outbound calls | `array(string)` |   | `false`
 `outbound_flags.[]` |   | `string` |   | `false`
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false`
+`presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `provision` | Provision data | `object` |   | `false`
 `provision.feature_keys` |   | `object` |   | `false`
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean` | `false` | `false`
@@ -91,26 +92,26 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/devices/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/devices/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/devices/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 ```
 
 #### Fetch
@@ -131,9 +132,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{ID}/quickcall/{ID}
+curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
 ```
 
