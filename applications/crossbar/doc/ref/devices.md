@@ -16,7 +16,7 @@ Key | Description | Type | Default | Required
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean` | `true` | `false`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean` | `true` | `false`
 `call_restriction` | Device level call restrictions for each available number classification | `object` | `{}` | `false`
-`call_waiting` |   |   |   | `false`
+`call_waiting` |   | `#/definitions/call_waiting` |   | `false`
 `caller_id` | The device caller ID parameters | `object` | `{}` | `false`
 `contact_list` |   | `object` | `{}` | `false`
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean` |   | `false`
@@ -42,7 +42,7 @@ Key | Description | Type | Default | Required
 `media.video` | The video media parameters | `object` | `{}` | `false`
 `media.video.codecs` | A list of video codecs the device supports | `array(string('VP8', 'H264', 'H263', 'H261'))` | `[]` | `false`
 `media.video.codecs.[]` |   | `string` |   | `false`
-`metaflows` | The device metaflow parameters |   |   | `false`
+`metaflows` | The device metaflow parameters | `#/definitions/metaflows` |   | `false`
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object` | `{}` | `false`
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
 `mwi_unsolicitated_updates` | When true enables unsolicitated mwi notifications | `boolean` | `true` | `false`
