@@ -728,8 +728,7 @@ handle_cast({'send_sync_req'}, #state{my_id=MyId
     case MyQ of
         'undefined' ->
             lager:debug("queue not ready yet, waiting for sync request"),
-            timer:sleep(100),
-            gen_listener:cast(self(), {'send_sync_req'});
+            timer:apply_after(100 , gen_listener, cast, [self(), {'send_sync_req'}]);
          _ ->
             lager:debug("queue retrieved: ~p , sending sync request", [MyQ]),
             send_sync_request(AcctId, AgentId, MyId, MyQ)
