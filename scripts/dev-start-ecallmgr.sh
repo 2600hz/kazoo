@@ -11,4 +11,8 @@ NODE_NAME=ecallmgr
 
 export KAZOO_APPS=ecallmgr
 
-exec erl -name $NODE_NAME -args_file $ROOT/rel/dev-vm.args -s reloader
+exec erl \
+     -name $NODE_NAME \
+     -args_file $ROOT/rel/dev-vm.args \
+     -config $ROOT/rel/sys.config \
+     -s reloader
