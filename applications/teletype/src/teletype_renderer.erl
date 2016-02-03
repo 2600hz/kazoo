@@ -36,6 +36,7 @@ render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
     try gen_server:call(Renderer
                         ,{'render', TemplateId, Template, TemplateData}
+                        ,?MILLISECONDS_IN_HOUR
                        )
     of
         Resp -> Resp
