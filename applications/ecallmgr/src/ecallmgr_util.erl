@@ -194,10 +194,12 @@ get_sip_from(Props, _) ->
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request(wh_proplist()) -> ne_binary().
 get_sip_request(Props) ->
-    User = props:get_first_defined([<<"Hunt-Destination-Number">>
-                                    ,<<"variable_sip_req_uri">>
-                                    ,<<"variable_sip_to_user">>
-                                   ], Props, <<"nouser">>),
+    [User | _] = binary:split(
+                   props:get_first_defined(
+                     [<<"Hunt-Destination-Number">>
+                      ,<<"variable_sip_req_uri">>
+                      ,<<"variable_sip_to_user">>
+                     ], Props, <<"nouser">>), <<"@">>, ['global']),
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                      ,<<"variable_sip_auth_realm">>
                                      ,<<"variable_sip_to_host">>
