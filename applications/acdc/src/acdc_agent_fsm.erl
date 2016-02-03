@@ -1172,8 +1172,8 @@ handle_event({'agent_logout'} = Event, StateName, #state{agent_state_updates = Q
 handle_event({'resume'}, 'ready', State) ->
     {'next_state', 'ready', State};
 handle_event({'resume'}, 'paused', State) ->
-    ReadyState = handle_resume(State),
-    {'next_state', 'ready', apply_state_updates(ReadyState)};
+    {Next, SwitchTo, State1} = apply_state_updates(handle_resume(State)),
+    {Next, SwitchTo, State1};
 handle_event({'resume'} = Event, StateName, #state{agent_state_updates = Queue} = State) ->
     NewQueue = [Event | Queue],
     {'next_state', StateName, State#state{agent_state_updates = NewQueue}};
