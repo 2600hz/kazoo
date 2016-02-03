@@ -149,7 +149,7 @@ handle_info(_Info, State) ->
 -spec check_then_process_account(ne_binary(), {'ok', kz_account:doc()} | {'error',any()}) -> 'ok'.
 check_then_process_account(AccountId, {'ok', AccountJObj}) ->
     case wh_doc:is_soft_deleted(AccountJObj)
-            andalso kz_account:is_enabled(AccountJObj) of
+            orelse not kz_account:is_enabled(AccountJObj) of
         'true' ->
             lager:debug("not processing account ~p (soft-destroyed)", [AccountId]);
         'false' ->
