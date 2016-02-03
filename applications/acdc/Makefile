@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = acdc
 
-EBINS = $(wildcard $(ROOT)/core/whistle_apps-*/ebin) \
-	$(wildcard $(ROOT)/core/whistle_couch-*/ebin)
+EBINS = $(ROOT)/core/whistle_apps/ebin \
+	$(ROOT)/core/whistle_couch/ebin
 
 all: compile
 

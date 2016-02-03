@@ -1,10 +1,8 @@
-ToName = fun (Apps) ->
-                 [list_to_atom(hd(string:tokens(App,"-"))) || App <- Apps]
-         end,
+ToName = fun (App) -> list_to_atom(hd(string:tokens(App,"-"))) end,
 
-Apps = ToName([App || "applications/"++App <- filelib:wildcard("applications/*"), App /= "Makefile"]),
-Core = ToName([App ||         "core/"++App <- filelib:wildcard(        "core/*"), App /= "Makefile"]),
-Deps = ToName([App ||         "deps/"++App <- filelib:wildcard(        "deps/*"), App /= "Makefile"]),
+Apps = [       App  || "applications/"++App <- filelib:wildcard("applications/*"), App /= "Makefile"],
+Core = [       App  ||         "core/"++App <- filelib:wildcard(        "core/*"), App /= "Makefile"],
+Deps = [ToName(App) ||         "deps/"++App <- filelib:wildcard(        "deps/*"), App /= "Makefile"],
 
 Base = [ {'++', Core}
        , {'++', Apps}

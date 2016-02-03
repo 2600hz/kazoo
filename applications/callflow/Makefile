@@ -1,9 +1,9 @@
 ROOT = ../..
 PROJECT = callflow
 
-EBINS = $(wildcard $(ROOT)/core/whistle_apps-*/ebin) \
-	$(wildcard $(ROOT)/core/whistle_number_manager-*/ebin) \
-	$(wildcard $(ROOT)/core/kazoo_documents-*/ebin)
+EBINS = $(ROOT)/core/whistle_apps/ebin \
+	$(ROOT)/core/whistle_number_manager/ebin \
+	$(ROOT)/core/kazoo_documents/ebin
 
 all: compile
 

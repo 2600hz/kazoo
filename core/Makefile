@@ -19,7 +19,7 @@ test: ACTION = test
 test: $(MAKEDIRS)
 
 kazoo:
-	$(MAKE) -C $(wildcard whistle-*) compile
+	$(MAKE) -C whistle/ compile
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)

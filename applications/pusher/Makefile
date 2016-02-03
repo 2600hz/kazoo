@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = pusher
 
-EBINS = $(wildcard $(ROOT)/core/apns-*/ebin) \
-	$(wildcard $(ROOT)/core/gcm-*/ebin) \
+EBINS = $(ROOT)/core/apns/ebin \
+	$(ROOT)/core/gcm/ebin \
 	$(wildcard $(ROOT)/deps/nksip-*/ebin) \
 
 all: compile

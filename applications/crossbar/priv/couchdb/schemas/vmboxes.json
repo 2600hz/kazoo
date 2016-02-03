@@ -140,6 +140,15 @@
             "required": false,
             "type": "boolean"
         },
+        "notify": {
+            "properties": {
+                "callback": {
+                    "$ref": "notify.callback"
+                }
+            },
+            "required": false,
+            "type": "object"
+        },
         "notify_email_addresses": {
             "default": [],
             "description": "List of email addresses to send notifications to (in addition to owner's email, if any)",

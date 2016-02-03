@@ -1,8 +1,8 @@
 ROOT = ../..
 PROJECT = stepswitch
 
-EBINS = $(wildcard $(ROOT)/core/whistle_number_manager-*/ebin) \
-	$(wildcard $(ROOT)/core/kazoo_sip-*/ebin)
+EBINS = $(ROOT)/core/whistle_number_manager/ebin \
+	$(ROOT)/core/kazoo_sip/ebin
 
 all: compile
 

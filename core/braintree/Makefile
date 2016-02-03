@@ -1,7 +1,7 @@
 ROOT = ../..
-PROJECT = jonny5
+PROJECT = braintree
 
-EBINS = $(ROOT)/core/whistle_apps/ebin
+EBINS = $(ROOT)/core/braintree/ebin
 
 all: compile
 
