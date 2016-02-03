@@ -923,7 +923,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = wh_util:rand_hex_binary(8),
-    ETimeout = wh_util:to_binary(whapps_config:get_integer(?CONFIG_CAT, <<"endpoint_timeout">>, 10)),
+    ETimeout = wh_util:to_binary(whapps_config:get_integer(?CONFIG_CAT, <<"endpoint_timeout">>, 40)),
     AccountId =  wh_doc:account_id(JObj),
     AccountRealm = wh_util:get_account_realm(AccountId),
     Request = props:filter_undefined(
