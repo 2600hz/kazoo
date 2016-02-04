@@ -52,3 +52,4 @@ Version: 3.19
 |`publish_channel_reconnect`|boolean()|`false`|Whether to publish a call event related to a node reconnecting (apps may need to check for their channel if the CHANNEL_DESTROY was missed)
 |`max_channel_update_s`|integer()|0|Limit, in seconds, to channel duration (0 for no limit). Channels exceeding this limit will be killed.
 |`should_detect_inband_dtmf`|boolean()|`false`|Whether to start the DTMF detection if telephone-event 101 isn't offered in the SDP.
+|`broadcast_route_win_to_queues`|[string()]|\[]|The list of queues to send copy `route_win` message. Set only *last* part of queue name (internal full name of queue will be `route.win.broadcast.{VALUE}` in `callmgr` exchange).

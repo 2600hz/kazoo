@@ -548,13 +548,15 @@ call_control_ready(#state{call_id=CallId
 
 -spec maybe_broadcast_win(api_terms()) -> 'ok'.
 maybe_broadcast_win(Win) ->
-    maybe_broadcast_win(ecallmgr_config:get(<<"broadcast_win_applications">>, [<<"jonny5">>]), Win).
+    Queues = ecallmgr_config:get(<<"broadcast_route_win_to_queues">>, [<<"jonny5">>]),
+    maybe_broadcast_win(Queues, Win).
 
 -spec maybe_broadcast_win(ne_binaries(), api_terms()) -> 'ok'.
 maybe_broadcast_win([], _Win) -> 'ok';
-maybe_broadcast_win([App|Rest], Win) ->
-    wapi_route:broadcast_win(App, Win),
-    maybe_broadcast_win(Rest, Win).
+maybe_broadcast_win([Q|Queues], Win) ->
+    lager:debug("sending route_win to queue ~s", [Q]),
+    wapi_route:broadcast_win(Q, Win),
+    maybe_broadcast_win(Queues, Win).
 
 %%--------------------------------------------------------------------
 %% @private

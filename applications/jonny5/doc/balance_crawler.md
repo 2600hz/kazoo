@@ -7,7 +7,8 @@ Language: en-US
 # Balance crawler
 Disconnects active per_minute calls when account balance drops below zero.
 
-**For disconnecting calls it use konami application.**
+## Prerequisites
+Enable `system_config/ecallmgr/broadcast_route_win_to_queues` - add `jonny5` to list
 
 ## Crawler configuration options
 Document - `system_config/jonny5`
