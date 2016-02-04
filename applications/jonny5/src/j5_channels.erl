@@ -590,7 +590,7 @@ handle_cast({'remove', CallId}, State) ->
 handle_cast({'control_q', CallId, ControlQ}, State) ->
     Element = {#channel.control_q, ControlQ},
     case ets:update_element(?TAB, CallId, Element) of
-        'false' -> lagr:warning("trying update control queue ~s for a non-existent call ~s", [ControlQ, CallId]);
+        'false' -> lager:warning("trying update control queue ~s for a non-existent call ~s", [ControlQ, CallId]);
         'true' -> lager:debug("control queue ~s updated for call ~s", [ControlQ, CallId])
     end,
     {'noreply', State};
