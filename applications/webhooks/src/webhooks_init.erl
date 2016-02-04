@@ -88,20 +88,10 @@ existing_modules() ->
                       ]),
     existing_modules(ModulesDirectory).
 
--spec existing_modules(text()) -> atoms().
+-spec existing_modules(string()) -> atoms().
 existing_modules(ModulesDirectory) ->
-    filelib:fold_files(ModulesDirectory
-                       ,"\\.erl$"
-                       ,'false'
-                       ,fun fold_files/2
-                       ,[]
-                      ).
-
--spec fold_files(text(), atoms()) -> atoms().
-fold_files(File, Acc) ->
-    [wh_util:to_atom(
-       filename:basename(File, ".erl")
-       ,'true'
-      )
-     | Acc
-    ].
+    Pattern = filename:join(ModulesDirectory, "*.erl"),
+    [Module
+     || Path <- filelib:wildcard(Pattern),
+        'webhooks_skel' =/=
+            (Module = wh_util:to_atom(filename:basename(Path, ".erl")))].
