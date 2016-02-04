@@ -23,10 +23,12 @@
 -export([accounts/0]).
 -export([account/1]).
 -export([to_props/1]).
+-export([get_control_q/1]).
 -export([authorized/1]).
 -export([handle_authz_resp/2]).
 -export([handle_rate_resp/2]).
 -export([handle_channel_destroy/2]).
+-export([handle_route_win/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -50,6 +52,7 @@
 
 -record(channel, {call_id :: api_binary() | '$1' | '$2' | '_'
                   ,other_leg_call_id :: api_binary() | '$2' | '$3' | '_'
+                  ,control_q :: api_binary() | '_'
                   ,direction :: api_binary() | '_'
                   ,account_id :: api_binary() | '$1' | '_'
                   ,account_billing :: api_binary() | '$1' | '_'
@@ -88,8 +91,8 @@
                    ,{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>, <<"CHANNEL_DISCONNECTED">>]}
                               ,'federate'
                              ]
-
                     }
+                   ,{'route', [{'broadcast_win', ?APP_NAME}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
                       ,[{<<"authz">>, <<"authz_resp">>}]
@@ -99,6 +102,9 @@
                       }
                      ,{{?MODULE, 'handle_channel_destroy'}
                        ,[{<<"call_event">>, <<"*">>}]
+                      }
+                     ,{{?MODULE, 'handle_route_win'}
+                       ,[{<<"dialplan">>, <<"route_win">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -408,6 +414,7 @@ account(AccountId) ->
 -spec to_props(channel()) -> wh_proplist().
 to_props(#channel{call_id=CallId
                   ,other_leg_call_id=OtherLeg
+                  ,control_q=ControlQ
                   ,direction=Direction
                   ,account_id=AccountId
                   ,account_billing=AccountBilling
@@ -429,6 +436,7 @@ to_props(#channel{call_id=CallId
     props:filter_undefined(
       [{<<"Call-ID">>, CallId}
        ,{<<"Other-Leg-Call-ID">>, OtherLeg}
+       ,{<<"Control-Queue">>, ControlQ}
        ,{<<"Direction">>, Direction}
        ,{<<"Account-ID">>, AccountId}
        ,{<<"Account-Billing">>, AccountBilling}
@@ -448,6 +456,14 @@ to_props(#channel{call_id=CallId
        ,{<<"Base-Cost">>, BaseCost}
       ]
      ).
+
+-spec get_control_q(ne_binary() | [channel()]) -> api_binary().
+get_control_q(#channel{control_q=ControlQ}) -> ControlQ;
+get_control_q(CallId) ->
+    case ets:lookup(?TAB, CallId) of
+        [] -> 'undefined';
+        [C] -> get_control_q(C)
+    end.
 
 -spec authorized(wh_json:object()) -> 'ok'.
 authorized(JObj) -> gen_server:cast(?SERVER, {'authorized', JObj}).
@@ -472,6 +488,14 @@ handle_channel_destroy(JObj, Props) ->
     CallId = kz_call_event:call_id(JObj),
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'remove', CallId}).
+
+-spec handle_route_win(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_route_win(JObj, Props) ->
+    'true' = wapi_route:win_v(JObj),
+    CallId = kz_call_event:call_id(JObj),
+    Srv = props:get_value('server', Props),
+    ControlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
+    gen_server:cast(Srv, {'control_q', CallId, ControlQ}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -562,6 +586,13 @@ handle_cast({'authorized', JObj}, State) ->
     {'noreply', State};
 handle_cast({'remove', CallId}, State) ->
     _ = ets:delete(?TAB, CallId),
+    {'noreply', State};
+handle_cast({'control_q', CallId, ControlQ}, State) ->
+    Element = {#channel.control_q, ControlQ},
+    case ets:update_element(?TAB, CallId, Element) of
+        'false' -> lagr:warning("trying update control queue ~s for a non-existent call ~s", [ControlQ, CallId]);
+        'true' -> lager:debug("control queue ~s updated for call ~s", [ControlQ, CallId])
+    end,
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.

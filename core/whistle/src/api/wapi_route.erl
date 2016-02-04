@@ -17,6 +17,7 @@
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
          ,publish_win/2, publish_win/3
+         ,broadcast_win/2, broadcast_win/3
          ,get_auth_realm/1
          ,get_auth_user/1
          ,req_event_type/0
@@ -34,6 +35,9 @@
 
 %% routing keys to use in the callmgr exchange
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
+
+%% routing keys to use for broadcast route_win
+-define(KEY_ROUTE_WIN_BROADCAST, <<"route.win.broadcast">>). %% corresponds to the route_req/1 api call
 
 -define(EVENT_CATEGORY, <<"dialplan">>).
 -define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
@@ -262,15 +266,24 @@ win_v(JObj) -> win_v(wh_json:to_proplist(JObj)).
 %%--------------------------------------------------------------------
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
+    bind_to_q(Queue, props:get_value('broadcast_win', Props), Props).
+
+bind_to_q(Queue, 'undefined', Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     User = props:get_value('user', Props, <<"*">>),
-    amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm, User)).
+    amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm, User));
+bind_to_q(Queue, TargetApp, _Props) ->
+    amqp_util:bind_q_to_callmgr(Queue, get_broadcast_route_win_routing(TargetApp)).
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
+    unbind_q_from(Queue, props:get_value('broadcast_win', Props), Props).
+unbind_q_from(Queue, 'undefined', Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     User = props:get_value('user', Props, <<"*">>),
-    amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm, User)).
+    amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm, User));
+unbind_q_from(Queue, TargetApp, _Props) ->
+    amqp_util:unbind_q_from_callmgr(Queue, get_broadcast_route_win_routing(TargetApp)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -289,6 +302,10 @@ get_route_req_routing(Realm, User) ->
 get_route_req_routing(Api) ->
     {User, Realm} = get_auth_user_realm(Api),
     get_route_req_routing(Realm, User).
+
+-spec get_broadcast_route_win_routing(ne_binary()) -> ne_binary().
+get_broadcast_route_win_routing(TargetApp) ->
+    list_to_binary([?KEY_ROUTE_WIN_BROADCAST, ".", amqp_util:encode(TargetApp)]).
 
 -spec publish_req(api_terms()) -> 'ok'.
 -spec publish_req(api_terms(), binary()) -> 'ok'.
@@ -313,6 +330,14 @@ publish_win(RespQ, JObj) ->
 publish_win(RespQ, Win, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Win, ?ROUTE_WIN_VALUES, fun win/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec broadcast_win(ne_binary(), api_terms()) -> 'ok'.
+-spec broadcast_win(ne_binary(), api_terms(), binary()) -> 'ok'.
+broadcast_win(TargetApp, JObj) ->
+    broadcast_win(TargetApp, JObj, ?DEFAULT_CONTENT_TYPE).
+broadcast_win(TargetApp, Win, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Win, ?ROUTE_WIN_VALUES, fun win/1),
+    amqp_util:callmgr_publish(Payload, ContentType, get_broadcast_route_win_routing(TargetApp)).
 
 %%-----------------------------------------------------------------------------
 %% @private
