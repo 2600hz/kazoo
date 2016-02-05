@@ -158,6 +158,7 @@ bindings(AccountsWithObjectHook) ->
       ,[{'restrict_to', ['doc_updates']}
         ,{'type', Type}
         ,{'db', Account}
+        ,'federate'
        ]
      }
      || Type <- ?OBJECT_TYPES,
