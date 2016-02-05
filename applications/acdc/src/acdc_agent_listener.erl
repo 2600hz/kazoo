@@ -729,15 +729,22 @@ handle_cast({'send_sync_req'}, #state{my_id=MyId
                                       ,acct_id=AcctId
                                       ,agent_id=AgentId
                                      }=State) ->
-    lager:debug("sending sync request"),
-    send_sync_request(AcctId, AgentId, MyId, MyQ),
+    case MyQ of
+         'undefined' ->
+             lager:debug("queue not ready yet, waiting for sync request"),
+             timer:apply_after(100 , gen_listener, cast, [self(), {'send_sync_req'}]);
+          _ ->
+             lager:debug("queue retrieved: ~p , sending sync request", [MyQ]),
+             send_sync_request(AcctId, AgentId, MyId, MyQ)
+     end,
     {'noreply', State};
 
 handle_cast({'send_sync_resp', Status, ReqJObj, Options}, #state{my_id=MyId
                                                                  ,acct_id=AcctId
                                                                  ,agent_id=AgentId
+                                                                 ,my_q=MyQ
                                                                 }=State) ->
-    send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options),
+    send_sync_response(ReqJObj, AcctId, AgentId, MyId, MyQ, Status, Options),
     {'noreply', State};
 
 handle_cast({'send_status_update', Status}, #state{acct_id=AcctId
@@ -957,13 +964,13 @@ send_sync_request(AcctId, AgentId, MyId, MyQ) ->
            ],
     wapi_acdc_agent:publish_sync_req(Prop).
 
-send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options) ->
+send_sync_response(ReqJObj, AcctId, AgentId, MyId, MyQ, Status, Options) ->
     Prop = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Process-ID">>, MyId}
             ,{<<"Status">>, wh_util:to_binary(Status)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ReqJObj)}
-            | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | Options ++ wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
            ],
     Q = wh_json:get_value(<<"Server-ID">>, ReqJObj),
     lager:debug("sending sync resp to ~s", [Q]),
