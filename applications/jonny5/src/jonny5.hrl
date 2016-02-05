@@ -16,6 +16,8 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP_NAME, <<"jonny5">>).
 
+-define(CONFIG_CAT, ?APP_NAME).
+
 -type tristate_integer() :: -1 | non_neg_integer().
 
 -define(JONNY5_HRL, 'true').

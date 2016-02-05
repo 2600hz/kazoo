@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%% David Singer
 %%%-------------------------------------------------------------------
 -module(j5_limits).
 
@@ -20,6 +21,7 @@
 -export([resource_consuming_calls/1]).
 -export([inbound_trunks/1]).
 -export([outbound_trunks/1]).
+-export([trunk_region_id/1]).
 -export([twoway_trunks/1]).
 -export([burst_trunks/1]).
 -export([allow_prepay/1]).
@@ -35,6 +37,7 @@
                  ,enabled = 'true' :: boolean()
                  ,calls = -1 :: tristate_integer()
                  ,resource_consuming_calls = -1 :: tristate_integer()
+                 ,trunk_region_id :: api_binary()
                  ,inbound_trunks = 0 :: tristate_integer()
                  ,outbound_trunks = 0 :: tristate_integer()
                  ,twoway_trunks = -1 :: tristate_integer()
@@ -66,10 +69,12 @@
 -spec get(ne_binary()) -> limits().
 get(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case wh_cache:peek_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId)) of
-        {'ok', Limits} -> Limits;
+    Limits = case wh_cache:peek_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId)) of
+        {'ok', LimitsCached} -> LimitsCached;
         {'error', 'not_found'} -> fetch(AccountId)
-    end.
+    end,
+    lager:debug("Account limits: ~p" ,[to_props(Limits)]),
+    Limits.
 
 -spec fetch(ne_binary()) -> limits().
 fetch(Account) ->
@@ -81,6 +86,7 @@ fetch(Account) ->
                      ,enabled = get_limit_boolean(<<"enabled">>, JObj, 'true')
                      ,calls = get_limit(<<"calls">>, JObj, -1)
                      ,resource_consuming_calls = get_limit(<<"resource_consuming_calls">>, JObj, -1)
+                     ,trunk_region_id = wh_json:get_ne_value(<<"pvt_trunk_region_id">>, JObj)
                      ,inbound_trunks = get_limit(<<"inbound_trunks">>, JObj, 0)
                      ,outbound_trunks = get_limit(<<"outbound_trunks">>, JObj, 0)
                      ,twoway_trunks = get_limit(<<"twoway_trunks">>, JObj, -1)
@@ -207,6 +213,9 @@ outbound_trunks(#limits{bundled_outbound_trunks=BundledTrunks
                         ,outbound_trunks=Trunks}) ->
     BundledTrunks + Trunks.
 
+-spec trunk_region_id(limits()) -> binary().
+trunk_region_id(#limits{trunk_region_id=RegionID}) -> RegionID.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -306,7 +315,7 @@ get_private_limit(Key, JObj) ->
 
 -spec get_default_limit(ne_binary(), tristate_integer()) -> tristate_integer().
 get_default_limit(Key, Default) ->
-    whapps_config:get_integer(<<"jonny5">>, <<"default_", Key/binary>>, Default).
+    whapps_config:get_integer(?CONFIG_CAT, <<"default_", Key/binary>>, Default).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -323,7 +332,7 @@ get_limit_units(Key, JObj, Default) ->
 
 -spec get_default_limit_units(ne_binary(), float()) -> non_neg_integer().
 get_default_limit_units(Key, Default) ->
-    Value = whapps_config:get_float(<<"jonny5">>, <<"default_", Key/binary>>, Default),
+    Value = whapps_config:get_float(?CONFIG_CAT, <<"default_", Key/binary>>, Default),
     wht_util:dollars_to_units(abs(Value)).
 
 %%--------------------------------------------------------------------
@@ -352,7 +361,7 @@ get_public_limit_boolean(Key, _, Default) ->
 
 -spec get_default_limit_boolean(ne_binary(), boolean()) -> boolean().
 get_default_limit_boolean(Key, Default) ->
-    whapps_config:get_is_true(<<"jonny5">>, <<"default_", Key/binary>>, Default).
+    whapps_config:get_is_true(?CONFIG_CAT, <<"default_", Key/binary>>, Default).
 
 %%--------------------------------------------------------------------
 %% @private
