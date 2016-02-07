@@ -1452,8 +1452,15 @@ start_record_call_args(Node, UUID, JObj, RecordingName) ->
 -spec get_sample_rate(wh_json:object()) -> pos_integer().
 get_sample_rate(JObj) ->
     case wh_json:get_integer_value(<<"Record-Sample-Rate">>, JObj) of
-        'undefined' -> ?DEFAULT_SAMPLE_RATE;
+        'undefined' -> get_default_sample_rate(JObj);
         SampleRate -> SampleRate
+    end.
+
+-spec get_default_sample_rate(wh_json:object()) -> pos_integer().
+get_default_sample_rate(JObj) ->
+    case should_record_stereo(JObj) of
+        <<"true">> -> ?DEFAULT_STEREO_SAMPLE_RATE;
+        <<"false">> -> ?DEFAULT_SAMPLE_RATE
     end.
 
 -spec tones_app(wh_json:objects()) -> {ne_binary(), iodata()}.

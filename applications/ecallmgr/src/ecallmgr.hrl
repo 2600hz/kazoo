@@ -26,6 +26,7 @@
 -define(LOCAL_MEDIA_PATH, "/tmp/").
 
 -define(DEFAULT_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_sample_rate">>, 8000)).
+-define(DEFAULT_STEREO_SAMPLE_RATE, ecallmgr_config:get_integer(<<"record_stereo_sample_rate">>, 16000)).
 
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |
