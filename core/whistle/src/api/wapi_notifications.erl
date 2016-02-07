@@ -41,6 +41,7 @@
          %% published on completion of notification
          ,notify_update/1, notify_update_v/1
          ,denied_emergency_bridge/1, denied_emergency_bridge_v/1
+         ,customer_update/1, customer_update_v/1
          ,skel/1, skel_v/1
          ,headers/1
         ]).
@@ -73,6 +74,7 @@
          ,publish_webhook_disabled/1, publish_webhook_disabled/2
          ,publish_notify_update/2, publish_notify_update/3
          ,publish_denied_emergency_bridge/1, publish_denied_emergency_bridge/2
+         ,publish_customer_update/1, publish_customer_update/2
          ,publish_skel/1, publish_skel/2
         ]).
 
@@ -116,6 +118,7 @@
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
 -define(NOTIFY_WEBHOOK_DISABLED, <<"notifications.webhook.disabled">>).
 -define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.denied_emergency_bridge">>).
+-define(NOTIFY_CUSTOMER_UPDATE, <<"notifications.customer_update">>).
 -define(NOTIFY_SKEL, <<"notifications.skel">>).
 
 %% Notify New Voicemail or Voicemail Saved
@@ -445,6 +448,23 @@
                                         ]).
 -define(DENIED_EMERGENCY_BRIDGE_TYPES, []).
 
+%% Customer update
+-define(CUSTOMER_UPDATE_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_CUSTOMER_UPDATE_HEADERS, [<<"Recipient-ID">>
+                                           ,<<"User-Type">>
+                                           ,<<"Subject">>
+                                           ,<<"From">>
+                                           ,<<"Reply-To">>
+                                           ,<<"To">>,<<"CC">>,<<"BCC">>
+                                           ,<<"HTML">>
+                                           ,<<"Plain">>
+                                           | ?DEFAULT_OPTIONAL_HEADERS
+                                          ]).
+-define(CUSTOMER_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                ,{<<"Event-Name">>, <<"customer_update">>}
+                                ]).
+-define(CUSTOMER_UPDATE_TYPES, []).
+
 %% Skeleton
 -define(SKEL_HEADERS, [<<"Account-ID">>, <<"User-ID">>]).
 -define(OPTIONAL_SKEL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
@@ -502,6 +522,8 @@ headers(<<"webhook_disabled">>) ->
     ?WEBHOOK_DISABLED_HEADERS ++ ?OPTIONAL_WEBHOOK_DISABLED_HEADERS;
 headers(<<"denied_emergency_bridge">>) ->
     ?DENIED_EMERGENCY_BRIDGE_HEADERS ++ ?OPTIONAL_DENIED_EMERGENCY_BRIDGE_HEADERS;
+headers(<<"customer_update">>) ->
+    ?CUSTOMER_UPDATE_HEADERS ++ ?OPTIONAL_CUSTOMER_UPDATE_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
 headers(_Notification) ->
@@ -986,6 +1008,23 @@ denied_emergency_bridge_v(Prop) when is_list(Prop) ->
 denied_emergency_bridge_v(JObj) -> denied_emergency_bridge_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc customer_update notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+customer_update(Prop) when is_list(Prop) ->
+    case customer_update_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?CUSTOMER_UPDATE_HEADERS, ?OPTIONAL_CUSTOMER_UPDATE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for customer_update"}
+    end;
+customer_update(JObj) -> customer_update(wh_json:to_proplist(JObj)).
+
+-spec customer_update_v(api_terms()) -> boolean().
+customer_update_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CUSTOMER_UPDATE_HEADERS, ?CUSTOMER_UPDATE_VALUES, ?CUSTOMER_UPDATE_TYPES);
+customer_update_v(JObj) -> customer_update_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc skel notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1031,6 +1070,7 @@ skel_v(JObj) -> skel_v(wh_json:to_proplist(JObj)).
                        'webhook' |
                        'webhook_disabled' |
                        'denied_emergency_bridge' |
+                       'customer_update' |
                        'skel'.
 -type restrictions() :: [restriction()].
 -type option() :: {'restrict_to', restrictions()}.
@@ -1132,6 +1172,9 @@ bind_to_q(Q, ['webhook_disabled'|T]) ->
 bind_to_q(Q, ['denied_emergency_bridge'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DENIED_EMERGENCY_BRIDGE),
     bind_to_q(Q, T);
+bind_to_q(Q, ['customer_update'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_CUSTOMER_UPDATE),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['skel'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SKEL),
     bind_to_q(Q, T);
@@ -1230,6 +1273,9 @@ unbind_q_from(Q, ['webhook_disabled'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['denied_emergency_bridge'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DENIED_EMERGENCY_BRIDGE),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['customer_update'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_CUSTOMER_UPDATE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['skel'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SKEL),
@@ -1445,6 +1491,13 @@ publish_denied_emergency_bridge(JObj) -> publish_denied_emergency_bridge(JObj, ?
 publish_denied_emergency_bridge(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?DENIED_EMERGENCY_BRIDGE_VALUES, fun ?MODULE:denied_emergency_bridge/1),
     amqp_util:notifications_publish(?NOTIFY_DENIED_EMERGENCY_BRIDGE, Payload, ContentType).
+
+-spec publish_customer_update(api_terms()) -> 'ok'.
+-spec publish_customer_update(api_terms(), ne_binary()) -> 'ok'.
+publish_customer_update(JObj) -> publish_customer_update(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_customer_update(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?CUSTOMER_UPDATE_VALUES, fun ?MODULE:customer_update/1),
+    amqp_util:notifications_publish(?NOTIFY_CUSTOMER_UPDATE, Payload, ContentType).
 
 -spec publish_skel(api_terms()) -> 'ok'.
 -spec publish_skel(api_terms(), ne_binary()) -> 'ok'.
