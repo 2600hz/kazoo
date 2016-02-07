@@ -84,7 +84,7 @@
          ,milliseconds_to_seconds/1
          ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
          ,elapsed_s/2, elapsed_ms/2, elapsed_us/2
-         ,now_s/1, now_ms/1, now_us/1
+         ,now/0, now_s/1, now_ms/1, now_us/1
         ]).
 
 -export([put_callid/1, get_callid/0
@@ -1174,16 +1174,22 @@ elapsed_s(Start, Now) when is_integer(Start), is_integer(Now) -> Now - Start.
 elapsed_ms({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
 elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_s(Start), Now);
 elapsed_ms(Start, {_,_,_}=Now) -> elapsed_ms(Start, now_s(Now));
-elapsed_ms(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1 * ?MILLISECONDS_IN_SECOND.
+elapsed_ms(Start, Now)
+  when is_integer(Start),
+       is_integer(Now) ->
+    (Now - Start) * ?MILLISECONDS_IN_SECOND.
 
 elapsed_us({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start);
 elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);
 elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
 elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000000.
 
+-spec now() -> wh_now().
 -spec now_s(wh_now()) -> gregorian_seconds().
 -spec now_ms(wh_now()) -> pos_integer().
 -spec now_us(wh_now()) -> pos_integer().
+%% Replace now_ms/1 with erlang:system_time('milli_seconds')
+now() -> erlang:now().  %% FIXME: replace this erlang:timestamp/0 later on
 now_us({MegaSecs,Secs,MicroSecs}) ->
     (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
 now_ms({_,_,_}=Now) -> now_us(Now) div ?MILLISECONDS_IN_SECOND.

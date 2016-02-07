@@ -20,15 +20,16 @@
          ,attachment_names/1
          ,attachment/1, attachment/2, attachment/3
 
-         ,attachment_length/2, attachment_content_type/2
+         ,attachment_length/2
+         ,attachment_content_type/2, attachment_content_type/3
          ,attachment_property/3
          ,delete_attachments/1, delete_attachment/2
          ,maybe_remove_attachments/1, maybe_remove_attachments/2
          ,type/1, type/2, set_type/2
          ,id/1, id/2, set_id/2
          ,revision/1, set_revision/2, delete_revision/1
-         ,created/1, set_created/2
          ,modified/1, set_modified/2
+         ,created/1, created/2, set_created/2
          ,vsn/1, vsn/2, set_vsn/2
          ,set_soft_deleted/2, is_soft_deleted/1
 
@@ -219,8 +220,14 @@ attachment_length(JObj, AName) ->
     attachment_property(JObj, AName, <<"length">>).
 
 -spec attachment_content_type(wh_json:object(), ne_binary()) -> api_binary().
+-spec attachment_content_type(wh_json:object(), ne_binary(), ne_binary()) -> ne_binary().
 attachment_content_type(JObj, AName) ->
     attachment_property(JObj, AName, <<"content_type">>).
+attachment_content_type(JObj, AName, DefaultContentType) ->
+    case attachment_content_type(JObj, AName) of
+        'undefined' -> DefaultContentType;
+        ContentType -> ContentType
+    end.
 
 -spec attachment_property(wh_json:object(), ne_binary(), wh_json:key()) -> wh_json:json_term().
 attachment_property(JObj, AName, Key) ->
@@ -294,8 +301,11 @@ is_soft_deleted(JObj) ->
     wh_json:is_true(?KEY_SOFT_DELETED, JObj).
 
 -spec created(wh_json:object()) -> api_integer().
+-spec created(wh_json:object(), Default) -> integer() | Default.
 created(JObj) ->
-    wh_json:get_integer_value(?KEY_CREATED, JObj).
+    created(JObj, 'undefined').
+created(JObj, Default) ->
+    wh_json:get_integer_value(?KEY_CREATED, JObj, Default).
 
 -spec set_created(wh_json:object(), pos_integer()) -> wh_json:object().
 set_created(JObj, Timestamp) ->
