@@ -338,59 +338,59 @@ You can send a message with changed subject, html and plain text templates by pr
 {
     "data": {
         "user_type": "3d9b564d5c95d52d81a2e49ea0c57941"
-        "id": "customer_update", 
-        "account_overridden": true, 
-        "enabled": true, 
-        "category": "user", 
-        "friendly_name": "Customer update", 
-        "from": "info@onnet.su", 
-        "subject": "Test Reseller customer update", 
+        "id": "customer_update",
+        "account_overridden": true,
+        "enabled": true,
+        "category": "user",
+        "friendly_name": "Customer update",
+        "from": "info@onnet.su",
+        "subject": "Test Reseller customer update",
         "bcc": {
-            "email_addresses": [], 
+            "email_addresses": [],
             "type": ""
-        }, 
+        },
         "cc": {
-            "email_addresses": [], 
+            "email_addresses": [],
             "type": ""
-        }, 
+        },
         "macros": {
             "user.email": {
-                "description": "Email of the user", 
-                "friendly_name": "Email", 
+                "description": "Email of the user",
+                "friendly_name": "Email",
                 "i18n_label": "user_email"
-            }, 
+            },
             "user.first_name": {
-                "description": "First Name", 
-                "friendly_name": "First Name", 
+                "description": "First Name",
+                "friendly_name": "First Name",
                 "i18n_label": "first_name"
-            }, 
+            },
             "user.last_name": {
-                "description": "Last Name", 
-                "friendly_name": "Last Name", 
+                "description": "Last Name",
+                "friendly_name": "Last Name",
                 "i18n_label": "last_name"
-            }, 
+            },
             "user.timezone": {
-                "description": "Timezone of the user", 
-                "friendly_name": "Timezone", 
+                "description": "Timezone of the user",
+                "friendly_name": "Timezone",
                 "i18n_label": "user_timezone"
-            }, 
+            },
             "user.username": {
-                "description": "Username", 
-                "friendly_name": "Username", 
+                "description": "Username",
+                "friendly_name": "Username",
                 "i18n_label": "username"
             }
-        }, 
-        "template_charset": "utf-8", 
-        "html": "PHA+RGVhciB7e3VzZXIuZmlyc3RfbmFtZX19IHt7dXNlci5sYXN0X25hbWV9fS48L3A+CjxwPkhlcmUgYXJlIHNvbWUgbmV3cyB0aGF0IHdlIGhhdmUgc2VsZWN0ZWQgZm9yIHlvdTwvcD4KPHA+QmVzdCByZWdhcmRzLDwvcD4KPHA+T25OZXQgSW5ub3ZhdGlvbnMgTGltaXRlZC48L3A+", 
-        "plain": "Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some more news that we have selected for you.\n\nBest regards,\nOnNet Innovations Limited.", 
+        },
+        "template_charset": "utf-8",
+        "html": "PHA+RGVhciB7e3VzZXIuZmlyc3RfbmFtZX19IHt7dXNlci5sYXN0X25hbWV9fS48L3A+CjxwPkhlcmUgYXJlIHNvbWUgbmV3cyB0aGF0IHdlIGhhdmUgc2VsZWN0ZWQgZm9yIHlvdTwvcD4KPHA+QmVzdCByZWdhcmRzLDwvcD4KPHA+T25OZXQgSW5ub3ZhdGlvbnMgTGltaXRlZC48L3A+",
+        "plain": "Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some more news that we have selected for you.\n\nBest regards,\nOnNet Innovations Limited.",
         "templates": {
             "text/html": {
                 "length": 161
-            }, 
+            },
             "text/plain": {
                 "length": 136
             }
-        }, 
+        },
     }
 }
 ```

@@ -329,7 +329,6 @@ set_system_macros(Context) ->
             Context
     end.
 
-  
 post(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE) ->
     case
         whapps_util:amqp_pool_request(
