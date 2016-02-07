@@ -10,13 +10,13 @@
 -module(cb_notifications).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_provided/2
          ,content_types_accepted/2
-         ,validate/1, validate/2, validate/3
+         ,validate/1, validate/2, validate/3, validate/4
          ,put/1
-         ,post/2, post/3
+         ,post/2, post/3, post/4
          ,delete/2
 
          ,flush/0
@@ -34,6 +34,8 @@
 -define(CB_LIST, <<"notifications/crossbar_listing">>).
 -define(PREVIEW, <<"preview">>).
 -define(SMTP_LOG, <<"smtplog">>).
+-define(CUSTOMER_UPDATE, <<"customer_update">>).
+-define(SEND_MESSAGE, <<"send_message">>).
 -define(CB_LIST_SMTP_LOG, <<"notifications/smtp_log">>).
 
 -define(MACROS, <<"macros">>).
@@ -86,7 +88,12 @@ allowed_methods(_) ->
 allowed_methods(_, ?PREVIEW) ->
     [?HTTP_POST];
 allowed_methods(?SMTP_LOG, _Id) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+allowed_methods(?CUSTOMER_UPDATE, ?SEND_MESSAGE) ->
+    [?HTTP_POST].
+
+allowed_methods(?CUSTOMER_UPDATE, ?SEND_MESSAGE, _Id) ->
+    [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -107,7 +114,10 @@ resource_exists(?SMTP_LOG) -> 'true';
 resource_exists(_Id) -> 'true'.
 
 resource_exists(_Id, ?PREVIEW) -> 'true';
-resource_exists(?SMTP_LOG, _Id) -> 'true'.
+resource_exists(?SMTP_LOG, _Id) -> 'true';
+resource_exists(?CUSTOMER_UPDATE, ?SEND_MESSAGE) -> 'true'.
+
+resource_exists(?CUSTOMER_UPDATE, ?SEND_MESSAGE, _Id) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -216,7 +226,12 @@ validate(Context, Id, ?PREVIEW) ->
     DbId = kz_notification:db_id(Id),
     update_notification(maybe_update_db(Context), DbId);
 validate(Context, ?SMTP_LOG, Id) ->
-    load_smtp_log_doc(Id, Context).
+    load_smtp_log_doc(Id, Context);
+validate(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE) ->
+    cb_context:set_resp_status(Context, 'success').
+
+validate(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE, _Id) ->
+    cb_context:set_resp_status(Context, 'success').
 
 -spec validate_notifications(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_notification(cb_context:context(), path_token(), http_method()) ->
@@ -278,6 +293,7 @@ put(Context) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     case cb_context:req_files(Context) of
         [] ->
@@ -313,6 +329,22 @@ set_system_macros(Context) ->
             Context
     end.
 
+  
+post(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE) ->
+    case
+        whapps_util:amqp_pool_request(
+          build_customer_update_payload(Context)
+          ,fun wapi_notifications:publish_customer_update/1
+          ,fun wapi_notifications:customer_update_v/1
+        )
+    of
+        {'ok', _Resp} ->
+            lager:debug("published customer_update notification");
+        {'error', _E} ->
+            lager:debug("failed to publish_customer update notification: ~p", [_E])
+    end,
+    Context;
+
 post(Context, Id, ?PREVIEW) ->
     Notification = cb_context:doc(Context),
     Preview = build_preview_payload(Context, Notification),
@@ -333,6 +365,39 @@ post(Context, Id, ?PREVIEW) ->
             lager:debug("failed to publish preview for ~s: ~p", [Id, _E]),
             crossbar_util:response('error', <<"Failed to process notification preview">>, Context)
     end.
+
+post(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE, Id) ->
+    case
+        whapps_util:amqp_pool_request(
+          [{<<"Recipient-ID">>, Id}] ++ build_customer_update_payload(Context)
+          ,fun wapi_notifications:publish_customer_update/1
+          ,fun wapi_notifications:customer_update_v/1
+        )
+    of
+        {'ok', _Resp} ->
+            lager:debug("published customer_update notification");
+        {'error', _E} ->
+            lager:debug("failed to publish_customer update notification: ~p", [_E])
+    end,
+    Context.
+
+build_customer_update_payload(Context) ->
+    SenderId = case cb_context:account_id(Context) of
+                   'undefined' -> cb_context:auth_account_id(Context);
+                   AccountId -> AccountId
+               end,
+    [{<<"Account-ID">>, SenderId}
+    ,{<<"User-Type">>, cb_context:req_value(Context, <<"user_type">>)}
+    ,{<<"Subject">>, cb_context:req_value(Context, <<"subject">>)}
+    ,{<<"From">>, cb_context:req_value(Context, <<"from">>)}
+    ,{<<"Reply-To">>, cb_context:req_value(Context, <<"reply_to">>)}
+    ,{<<"To">>, cb_context:req_value(Context, <<"to">>)}
+    ,{<<"CC">>, cb_context:req_value(Context, <<"cc">>)}
+    ,{<<"BCC">>, cb_context:req_value(Context, <<"bcc">>)}
+    ,{<<"HTML">>, cb_context:req_value(Context, <<"html">>)}
+    ,{<<"Plain">>, cb_context:req_value(Context, <<"plain">>)}
+    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
 
 -spec build_preview_payload(cb_context:context(), wh_json:object()) -> wh_proplist().
 build_preview_payload(Context, Notification) ->

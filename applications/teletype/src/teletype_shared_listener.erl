@@ -53,6 +53,9 @@
                      ,{'teletype_template_skel'
                        ,[{<<"notification">>, <<"skel">>}]
                       }
+                     ,{{'teletype_customer_update', 'handle_req'}
+                       ,[{<<"notification">>, <<"customer_update">>}]
+                      }
                      ,{{'teletype_deregister', 'handle_deregister'}
                        ,[{<<"notification">>, <<"deregister">>}]
                       }
@@ -130,6 +133,7 @@
                       ,'transaction'
                       ,'voicemail_full'
                       ,'webhook_disabled'
+                      ,'customer_update'
                       %%,'skel'
                      ]).
 
