@@ -29,7 +29,7 @@ after_success:
   - source $HOME/otp/R16B/activate
   - make build-plt
   - git fetch origin master:master
-  - files="$(git diff --name-only 3.21... | grep -v deps/)"
+  - files="$(git diff --name-only 3.21... | grep -v deps/)" || true
   - $TRAVIS_BUILD_DIR/scripts/check-dialyzer.escript $files
   - kerl_deactivate
   - source $HOME/otp/$TRAVIS_OTP_RELEASE/activate
