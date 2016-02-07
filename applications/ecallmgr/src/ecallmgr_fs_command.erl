@@ -79,10 +79,11 @@ export(_, _, []) -> 'ok';
 export(Node, UUID, Props) ->
     Exports = process_fs_kv(Node, UUID, Props, 'export'),
     lager:debug("~p sendmsg export ~p ~p", [Node, UUID, Exports]),
-    _ = [freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+    AppArg = list_to_binary(Exports),
+    _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                         ,{"execute-app-name", "export"}
                                         ,{"execute-app-arg", AppArg}
-                                       ]) || AppArg <- Exports],
+                                       ]),
     'ok'.
 
 %%--------------------------------------------------------------------
