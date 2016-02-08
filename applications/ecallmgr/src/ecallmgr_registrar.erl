@@ -959,7 +959,7 @@ maybe_query_authn(#registration{account_id=AccountId
 query_authn(#registration{username=Username
                           ,realm=Realm
                          }=Reg) ->
-    case wh_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
+    case kz_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
         {'error', 'not_found'} -> fetch_authn(Reg);
         {'ok', JObj} ->
             update_registration(
@@ -1025,7 +1025,7 @@ update_from_authn_response(#registration{username=Username
           ]
          }
         ],
-    wh_cache:store_local(?ECALLMGR_AUTH_CACHE
+    kz_cache:store_local(?ECALLMGR_AUTH_CACHE
                          ,?CREDS_KEY(Realm, Username)
                          ,JObj
                          ,CacheProps

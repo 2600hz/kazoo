@@ -862,7 +862,7 @@ recording_filename(MediaName) ->
     RecordingName = filename:join([Directory
                                    ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
                                   ]),
-    _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+    _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                              ,RecordingName
                             ),
@@ -942,7 +942,7 @@ convert_whistle_app_name(App) ->
                           {'ok', ne_binary()} |
                           {'error', any()}.
 lookup_media(MediaName, CallId, JObj, Type) ->
-    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
+    case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE
                               ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                              )
     of
@@ -974,7 +974,7 @@ request_media_url(MediaName, CallId, JObj, Type) ->
         {'ok', MediaResp} ->
             MediaUrl = wh_json:find(<<"Stream-URL">>, MediaResp, <<>>),
             CacheProps = media_url_cache_props(MediaName),
-            _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+            _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                                      ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                                      ,MediaUrl
                                      ,CacheProps
@@ -992,7 +992,7 @@ request_media_url(MediaName, CallId, JObj, Type) ->
             E
     end.
 
--spec media_url_cache_props(ne_binary()) -> wh_cache:store_options().
+-spec media_url_cache_props(ne_binary()) -> kz_cache:store_options().
 media_url_cache_props(<<"/", _/binary>> = MediaName) ->
     case binary:split(MediaName, <<"/">>, ['global']) of
         [<<>>, AccountId, MediaId] ->

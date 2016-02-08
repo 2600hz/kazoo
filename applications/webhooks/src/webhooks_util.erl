@@ -451,7 +451,7 @@ init_webhook(Acct, Year, Month) ->
 
 -spec note_failed_attempt(ne_binary(), ne_binary()) -> 'ok'.
 note_failed_attempt(AccountId, HookId) ->
-    wh_cache:store_local(?CACHE_NAME
+    kz_cache:store_local(?CACHE_NAME
                          ,?FAILURE_CACHE_KEY(AccountId, HookId, wh_util:current_tstamp())
                          ,'true'
                          ,[{'expires', account_expires_time(AccountId)}]
@@ -585,7 +585,7 @@ load_metadata(MasterAccountDb, JObj) ->
 -define(AVAILABLE_EVENT_KEY, 'available_events').
 -spec available_events() -> ne_binaries().
 available_events() ->
-    case wh_cache:fetch_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY) of
+    case kz_cache:fetch_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY) of
         {'error', 'not_found'} ->
             fetch_available_events();
         {'ok', Events} ->
@@ -602,7 +602,7 @@ fetch_available_events() ->
         {'ok', Available} ->
             Events = [wh_json:get_value(<<"key">>, A) || A <- Available],
             CacheProps = [{'origin', [{'db', MasterAccountDb, <<"webhook_meta">>}]}],
-            wh_cache:store_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY, Events, CacheProps),
+            kz_cache:store_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY, Events, CacheProps),
             Events
     end.
 

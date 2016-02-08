@@ -20,7 +20,7 @@
 
 -spec flush() -> 'ok'.
 flush() ->
-    wh_cache:flush_local(?DOODLE_CACHE).
+    kz_cache:flush_local(?DOODLE_CACHE).
 
 -spec start_check_sms_by_device_id(ne_binary(), ne_binary()) -> pid().
 start_check_sms_by_device_id(AccountId, DeviceId) ->

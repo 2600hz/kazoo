@@ -196,7 +196,7 @@ relay_encoded_email(To, From, Encoded) ->
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
         {'relay_response', {'ok', Receipt}} ->
-            wh_cache:store_local(?CACHE_NAME
+            kz_cache:store_local(?CACHE_NAME
                                  ,{'receipt', Receipt}
                                  ,#email_receipt{to=To
                                                  ,from=From

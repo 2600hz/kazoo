@@ -128,7 +128,7 @@ set_global(Account, Category, Key, Value) ->
                             ),
 
     {'ok', JObj1} = couch_mgr:ensure_saved(AccountDb, Doc1),
-    wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category)),
+    kz_cache:erase_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category)),
     JObj1.
 
 -spec config_doc_id(ne_binary()) -> ne_binary().

@@ -67,7 +67,7 @@ lookup_endpoint(Username, Realm) ->
 %%--------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() ->
-    wh_cache:flush_local(?CALLFLOW_CACHE).
+    kz_cache:flush_local(?CALLFLOW_CACHE).
 
 %%--------------------------------------------------------------------
 %% @public

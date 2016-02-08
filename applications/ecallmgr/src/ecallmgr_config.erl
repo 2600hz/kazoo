@@ -33,7 +33,7 @@
 -spec flush(wh_json:key()) -> 'ok' | {'error', any()}.
 
 flush() ->
-    wh_cache:flush_local(?ECALLMGR_UTIL_CACHE),
+    kz_cache:flush_local(?ECALLMGR_UTIL_CACHE),
     flush('undefined').
 
 flush(Key) ->
@@ -48,7 +48,7 @@ flush(Key, Node) when not is_binary(Node) ->
     flush(Key, wh_util:to_binary(Node));
 flush(Key, Node) ->
     CacheKey = cache_key(Key, Node),
-    wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, CacheKey),
+    kz_cache:erase_local(?ECALLMGR_UTIL_CACHE, CacheKey),
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, Key}
            ,{<<"Node">>, Node}
@@ -84,7 +84,7 @@ get(Key, Default, Node) when not is_binary(Key) ->
 get(Key, Default, Node) when not is_binary(Node) ->
     get(Key, Default, wh_util:to_binary(Node));
 get(Key, Default, Node) ->
-    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
+    case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
         {'ok', V} -> V;
         {'error', E} when E =:= 'not_found' orelse E =:= 'undefined' ->
             fetch(Key, Default, Node)
@@ -204,7 +204,7 @@ maybe_cache_resp(_, _ , <<"undefined">>) -> 'ok';
 maybe_cache_resp(_, _ , <<"null">>) -> 'ok';
 maybe_cache_resp(Key, Node, Value) ->
     CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+    kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                          ,cache_key(Key, Node)
                          ,Value
                          ,CacheProps).

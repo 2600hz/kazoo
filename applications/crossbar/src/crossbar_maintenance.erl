@@ -122,7 +122,7 @@ refresh(Value) ->
 -spec flush() -> 'ok'.
 flush() ->
     crossbar_config:flush(),
-    wh_cache:flush_local(?CROSSBAR_CACHE).
+    kz_cache:flush_local(?CROSSBAR_CACHE).
 
 %%--------------------------------------------------------------------
 %% @public

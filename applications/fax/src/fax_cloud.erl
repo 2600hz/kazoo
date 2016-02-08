@@ -309,7 +309,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                             {'ok', wh_json:object()} |
                             {'error', any()}.
 get_faxbox_doc(PrinterId) ->
-    case wh_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
+    case kz_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
         {'ok', _Doc}=OK -> OK;
         {'error', _} ->
             fetch_faxbox_doc(PrinterId)
@@ -326,7 +326,7 @@ fetch_faxbox_doc(PrinterId) ->
             Doc = wh_json:get_value(<<"doc">>, JObj),
             FaxBoxDoc = maybe_get_faxbox_owner_email(Doc),
             CacheProps = [{'origin', [{'db', ?WH_FAXES_DB, wh_doc:id(Doc)}] }],
-            wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc, CacheProps),
+            kz_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc, CacheProps),
             {'ok', FaxBoxDoc}
     end.
 
@@ -356,7 +356,7 @@ get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
                                            {'ok', ne_binary()} |
                                            {'error', any()}.
 get_printer_oauth_credentials(PrinterId) ->
-    case wh_cache:peek_local(?FAX_CACHE, {'gcp', PrinterId }) of
+    case kz_cache:peek_local(?FAX_CACHE, {'gcp', PrinterId }) of
         {'ok', _Auth}=OK -> OK;
         {'error', _} ->
             fetch_printer_oauth_credentials(PrinterId)
@@ -373,7 +373,7 @@ fetch_printer_oauth_credentials(PrinterId) ->
             RefreshToken = #oauth_refresh_token{token = wh_json:get_value(<<"pvt_cloud_refresh_token">>, JObj)},
             {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
             Auth = wh_util:to_list(kazoo_oauth_util:authorization_header(Token)),
-            wh_cache:store_local(?FAX_CACHE, {'gcp', PrinterId}, Auth, [{'expires', Expires}]),
+            kz_cache:store_local(?FAX_CACHE, {'gcp', PrinterId}, Auth, [{'expires', Expires}]),
             {'ok', Auth}
     end.
 

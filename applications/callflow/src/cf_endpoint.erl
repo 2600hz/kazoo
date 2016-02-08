@@ -79,7 +79,7 @@ get(Call) -> get(whapps_call:authorizing_id(Call), Call).
 get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
-    case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}) of
+    case kz_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}) of
         {'ok', Endpoint} -> {'ok', Endpoint};
         {'error', 'not_found'} ->
             maybe_fetch_endpoint(EndpointId, AccountDb)
@@ -118,7 +118,7 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
 has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
     Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
-    catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+    catch kz_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
     {'ok', Endpoint}.
 
 -spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) -> list().
@@ -455,7 +455,7 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 -spec flush(ne_binary(), ne_binary()) -> any().
 flush_account(AccountDb) ->
     ToRemove =
-        wh_cache:filter_local(?CALLFLOW_CACHE, fun({?MODULE, Db, _Id}, _Value) ->
+        kz_cache:filter_local(?CALLFLOW_CACHE, fun({?MODULE, Db, _Id}, _Value) ->
                                                        Db =:= AccountDb;
                                                   (_, _) -> 'false'
                                                end),
@@ -463,7 +463,7 @@ flush_account(AccountDb) ->
     'ok'.
 
 flush(Db, Id) ->
-    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}),
+    kz_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}),
     {'ok', Rev} = couch_mgr:lookup_doc_rev(Db, Id),
     Props =
         [{<<"ID">>, Id}

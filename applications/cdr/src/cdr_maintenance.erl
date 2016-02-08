@@ -19,7 +19,7 @@
 %%%===================================================================
 -spec flush() -> 'ok'.
 flush() ->
-    wh_cache:flush_local(?CDR_CACHE).
+    kz_cache:flush_local(?CDR_CACHE).
 
 %%%===================================================================
 %%% Internal functions

@@ -86,7 +86,7 @@ get_outbound_destination(OffnetReq) ->
                            {'error', any()}.
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
-    case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
+    case kz_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("found number properties in stepswitch cache"),
             {'ok', AccountId, Props};
@@ -100,7 +100,7 @@ fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of
         {'ok', AccountId, Props} ->
             CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(Num), Num}, {'type', <<"number">>}]}],
-            wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
+            kz_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
         {'error', Reason}=E ->
