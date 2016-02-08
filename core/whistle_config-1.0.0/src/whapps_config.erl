@@ -347,7 +347,7 @@ maybe_update_category(Category, Key, Value, Node, Options) when not is_binary(No
 maybe_update_category(Category, Keys, Value, Node, Options) ->
     case wh_config:get_atom('whistle_apps', 'lock_whapps_config', 'false') of
         ['true'] ->
-            lager:debug("failed to update category, system_config doc is locked!");
+            lager:debug("failed to update category, system_config doc is locked!"),
             {'error', 'doc_locked'};
         _ ->
             update_category(Category, Keys, Value, Node, Options)
