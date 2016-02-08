@@ -305,13 +305,13 @@ set(Category, Key, Value) ->
 -spec set(config_category(), config_key(), term(), ne_binary() | atom()) ->
                  {'ok', wh_json:object()}.
 set(Category, Key, Value, Node) ->
-    update_category(Category, Key, Value, Node, []).
+    maybe_update_category(Category, Key, Value, Node, []).
 
 -spec set_default(config_category(), config_key(), term()) ->
                          {'ok', wh_json:object()} | 'ok' |
                          {'error', _}.
 set_default(Category, Key, Value) ->
-    update_category(Category, Key, Value, ?KEY_DEFAULT, []).
+    maybe_update_category(Category, Key, Value, ?KEY_DEFAULT, []).
 
 -spec update_default(config_category(), config_key(), wh_json:json_term()) ->
                             {'ok', wh_json:object()} | 'ok' |
@@ -322,28 +322,37 @@ set_default(Category, Key, Value) ->
 update_default(Category, Key, Value) ->
     update_default(Category, Key, Value, []).
 update_default(Category, Key, Value, Options) ->
-    update_category(Category, Key, Value, ?KEY_DEFAULT, Options).
+    maybe_update_category(Category, Key, Value, ?KEY_DEFAULT, Options).
 
 -spec set_node(config_category(), config_key(), term(), ne_binary() | atom()) ->
                       {'ok', wh_json:object()}.
 set_node(Category, _, _, 'undefined') -> get_category(Category);
 set_node(Category, Key, Value, Node) ->
-    update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
+    maybe_update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
 
--spec update_category(config_category(), config_key(), term(), ne_binary() | atom(), update_options()) ->
+-spec maybe_update_category(config_category(), config_key(), term(), ne_binary() | atom(), update_options()) ->
                              {'ok', wh_json:object()} |
                              {'error', _}.
-update_category('undefined', _, _, _, _) -> 'ok';
-update_category(_, 'undefined', _, _, _) -> 'ok';
-update_category(_, _, 'undefined', _, _) -> 'ok';
-update_category(Category, Key, Value, 'undefined', Options) ->
-    update_category(Category, Key, Value, ?KEY_DEFAULT, Options);
-update_category(Category, Key, Value, Node, Options) when not is_list(Key) ->
-    update_category(Category, [wh_util:to_binary(Key)], Value, Node, Options);
-update_category(Category, Key, Value, Node, Options) when not is_binary(Category) ->
-    update_category(wh_util:to_binary(Category), Key, Value, Node, Options);
-update_category(Category, Key, Value, Node, Options) when not is_binary(Node) ->
-    update_category(Category, Key, Value, wh_util:to_binary(Node), Options);
+maybe_update_category('undefined', _, _, _, _) -> 'ok';
+maybe_update_category(_, 'undefined', _, _, _) -> 'ok';
+maybe_update_category(_, _, 'undefined', _, _) -> 'ok';
+maybe_update_category(Category, Key, Value, 'undefined', Options) ->
+    maybe_update_category(Category, Key, Value, ?KEY_DEFAULT, Options);
+maybe_update_category(Category, Key, Value, Node, Options) when not is_list(Key) ->
+    maybe_update_category(Category, [wh_util:to_binary(Key)], Value, Node, Options);
+maybe_update_category(Category, Key, Value, Node, Options) when not is_binary(Category) ->
+    maybe_update_category(wh_util:to_binary(Category), Key, Value, Node, Options);
+maybe_update_category(Category, Key, Value, Node, Options) when not is_binary(Node) ->
+    maybe_update_category(Category, Key, Value, wh_util:to_binary(Node), Options);
+maybe_update_category(Category, Keys, Value, Node, Options) ->
+    case wh_config:get_atom('whistle_apps', 'lock_whapps_config', 'false') of
+        ['true'] ->
+            lager:debug("failed to update category, system_config doc is locked!");
+            {'error', 'doc_locked'};
+        _ ->
+            update_category(Category, Keys, Value, Node, Options)
+    end.
+
 update_category(Category, Keys, Value, Node, Options) ->
     lager:debug("setting ~s(~p): ~p", [Category, Keys, Value]),
     case couch_mgr:open_cache_doc(?WH_CONFIG_DB, Category) of
