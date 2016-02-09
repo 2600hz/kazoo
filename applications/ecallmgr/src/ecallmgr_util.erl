@@ -182,9 +182,9 @@ get_sip_from(Props, <<"outbound">>) ->
             lists:last(binary:split(OtherChannel, <<"/">>, ['global']))
     end;
 get_sip_from(Props, _) ->
-    Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
+    Default = <<(props:get_value(<<"variable_sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"
-                ,(props:get_value(<<"sip_from_host">>, Props, ?DEFAULT_REALM))/binary
+                ,(props:get_value(<<"variable_sip_from_host">>, Props, ?DEFAULT_REALM))/binary
               >>,
     props:get_first_defined([<<"Channel-Presence-ID">>
                              ,<<"variable_sip_from_uri">>
@@ -196,16 +196,20 @@ get_sip_request(Props) ->
     [User | _] = binary:split(
                    props:get_first_defined(
                      [<<"Hunt-Destination-Number">>
-                      ,<<"variable_sip_req_uri">>
                       ,<<"variable_sip_to_user">>
+                      ,<<"variable_sip_req_uri">>
+                      ,<<"variable_sip_loopback_req_uri">>
                      ], Props, <<"nouser">>), <<"@">>, ['global']),
-    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
+    Realm = lists:last(binary:split(
+                    props:get_first_defined([?GET_CCV(<<"Realm">>)
                                      ,<<"variable_sip_auth_realm">>
                                      ,<<"variable_sip_to_host">>
                                      ,<<"sip_auth_realm">>
                                      ,<<"sip_to_host">>
                                      ,<<"variable_sip_req_host">>
-                                    ], Props, ?DEFAULT_REALM),
+                                     ,<<"variable_sip_req_uri">>
+                                     ,<<"variable_sip_loopback_req_uri">>
+                                    ], Props, ?DEFAULT_REALM), <<"@">>, ['global'])),
     <<User/binary, "@", Realm/binary>>.
 
 -spec get_orig_ip(wh_proplist()) -> api_binary().
