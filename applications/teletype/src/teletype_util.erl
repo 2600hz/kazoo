@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz INC
+%%% @copyright (C) 2014-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -647,7 +647,7 @@ is_notice_enabled_default(TemplateKey) ->
 
 -spec get_parent_account_id(ne_binary()) -> api_binary().
 get_parent_account_id(AccountId) ->
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case kz_account:fetch(AccountId) of
         {'ok', JObj} -> kz_account:parent_account_id(JObj);
         {'error', _E} ->
             lager:error("failed to find parent account for ~s", [AccountId]),
