@@ -38,7 +38,7 @@
           options = [] :: list()
           ,from :: binary()
           ,to :: binary()
-          ,docs = [] :: wh_json:objects()
+          ,doc :: api_object()
           ,filename :: api_binary()
           ,content_type :: binary()
           ,peer_ip :: peer()
@@ -50,6 +50,7 @@
           ,original_number :: api_binary()
           ,number :: api_binary()
           ,account_id :: api_binary()
+          ,session_id :: api_binary()
          }).
 
 -type state() :: #state{}.
@@ -59,14 +60,16 @@
 
 -spec init(ne_binary(), non_neg_integer(), peer(), wh_proplist()) ->
                   {'ok', string(), #state{}} |
-                  {'stop', any(), string()}.
+                  {'stop', _, string()}.
 init(Hostname, SessionCount, Address, Options) ->
     case SessionCount > ?SMTP_MAX_SESSIONS  of
         'false' ->
             Banner = [Hostname, " Kazoo Email to Fax Server"],
             State = #state{options = Options
                            ,peer_ip = Address
+                           ,session_id = wh_util:rand_hex_binary(16)
                           },
+            wh_util:put_callid(State#state.session_id),
             {'ok', Banner, State};
         'true' ->
             lager:warning("connection limit exceeded ~p", [Address]),
@@ -78,8 +81,8 @@ init(Hostname, SessionCount, Address, Options) ->
                          {'ok', state()} |
                          error_message().
 handle_HELO(Hostname, State) ->
-    lager:debug("HELO from ~s", [Hostname]),
-    {'ok', State}.
+   lager:debug("HELO from ~s, max message size is ~B", [Hostname, ?SMTP_MSG_MAX_SIZE]),
+   {'ok', ?SMTP_MSG_MAX_SIZE, State}.
 
 -spec handle_EHLO(binary(), list(), state()) ->
                          {'ok', list(), state()} |
@@ -96,10 +99,16 @@ handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
                             | Extensions
                            ]
                    end,
-    {'ok', MyExtensions, State}.
+    {'ok', filter_extensions(MyExtensions, Options), State}.
+
+-spec filter_extensions(wh_proplist(), wh_proplist()) -> wh_proplist().
+filter_extensions(BuilIn, Options) ->
+   Extensions = props:get_value('extensions', Options, ?SMTP_EXTENSIONS),
+   lists:filter(fun({N,_}) -> not props:is_defined(N, Extensions) end, BuilIn) ++ Extensions.
 
 -spec handle_MAIL(binary(), state()) -> {'ok', state()}.
-handle_MAIL(From, State) ->
+handle_MAIL(FromHeader, State) ->
+    From = wh_util:to_lower_binary(FromHeader),
     lager:debug("Checking Mail from ~s", [From]),
     {'ok', State#state{from=From}}.
 
@@ -113,7 +122,8 @@ handle_MAIL_extension(Extension, _State) ->
 -spec handle_RCPT(binary(), state()) ->
                          {'ok', state()} |
                          {'error', string(), state()}.
-handle_RCPT(To, State) ->
+handle_RCPT(ToHeader, State) ->
+    To = wh_util:to_lower_binary(ToHeader),
     lager:debug("Checking Mail to ~s", [To]),
     check_faxbox((reset(State))#state{to=To}).
 
@@ -136,7 +146,7 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
     %% JMA: Can this be done with wh_util:rand_hex_binary() ?
     Reference = lists:flatten(
                   [io_lib:format("~2.16.0b", [X])
-                   || <<X>> <= erlang:md5(term_to_binary(erlang:now()))
+                   || <<X>> <= erlang:md5(term_to_binary(wh_util:now()))
                   ]),
 
     try mimemail:decode(Data) of
@@ -188,8 +198,8 @@ handle_other(<<"PROXY">>, Args, State) ->
     {State};
 handle_other(Verb, Args, State) ->
     %% You can implement other SMTP verbs here, if you need to
-    lager:debug("500 Error: command not recognized : ~p / ~p",[Verb,Args]),
-    {["500 Error: command not recognized : '", wh_util:to_list(Verb), "'"], State}.
+    lager:debug("500 Error: command not recognized : '~s ~s'",[Verb,Args]),
+    {["500 Error: command not recognized : '", Verb, "'"], State}.
 
 -spec handle_AUTH('login' | 'plain' | 'cram-md5', binary(), binary() | {binary(), binary()}, state()) ->
                          'error'.
@@ -201,11 +211,11 @@ handle_STARTTLS(State) ->
     lager:debug("SMTP TLS Started"),
     State.
 
--spec code_change(_, state(), _) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec terminate(_, state()) ->  {'ok', _, state()}.
+-spec terminate(any(), state()) ->  {'ok', any(), state()}.
 terminate('normal', State) ->
     _ = wh_util:spawn(fun()-> handle_message(State) end),
     {'ok', 'normal', State};
@@ -218,7 +228,7 @@ terminate(Reason, State) ->
 -spec handle_message(state()) -> 'ok'.
 handle_message(#state{errors=[_Error | _Errors]}=State) ->
     maybe_faxbox_log(State);
-handle_message(#state{docs=[]}=State) ->
+handle_message(#state{doc='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no fax documents to save">>]});
 handle_message(#state{filename='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no fax attachment to save">>]});
@@ -226,29 +236,22 @@ handle_message(#state{errors=[], faxbox='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no previous errors but no faxbox doc">>]});
 handle_message(#state{filename=Filename
                          ,content_type=CT
-                         ,docs=Docs
+                         ,doc=Doc
                          ,errors=[]
                         }=State) ->
+    lager:debug("checking file ~s", [Filename]),
     case file:read_file(Filename) of
         {'ok', FileContents} ->
-            case fax_util:save_fax_docs(Docs, FileContents, CT) of
+            case fax_util:save_fax_docs([Doc], FileContents, CT) of
                 'ok' ->
-                    'ok' = file_delete(Filename);
-                {'error', Error} ->
-                    maybe_faxbox_log(State#state{errors=[Error]})
+                    lager:debug("smtp fax document saved"),
+                    wh_util:delete_file(Filename);
+                {'error', Error} -> maybe_faxbox_log(State#state{errors=[Error]})
             end;
         _Else ->
             Error = wh_util:to_binary(io_lib:format("error reading attachment ~s", [Filename])),
             maybe_faxbox_log(State#state{errors=[Error]})
     end.
-
--spec file_delete(api_binary()) -> 'ok'.
-file_delete(Filename) ->
-     case file:delete(Filename) of
-         'ok' -> 'ok';
-         {'error', _}=_E ->
-             lager:debug("error deleting ~s : ~p", [Filename, _E])
-     end.
 
 -spec maybe_system_report(state()) -> 'ok'.
 maybe_system_report(#state{faxbox='undefined', account_id='undefined'}=State) ->
@@ -335,7 +338,7 @@ to_proplist(#state{}=State) ->
 to_proplist('undefined') -> [];
 to_proplist(JObj) ->
     props:filter_undefined(
-      [{<<"FaxBox-ID">>, wh_json:get_value(<<"_id">>, JObj)}
+      [{<<"FaxBox-ID">>, wh_doc:id(JObj)}
       ]
      ).
 
@@ -425,7 +428,7 @@ check_permissions(#state{from=From
         'false' ->
             Error = wh_util:to_binary(
                       io_lib:format("address ~s is not allowed on faxbox ~s"
-                                    ,[From, wh_json:get_value(<<"_id">>, FaxBoxDoc)]
+                                    ,[From, wh_doc:id(FaxBoxDoc)]
                                    )
                      ),
             lager:debug(Error),
@@ -454,7 +457,7 @@ maybe_faxbox(#state{faxbox_email=Domain}=State) ->
     case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', [JObj]} ->
             FaxBoxDoc= wh_json:get_value(<<"doc">>,JObj),
-            AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
+            AccountId = wh_doc:account_id(FaxBoxDoc),
             maybe_faxbox_owner(State#state{faxbox=FaxBoxDoc, account_id=AccountId});
         _ -> maybe_faxbox_domain(State)
     end.
@@ -464,7 +467,7 @@ maybe_faxbox_owner(#state{faxbox=FaxBoxDoc}=State) ->
     case wh_json:get_value(<<"owner_id">>, FaxBoxDoc) of
         'undefined' -> State;
         OwnerId ->
-            AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
+            AccountId = wh_doc:account_id(FaxBoxDoc),
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
                 {'ok', OwnerDoc} ->
@@ -483,7 +486,7 @@ maybe_faxbox_domain(#state{faxbox_email=Domain}=State) ->
             lager:debug(Error),
             State#state{errors=[Error]};
         {'ok', [JObj]} ->
-            AccountId = wh_json:get_value(<<"id">>, JObj),
+            AccountId = wh_doc:id(JObj),
             maybe_faxbox_by_owner_email(AccountId, State#state{account_id=AccountId});
         {'ok', [_JObj | _JObjs]} ->
             Error = <<"accounts query by realm ", Domain/binary, " return more than one document">>,
@@ -507,10 +510,10 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
             lager:debug(Error),
             maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]});
         {'ok', [JObj]} ->
-            OwnerId = wh_json:get_value(<<"id">>, JObj),
+            OwnerId = wh_doc:id(JObj),
             maybe_faxbox_by_owner_id(AccountId, OwnerId, State);
         {'ok', [_JObj | _JObjs]} ->
-            Error = wh_util:to_binary(io_lib:format("more then one user with email ~s in account ~s, trying by rules", [From, AccountId])), 
+            Error = wh_util:to_binary(io_lib:format("more then one user with email ~s in account ~s, trying by rules", [From, AccountId])),
             lager:debug(Error),
             maybe_faxbox_by_rules(AccountId, State#state{errors=[Error | Errors]});
         {'error', _E} ->
@@ -584,16 +587,20 @@ maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
 -spec add_fax_document(state()) ->
                               {'ok', state()} |
                               {'error', string(), state()}.
-add_fax_document(#state{docs=Docs
+add_fax_document(#state{doc='undefined'
                         ,from=From
                         ,owner_email=OwnerEmail
                         ,number=FaxNumber
                         ,faxbox=FaxBoxDoc
+                        ,session_id=Id
                        }=State) ->
-    FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
+    FaxBoxId = wh_doc:id(FaxBoxDoc),
+    AccountId = wh_doc:account_id(FaxBoxDoc),
     AccountDb = ?WH_FAXES_DB,
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
+    ResellerId = case kzd_services:reseller_id(FaxBoxDoc) of
+                     'undefined' -> wh_services:find_reseller_id(AccountId);
+                     TheResellerId -> TheResellerId
+                 end,
 
     SendToKey = [<<"notifications">>
                  ,<<"outbound">>
@@ -620,6 +627,7 @@ add_fax_document(#state{docs=Docs
                ,{<<"notifications">>, Notify}
                ,{<<"faxbox_id">>, FaxBoxId}
                ,{<<"folder">>, <<"outbox">>}
+               ,{<<"_id">>, Id}
               ]),
 
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
@@ -632,7 +640,12 @@ add_fax_document(#state{docs=Docs
                              ]
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),
-    {'ok', State#state{docs=[Doc | Docs]}}.
+    lager:debug("added fax document from smtp : ~p", [Doc]),
+    {'ok', State#state{doc=Doc}};
+add_fax_document(#state{doc=Doc}=State) ->
+    lager:debug("add fax document called but already has a doc : ~p", [Doc]),
+    {'ok', State}.
+
 
 %% ====================================================================
 %% Internal functions
@@ -687,8 +700,13 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
             Props = props:get_value(<<"disposition-params">>, Parameters, []),
             Filename = wh_util:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
             Ext = filename:extension(Filename),
-            CT = fax_util:extension_to_content_type(Ext),
-            maybe_process_part(CT, Parameters, Body, State);
+            case fax_util:extension_to_content_type(Ext) of
+                <<"application/octet-stream">> ->
+                    lager:debug("unable to determine content-type for extension : ~s", [Ext]),
+                    {'ok', State};
+                CT ->
+                    maybe_process_part(CT, Parameters, Body, State)
+            end;
          _Else ->
             lager:debug("part is not attachment"),
             {'ok', State}
@@ -791,11 +809,11 @@ maybe_process_image(CT, Body, Size, State) ->
     end.
 
 -spec write_tmp_file(ne_binary(), binary() | mimemail:mimetuple()) ->
-    {'ok', api_binary()}
-    | {'error', any()}.
--spec write_tmp_file(ne_binary() | 'undefined' , ne_binary(), binary() | mimemail:mimetuple()) ->
-    {'ok', api_binary()}
-    | {'error', any()}.
+                            {'ok', api_binary()} |
+                            {'error', any()}.
+-spec write_tmp_file(api_binary() , ne_binary(), binary() | mimemail:mimetuple()) ->
+                            {'ok', api_binary()} |
+                            {'error', any()}.
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).
 
@@ -804,7 +822,7 @@ write_tmp_file('undefined', Extension, Body) ->
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file(Filename, Extension, Body) ->
     File = <<Filename/binary, ".", Extension/binary>>,
-    case wh_util:write_file(File, Body) of
+    case file:write_file(File, Body, []) of
         'ok' -> {'ok', File};
         {'error', _}=Error ->
             lager:debug("error writing file ~s : ~p", [Filename, Error]),

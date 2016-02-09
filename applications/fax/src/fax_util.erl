@@ -125,7 +125,7 @@ maybe_attach_extension(A, CT) ->
 
 -spec save_fax_docs(wh_json:objects(), binary(), ne_binary()) ->
                            'ok' |
-                           {'error', term()}.
+                           {'error', any()}.
 save_fax_docs([], _FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES_DB, Doc) of
@@ -144,16 +144,16 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
                                  {'ok', wh_json:object()} |
                                  {'error', ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->
-    save_fax_attachment(JObj, FileContents, CT, whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5)).
+    MaxStorageRetry = whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
+    save_fax_attachment(JObj, FileContents, CT, MaxStorageRetry).
 
 save_fax_attachment(JObj, _FileContents, _CT, 0) ->
-    DocId = wh_json:get_value(<<"_id">>, JObj),
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
-    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, Rev]),
+    DocId = wh_doc:id(JObj),
+    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, wh_doc:revision(JObj)]),
     {'error', <<"max retry saving attachment">>};
 save_fax_attachment(JObj, FileContents, CT, Count) ->
-    DocId = wh_json:get_value(<<"_id">>, JObj),
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    DocId = wh_doc:id(JObj),
+    Rev = wh_doc:revision(JObj),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
             ,{'rev', Rev}
            ],
@@ -188,7 +188,7 @@ check_fax_attachment(DocId, Name) ->
                                     {'ok', wh_json:object()} |
                                     {'error', any()}.
 save_fax_doc_completed(JObj)->
-    DocId = wh_json:get_value(<<"_id">>, JObj),
+    DocId = wh_doc:id(JObj),
     case couch_mgr:save_doc(?WH_FAXES_DB, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
         {'ok', Doc} ->
             lager:debug("fax jobid ~s set to pending", [DocId]),
