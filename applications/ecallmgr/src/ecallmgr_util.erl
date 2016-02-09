@@ -13,6 +13,7 @@
 
 -export([send_cmd/4]).
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
+-export([get_fs_key/1]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
@@ -368,6 +369,14 @@ get_fs_kv(Key, Val, _) ->
         {_, Prefix} ->
             V = maybe_sanitize_fs_value(Key, Val),
             list_to_binary([Prefix, "=", wh_util:to_list(V), ""])
+    end.
+
+-spec get_fs_key(ne_binary()) -> binary().
+get_fs_key(<<?CHANNEL_VAR_PREFIX, _/binary>>=Key) -> Key;
+get_fs_key(Key) ->
+    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
+        'false' -> <<?CHANNEL_VAR_PREFIX, Key/binary>>;
+        {_, Prefix} -> Prefix
     end.
 
 -spec get_fs_key_and_value(ne_binary()
