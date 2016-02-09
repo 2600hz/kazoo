@@ -58,16 +58,44 @@ build_renderer(TemplateId, ContentType, Template) ->
                                  ,ModuleName
                                  ,[{'out_dir', 'false'}
                                   ,'return'
+                                  ,'report'
+                                   ,{'auto_escape', 'false'}
                                   ]
                                  )
     of
         {'ok', Name} ->
-            lager:debug("built system_alerts renderer for ~s", [Name]);
+            lager:debug("built ~s renderer for ~s", [TemplateId, Name]);
         {'ok', Name, []} ->
-            lager:debug("built system_alerts renderer for ~s", [Name]);
+            lager:debug("built ~s renderer for ~s", [TemplateId, Name]);
         {'ok', Name, Warnings} ->
-            lager:debug("compiling template ~s produced warnings: ~p", [Name, Warnings])
+            lager:debug("compiling template ~s for renderer ~s produced warnings: ~p", [TemplateId, Name, Warnings]);
+        {'error', Errors, Warnings} ->
+            lager:debug("failed to compile template ~s", [TemplateId]),
+            [format_erlydtl_error(Error, Template) || Error <- Errors],
+            [format_erlydtl_warning(Warning, Template) || Warning <- Warnings],
+            throw({'error', 'failed_template', ModuleName})
     end.
+
+format_erlydtl_error({Module, Errors}, Template) ->
+    lager:debug("error in module ~s", [Module]),
+    format_erlydtl_errors(Errors, Template).
+
+format_erlydtl_errors(Errors, Template) ->
+    [format_error(Error, Template) || Error <- Errors].
+
+format_error({{Row, Column}, _ErlydtlModule, Msg}, Template) ->
+    Rows = binary:split(Template, <<"\n">>, ['global']),
+    ErrorRow = lists:nth(Row, Rows),
+    <<Pre:Column/binary, Rest/binary>> = ErrorRow,
+    lager:debug("~p: '~s' '~s'", [Msg, Pre, Rest]);
+format_error({Line, _ErlydtlModule, Msg}, Template) ->
+    Rows = binary:split(Template, <<"\n">>, ['global']),
+    ErrorRow = lists:nth(Line, Rows),
+    lager:debug("~p on line ~p: ~s", [Msg, Line, ErrorRow]).
+
+
+format_erlydtl_warning(Warning, Template) ->
+    lager:debug("warning: ~p template: ~p", [Warning, Template]).
 
 -type template_attachment() :: {ne_binary(), binary()}.
 -type template_attachments() :: [template_attachment()].
@@ -78,9 +106,12 @@ fetch_master_attachments(TemplateId) ->
 
 -spec fetch_attachments(ne_binary(), ne_binary()) -> template_attachments().
 fetch_attachments(TemplateId, Account) ->
-    AccountDb = wh_util:format_account_db(Account),
+    AccountDb = case Account of
+                    ?WH_CONFIG_DB -> ?WH_CONFIG_DB;
+                    Account -> wh_util:format_account_db(Account)
+                end,
     DocId = doc_id(TemplateId),
-    case fetch_notification(AccountDb, DocId) of
+    case fetch_notification(TemplateId, AccountDb) of
         {'ok', TemplateDoc} ->
             wh_json:foldl(fun(AttachmentName, AttachmentProps, Acc) ->
                                   fetch_attachment(AttachmentName, AttachmentProps, Acc, AccountDb, DocId)
@@ -137,6 +168,8 @@ render(TemplateId, Macros, DataJObj, 'true') ->
 templates_source(_TemplateId, 'undefined') ->
     lager:warning("no account id for template ~s, no template to process", [_TemplateId]),
     'undefined';
+templates_source(_TemplateId, ?WH_CONFIG_DB) ->
+    ?WH_CONFIG_DB;
 templates_source(TemplateId, <<_/binary>> = AccountId) ->
     lager:debug("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
     ResellerId = wh_services:find_reseller_id(AccountId),
@@ -167,10 +200,14 @@ templates_source(TemplateId, AccountId, ResellerId) ->
 -spec fetch_notification(ne_binary(), ne_binary()) ->
                                 {'ok', wh_json:object()} |
                                 {'error', any()}.
+fetch_notification(TemplateId, ?WH_CONFIG_DB) ->
+    fetch_notification(TemplateId, ?WH_CONFIG_DB, 'undefined');
 fetch_notification(TemplateId, Account) ->
     fetch_notification(TemplateId, Account, wh_services:find_reseller_id(Account)).
 
 fetch_notification(TemplateId, 'undefined', _ResellerId) ->
+    couch_mgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
+fetch_notification(TemplateId, ?WH_CONFIG_DB, _ResellerId) ->
     couch_mgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
 fetch_notification(TemplateId, AccountId, AccountId) ->
     AccountDb = wh_util:format_account_db(AccountId),
@@ -196,7 +233,7 @@ render_masters(TemplateId, Macros) ->
       ].
 
 master_content_types(TemplateId) ->
-    case fetch_notification(?WH_CONFIG_DB, TemplateId) of
+    case fetch_notification(TemplateId, ?WH_CONFIG_DB) of
         {'ok', NotificationJObj} ->
             wh_json:foldl(fun master_content_type/3
                           ,[]
