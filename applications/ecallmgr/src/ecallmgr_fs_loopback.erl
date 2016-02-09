@@ -38,8 +38,8 @@ filter('true', Node, UUID, Props, Update) ->
             UpdateCCVs = [{<<?CHANNEL_VAR_PREFIX, ?LOOPBACK_FILTERED>>, <<"true">>} | LoopBackCCVs],
             {Clear, Filtered} = lists:foldl(fun filter_props/2, {[], []}, Props),
             Funs = fun() ->
-                          ecallmgr_fs_command:bg_unset(Node, UUID, Clear),
-                          ecallmgr_fs_command:bg_set(Node, UUID, UpdateCCVs)
+                          ecallmgr_fs_command:unset(Node, UUID, Clear),
+                          ecallmgr_fs_command:set(Node, UUID, UpdateCCVs)
                   end,
             maybe_update_ccvs(Update, Funs, updated_props(Filtered, UpdateCCVs))
     end.
