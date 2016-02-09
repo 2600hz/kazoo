@@ -1080,7 +1080,7 @@ add_to_dtmf_collection(DTMF, Collection, Call) ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    wh_cache:flush_local(?WHAPPS_CALL_CACHE).
+    kz_cache:flush_local(?WHAPPS_CALL_CACHE).
 
 -spec cache(call()) -> 'ok'.
 -spec cache(call(), api_binary()) -> 'ok'.
@@ -1094,7 +1094,7 @@ cache(Call, AppName) ->
 
 cache(#whapps_call{call_id=CallId}=Call, AppName, Expires) ->
     CacheProps = [{'expires', Expires}],
-    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}, Call, CacheProps).
+    kz_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}, Call, CacheProps).
 
 -spec retrieve(ne_binary()) ->
                       {'ok', call()} |
@@ -1107,7 +1107,7 @@ retrieve(CallId) ->
     retrieve(CallId, 'undefined').
 
 retrieve(CallId, AppName) ->
-    wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}).
+    kz_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, 'call', AppName, CallId}).
 
 %% EUNIT TESTING
 -ifdef(TEST).

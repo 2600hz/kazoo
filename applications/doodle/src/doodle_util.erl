@@ -209,7 +209,7 @@ remove_keys(Call, Keys) ->
                                     {'ok', ne_binary()} |
                                     {'error', any()}.
 endpoint_id_from_sipdb(Realm, Username) ->
-    case wh_cache:peek_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username)) of
+    case kz_cache:peek_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             get_endpoint_id_from_sipdb(Realm, Username)
@@ -228,7 +228,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
             EndpointId = wh_doc:id(JObj),
             AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
             CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
-            wh_cache:store_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username), {AccountDb, EndpointId}, CacheProps),
+            kz_cache:store_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username), {AccountDb, EndpointId}, CacheProps),
             {'ok', EndpointId};
         {'ok', []} ->
             lager:debug("sip username ~s not in sip_db", [Username]),
@@ -242,7 +242,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
                                  {'ok', wh_json:object()} |
                                  {'error', any()}.
 endpoint_from_sipdb(Realm, Username) ->
-    case wh_cache:peek_local(?DOODLE_CACHE, ?SIP_ENDPOINT_KEY(Realm, Username)) of
+    case kz_cache:peek_local(?DOODLE_CACHE, ?SIP_ENDPOINT_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             get_endpoint_from_sipdb(Realm, Username)
@@ -263,7 +263,7 @@ get_endpoint_from_sipdb(Realm, Username) ->
             EndpointId = wh_doc:id(JObj),
             CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
             Doc = wh_json:get_value(<<"doc">>, JObj),
-            wh_cache:store_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username), Doc, CacheProps),
+            kz_cache:store_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username), Doc, CacheProps),
             {'ok', Doc};
         {'ok', []} ->
             lager:debug("sip username ~s not in sip_db", [Username]),
@@ -413,7 +413,7 @@ get_inbound_destination(JObj) ->
                            {'error', any()}.
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
-    case wh_cache:fetch_local(?DOODLE_CACHE, cache_key_number(Num)) of
+    case kz_cache:fetch_local(?DOODLE_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("cached number ~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
@@ -427,7 +427,7 @@ fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of
         {'ok', AccountId, Props} ->
             CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(Num), Num}, {'type', <<"number">>}]}],
-            wh_cache:store_local(?DOODLE_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
+            kz_cache:store_local(?DOODLE_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
         {'error', Reason}=E ->
@@ -444,7 +444,7 @@ cache_key_number(Number) ->
                         {'error', any()}.
 lookup_mdn(Number) ->
     Num = wnm_util:normalize_number(Number),
-    case wh_cache:fetch_local(?DOODLE_CACHE, cache_key_mdn(Num)) of
+    case kz_cache:fetch_local(?DOODLE_CACHE, cache_key_mdn(Num)) of
         {'ok', {Id, OwnerId}} ->
             lager:debug("cached number ~s is associated with ~s/~s", [Num, OwnerId, Id]),
             {'ok', Id, OwnerId};
@@ -483,7 +483,7 @@ fetch_mdn_result(AccountId, Num) ->
                               {'ok', ne_binary(), api_binary()}.
 cache_mdn_result(AccountDb, Id, OwnerId) ->
     CacheProps = [{'origin', [{'db', AccountDb, Id}]}],
-    wh_cache:store_local(?DOODLE_CACHE, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
+    kz_cache:store_local(?DOODLE_CACHE, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
     {'ok', Id, OwnerId}.
 
 -spec cache_key_mdn(ne_binary()) -> {'sms_mdn', ne_binary()}.

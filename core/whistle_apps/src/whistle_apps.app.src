@@ -16,6 +16,7 @@
                   , kazoo_documents
                   , whistle_number_manager
                   , kazoo_token_buckets
+                  , kazoo_caches
 
                   , syslog
                   , lager

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Simple cache server
 %%% @end
@@ -7,7 +7,7 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(wh_cache).
+-module(kz_cache).
 
 -behaviour(gen_listener).
 
@@ -44,8 +44,7 @@
          ,code_change/3
         ]).
 
--include("include/wh_types.hrl").
--include("include/wh_log.hrl").
+-include("kz_caches.hrl").
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour

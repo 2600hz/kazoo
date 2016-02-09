@@ -117,7 +117,7 @@ handle_originate_execute(JObj, Props) ->
             ServerId ->
                 gen_listener:cast(Srv, {'update_server_id', ServerId})
         end,
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
+    kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
     gen_listener:cast(Srv, {'originate_execute'}).
 
 %%%===================================================================
@@ -202,7 +202,7 @@ handle_cast({'create_uuid'}, #state{node=Node
     UUID = {_, Id} = create_uuid(JObj, Node),
     wh_util:put_callid(Id),
     lager:debug("created uuid ~p", [UUID]),
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
+    kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
 
     case start_control_process(State#state{uuid=UUID}) of
         {'ok', #state{control_pid=Pid}=State1} ->
@@ -802,7 +802,7 @@ start_control_process(#state{originate_req=JObj
     case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ServerId, wh_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
+            kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
             lager:debug("started control pid ~p for uuid ~s", [CtrlPid, Id]),
             {'ok', State#state{control_pid=CtrlPid}};
         {'error', _E}=E ->

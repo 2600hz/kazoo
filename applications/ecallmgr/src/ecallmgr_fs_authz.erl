@@ -60,13 +60,13 @@ maybe_authorize_channel(Props, Node) ->
     Referred = is_referred(Props),
     case kzd_freeswitch:channel_authorized(Props) of
         <<"true">> when not Referred ->
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+            kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,{'true', wh_json:new()}
                                 ),
             'true';
         <<"false">> when not Referred ->
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+            kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,'false'
                                 ),
@@ -74,7 +74,7 @@ maybe_authorize_channel(Props, Node) ->
         _Else ->
             case kzd_freeswitch:hunt_destination_number(Props) of
                 <<"conference">> ->
-                    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+                    kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                                          ,?AUTHZ_RESPONSE_KEY(CallId)
                                          ,{'true', wh_json:new()}
                                         ),
@@ -246,7 +246,7 @@ allow_call(Props, CallId, Node) ->
               ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
               ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+    kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                          ,?AUTHZ_RESPONSE_KEY(CallId)
                          ,{'true', wh_json:from_list(Vars)}
                         ),
@@ -261,7 +261,7 @@ maybe_deny_call(Props, CallId, Node) ->
     case ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') of
         'true' -> rate_call(Props, CallId, Node);
         'false' ->
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), 'false'),
+            kz_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), 'false'),
             wh_util:spawn(fun kill_channel/2, [Props, Node]),
             'false'
     end.
