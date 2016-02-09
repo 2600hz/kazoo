@@ -408,12 +408,12 @@ maybe_save_category(Category, JObj, PvtFields) ->
     maybe_save_category(Category, JObj, PvtFields, 'false').
 
 maybe_save_category(Category, JObj, PvtFields, Looped) ->
-    IsLocked =  wh_config:get_atom('whistle_apps', 'lock_whapps_config', ['false']),
-    maybe_save_category(Category, Keys, Value, Node, Options, IsLocked).
+    [IsLocked] =  wh_config:get_atom('whistle_apps', 'lock_whapps_config', ['false']),
+    maybe_save_category(Category, JObj, PvtFields, Looped, IsLocked).
 
-maybe_save_category(_, _, _, _, ['true']) ->
+maybe_save_category(_, JObj, _, _, 'true') ->
     lager:debug("failed to update category, system config doc is locked!"),
-    {'ok', 'doc_locked'};
+    {'ok', JObj};
 maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     lager:debug("updating configuration category ~s(~s)", [Category, wh_doc:revision(JObj)]),
 
