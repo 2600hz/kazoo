@@ -62,18 +62,22 @@ next_renderer(BackoffMs) ->
         'full' ->
             lager:critical("render farm pool is full! waiting ~bms", [BackoffMs]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2 + backoff_fudge());
-        P -> P
+            next_renderer(next_backoff(BackoffMs));
+        WorkerPid when is_pid(WorkerPid) -> WorkerPid
     catch
         'exit':{'timeout', {'gen_server', 'call', _Args}} ->
             lager:critical("render farm overwhelmed!! back off ~b", [BackoffMs]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2 + backoff_fudge());
+            next_renderer(next_backoff(BackoffMs));
         _E:_R ->
             lager:warning("failed to checkout: ~s: ~p", [_E, _R]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2) + backoff_fudge()
+            next_renderer(next_backoff(BackoffMs))
     end.
+
+-spec next_backoff(pos_integer()) -> pos_integer().
+next_backoff(BackoffMs) ->
+    BackoffMs * 2 + backoff_fudge().
 
 -spec backoff_fudge() -> pos_integer().
 backoff_fudge() ->

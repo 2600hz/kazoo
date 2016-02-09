@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz Inc
+%%% @copyright (C) 2014-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -129,15 +129,10 @@ handle_req(DataJObj) ->
              ],
 
     %% Load templates
-    Templates = teletype_templates:fetch(?TEMPLATE_ID, DataJObj),
-
-    %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     AccountId = teletype_util:find_account_id(DataJObj),
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_meta(?TEMPLATE_ID, AccountId),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])

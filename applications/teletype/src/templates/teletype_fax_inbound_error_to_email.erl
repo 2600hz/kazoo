@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz Inc
+%%% @copyright (C) 2014-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -81,17 +81,11 @@ handle_fax_inbound(DataJObj) ->
     Macros = build_template_data(
                wh_json:set_values([{<<"error">>, error_data(DataJObj)}], DataJObj)),
 
-    %% Load templates
-    Templates = teletype_templates:fetch(?TEMPLATE_ID, DataJObj),
-
     %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates,
-                            Template =/= 'undefined'
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
     lager:debug("rendered templates"),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
