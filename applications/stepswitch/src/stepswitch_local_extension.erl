@@ -257,6 +257,7 @@ build_local_extension(#state{number_props=Props
                     ,{<<"Resource-ID">>, AccountId}
                     ,{<<"Simplify-Loopback">>, <<"false">>}
                     ,{<<"Loopback-Bowout">>, <<"false">>}
+                    ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ]),
 
     Endpoint = wh_json:from_list(

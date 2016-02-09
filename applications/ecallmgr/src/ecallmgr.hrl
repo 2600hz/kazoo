@@ -203,7 +203,6 @@
                                ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
                                ,{<<"Presence-ID">>, <<"presence_id">>}
                                ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
-                               ,{<<"From-URI">>, <<"sip_from_uri">>}
                                ,{<<"Bypass-Media">>, <<"bypass_media_after_bridge">>}
                                ,{<<"Bridge-Generate-Comfort-Noise">>,<<"bridge_generate_comfort_noise">>}
                                ,{<<"Origination-UUID">>, <<"origination_uuid">>}
@@ -273,6 +272,10 @@
                                ,{<<"Default-Language">>, <<"default_language">>}
                                ,{<<"RECORD_STEREO">>, <<"RECORD_STEREO">>}
                                ,{<<"RECORD_SOFTWARE">>, <<"RECORD_SOFTWARE">>}
+                               ,{<<"From-URI">>, <<"sip_from_uri">>}
+                               ,{<<"To-URI">>, <<"sip_to_uri">>}
+                               ,{<<"Request-URI">>, <<"sip_req_uri">>}
+                               ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
