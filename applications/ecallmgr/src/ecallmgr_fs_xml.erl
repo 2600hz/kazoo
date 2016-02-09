@@ -397,7 +397,7 @@ route_ccvs_list(CCVs) ->
     L = [wh_util:to_list(ecallmgr_util:get_fs_kv(K, V))
          || {K, V} <- CCVs
         ],
-    wh_util:to_binary(string:join(L, " ")).
+    <<"^^;", (wh_util:to_binary(string:join(L, ";")))/binary>>.
 
 -spec route_resp_transfer_ringback(wh_json:object()) -> xml_el().
 route_resp_transfer_ringback(JObj) ->
