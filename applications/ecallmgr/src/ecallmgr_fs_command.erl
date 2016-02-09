@@ -182,13 +182,14 @@ format_fs_kv(<<"ringback">>, _, _, 'unset') ->
     [<<"ringback=">>];
 format_fs_kv(<<"Auto-Answer">>, _, _, 'unset') ->
     [<<"alert_info=">>, <<"Auto-Answer=">>];
-format_fs_kv(Key, Value, UUID, 'unset') ->
-    {K, _} = ecallmgr_util:get_fs_key_and_value(Key, Value, UUID),
+format_fs_kv(Key, _Value, _UUID, 'unset') ->
+    K = ecallmgr_util:get_fs_key(Key),
     [<<K/binary, "=">>];
 format_fs_kv(<<"ringback">>, Media, _, _) ->
     [<<"ringback=", Media/binary>>, <<"transfer_ringback=", Media/binary>>];
 format_fs_kv(<<"Auto-Answer">> = Key, Value, _, _) ->
     [<<"alert_info=", "intercom", ";", Key/binary, "=", Value/binary>>];
+format_fs_kv(_Key, 'undefined', _UUID, _) -> [];
 format_fs_kv(Key, Value, UUID, _) ->
     {K, V} = ecallmgr_util:get_fs_key_and_value(Key, Value, UUID),
     [<<K/binary, "=", V/binary>>].
