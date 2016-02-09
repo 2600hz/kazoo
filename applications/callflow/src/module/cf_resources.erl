@@ -226,12 +226,15 @@ get_sip_headers(Data, Call) ->
                                 wh_json:set_value(<<"X-Account-ID">>, whapps_call:account_id(Call), J)
                         end
                 end
+               ,fun(J) ->
+                        case whapps_call:custom_sip_header(<<"Diversions">>, Call) of
+                            'undefined' -> J;
+                            Diversions ->
+                                wh_json:set_value(<<"Diversions">>, Diversions, J)
+                        end
+                end
                ],
-    CustomHeaders = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
-
-    Diversions = whapps_call:custom_sip_header(<<"Diversions">>, Call),
-
-    Headers = wh_json:set_value(<<"Diversions">>, Diversions, CustomHeaders),
+    Headers = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
 
     JObj = lists:foldl(fun(F, J) -> F(J) end, Headers, Routines),
     case wh_util:is_empty(JObj) of
