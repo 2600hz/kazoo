@@ -237,6 +237,8 @@ get(Category, Keys, Default, Node) when not is_binary(Node) ->
 get(Category, Keys, Default, Node) ->
     case get_category(Category) of
         {'ok', JObj} -> get_value(Category, Node, Keys, Default, JObj);
+        {'error', 'timeout'} ->
+            Default;
         {'error', _} ->
             lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             _ = set(Category, Keys, Default),
@@ -401,10 +403,20 @@ update_category(Category, JObj, PvtFields) ->
 -spec maybe_save_category(ne_binary(), wh_json:object(), api_object(), boolean()) ->
                                  {'ok', wh_json:object()} |
                                  {'error', 'conflict'}.
+-spec maybe_save_category(ne_binary(), wh_json:object(), api_object(), boolean(), any()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'conflict'}.
 maybe_save_category(Category, JObj, PvtFields) ->
     maybe_save_category(Category, JObj, PvtFields, 'false').
 
 maybe_save_category(Category, JObj, PvtFields, Looped) ->
+    [IsLocked] =  wh_config:get_atom('whistle_apps', 'lock_whapps_config', ['false']),
+    maybe_save_category(Category, JObj, PvtFields, Looped, IsLocked).
+
+maybe_save_category(_, JObj, _, _, 'true') ->
+    lager:warning("failed to update category, system config doc is locked! Please update /etc/kazoo/config.ini to enable system config writes."),
+    {'ok', JObj};
+maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     lager:debug("updating configuration category ~s(~s)", [Category, wh_doc:revision(JObj)]),
 
     JObj1 = update_pvt_fields(Category, JObj, PvtFields),
