@@ -119,8 +119,7 @@ init() ->
                                            ,{'cc', ?TEMPLATE_CC}
                                            ,{'bcc', ?TEMPLATE_BCC}
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]),
-    build_renderers().
+                                          ]).
 
 -spec handle_system_alert(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_system_alert(JObj, _Props) ->
@@ -158,20 +157,14 @@ handle_req_as_email(_JObj, 'false') ->
     lager:debug("email not enabled for system alerts");
 handle_req_as_email(JObj, 'true') ->
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
     case teletype_util:is_notice_enabled_default(?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured");
-        'true' -> process_req(DataJObj)
+        'true' -> process_req(wh_json:normalize(JObj))
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
--spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
     lager:debug("template is enabled for account, fetching templates for rendering"),
-    %% Load templates
-    process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID)).
-
-process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
@@ -181,12 +174,10 @@ process_req(DataJObj, Templates) ->
              ],
 
     %% Populate templates
-    RenderedTemplates = [{ContentType, render(ContentType, Macros)}
-                         || {ContentType, _Template} <- Templates
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros),
 
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_meta(?TEMPLATE_ID
+        teletype_templates:fetch_notification(?TEMPLATE_ID
                                       ,teletype_util:find_account_id(DataJObj)
                                      ),
 
@@ -274,56 +265,3 @@ request_macros(DataJObj) ->
                           ,DataJObj
                          )
      ).
-
--spec build_renderers() -> 'ok'.
-build_renderers() ->
-    [build_renderer(ContentType, Template) ||
-        {ContentType, Template} <- teletype_templates:fetch(?TEMPLATE_ID)
-    ],
-    lager:debug("built renderers for system_alerts").
-
--spec build_renderer(ne_binary(), iolist()) -> 'ok'.
-build_renderer(ContentType, Template) ->
-    ModuleName = renderer_name(ContentType),
-    case erlydtl:compile_template(Template
-                                 ,ModuleName
-                                 ,[{'out_dir', 'false'}
-                                  ,'return'
-                                  ]
-                                 )
-    of
-        {'ok', Name} ->
-            lager:debug("built system_alerts renderer for ~s", [Name]);
-        {'ok', Name, []} ->
-            lager:debug("built system_alerts renderer for ~s", [Name]);
-        {'ok', Name, Warnings} ->
-            lager:debug("compiling template ~s produced warnings: ~p", [Name, Warnings])
-    end.
-
--spec renderer_name(ne_binary()) -> atom().
-renderer_name(ContentType) ->
-    wh_util:to_atom(<<(?TEMPLATE_ID)/binary, ContentType/binary>>, 'true').
-
--spec render(ne_binary(), wh_proplist()) -> {'ok', iolist()} |
-                                            {'error', any()}.
-render(ContentType, Macros) ->
-    ModuleName = renderer_name(ContentType),
-    try ModuleName:render(Macros) of
-        {'ok', IOList} ->
-            lager:debug("rendered ~s template successfully", [ContentType]),
-            iolist_to_binary(IOList);
-        {'error', _E} ->
-            lager:debug("failed to render ~s template: ~p", [ContentType, _E]),
-            throw({'error', 'template_error'})
-    catch
-        'error':'undef' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("something in the template ~s is undefined", [ModuleName]),
-            wh_util:log_stacktrace(ST),
-            throw({'error', 'template_error'});
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("crashed rendering template ~s: ~s: ~p", [ModuleName, _E, R]),
-            wh_util:log_stacktrace(ST),
-            throw({'error', 'template_error'})
-    end.

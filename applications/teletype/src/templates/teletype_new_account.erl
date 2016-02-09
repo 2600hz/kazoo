@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz Inc
+%%% @copyright (C) 2015-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -69,34 +69,23 @@ handle_new_account(JObj, _Props) ->
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
--spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    %% Load templates
-    process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
-
-process_req(_DataJObj, []) ->
-    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
-process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"admin">>, admin_user_properties(DataJObj)}
              ],
 
-    %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_meta(?TEMPLATE_ID
-                                      ,teletype_util:find_account_id(DataJObj)
-                                     ),
+        teletype_templates:fetch_notification(?TEMPLATE_ID
+                                             ,teletype_util:find_account_id(DataJObj)
+                                             ),
 
     Subject =
-        teletype_util:render_subject(
-          wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-          ,Macros
-         ),
+        teletype_util:render_subject(wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+                                    ,Macros
+                                    ),
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 

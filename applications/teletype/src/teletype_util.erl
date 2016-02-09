@@ -9,7 +9,8 @@
 -module(teletype_util).
 
 -export([send_email/3, send_email/4
-         ,render_subject/2, render/3
+         ,render_subject/2
+         ,render/3
          ,system_params/0
          ,account_params/1
          ,send_update/2, send_update/3
@@ -374,12 +375,11 @@ default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
 render_subject(Template, Macros) ->
     render(<<"subject">>, Template, Macros).
 
--spec render(ne_binary(), binary(), wh_proplist()) -> binary().
 render(TemplateId, Template, Macros) ->
     case teletype_renderer:render(TemplateId, Template, Macros) of
         {'ok', IOData} -> iolist_to_binary(IOData);
         {'error', _E} ->
-            lager:debug("failed to render template ~s: ~p '~s'", [TemplateId, _E, Template]),
+            lager:debug("failed to render '~s': ~p '~s'", [TemplateId, _E, Template]),
             throw({'error', 'template_error'})
     end.
 
