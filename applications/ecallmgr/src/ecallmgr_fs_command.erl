@@ -168,7 +168,7 @@ process_fs_kv_fold(Node, UUID, {K, V}, Action, Acc) when is_binary(V) ->
                                                ]),
             Acc
     end;
-process_fs_kv_fold(_Node, _UUID, K, 'unset', Acc) 
+process_fs_kv_fold(_Node, _UUID, K, 'unset', Acc)
   when is_binary(K) ->
     Key = ecallmgr_util:get_fs_key(K),
     [Key, "=;" | Acc];
