@@ -71,31 +71,10 @@ build_renderer(TemplateId, ContentType, Template) ->
             lager:debug("compiling template ~s for renderer ~s produced warnings: ~p", [TemplateId, Name, Warnings]);
         {'error', Errors, Warnings} ->
             lager:debug("failed to compile template ~s", [TemplateId]),
-            [format_erlydtl_error(Error, Template) || Error <- Errors],
-            [format_erlydtl_warning(Warning, Template) || Warning <- Warnings],
+            teletype_renderer:log_errors(Errors, Template),
+            teletype_renderer:log_warnings(Warnings, Template),
             throw({'error', 'failed_template', ModuleName})
     end.
-
-format_erlydtl_error({Module, Errors}, Template) ->
-    lager:debug("error in module ~s", [Module]),
-    format_erlydtl_errors(Errors, Template).
-
-format_erlydtl_errors(Errors, Template) ->
-    [format_error(Error, Template) || Error <- Errors].
-
-format_error({{Row, Column}, _ErlydtlModule, Msg}, Template) ->
-    Rows = binary:split(Template, <<"\n">>, ['global']),
-    ErrorRow = lists:nth(Row, Rows),
-    <<Pre:Column/binary, Rest/binary>> = ErrorRow,
-    lager:debug("~p: '~s' '~s'", [Msg, Pre, Rest]);
-format_error({Line, _ErlydtlModule, Msg}, Template) ->
-    Rows = binary:split(Template, <<"\n">>, ['global']),
-    ErrorRow = lists:nth(Line, Rows),
-    lager:debug("~p on line ~p: ~s", [Msg, Line, ErrorRow]).
-
-
-format_erlydtl_warning(Warning, Template) ->
-    lager:debug("warning: ~p template: ~p", [Warning, Template]).
 
 -type template_attachment() :: {ne_binary(), binary()}.
 -type template_attachments() :: [template_attachment()].
