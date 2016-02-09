@@ -649,8 +649,8 @@ generic_call_event_props(Props) ->
      ,{<<"Channel-Is-Loopback">>, get_is_loopback(props:get_value(<<"variable_is_loopback">>, Props))}
      ,{<<"Channel-Loopback-Leg">>, props:get_value(<<"variable_loopback_leg">>, Props)}
      ,{<<"Channel-Loopback-Other-Leg-ID">>, props:get_value(<<"variable_other_loopback_leg_uuid">>, Props)}
-     ,{<<"Channel-Loopback-Bowout">>, props:get_value(<<"variable_loopback_bowout">>, Props)}
-     ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_value(<<"variable_loopback_bowout_on_execute">>, Props)}
+     ,{<<"Channel-Loopback-Bowout">>, props:get_is_true(<<"variable_loopback_bowout">>, Props)}
+     ,{<<"Channel-Loopback-Bowout-Execute">>, props:get_is_true(<<"variable_loopback_bowout_on_execute">>, Props)}
      ,{<<"Channel-Created-Time">>, props:get_integer_value(<<"Caller-Channel-Created-Time">>, Props)}
      | callee_call_event_props(Props)
      ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
