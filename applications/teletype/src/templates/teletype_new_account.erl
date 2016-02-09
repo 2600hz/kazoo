@@ -26,8 +26,59 @@
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Thank you for registering!\nYour account is ready to use, here are some details to help get you started!\n\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% if admin %}Admin\nFirst Name: {{admin.first_name}}\nLast Name: {{admin.last_name}}\nEmail: {{admin.email}}\nTimezone: {{admin.timezone}}\n\n{% endif %}{% if devices %}SIP Credentials\n{% for device in devices %}User: {{device.user.first_name}} {{device.user.last_name}}\nEmail: {{device.user.email|default:\"\"}}\nSIP Username: {{device.sip.username}}\nSIP Password: {{device.sip.password}}\nSIP Realm: {{account.realm}}\n\n{% endfor %}{% endif %}\n\nSent from {{system.hostname}}">>).
--define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head><body><h3>Thank you for registering!</h3><h2>Welcome</h2><p>Your account is ready to use, here are some details to help get you started!</p><h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.pvt_account_id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% if admin %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{admin.first_name}} {{admin.last_name}}</td></tr><tr><td>Email: </td><td>{{admin.email}}</td></tr><tr><td>Timezone: </td><td>{{admin.timezone}}</td></tr></table>{% endif %}{% if devices %}<h2>SIP Credentials</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"1\"><tr><th>User</th><th>Email</th><th>SIP Username</th><th>SIP Password</th><th>SIP Realm</th></tr>{% for device in devices %}<tr><td>{{device.user.first_name}}{{device.user.last_name}}</td><td>{{device.user.email|default:\"\"}}</td><td>{{device.sip.username}}</td><td>{{device.sip.password}}</td><td>{{account.realm}}</td></tr>{% endfor %}</table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{system.hostname}}</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"Thank you for registering!
+Your account is ready to use, here are some details to help get you started!
+
+Account ID: {{account.id}}
+Account Name: {{account.name}}
+Account Realm: {{account.realm}}
+
+{% if admin %}Admin
+First Name: {{admin.first_name}}
+Last Name: {{admin.last_name}}
+Email: {{admin.email}}
+Timezone: {{admin.timezone}}
+
+{% endif %}{% if devices %}SIP Credentials
+{% for device in devices %}User: {{device.user.first_name}} {{device.user.last_name}}
+Email: {{device.user.email|default:\"\"}}
+SIP Username: {{device.sip.username}}
+SIP Password: {{device.sip.password}}
+SIP Realm: {{account.realm}}
+
+{% endfor %}{% endif %}
+
+Sent from {{system.hostname}}">>).
+-define(TEMPLATE_HTML, <<"<html><head><meta charset=\"utf-8\" /></head>
+<body>
+<h3>Thank you for registering!</h3>
+<h2>Welcome</h2>
+<p>Your account is ready to use, here are some details to help get you started!</p>
+<h2>Account</h2>
+<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
+<tr><td>Account ID: </td><td>{{account.pvt_account_id}}</td></tr>
+<tr><td>Account Name: </td><td>{{account.name}}</td></tr>
+<tr><td>Account Realm: </td><td>{{account.realm}}</td></tr>
+</table>
+{% if admin %}
+<h2>Admin</h2>
+<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">
+<tr><td>Name: </td><td>{{admin.first_name}} {{admin.last_name}}</td></tr>
+<tr><td>Email: </td><td>{{admin.email}}</td></tr>
+<tr><td>Timezone: </td><td>{{admin.timezone}}</td></tr>
+</table>
+{% endif %}
+{% if devices %}
+<h2>SIP Credentials</h2>
+<table cellpadding=\"4\" cellspacing=\"0\" border=\"1\">
+<tr><th>User</th><th>Email</th><th>SIP Username</th><th>SIP Password</th><th>SIP Realm</th></tr>
+{% for device in devices %}
+<tr><td>{{device.user.first_name}}{{device.user.last_name}}</td><td>{{device.user.email|default:\"\"}}</td><td>{{device.sip.username}}</td><td>{{device.sip.password}}</td><td>{{account.realm}}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+<p style='font-size:9pt;color:#CCCCCC'>Sent from {{system.hostname}}</p>
+</body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Your new VoIP services Account">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Account">>).
