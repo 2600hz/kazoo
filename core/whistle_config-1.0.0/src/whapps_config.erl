@@ -414,7 +414,7 @@ maybe_save_category(Category, JObj, PvtFields, Looped) ->
     maybe_save_category(Category, JObj, PvtFields, Looped, IsLocked).
 
 maybe_save_category(_, JObj, _, _, 'true') ->
-    lager:debug("failed to update category, system config doc is locked!"),
+    lager:warning("failed to update category, system config doc is locked! Please update /etc/kazoo/config.ini to enable system config writes."),
     {'ok', JObj};
 maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     lager:debug("updating configuration category ~s(~s)", [Category, wh_doc:revision(JObj)]),
