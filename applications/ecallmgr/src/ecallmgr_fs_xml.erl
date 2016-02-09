@@ -352,7 +352,13 @@ route_resp_bridge_id() ->
 
 -spec unset_custom_sip_headers(wh_proplist()) -> xml_els().
 unset_custom_sip_headers(Props) ->
-    [action_el(<<"unset">>, Key) || {Key, _} <- get_custom_sip_headers(Props)].
+    case get_custom_sip_headers(Props) of
+        [] -> [];
+        [{K,_}] -> [action_el(<<"unset">>, K)];
+        [{K1, _} | KVs] ->
+            Keys = ["^^;", K1] ++ [<<";", K/binary>> || {K, _} <- KVs],
+            [action_el(<<"multiunset">>, list_to_binary(Keys))]
+    end.
 
 -spec not_found() -> {'ok', iolist()}.
 not_found() ->
