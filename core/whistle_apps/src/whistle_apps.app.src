@@ -17,11 +17,11 @@
                   , whistle_number_manager
                   , kazoo_token_buckets
                   , kazoo_caches
+                  , kazoo_web
 
                   , syslog
                   , lager
                   , lager_syslog
-                  , ibrowse
                   , gproc
                   ]}
   ,{mod, {whistle_apps_app, []}}

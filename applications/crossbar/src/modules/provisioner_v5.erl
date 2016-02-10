@@ -194,11 +194,9 @@ save_device(AccountId, Device, Request, AuthToken) ->
 -spec check_MAC(ne_binary(), ne_binary()) -> ne_binary() | 'false'.
 check_MAC(MacAddress, AuthToken) ->
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('devices', MacAddress),
     lager:debug("pre-provisioning via ~s", [UrlString]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'get', [], HTTPOptions),
-    case Resp of
+    case kz_http:get(UrlString, Headers) of
         {'ok', "200", _RespHeaders, JSONStr} ->
             JObj = wh_json:decode(JSONStr),
             wh_json:get_value([<<"data">>, <<"account_id">>], JObj);
@@ -466,32 +464,28 @@ settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Data = wh_json:encode(device_payload(JObj)),
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("provisioning via ~s: ~s", [UrlString, Data]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
+    Resp = kz_http:post(UrlString, Headers, Data),
     handle_resp(Resp, AccountId, AuthToken);
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("unprovisioning via ~s", [UrlString]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
+    Resp = kz_http:delete(UrlString, Headers),
     handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_delete', _, AuthToken, AccountId, _) ->
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('accounts', AccountId),
     lager:debug("accounts delete via ~s", [UrlString]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
+    Resp = kz_http:delete(UrlString, Headers),
     handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
     Data = wh_json:encode(account_payload(JObj, AccountId)),
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('accounts', AccountId),
     lager:debug("account update via ~s: ~s", [UrlString, Data]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
+    Resp = kz_http:post(UrlString, Headers, Data),
     handle_resp(Resp, AccountId, AuthToken).
 
 -spec req_uri('accounts' | 'devices', ne_binary()) -> iolist().
@@ -532,7 +526,7 @@ device_payload(JObj) ->
       ]
      ).
 
--spec handle_resp(ibrowse_ret(), ne_binary(), ne_binary()) -> 'ok'.
+-spec handle_resp(kz_http:http_ret(), ne_binary(), ne_binary()) -> 'ok'.
 handle_resp({'ok', "200", _, Resp}, _AccountId, _AuthToken) ->
     lager:debug("provisioning success ~s", [decode(Resp)]);
 handle_resp({'ok', Code, _, Resp}, AccountId, AuthToken) ->

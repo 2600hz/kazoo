@@ -311,39 +311,38 @@ post_xml(Url, Body, AdditionalHeaders) ->
             ,{"X-BWC-IN-Control-Processing-Type", "process"}
             ,{"Content-Type", "text/xml"}
            ],
-    HTTPOptions = [{'ssl', [{'verify', 0}]}
-                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
+                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ],
-    Timeout = 180 * ?MILLISECONDS_IN_SECOND,
     ?DEBUG_WRITE("Request:~n~s ~s~n~s~n", ['post', Url, Body]),
     UnicodeBody = unicode:characters_to_binary(Body),
-    Resp = ibrowse:send_req(Url, Headers, 'post', UnicodeBody, HTTPOptions, Timeout),
-    handle_ibrowse_response(Resp).
+    Resp = kz_http:post(Url, Headers, UnicodeBody, HTTPOptions),
+    handle_response(Resp).
 
 -type bw_ret() :: {'ok', ne_binary()} | {'error', any()}.
--spec handle_ibrowse_response(any()) -> bw_ret().
-handle_ibrowse_response({'ok', "401", _, _Response}) ->
+-spec handle_response(kz_http:http_ret()) -> bw_ret().
+handle_response({'ok', "401", _, _Response}) ->
     ?DEBUG_APPEND("Response:~n401~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 401 (unauthenticated)"),
     {'error', 'authentication'};
-handle_ibrowse_response({'ok', "403", _, _Response}) ->
+handle_response({'ok', "403", _, _Response}) ->
     ?DEBUG_APPEND("Response:~n403~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 403 (unauthorized)"),
     {'error', 'authorization'};
-handle_ibrowse_response({'ok', "404", _, _Response}) ->
+handle_response({'ok', "404", _, _Response}) ->
     ?DEBUG_APPEND("Response:~n404~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 404 (not found)"),
     {'error', 'not_found'};
-handle_ibrowse_response({'ok', "500", _, _Response}) ->
+handle_response({'ok', "500", _, _Response}) ->
     ?DEBUG_APPEND("Response:~n500~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 500 (server error)"),
     {'error', 'server_error'};
-handle_ibrowse_response({'ok', "503", _, _Response}) ->
+handle_response({'ok', "503", _, _Response}) ->
     ?DEBUG_APPEND("Response:~n503~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 503"),
     {'error', 'server_error'};
-handle_ibrowse_response({'ok', Code, _, "<?xml"++_=Response}) ->
+handle_response({'ok', Code, _, "<?xml"++_=Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~s~n", [Code, Response]),
     lager:debug("received response from bandwidth.com"),
     try
@@ -354,11 +353,11 @@ handle_ibrowse_response({'ok', Code, _, "<?xml"++_=Response}) ->
             lager:debug("failed to decode xml: ~p", [R]),
             {'error', 'empty_response'}
     end;
-handle_ibrowse_response({'ok', Code, _, _Response}) ->
+handle_response({'ok', Code, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~s~n", [Code, _Response]),
     lager:debug("bandwidth.com empty response: ~p", [Code]),
     {'error', 'empty_response'};
-handle_ibrowse_response({'error', _}=E) ->
+handle_response({'error', _}=E) ->
     lager:debug("bandwidth.com request error: ~p", [E]),
     E.
 

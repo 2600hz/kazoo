@@ -47,3 +47,8 @@ Most operations have been moved to the Cowboy or Cowlib projects. We will formal
 #### Deprecating `deps/exmpp`
 
 exmpp library has problems restarting. it will be replaced by `deps/escalus`
+
+#### Deprecating `deps/ibrowse`
+`ibrowse` will be replaced by `core/whistle_web/kz_http` which is using Erlang `httpc`. `kz_http` is the new HTTP client module now and the previous `kz_http` module is renamed to `kz_http_util`.
+
+If you maintain code apart from Kazoo that uses `ibrowse`, please either covert to equivalent functionality with `kz_http`/`httpc` or plan how you’ll build your custom code with your own dependency of `ibrowse`.

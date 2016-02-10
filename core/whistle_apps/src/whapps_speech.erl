@@ -38,14 +38,12 @@
 
 -type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
 -type provider_return() :: {'error', provider_errors()} |
-                           ibrowse_ret() |
-                           {'ibrowse_req_id', ibrowse_req_id()}.
--type create_resp() :: {'ok', ibrowse_req_id()} |
-                       provider_return() |
+                           kz_http:http_ret().
+-type create_resp() :: provider_return() |
                        {'ok', ne_binary(), ne_binary()} | %% {'ok', ContentType, BinaryData}
                        {'error', 'tts_provider_failure', binary()}.
 
--type asr_resp() :: {'ok', ibrowse_req_id()} |
+-type asr_resp() :: kz_http:http_req_id() |
                     {'ok', wh_json:object()} | %% {'ok', JObj}
                     {'error', provider_errors()} |
                     {'error',  'asr_provider_failure', wh_json:object()}.
@@ -73,7 +71,7 @@ create(Text, Voice, Format, Options) ->
 -spec create(api_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> create_resp().
 create('undefined', Text, Voice, Format, Options) ->
     create(Text, Voice, Format, Options);
-create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
+create(<<"ispeech">> = Engine, Text, Voice, Format, Opts) ->
     VoiceMappings = ?ISPEECH_VOICE_MAPPINGS,
     case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
         'undefined' ->
@@ -91,13 +89,20 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
                      ,{<<"endpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)}
                     ],
             Headers = [{"Content-Type", "application/json; charset=UTF-8"}],
-            HTTPOptions = [{'response_format', 'binary'} | Options],
             Body = wh_json:encode(wh_json:from_list(Props)),
 
             lager:debug("sending TTS request to ~s", [BaseUrl]),
 
-            Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
-            create_response(Engine, Response)
+            case props:get_value('receiver', Opts) of
+                Pid when is_pid(Pid) ->
+                    HTTPOptions = props:delete('receiver', Opts),
+                    Response = kz_http:async_req(Pid, 'post', BaseUrl, Headers, Body, HTTPOptions),
+                    create_response(Engine, Response);
+                _ ->
+                    HTTPOptions = props:delete('receiver', Opts),
+                    Response = kz_http:post(BaseUrl, Headers, Body, HTTPOptions),
+                    create_response(Engine, Response)
+            end
     end;
 create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
     create_voicefabric(Engine, Text, Voice, Options);
@@ -106,7 +111,7 @@ create(_, _, _, _, _) ->
 
 -spec create_voicefabric(ne_binary(), binary(), ne_binary(), wh_proplist()) ->
                                 create_resp().
-create_voicefabric(Engine, Text, Voice, Options) ->
+create_voicefabric(Engine, Text, Voice, Opts) ->
     lager:debug("getting ~ts from VoiceFabric", [Text]),
     VoiceMappings = ?VOICEFABRIC_VOICE_MAPPINGS,
     case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
@@ -123,10 +128,18 @@ create_voicefabric(Engine, Text, Voice, Options) ->
             ArgsEncode = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_args_encode">>, <<"multipart">>),
             case voicefabric_request_body(ArgsEncode, Data) of
                 {'ok', Headers, Body} ->
-                    HTTPOptions = [{'response_format', 'binary'} | Options],
                     lager:debug("sending ~ts", [Body]),
-                    Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
-                    create_response(Engine, Response);
+
+                    case props:get_value('receiver', Opts) of
+                        Pid when is_pid(Pid) ->
+                            HTTPOptions = props:delete('receiver', Opts),
+                            Response = kz_http:async_req(Pid, 'post', BaseUrl, Headers, Body, HTTPOptions),
+                            create_response(Engine, Response);
+                        _ ->
+                            HTTPOptions = props:delete('receiver', Opts),
+                            Response = kz_http:post(BaseUrl, Headers, Body, HTTPOptions),
+                            create_response(Engine, Response)
+                    end;
                 {'error', Reason} ->
                     lager:warning(Reason),
                     {'error', 'tts_provider_failure', Reason}
@@ -212,9 +225,9 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
         {'error', _R}=E ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
-        {'ibrowse_req_id', ReqID} ->
+        {'http_req_id', ReqID} ->
             lager:debug("streaming response ~p to provided option: ~p"
-                        ,[ReqID, props:get_value('stream_to', Options)]
+                        ,[ReqID, props:get_value('receiver', Options)]
                        ),
             {'ok', ReqID};
         {'ok', "200", _Headers, Content2} ->
@@ -229,7 +242,7 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
 -spec attempt_asr_freeform(api_binary(), binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                                   provider_return().
 attempt_asr_freeform(_, <<>>, _, _, _) -> {'error', 'no_content'};
-attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
+attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Opts) ->
     BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT
                                        ,<<"asr_url">>
                                        ,<<"http://api.ispeech.org/api/rest">>
@@ -244,10 +257,16 @@ attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
              ,{<<"audio">>, base64:encode(Bin)}
             ],
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
-    HTTPOptions = [{'response_format', 'binary'} | Options],
     Body = props:to_querystring(Props),
     lager:debug("req body: ~s", [Body]),
-    ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions);
+    case props:get_value('receiver', Opts) of
+        Pid when is_pid(Pid) ->
+            HTTPOptions = props:delete('receiver', Opts),
+            kz_http:async_req(Pid, 'post', BaseUrl, Headers, Body, HTTPOptions);
+        _ ->
+            HTTPOptions = props:delete('receiver', Opts),
+            kz_http:post(BaseUrl, Headers, Body, HTTPOptions)
+    end;
 attempt_asr_freeform(_, _, _, _, _) ->
     {'error', 'unknown_provider'}.
 
@@ -271,8 +290,8 @@ asr_commands(Bin, Commands, ContentType, Locale, Options) ->
         {'error', _R}=E ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
-        {'ibrowse_req_id', ReqID} ->
-            lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
+        {'http_req_id', ReqID} ->
+            lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(receiver, Options)]),
             {'ok', ReqID};
         {'ok', "200", _Headers, Content} ->
             lager:debug("asr of media succeeded: ~s", [Content]),
@@ -283,7 +302,7 @@ asr_commands(Bin, Commands, ContentType, Locale, Options) ->
             {'error', 'asr_provider_failure', wh_json:decode(Content)}
     end.
 
-asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Options) ->
+asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Opts) ->
     BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"asr_url">>, <<"http://api.ispeech.org/api/json">>),
 
     Commands1 = wh_util:join_binary(Commands, <<"|">>),
@@ -301,23 +320,29 @@ asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Options) ->
              ,{<<"audio">>, base64:encode(Bin)}
             ],
     Headers = [{"Content-Type", "application/json"}],
-    HTTPOptions = [{'response_format', 'binary'} | Options],
 
     Body = wh_json:encode(wh_json:from_list(Props)),
     lager:debug("req body: ~s", [Body]),
 
-    ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions);
+    case props:get_value('receiver', Opts) of
+        Pid when is_pid(Pid) ->
+            HTTPOptions = props:delete('receiver', Opts),
+            kz_http:async_req(Pid, 'post', BaseUrl, Headers, Body, HTTPOptions);
+        _ ->
+            HTTPOptions = props:delete('receiver', Opts),
+            kz_http:post(BaseUrl, Headers, Body, HTTPOptions)
+    end;
 asr_commands(_, _, _, _, _, _) ->
     {'error', 'unknown_provider'}.
 
--spec create_response(ne_binary(), ibrowse_ret()) ->
-                             {'ok', ibrowse_req_id()} |
+-spec create_response(ne_binary(), kz_http:http_ret()) ->
+                             kz_http:http_req_id() |
                              {'ok', ne_binary(), ne_binary()} |
                              {'error', 'tts_provider_failure', binary()}.
 create_response(_Engine, {'error', _R}) ->
     lager:warning("creating speech file failed with error ~p", [_R]),
     {'error', 'tts_provider_failure', <<"unexpected error encountered accessing provider">>};
-create_response(_Engine, {'ibrowse_req_id', ReqID}) ->
+create_response(_Engine, {'http_req_id', ReqID}) ->
     lager:debug("speech file streaming as ~p", [ReqID]),
     {'ok', ReqID};
 create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
@@ -356,7 +381,7 @@ create_response(_Engine, {'ok', "200", Headers, Content}) ->
     lager:debug("created speech file ~s of length ~s", [ContentType, ContentLength]),
     {'ok', wh_util:to_binary(ContentType), Content};
 create_response(Engine, {'ok', Code, RespHeaders, Content}) ->
-    lager:warning("creating speech file failed with code ~s: ~s", [Code, Content]),
+    lager:warning("creating speech file failed with code ~p: ~p", [Code, Content]),
     _ = [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
     {'error', 'tts_provider_failure', create_error_response(Engine, RespHeaders, Content)}.
 

@@ -91,16 +91,14 @@ send_init_hook(Call) ->
     JObj = wh_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
 
-    case ibrowse:send_req(URI
-                         ,[{"Content-Type", "application/json"}]
-                         ,'post'
-                         ,wh_json:encode(JObj)
-                         ,[{'connect_timeout', 5000}]
-                         ,5000
-                         )
+    case kz_http:post(URI
+                     ,[{"Content-Type", "application/json"}]
+                     ,wh_json:encode(JObj)
+                     ,[{'connect_timeout', 5000}, {'timeout', 5000}]
+                    )
     of
         {'error', Reason} ->
-            lager:warning("Ibrowse error when sending singular call init hook: ~p", [Reason]),
+            lager:warning("Error when sending singular call init hook: ~p", [Reason]),
             'false';
         _ ->
             'true'
@@ -149,18 +147,17 @@ send_end_hook(Call, Event) ->
     JObj = wh_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
 
-    case ibrowse:send_req(URI
-                         ,[{"Content-Type", "application/json"}]
-                         ,'post'
-                         ,wh_json:encode(JObj)
-                         ,[{'connect_timeout', 5000}]
-                         ,5000
-                         )
+    case kz_http:post(URI
+                     ,[{"Content-Type", "application/json"}]
+                     ,wh_json:encode(JObj)
+                     ,[{'connect_timeout', 5000}, {'timeout', 5000}]
+                    )
     of
         {'error', Reason} ->
-            lager:warning("Ibrowse error when sending singular end of call hook: ~p", [Reason]),
+            lager:warning("Error when sending singular end of call hook: ~p", [Reason]),
             'false';
-        _ -> 'true'
+        _ ->
+            'true'
     end.
 
 %%--------------------------------------------------------------------

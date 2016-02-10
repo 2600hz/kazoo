@@ -1,260 +1,275 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2016, 2600Hz
-%%% @doc HTTP helper functions for Kazoo
-%%%
+%%% @copyright (C) 2016, 2600Hz
+%%% @doc
+%%% Kazoo HTTP client
+%%% @end
 %%% @contributors
-%%%     Mark Magnusson
+%%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(kz_http).
 
--export([urldecode/1
-         ,urlencode/1
-         ,parse_query_string/1
-         ,urlsplit/1
-         ,urlunsplit/1
+-export([req/1, req/2, req/3, req/4, req/5
+         ,async_req/2, async_req/3, async_req/4, async_req/5, async_req/6
+         ,get/1, get/2, get/3
+         ,options/1, options/2, options/3
+         ,head/1, head/2, head/3
+         ,trace/1, trace/2, trace/3
+         ,post/1, post/2, post/3, post/4
+         ,put/1, put/2, put/3, put/4
+         ,delete/1, delete/2, delete/3, delete/4
+         ,handle_response/1
         ]).
 
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+
+-define(HTTP_OPTIONS, [timeout, connect_timeout, ssl
+                       ,essl, autoredirect, proxy_auth
+                       ,version, relaxed, url_encode]).
+-define(OPTIONS, [sync, stream, body_format
+                  ,full_result , headers_as_is, socket_opts
+                  ,receiver, ipv6_host_with_brackets]).
+
+-type http_body() :: string() | binary().
+-type httpc_result() :: {term(), wh_proplist(), http_body()} |
+                        {string(), string() |binary()} |
+                        reference().
+-type httpc_ret() :: {ok, httpc_result()} |
+                     {ok, saved_to_file} |
+                     {error, {connect_failed, term()} | {send_failed, term()} | term()}.
+-type httpc_request() :: {string(), wh_proplist()} |
+                         {string(), wh_proplist(), string(), http_body()}.
+
+-type http_req_id() :: {'http_req_id', reference()} | {'ok', reference()} | reference().
+-export_type([http_req_id/0]).
+
+-type http_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
+                       {'ok', 'saved_to_file'} |
+                       {'error', any()} |
+                       http_req_id().
+-export_type([http_ret/0]).
+
 %%--------------------------------------------------------------------
-%% @doc URL decodes a URL encoded string
+%% @public
+%% @doc
+%% Send synchronous request
+%% @end
 %%--------------------------------------------------------------------
--spec urldecode(binary()) -> binary().
-urldecode(Source) ->
-    urldecode(Source, <<>>).
+-spec get(string()) -> http_ret().
+-spec get(string(), wh_proplist()) -> http_ret().
+-spec get(string(), wh_proplist(), wh_proplist()) -> http_ret().
+get(Url) ->
+    req('get', Url, [], [], []).
+get(Url, Headers) ->
+    req('get', Url, Headers, [], []).
+get(Url, Headers, Options) ->
+    req('get', Url, Headers, [], Options).
 
--spec urldecode(binary(), binary()) -> binary().
-urldecode(<<>>, Acc) ->
-    Acc;
+-spec options(string()) -> http_ret().
+-spec options(string(), wh_proplist()) -> http_ret().
+-spec options(string(), wh_proplist(), wh_proplist()) -> http_ret().
+options(Url) ->
+    req('options', Url, [], [], []).
+options(Url, Headers) ->
+    req('options', Url, Headers, [], []).
+options(Url, Headers, Options) ->
+    req('options', Url, Headers, [], Options).
 
-urldecode(<<$+, R/binary>>, Acc) ->
-    urldecode(R, <<Acc/binary, " ">>);
+-spec head(string()) -> http_ret().
+-spec head(string(), wh_proplist()) -> http_ret().
+-spec head(string(), wh_proplist(), wh_proplist()) -> http_ret().
+head(Url) ->
+    req('head', Url, [], [], []).
+head(Url, Headers) ->
+    req('head', Url, Headers, [], []).
+head(Url, Headers, Options) ->
+    req('head', Url, Headers, [], Options).
 
-urldecode(<<$%, H, L, R/binary>>, Acc) ->
-    Code  = <<H, L>>,
-    Ascii = list_to_integer(binary_to_list(Code), 16),
+-spec trace(string()) -> http_ret().
+-spec trace(string(), wh_proplist()) -> http_ret().
+-spec trace(string(), wh_proplist(), wh_proplist()) -> http_ret().
+trace(Url) ->
+    req('trace', Url, [], [], []).
+trace(Url, Headers) ->
+    req('trace', Url, Headers, [], []).
+trace(Url, Headers, Options) ->
+    req('trace', Url, Headers, [], Options).
 
-    urldecode(R, <<Acc/binary, Ascii>>);
+-spec delete(string()) -> http_ret().
+-spec delete(string(), wh_proplist()) -> http_ret().
+-spec delete(string(), wh_proplist(), http_body()) -> http_ret().
+-spec delete(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+delete(Url) ->
+    req('delete', Url, [], [], []).
+delete(Url, Headers) ->
+    req('delete', Url, Headers, [], []).
+delete(Url, Headers, Body) ->
+    req('delete', Url, Headers, Body, []).
+delete(Url, Headers, Body, Options) ->
+    req('delete', Url, Headers, Body, Options).
 
-urldecode(<<H, R/binary>>, Acc) ->
-    urldecode(R, <<Acc/binary, H>>).
+-spec post(string()) -> http_ret().
+-spec post(string(), wh_proplist()) -> http_ret().
+-spec post(string(), wh_proplist(), http_body()) -> http_ret().
+-spec post(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+post(Url) ->
+    req('post', Url, [], [], []).
+post(Url, Headers) ->
+    req('post', Url, Headers, [], []).
+post(Url, Headers, Body) ->
+    req('post', Url, Headers, Body, []).
+post(Url, Headers, Body, Options) ->
+    req('post', Url, Headers, Body, Options).
+
+-spec put(string()) -> http_ret().
+-spec put(string(), wh_proplist()) -> http_ret().
+-spec put(string(), wh_proplist(), http_body()) -> http_ret().
+-spec put(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+put(Url) ->
+    req('put', Url, [], [], []).
+put(Url, Headers) ->
+    req('put', Url, Headers, [], []).
+put(Url, Headers, Body) ->
+    req('put', Url, Headers, Body, []).
+put(Url, Headers, Body, Options) ->
+    req('put', Url, Headers, Body, Options).
 
 %%--------------------------------------------------------------------
-%% @doc URL encodes a string
+%% @public
+%% @doc
+%% Send a synchronous HTTP request
+%% @end
 %%--------------------------------------------------------------------
--spec urlencode(binary() | atom() | integer() | float() | string()) -> binary().
-urlencode(Source) when is_atom(Source) ->
-    urlencode(list_to_binary(atom_to_list(Source)), <<>>);
+-spec req(string()) -> http_ret().
+-spec req(atom(), string()) -> http_ret().
+-spec req(atom(), string(), wh_proplist()) -> http_ret().
+-spec req(atom(), string(), wh_proplist(), http_body()) -> http_ret().
+-spec req(atom(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+req(Url) ->
+    req('get', Url, [], [], []).
+req(Method, Url) ->
+    req(Method, Url, [], [], []).
+req(Method, Url, Headers) ->
+    req(Method, Url, Headers, [], []).
+req(Method, Url, Headers, Body) ->
+    req(Method, Url, Headers, Body, []).
+req(Method, Url, Hdrs, Body, Opts) ->
+    {Headers, Options} = maybe_basic_auth(Hdrs, Opts),
+    Request = build_request(Method, Url, Headers, Body),
+    execute_request(Method, Request, Options).
 
-urlencode(Source) when is_list(Source) ->
-    urlencode(list_to_binary(Source), <<>>);
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Send a asynchronous HTTP request
+%% @end
+%%--------------------------------------------------------------------
+-spec async_req(pid(), string()) -> http_ret().
+-spec async_req(pid(), atom(), string()) -> http_ret().
+-spec async_req(pid(), atom(), string(), wh_proplist()) -> http_ret().
+-spec async_req(pid(), atom(), string(), wh_proplist(), http_body()) -> http_ret().
+-spec async_req(pid(), atom(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+async_req(Pid, Url) ->
+    async_req(Pid, 'get', Url, [], [], []).
+async_req(Pid, Method, Url) ->
+    async_req(Pid, Method, Url, [], [], []).
+async_req(Pid, Method, Url, Headers) ->
+    async_req(Pid, Method, Url, Headers, []).
+async_req(Pid, Method, Url, Headers, Body) ->
+    async_req(Pid, Method, Url, Headers, Body, []).
+async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
+    {Headers, Options} = maybe_basic_auth(Hdrs, Opts),
+    Request = build_request(Method, Url, Headers, Body),
+    execute_request(Method, Request, [{receiver, Pid}, {sync, false}, {stream, self} | Options]).
 
-urlencode(Source) when is_integer(Source) ->
-    urlencode(list_to_binary(integer_to_list(Source)), <<>>);
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Send request using httpc and handle its response
+%% @end
+%%--------------------------------------------------------------------
+-spec execute_request(atom(), tuple(), wh_proplist()) -> http_ret().
+execute_request(Method, Request, Opts) ->
+    HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
+    Opts1 = get_options(?OPTIONS, Opts),
+    Options = case props:get_value('body_format', Opts1) of
+                'undefined' -> [{'body_format', 'binary'} | Opts1];
+                _ -> Opts1
+              end,
+    handle_response(catch httpc:request(Method, Request, HTTPOptions, Options)).
 
-%% @todo fix this when we move to > R15
-urlencode(Source) when is_float(Source) ->
-    List = float_to_list(Source),
-    Proper = string:substr(List, 1, string:chr(List, $.)+2),
-    urlencode(list_to_binary(Proper), <<>>);
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Response to caller in a proper manner
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_response(httpc_ret()) -> http_ret().
+handle_response({'ok', 'saved_to_file'}) ->
+    {'ok', 'saved_to_file'};
+handle_response({'ok', ReqId}) when is_reference(ReqId) ->
+    {'http_req_id', ReqId};
+handle_response({'ok', {{_, StatusCode, _}, Headers, Body}}) ->
+    {'ok', StatusCode, Headers, Body};
+handle_response({'error', 'timeout'}) ->
+    lager:debug("connection timeout"),
+    {'error', 'timeout'};
+handle_response({'error', {failed_connect,[{_, Address}, {_, _, nxdomain}]}}) ->
+    lager:debug("non existent domain ~p", Address),
+    {'error', {failed_connect, nxdomain}};
+handle_response({'error', {failed_connect,[{_, Address}, {_, _, econnrefused}]}}) ->
+    lager:debug("connection refused to ~p", Address),
+    {'error', {failed_connect, econnrefused}};
+handle_response({'error', {malformed_url, _, Url}}) ->
+    lager:debug("failed to parse the URL ~p", Url),
+    {'error', {malformed_url, Url}};
+handle_response({'error', Error}) ->
+    lager:debug("request failed with ~p", [Error]),
+    Error.
 
-urlencode(Source) ->
-    urlencode(Source, <<>>).
-
--spec urlencode(binary(), binary()) -> binary().
-urlencode(<<>>, Acc) ->
-    Acc;
-
-urlencode(<<$\s, R/binary>>, Acc) ->
-    urlencode(R, <<Acc/binary, $+>>);
-
-urlencode(<<C, R/binary>>, Acc) ->
-    case C of
-        $\. -> urlencode(R, <<Acc/binary, C>>);
-        $-  -> urlencode(R, <<Acc/binary, C>>);
-        $~  -> urlencode(R, <<Acc/binary, C>>);
-        $_  -> urlencode(R, <<Acc/binary, C>>);
-
-        C when C >= $0 andalso C=< $9 -> urlencode(R, <<Acc/binary, C>>);
-        C when C >= $a andalso C=< $z -> urlencode(R, <<Acc/binary, C>>);
-        C when C >= $A andalso C=< $Z -> urlencode(R, <<Acc/binary, C>>);
-
-        _NotSafe ->
-            SafeChar = encode_char(C),
-            urlencode(R, <<Acc/binary, "%", SafeChar/binary>>)
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Build <code>Authorization</code> header using <code>basic_auth</code> option
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_basic_auth(wh_proplist(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
+maybe_basic_auth(Headers, Options) ->
+    case props:get_value('basic_auth', Options) of
+        'undefined' -> {Headers, Options};
+        {Username, Password} ->
+            BasicAuth = {"Authorization"
+                         , "Basic " ++ base64:encode_to_string(<<Username/binary, ":", Password/binary>>)
+                        },
+            {[BasicAuth | Headers], props:delete('basic_auth', Options)}
     end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Build httpc request argument based on method
+%% @end
+%%--------------------------------------------------------------------
+-spec build_request(atom(), string(), wh_proplist(), http_body()) -> httpc_request().
+build_request(Method, Url, Headers, _Body) when (Method =:= 'options') orelse
+                                                (Method =:= 'get') orelse
+                                                (Method =:= 'head') orelse
+                                                (Method =:= 'trace') ->
+    {Url, Headers};
+build_request(Method, Url, Headers, Body) when (Method =:= 'post') orelse
+                                               (Method =:= 'put') orelse
+                                               (Method =:= 'delete') ->
+    ContentType = case props:get_value("Content-Type", Headers) of
+                      'undefined' -> [];
+                      C -> C
+                  end,
+    {Url, Headers, ContentType, Body}.
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Converts a single character to its base-16 %-encoded form
+%% @doc Get options out of a propslist based on options type
+%% Two <code>HTTP_OPTIONS</code> and <code>OPTIONS</code> macros are specify
+%% which type of options should be returned.
+%% @end
 %%--------------------------------------------------------------------
--spec encode_char(integer()) -> binary().
-encode_char(Char) ->
-    case integer_to_list(Char, 16) of
-        Val when length(Val) < 2 -> list_to_binary(["0", Val]);
-        ProperLen                -> list_to_binary(ProperLen)
-    end.
+-spec get_options(list(), wh_proplist()) -> wh_proplist().
+get_options(Type, Options) ->
+    [{K, V} || {K, V} <- Options, lists:member(K, Type)].
 
-%%--------------------------------------------------------------------
-%% @doc Parses a query string and returns a list of key->value pairs.
-%% If the input string contains a ? then everything after the ? will
-%% be treated as the query string, otherwise the entire input is treated
-%% as the query string. The return key->value pairs will be urldecoded.
-%%--------------------------------------------------------------------
--spec parse_query_string(binary()) -> [{binary(), binary()}].
-parse_query_string(Source) ->
-    parse_query_string('key', Source, <<>>, <<>>, []).
 
--spec parse_query_string(atom(), binary(), binary(), binary(), list()) -> list().
-parse_query_string(_State, <<>>, <<>>, _ValAcc, RetAcc) ->
-    RetAcc;
-
-parse_query_string(_State, <<>>, KeyAcc, ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
-    Val = urldecode(ValAcc),
-
-    RetAcc ++ [{Key, Val}];
-
-parse_query_string(_State, <<$?, R/binary>>, _KeyAcc, _ValAcc, _RetAcc) ->
-    parse_query_string('key', R, <<>>, <<>>, []);
-
-parse_query_string('key', <<$=, R/binary>>, KeyAcc, _ValAcc, RetAcc) ->
-    parse_query_string('val', R, KeyAcc, <<>>, RetAcc);
-
-parse_query_string('key', <<$;, R/binary>>, KeyAcc, _ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
-
-    parse_query_string('key', R, <<>>, <<>>, RetAcc ++ [{Key, <<>>}]);
-
-parse_query_string('key', <<$&, R/binary>>, KeyAcc, _ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
-
-    parse_query_string('key', R, <<>>, <<>>, RetAcc ++ [{Key, <<>>}]);
-
-parse_query_string('val', <<$;, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
-    Val = urldecode(ValAcc),
-
-    parse_query_string('key', R, <<>>, <<>>, RetAcc ++ [{Key, Val}]);
-
-parse_query_string('val', <<$&, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
-    Val = urldecode(ValAcc),
-
-    parse_query_string('key', R, <<>>, <<>>, RetAcc ++ [{Key, Val}]);
-
-parse_query_string('key', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
-    parse_query_string('key', R, <<KeyAcc/binary, C>>, ValAcc, RetAcc);
-
-parse_query_string('val', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
-    parse_query_string('val', R, KeyAcc, <<ValAcc/binary, C>>, RetAcc).
-
-%%--------------------------------------------------------------------
-%% @doc Splits a URL into scheme, location, path, query, and fragment parts
-%%--------------------------------------------------------------------
--spec urlsplit(binary()) -> {binary(), binary(), binary(), binary(), binary()}.
-urlsplit(Source) ->
-    {Scheme, Url1}      = urlsplit_s(Source),
-    {Location, Url2}    = urlsplit_l(Url1),
-    {Path, Query, Frag} = urlsplit_p(Url2, <<>>),
-
-    {Scheme, Location, Path, Query, Frag}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Splits out the scheme portion of the URL (if present)
-%%--------------------------------------------------------------------
--spec urlsplit_s(binary()) -> {binary(), binary()}.
-urlsplit_s(Source) ->
-    case urlsplit_s(Source, <<>>) of
-        'no_scheme' -> {<<>>, Source};
-        ValidScheme -> ValidScheme
-    end.
-
--spec urlsplit_s(binary(), binary()) -> {binary(), binary()} | 'no_scheme'.
-urlsplit_s(<<>>, _Acc) ->
-    'no_scheme';
-
-urlsplit_s(<<C, R/binary>>, Acc) ->
-    case C of
-        $: -> {Acc, R};
-
-        $+ -> urlsplit_s(R, <<Acc/binary, C>>);
-        $- -> urlsplit_s(R, <<Acc/binary, C>>);
-        $. -> urlsplit_s(R, <<Acc/binary, C>>);
-
-        C when C >= $a andalso C =< $z -> urlsplit_s(R, <<Acc/binary, C>>);
-        C when C >= $A andalso C =< $Z -> urlsplit_s(R, <<Acc/binary, C>>);
-        C when C >= $0 andalso C =< $9 -> urlsplit_s(R, <<Acc/binary, C>>);
-
-        _NoScheme -> 'no_scheme'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Splits out the location portion of the URL
-%%--------------------------------------------------------------------
--spec urlsplit_l(binary()) -> {binary(), binary()}.
-urlsplit_l(<<"//", R/binary>>) ->
-    urlsplit_l(R, <<>>);
-
-urlsplit_l(Source) ->
-    {<<>>, Source}.
-
--spec urlsplit_l(binary(), binary()) -> {binary(), binary()}.
-urlsplit_l(<<>>, Acc) ->
-    {Acc, <<>>};
-
-urlsplit_l(<<$/, _I/binary>> = R, Acc) ->
-    {Acc, R};
-
-urlsplit_l(<<$?, _I/binary>> = R, Acc) ->
-    {Acc, R};
-
-urlsplit_l(<<$#, _I/binary>> = R, Acc) ->
-    {Acc, R};
-
-urlsplit_l(<<C, R/binary>>, Acc) ->
-    urlsplit_l(R, <<Acc/binary, C>>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Splits and returns the path, query string, and fragment portions
-%% of the URL
-%%--------------------------------------------------------------------
--spec urlsplit_p(binary(), binary()) -> {binary(), binary(), binary()}.
-urlsplit_p(<<>>, Acc) ->
-    {Acc, <<>>, <<>>};
-
-urlsplit_p(<<$?, R/binary>>, Acc) ->
-    {Query, Frag} = urlsplit_q(R, <<>>),
-    {Acc, Query, Frag};
-
-urlsplit_p(<<$#, R/binary>>, Acc) ->
-    {Acc, <<>>, R};
-
-urlsplit_p(<<C, R/binary>>, Acc) ->
-    urlsplit_p(R, <<Acc/binary, C>>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Splits the query string and fragment parts of the URL
-%%--------------------------------------------------------------------
--spec urlsplit_q(binary(), binary()) -> {binary(), binary()}.
-urlsplit_q(<<>>, Acc) ->
-    {Acc, <<>>};
-
-urlsplit_q(<<$#, R/binary>>, Acc) ->
-    {Acc, R};
-
-urlsplit_q(<<C, R/binary>>, Acc) ->
-    urlsplit_q(R, <<Acc/binary, C>>).
-
-%%--------------------------------------------------------------------
-%% @doc Joins the elements of a URL together
-%%--------------------------------------------------------------------
--spec urlunsplit({binary(), binary(), binary(), binary(), binary()}) -> binary().
-urlunsplit({S, N, P, Q, F}) ->
-    Us = case S of <<>> -> <<>>; _ -> <<S/binary, "://">> end,
-    Uq = case Q of <<>> -> <<>>; _ -> <<$?, Q/binary>> end,
-    Uf = case F of <<>> -> <<>>; _ -> <<$#, F/binary>> end,
-
-    <<Us/binary, N/binary, P/binary, Uq/binary, Uf/binary>>.

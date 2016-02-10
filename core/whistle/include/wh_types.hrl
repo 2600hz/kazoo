@@ -206,18 +206,6 @@
                              {'spawn_opt', list()}.
 -type gen_server_options() :: [gen_server_option()].
 
-%% Ibrowse-related types
--type ibrowse_error() :: {'error', 'req_timedout'
-                          | 'sel_conn_closed'
-                          | {'EXIT', any()}
-                          | {'conn_failed', {'error', atom()}}
-                         }.
--type ibrowse_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
-                       {'ibrowse_req_id', any()} |
-                       ibrowse_error().
-%% When using the stream_to option, ibrowse:send_req returns this tuple ReqID
--type ibrowse_req_id() :: {pos_integer(), pos_integer(), pos_integer()}.
-
 %% XML types
 -type xml_attrib_name() :: atom().
 -type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom() | number().

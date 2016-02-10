@@ -20,7 +20,6 @@
          ,gc_top_mem_consumers/0, gc_top_mem_consumers/1
          ,top_mem_consumers/0, top_mem_consumers/1
          ,etop/0
-         ,ibrowse_cleanup/0
         ]).
 
 -include("include/wh_types.hrl").
@@ -89,11 +88,3 @@ top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
 etop() ->
     etop:start([{output, text}]),
     ok.
-
-ibrowse_cleanup() ->
-    [ibrowse_cleanup(K, P) || {{req_id_pid, _Ref}=K, P} <- ets:tab2list(ibrowse_stream)].
-ibrowse_cleanup(K, P) ->
-    case erlang:is_process_alive(P) of
-        true -> ok;
-        false -> ets:delete(ibrowse_stream, K)
-    end.

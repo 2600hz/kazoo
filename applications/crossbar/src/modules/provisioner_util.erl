@@ -256,9 +256,9 @@ should_build_contact_list(Context) ->
 get_provision_defaults(Context) ->
     JObj = cb_context:doc(Context),
 
-    Brand   = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj)),
-    Model   = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"model">>], JObj)),
-    Product = kz_http:urlencode(wh_json:get_string_value([<<"properties">>, <<"product">>], JObj)),
+    Brand   = kz_http_util:urlencode(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj)),
+    Model   = kz_http_util:urlencode(wh_json:get_string_value([<<"properties">>, <<"model">>], JObj)),
+    Product = kz_http_util:urlencode(wh_json:get_string_value([<<"properties">>, <<"product">>], JObj)),
 
     Url = [whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>)
            ,"?request=data"
@@ -272,10 +272,8 @@ get_provision_defaults(Context) ->
                  ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
                  ,{"User-Agent", wh_util:to_list(erlang:node())}
                 ]),
-    Body = [],
-    HTTPOptions = [],
     lager:debug("attempting to pull provisioning configs from ~s", [UrlString]),
-    case ibrowse:send_req(UrlString, Headers, 'get', Body, HTTPOptions) of
+    case kz_http:get(UrlString, Headers) of
         {'ok', "200", _, Response} ->
             lager:debug("great success, accquired provisioning template"),
             JResp = wh_json:decode(Response),
@@ -328,7 +326,6 @@ do_simple_provision(MACAddress, Context) ->
                          ,{"User-Agent", wh_util:to_list(erlang:node())}
                          ,{"Content-Type", "application/x-www-form-urlencoded"}
                         ]),
-            HTTPOptions = [],
             Body = [{"device[mac]", MACAddress}
                     ,{"device[label]", wh_json:get_value(<<"name">>, JObj)}
                     ,{"sip[realm]", kz_device:sip_realm(JObj, AccountRealm)}
@@ -336,9 +333,9 @@ do_simple_provision(MACAddress, Context) ->
                     ,{"sip[password]", kz_device:sip_password(JObj)}
                     ,{"submit", "true"}
                    ],
-            Encoded = kz_http:urlencode(Body),
+            Encoded = kz_http_util:urlencode(Body),
             lager:debug("posting to ~s with: ~-300p", [Url, Encoded]),
-            Res = ibrowse:send_req(Url, Headers, 'post', Encoded, HTTPOptions),
+            Res = kz_http:post(Url, Headers, Encoded),
             lager:debug("response from server: ~p", [Res]),
             'true'
     end.
@@ -399,7 +396,7 @@ maybe_send_to_full_provisioner(PartialURL, JObj) ->
                          ,{"Content-Type", "application/json"}
                         ]),
             FullUrl = wh_util:to_lower_string(<<Url/binary, "/", PartialURL/binary>>),
-            {'ok', _, _, RawJObj} = ibrowse:send_req(FullUrl, Headers, 'get', "", [{'inactivity_timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+            {'ok', _, _, RawJObj} = kz_http:get(FullUrl, Headers, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
             case wh_json:get_integer_value([<<"error">>, <<"code">>], wh_json:decode(RawJObj)) of
                 'undefined' -> send_to_full_provisioner('post', FullUrl, JObj);
                 404 -> send_to_full_provisioner('put', FullUrl, JObj);
@@ -416,7 +413,7 @@ send_to_full_provisioner(FullUrl) ->
                  ,{"Content-Type", "application/json"}
                 ]),
     lager:debug("making ~s request to ~s", ['delete', FullUrl]),
-    Res = ibrowse:send_req(FullUrl, Headers, 'delete', [], [{'inactivity_timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+    Res = kz_http:delete(FullUrl, Headers, [], [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
@@ -430,7 +427,7 @@ send_to_full_provisioner('put', FullUrl, JObj) ->
                 ]),
     Body = wh_util:to_list(wh_json:encode(JObj)),
     lager:debug("making put request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = ibrowse:send_req(FullUrl, Headers, 'put', Body, [{'inactivity_timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+    Res = kz_http:put(FullUrl, Headers, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true';
 send_to_full_provisioner('post', FullUrl, JObj) ->
@@ -447,7 +444,7 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
     J =  wh_json:from_list(props:filter_undefined(Props)),
     Body = wh_util:to_list(wh_json:encode(J)),
     lager:debug("making post request to ~s with: ~-300p", [FullUrl, Body]),
-    Res = ibrowse:send_req(FullUrl, Headers, 'post', Body, [{'inactivity_timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
+    Res = kz_http:post(FullUrl, Headers, Body, [{'timeout', 10 * ?MILLISECONDS_IN_SECOND}]),
     lager:debug("response from server: ~p", [Res]),
     'true'.
 
@@ -739,13 +736,14 @@ send_provisioning_request(Template, MACAddress) ->
                  ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_referer">>)}
                  ,{"User-Agent", wh_util:to_list(erlang:node())}
                 ]),
-    HTTPOptions = [],
     lager:debug("provisioning via ~s", [UrlString]),
-    case ibrowse:send_req(UrlString, Headers, 'post', ProvisionRequest, HTTPOptions) of
+    case kz_http:post(UrlString, Headers, ProvisionRequest) of
         {'ok', "200", _, Response} ->
             lager:debug("SUCCESS! BOOM! ~s", [Response]);
         {'ok', Code, _, Response} ->
-            lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response])
+            lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response]);
+        {'error', R} ->
+            lager:debug("ERROR! OH NO! ~p", [R])
     end.
 
 %%--------------------------------------------------------------------

@@ -857,8 +857,7 @@ get_prefix(City) ->
             ReqParam = wh_util:uri_encode(binary:bin_to_list(City)),
             Req = binary:bin_to_list(<<Url/binary, "/", Country/binary, "/city?pattern=">>),
             Uri = lists:append(Req, ReqParam),
-            case ibrowse:send_req(Uri, [], 'get') of
-                {'error', _Reason}=E -> E;
+            case kz_http:get(Uri) of
                 {'ok', "200", _Headers, Body} ->
                     JObj = wh_json:decode(Body),
                     case wh_json:get_value(<<"data">>, JObj) of
@@ -866,7 +865,9 @@ get_prefix(City) ->
                         Data -> {'ok', Data}
                     end;
                 {'ok', _Status, _Headers, Body} ->
-                    {'error', wh_json:decode(Body)}
+                    {'error', wh_json:decode(Body)};
+                {'error', _Reason}=E ->
+                    E
             end
     end.
 
@@ -987,14 +988,14 @@ get_locality(Numbers, UrlType) ->
         Url ->
             ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
             Uri = <<Url/binary, "/locality/metadata">>,
-            case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
-                {'error', Reason} ->
-                    lager:error("number locality lookup failed: ~p", [Reason]),
-                    {'error', <<"number locality lookup failed">>};
+            case kz_http:post(binary:bin_to_list(Uri), [], wh_json:encode(ReqBody)) of
                 {'ok', "200", _Headers, Body} ->
                     handle_locality_resp(wh_json:decode(Body));
                 {'ok', _Status, _, _Body} ->
                     lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
+                    {'error', <<"number locality lookup failed">>};
+                {'error', Reason} ->
+                    lager:error("number locality lookup failed: ~p", [Reason]),
                     {'error', <<"number locality lookup failed">>}
             end
     end.

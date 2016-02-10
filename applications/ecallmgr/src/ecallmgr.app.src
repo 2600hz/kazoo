@@ -12,10 +12,10 @@
                   , whistle_config
                   , whistle_amqp
                   , whistle_stats
+                  , kazoo_web
 
                   , lager
                   , gproc
-                  , ibrowse
                   ]}
  , {mod, {ecallmgr_app, []}}
  , {env, [{reloader, false}]}

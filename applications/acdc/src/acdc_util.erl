@@ -67,11 +67,11 @@ send_cdr('undefined', _JObj, _Retries) ->
 send_cdr(Url, _JObj, 0) ->
     lager:debug("trying to send cdr to ~s failed retry count", [Url]);
 send_cdr(Url, JObj, Retries) ->
-    case ibrowse:send_req(wh_util:to_list(Url)
-                          ,[{"Content-Type", "application/json"}]
-                          ,'post', wh_json:encode(JObj)
-                          ,1000
-                         ) of
+    case kz_http:post(wh_util:to_list(Url)
+                     ,[{"Content-Type", "application/json"}]
+                     , wh_json:encode(JObj)
+                     ,[{'timeout', 1000}]
+                    ) of
         {'ok', _StatusCode, _RespHeaders, _RespBody} ->
             lager:debug("cdr server at ~s responded with a ~s: ~s", [Url, _StatusCode, _RespBody]);
         _Else ->

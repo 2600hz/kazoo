@@ -10,8 +10,8 @@
 
                  , whistle
                  , whistle_couch
+                 , kazoo_web
 
-                 , ibrowse
                  , lager
                  ]}
  ]}.

@@ -1701,20 +1701,18 @@ notify(Url, 'get', Data) ->
 
 -spec notify(iolist(), [], 'get' | 'post', binary(), wh_proplist()) -> 'ok'.
 notify(Uri, Headers, Method, Body, Opts) ->
-    case ibrowse:send_req(wh_util:to_list(Uri)
-                          ,Headers
-                          ,Method
-                          ,Body
-                          ,[{'connect_timeout', 200} % wait up to 200ms for connection
-                            | Opts
-                           ]
-                          ,1000
-                         )
+    case kz_http:req(Method
+                     ,wh_util:to_list(Uri)
+                     ,Headers
+                     ,Body
+                     ,[{'connect_timeout', 200}
+                        ,{'timeout', 1000}
+                        | Opts
+                      ]
+                    )
     of
         {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
             lager:debug("~s req to ~s: ~s", [Method, Uri, _Status]);
-        {'error', {'url_parsing_failed',_}} ->
-            lager:debug("failed to parse the URL ~s", [Uri]);
         {'error', _E} ->
             lager:debug("failed to send request to ~s: ~p", [Uri, _E])
     end.
@@ -1735,11 +1733,11 @@ recording_url(JObj) ->
 
 -spec uri(ne_binary(), iolist()) -> iolist().
 uri(URI, QueryString) ->
-    case kz_http:urlsplit(URI) of
+    case kz_http_util:urlsplit(URI) of
         {Scheme, Host, Path, <<>>, Fragment} ->
-            kz_http:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+            kz_http_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
-            kz_http:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", QueryString/binary>>, Fragment})
+            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", QueryString/binary>>, Fragment})
     end.
 
 -spec apply_state_updates(fsm_state()) -> {'next_state', atom(), fsm_state()}.
