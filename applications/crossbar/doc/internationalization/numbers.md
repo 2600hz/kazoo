@@ -187,7 +187,7 @@ It is possible to add dial plans to system config. Account/user/device `dial_pla
 
 #### Adding system `dialplan` example
 
-Create dialplans doc in case it is still absent in system_congig db:
+Create dialplans doc in case it is still absent in system_config db:
 ````
 curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/system_configs -d '{"data":{"id":"dialplans"}}'
 ````
