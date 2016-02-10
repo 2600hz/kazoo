@@ -375,8 +375,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
-    _ = wh_util:spawn(fun process_event/4, [UUID, Props, Node, self()]),
+handle_info({'event', [UUID | Props]}, #state{node=Node, options=Options}=State) ->
+    NewProps = case props:get_is_true(<<"Publish-Channel-State">>, Props) of
+                   'undefined' ->
+                       case props:is_false(<<"Publish-Channel-State">>, Options, 'false') of
+                           'true' -> props:set_value(<<"Publish-Channel-State">>, 'false', Props);
+                           _ -> Props
+                       end;
+                   _Value -> Props
+               end,
+    _ = wh_util:spawn(fun process_event/4, [UUID, NewProps, Node, self()]),
     {'noreply', State};
 handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
     _ = wh_util:spawn(fun handle_channel_req_legacy/4, [UUID, FetchId, Node, self()]),
@@ -390,6 +398,8 @@ handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     _ = freeswitch:fetch_reply(Node, ID, 'configuration', iolist_to_binary(Resp)),
     {'noreply', State};
+handle_info({'option', K, V}, #state{options=Options}=State) ->
+    {'noreply', State#state{options=props:set_value(K, V, Options)}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -591,7 +601,8 @@ maybe_publish_channel_state(Props, Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
     %%   becomes disconnected any calls it previsouly controlled will not produce
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
-    case ecallmgr_config:get_boolean(<<"publish_channel_state">>, 'true', Node) of
+    case props:is_true(<<"Publish-Channel-State">>, Props, 'true')
+        andalso ecallmgr_config:get_boolean(<<"publish_channel_state">>, 'true', Node) of
         'false' -> 'ok';
         'true' ->
             case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'false') of
