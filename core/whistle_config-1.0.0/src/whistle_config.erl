@@ -12,6 +12,7 @@
 -export([start_link/0
          ,start/0
          ,stop/0
+         ,reload/0
         ]).
 
 %%--------------------------------------------------------------------
@@ -73,6 +74,10 @@ load_file(File) ->
 set_env() ->
    {'ok', X} = load_file(ini_file()),
    application:set_env('whistle_config', 'wh_config', X).
+
+-spec reload() -> 'ok'.
+reload() ->
+    set_env().
 
 %%--------------------------------------------------------------------
 %% @private

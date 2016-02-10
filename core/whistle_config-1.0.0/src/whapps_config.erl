@@ -24,6 +24,7 @@
 -export([set/3, set/4, set_default/3, set_node/4
          ,update_default/3, update_default/4
         ]).
+-export ([lock_db/0, lock_db/1, is_locked/0]).
 -export([flush/0, flush/1, flush/2, flush/3]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
@@ -237,6 +238,8 @@ get(Category, Keys, Default, Node) when not is_binary(Node) ->
 get(Category, Keys, Default, Node) ->
     case get_category(Category) of
         {'ok', JObj} -> get_value(Category, Node, Keys, Default, JObj);
+        {'error', 'timeout'} ->
+            Default;
         {'error', _} ->
             lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             _ = set(Category, Keys, Default),
@@ -410,10 +413,21 @@ update_category(Category, JObj, PvtFields) ->
 -spec maybe_save_category(ne_binary(), wh_json:object(), api_object(), boolean()) ->
                                  {'ok', wh_json:object()} |
                                  {'error', 'conflict'}.
+-spec maybe_save_category(ne_binary(), wh_json:object(), api_object(), boolean(), boolean()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'conflict'}.
 maybe_save_category(Category, JObj, PvtFields) ->
     maybe_save_category(Category, JObj, PvtFields, 'false').
 
 maybe_save_category(Category, JObj, PvtFields, Looped) ->
+    maybe_save_category(Category, JObj, PvtFields, Looped, is_locked()).
+
+maybe_save_category(_, JObj, _, _, 'true') ->
+    lager:warning("failed to update category, system config doc is locked! "
+                  "Please update /etc/kazoo/config.ini or use "
+                  "'sup whapps_config lock_db <boolean>' to enable system config writes."),
+    {'ok', JObj};
+maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     lager:debug("updating configuration category ~s(~s)"
                 ,[Category, wh_doc:revision(JObj)]
                ),
@@ -447,6 +461,39 @@ update_pvt_fields(Category, JObj, 'undefined') ->
 update_pvt_fields(Category, JObj, PvtFields) ->
     Base = update_pvt_fields(Category, JObj, 'undefined'),
     wh_json:merge_jobjs(Base, PvtFields).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% lock configuration document
+%% @end
+%%-----------------------------------------------------------------------------
+-spec lock_db() -> 'ok'.
+-spec lock_db(ne_binary()) -> 'ok'.
+lock_db() ->
+    lock_db('true').
+
+lock_db('true') ->
+    wh_config:set('whistle_apps', 'lock_whapps_config', 'true');
+lock_db('false') ->
+    wh_config:unset('whistle_apps', 'lock_whapps_config');
+lock_db(Value) when is_binary(Value) ->
+    lock_db(wh_util:to_atom(Value));
+lock_db(Value) ->
+    lager:warning("wrong parameter ~p. use either 'true' or 'false'", [Value]).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% check if configuration document locked or not
+%% @end
+%%-----------------------------------------------------------------------------
+-spec is_locked() -> boolean().
+is_locked() ->
+    case wh_config:get_atom('whistle_apps', 'lock_whapps_config') of
+        [] -> 'false';
+        [Value] -> Value
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public

@@ -15,6 +15,7 @@
          ,get_string/2, get_string/3
          ,get_raw_string/2, get_raw_string/3
          ,get_node_section_name/0
+         ,set/3, unset/2
         ]).
 
 -include("whistle_config.hrl").
@@ -120,6 +121,39 @@ get_node_section_name() ->
     case binary:split(Node, <<"@">>) of
         [Name, _] -> wh_util:to_atom(Name, 'true');
         _Else -> node()
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set or unset enviroment variables
+%% @end
+%%--------------------------------------------------------------------
+-spec set(section(), atom(), term()) -> 'ok'.
+-spec set({section(), wh_proplist()}, wh_proplist()) -> 'ok'.
+set(Section, Key, Value) ->
+    {'ok', Props} = load(),
+    case props:get_value(Section, Props) of
+        'undefined' ->
+            NewSection = {Section, [{Key, Value}]},
+            set(NewSection, Props);
+        PreVal ->
+            NewSection = props:insert_value({Key, Value}, props:delete(Key, PreVal)),
+            set({Section, NewSection}, props:delete(Section, Props))
+    end.
+
+set(NewSection, Props) ->
+    NewProps = props:insert_value(NewSection, Props),
+    application:set_env('whistle_config', 'wh_config', NewProps).
+
+-spec unset(section(), atom()) -> 'ok'.
+unset(Section, Key) ->
+    {'ok', Props} = load(),
+    case props:get_value(Section, Props) of
+      'undefined' -> 'ok';
+      Val ->
+          NewSection = props:delete(Key, Val),
+          set({Section, NewSection}, props:delete(Section, Props))
     end.
 
 %%--------------------------------------------------------------------
