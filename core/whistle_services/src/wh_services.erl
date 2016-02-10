@@ -20,7 +20,9 @@
          ,reconcile_only/1, reconcile_only/2
          ,save_as_dirty/1
         ]).
--export([fetch/1, fetch_services_doc/2]).
+-export([fetch/1, fetch_services_doc/2
+         ,flush_services/0
+        ]).
 -export([update/4]).
 -export([save/1]).
 -export([delete/1]).
@@ -45,7 +47,7 @@
         ]).
 -export([updated_quantity/3]).
 -export([category_quantity/2, category_quantity/3]).
--export([cascade_quantity/3]).
+-export([cascade_quantity/3, cascade_quantities/1]).
 -export([cascade_category_quantity/2, cascade_category_quantity/3]).
 -export([reset_category/2]).
 -export([get_service_module/1]).
@@ -181,13 +183,47 @@ maybe_calc_updates(Services, 'false') ->
 -spec fetch(ne_binary()) -> services().
 fetch(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    %% TODO: if reseller populate cascade via merchant id
+
+    case fetch_cached_services(AccountId) of
+        {'ok', Services} -> Services;
+        {'error', 'not_found'} ->
+            fetch_and_build(AccountId)
+    end.
+
+-spec fetch_and_build(ne_binary()) -> services().
+fetch_and_build(AccountId) ->
     case fetch_services_doc(AccountId) of
-        {'ok', JObj} -> handle_fetch_result(AccountId, JObj);
+        {'ok', JObj} ->
+            Services = handle_fetch_result(AccountId, JObj),
+            cache_services(AccountId, Services),
+            Services;
         {'error', _R} ->
-            lager:debug("unable to open account ~s services doc (creating new): ~p", [Account, _R]),
+            lager:debug("unable to open account ~s services doc (creating new): ~p", [AccountId, _R]),
             new(AccountId)
     end.
+
+-spec fetch_cached_services(ne_binary()) ->
+                                   {'ok', services()} |
+                                   {'error', 'not_found'}.
+fetch_cached_services(AccountId) ->
+    kz_cache:fetch_local(?SERVICES_CACHE, services_cache_key(AccountId)).
+
+-spec cache_services(ne_binary(), services()) -> 'ok'.
+cache_services(AccountId, Services) ->
+    kz_cache:store_local(?SERVICES_CACHE
+                         ,services_cache_key(AccountId)
+                         ,Services
+                         ,[{'origin', [{'db', ?WH_SERVICES_DB, AccountId}]}]
+                        ).
+
+-spec flush_services() -> 'ok'.
+flush_services() ->
+    kz_cache:flush_local(?SERVICES_CACHE).
+
+-spec services_cache_key(AccountId :: ne_binary()) ->
+                                {?MODULE, ne_binary()}.
+services_cache_key(AccountId) ->
+    {?MODULE, AccountId}.
 
 -spec fetch_services_doc(ne_binary()) ->
                                 {'ok', wh_json:object()} |
@@ -196,6 +232,7 @@ fetch(<<_/binary>> = Account) ->
                                 {'ok', wh_json:object()} |
                                 {'error', any()}.
 fetch_services_doc(AccountId) ->
+    %% TODO: if reseller populate cascade via merchant id
     fetch_services_doc(AccountId, 'false').
 
 fetch_services_doc(AccountId, 'false') ->
@@ -327,7 +364,7 @@ save(#wh_services{jobj = JObj
 
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'ok', NewJObj} ->
-            lager:debug("saved services for ~s, ~p", [AccountId, kzd_services:quantities(NewJObj)]),
+            lager:debug("saved services for ~s: ~s", [AccountId, wh_json:encode(kzd_services:quantities(NewJObj))]),
             IsReseller = kzd_services:is_reseller(NewJObj),
             _ = maybe_clean_old_billing_id(Services),
             BillingId = kzd_services:billing_id(NewJObj, AccountId),
@@ -628,12 +665,17 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
         orelse kzd_services:status(ServicesJObj)
     of
         'true' ->
-            lager:debug("allowing request for account with no service plans"),
+            lager:debug("allowing request for account ~s with no service plans"
+                        ,[AccountId]
+                       ),
             'true';
         StatusGood ->
             lager:debug("allowing request for account in good standing"),
             'true';
         Status ->
+            lager:debug("checking local bookkeeper for account ~s in status ~s"
+                        ,[AccountId, Status]
+                       ),
             maybe_local_bookkeeper_allow_updates(AccountId, Status)
     end.
 
@@ -892,13 +934,13 @@ cascade_category_quantity(CategoryId, Services) ->
 cascade_category_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 cascade_category_quantity(CategoryId, ItemExceptions, #wh_services{cascade_quantities=Quantities}=Services) ->
     CatQuantiies = wh_json:get_value(CategoryId, Quantities, wh_json:new()),
-    QsMinusEx = wh_json:delete_keys(ItemExceptions, CatQuantiies),
+    QtysMinusEx = wh_json:delete_keys(ItemExceptions, CatQuantiies),
 
     wh_json:foldl(fun(_ItemId, ItemQuantity, Sum) ->
                           ItemQuantity + Sum
                   end
                   ,category_quantity(CategoryId, ItemExceptions, Services)
-                  ,QsMinusEx
+                  ,QtysMinusEx
                  ).
 
 %%--------------------------------------------------------------------
@@ -971,22 +1013,45 @@ calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
 
 calculate_services_charges(#wh_services{jobj=ServiceJObj
                                         ,updates=UpdatesJObj
+                                        ,cascade_quantities=CascadeQuantities
                                        }
                            ,ServicePlans
                           ) ->
     CurrentQuantities = kzd_services:quantities(ServiceJObj),
-    UpdatedQuantities = wh_json:merge_jobjs(UpdatesJObj, CurrentQuantities),
+    UpdatesWithCascade = apply_cascade_quantities(UpdatesJObj, CascadeQuantities),
+    UpdatedQuantities = wh_json:merge_jobjs(UpdatesWithCascade, CurrentQuantities),
 
     UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj
                                                      ,UpdatedQuantities
                                                     ),
 
-    ServiceItems = wh_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
+    ExistingItems = wh_service_plans:create_items(ServiceJObj, ServicePlans),
+    UpdatedItems = wh_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
+    Changed = wh_service_items:get_updated_items(UpdatedItems, ExistingItems),
 
-    PlanItems = wh_service_plans:create_items(ServiceJObj, ServicePlans),
-
-    Changed = wh_service_items:get_updated_items(ServiceItems, PlanItems),
+    lager:debug("computed service charges"),
     {'ok', wh_service_items:public_json(Changed)}.
+
+-spec apply_cascade_quantities(wh_json:object(), wh_json:object()) ->
+                                      wh_json:object().
+apply_cascade_quantities(Quantities, CascadeQuantities) ->
+    wh_json:map(fun(CategoryId, ItemsJObj) ->
+                        {CategoryId, apply_cascade_categories(CategoryId, ItemsJObj, CascadeQuantities)}
+                end
+                ,Quantities
+               ).
+
+-spec apply_cascade_categories(ne_binary(), wh_json:object(), wh_json:object()) ->
+                                      wh_json:object().
+apply_cascade_categories(CategoryId, ItemsJObj, CascadeQuantities) ->
+    wh_json:map(fun(ItemId, ItemQuantity) ->
+                        Key = [CategoryId, ItemId],
+                        CascadeQuantity = wh_json:get_integer_value(Key, CascadeQuantities, 0),
+                        lager:debug("incrementing update ~p:~p with cascade ~p", [Key, ItemQuantity, CascadeQuantity]),
+                        {ItemId, ItemQuantity + CascadeQuantity}
+                end
+                ,ItemsJObj
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1135,11 +1200,17 @@ get_service_module(Module) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec cascade_quantities(services()) -> wh_json:object().
 -spec cascade_quantities(ne_binary(), boolean()) -> wh_json:object().
 
+cascade_quantities(#wh_services{cascade_quantities=JObj}) ->
+    JObj.
+
 cascade_quantities(<<_/binary>> = Account, 'false') ->
+    lager:debug("computing cascade quantities"),
     do_cascade_quantities(Account, <<"services/cascade_quantities">>);
 cascade_quantities(<<_/binary>> = Account, 'true') ->
+    lager:debug("computing reseller cascade quantities"),
     do_cascade_quantities(Account, <<"services/reseller_quantities">>).
 
 -spec do_cascade_quantities(ne_binary(), ne_binary()) -> wh_json:object().
@@ -1165,6 +1236,7 @@ do_cascade_quantities_fold(JObj, J) ->
 
 do_cascade_quantities_fold(JObj, J, [_|Keys]) ->
     Value = wh_json:get_integer_value(<<"value">>, JObj),
+    lager:debug("setting cascade quantity ~p: ~p", [Keys, Value]),
     wh_json:set_value(Keys, Value, J).
 
 %%--------------------------------------------------------------------

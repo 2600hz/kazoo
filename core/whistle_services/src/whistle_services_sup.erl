@@ -17,8 +17,13 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('wh_service_sync')
+-define(CHILDREN, [?CACHE_ARGS(?SERVICES_CACHE
+                               ,[{'origin_bindings'
+                                  ,[[{'db', ?WH_SERVICES_DB, kzd_services:type()}]]
+                                 }]
+                              )
                    ,?WORKER('wh_services_modb')
+                   ,?WORKER('wh_service_sync')
                   ]).
 
 %% ===================================================================
