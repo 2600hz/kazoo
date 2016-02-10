@@ -21,7 +21,7 @@
 -export([fetch/1, fetch/2, fetch/3, fetch/4
          ,set/2
          ,set_default/2
-         ,set_node/2
+         ,set_node/2, set_node/3
         ]).
 
 -compile([{'no_auto_import', [get/1]}]).
@@ -219,7 +219,13 @@ set_default(Key, Value) ->
 
 -spec set_node(wh_json:key(), wh_json:json_term()) -> 'ok'.
 set_node(Key, Value) ->
-    set(Key, Value, wh_util:to_binary(node()), [{'node_specific', 'true'}]).
+    set_node(Key, Value, node()).
+
+-spec set_node(wh_json:key(), wh_json:json_term(), ne_binary() | atom()) -> 'ok'.
+set_node(Key, Value, Node) when is_atom(Node) ->
+    set_node(Key, Value, wh_util:to_binary(Node));
+set_node(Key, Value, Node) ->
+    set(Key, Value, Node, [{'node_specific', 'true'}]).
 
 -spec set(wh_json:key(), wh_json:json_term(), wh_json:key(), wh_proplist()) -> 'ok'.
 set(Key, Value, Node, Opt) when not is_binary(Key) ->
