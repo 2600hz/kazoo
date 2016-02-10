@@ -187,7 +187,18 @@ It is possible to add dial plans to system config. Account/user/device `dial_pla
 
 #### Adding system `dialplan` example
 
-    curl -X POST -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/system_configs/dialplans -d '{"data":{"^(2\\d{6}$":{"prefix":"+7383","name":"Novosibirsk"}}}'
+If dialplans doc absent, create it:
+````
+curl -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/system_configs -d '{"data":{"id":"dialplans"}}'
+````
+Then create your dialplan:
+````
+    curl -X POST -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/system_configs/dialplans -d '{"data":{"^(2\\d{6})$":{"prefix":"+7383","name":"Novosibirsk"}}}'
+````
+Or:
+````
+    curl -X POST -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/system_configs/dialplans -d '{"data":{"^(\\d{7})$":[{"prefix":"+7495","name":"Moscow"},{"prefix":"+7812","name":"Saint Petersburg"}]}}'
+````
 
 #### Using system `dialplan` example
 
