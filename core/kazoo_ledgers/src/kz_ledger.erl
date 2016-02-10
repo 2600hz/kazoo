@@ -84,15 +84,15 @@ debit(SrcService, SrcId, Account, Usage, Props) ->
              ,ne_binary(), wh_proplist(), wh_proplist()) -> save_return().
 create(Type, SrcService, SrcId, Account, Usage, Props) ->
     Routines = [
-        fun(L) -> kazoo_ledger:set_type(L, Type) end
-        ,fun(L) -> kazoo_ledger:set_source_service(L, SrcService) end
-        ,fun(L) -> kazoo_ledger:set_source_id(L, SrcId) end
-        ,fun(L) -> set_account(L, Account) end
-        ,fun(L) -> set_usage(L, Usage) end
-        ,fun(L) -> set_extra(L, Props) end
+        {fun kazoo_ledger:set_type/2, Type}
+        ,{fun kazoo_ledger:set_source_service/2, SrcService}
+        ,{fun kazoo_ledger:set_source_id/2, SrcId}
+        ,{fun set_account/2, Account}
+        ,{fun set_usage/2, Usage}
+        ,{fun set_extra/2, Props}
         ,fun kazoo_ledger:save/1
     ],
-    lists:foldl(fun(F, L) -> F(L) end, kazoo_ledger:new(), Routines).
+    lists:foldl(fun apply_routine/2, kazoo_ledger:new(), Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,13 +104,10 @@ create(Type, SrcService, SrcId, Account, Usage, Props) ->
 set_account(Ledger, Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     Routines = [
-        fun(L) -> kazoo_ledger:set_account_id(L, AccountId) end
-        ,fun(L) ->
-            Name = whapps_util:get_account_name(AccountId),
-            kazoo_ledger:set_account_name(L, Name)
-        end
+        {fun kazoo_ledger:set_account_id/2, AccountId}
+        ,{fun kazoo_ledger:set_account_name/2, whapps_util:get_account_name(AccountId)}
     ],
-    lists:foldl(fun(F, L) -> F(L) end, Ledger, Routines).
+    lists:foldl(fun apply_routine/2, Ledger, Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,3 +144,13 @@ set_extra(Ledger, [{<<"period_end">>, Val}|Props]) ->
     set_extra(kazoo_ledger:set_period_end(Ledger, Val), Props);
 set_extra(Ledger, [_|Props]) ->
     set_extra(Ledger, Props).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_routine(function() | {function(), any()}, ledger()) -> ledger().
+apply_routine({F, V}, L) -> F(L, V);
+apply_routine(F, L) -> F(L).
