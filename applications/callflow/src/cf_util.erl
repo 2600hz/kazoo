@@ -804,12 +804,18 @@ load_system_dialplans(Names) ->
 -spec fold_system_dialplans(ne_binaries()) ->
                                    fun(({ne_binary(), wh_json:object()}, wh_json:object()) -> wh_json:object()).
 fold_system_dialplans(Names) ->
-    fun({Key, Val}, Acc) ->
-            Name = wh_util:to_lower_binary(wh_json:get_value(<<"name">>, Val)),
-            case lists:member(Name, Names) of
-                'true' -> wh_json:set_value(Key, Val, Acc);
-                'false' -> Acc
-            end
+    fun({Key, Val}, Acc) when is_list(Val) ->
+        lists:foldl(fun(ValElem, A) -> may_be_dialplan_suits({Key, ValElem}, A, Names) end, Acc, Val);
+       ({Key, Val}, Acc) ->
+        may_be_dialplan_suits({Key, Val}, Acc, Names)
+    end.
+
+-spec may_be_dialplan_suits({ne_binary(), wh_json:object()} ,wh_json:object(), ne_binaries()) -> wh_json:object().
+may_be_dialplan_suits({Key, Val}, Acc, Names) ->
+    Name = wh_util:to_lower_binary(wh_json:get_value(<<"name">>, Val)),
+    case lists:member(Name, Names) of
+        'true' -> wh_json:set_value(Key, Val, Acc);
+        'false' -> Acc
     end.
 
 -spec encryption_method_map(api_object(), api_binaries() | wh_json:object()) -> api_object().
