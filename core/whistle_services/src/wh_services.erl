@@ -206,11 +206,11 @@ fetch_and_build(AccountId) ->
                                    {'ok', services()} |
                                    {'error', 'not_found'}.
 fetch_cached_services(AccountId) ->
-    wh_cache:fetch_local(?SERVICES_CACHE, services_cache_key(AccountId)).
+    kz_cache:fetch_local(?SERVICES_CACHE, services_cache_key(AccountId)).
 
 -spec cache_services(ne_binary(), services()) -> 'ok'.
 cache_services(AccountId, Services) ->
-    wh_cache:store_local(?SERVICES_CACHE
+    kz_cache:store_local(?SERVICES_CACHE
                          ,services_cache_key(AccountId)
                          ,Services
                          ,[{'origin', [{'db', ?WH_SERVICES_DB, AccountId}]}]
@@ -218,7 +218,7 @@ cache_services(AccountId, Services) ->
 
 -spec flush_services() -> 'ok'.
 flush_services() ->
-    wh_cache:flush_local(?SERVICES_CACHE).
+    kz_cache:flush_local(?SERVICES_CACHE).
 
 -spec services_cache_key(AccountId :: ne_binary()) ->
                                 {?MODULE, ne_binary()}.
