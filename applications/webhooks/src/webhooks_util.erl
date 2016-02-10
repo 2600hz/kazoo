@@ -195,7 +195,7 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
                            )
              ).
 
--spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), kz_http_ret()) -> 'ok'.
+-spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), kz_http:http_ret()) -> 'ok'.
 fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
     lager:debug("sent hook call event successfully"),
     successful_hook(Hook);

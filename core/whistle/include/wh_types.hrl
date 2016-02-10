@@ -206,13 +206,6 @@
                              {'spawn_opt', list()}.
 -type gen_server_options() :: [gen_server_option()].
 
-%% kz_http-related types
--type kz_http_req_id() :: {'http_req_id', reference()} | {'ok', reference()} | reference().
--type kz_http_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
-                       {'ok', 'saved_to_file'} |
-                       {'error', any()} |
-                       kz_http_req_id().
-
 %% XML types
 -type xml_attrib_name() :: atom().
 -type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom() | number().

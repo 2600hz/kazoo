@@ -45,7 +45,7 @@ delete_account(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_resp(kz_http_ret()) -> 'ok'.
+-spec handle_resp(kz_http:http_ret()) -> 'ok'.
 handle_resp({'ok', "200", _, Resp}) ->
     lager:debug("mobile_manager success ~s", [Resp]);
 handle_resp({'ok', Code, _, Resp}) ->

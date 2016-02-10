@@ -40,15 +40,24 @@
 -type httpc_request() :: {string(), wh_proplist()} |
                          {string(), wh_proplist(), string(), http_body()}.
 
+-type http_req_id() :: {'http_req_id', reference()} | {'ok', reference()} | reference().
+-export_type([http_req_id/0]).
+
+-type http_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
+                       {'ok', 'saved_to_file'} |
+                       {'error', any()} |
+                       http_req_id().
+-export_type([http_ret/0]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Send synchronous request
 %% @end
 %%--------------------------------------------------------------------
--spec get(string()) -> kz_http_ret().
--spec get(string(), wh_proplist()) -> kz_http_ret().
--spec get(string(), wh_proplist(), wh_proplist()) -> kz_http_ret().
+-spec get(string()) -> http_ret().
+-spec get(string(), wh_proplist()) -> http_ret().
+-spec get(string(), wh_proplist(), wh_proplist()) -> http_ret().
 get(Url) ->
     req('get', Url, [], [], []).
 get(Url, Headers) ->
@@ -56,9 +65,9 @@ get(Url, Headers) ->
 get(Url, Headers, Options) ->
     req('get', Url, Headers, [], Options).
 
--spec options(string()) -> kz_http_ret().
--spec options(string(), wh_proplist()) -> kz_http_ret().
--spec options(string(), wh_proplist(), wh_proplist()) -> kz_http_ret().
+-spec options(string()) -> http_ret().
+-spec options(string(), wh_proplist()) -> http_ret().
+-spec options(string(), wh_proplist(), wh_proplist()) -> http_ret().
 options(Url) ->
     req('options', Url, [], [], []).
 options(Url, Headers) ->
@@ -66,9 +75,9 @@ options(Url, Headers) ->
 options(Url, Headers, Options) ->
     req('options', Url, Headers, [], Options).
 
--spec head(string()) -> kz_http_ret().
--spec head(string(), wh_proplist()) -> kz_http_ret().
--spec head(string(), wh_proplist(), wh_proplist()) -> kz_http_ret().
+-spec head(string()) -> http_ret().
+-spec head(string(), wh_proplist()) -> http_ret().
+-spec head(string(), wh_proplist(), wh_proplist()) -> http_ret().
 head(Url) ->
     req('head', Url, [], [], []).
 head(Url, Headers) ->
@@ -76,9 +85,9 @@ head(Url, Headers) ->
 head(Url, Headers, Options) ->
     req('head', Url, Headers, [], Options).
 
--spec trace(string()) -> kz_http_ret().
--spec trace(string(), wh_proplist()) -> kz_http_ret().
--spec trace(string(), wh_proplist(), wh_proplist()) -> kz_http_ret().
+-spec trace(string()) -> http_ret().
+-spec trace(string(), wh_proplist()) -> http_ret().
+-spec trace(string(), wh_proplist(), wh_proplist()) -> http_ret().
 trace(Url) ->
     req('trace', Url, [], [], []).
 trace(Url, Headers) ->
@@ -86,10 +95,10 @@ trace(Url, Headers) ->
 trace(Url, Headers, Options) ->
     req('trace', Url, Headers, [], Options).
 
--spec delete(string()) -> kz_http_ret().
--spec delete(string(), wh_proplist()) -> kz_http_ret().
--spec delete(string(), wh_proplist(), http_body()) -> kz_http_ret().
--spec delete(string(), wh_proplist(), http_body(), wh_proplist()) -> kz_http_ret().
+-spec delete(string()) -> http_ret().
+-spec delete(string(), wh_proplist()) -> http_ret().
+-spec delete(string(), wh_proplist(), http_body()) -> http_ret().
+-spec delete(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
 delete(Url) ->
     req('delete', Url, [], [], []).
 delete(Url, Headers) ->
@@ -99,10 +108,10 @@ delete(Url, Headers, Body) ->
 delete(Url, Headers, Body, Options) ->
     req('delete', Url, Headers, Body, Options).
 
--spec post(string()) -> kz_http_ret().
--spec post(string(), wh_proplist()) -> kz_http_ret().
--spec post(string(), wh_proplist(), http_body()) -> kz_http_ret().
--spec post(string(), wh_proplist(), http_body(), wh_proplist()) -> kz_http_ret().
+-spec post(string()) -> http_ret().
+-spec post(string(), wh_proplist()) -> http_ret().
+-spec post(string(), wh_proplist(), http_body()) -> http_ret().
+-spec post(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
 post(Url) ->
     req('post', Url, [], [], []).
 post(Url, Headers) ->
@@ -112,10 +121,10 @@ post(Url, Headers, Body) ->
 post(Url, Headers, Body, Options) ->
     req('post', Url, Headers, Body, Options).
 
--spec put(string()) -> kz_http_ret().
--spec put(string(), wh_proplist()) -> kz_http_ret().
--spec put(string(), wh_proplist(), http_body()) -> kz_http_ret().
--spec put(string(), wh_proplist(), http_body(), wh_proplist()) -> kz_http_ret().
+-spec put(string()) -> http_ret().
+-spec put(string(), wh_proplist()) -> http_ret().
+-spec put(string(), wh_proplist(), http_body()) -> http_ret().
+-spec put(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
 put(Url) ->
     req('put', Url, [], [], []).
 put(Url, Headers) ->
@@ -131,11 +140,11 @@ put(Url, Headers, Body, Options) ->
 %% Send a synchronous HTTP request
 %% @end
 %%--------------------------------------------------------------------
--spec req(string()) -> kz_http_ret().
--spec req(atom(), string()) -> kz_http_ret().
--spec req(atom(), string(), wh_proplist()) -> kz_http_ret().
--spec req(atom(), string(), wh_proplist(), http_body()) -> kz_http_ret().
--spec req(atom(), string(), wh_proplist(), http_body(), wh_proplist()) -> kz_http_ret().
+-spec req(string()) -> http_ret().
+-spec req(atom(), string()) -> http_ret().
+-spec req(atom(), string(), wh_proplist()) -> http_ret().
+-spec req(atom(), string(), wh_proplist(), http_body()) -> http_ret().
+-spec req(atom(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
 req(Url) ->
     req('get', Url, [], [], []).
 req(Method, Url) ->
@@ -155,11 +164,11 @@ req(Method, Url, Hdrs, Body, Opts) ->
 %% Send a asynchronous HTTP request
 %% @end
 %%--------------------------------------------------------------------
--spec async_req(pid(), string()) -> kz_http_ret().
--spec async_req(pid(), atom(), string()) -> kz_http_ret().
--spec async_req(pid(), atom(), string(), wh_proplist()) -> kz_http_ret().
--spec async_req(pid(), atom(), string(), wh_proplist(), http_body()) -> kz_http_ret().
--spec async_req(pid(), atom(), string(), wh_proplist(), http_body(), wh_proplist()) -> kz_http_ret().
+-spec async_req(pid(), string()) -> http_ret().
+-spec async_req(pid(), atom(), string()) -> http_ret().
+-spec async_req(pid(), atom(), string(), wh_proplist()) -> http_ret().
+-spec async_req(pid(), atom(), string(), wh_proplist(), http_body()) -> http_ret().
+-spec async_req(pid(), atom(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
 async_req(Pid, Url) ->
     async_req(Pid, 'get', Url, [], [], []).
 async_req(Pid, Method, Url) ->
@@ -178,7 +187,7 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
 %% @doc Send request using httpc and handle its response
 %% @end
 %%--------------------------------------------------------------------
--spec execute_request(atom(), tuple(), wh_proplist()) -> kz_http_ret().
+-spec execute_request(atom(), tuple(), wh_proplist()) -> http_ret().
 execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Opts1 = get_options(?OPTIONS, Opts),
@@ -194,52 +203,35 @@ execute_request(Method, Request, Opts) ->
 %% Response to caller in a proper manner
 %% @end
 %%--------------------------------------------------------------------
--spec handle_response(httpc_ret()) -> kz_http_ret().
-handle_response(Resp) ->
-    case Resp of
-        {'ok', Result} ->
-            handle_good_response(Result);
-        {'error', Reason} ->
-            handle_bad_response(Reason)
-    end.
-
--spec handle_good_response(any()) -> kz_http_ret().
-handle_good_response(Resp) ->
-    case Resp of
-        'saved_to_file' ->
-            {'ok', 'saved_to_file'};
-        ReqId when is_reference(ReqId) ->
-            {'http_req_id', ReqId};
-        {{_, StatusCode, _}, Headers, Body} ->
-            {'ok', StatusCode, Headers, Body}
-    end.
-
--spec handle_bad_response(any()) -> kz_http_ret().
-handle_bad_response(Reason) ->
-    case Reason of
-        'timeout' ->
-            lager:debug("connection timeout"),
-            {'error', 'timeout'};
-        {failed_connect,[{_, Address}, {_, _, nxdomain}]} ->
-            lager:debug("non existent domain ~p", Address),
-            {'error', {failed_connect, nxdomain}};
-        {failed_connect,[{_, Address}, {_, _, econnrefused}]} ->
-            lager:debug("connection refused to ~p", Address),
-            {'error', {failed_connect, econnrefused}};
-        {malformed_url, _, Url} ->
-            lager:debug("failed to parse the URL ~p", Url),
-            {'error', {malformed_url, Url}};
-        Error ->
-            lager:debug("request failed with ~p", [Error]),
-            Error
-    end.
+-spec handle_response(httpc_ret()) -> http_ret().
+handle_response({'ok', 'saved_to_file'}) ->
+    {'ok', 'saved_to_file'};
+handle_response({'ok', ReqId}) when is_reference(ReqId) ->
+    {'http_req_id', ReqId};
+handle_response({'ok', {{_, StatusCode, _}, Headers, Body}}) ->
+    {'ok', StatusCode, Headers, Body};
+handle_response({'error', 'timeout'}) ->
+    lager:debug("connection timeout"),
+    {'error', 'timeout'};
+handle_response({'error', {failed_connect,[{_, Address}, {_, _, nxdomain}]}}) ->
+    lager:debug("non existent domain ~p", Address),
+    {'error', {failed_connect, nxdomain}};
+handle_response({'error', {failed_connect,[{_, Address}, {_, _, econnrefused}]}}) ->
+    lager:debug("connection refused to ~p", Address),
+    {'error', {failed_connect, econnrefused}};
+handle_response({'error', {malformed_url, _, Url}}) ->
+    lager:debug("failed to parse the URL ~p", Url),
+    {'error', {malformed_url, Url}};
+handle_response({'error', Error}) ->
+    lager:debug("request failed with ~p", [Error]),
+    Error.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Build <code>Authorization</code> header using <code>basic_auth</code> option
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_basic_auth(wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec maybe_basic_auth(wh_proplist(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
 maybe_basic_auth(Headers, Options) ->
     case props:get_value('basic_auth', Options) of
         'undefined' -> {Headers, Options};
