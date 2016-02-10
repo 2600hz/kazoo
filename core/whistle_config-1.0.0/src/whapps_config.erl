@@ -423,9 +423,8 @@ maybe_save_category(Category, JObj, PvtFields, Looped) ->
     maybe_save_category(Category, JObj, PvtFields, Looped, is_locked()).
 
 maybe_save_category(_, JObj, _, _, 'true') ->
-    lager:warning("failed to update category, system config doc is locked! "
-                  "Please update /etc/kazoo/config.ini or use "
-                  "'sup whapps_config lock_db <boolean>' to enable system config writes."),
+    lager:warning("failed to update category, system config database is locked!"),
+    lager:warning("please update /etc/kazoo/config.ini or use 'sup whapps_config lock_db <boolean>' to enable system config writes."),
     {'ok', JObj};
 maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     lager:debug("updating configuration category ~s(~s)"
@@ -474,9 +473,9 @@ lock_db() ->
     lock_db('true').
 
 lock_db('true') ->
-    wh_config:set('whistle_apps', 'lock_whapps_config', 'true');
+    wh_config:set('whistle_apps', 'lock_system_config', 'true');
 lock_db('false') ->
-    wh_config:unset('whistle_apps', 'lock_whapps_config');
+    wh_config:unset('whistle_apps', 'lock_system_config');
 lock_db(Value) when is_binary(Value) ->
     lock_db(wh_util:to_atom(Value));
 lock_db(Value) ->
@@ -490,7 +489,7 @@ lock_db(Value) ->
 %%-----------------------------------------------------------------------------
 -spec is_locked() -> boolean().
 is_locked() ->
-    case wh_config:get_atom('whistle_apps', 'lock_whapps_config') of
+    case wh_config:get_atom('whistle_apps', 'lock_system_config') of
         [] -> 'false';
         [Value] -> Value
     end.
