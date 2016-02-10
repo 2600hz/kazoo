@@ -9,7 +9,9 @@
 
 -include("whistle_config.hrl").
 
--export([start_link/0]).
+-export([start_link/0
+         ,reload/0
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,6 +47,10 @@ load_file(File) ->
 
 -spec set_env() -> 'ok'.
 set_env() ->
-   {'ok', X} = load_file(ini_file()),
+    {'ok', X} = load_file(ini_file()),
     lager:debug("setting config env ~p", [X]),
     application:set_env('whistle_config', 'wh_config', X).
+
+-spec reload() -> 'ok'.
+reload() ->
+    set_env().
