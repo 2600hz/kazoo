@@ -410,11 +410,12 @@ maybe_save_category(Category, JObj, PvtFields) ->
     maybe_save_category(Category, JObj, PvtFields, 'false').
 
 maybe_save_category(Category, JObj, PvtFields, Looped) ->
-    [IsLocked] =  wh_config:get_atom('whistle_apps', 'lock_whapps_config', ['false']),
+    [IsLocked] =  wh_config:get_atom('whistle_apps', 'lock_system_config', ['false']),
     maybe_save_category(Category, JObj, PvtFields, Looped, IsLocked).
 
 maybe_save_category(_, JObj, _, _, 'true') ->
-    lager:warning("failed to update category, system config doc is locked! Please update /etc/kazoo/config.ini to enable system config writes."),
+    lager:warning("failed to update category, system config database is locked!"),
+    lager:warning("please update /etc/kazoo/config.ini to enable system config writes."),
     {'ok', JObj};
 maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
     lager:debug("updating configuration category ~s(~s)", [Category, wh_doc:revision(JObj)]),
