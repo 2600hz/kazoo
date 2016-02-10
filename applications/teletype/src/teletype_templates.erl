@@ -135,9 +135,15 @@ render(TemplateId, Macros, DataJObj) ->
 
 render(TemplateId, Macros, DataJObj, 'false') ->
     case templates_source(TemplateId, DataJObj) of
-        'undefined' -> [];
-        ?WH_CONFIG_DB -> render_masters(TemplateId, Macros);
-        AccountDb -> render_accounts(TemplateId, AccountDb, Macros)
+        'undefined' ->
+            lager:warning("no source db for template ~s: ~p", [TemplateId, DataJObj]),
+            [];
+        ?WH_CONFIG_DB ->
+            lager:debug("rendering system template for ~s", [TemplateId]),
+            render_masters(TemplateId, Macros);
+        AccountDb ->
+            lager:debug("rendering template ~s from account ~s", [TemplateId, AccountDb]),
+            render_accounts(TemplateId, AccountDb, Macros)
     end;
 render(TemplateId, Macros, DataJObj, 'true') ->
     preview(TemplateId, Macros, DataJObj).
@@ -172,7 +178,8 @@ templates_source(TemplateId, AccountId, ResellerId) ->
             lager:debug("failed to find template ~s in account ~s", [TemplateId, AccountId]),
             ParentId = teletype_util:get_parent_account_id(AccountId),
             templates_source(TemplateId, ParentId, ResellerId);
-        {'ok', _Template} -> AccountId;
+        {'ok', Template} ->
+            wh_doc:account_id(Template);
         {'error', _E} -> 'undefined'
     end.
 
@@ -232,7 +239,7 @@ render_master(<<_/binary>> = TemplateId, <<_/binary>> = ContentType, Macros) ->
     ModuleName = teletype_templates:renderer_name(TemplateId, ContentType),
     try ModuleName:render(Macros) of
         {'ok', IOList} ->
-            lager:debug("rendered ~s template successfully", [ContentType]),
+            lager:debug("rendered ~s template successfully: ~s", [ContentType, IOList]),
             iolist_to_binary(IOList);
         {'error', _E} ->
             lager:debug("failed to render ~s template: ~p", [ContentType, _E]),
