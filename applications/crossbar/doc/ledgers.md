@@ -56,17 +56,32 @@ Credit or Debit a specific ledger (**must be admin to use**).
 
 ### Request
 
-- Verb: `POST`
-- Url: `/accounts/{{ACCOUNT_ID}}/ledgers/{{LEDGER}}/credit` or `/accounts/{{ACCOUNT_ID}}/ledgers/{{LEDGER}}/debit`
+- Verb: `PUT`
+- Url: `/accounts/{{ACCOUNT_ID}}/ledgers/credit` or `/accounts/{{ACCOUNT_ID}}/ledgers/debit`
 - Payload:
     - `amount` *integer*: is mandatory and must be > 0
     - `description` *string*: not mandatory
 
 ```json
 {
-    "data": {
-        "amount": {{AMOUNT}},
-        "description": "{{DESC}}"
+    "amount": 100,
+    "description": "blablabla",
+    "source": {
+        "service": "tower/support/...",
+        "id": "mac/mdn/..."
+    },
+    "usage": {
+        "type": "data",
+        "quantity": 5,
+        "unit": "MB"
+    },
+    "period": {
+        "start": 10938710938,
+        "end": 214109238023899
+    },
+    "account": {
+        "id": "390820938109diadiuw",
+        "name": "Account Name"
     }
 }
 ```
@@ -76,11 +91,25 @@ Credit or Debit a specific ledger (**must be admin to use**).
 ```json
 {
     "data": {
-        "name": "{{LEDGER}}",
-        "amount": "{{AMOUNT}}",
-        "description": "{{DESC}}",
-        "account_id": "{{ACCOUNT_ID}}",
-        "type": "credit"
+        "amount": 100,
+        "description": "blablabla",
+        "source": {
+            "service": "tower/support/...",
+            "id": "mac/mdn/..."
+        },
+        "usage": {
+            "type": "data",
+            "quantity": 5,
+            "unit": "MB"
+        },
+        "period": {
+            "start": 10938710938,
+            "end": 214109238023899
+        },
+        "account": {
+            "id": "390820938109diadiuw",
+            "name": "Account Name"
+        }
     },
     "status": "success"
 }
