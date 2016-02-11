@@ -60,6 +60,7 @@ handle_req(JObj, _Props) ->
             continue_processing(JObj, AccountDb, VMBox, UserJObj, BoxEmails)
     end.
 
+-spec continue_processing(wh_json:object(), ne_binary(), wh_json:object(), wh_json:object(), ne_binaries()) -> 'ok'.
 continue_processing(JObj, AccountDb, VMBox, UserJObj, BoxEmails) ->
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
