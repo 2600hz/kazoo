@@ -141,13 +141,22 @@ consume_tokens_until(<<_/binary>> = App, <<_/binary>> = Key, Count, StartIfMissi
 consume_tokens(App, Key, Count, StartIfMissing, BucketFun) ->
     case get_bucket(App, Key) of
         'undefined' when StartIfMissing ->
-            lager:debug("bucket (~s ~s) missing, starting", [App, Key]),
-            case start_bucket(App, Key) of
-                'error' -> 'false';
-                _OK -> consume_tokens(App, Key, Count, StartIfMissing, BucketFun)
-            end;
-        'undefined' -> 'false';
-        Srv -> BucketFun(Srv, Count)
+            maybe_start_bucket(App, Key, Count, StartIfMissing, BucketFun);
+        Srv ->
+            case is_process_alive(Srv) of
+                'true' -> BucketFun(Srv, Count);
+                'false' ->
+                    maybe_start_bucket(App, Key, Count, StartIfMissing, BucketFun)
+            end
+    end.
+
+-spec maybe_start_bucket(ne_binary(), ne_binary(), integer(), boolean(), fun()) -> boolean().
+maybe_start_bucket(_App, _Key, _Count, 'false', _BucketFun) -> 'false';
+maybe_start_bucket(App, Key, Count, 'true', BucketFun) ->
+    lager:debug("bucket (~s ~s) missing, starting", [App, Key]),
+    case start_bucket(App, Key) of
+        'error' -> 'false';
+        _OK -> consume_tokens(App, Key, Count, 'false', BucketFun)
     end.
 
 -spec get_bucket(ne_binary(), ne_binary()) -> api_pid().
