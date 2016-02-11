@@ -35,11 +35,6 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec stop_processing(string(), list()) -> no_return().
-stop_processing(Format, Args) ->
-    lager:debug(Format, Args),
-    throw('stop').
-
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_v(JObj),
@@ -47,23 +42,28 @@ handle_req(JObj, _Props) ->
 
     lager:debug("new voicemail left, sending to email if enabled"),
 
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
     AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
 
     VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
     {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
-
     {'ok', UserJObj} = get_owner(AccountDb, VMBox),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
 
     %% If the box has emails, continue processing
-    %% or If the voicemail notification is enabled on the user, continue processing
+    %% andalso the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    (BoxEmails =/= [] orelse kzd_user:voicemail_notification_enabled(UserJObj))
-        orelse stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
+    case BoxEmails =:= [] andalso kzd_user:voicemail_notification_enabled(UserJObj) of 
+        'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
+        'true' ->
+            continue_processing(JObj, AccountDb, VMBox, UserJObj, BoxEmails)
+    end.
+
+continue_processing(JObj, AccountDb, VMBox, UserJObj, BoxEmails) ->
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
 
     Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 
