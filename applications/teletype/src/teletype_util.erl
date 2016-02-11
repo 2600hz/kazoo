@@ -310,7 +310,7 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
 
 -spec default_content_transfer_encoding(binary()) -> binary().
 default_content_transfer_encoding(<<"text/html">>) -> <<"base64">>;
-default_content_transfer_encoding(_) -> <<>>.
+default_content_transfer_encoding(_) -> <<"7BIT">>.
 
 -spec system_params() -> wh_proplist().
 system_params() ->
