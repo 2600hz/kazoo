@@ -72,7 +72,7 @@ process_req(DataJObj) ->
     ViewOpts = [{'startkey', [SenderId]}
                ,{'endkey', [SenderId, wh_json:new()]}
                ],
-    case couch_mgr:get_results(<<"accounts">>, <<"accounts/listing_by_children">>, ViewOpts) of
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_children">>, ViewOpts) of
         {'ok', Accounts} ->
             process_accounts(Accounts, DataJObj);
         {'error', _Reason} = E ->

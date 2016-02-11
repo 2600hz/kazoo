@@ -10,13 +10,13 @@
 -module(cb_notifications).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/2
          ,content_types_accepted/2
-         ,validate/1, validate/2, validate/3, validate/4
+         ,validate/1, validate/2, validate/3
          ,put/1
-         ,post/2, post/3, post/4
+         ,post/2, post/3
          ,delete/2
 
          ,flush/0
@@ -35,7 +35,7 @@
 -define(PREVIEW, <<"preview">>).
 -define(SMTP_LOG, <<"smtplog">>).
 -define(CUSTOMER_UPDATE, <<"customer_update">>).
--define(SEND_MESSAGE, <<"send_message">>).
+-define(MESSAGE, <<"message">>).
 -define(CB_LIST_SMTP_LOG, <<"notifications/smtp_log">>).
 
 -define(MACROS, <<"macros">>).
@@ -89,10 +89,7 @@ allowed_methods(_, ?PREVIEW) ->
     [?HTTP_POST];
 allowed_methods(?SMTP_LOG, _Id) ->
     [?HTTP_GET];
-allowed_methods(?CUSTOMER_UPDATE, ?SEND_MESSAGE) ->
-    [?HTTP_POST].
-
-allowed_methods(?CUSTOMER_UPDATE, ?SEND_MESSAGE, _Id) ->
+allowed_methods(?CUSTOMER_UPDATE, ?MESSAGE) ->
     [?HTTP_POST].
 
 %%--------------------------------------------------------------------
@@ -115,9 +112,7 @@ resource_exists(_Id) -> 'true'.
 
 resource_exists(_Id, ?PREVIEW) -> 'true';
 resource_exists(?SMTP_LOG, _Id) -> 'true';
-resource_exists(?CUSTOMER_UPDATE, ?SEND_MESSAGE) -> 'true'.
-
-resource_exists(?CUSTOMER_UPDATE, ?SEND_MESSAGE, _Id) -> 'true'.
+resource_exists(?CUSTOMER_UPDATE, ?MESSAGE) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -227,11 +222,8 @@ validate(Context, Id, ?PREVIEW) ->
     update_notification(maybe_update_db(Context), DbId);
 validate(Context, ?SMTP_LOG, Id) ->
     load_smtp_log_doc(Id, Context);
-validate(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE) ->
-    cb_context:set_resp_status(Context, 'success').
-
-validate(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE, _Id) ->
-    cb_context:set_resp_status(Context, 'success').
+validate(Context, ?CUSTOMER_UPDATE, ?MESSAGE) ->
+    may_be_validate_recipient_id(Context).
 
 -spec validate_notifications(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_notification(cb_context:context(), path_token(), http_method()) ->
@@ -270,6 +262,38 @@ disallow_delete(Context, Id) ->
         ],
     cb_context:add_validation_error(Id, <<"disallow">>, wh_json:from_list(Resp), Context).
 
+-spec may_be_validate_recipient_id(cb_context:context()) -> cb_context:context().
+may_be_validate_recipient_id(Context) ->
+    case cb_context:req_value(Context, <<"recipient_id">>) of
+        'undefined' ->
+            cb_context:set_resp_status(Context, 'success');
+        <<RecipientId:32/binary>> ->
+            validate_recipient_id(RecipientId, Context);
+        _ ->
+            Context
+    end.
+
+-spec validate_recipient_id(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_recipient_id(RecipientId, Context) ->
+    SenderId = case cb_context:account_id(Context) of
+                   'undefined' -> cb_context:auth_account_id(Context);
+                   AccountId -> AccountId
+               end,
+    ViewOpts = [{'startkey', [SenderId]}
+               ,{'endkey', [SenderId, wh_json:new()]}
+               ],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_children">>, ViewOpts) of
+        {'ok', Accounts} ->
+            AccountIds = lists:map(fun(Account) -> wh_json:get_value(<<"id">>, Account) end, Accounts),
+            case lists:member(RecipientId, AccountIds) of
+                'true' -> cb_context:set_resp_status(Context, 'success');
+                'false' -> Context
+            end;
+        {'error', _Reason} = E ->
+            lager:info("failed to load children. error: ~p", [E]),
+            Context
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -293,7 +317,6 @@ put(Context) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     case cb_context:req_files(Context) of
         [] ->
@@ -329,7 +352,7 @@ set_system_macros(Context) ->
             Context
     end.
 
-post(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE) ->
+post(Context, ?CUSTOMER_UPDATE, ?MESSAGE) ->
     case
         whapps_util:amqp_pool_request(
           build_customer_update_payload(Context)
@@ -365,38 +388,26 @@ post(Context, Id, ?PREVIEW) ->
             crossbar_util:response('error', <<"Failed to process notification preview">>, Context)
     end.
 
-post(Context, ?CUSTOMER_UPDATE, ?SEND_MESSAGE, Id) ->
-    case
-        whapps_util:amqp_pool_request(
-          [{<<"Recipient-ID">>, Id}] ++ build_customer_update_payload(Context)
-          ,fun wapi_notifications:publish_customer_update/1
-          ,fun wapi_notifications:customer_update_v/1
-        )
-    of
-        {'ok', _Resp} ->
-            lager:debug("published customer_update notification");
-        {'error', _E} ->
-            lager:debug("failed to publish_customer update notification: ~p", [_E])
-    end,
-    Context.
-
+-spec build_customer_update_payload(cb_context:context()) -> wh_proplist().
 build_customer_update_payload(Context) ->
     SenderId = case cb_context:account_id(Context) of
                    'undefined' -> cb_context:auth_account_id(Context);
                    AccountId -> AccountId
                end,
-    [{<<"Account-ID">>, SenderId}
-    ,{<<"User-Type">>, cb_context:req_value(Context, <<"user_type">>)}
-    ,{<<"Subject">>, cb_context:req_value(Context, <<"subject">>)}
-    ,{<<"From">>, cb_context:req_value(Context, <<"from">>)}
-    ,{<<"Reply-To">>, cb_context:req_value(Context, <<"reply_to">>)}
-    ,{<<"To">>, cb_context:req_value(Context, <<"to">>)}
-    ,{<<"CC">>, cb_context:req_value(Context, <<"cc">>)}
-    ,{<<"BCC">>, cb_context:req_value(Context, <<"bcc">>)}
-    ,{<<"HTML">>, cb_context:req_value(Context, <<"html">>)}
-    ,{<<"Plain">>, cb_context:req_value(Context, <<"plain">>)}
-    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].
+    props:filter_empty(
+      [{<<"Account-ID">>, SenderId}
+       ,{<<"Recipient-ID">>, cb_context:req_value(Context, <<"recipient_id">>)}
+       ,{<<"User-Type">>, cb_context:req_value(Context, <<"user_type">>)}
+       ,{<<"Subject">>, cb_context:req_value(Context, <<"subject">>)}
+       ,{<<"From">>, cb_context:req_value(Context, <<"from">>)}
+       ,{<<"Reply-To">>, cb_context:req_value(Context, <<"reply_to">>)}
+       ,{<<"To">>, cb_context:req_value(Context, <<"to">>)}
+       ,{<<"CC">>, cb_context:req_value(Context, <<"cc">>)}
+       ,{<<"BCC">>, cb_context:req_value(Context, <<"bcc">>)}
+       ,{<<"HTML">>, cb_context:req_value(Context, <<"html">>)}
+       ,{<<"Plain">>, cb_context:req_value(Context, <<"plain">>)}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).
 
 -spec build_preview_payload(cb_context:context(), wh_json:object()) -> wh_proplist().
 build_preview_payload(Context, Notification) ->
