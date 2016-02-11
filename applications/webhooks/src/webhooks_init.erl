@@ -81,27 +81,25 @@ init_module(Module) ->
 
 -spec existing_modules() -> atoms().
 existing_modules() ->
-    ModulesDirectory =
-        filename:join([code:lib_dir('webhooks')
-                       ,"src"
-                       ,"modules"
-                      ]),
-    existing_modules(ModulesDirectory).
+    existing_modules(code:lib_dir(wh_util:to_atom(?APP_NAME))).
 
--spec existing_modules(text()) -> atoms().
-existing_modules(ModulesDirectory) ->
-    filelib:fold_files(ModulesDirectory
-                       ,"\\.erl$"
-                       ,'false'
-                       ,fun fold_files/2
-                       ,[]
-                      ).
-
--spec fold_files(text(), atoms()) -> atoms().
-fold_files(File, Acc) ->
-    [wh_util:to_atom(
-       filename:basename(File, ".erl")
-       ,'true'
-      )
-     | Acc
+-spec existing_modules(string()) -> atoms().
+existing_modules(WebhooksRoot) ->
+    ModulesDirectory = filename:join(WebhooksRoot, "ebin"),
+    Extension = ".beam",
+    Utils = ["webhooks_app"
+             ,"webhooks_channel_util"
+             ,"webhooks_disabler"
+             ,"webhooks_init"
+             ,"webhooks_listener"
+             ,"webhooks_maintenance"
+             ,"webhooks_shared_listener"
+             ,"webhooks_skel"
+             ,"webhooks_sup"
+             ,"webhooks_util"
+            ],
+    Pattern = filename:join(ModulesDirectory, "*"++Extension),
+    [wh_util:to_atom(Module)
+     || Path <- filelib:wildcard(Pattern),
+        not lists:member((Module=filename:basename(Path, Extension)), Utils)
     ].
