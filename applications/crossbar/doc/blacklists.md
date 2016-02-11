@@ -23,6 +23,18 @@ Ex:
 }
 ```
 
+When you upload numbers they will be converted to e164 format.  In the event that you want to bypass this feature you can upload numbers in a "raw" list which will skip the formaters.  If the number exists in both lists then the re-formated number will be prefered.
+
+```
+{
+    "name": "Raw Blacklist",
+    "raw_numbers": {
+        "0000000000": {
+        }
+    }
+}
+```
+
 ## Usage
 
 Once you created your blacklists using the api you can apply them to the account by adding the blacklist ids to the account, like the following:
