@@ -205,8 +205,8 @@ format_numbers(Context) ->
     Numbers =
         wh_json:foldl(
             fun format_numbers_foldl/3
-            ,wh_json:new()
-            , wh_json:get_value(<<"numbers">>, Doc, wh_json:new())
+            ,wh_json:get_value(<<"raw_numbers">>, Doc, wh_json:new())
+            ,wh_json:get_value(<<"numbers">>, Doc, wh_json:new())
         ),
     cb_context:set_doc(
         Context
@@ -216,5 +216,9 @@ format_numbers(Context) ->
 
 -spec format_numbers_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
 format_numbers_foldl(Number, Data, JObj) ->
-    E164 = wnm_util:normalize_number(Number),
-    wh_json:set_value(E164, Data, JObj).
+    case wh_util:anonymous_caller_id_number() of
+        Number -> wh_json:set_value(Number, Data, JObj);
+        _Else ->
+            E164 = wnm_util:normalize_number(Number),
+            wh_json:set_value(E164, Data, JObj)
+    end.
