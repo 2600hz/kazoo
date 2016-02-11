@@ -305,31 +305,31 @@ curl -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://serve
 
 Send message to all reseller's accounts:
 ```
-curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/notifications/customer_update/send_message -d '{}'
-curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{SENDER(RESELLER)_ACCOUNT_ID}/notifications/customer_update/send_message -d '{}'
+curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/notifications/customer_update/message -d '{}'
+curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{SENDER(RESELLER)_ACCOUNT_ID}/notifications/customer_update/message -d '{}'
 ```
 
 Send message to a particular acount:
 ```
-curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/notifications/customer_update/send_message/{RECIPIENT_ACCOUNT_ID} -d '{}'
-curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{SENDER(RESELLER)_ACCOUNT_ID}/notifications/customer_update/send_message/{RECIPIENT_ACCOUNT_ID} -d '{}'
+curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/notifications/customer_update/message -d '{"data":{"recipient_id": "33ca3929ed585e0e423eb39e4ffe1452"}}'
+curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{SENDER(RESELLER)_ACCOUNT_ID}/notifications/customer_update/message -d '{"data":{"recipient_id": "33ca3929ed585e0e423eb39e4ffe1452"}}'
 ```
 
-You can send a message to all users, admins only or a particular user within an account:
+You can send a message to all users, admins only or a particular user within an account. Just add a user_type field to your payload:
 
 All users:
 ```
-"user_type": "all_users"
+... -d '{"data":{"user_type": "all_users"}}'
 ````
 
 Particular user:
 ```
-"user_type": "{ACCOUNT_ID}"
+... -d '{"data":{"user_type": "{ACCOUNT_ID}"}}'
 ````
 
 Admin privileged users only. Default. Could be omitted:
 ```
-"user_type": "admins_only"
+... -d '{"data":{"user_type": "admins_only"}}'
 ````
 
 You can send a message with changed subject, html and plain text templates by providing full notification document payload:
@@ -337,7 +337,8 @@ You can send a message with changed subject, html and plain text templates by pr
 ```
 {
     "data": {
-        "user_type": "3d9b564d5c95d52d81a2e49ea0c57941"
+        "recipient_id": "33ca3929ed585e0e423eb39e4ffe1452",
+        "user_type": "3d9b564d5c95d52d81a2e49ea0c57941",
         "id": "customer_update",
         "account_overridden": true,
         "enabled": true,
