@@ -37,6 +37,7 @@ endpoint_data(State) ->
     catch
         'throw':'no_did_found' ->
             lager:info("call was not for a trunkstore number");
+        'throw':'unknown_account' -> 'ok';
         'throw':_E ->
             lager:info("thrown exception caught, not continuing: ~p", [_E])
     end.
@@ -181,10 +182,19 @@ try_failover_e164(State, ToDID) ->
 get_endpoint_data(JObj) ->
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
-    {'ok', AcctId, NumberProps} = wh_number_manager:lookup_account_by_number(ToDID),
+    case wh_number_manager:lookup_account_by_number(ToDID) of
+        {'ok', AccountId, NumberProps} ->
+            get_endpoint_data(JObj, ToDID, AccountId, NumberProps);
+        _Else ->
+            lager:debug("unable to lookup account for number ~s: ~p", [ToDID, _Else]),
+            throw('unknown_account')
+    end.
+
+-spec get_endpoint_data(wh_json:object(), ne_binary(), ne_binary(), wh_proplist()) -> {'endpoint', wh_json:object()}.
+get_endpoint_data(JObj, ToDID, AccountId, NumberProps) ->
     ForceOut = wh_number_properties:should_force_outbound(NumberProps),
-    lager:info("acct ~s force out ~s", [AcctId, ForceOut]),
-    RoutingData1 = routing_data(ToDID, AcctId),
+    lager:info("building endpoint for account id ~s with force out ~s", [AccountId, ForceOut]),
+    RoutingData1 = routing_data(ToDID, AccountId),
 
     CidOptions  = proplists:get_value(<<"Caller-ID-Options">>, RoutingData1),
     CidFormat   = wh_json:get_ne_value(<<"format">>, CidOptions),
@@ -201,7 +211,7 @@ get_endpoint_data(JObj) ->
                    [{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Auth-User">>, AuthUser}
                                                                    ,{<<"Auth-Realm">>, AuthRealm}
                                                                    ,{<<"Direction">>, <<"inbound">>}
-                                                                   ,{<<"Account-ID">>, AcctId}
+                                                                   ,{<<"Account-ID">>, AccountId}
                                                                    ,{<<"Authorizing-ID">>, AuthzId}
                                                                    ,{<<"Authorizing-Type">>, <<"sys_info">>}
                                                                   ])
