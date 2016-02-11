@@ -141,7 +141,7 @@ consume_tokens_until(<<_/binary>> = App, <<_/binary>> = Key, Count, StartIfMissi
 -spec consume_tokens(ne_binary(), ne_binary(), integer(), boolean(), fun()) -> boolean().
 consume_tokens(App, Key, Count, StartIfMissing, BucketFun) ->
     case get_bucket(App, Key) of
-        'undefined' when StartIfMissing ->
+        'undefined' ->
             maybe_start_bucket(App, Key, Count, StartIfMissing, BucketFun);
         Srv ->
             case is_process_alive(Srv) of
