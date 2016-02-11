@@ -185,7 +185,10 @@ get_sip_from(Props, <<"outbound">>) ->
 get_sip_from(Props, _) ->
     Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"
-                ,(props:get_value(<<"sip_from_host">>, Props, ?DEFAULT_REALM))/binary
+                ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                           ,<<"sip_from_host">>
+                                           ,<<"variable_sip_from_host">>
+                                          ], Props, ?DEFAULT_REALM))/binary
               >>,
     props:get_first_defined([<<"Channel-Presence-ID">>
                              ,<<"variable_sip_from_uri">>
