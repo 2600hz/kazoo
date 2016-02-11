@@ -978,7 +978,9 @@ retry504s(Fun, Cnt) ->
 
 -spec maybe_publish_docs(couchbeam_db(), wh_json:objects(), wh_json:objects()) -> 'ok'.
 maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
-    case couch_mgr:change_notice() of
+    case couch_mgr:change_notice()
+        andalso should_publish_db_changes(Db)
+    of
         'true' ->
             _ = wh_util:spawn(
                   fun() ->
@@ -994,6 +996,7 @@ maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
 -spec maybe_publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
 maybe_publish_doc(#db{}=Db, Doc, JObj) ->
     case couch_mgr:change_notice()
+        andalso should_publish_db_changes(Db)
         andalso should_publish_doc(Doc)
     of
         'true' ->
@@ -1017,6 +1020,11 @@ should_publish_doc(Doc) ->
         <<"_design/", _/binary>> = _D -> 'false';
         _Else -> 'true'
     end.
+
+-spec should_publish_db_changes(couchbeam_db()) -> boolean().
+should_publish_db_changes(#db{name=DbName}) ->
+    Key = <<"publish_", (wh_util:to_binary(db_classification(DbName)))/binary, "_changes">>,
+    whapps_config:get_is_true(?CONFIG_CAT, Key, 'true').
 
 -spec publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
 publish_doc(#db{name=DbName}, Doc, JObj) ->
