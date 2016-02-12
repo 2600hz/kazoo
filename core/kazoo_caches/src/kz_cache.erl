@@ -64,7 +64,7 @@
 
 -define(DATABASE_BINDING, [{'type', <<"database">>}]).
 
--type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
+-type callback_fun() :: fun((any(), any(), 'flush' | 'erase' | 'expire') -> any()).
 -type callback_funs() :: [callback_fun()].
 -type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
                         {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
@@ -697,15 +697,18 @@ maybe_remove_object(Key, Tab) ->
 
 -spec maybe_exec_erase_callbacks(any(), atom()) -> 'ok'.
 maybe_exec_erase_callbacks(Key, Tab) ->
-    case ets:lookup(Tab, Key) of
-        [#cache_obj{callback=Fun
-                    ,value=Value
-                   }
-        ] when is_function(Fun, 3) ->
-            _ = wh_util:spawn(Fun, [Key, Value, 'erase']),
+    case ets:lookup_element(Tab, Key, #cache_obj.callback) of
+        Fun when is_function(Fun, 3) ->
+            wh_util:spawn(fun exec_erase_callbacks/3, [Key, Tab, Fun]),
             'ok';
         _Else -> 'ok'
     end.
+
+-spec exec_erase_callbacks(any(), atom(), callback_fun()) ->
+                                  any().
+exec_erase_callbacks(Key, Tab, Fun) ->
+    Value = ets:lookup_element(Tab, Key, #cache_obj.value),
+    Fun(Key, Value, 'erase').
 
 -spec maybe_exec_flush_callbacks(atom()) -> 'ok'.
 maybe_exec_flush_callbacks(Tab) ->
