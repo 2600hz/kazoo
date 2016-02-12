@@ -1274,9 +1274,7 @@ should_filter(Val, FilterVal) ->
             lager:debug("data is not a list: ~p", [_Data]),
             'false'
     catch
-        _Error ->
-            lager:error("failed to decode data: ~p", [_Error]),
-            'false'
+        _Error -> 'false'
     end.
 
 should_filter(Doc, Key, Val) ->
