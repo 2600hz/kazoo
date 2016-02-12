@@ -442,18 +442,22 @@ handle_cast({'store', #cache_obj{key=Key
 handle_cast({'update_timestamp', Key, Timestamp}, #state{tab=Tab}=State) ->
     ets:update_element(Tab, Key, {#cache_obj.timestamp, Timestamp}),
     {'noreply', State};
+
 handle_cast({'erase', Key}, #state{tab=Tab}=State) ->
     maybe_exec_erase_callbacks(Key, Tab),
     _Removed = maybe_remove_object(Key, Tab),
     log_removed(_Removed, Key),
     {'noreply', State};
+
 handle_cast({'flush'}, #state{tab=Tab}=State) ->
     maybe_exec_flush_callbacks(Tab),
     ets:delete_all_objects(Tab),
     {'noreply', State};
+
 handle_cast({'change', Db, Type, Id}, #state{tab=Tab}=State) ->
     maybe_erase_changed(Db, Type, Id, Tab),
     {'noreply', State};
+
 handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}, #state{name=Name
                                                                   ,tab=Tab
                                                                   ,new_channel_flush='true'
@@ -503,7 +507,7 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
            ) ->
     case expire_objects(Tab) > 0 of
         'true' ->
-            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}, 'hibernate'};
+            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
         'false' ->
             {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}}
     end;
@@ -518,8 +522,11 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(JObj, _State) ->
+    case wh_api:node(JObj) =:= wh_util:to_binary(node()) of
+        'true' -> 'ignore';
+        'false' -> {'reply', []}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -592,22 +599,22 @@ maybe_erase_changed(Db, Type, Id, Tab) ->
                   ,[]
                   ,['$_']
                  }
-                 ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
-                   ,[]
-                   ,['$_']
-                  }
-                 ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
-                   ,[]
-                   ,['$_']
-                  }
-                 ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
-                   ,[]
-                   ,['$_']
-                  }
-                 ,{#cache_obj{origin = {'type', Type}, _ = '_'}
-                   ,[]
-                   ,['$_']
-                  }
+                ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
+                ,{#cache_obj{origin = {'type', Type}, _ = '_'}
+                 ,[]
+                 ,['$_']
+                 }
                 ],
     Objects = ets:select(Tab, MatchSpec),
     erase_changed(Objects, [], Tab).
@@ -615,6 +622,12 @@ maybe_erase_changed(Db, Type, Id, Tab) ->
 -spec erase_changed(cache_objs(), list(), atom()) -> 'ok'.
 erase_changed([], _, _) -> 'ok';
 erase_changed([#cache_obj{type='pointer', value=Key}|Objects], Removed, Tab) ->
+    erase_changed_key(Objects, Removed, Tab, Key);
+erase_changed([#cache_obj{type='normal', key=Key}|Objects], Removed, Tab) ->
+    erase_changed_key(Objects, Removed, Tab, Key).
+
+-spec erase_changed_key(cache_objs(), list(), atom(), any()) -> 'ok'.
+erase_changed_key(Objects, Removed, Tab, Key) ->
     _Removed = case lists:member(Key, Removed) of
                    'true' -> 0;
                    'false' ->
@@ -622,16 +635,6 @@ erase_changed([#cache_obj{type='pointer', value=Key}|Objects], Removed, Tab) ->
                        _ = maybe_exec_erase_callbacks(Key, Tab),
                        maybe_remove_object(Key, Tab)
                end,
-    log_removed(_Removed, Key),
-    erase_changed(Objects, [Key|Removed], Tab);
-erase_changed([#cache_obj{type='normal', key=Key}|Objects], Removed, Tab) ->
-    _Removed = case lists:member(Key, Removed) of
-                   'true' -> 0;
-                   'false' ->
-                       lager:debug("removing updated cache object ~-300p", [Key]),
-                       _ = maybe_exec_erase_callbacks(Key, Tab),
-                       maybe_remove_object(Key, Tab)
-        end,
     log_removed(_Removed, Key),
     erase_changed(Objects, [Key|Removed], Tab).
 
