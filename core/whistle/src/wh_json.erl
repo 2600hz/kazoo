@@ -75,6 +75,7 @@
          ,normalize_jobj/3
          ,normalize/1
          ,normalize_key/1
+         ,are_identical/2
         ]).
 -export([public_fields/1
          ,private_fields/1
