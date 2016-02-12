@@ -446,7 +446,7 @@ handle_cast({'update_timestamp', Key, Timestamp}, #state{tab=Tab}=State) ->
     {'noreply', State};
 
 handle_cast({'erase', Key}, #state{tab=Tab}=State) ->
-    maybe_exec_erase_callbacks(Key, Tab),
+    maybe_exec_erase_callbacks(Tab, Key),
     _Removed = maybe_remove_object(Key, Tab),
     log_removed(_Removed, Key),
     {'noreply', State};
@@ -634,7 +634,7 @@ erase_changed_key(Objects, Removed, Tab, Key) ->
                    'true' -> 0;
                    'false' ->
                        lager:debug("removing updated cache object ~-300p", [Key]),
-                       _ = maybe_exec_erase_callbacks(Key, Tab),
+                       _ = maybe_exec_erase_callbacks(Tab, Key),
                        maybe_remove_object(Key, Tab)
                end,
     log_removed(_Removed, Key),
@@ -686,17 +686,17 @@ maybe_remove_object(Key, Tab) ->
           ,[{'=:=', {'const', Key}, '$1'}]
           ,['true']
          }
-         ,{#cache_obj{key = '$1'
+         ,{#cache_obj{key = Key
                       ,type = 'normal'
                       ,_ = '_'
                      }
-           ,[{'=:=', {'const', Key}, '$1'}]
+           ,[]
            ,['true']
           }],
     ets:select_delete(Tab, DeleteSpec).
 
--spec maybe_exec_erase_callbacks(any(), atom()) -> 'ok'.
-maybe_exec_erase_callbacks(Key, Tab) ->
+-spec maybe_exec_erase_callbacks(atom(), any()) -> 'ok'.
+maybe_exec_erase_callbacks(Tab, Key) ->
     case ets:lookup_element(Tab, Key, #cache_obj.callback) of
         Fun when is_function(Fun, 3) ->
             wh_util:spawn(fun exec_erase_callbacks/3, [Key, Tab, Fun]),
