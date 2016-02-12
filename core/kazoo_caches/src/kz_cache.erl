@@ -679,11 +679,11 @@ maybe_remove_object(#cache_obj{key = Key}, Tab) ->
     maybe_remove_object(Key, Tab);
 maybe_remove_object(Key, Tab) ->
     DeleteSpec =
-        [{#cache_obj{value = '$1'
+        [{#cache_obj{value = Key
                      ,type = 'pointer'
                      ,_ = '_'
                     }
-          ,[{'=:=', {'const', Key}, '$1'}]
+          ,[]
           ,['true']
          }
          ,{#cache_obj{key = Key
