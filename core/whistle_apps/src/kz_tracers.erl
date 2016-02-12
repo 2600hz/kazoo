@@ -1,5 +1,9 @@
 -module(kz_tracers).
 
+%% To generate the flame.svg:
+%% flamegraph.riak-color.pl is found in the eflame dep folder
+%% cat /path/to/eflame.trace.out | grep -v 'SLEEP' | ./flamegraph.riak-color.pl > /var/www/html/flame.svg
+
 -export([add_trace/1, add_trace/2
          ,gen_load/0
         ]).
@@ -35,7 +39,7 @@ do_load_gen() ->
 
     io:format("building ~p~n", [AccountDb]),
 
-    Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,200)],
+    Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,400)],
     {'ok', Saved} = couch_mgr:save_docs(AccountDb, Docs),
     _Result = (catch do_stuff_to_docs(Start, AccountDb, Saved)),
     couch_mgr:db_delete(AccountDb),
