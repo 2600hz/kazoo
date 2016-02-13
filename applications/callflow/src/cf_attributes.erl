@@ -24,6 +24,11 @@
 
 -include("callflow.hrl").
 
+-define(CALLER_PRIVACY(CCVs)
+        ,(wh_json:get_value(<<"Caller-Privacy-Number">>, CCVs, 'false')
+        orelse wh_json:get_value(<<"Caller-Privacy-Name">>, CCVs, 'false'))
+       ).
+
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -198,7 +203,9 @@ maybe_ensure_cid_valid(Number, Name, _, Attribute, Call) ->
 -spec maybe_cid_privacy(api_binary(), api_binary(), whapps_call:call()) ->
                                {api_binary(), api_binary()}.
 maybe_cid_privacy(Number, Name, Call) ->
-    case wh_util:is_true(whapps_call:kvs_fetch('cf_privacy', Call)) of
+    case wh_util:is_true(whapps_call:kvs_fetch('cf_privacy', Call))
+            orelse ?CALLER_PRIVACY(whapps_call:custom_channel_vars(Call))
+    of
         'true' ->
             lager:info("overriding caller id to maintain privacy"),
             {whapps_config:get_non_empty(
