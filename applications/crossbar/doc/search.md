@@ -40,7 +40,7 @@ curl -x GET \
     "revision": "04e880720e84b0536389bcc4de7e69e8",
     "request_id":"53975b8ebbc595680b0da753f55c3c19",
     "status":"success"
-}    
+}
 ```
 
 #### Search within accountid specified in URL
