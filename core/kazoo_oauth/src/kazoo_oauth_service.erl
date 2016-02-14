@@ -34,7 +34,7 @@ service_token(#oauth_service_app{private_key=_PrivateKey
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=") ] end, Fields)),"&"),
     case kz_http:post(wh_util:to_list(URL), Headers, Body) of
-        {'ok', "200", _RespHeaders, RespXML} ->
+        {'ok', 200, _RespHeaders, RespXML} ->
             wh_json:decode(RespXML);
         _Else ->
             lager:debug("unable to request service token: ~p", [_Else]),
