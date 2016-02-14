@@ -167,7 +167,7 @@ token(#oauth_app{name=AppId
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=")] end, Fields)), "&"),
     case kz_http:post(wh_util:to_list(AUTH_URL), Headers, Body) of
-        {'ok', "200", _RespHeaders, RespXML} ->
+        {'ok', 200, _RespHeaders, RespXML} ->
             JObj = wh_json:decode(RespXML),
             Token = wh_json:get_value(<<"access_token">>, JObj),
             Type = wh_json:get_value(<<"token_type">>, JObj),
@@ -194,7 +194,7 @@ verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
 verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
     URL = <<TokenInfoUrl/binary,AccessToken/binary>>,
     case kz_http:get(wh_util:to_list(URL)) of
-        {'ok', "200", _RespHeaders, RespXML} ->
+        {'ok', 200, _RespHeaders, RespXML} ->
             JObj = wh_json:decode(RespXML),
             case wh_json:get_value(<<"error">>, JObj) of
                 'undefined' -> {'ok',JObj};
@@ -234,7 +234,7 @@ refresh_token(#oauth_app{name=ClientId
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, wh_util:to_list(V)], "=") ] end, Fields)),"&"),
     case kz_http:post(wh_util:to_list(URL), Headers, Body) of
-        {'ok', "200", _RespHeaders, RespXML} -> {'ok', wh_json:decode(RespXML)};
+        {'ok', 200, _RespHeaders, RespXML} -> {'ok', wh_json:decode(RespXML)};
         Else ->
             lager:debug("unable to get new oauth token: ~p", [Else]),
             {'error', Else}
