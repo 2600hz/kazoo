@@ -376,7 +376,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
 
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'headers', [{'content_type', CT}]}],
+    Opts = [{'content_type', CT}],
 
     crossbar_doc:save_attachment(Id
                                  ,cb_modules_util:attachment_name(Filename, CT)
@@ -477,7 +477,7 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'headers', [{'content_type', CT}]}],
+    Opts = [{'content_type', CT}],
 
     case wh_doc:attachment(cb_context:doc(Context), AttachmentId) of
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);

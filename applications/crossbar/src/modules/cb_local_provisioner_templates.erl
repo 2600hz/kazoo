@@ -190,7 +190,7 @@ post(Context, DocId) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             SavedResp = cb_context:resp_data(Context1),
-            Opts = [{'headers', [{'content_type', "application/json"}]}],
+            Opts = [{'content_type', <<"application/json">>}],
             Ctx2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts),
             case cb_context:resp_status(Ctx2) of
                 'success' ->
@@ -212,7 +212,7 @@ put(Context) ->
             SavedDoc  = cb_context:doc(Context1),
             SavedResp = cb_context:resp_data(Context1),
             DocId = wh_doc:id(SavedDoc),
-            Opts = [{'headers', [{'content_type', "application/json"}]}],
+            Opts = [{'content_type', <<"application/json">>}],
             Ctx2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts),
             case cb_context:resp_status(Ctx2) of
                 'success' ->
@@ -231,7 +231,7 @@ post(Context, DocId, ?IMAGE_REQ) ->
     [{_, JObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, JObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -239,7 +239,7 @@ put(Context, DocId, ?IMAGE_REQ) ->
     [{_, JObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, JObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
