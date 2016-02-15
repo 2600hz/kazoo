@@ -825,8 +825,8 @@ start_control_process(#state{control_pid=_Pid
 
 -spec maybe_start_call_handlers(created_uuid(), state()) -> 'ok'.
 maybe_start_call_handlers(UUID, #state{originate_req=JObj}=State) ->
-case wh_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
-    andalso start_control_process(State#state{uuid=UUID}) of
+    case wh_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
+             andalso start_control_process(State#state{uuid=UUID}) of
         'false' -> 'ok';
         {'ok', #state{control_pid=_Pid}} ->
             lager:debug("started control process for ~p: ~p", [UUID, _Pid]);
