@@ -199,6 +199,14 @@ register_event_process(Node, CallId) ->
         _E:R -> {'error', R}
     end.
 
+-spec unregister_event_process(atom(), ne_binary()) -> 'ok' | {'error', any()}.
+unregister_event_process(Node, CallId) ->
+    try gproc:unreg(?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)) of
+        'true' -> 'ok'
+    catch
+        _E:R -> {'error', R}
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -492,8 +500,9 @@ handle_bowout(Node, Props, ResigningUUID) ->
         {ResigningUUID, AcquiringUUID} when AcquiringUUID =/= 'undefined' ->
             lager:debug("loopback bowout detected, replacing ~s with ~s", [ResigningUUID, AcquiringUUID]),
             _ = register_event_process(Node, AcquiringUUID),
-            unregister_for_events(Node, ResigningUUID),
             register_for_events(Node, AcquiringUUID),
+            unregister_for_events(Node, ResigningUUID),
+            _ = unregister_event_process(Node, ResigningUUID),
 
             wh_util:put_callid(AcquiringUUID),
             AcquiringUUID;
@@ -599,11 +608,14 @@ create_event(EventName, ApplicationName, Props) ->
 specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
     Vars = ecallmgr_util:custom_channel_vars(Props),
+    lager:debug("checking interaction cache for ~s", [UUID]),
     case kz_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, UUID) of
         {'ok', CDR} ->
             NewVars = props:set_value(<<?CALL_INTERACTION_ID>>, CDR, Vars),
+            lager:debug("found interaction cache ~s for ~s", [CDR, UUID]),
             [{<<"Custom-Channel-Vars">>, wh_json:from_list(NewVars)}];
         _ ->
+            lager:debug("interaction cache for ~s not found", [UUID]),
             [{<<"Custom-Channel-Vars">>, wh_json:from_list(Vars)}]
     end;
 specific_call_channel_vars_props(_EventName, Props) ->

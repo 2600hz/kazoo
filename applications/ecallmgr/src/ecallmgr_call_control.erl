@@ -361,7 +361,6 @@ handle_cast(_, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [CallId | Props]}, #state{call_id=CallId
-                                                ,fetch_id=FetchId
                                                 ,node=Node
                                                }=State) ->
     JObj = ecallmgr_call_events:to_json(Props),
@@ -386,14 +385,7 @@ handle_info({'event', [CallId | Props]}, #state{call_id=CallId
                     {'stop', 'normal', State}
             end;
         <<"sofia::transferee">> ->
-            case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
-                FetchId ->
-                    lager:info("we have been transferred, terminate immediately"),
-                    {'stop', 'normal', State};
-                _Else ->
-                    lager:info("we were a different instance of this transferred call"),
-                    {'noreply', State}
-            end;
+            handle_transferee(Props, State);
         <<"sofia::replaced">> ->
             handle_replaced(Props, State);
         <<"sofia::intercepted">> ->
@@ -403,7 +395,7 @@ handle_info({'event', [CallId | Props]}, #state{call_id=CallId
             gen_listener:cast(self(), {'channel_redirected', JObj}),
             {'stop', 'normal', State};
         <<"sofia::transferor">> ->
-            {'noreply', State};
+            handle_transferor(Props, State);
         _Else ->
             {'noreply', State}
     end;
@@ -719,9 +711,6 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
     bind_to_events(Node, ReplacedBy),
     reg_for_call_related_events(ReplacedBy),
     gen_listener:add_binding(self(), 'call', [{'callid', ReplacedBy}]),
-
-    lager:debug("ensuring event listener exists"),
-    _ = ecallmgr_call_sup:start_event_process(Node, ReplacedBy),
 
     lager:info("...call id updated, continuing post-transfer"),
     Commands = [wh_json:set_value(<<"Call-ID">>, ReplacedBy, JObj)
@@ -1273,6 +1262,29 @@ handle_replaced(Props, #state{fetch_id=FetchId
             lager:info("sofia replaced on our channel but different fetch id~n"),
             {'noreply', State}
     end.
+
+-spec handle_transferee(wh_proplist(), state()) ->
+                               {'noreply', state()}.
+handle_transferee(Props, #state{fetch_id=FetchId
+                                ,node=_Node
+                                ,call_id=CallId
+                               }=State) ->
+    case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
+        FetchId ->
+            lager:info("we (~s) have been transferred, terminate immediately", [CallId]),
+            {'stop', 'normal', State};
+        _Else ->
+            lager:info("we were a different instance of this transferred call"),
+            {'noreply', State}
+    end.
+
+-spec handle_transferor(wh_proplist(), state()) ->
+                               {'noreply', state()}.
+handle_transferor(_Props, #state{fetch_id=_FetchId
+                                ,node=_Node
+                                ,call_id=_CallId
+                               }=State) ->
+    {'noreply', State}.
 
 -spec handle_intercepted(atom(), ne_binary(), wh_proplist()) ->
                                 'ok'.

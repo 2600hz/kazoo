@@ -324,7 +324,7 @@ handle_cast('prepare_job', #state{job_id=JobId
                                  }=State) ->
     send_status(State, <<"fetching document to send">>, ?FAX_PREPARE, 'undefined'),
     case fetch_document(JObj) of
-        {'ok', "200", RespHeaders, RespContent} ->
+        {'ok', 200, RespHeaders, RespContent} ->
             send_status(State, <<"preparing document to send">>, ?FAX_PREPARE, 'undefined'),
             case prepare_contents(JobId, RespHeaders, RespContent) of
                 {'error', Cause} ->
@@ -781,12 +781,12 @@ fetch_document(JObj) ->
                                             {'ok', string(), wh_proplist(), ne_binary()}.
 fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     Extension = filename:extension(AttachmentName),
-    DefaultContentType = fax_util:extension_to_content_type(Extension),
+    DefaultContentType = kz_mime:from_extension(Extension),
     ContentType = wh_doc:attachment_content_type(JObj, AttachmentName, DefaultContentType),
 
     Props = [{"Content-Type", ContentType}],
     {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES_DB, wh_doc:id(JObj), AttachmentName),
-    {'ok', "200", Props, Contents}.
+    {'ok', 200, Props, Contents}.
 
 -spec fetch_document_from_url(wh_json:object()) ->
                                      {'ok', string(), wh_proplist(), ne_binary()} |
@@ -865,7 +865,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
                                          {'ok', ne_binary()} |
                                          {'error', ne_binary()}.
 convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
-    Extension = fax_util:content_type_to_extension(CT),
+    Extension = kz_mime:to_extension(CT),
     InputFile = list_to_binary([TmpDir, JobId, ".", Extension]),
     OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
     wh_util:write_file(InputFile, RespContent),

@@ -808,7 +808,7 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
     [{Filename, FileObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
 
     JObj1 = case whitelabel_binary_meta(Context, AttachType) of
                 'undefined' -> JObj;

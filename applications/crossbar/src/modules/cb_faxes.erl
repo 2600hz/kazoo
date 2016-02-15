@@ -672,7 +672,7 @@ save_attachment(Context, Filename, FileJObj) ->
     DocId = wh_doc:id(JObj),
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
+    Opts = [{'content_type', CT}
             ,{'rev', wh_doc:revision(JObj)}
            ],
     set_pending(crossbar_doc:save_attachment(DocId

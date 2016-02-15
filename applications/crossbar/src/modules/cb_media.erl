@@ -929,7 +929,7 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
     lager:debug("file content type: ~s", [CT]),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
 
     update_media_binary(
       crossbar_doc:save_attachment(MediaId
