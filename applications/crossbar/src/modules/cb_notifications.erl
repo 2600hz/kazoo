@@ -827,7 +827,7 @@ update_template(Context, Id, FileJObj) ->
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     lager:debug("file content type for ~s: ~s", [Id, CT]),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
 
     AttachmentName = attachment_name_by_content_type(CT),
 

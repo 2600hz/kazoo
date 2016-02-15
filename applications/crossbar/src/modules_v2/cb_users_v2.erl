@@ -305,7 +305,7 @@ post(Context, UserId, ?PHOTO) ->
     Headers = wh_json:get_value(<<"headers">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, Headers),
     Content = wh_json:get_value(<<"contents">>, FileObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
     crossbar_doc:save_attachment(UserId, ?PHOTO, Content, Context, Opts).
 
 -spec put(cb_context:context()) -> cb_context:context().
