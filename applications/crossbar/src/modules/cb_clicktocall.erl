@@ -424,7 +424,7 @@ build_originate_req(Contact, Context) ->
                                                    ,route = Exten}),
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+    {'ok', AccountDoc} = kz_account:fetch(AccountId),
 
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
