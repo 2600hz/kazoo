@@ -21,6 +21,7 @@
 -export([account_jobs/1, account_jobs/2]).
 -export([faxbox_jobs/1, faxbox_jobs/2]).
 -export([pending_jobs/0, active_jobs/0]).
+-export([load_smtp_attachment/2]).
 
 -define(DEFAULT_MIGRATE_OPTIONS, []).
 -define(OVERRIDE_DOCS, ['override_existing_document']).
@@ -409,3 +410,21 @@ next_key(<<>>) ->
     <<"\ufff0">>;
 next_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
+
+load_smtp_attachment(DocId, Filename) ->
+    case file:read_file(Filename) of
+        {'ok', FileContents} ->
+            CT = kz_mime:from_filename(Filename),
+            case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
+                {'ok', JObj} ->
+                    case fax_util:save_fax_attachment(JObj, FileContents, CT) of
+                        {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered", [Filename, DocId]);
+                        {'error', E} -> io:format("error attaching ~s to docid ~s : ~p", [Filename, DocId, E])
+                    end;
+                {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p", [DocId, Filename, E])
+            end;
+        Error ->
+            io:format("error obtaining file ~s contents for docid ~s : ~p", [Filename, DocId, Error])
+    end.
+    
+    

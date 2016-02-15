@@ -196,7 +196,7 @@ download_file(URL, Authorization) ->
     case kz_http:get(wh_util:to_list(URL), Headers) of
         {'ok', "200", RespHeaders, RespBody} ->
             CT = wh_util:to_binary(props:get_value("Content-Type", RespHeaders)),
-            Ext = fax_util:content_type_to_extension(CT),
+            Ext = kz_mime:to_extension(CT),
             FileName = <<"/tmp/fax_printer_"
                          ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
                          ,"."

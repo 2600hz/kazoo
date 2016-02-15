@@ -235,13 +235,14 @@ handle_message(#state{filename='undefined'}=State) ->
 handle_message(#state{errors=[], faxbox='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no previous errors but no faxbox doc">>]});
 handle_message(#state{filename=Filename
-                         ,content_type=CT
+                         ,content_type=_CT
                          ,doc=Doc
                          ,errors=[]
                         }=State) ->
     lager:debug("checking file ~s", [Filename]),
     case file:read_file(Filename) of
         {'ok', FileContents} ->
+            CT = kz_mime:from_filename(Filename),
             case fax_util:save_fax_docs([Doc], FileContents, CT) of
                 'ok' ->
                     lager:debug("smtp fax document saved"),
@@ -319,7 +320,7 @@ error_doc() ->
       ,"-",(wh_util:rand_hex_binary(16))/binary
     >>.
 
--spec to_proplist(state() | api_object()) -> wh_proplist().
+-spec to_proplist(state()) -> wh_proplist().
 to_proplist(#state{}=State) ->
     props:filter_undefined(
       [{<<"To">>, State#state.to}
@@ -333,12 +334,25 @@ to_proplist(#state{}=State) ->
        ,{<<"Filename">>, State#state.filename}
        ,{<<"Errors">>, lists:reverse(State#state.errors)}
        ,{<<"Account-ID">>, State#state.account_id}
-       | to_proplist(State#state.faxbox)
-      ]);
-to_proplist('undefined') -> [];
-to_proplist(JObj) ->
+       | faxbox_to_proplist(State#state.faxbox)
+         ++ faxdoc_to_proplist(State#state.doc)
+      ]).
+
+
+-spec faxbox_to_proplist(api_object()) -> wh_proplist().
+faxbox_to_proplist('undefined') -> [];
+faxbox_to_proplist(JObj) ->
     props:filter_undefined(
       [{<<"FaxBox-ID">>, wh_doc:id(JObj)}
+      ]
+     ).
+
+-spec faxdoc_to_proplist(api_object()) -> wh_proplist().
+faxdoc_to_proplist('undefined') -> [];
+faxdoc_to_proplist(JObj) ->
+    props:filter_undefined(
+      [{<<"FaxDoc-ID">>, wh_doc:id(JObj)}
+       ,{<<"FaxDoc-DB">>, wh_doc:account_db(JObj)}
       ]
      ).
 
@@ -699,10 +713,9 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
         <<"attachment">> ->
             Props = props:get_value(<<"disposition-params">>, Parameters, []),
             Filename = wh_util:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
-            Ext = filename:extension(Filename),
-            case fax_util:extension_to_content_type(Ext) of
+            case kz_mime:from_filename(Filename) of
                 <<"application/octet-stream">> ->
-                    lager:debug("unable to determine content-type for extension : ~s", [Ext]),
+                    lager:debug("unable to determine content-type for extension : ~s", [Filename]),
                     {'ok', State};
                 CT ->
                     maybe_process_part(CT, Parameters, Body, State)
@@ -727,7 +740,7 @@ maybe_process_part(CT, _Parameters, Body, State) ->
 -spec process_part(ne_binary(), binary() | mimemail:mimetuple(), state()) -> {'ok', state()}.
 process_part(CT, Body, State) ->
     lager:debug("part is ~s", [CT]),
-    Extension = fax_util:content_type_to_extension(CT),
+    Extension = kz_mime:to_extension(CT),
     {'ok', Filename} = write_tmp_file(Extension, Body),
     {'ok', State#state{filename=Filename
                        ,content_type=CT
