@@ -411,6 +411,7 @@ next_key(<<>>) ->
 next_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
 
+-spec load_smtp_attachment(ne_binary(), ne_binary()) -> 'ok'.
 load_smtp_attachment(DocId, Filename) ->
     case file:read_file(Filename) of
         {'ok', FileContents} ->
