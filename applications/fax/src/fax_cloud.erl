@@ -73,12 +73,12 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
         {'ok', Authorization} ->
             Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
             case kz_http:get(wh_util:to_list(URL), Headers) of
-                {'ok', "200", _RespHeaders, RespBody} ->
+                {'ok', 200, _RespHeaders, RespBody} ->
                     JObj = wh_json:decode(RespBody),
                     JObjs = wh_json:get_value(<<"jobs">>, JObj, []),
                     _P = wh_util:spawn(fun maybe_process_job/2, [JObjs, Authorization]),
                     lager:debug("maybe processing job in ~p", [_P]);
-                {'ok', "403", _RespHeaders, _RespBody} ->
+                {'ok', 403, _RespHeaders, _RespBody} ->
                     lager:debug("something wrong with oauth credentials"),
                     _ = [lager:debug("resp header: ~p", [_RespHeader]) || _RespHeader <- _RespHeaders],
                     lager:debug("body: ~s", [_RespBody]);
@@ -128,7 +128,7 @@ fetch_ticket(JobId, Authorization) ->
                ,{"Authorization",Authorization}
               ],
     case kz_http:get(wh_util:to_list(URL), Headers) of
-        {'ok', "200", _RespHeaders, RespBody} ->
+        {'ok', 200, _RespHeaders, RespBody} ->
             wh_json:decode(RespBody);
         Response ->
             lager:debug("unexpected result fetching ticket : ~p",[Response]),
@@ -176,7 +176,7 @@ send_update_job_status(JobId, Status, Authorization) ->
     Body = props:to_querystring(Fields),
 
     case kz_http:post(wh_util:to_list(?JOBCTL_URL), Headers, Body) of
-        {'ok', "200", _RespHeaders, RespBody} ->
+        {'ok', 200, _RespHeaders, RespBody} ->
             JObj = wh_json:decode(RespBody),
             case wh_json:is_true(<<"success">>, JObj) of
                 'true' ->
@@ -194,7 +194,7 @@ send_update_job_status(JobId, Status, Authorization) ->
 download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
     case kz_http:get(wh_util:to_list(URL), Headers) of
-        {'ok', "200", RespHeaders, RespBody} ->
+        {'ok', 200, RespHeaders, RespBody} ->
             CT = wh_util:to_binary(props:get_value("Content-Type", RespHeaders)),
             Ext = kz_mime:to_extension(CT),
             FileName = <<"/tmp/fax_printer_"
@@ -400,7 +400,7 @@ check_registration(AppId, <<"registered">>, JObj) ->
     PoolingUrl = wh_util:to_list(<<PoolingUrlPart/binary, AppId/binary>>),
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
     case kz_http:get(PoolingUrl, [?GPC_PROXY_HEADER]) of
-        {'ok', "200", _RespHeaders, RespXML} ->
+        {'ok', 200, _RespHeaders, RespXML} ->
             JObjPool = wh_json:decode(RespXML),
             Result = wh_json:get_value(<<"success">>, JObjPool, 'false'),
             process_registration_result(Result, AppId, JObj,JObjPool );

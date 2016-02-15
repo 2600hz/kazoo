@@ -324,7 +324,7 @@ handle_cast('prepare_job', #state{job_id=JobId
                                  }=State) ->
     send_status(State, <<"fetching document to send">>, ?FAX_PREPARE, 'undefined'),
     case fetch_document(JObj) of
-        {'ok', "200", RespHeaders, RespContent} ->
+        {'ok', 200, RespHeaders, RespContent} ->
             send_status(State, <<"preparing document to send">>, ?FAX_PREPARE, 'undefined'),
             case prepare_contents(JobId, RespHeaders, RespContent) of
                 {'error', Cause} ->
@@ -786,7 +786,7 @@ fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
 
     Props = [{"Content-Type", ContentType}],
     {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES_DB, wh_doc:id(JObj), AttachmentName),
-    {'ok', "200", Props, Contents}.
+    {'ok', 200, Props, Contents}.
 
 -spec fetch_document_from_url(wh_json:object()) ->
                                      {'ok', string(), wh_proplist(), ne_binary()} |
