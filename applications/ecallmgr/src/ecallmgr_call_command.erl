@@ -983,10 +983,10 @@ stream_over_http(Node, UUID, File, 'put'=Method, 'store_vm'=Type, JObj) ->
     send_fs_bg_store(Node, UUID, File, Args, Method, Type);
 
 stream_over_http(Node, UUID, File, Method, Type, JObj) ->
-    Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+    Url = wh_json:get_ne_binary_value(<<"Media-Transfer-Destination">>, JObj),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
     ecallmgr_fs_command:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
-    Args = list_to_binary([Url, <<" ">>, File]),
+    Args = <<Url/binary, " ", File/binary>>,
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
     SendAlert = wh_json:is_true(<<"Suppress-Error-Report">>, JObj, 'false'),
     Result = case send_fs_store(Node, Args, Method) of
