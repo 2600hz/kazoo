@@ -251,6 +251,7 @@ create_loopback_endpoint(Props, JObj) ->
                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, "true"}
                     ,{<<"Resource-ID">>, AccountId}
+                    ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ]),
     Endpoint = wh_json:from_list(
                  props:filter_undefined(
