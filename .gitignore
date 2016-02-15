@@ -31,3 +31,6 @@ _rel/
 rel/relx.config
 rel/dev-vm.args
 rel/vm.args
+core/whistle/src/kz_mime.erl
+core/whistle/mime.types
+
