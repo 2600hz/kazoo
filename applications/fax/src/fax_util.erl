@@ -11,7 +11,6 @@
 -export([fax_properties/1]).
 -export([collect_channel_props/1]).
 -export([save_fax_docs/3, save_fax_attachment/3]).
--export([content_type_to_extension/1, extension_to_content_type/1]).
 -export([notify_email_list/3]).
 -export([filter_numbers/1]).
 -export([is_valid_caller_id/2]).
@@ -53,51 +52,6 @@ collect_channel_prop(Key, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Convert known media types to extensions
-%% @end
-%%--------------------------------------------------------------------
--spec content_type_to_extension(ne_binary() | string() | list()) -> ne_binary().
-content_type_to_extension(CT) when not is_binary(CT) ->
-    content_type_to_extension(wh_util:to_binary(CT));
-content_type_to_extension(CT) when is_binary(CT) ->
-    Cmd = binary_to_list(<<"echo -n `grep -E '^", CT/binary, "\\s' /etc/mime.types "
-                           "2> /dev/null "
-                           "| head -n1 "
-                           "| awk '{print $2}'`">>),
-    case os:cmd(Cmd) of
-        [] ->
-            lager:debug("content-type ~s not handled, returning 'tmp'",[CT]),
-            <<"tmp">>;
-        Ext -> wh_util:to_binary(Ext)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known extensions to media types
-%% @end
-%%--------------------------------------------------------------------
--spec extension_to_content_type(ne_binary() | string() | list()) -> ne_binary().
-extension_to_content_type(Ext) when not is_binary(Ext) ->
-    extension_to_content_type(wh_util:to_binary(Ext));
-extension_to_content_type(<<".", Ext/binary>>) ->
-    extension_to_content_type(Ext);
-extension_to_content_type(Ext) when is_binary(Ext) ->
-    Cmd = binary_to_list(<<"echo -n `grep -E '\\s", Ext/binary, "($|\\s)' /etc/mime.types "
-                           "2> /dev/null "
-                           "| head -n1 "
-                           "| cut -f1`">>),
-    case os:cmd(Cmd) of
-        "" ->
-            lager:debug("extension ~s not handled, returning 'application/octet-stream'",[Ext]),
-            <<"application/octet-stream">>;
-        CT -> CT
-    end.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Generate an attachment name if one is not provided and ensure
 %% it has an extension (for the associated content type)
 %% @end
@@ -120,7 +74,7 @@ maybe_generate_random_filename(A) ->
 maybe_attach_extension(A, CT) ->
     case wh_util:is_empty(filename:extension(A)) of
         'false' -> A;
-        'true' -> <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+        'true' -> <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
     end.
 
 -spec save_fax_docs(wh_json:objects(), binary(), ne_binary()) ->
@@ -154,9 +108,7 @@ save_fax_attachment(JObj, _FileContents, _CT, 0) ->
 save_fax_attachment(JObj, FileContents, CT, Count) ->
     DocId = wh_doc:id(JObj),
     Rev = wh_doc:revision(JObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
-            ,{'rev', Rev}
-           ],
+    Opts = [{'content_type', CT} ,{'rev', Rev}],
     Name = attachment_name(<<>>, CT),
     _ = couch_mgr:put_attachment(?WH_FAXES_DB, DocId, Name, FileContents, Opts),
     case check_fax_attachment(DocId, Name) of
