@@ -104,7 +104,7 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
                                  {'error', 'not_device_nor_user'}.
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     EndpointTypes = [<<"device">>, <<"user">>, <<"account">>],
-    EndpointType = wh_doc:type(JObj),
+    EndpointType = endpoint_type_as(wh_doc:type(JObj)),
     case lists:member(EndpointType, EndpointTypes) of
         'false' ->
             lager:info("endpoint module does not manage document type ~s", [EndpointType]),
@@ -112,6 +112,10 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
         'true' ->
             has_endpoint(JObj, EndpointId, AccountDb, EndpointType)
     end.
+
+-spec endpoint_type_as(api_binary()) -> api_binary().
+endpoint_type_as(<<"click2call">>) -> <<"device">>;
+endpoint_type_as(Type) -> Type.
 
 -spec has_endpoint(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()}.
