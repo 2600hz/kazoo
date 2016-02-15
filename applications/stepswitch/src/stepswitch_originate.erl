@@ -272,6 +272,7 @@ build_originate(#state{endpoints=Endpoints
        ,{<<"Existing-Call-ID">>, wh_json:get_value(<<"Existing-Call-ID">>, OffnetReq)}
        ,{<<"Originate-Immediate">>, wh_json:get_value(<<"Originate-Immediate">>, OffnetReq)}
        ,{<<"Simplify-Loopback">>, wh_json:get_value(<<"Simplify-Loopback">>, OffnetReq)}
+       ,{<<"Loopback-Bowout">>, wh_json:get_value(<<"Loopback-Bowout">>, OffnetReq)}
        ,{<<"Endpoints">>, FmtEndpoints}
        ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}

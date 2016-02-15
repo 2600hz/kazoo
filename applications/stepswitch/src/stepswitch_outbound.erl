@@ -216,7 +216,10 @@ maybe_originate(Number, OffnetReq) ->
 -spec local_originate(wh_proplist(), wh_json:object()) -> any().
 local_originate(Props, JObj) ->
     Endpoints = [create_loopback_endpoint(Props, JObj)],
-    J = wh_json:set_value(<<"Simplify-Loopback">>, <<"false">>, JObj),
+    J = wh_json:set_values([{<<"Simplify-Loopback">>, <<"false">>}
+                            ,{<<"Loopback-Bowout">>, <<"false">>}
+                           ], JObj),
+    lager:debug("originate local request"),
     stepswitch_request_sup:originate(Endpoints, J).
 
 -spec local_originate_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.
@@ -261,6 +264,9 @@ create_loopback_endpoint(Props, JObj) ->
                     ,{<<"Caller-ID-Name">>, CIDName}
                     ,{<<"Caller-ID-Number">>, CIDNum}
                     ,{<<"Ignore-Early-Media">>, 'true'}
+                    ,{<<"Ignore-Early-Media">>, 'true'}
+                    ,{<<"Enable-T38-Fax">>, 'false'}
+                    ,{<<"Enable-T38-Fax-Request">>, 'false'}
                    ])),
     Endpoint.
 %%--------------------------------------------------------------------
