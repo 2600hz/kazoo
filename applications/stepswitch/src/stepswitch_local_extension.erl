@@ -245,8 +245,6 @@ build_local_extension(#state{number_props=Props
               ,{<<"From-URI">>, bridge_from_uri(Number, JObj)}
               ,{<<"Account-ID">>, OriginalAccountId}
               ,{<<"Reseller-ID">>, wh_services:find_reseller_id(OriginalAccountId)}
-              ,{<<"Simplify-Loopback">>, <<"false">>}
-              ,{<<"Loopback-Bowout">>, <<"false">>}
              ],
              CCVsOrig),
 
@@ -255,8 +253,6 @@ build_local_extension(#state{number_props=Props
                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
                     ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, wh_json:get_value(<<"Retain-CID">>, CCVsOrig)}
                     ,{<<"Resource-ID">>, AccountId}
-                    ,{<<"Simplify-Loopback">>, <<"false">>}
-                    ,{<<"Loopback-Bowout">>, <<"false">>}
                     ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
                    ]),
 
@@ -274,6 +270,8 @@ build_local_extension(#state{number_props=Props
                     ,{<<"Caller-ID-Name">>, CIDName}
                     ,{<<"Caller-ID-Number">>, CIDNum}
                     ,{<<"Ignore-Early-Media">>, 'true'}
+                    ,{<<"Enable-T38-Fax">>, 'false'}
+                    ,{<<"Enable-T38-Fax-Request">>, 'false'}
                    ])),
 
     props:filter_undefined(
@@ -288,6 +286,8 @@ build_local_extension(#state{number_props=Props
                  ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
                  ,{<<"Caller-ID-Name">>, CIDName}
                  ,{<<"Caller-ID-Number">>, CIDNum}
+                 ,{<<"Simplify-Loopback">>, <<"false">>}
+                 ,{<<"Loopback-Bowout">>, <<"false">>}
                  | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                 ]).
 
