@@ -4,10 +4,20 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, []},
-  {applications, [kernel,
-                  stdlib
-                 ]
-  },
-  {mod, {kazoo_number_manager_app, []}},
-  {env, []}
+  {applications, [ kernel
+                 , stdlib
+
+                 , kazoo_documents
+                 , kazoo_web
+                 , kazoo_xml
+                 , whistle
+                 , whistle_couch
+                 , whistle_services
+                 , whistle_transactions
+
+                 , lager
+                 , cowlib
+                 , ejson
+                 ]},
+  {mod, {kazoo_number_manager_app, []}}
  ]}.
