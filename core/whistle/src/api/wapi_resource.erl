@@ -83,6 +83,8 @@
                                          ,<<"Fax-Timezone">>
                                          ,<<"Intercept-Unbridged-Only">>
                                          ,<<"Simplify-Loopback">> %% loopback_bowout flag
+                                         ,<<"Loopback-Bowout">>
+                                         ,<<"Start-Control-Process">>
                                          | wapi_dialplan:optional_bridge_req_headers()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
