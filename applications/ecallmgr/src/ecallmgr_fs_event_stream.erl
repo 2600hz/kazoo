@@ -323,6 +323,19 @@ process_stream(<<"CHANNEL_CREATE">> = EventName, UUID, EventProps, Node) ->
     Props = ecallmgr_fs_loopback:filter(Node, UUID, EventProps, 'true'),
     maybe_send_event(EventName, UUID, Props, Node),
     process_event(EventName, UUID, Props, Node);
+process_stream(<<"sofia::transferor">> = EventName, UUID, Props, Node) ->
+    case props:get_value(<<"variable_refer_uuid">>, Props) of
+        'undefined' -> 'ok';
+        ReferUUID ->
+            lager:debug("found refer uuid ~s for interaction caching", [ReferUUID]),
+            {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID),
+            CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, ReferUUID, CDR),
+            lager:debug("caching interaction id ~s for callid ~s", [CDR, ReferUUID]),
+            ecallmgr_fs_command:set(Node, ReferUUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
+    end,
+    maybe_send_event(EventName, UUID, Props, Node),
+    process_event(EventName, UUID, Props, Node);
 process_stream(EventName, UUID, EventProps, Node) ->
     maybe_send_event(EventName, UUID, EventProps, Node),
     process_event(EventName, UUID, EventProps, Node).
