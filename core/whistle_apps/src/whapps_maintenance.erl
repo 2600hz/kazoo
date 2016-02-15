@@ -1008,7 +1008,7 @@ try_load_attachment(AccountDb, Id, OrigAttach) ->
                                      'ok'.
 maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
     {'ok', Rev} = couch_mgr:lookup_doc_rev(AccountDb, Id),
-    Options = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
+    Options = [{'content_type', CT}
                ,{'rev', Rev}
               ],
     %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
