@@ -375,7 +375,7 @@ reconcile(DID, AssignTo, AuthBy) ->
     end.
 
 reconcile_number(Number, AssignTo, AuthBy) ->
-    PhoneNumber = ?MODULE:phone_number(Number),
+    PhoneNumber = phone_number(Number),
     Updaters = [{AssignTo
                  ,knm_phone_number:assigned_to(PhoneNumber)
                  ,fun knm_phone_number:set_assigned_to/2
@@ -547,14 +547,14 @@ lookup_account('undefined') -> {'error', 'not_reconcilable'};
 lookup_account(Num) ->
     NormalizedNum = knm_converters:normalize(Num),
     Key = {'account_lookup', NormalizedNum},
-    case wh_cache:peek_local(?KNM_CACHE, Key) of
+    case kz_cache:peek_local(?KNM_CACHE, Key) of
         {'ok', Ok} -> Ok;
         {'error', 'not_found'} ->
             case fetch_account_from_number(NormalizedNum) of
                 {'ok', _, _}=Ok ->
                     NumberDb = knm_converters:to_db(NormalizedNum),
                     CacheProps = [{'origin', [{'db', NumberDb, NormalizedNum}]}],
-                    wh_cache:store_local(?KNM_CACHE, Key, Ok, CacheProps),
+                    kz_cache:store_local(?KNM_CACHE, Key, Ok, CacheProps),
                     Ok;
                 Else -> Else
             end
@@ -768,7 +768,7 @@ default_force_outbound() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_account_from_ports(ne_binary(), {'error', _}) ->
+-spec fetch_account_from_ports(ne_binary(), {'error', any()}) ->
                                       lookup_account_return().
 fetch_account_from_ports(NormalizedNum, Error) ->
     case

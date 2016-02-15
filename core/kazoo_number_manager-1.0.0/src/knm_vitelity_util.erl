@@ -161,7 +161,7 @@ xml_el_to_kv_pair(#xmlElement{name=Name
 
 -spec query_vitelity(ne_binary()) ->
                             {'ok', text()} |
-                            {'error', _}.
+                            {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of

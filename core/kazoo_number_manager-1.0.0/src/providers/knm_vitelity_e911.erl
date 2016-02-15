@@ -85,7 +85,7 @@ is_valid_location(Location) ->
 %%--------------------------------------------------------------------
 -spec get_location(ne_binary() | knm_number:knm_number()) ->
                           {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'error', any()}.
 get_location(DID) when is_binary(DID) ->
     case knm_vitelity_util:query_vitelity(
            knm_vitelity_util:build_uri(get_location_options(DID))

@@ -32,7 +32,7 @@
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
-                          {'error', _}.
+                          {'error', any()}.
 find_numbers(<<"+", _/binary>>=Number, Quantity, Opts) ->
     AccountId = props:get_value(<<"Account-ID">>, Opts),
     find_numbers_in_account(Number, Quantity, AccountId);
@@ -41,7 +41,7 @@ find_numbers(Number, Quantity, Opts) ->
 
 -spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
                                      {'ok', knm_number:knm_numbers()} |
-                                     {'error', _}.
+                                     {'error', any()}.
 find_numbers_in_account(Number, Quantity, AccountId) ->
     case do_find_numbers_in_account(Number, Quantity, AccountId) of
         {'error', 'non_available'}=Error ->
@@ -54,7 +54,7 @@ find_numbers_in_account(Number, Quantity, AccountId) ->
     end.
 
 -spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary()) ->
-                                        {'error', _} |
+                                        {'error', any()} |
                                         {'ok', knm_number:knm_numbers()}.
 do_find_numbers_in_account(Number, Quantity, AccountId) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Number]}
@@ -165,7 +165,7 @@ import_numbers(AccountId, [Number | Numbers], JObj) ->
 
 -spec save_doc(ne_binary(), pos_integer() | ne_binary()) ->
                       {'ok', wh_json:object()} |
-                      {'error', _}.
+                      {'error', any()}.
 save_doc(AccountId, Number) ->
     JObj = wh_json:from_list([{<<"_id">>,<<"+",(wh_util:to_binary(Number))/binary>>}
                               ,{<<"pvt_account_id">>, AccountId}

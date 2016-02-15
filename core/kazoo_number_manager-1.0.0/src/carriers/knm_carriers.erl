@@ -68,7 +68,7 @@ find(Num, Quantity, Options) ->
                         find_fold(Carrier, Acc, NormalizedNumber, Quantity, Options)
                 end
                 ,[]
-                ,?MODULE:available_carriers(Options)
+                ,available_carriers(Options)
                ).
 
 -spec find_fold(atom(), wh_json:objects(), ne_binary(), non_neg_integer(), wh_proplist()) ->
@@ -238,8 +238,8 @@ activation_charge(DID, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -type checked_numbers() :: [{atom(), {'ok', wh_json:object()} |
-                             {'error', _} |
-                             {'EXIT', _}
+                             {'error', any()} |
+                             {'EXIT', any()}
                             }].
 -spec check(ne_binaries()) -> checked_numbers().
 -spec check(ne_binaries(), wh_proplist()) -> checked_numbers().
@@ -250,7 +250,7 @@ check(Numbers, Options) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
     lager:info("attempting to check ~p ", [FormattedNumbers]),
     [{Module, catch(Module:check_numbers(FormattedNumbers, Options))}
-     || Module <- ?MODULE:available_carriers(Options)
+     || Module <- available_carriers(Options)
     ].
 
 %%--------------------------------------------------------------------

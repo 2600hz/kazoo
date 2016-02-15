@@ -249,7 +249,7 @@ post(Context, _Number) ->
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, Num) ->
     ReqJObj = cb_context:req_json(Context),
-    DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
+    DryRun = not wh_json:is_true(<<"accept_charges">>, ReqJObj),
     Options = [{'assigned_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', DryRun}
@@ -266,7 +266,7 @@ put(Context, Num) ->
 
 put(Context, Num, ?ACTIVATE) ->
     ReqJObj = cb_context:req_json(Context),
-    DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj)),
+    DryRun = not wh_json:is_true(<<"accept_charges">>, ReqJObj),
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'dry_run', DryRun}
               ],
@@ -728,11 +728,9 @@ locality(Context, Numbers) ->
 -spec error_return(cb_context:context(), knm_errors:error()) ->
                           cb_context:context().
 error_return(Context, Error) ->
-    cb_context:add_system_error(knm_errors:code(Error)
-                                ,knm_errors:error(Error)
-                                ,Error
-                                ,Context
-                               ).
+    Code = knm_errors:code(Error),
+    Msg = knm_errors:error(Error),
+    cb_context:add_system_error(Code, Msg, Error, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -742,9 +740,8 @@ error_return(Context, Error) ->
 -spec success_return(cb_context:context(), knm_number:knm_number()) ->
                             cb_context:context().
 success_return(Context, Number) ->
-    Routines = [{fun cb_context:set_resp_data/2
-                 ,knm_phone_number:to_public_json(knm_number:phone_number(Number))
-                }
+    Num = knm_phone_number:to_public_json(knm_number:phone_number(Number)),
+    Routines = [{fun cb_context:set_resp_data/2, Num}
                 ,{fun cb_context:set_resp_status/2, 'success'}
                ],
     cb_context:setters(Context, Routines).
@@ -752,7 +749,5 @@ success_return(Context, Number) ->
 -spec dry_run_return(cb_context:context(), wh_services:services()) ->
                             cb_context:context().
 dry_run_return(Context, Services) ->
-    crossbar_util:response(
-      wh_services:dry_run(Services)
-      ,Context
-     ).
+    DryRun = wh_services:dry_run(Services),
+    crossbar_util:response(DryRun, Context).

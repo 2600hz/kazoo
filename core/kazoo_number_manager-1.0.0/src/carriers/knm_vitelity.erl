@@ -31,7 +31,7 @@
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
-                          {'error', _}.
+                          {'error', any()}.
 find_numbers(Prefix, Quantity, Options) ->
     case props:is_true(<<"tollfree">>, Options, 'false') of
         'true' ->
@@ -128,7 +128,7 @@ is_number_billable(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec classify_and_find(ne_binary(), pos_integer(), knm_vitelity_util:query_options()) ->
                                {'ok', knm_number:knm_numbers()} |
-                               {'error', _}.
+                               {'error', any()}.
 classify_and_find(Prefix, Quantity, Options) ->
     case knm_converters:classify(Prefix) of
         <<"tollfree_us">> ->
@@ -209,7 +209,7 @@ local_options(Prefix, Options) ->
 %%--------------------------------------------------------------------
 -spec find(ne_binary(), pos_integer(), wh_proplist(), knm_vitelity_util:query_options()) ->
                   {'ok', knm_number:knm_numbers()} |
-                  {'error', _}.
+                  {'error', any()}.
 find(Prefix, Quantity, Options, VitelityOptions) ->
     case query_vitelity(Prefix
                         ,Quantity
@@ -278,7 +278,7 @@ query_vitelity(Prefix, Quantity, URI) ->
 -else.
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
                             {'ok', wh_json:object()} |
-                            {'error', _}.
+                            {'error', any()}.
 query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
@@ -302,7 +302,7 @@ query_vitelity(Prefix, Quantity, URI) ->
 %%--------------------------------------------------------------------
 -spec process_xml_resp(ne_binary(), pos_integer(), text()) ->
                               {'ok', wh_json:object()} |
-                              {'error', _}.
+                              {'error', any()}.
 process_xml_resp(Prefix, Quantity, XML) ->
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Prefix, Quantity, XmlEl)
@@ -320,7 +320,7 @@ process_xml_resp(Prefix, Quantity, XML) ->
 %%--------------------------------------------------------------------
 -spec process_xml_content_tag(ne_binary(), pos_integer(), xml_el()) ->
                                      {'ok', wh_json:object()} |
-                                     {'error', _}.
+                                     {'error', any()}.
 process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                                       ,content=Children
                                                      }) ->
@@ -341,10 +341,10 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %%--------------------------------------------------------------------
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
                                  {'ok', wh_json:object()} |
-                                 {'error', _}.
+                                 {'error', any()}.
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), wh_proplist()) ->
                                  {'ok', wh_json:object()} |
-                                 {'error', _}.
+                                 {'error', any()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
     {'error', 'no_numbers'};
 process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
