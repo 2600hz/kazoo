@@ -23,7 +23,7 @@
 
 -define(KNM_PHONE_NUMBERS_DOC, <<"phone_numbers">>).
 
--type numbers_return() :: [{ne_binary(), knm_number_return()} | {'error', _}].
+-type numbers_return() :: [{ne_binary(), knm_number_return()} | {'error', any()}].
 
 %%--------------------------------------------------------------------
 %% @public

@@ -69,7 +69,7 @@
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', knm_number:knm_numbers()} |
-                          {'error', _}.
+                          {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quanity, Options) ->
     find_numbers(Rest, Quanity, Options);
 find_numbers(<<"1", Rest/binary>>, Quanity, Options) ->

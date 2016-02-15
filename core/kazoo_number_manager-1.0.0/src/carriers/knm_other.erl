@@ -50,7 +50,7 @@
 -endif.
 
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'error', _} |
+                          {'error', any()} |
                           {'bulk', knm_number:knm_numbers()} |
                           {'ok', knm_number:knm_numbers()}.
 find_numbers(Number, Quantity, Options) ->
@@ -73,7 +73,7 @@ find_numbers(Number, Quantity, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec check_numbers(ne_binaries(), wh_proplist()) ->
-                           {'error', _} |
+                           {'error', any()} |
                            {'ok', wh_json:object()}.
 check_numbers(Numbers, _Props) ->
     FormatedNumbers = [(knm_converters:default_converter()):to_npan(Number)

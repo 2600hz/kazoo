@@ -82,17 +82,10 @@ lookup(<<_/binary>> = Number) ->
 lookup(JObj) ->
     Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj,  wh_util:anonymous_caller_id_number()),
     Num = case ?DISABLE_NORMALIZE of
-<<<<<<< HEAD
-              'false' -> wnm_util:normalize_number(Number);
+              'false' -> knm_converters:normalize(Number);
               'true'  -> Number
           end,
     case kz_cache:fetch_local(?STEPSWITCH_CACHE, cache_key(Num)) of
-=======
-        'false' -> knm_converters:normalize(Number);
-        'true'  -> Number
-    end,
-    case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key(Num)) of
->>>>>>> KAZOO-3891: move normalize_number to knm normalize
         {'ok', CNAM} ->
             update_request(JObj, CNAM, 'true');
         {'error', 'not_found'} ->

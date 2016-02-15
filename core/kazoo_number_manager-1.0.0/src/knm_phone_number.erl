@@ -795,7 +795,7 @@ do_unassign(PhoneNumber, PrevAssignedTo) ->
 
 -spec get_number_in_account(ne_binary(), ne_binary()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 get_number_in_account(AccountId, Num) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_cache_doc(AccountDb, Num).
