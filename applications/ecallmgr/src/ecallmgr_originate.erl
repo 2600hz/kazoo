@@ -202,9 +202,11 @@ handle_cast({'create_uuid'}, #state{node=Node
     UUID = {_, Id} = create_uuid(JObj, Node),
     wh_util:put_callid(Id),
     lager:debug("created uuid ~p", [UUID]),
-    kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
-
-    case start_control_process(State#state{uuid=UUID}) of
+    case wh_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
+        andalso start_control_process(State#state{uuid=UUID}) of
+        'false' ->
+            gen_listener:cast(self(), {'build_originate_args'}),
+            {'noreply', State#state{uuid=UUID}, 'hibernate'};
         {'ok', #state{control_pid=Pid}=State1} ->
             lager:debug("started control proc ~p uuid ~p", [Pid, UUID]),
             maybe_send_originate_uuid(UUID, Pid, State),
@@ -287,6 +289,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
                                           ,server_id=ServerId
                                           ,control_pid=CtrlPid
                                          }=State) ->
+    ControlDisabled = wh_json:is_false(<<"Start-Control-Process">>, JObj, 'false'),
     case originate_execute(Node, Dialstrings, find_originate_timeout(JObj)) of
         {'ok', UUID} when is_pid(CtrlPid) ->
             lager:debug("originate completed for: ~s with ctrl ~p", [UUID, CtrlPid]),
@@ -301,6 +304,10 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
                 'false' -> ecallmgr_call_control:stop(CtrlPid)
             end,
             {'stop', 'normal', State#state{control_pid='undefined'}};
+        {'ok', CallId} when ControlDisabled ->
+            lager:debug("originate completed for: ~s with no control pid", [CallId]),
+            _ = publish_originate_resp(ServerId, JObj, CallId),
+            {'stop', 'normal', State#state{control_pid='undefined'}};            
         {'ok', CallId} ->
             wh_util:put_callid(CallId),
             lager:debug("originate is executing, waiting for completion"),
@@ -817,8 +824,10 @@ start_control_process(#state{control_pid=_Pid
     {'ok', State}.
 
 -spec maybe_start_call_handlers(created_uuid(), state()) -> 'ok'.
-maybe_start_call_handlers(UUID, State) ->
-    case start_control_process(State#state{uuid=UUID}) of
+maybe_start_call_handlers(UUID, #state{originate_req=JObj}=State) ->
+case wh_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
+    andalso start_control_process(State#state{uuid=UUID}) of
+        'false' -> 'ok';
         {'ok', #state{control_pid=_Pid}} ->
             lager:debug("started control process for ~p: ~p", [UUID, _Pid]);
         {'error', _E} ->
