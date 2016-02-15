@@ -608,11 +608,11 @@ create_event(EventName, ApplicationName, Props) ->
 specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
     Vars = ecallmgr_util:custom_channel_vars(Props),
-    lager:debug("checking interaction cache for ~s : ~p", [UUID, erlang:get_stacktrace()]),
+    lager:debug("checking interaction cache for ~s", [UUID]),
     case kz_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, UUID) of
         {'ok', CDR} ->
             NewVars = props:set_value(<<?CALL_INTERACTION_ID>>, CDR, Vars),
-            lager:debug("found interaction cache ~s for ~s : ~p", [CDR, UUID, NewVars]),
+            lager:debug("found interaction cache ~s for ~s", [CDR, UUID]),
             [{<<"Custom-Channel-Vars">>, wh_json:from_list(NewVars)}];
         _ ->
             lager:debug("interaction cache for ~s not found", [UUID]),
