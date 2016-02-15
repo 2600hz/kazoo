@@ -426,4 +426,3 @@ load_smtp_attachment(DocId, Filename) ->
         Error ->
             io:format("error obtaining file ~s contents for docid ~s : ~p~n", [Filename, DocId, Error])
     end.
-
