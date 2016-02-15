@@ -418,12 +418,12 @@ load_smtp_attachment(DocId, Filename) ->
             case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
                 {'ok', JObj} ->
                     case fax_util:save_fax_attachment(JObj, FileContents, CT) of
-                        {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered", [Filename, DocId]);
-                        {'error', E} -> io:format("error attaching ~s to docid ~s : ~p", [Filename, DocId, E])
+                        {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);
+                        {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
                     end;
-                {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p", [DocId, Filename, E])
+                {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p~n", [DocId, Filename, E])
             end;
         Error ->
-            io:format("error obtaining file ~s contents for docid ~s : ~p", [Filename, DocId, Error])
+            io:format("error obtaining file ~s contents for docid ~s : ~p~n", [Filename, DocId, Error])
     end.
 
