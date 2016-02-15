@@ -27,10 +27,6 @@ clean-generated:
 	$(if $(wildcard src/kz_mime.erl), rm src/kz_mime.erl)
 
 src/kz_mime.erl: src/kz_mime.erl.src
-	$(MAKE) gen
-
-
-gen: src/kz_mime.erl.src
 	@wget -qO $(GEN_FILE) $(GEN_URL)
 	@cat $(GEN_SRC) \
 		| head -n `grep -n "%% GENERATED" $(GEN_SRC) | cut -d : -f 1` \
