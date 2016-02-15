@@ -424,21 +424,23 @@ build_originate_req(Contact, Context) ->
                                                    ,route = Exten}),
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
+    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
 
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
-            ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Authorizing-ID">>, wh_doc:id(JObj)}
             ,{<<"Inherit-Codec">>, <<"false">>}
             ,{<<"Authorizing-Type">>, <<"device">>}
+            ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+            ,{<<"From-URI">>, <<CalleeNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+            ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ],
 
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
 
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
                 ,{<<"Route">>,  Callee#contact.route}
                 ,{<<"To-DID">>, Callee#contact.route}
-                ,{<<"To-Realm">>, wh_json:get_value(<<"realm">>, AccountDoc)}
+                ,{<<"To-Realm">>, kz_account:realm(AccountDoc)}
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ],
 
@@ -464,8 +466,13 @@ build_originate_req(Contact, Context) ->
        ,{<<"Continue-On-Fail">>, 'true'}
        ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>, <<"Auto-Answer-Loopback">>]}
-       ,{<<"Simplify-Loopback">>, <<"true">>}
+       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
+                                            ,<<"Auto-Answer-Loopback">>, <<"Loopback-Request-URI">>
+                                            ,<<"From-URI">>, <<"Request-URI">>
+                                           ]}
+       ,{<<"Simplify-Loopback">>, <<"false">>}
+       ,{<<"Loopback-Bowout">>, <<"false">>}
+       ,{<<"Start-Control-Process">>, <<"false">>}
        | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 

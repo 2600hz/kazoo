@@ -307,7 +307,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
         {'ok', CallId} when ControlDisabled ->
             lager:debug("originate completed for: ~s with no control pid", [CallId]),
             _ = publish_originate_resp(ServerId, JObj, CallId),
-            {'stop', 'normal', State#state{control_pid='undefined'}};            
+            {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
             wh_util:put_callid(CallId),
             lager:debug("originate is executing, waiting for completion"),

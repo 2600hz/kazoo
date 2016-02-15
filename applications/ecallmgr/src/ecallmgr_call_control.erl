@@ -1280,7 +1280,7 @@ handle_transferee(Props, #state{fetch_id=FetchId
 
 -spec handle_transferor(wh_proplist(), state()) ->
                                {'noreply', state()}.
-handle_transferor(Props, #state{fetch_id=_FetchId
+handle_transferor(_Props, #state{fetch_id=_FetchId
                                 ,node=_Node
                                 ,call_id=_CallId
                                }=State) ->
