@@ -173,7 +173,7 @@ proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
                ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
               ],
     cf_exe:set_call(whapps_call:exec(Updates, Call)),
-    Number = wnm_util:to_e164(Dest),
+    Number = knm_converters:normalize(Dest),
     lager:info("send the call onto real destination of: ~s", [Number]),
     maybe_route_to_callflow(Data, Call, Number).
 
