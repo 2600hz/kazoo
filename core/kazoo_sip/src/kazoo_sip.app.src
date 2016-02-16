@@ -8,7 +8,7 @@
                  , stdlib
 
                  , whistle
-                 , whistle_number_manager
+                 , kazoo_number_manager
 
                  , lager
                  ]}
