@@ -54,7 +54,7 @@ handle_req(JObj, _Props) ->
     %% If the box has emails, continue processing
     %% andalso the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    case BoxEmails =:= [] andalso kzd_user:voicemail_notification_enabled(UserJObj) of
+    case BoxEmails =/= [] andalso kzd_user:voicemail_notification_enabled(UserJObj) of
         'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
         'true' ->
             continue_processing(JObj, AccountDb, VMBox, UserJObj, BoxEmails)
