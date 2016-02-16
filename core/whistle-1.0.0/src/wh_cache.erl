@@ -222,17 +222,19 @@ peek_local(Srv, K) ->
                          {'ok', term()} |
                          {'error', 'not_found'}.
 fetch_local(Srv, K) ->
-    try ets:lookup_element(Srv, K, #cache_obj.value) of
-        Value ->
+    case peek_local(Srv, K) of
+        {'error', _}=E -> E;
+        {'ok', _Value}=OK ->
             gen_server:cast(Srv, {'update_timestamp', K, wh_util:current_tstamp()}),
-            {'ok', Value}
-    catch
-        'error':'badarg' -> {'error', 'not_found'}
+            OK
     end.
 
 -spec erase_local(atom(), term()) -> 'ok'.
 erase_local(Srv, K) ->
-    gen_server:cast(Srv, {'erase', K}).
+    case peek_local(Srv, K) of
+        {'ok', _} -> gen_server:cast(Srv, {'erase', K});
+        {'error', 'not_found'} -> 'ok'
+    end.
 
 -spec flush_local(atom()) -> 'ok'.
 flush_local(Srv) ->
