@@ -679,11 +679,13 @@ maybe_remove_object(Key, Tab) ->
 
 -spec maybe_exec_erase_callbacks(term(), atom()) -> 'ok'.
 maybe_exec_erase_callbacks(Key, Tab) ->
-    case ets:lookup_element(Tab, Key, #cache_obj.callback) of
+    try ets:lookup_element(Tab, Key, #cache_obj.callback) of
         Fun when is_function(Fun, 3) ->
             wh_util:spawn(fun() -> exec_erase_callback(Key, Tab, Fun) end),
             'ok';
         _Callback -> 'ok'
+    catch
+        _ -> 'ok'
     end.
 
 -spec exec_erase_callbacks(any(), atom(), callback_fun()) -> any().
