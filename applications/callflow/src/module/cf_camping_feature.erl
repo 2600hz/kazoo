@@ -169,7 +169,7 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
 
 -spec get_device_sip_username(ne_binary(), ne_binary()) -> api_binary().
 get_device_sip_username(AccountDb, DeviceId) ->
-    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, DeviceId),
+    {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, DeviceId),
     kz_device:sip_username(JObj).
 
 -spec no_channels(state(), whapps_call:call()) -> maybe('accepted') |

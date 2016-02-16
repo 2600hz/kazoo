@@ -36,7 +36,7 @@
 -spec check_initial_call(ne_binary()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
             case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
                 'true' -> io:format("account ~s has made their first call!~n", [AccountId]);
@@ -55,7 +55,7 @@ check_initial_call(Account) when is_binary(Account) ->
 -spec check_initial_registration(ne_binary()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
             case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
                 'true' -> io:format("account ~s has registered successfully~n", [AccountId]);
@@ -145,7 +145,7 @@ configure_smtp_port(Value) ->
 %%--------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    couch_mgr:db_create(?WH_ACCOUNTS_DB),
+    kz_datamgr:db_create(?WH_ACCOUNTS_DB),
     Views = [whapps_util:get_view_json('notify', <<"views/notify.json">>)],
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views),
     'ok'.
@@ -198,7 +198,7 @@ template_files() ->
 %%--------------------------------------------------------------------
 -spec template_ids() -> ne_binaries().
 template_ids() ->
-    {'ok', JObjs} =  couch_mgr:all_docs(?SYSTEM_CONFIG_DB),
+    {'ok', JObjs} =  kz_datamgr:all_docs(?SYSTEM_CONFIG_DB),
     lists:foldl(
         fun(JObj, Acc) ->
            case wh_doc:id(JObj) of
@@ -297,7 +297,7 @@ compare_template_system_config([{FileId, Id}|Match]) ->
 
 compare_template_system_config([], JObj) ->
     Id = wh_doc:id(JObj),
-    case couch_mgr:save_doc(?SYSTEM_CONFIG_DB, JObj) of
+    case kz_datamgr:save_doc(?SYSTEM_CONFIG_DB, JObj) of
         {'ok', _} -> io:format("doc ~s updated~n", [Id]);
         {'error', Reason} ->
             io:format("doc ~s failed to update: ~p~n", [Id, Reason])
@@ -376,7 +376,7 @@ open_file(File) ->
 %%--------------------------------------------------------------------
 -spec open_system_config(ne_binary()) -> wh_json:object() | 'error' | 'not_found'.
 open_system_config(Id) ->
-    case couch_mgr:open_cache_doc(?SYSTEM_CONFIG_DB, Id) of
+    case kz_datamgr:open_cache_doc(?SYSTEM_CONFIG_DB, Id) of
         {'ok', JObj} -> JObj;
         {'error', 'not_found'} -> 'not_found';
         {'error', _R} -> 'error'

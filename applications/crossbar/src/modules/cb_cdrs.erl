@@ -502,11 +502,11 @@ paginate_and_clean(Context, Ids) ->
             {Context2, [Id || {Id, _} <- lists:delete(Last, Ids)]}
     end.
 
--spec get_cdr_ids(ne_binary(), ne_binary(), couch_mgr:view_options()) ->
+-spec get_cdr_ids(ne_binary(), ne_binary(), kz_datamgr:view_options()) ->
                          {'ok', wh_proplist()}.
 get_cdr_ids(Db, View, ViewOptions) ->
     _ = maybe_add_design_doc(Db),
-    case couch_mgr:get_results(Db, View, ViewOptions) of
+    case kz_datamgr:get_results(Db, View, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to fetch ~s from ~s: ~p"
                        ,[View, Db, _R]
@@ -523,10 +523,10 @@ get_cdr_ids(Db, View, ViewOptions) ->
                                   'ok' |
                                   {'error', 'not_found'}.
 maybe_add_design_doc(Db) ->
-    case couch_mgr:lookup_doc_rev(Db, <<"_design/cdrs">>) of
+    case kz_datamgr:lookup_doc_rev(Db, <<"_design/cdrs">>) of
         {'error', 'not_found'} ->
             lager:warning("adding cdr views to modb: ~s", [Db]),
-            couch_mgr:revise_doc_from_file(Db
+            kz_datamgr:revise_doc_from_file(Db
                                            ,'kazoo_modb'
                                            ,<<"cdrs.json">>
                                           );
@@ -544,7 +544,7 @@ load_chunked_cdrs(Db, Ids, {_, Context}=Payload) ->
     ViewOptions = [{'keys', BulkIds}
                    ,'include_docs'
                   ],
-    case couch_mgr:all_docs(Db, ViewOptions) of
+    case kz_datamgr:all_docs(Db, ViewOptions) of
         {'ok', Results} ->
             HasQSFilter = crossbar_doc:has_qs_filter(Context),
             JObjs = [wh_json:get_value(<<"doc">>, Result)
@@ -754,7 +754,7 @@ load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     Context1 = cb_context:set_account_db(Context, AccountDb),
-    case couch_mgr:open_cache_doc(AccountDb, DocId) of
+    case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             load_legs(wh_json:get_value(<<"interaction_id">>, JObj), Context1);
         _ ->

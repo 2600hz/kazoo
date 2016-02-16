@@ -54,8 +54,8 @@ init() ->
     crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete').
 
 init_db() ->
-    _ = couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', "views/rates.json").
+    _ = kz_datamgr:db_create(?WH_RATES_DB),
+    kz_datamgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', "views/rates.json").
 
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).

@@ -131,7 +131,7 @@ flush_entries(_, _) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    TemplateName = wh_util:to_atom(couch_mgr:get_uuid(), 'true'),
+    TemplateName = wh_util:to_atom(kz_datamgr:get_uuid(), 'true'),
     {'ok', TemplateName}.
 
 %%--------------------------------------------------------------------

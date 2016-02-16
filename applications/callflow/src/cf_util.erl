@@ -146,7 +146,7 @@ check_manual_presence(Username, Realm, AccountDb) ->
 
 -spec fetch_manual_presence_doc(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
 fetch_manual_presence_doc(Username, Realm, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
+    case kz_datamgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
         {'ok', JObj} ->
             CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
             kz_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), JObj, CacheProps),
@@ -242,11 +242,11 @@ is_unsolicited_mwi_enabled(AccountId) ->
 -spec unsolicited_owner_mwi_update(api_binary(), api_binary()) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
-                                          couch_mgr:couchbeam_error().
+                                          kz_datamgr:couchbeam_error().
 -spec unsolicited_owner_mwi_update(ne_binary(), ne_binary(), boolean()) ->
                                           'ok' |
                                           {'error', mwi_update_return()} |
-                                          couch_mgr:couchbeam_error().
+                                          kz_datamgr:couchbeam_error().
 unsolicited_owner_mwi_update('undefined', _) -> {'error', 'missing_account_db'};
 unsolicited_owner_mwi_update(_, 'undefined') -> {'error', 'missing_owner_id'};
 unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
@@ -260,7 +260,7 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId, 'true') ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
             AccountId = wh_util:format_account_id(AccountDb, 'raw'),
@@ -305,7 +305,7 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
 unsolicited_endpoint_mwi_update(_AccountDb, _EndpointId, 'false') ->
     lager:debug("unsolicitated mwi updated disabled : ~s", [_AccountDb]);
 unsolicited_endpoint_mwi_update(AccountDb, EndpointId, 'true') ->
-    case couch_mgr:open_cache_doc(AccountDb, EndpointId) of
+    case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
         {'error', _}=E -> E;
         {'ok', JObj} -> maybe_send_endpoint_mwi_update(AccountDb, JObj)
     end.
@@ -372,7 +372,7 @@ vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
                    ,{'startkey', [OwnerId]}
                    ,{'endkey', [OwnerId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
         {'ok', MessageCounts} ->
             Props = [{wh_json:get_value([<<"key">>, 2], MessageCount)
                       ,wh_json:get_integer_value(<<"value">>, MessageCount)
@@ -472,7 +472,7 @@ owner_ids_by_sip_username(AccountDb, Username) ->
                                            {'error', any()}.
 get_owner_ids_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_doc:id(JObj),
             OwnerIds = wh_json:get_value(<<"value">>, JObj, []),
@@ -508,7 +508,7 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
                                              {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
@@ -529,11 +529,11 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_operator_callflow(ne_binary()) -> {'ok', wh_json:object()} |
-                                            couch_mgr:couchbeam_error().
+                                            kz_datamgr:couchbeam_error().
 get_operator_callflow(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Options = [{'key', ?OPERATOR_KEY}, 'include_docs'],
-    case couch_mgr:get_results(AccountDb, ?LIST_BY_NUMBER, Options) of
+    case kz_datamgr:get_results(AccountDb, ?LIST_BY_NUMBER, Options) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [JObj|_]} ->
             {'ok', wh_json:get_value([<<"doc">>, <<"flow">>], JObj, wh_json:new())};
@@ -642,7 +642,7 @@ lookup_callflow(Number, AccountId) ->
 do_lookup_callflow(Number, Db) ->
     lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
     Options = [{'key', Number}, 'include_docs'],
-    case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
+    case kz_datamgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
         {'error', _}=E -> E;
         {'ok', []} when Number =/= ?NO_MATCH_CF ->
             case lookup_callflow_patterns(Number, Db) of
@@ -690,7 +690,7 @@ is_digit(_) -> 'false'.
                                       {'error', any()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
-    case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
+    case kz_datamgr:get_results(Db, ?LIST_BY_PATTERN, ['include_docs']) of
         {'ok', Patterns} ->
             case test_callflow_patterns(Patterns, Number, {'undefined', <<>>}) of
                 {'undefined', <<>>} -> {'error', 'not_found'};
@@ -1089,7 +1089,7 @@ maybe_cached_mailbox(AccountDb, VMNumber) ->
                                              {'error', any()}.
 get_mailbox(AccountDb, VMNumber) ->
     ViewOptions = [{'key', VMNumber}, 'include_docs'],
-    case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
         {'ok', [JObj]} ->
             Doc = wh_json:get_value(<<"doc">>, JObj),
             EndpointId = wh_doc:id(Doc),

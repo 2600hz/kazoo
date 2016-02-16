@@ -113,13 +113,13 @@ maybe_update_push_token('undefined', _AuthorizingId, _UA, _JObj, _Params) -> 'ok
 maybe_update_push_token(_AccountId, 'undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
     AccountDb = wh_util:format_account_db(AccountId),
-    case couch_mgr:open_cache_doc(AccountDb, AuthorizingId) of
+    case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
         {'ok', Doc} ->
             Push = wh_json:get_value(<<"push">>, Doc),
             case build_push(UA, JObj, Params, wh_json:new()) of
                 Push -> lager:debug("push exists: ~p", [Push]);
                 NewPush ->
-                    {'ok', _} = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"push">>, NewPush, Doc)),
+                    {'ok', _} = kz_datamgr:save_doc(AccountDb, wh_json:set_value(<<"push">>, NewPush, Doc)),
                     lager:debug("setting push object for ~s: ~s: ~p", [AccountId, AuthorizingId, NewPush])
             end;
         {'error', _} -> lager:debug("failed to open ~s in ~s", [AuthorizingId, AccountId])

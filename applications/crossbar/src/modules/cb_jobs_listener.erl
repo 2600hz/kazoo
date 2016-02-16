@@ -102,7 +102,7 @@ handle_job(JObj, _Props) ->
 -spec process_job(ne_binary(), ne_binary()) -> 'ok'.
 process_job(<<_/binary>> = AccountId, <<_/binary>> = JobId) ->
     JobModb = job_modb(AccountId, JobId),
-    {'ok', Job} = couch_mgr:open_cache_doc(JobModb, JobId),
+    {'ok', Job} = kz_datamgr:open_cache_doc(JobModb, JobId),
     lager:debug("processing job ~s for account ~s", [JobId, AccountId]),
     maybe_start_job(Job, wh_json:get_value(<<"pvt_status">>, Job)).
 
@@ -131,7 +131,7 @@ start_job(Job, AccountId, AuthAccountId, CarrierModule, [Number|Numbers]) ->
 -spec select_carrier_module(wh_json:object()) -> ne_binary().
 select_carrier_module(Job) ->
     ResourceId = wh_json:get_value(<<"resource_id">>, Job),
-    case couch_mgr:open_cache_doc(?WH_OFFNET_DB, ResourceId) of
+    case kz_datamgr:open_cache_doc(?WH_OFFNET_DB, ResourceId) of
         {'ok', _} ->
             lager:debug("found resource ~s in ~s, using wnm_other", [ResourceId, ?WH_OFFNET_DB]),
             <<"wnm_other">>;
@@ -211,7 +211,7 @@ build_number_properties(JObj) ->
 
 -spec update_status(wh_json:object(), ne_binary()) -> wh_json:object().
 update_status(Job, Status) ->
-    {'ok', Job1} = couch_mgr:save_doc(wh_doc:account_db(Job)
+    {'ok', Job1} = kz_datamgr:save_doc(wh_doc:account_db(Job)
                                       ,wh_json:set_values([{<<"pvt_status">>, Status}
                                                            ,{<<"pvt_node">>, wh_util:to_binary(node())}
                                                           ]
@@ -234,7 +234,7 @@ maybe_recover_jobs(Year, Month, Accounts) ->
 -spec maybe_recover_account_jobs(wh_year(), wh_month(), ne_binary()) -> 'ok'.
 maybe_recover_account_jobs(Year, Month, AccountId) ->
     Modb = kazoo_modb:get_modb(AccountId, Year, Month),
-    case couch_mgr:get_results(Modb, <<"resources/status_listing">>, [{'keys', [<<"pending">>
+    case kz_datamgr:get_results(Modb, <<"resources/status_listing">>, [{'keys', [<<"pending">>
                                                                                 ,<<"running">>
                                                                                ]}
                                                                       ,'include_docs'
@@ -266,7 +266,7 @@ maybe_recover_incomplete_job(Job) ->
 -spec recover_incomplete_job(wh_json:object()) -> 'ok'.
 recover_incomplete_job(Job) ->
     Db = wh_doc:account_db(Job),
-    case couch_mgr:save_doc(Db
+    case kz_datamgr:save_doc(Db
                             ,wh_json:set_value(<<"pvt_recovering">>, 'true', wh_doc:update_pvt_modified(Job))
                            )
     of

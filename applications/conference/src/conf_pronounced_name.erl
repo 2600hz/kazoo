@@ -32,7 +32,7 @@ get_user_id(Call) ->
 
 -spec get_user_id_from_device(whapps_call:call()) -> api_binary().
 get_user_id_from_device(Call) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call)
                                   ,whapps_call:authorizing_id(Call)
                                  )
     of
@@ -49,7 +49,7 @@ lookup_name(Call) ->
 
 -spec lookup_user_name(whapps_call:call(), ne_binary()) -> name_pronounced_media() | 'undefined'.
 lookup_user_name(Call, UserId) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), UserId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), UserId) of
         {'ok', UserDoc} ->
             case wh_json:get_value(?PRONOUNCED_NAME_KEY, UserDoc) of
                 'undefined' -> 'undefined';
@@ -60,7 +60,7 @@ lookup_user_name(Call, UserId) ->
 
 -spec record(whapps_call:call()) -> name_pronounced().
 record(Call) ->
-    RecordName = list_to_binary(["conf_announce_",couch_mgr:get_uuid(), ".mp3"]),
+    RecordName = list_to_binary(["conf_announce_",kz_datamgr:get_uuid(), ".mp3"]),
 
     Choice = while(fun user_discards_or_not_error/1
                    ,fun () -> record_name(RecordName, Call) end
@@ -121,7 +121,7 @@ prepare_media_doc(RecordName, Call) ->
                ,{<<"streamable">>, 'true'}
               ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
-    case couch_mgr:save_doc(AccountDb, Doc) of
+    case kz_datamgr:save_doc(AccountDb, Doc) of
         {'ok', MediaJObj} when not is_list(MediaJObj) -> wh_doc:id(MediaJObj);
         _ -> 'undefined'
     end.
@@ -132,11 +132,11 @@ save_recording(RecordName, MediaDocId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     AccountId = whapps_call:account_id(Call),
     whapps_call_command:b_store(RecordName, get_new_attachment_url(RecordName, MediaDocId, Call), Call),
-    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} ->
             lager:debug("Updating user's doc"),
             JObj1 = wh_json:set_value(?PRONOUNCED_NAME_KEY, MediaDocId, UserJObj),
-            couch_mgr:save_doc(AccountDb, JObj1),
+            kz_datamgr:save_doc(AccountDb, JObj1),
             {'media_doc_id', AccountId, MediaDocId};
         {'error', _Err} ->
             lager:info("Can't update user's doc due to error ~p", [_Err]),
@@ -153,7 +153,7 @@ save_pronounced_name(RecordName, Call) ->
 -spec get_new_attachment_url(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = case couch_mgr:open_doc(AccountDb, MediaId) of
+    _ = case kz_datamgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} -> maybe_remove_attachments(Call, JObj);
             {'error', _} -> 'ok'
         end,
@@ -165,7 +165,7 @@ maybe_remove_attachments(Call, JObj) ->
     case wh_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
         {'true', Removed} ->
-            {'ok', _Saved} = couch_mgr:save_doc(whapps_call:account_db(Call), Removed),
+            {'ok', _Saved} = kz_datamgr:save_doc(whapps_call:account_db(Call), Removed),
             lager:debug("removed attachments from media doc ~s (now ~s)"
                         ,[wh_doc:id(_Saved), wh_doc:revision(_Saved)]
                        )

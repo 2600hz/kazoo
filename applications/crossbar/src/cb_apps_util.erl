@@ -86,7 +86,7 @@ is_authorized(AccountId, UserId, AppId) ->
 -spec load_default_apps() -> wh_json:objects().
 load_default_apps() ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-    case couch_mgr:get_results(MasterAccountDb, ?CB_APPS_STORE_LIST, ['include_docs']) of
+    case kz_datamgr:get_results(MasterAccountDb, ?CB_APPS_STORE_LIST, ['include_docs']) of
         {'error', _E} ->
             lager:error("failed to lookup apps in ~s", [MasterAccountDb]),
             [];
@@ -103,7 +103,7 @@ load_default_apps() ->
 create_apps_store_doc(Account) ->
     Doc = kzd_apps_store:new(Account),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    couch_mgr:save_doc(AccountDb, Doc).
+    kz_datamgr:save_doc(AccountDb, Doc).
 
 %%%===================================================================
 %%% Internal functions
@@ -130,7 +130,7 @@ get_apps_store_doc(Account) ->
 -spec get_user_priv_level(ne_binary(), ne_binary()) -> binary().
 get_user_priv_level(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'error', _R} ->
             lager:error("failed to open user ~s in ~s", [UserId, AccountDb]),
             'undefined';
@@ -260,7 +260,7 @@ set_account(Account, JObj) ->
           [{<<"pvt_account_id">>, wh_util:format_account_id(Account, 'raw')}
            ,{<<"pvt_account_db">>, AccountDb}
           ], JObj),
-    case couch_mgr:save_doc(AccountDb, Corrected) of
+    case kz_datamgr:save_doc(AccountDb, Corrected) of
         {'error', _R} ->
             lager:error("failed to correct app"),
             Corrected;
@@ -321,7 +321,7 @@ find_enabled_apps_fold(AppName, PlanApp, Acc) ->
 find_app(AppId, PlanApp) ->
     Account = wh_json:get_first_defined([<<"account_db">>, <<"account_id">>], PlanApp),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AppId) of
+    case kz_datamgr:open_cache_doc(AccountDb, AppId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->
             lager:error("failed to get ~s in ~s: ~p", [AppId, AccountDb, _R]),

@@ -44,14 +44,14 @@ handle(Data, Call) ->
 is_matching_prefix(AccountDb, ListId, Number) ->
     NumberPrefixes = build_keys(Number),
     Keys = [[ListId, X] || X <- NumberPrefixes],
-    case couch_mgr:get_results(AccountDb, <<"lists/match_prefix_in_list">>, [{'keys', Keys}]) of
+    case kz_datamgr:get_results(AccountDb, <<"lists/match_prefix_in_list">>, [{'keys', Keys}]) of
         {'ok', [_ | _]} -> 'true';
         _ -> 'false'
     end.
 
 -spec is_matching_regexp(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_matching_regexp(AccountDb, ListId, Number) ->
-    case couch_mgr:get_results(AccountDb, <<"lists/regexps_in_list">>, [{'key', ListId}]) of
+    case kz_datamgr:get_results(AccountDb, <<"lists/regexps_in_list">>, [{'key', ListId}]) of
         {'ok', Regexps} ->
             Patterns = [wh_json:get_value(<<"value">>, X) || X <- Regexps],
             match_regexps(Patterns, Number);

@@ -50,7 +50,7 @@ handle(Data, Call) ->
                    ]),
 
     lager:info("loading ACDc queue: ~s", [QueueId]),
-    {'ok', QueueJObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), QueueId),
+    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(whapps_call:account_db(Call), QueueId),
 
     MaxWait = max_wait(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj, 3600)),
     MaxQueueSize = max_queue_size(wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj, 0)),

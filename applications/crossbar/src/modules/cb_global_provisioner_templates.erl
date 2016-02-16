@@ -73,7 +73,7 @@ content_types_provided(Context, PT1, PT2) ->
     content_types_provided(Context, PT1, PT2, cb_context:req_verb(Context)).
 
 content_types_provided(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
-    case couch_mgr:open_doc(?WH_PROVISIONER_DB, DocId) of
+    case kz_datamgr:open_doc(?WH_PROVISIONER_DB, DocId) of
         {'error', _} -> Context;
         {'ok', JObj} ->
             [Type, SubType] = binary:split(get_content_type(JObj), <<"/">>),

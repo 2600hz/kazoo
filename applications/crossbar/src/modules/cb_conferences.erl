@@ -161,11 +161,11 @@ load_conference_summary(Context) ->
 -spec maybe_create_conference(cb_context:context()) -> cb_context:context().
 maybe_create_conference(Context) ->
     AccountDb = cb_context:account_db(Context),
-    case couch_mgr:get_all_results(AccountDb, ?CB_LIST_BY_NUMBER) of
+    case kz_datamgr:get_all_results(AccountDb, ?CB_LIST_BY_NUMBER) of
         {'error', _R} ->
             cb_context:add_system_error('datastore_fault', Context);
         {'ok', JObjs} ->
-            Numbers = couch_mgr:get_result_keys(JObjs),
+            Numbers = kz_datamgr:get_result_keys(JObjs),
             ReqData = cb_context:req_data(Context),
             MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], ReqData, []),
             ModNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], ReqData, []),

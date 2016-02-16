@@ -34,7 +34,7 @@
 init(TemplateId, Params) ->
     DocId = doc_id(TemplateId),
     lager:debug("init template ~s", [DocId]),
-    case couch_mgr:open_cache_doc(?WH_CONFIG_DB, DocId) of
+    case kz_datamgr:open_cache_doc(?WH_CONFIG_DB, DocId) of
         {'ok', TemplateJObj} ->
             maybe_update(TemplateJObj, Params);
         {'error', 'not_found'} ->
@@ -107,7 +107,7 @@ fetch_attachments(TemplateId, Account) ->
                               template_attachments().
 fetch_attachment(AttachmentName, AttachmentProps, Acc, AccountDb, DocId) ->
     ContentType = wh_json:get_value(<<"content_type">>, AttachmentProps),
-    case couch_mgr:fetch_attachment(AccountDb, DocId, AttachmentName) of
+    case kz_datamgr:fetch_attachment(AccountDb, DocId, AttachmentName) of
         {'ok', AttachmentBinary} ->
             [{ContentType, AttachmentBinary} | Acc];
         {'error', _E} ->
@@ -192,21 +192,21 @@ fetch_notification(TemplateId, Account) ->
     fetch_notification(TemplateId, Account, wh_services:find_reseller_id(Account)).
 
 fetch_notification(TemplateId, 'undefined', _ResellerId) ->
-    couch_mgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
+    kz_datamgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
 fetch_notification(TemplateId, ?WH_CONFIG_DB, _ResellerId) ->
-    couch_mgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
+    kz_datamgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
 fetch_notification(TemplateId, AccountId, AccountId) ->
     AccountDb = wh_util:format_account_db(AccountId),
     DocId = doc_id(TemplateId),
 
-    case couch_mgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
+    case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E} -> fetch_notification(TemplateId, 'undefined', AccountId)
     end;
 fetch_notification(TemplateId, AccountId, ResellerId) ->
     AccountDb = wh_util:format_account_db(AccountId),
     DocId = doc_id(TemplateId),
-    case couch_mgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
+    case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E} ->
             fetch_notification(TemplateId, teletype_util:get_parent_account_id(AccountId), ResellerId)
@@ -307,7 +307,7 @@ maybe_decode_html(HTML) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), init_params()) ->
                     {'ok', wh_json:object()} |
-                    couch_mgr:couchbeam_error().
+                    kz_datamgr:data_error().
 create(DocId, Params) ->
     lager:debug("attempting to create template ~s", [DocId]),
     TemplateJObj =
@@ -370,7 +370,7 @@ update(TemplateJObj, Params) ->
                   {'error', any()}.
 save(TemplateJObj) ->
     SaveJObj = wh_doc:update_pvt_parameters(TemplateJObj, ?WH_CONFIG_DB),
-    case couch_mgr:save_doc(?WH_CONFIG_DB, SaveJObj) of
+    case kz_datamgr:save_doc(?WH_CONFIG_DB, SaveJObj) of
         {'ok', _JObj}=OK ->
             lager:debug("saved updated template ~s(~s) to ~s"
                         ,[wh_doc:id(_JObj), wh_doc:revision(_JObj), ?WH_CONFIG_DB]
@@ -547,7 +547,7 @@ update_attachment(Contents, {IsUpdated, TemplateJObj}=Acc, ContentType, Id, ANam
     case save_attachment(Id, AName, ContentType, Contents) of
         {'ok', AttachmentJObj} ->
             lager:debug("saved attachment: ~p", [AttachmentJObj]),
-            {'ok', UpdatedJObj} = couch_mgr:open_doc(?WH_CONFIG_DB, Id),
+            {'ok', UpdatedJObj} = kz_datamgr:open_doc(?WH_CONFIG_DB, Id),
             Merged = wh_json:merge_jobjs(UpdatedJObj, TemplateJObj),
             {IsUpdated, Merged};
         {'error', _E} ->
@@ -591,7 +591,7 @@ attachment_name(ContentType) ->
 %%--------------------------------------------------------------------
 -spec does_attachment_exist(ne_binary(), ne_binary()) -> boolean().
 does_attachment_exist(DocId, AName) ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, DocId) of
+    case kz_datamgr:open_doc(?WH_CONFIG_DB, DocId) of
         {'ok', JObj} ->
             wh_doc:attachment(JObj, cow_qs:urldecode(AName)) =/= 'undefined';
         {'error', _E} ->
@@ -608,7 +608,7 @@ does_attachment_exist(DocId, AName) ->
                              {'error', any()}.
 save_attachment(DocId, AName, ContentType, Contents) ->
     case
-        couch_mgr:put_attachment(
+        kz_datamgr:put_attachment(
           ?WH_CONFIG_DB
           ,DocId
           ,AName
@@ -623,7 +623,7 @@ save_attachment(DocId, AName, ContentType, Contents) ->
             case does_attachment_exist(DocId, AName) of
                 'true' ->
                     lager:debug("added attachment ~s to ~s", [AName, DocId]),
-                    couch_mgr:open_doc(?WH_CONFIG_DB, DocId);
+                    kz_datamgr:open_doc(?WH_CONFIG_DB, DocId);
                 'false' ->
                     lager:debug("failed to add attachment ~s to ~s", [AName, DocId]),
                     E

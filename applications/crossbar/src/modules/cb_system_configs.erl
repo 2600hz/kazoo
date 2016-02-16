@@ -35,8 +35,8 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = couch_mgr:db_create(?WH_CONFIG_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_CONFIG_DB, 'crossbar', <<"views/system_config.json">>),
+    _ = kz_datamgr:db_create(?WH_CONFIG_DB),
+    _ = kz_datamgr:revise_doc_from_file(?WH_CONFIG_DB, 'crossbar', <<"views/system_config.json">>),
 
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.system_configs">>, ?MODULE, 'allowed_methods'),

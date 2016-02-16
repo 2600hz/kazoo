@@ -458,14 +458,14 @@ code_change(_OldVsn, State, _Extra) ->
                                     {'ok', wh_json:object()} |
                                     {'error', any()}.
 attempt_to_acquire_job(Id, Q) ->
-    case couch_mgr:open_doc(?WH_FAXES_DB, Id) of
+    case kz_datamgr:open_doc(?WH_FAXES_DB, Id) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
             attempt_to_acquire_job(JObj, Q, wh_json:get_value(<<"pvt_job_status">>, JObj))
     end.
 
 attempt_to_acquire_job(JObj, Q, <<"pending">>) ->
-    couch_mgr:save_doc(?WH_FAXES_DB
+    kz_datamgr:save_doc(?WH_FAXES_DB
                        ,wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
                                             ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
                                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
@@ -635,7 +635,7 @@ release_job(Result, JObj, Resp) ->
                  end
                ],
     Update = lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters),
-    {'ok', Saved} = couch_mgr:ensure_saved(?WH_FAXES_DB, Update),
+    {'ok', Saved} = kz_datamgr:ensure_saved(?WH_FAXES_DB, Update),
     maybe_notify(Result, Saved, Resp, wh_json:get_value(<<"pvt_job_status">>, Saved)),
     case Success of 'true' -> 'ok'; 'false' -> 'failure' end.
 
@@ -715,7 +715,7 @@ move_doc(JObj) ->
     kazoo_modb:create(AccountMODb),
     ToDB = wh_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month), FromId),
-   {'ok', Doc} = couch_mgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']),
+   {'ok', Doc} = kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']),
     Doc.
 
 -spec fax_error(wh_json:object()) -> api_binary().
@@ -782,7 +782,7 @@ fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     ContentType = wh_doc:attachment_content_type(JObj, AttachmentName, DefaultContentType),
 
     Props = [{"Content-Type", ContentType}],
-    {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES_DB, wh_doc:id(JObj), AttachmentName),
+    {'ok', Contents} = kz_datamgr:fetch_attachment(?WH_FAXES_DB, wh_doc:id(JObj), AttachmentName),
     {'ok', 200, Props, Contents}.
 
 -spec fetch_document_from_url(wh_json:object()) -> kz_http:ret().
@@ -959,7 +959,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
 get_hunt_account_id(AccountId) ->
     AccountDb = wh_util:format_account_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
-    case couch_mgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
+    case kz_datamgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
         {'ok', [JObj]} -> maybe_hunt_account_id(wh_json:get_value(<<"doc">>, JObj));
         _ -> 'undefined'
     end.

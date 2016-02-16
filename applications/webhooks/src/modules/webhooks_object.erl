@@ -126,7 +126,7 @@ handle_event(JObj, _Props) ->
 -spec load_accounts() -> ne_binaries().
 load_accounts() ->
     case
-        couch_mgr:get_results(
+        kz_datamgr:get_results(
           ?KZ_WEBHOOKS_DB
           ,<<"webhooks/hook_listing">>
           ,[{'key', ?NAME}]

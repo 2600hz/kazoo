@@ -32,7 +32,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?KZ_TOKEN_DB),
+    kz_datamgr:db_create(?KZ_TOKEN_DB),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.user_auth">>, ?MODULE, 'allowed_methods'),
@@ -347,7 +347,7 @@ maybe_load_username(Account, Context) ->
     ViewOptions = [{'key', Username}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?USERNAME_LIST, ViewOptions) of
         {'ok', [User]} ->
             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->

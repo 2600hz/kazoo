@@ -357,11 +357,11 @@ create_account(AccountName, Realm, Username, Password) when not is_binary(Userna
 create_account(AccountName, Realm, Username, Password) when not is_binary(Password) ->
     create_account(AccountName, Realm, Username, wh_util:to_binary(Password));
 create_account(AccountName, Realm, Username, Password) ->
-    Account = wh_json:from_list([{<<"_id">>, couch_mgr:get_uuid()}
+    Account = wh_json:from_list([{<<"_id">>, kz_datamgr:get_uuid()}
                                  ,{<<"name">>, AccountName}
                                  ,{<<"realm">>, Realm}
                                 ]),
-    User = wh_json:from_list([{<<"_id">>, couch_mgr:get_uuid()}
+    User = wh_json:from_list([{<<"_id">>, kz_datamgr:get_uuid()}
                               ,{<<"username">>, Username}
                               ,{<<"password">>, Password}
                               ,{<<"first_name">>, <<"Account">>}
@@ -474,7 +474,7 @@ create_account(Context) ->
             Errors = cb_context:resp_data(Context1),
             io:format("failed to create account: '~s'~n", [wh_json:encode(Errors)]),
             AccountId = wh_doc:id(cb_context:req_data(Context)),
-            couch_mgr:db_delete(wh_util:format_account_id(AccountId, 'encoded')),
+            kz_datamgr:db_delete(wh_util:format_account_id(AccountId, 'encoded')),
             {'error', Errors}
     end.
 
@@ -507,7 +507,7 @@ print_account_info(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     print_account_info(AccountDb, AccountId).
 print_account_info(AccountDb, AccountId) ->
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb]),
             io:format("  Name: ~s~n", [kz_account:name(JObj)]),
@@ -564,7 +564,7 @@ migrate_ring_group_callflow(Account) ->
 -spec get_migrateable_ring_group_callflows(ne_binary()) -> wh_json:objects().
 get_migrateable_ring_group_callflows(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
+    case kz_datamgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
         {'error', _M} ->
             io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
             [];
@@ -589,7 +589,7 @@ get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) ->
         {'undefined', _} -> Acc;
         {_, 'undefined'} ->
             Id = wh_doc:id(JObj),
-            case couch_mgr:open_cache_doc(AccountDb, Id) of
+            case kz_datamgr:open_cache_doc(AccountDb, Id) of
                 {'ok', CallflowJObj} -> check_callflow_eligibility(CallflowJObj, Acc);
                 {'error', _M} ->
                     io:format("  error fetching callflow ~p in ~p ~p~n", [Id, AccountDb, _M]),
@@ -675,7 +675,7 @@ save_new_ring_group_callflow(JObj, NewCallflow) ->
     end.
 
 save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
-    case couch_mgr:save_doc(AccountDb, NewCallflow) of
+    case kz_datamgr:save_doc(AccountDb, NewCallflow) of
         {'error', _M} ->
             io:format("unable to save new callflow (old:~p) in ~p aborting...~n"
                       ,[wh_doc:id(JObj), AccountDb]
@@ -687,7 +687,7 @@ save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
 
 -spec check_if_callflow_exist(ne_binary(), ne_binary()) -> boolean().
 check_if_callflow_exist(AccountDb, Name) ->
-    case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
+    case kz_datamgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
         {'error', _M} ->
             io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
             'true';
@@ -738,12 +738,12 @@ update_old_ring_group_flow(JObj, NewCallflow) ->
 -spec save_old_ring_group(wh_json:object(), wh_json:object()) -> 'ok'.
 save_old_ring_group(JObj, NewCallflow) ->
     AccountDb = wh_doc:account_db(JObj),
-    case couch_mgr:save_doc(AccountDb, JObj) of
+    case kz_datamgr:save_doc(AccountDb, JObj) of
         {'error', _M} ->
             io:format("unable to save callflow ~p in ~p, removing new one (~p)~n"
                       ,[wh_doc:id(JObj), AccountDb, wh_doc:id(NewCallflow)]
                      ),
-            {'ok', _} = couch_mgr:del_doc(AccountDb, NewCallflow),
+            {'ok', _} = kz_datamgr:del_doc(AccountDb, NewCallflow),
             'ok';
         {'ok', _OldJObj} ->
             io:format("  saved ring group callflow: ~s~n", [wh_json:encode(_OldJObj)])
@@ -809,7 +809,7 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
 	CurrentApiUrl -> io:format(" not updating ~s, it is unchanged~n", [ApiUrlKey]);
 	NewApiUrl ->
 	    Update = [{ApiUrlKey, NewApiUrl}],
-	    case couch_mgr:update_doc(MasterAccountDb, CurrentDocId, Update) of
+	    case kz_datamgr:update_doc(MasterAccountDb, CurrentDocId, Update) of
 		{'ok', _NJObj} -> io:format(" updated ~s to ~s~n", [ApiUrlKey, NewApiUrl]);
 		{'error', Err} -> io:format(" error updating ~s: ~p~n", [ApiUrlKey, Err])
 	    end
@@ -822,7 +822,7 @@ maybe_update_app(AppPath, MetaData, MasterAccountDb, JObj) ->
                       {'ok', wh_json:object()} |
                       {'error', any()}.
 find_app(Db, Name) ->
-    case couch_mgr:get_results(Db, ?CB_APPS_STORE_LIST, [{'key', Name}]) of
+    case kz_datamgr:get_results(Db, ?CB_APPS_STORE_LIST, [{'key', Name}]) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [View]} -> {'ok', View};
         {'error', _}=E -> E
@@ -833,7 +833,7 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
     Doc = wh_json:delete_keys([<<"source_url">>]
                               ,wh_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}])
                              ),
-    case couch_mgr:save_doc(MasterAccountDb, Doc) of
+    case kz_datamgr:save_doc(MasterAccountDb, Doc) of
         {'ok', JObj} ->
             io:format(" saved app ~s as doc ~s~n", [wh_json:get_value(<<"name">>, JObj)
                                                     ,wh_doc:id(JObj)
@@ -857,8 +857,8 @@ delete_old_images(AppId, MetaData, MasterAccountDb) ->
 -spec safe_delete_image(ne_binary(), ne_binary(), api_binary()) -> 'ok'.
 safe_delete_image(_AccountDb, _AppId, 'undefined') -> 'ok';
 safe_delete_image(AccountDb, AppId, Image) ->
-    case couch_mgr:fetch_attachment(AccountDb, AppId, Image) of
-	{'ok', _}    -> couch_mgr:delete_attachment(AccountDb, AppId, Image);
+    case kz_datamgr:fetch_attachment(AccountDb, AppId, Image) of
+	{'ok', _}    -> kz_datamgr:delete_attachment(AccountDb, AppId, Image);
 	{'error', _} -> 'ok'
     end.
 
@@ -900,7 +900,7 @@ add_images(AppId, MasterAccountDb, Images) ->
 
 -spec add_image(ne_binary(), ne_binary(), file:filename(), binary()) -> 'ok'.
 add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
-    case couch_mgr:put_attachment(MasterAccountDb, AppId, ImageId, ImageData) of
+    case kz_datamgr:put_attachment(MasterAccountDb, AppId, ImageId, ImageData) of
         {'ok', _} ->     io:format("   saved ~s to ~s~n", [ImageId, AppId]);
         {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [ImageId, AppId, _E])
     end.

@@ -154,7 +154,7 @@ validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 -spec validate_user_id(api_binary(), cb_context:context()) -> cb_context:context().
 -spec validate_user_id(api_binary(), cb_context:context(), wh_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
-    case couch_mgr:open_cache_doc(cb_context:account_db(Context), UserId) of
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
             cb_context:add_system_error(
@@ -613,7 +613,7 @@ check_emergency_caller_id(UserId, Context) ->
 -spec is_username_unique(api_binary(), api_binary(), ne_binary()) -> boolean().
 is_username_unique(AccountDb, UserId, UserName) ->
     ViewOptions = [{'key', UserName}],
-    case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj|_]} -> wh_doc:id(JObj) =:= UserId;
         _Else ->

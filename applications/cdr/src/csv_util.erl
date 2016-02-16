@@ -35,7 +35,7 @@ json_objs_to_csv(JObjs, _) ->
 
 test_convert(AccountDb) ->
     ViewOptions = ['include_docs'],
-    case couch_mgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'error', _E} ->
             lager:error("failed view ~s: ~p", [AccountDb, _E]), [];

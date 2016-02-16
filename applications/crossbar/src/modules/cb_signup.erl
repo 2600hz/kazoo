@@ -61,10 +61,10 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.signup">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.put.signup">>, ?MODULE, 'put'),
 
-    _ = couch_mgr:db_create(?SIGNUP_DB),
+    _ = kz_datamgr:db_create(?SIGNUP_DB),
 
-    _ = case couch_mgr:update_doc_from_file(?SIGNUP_DB, 'crossbar', ?VIEW_FILE) of
-            {'error', _} -> couch_mgr:load_doc_from_file(?SIGNUP_DB, 'crossbar', ?VIEW_FILE);
+    _ = case kz_datamgr:update_doc_from_file(?SIGNUP_DB, 'crossbar', ?VIEW_FILE) of
+            {'error', _} -> kz_datamgr:load_doc_from_file(?SIGNUP_DB, 'crossbar', ?VIEW_FILE);
             {'ok', _} -> 'ok'
         end,
 
@@ -166,7 +166,7 @@ post(Context, _) ->
     JObj = cb_context:doc(Context),
     case activate_signup(JObj) of
         {'ok', Account, User} ->
-            _ = couch_mgr:del_doc(?SIGNUP_DB, JObj),
+            _ = kz_datamgr:del_doc(?SIGNUP_DB, JObj),
             NewRespData = wh_json:from_list([{<<"account">>, Account}
                                              ,{<<"user">>, User}
                                             ]),
@@ -287,7 +287,7 @@ create_activation_key() ->
 %%--------------------------------------------------------------------
 -spec check_activation_key(ne_binary(), cb_context:context()) -> cb_context:context().
 check_activation_key(ActivationKey, Context) ->
-    case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{'key', ActivationKey}
+    case kz_datamgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{'key', ActivationKey}
                                                                    ,'include_docs'
                                                                   ])
     of
@@ -513,7 +513,7 @@ is_unique_realm(Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
         {'ok', _} -> 'false';
         {'error', _} ->
-            case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_REALM, [{'key', Realm}]) of
+            case kz_datamgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_REALM, [{'key', Realm}]) of
                 {'ok', []} -> 'true';
                 _Else -> 'false'
             end
@@ -531,13 +531,13 @@ is_unique_realm(Realm) ->
 cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     lager:debug("cleaning up signups"),
     Expiration = calendar:datetime_to_gregorian_seconds(calendar:universal_time()) + Lifespan,
-    case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{'startkey', 0}
+    case kz_datamgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{'startkey', 0}
                                                                       ,{'endkey', Expiration}
                                                                       ,'include_docs'
                                                                      ])
     of
         {'ok', Expired} ->
-            _ = couch_mgr:del_docs(?SIGNUP_DB
+            _ = kz_datamgr:del_docs(?SIGNUP_DB
                                    ,[wh_json:get_value(<<"doc">>, JObj) || JObj <- Expired]
                                   ),
             'ok';

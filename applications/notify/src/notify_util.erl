@@ -187,7 +187,7 @@ do_render_template('undefined', DefaultTemplate, Props) ->
 do_render_template(Template, DefaultTemplate, Props) ->
     try
         'false' = wh_util:is_empty(Template),
-        CustomTemplate = wh_util:to_atom(list_to_binary([couch_mgr:get_uuid(), "_"
+        CustomTemplate = wh_util:to_atom(list_to_binary([kz_datamgr:get_uuid(), "_"
                                                         ,wh_util:to_binary(DefaultTemplate)
                                                         ])
                                          ,'true'),
@@ -254,7 +254,7 @@ find_notification_settings(_, []) ->
     lager:debug("unable to get service props, pvt_tree for the account was empty", []),
     wh_json:new();
 find_notification_settings([_, Module], Tree) ->
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
+    case kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
         {'error', _} -> wh_json:new();
         {'ok', JObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s"
@@ -330,7 +330,7 @@ find_admin([AcctId|Tree]) ->
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', Users} ->
             case [User
                   || User <- Users,

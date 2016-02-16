@@ -200,7 +200,7 @@ find_agent(Call) ->
 find_agent(_Call, 'undefined') ->
     {'error', 'unknown_endpoint'};
 find_agent(Call, EndpointId) ->
-    {'ok', Endpoint} = couch_mgr:open_doc(whapps_call:account_db(Call), EndpointId),
+    {'ok', Endpoint} = kz_datamgr:open_doc(whapps_call:account_db(Call), EndpointId),
     find_agent(Call, Endpoint, wh_json:get_value([<<"hotdesk">>, <<"users">>], Endpoint)).
 
 find_agent(Call, Endpoint, 'undefined') ->

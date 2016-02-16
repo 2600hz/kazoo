@@ -41,7 +41,7 @@ handle(Data, Call) ->
 -spec lookup_fax_option(whapps_call:call(), wh_json:object()) -> ne_binary().
 lookup_fax_option(Call, Data) ->
     FaxBoxId = get_faxbox_id(Data),
-    DefaultFaxBoxOption = case couch_mgr:open_cache_doc(whapps_call:account_db(Call), FaxBoxId) of
+    DefaultFaxBoxOption = case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), FaxBoxId) of
                               {'ok', JObj} -> wh_json:get_value(?FAX_OPTION, JObj);
                               _ -> 'undefined'
                           end,

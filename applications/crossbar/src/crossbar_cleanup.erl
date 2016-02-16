@@ -235,7 +235,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec start_cleanup_pass(reference()) -> 'ok'.
 start_cleanup_pass(Ref) ->
     wh_util:put_callid(<<"cleanup_pass">>),
-    {'ok', Dbs} = couch_mgr:db_info(),
+    {'ok', Dbs} = kz_datamgr:db_info(),
     lager:debug("starting cleanup pass of databases"),
 
     _ = [crossbar_bindings:map(db_routing_key(Db), Db)
@@ -296,7 +296,7 @@ start_day_timer() ->
 
 -spec cleanup_soft_deletes(ne_binary()) -> any().
 cleanup_soft_deletes(Account) ->
-    couch_mgr:suppress_change_notice(),
+    kz_datamgr:suppress_change_notice(),
     case whapps_util:is_account_db(Account) of
         'true' -> cleanup_account_soft_deletes(Account);
         'false' -> 'ok' % no longer checking other dbs for soft deletes
@@ -309,14 +309,14 @@ cleanup_account_soft_deletes(Account) ->
 
 -spec do_cleanup(ne_binary()) -> 'ok'.
 do_cleanup(Db) ->
-    case couch_mgr:get_results(Db
+    case kz_datamgr:get_results(Db
                                ,<<"maintenance/soft_deletes">>
                                ,[{'limit', couch_util:max_bulk_insert()}]
                               ) of
         {'ok', []} -> 'ok';
         {'ok', L} ->
             lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),
-            _ = couch_mgr:del_docs(Db, L),
+            _ = kz_datamgr:del_docs(Db, L),
             'ok' = timer:sleep(?SOFT_DELETE_PAUSE),
             do_cleanup(Db);
         {'error', 'not_found'} ->

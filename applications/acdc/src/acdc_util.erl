@@ -82,7 +82,7 @@ send_cdr(Url, JObj, Retries) ->
 %% Returns the list of agents configured for the queue
 -spec agents_in_queue(ne_binary(), ne_binary()) -> wh_json:keys().
 agents_in_queue(AcctDb, QueueId) ->
-    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
+    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
         {'ok', []} -> [];
         {'error', _E} -> lager:debug("failed to lookup agents for ~s: ~p", [QueueId, _E]), [];
         {'ok', As} -> [wh_json:get_value(<<"value">>, A) || A <- As]
@@ -90,7 +90,7 @@ agents_in_queue(AcctDb, QueueId) ->
 
 -spec agent_devices(ne_binary(), ne_binary()) -> wh_json:objects().
 agent_devices(AcctDb, AgentId) ->
-    case couch_mgr:get_results(AcctDb, <<"cf_attributes/owned">>, [{'key', [AgentId, <<"device">>]}
+    case kz_datamgr:get_results(AcctDb, <<"cf_attributes/owned">>, [{'key', [AgentId, <<"device">>]}
                                                                    ,'include_docs'
                                                                   ])
     of
@@ -98,7 +98,7 @@ agent_devices(AcctDb, AgentId) ->
         {'error', _} -> []
     end.
 
--spec get_endpoints(whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
+-spec get_endpoints(whapps_call:call(), ne_binary() | kz_datamgr:get_results_return()) ->
                            wh_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).

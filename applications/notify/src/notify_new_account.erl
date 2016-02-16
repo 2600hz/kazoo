@@ -54,7 +54,7 @@ handle_req(JObj, _Props) ->
                 end,
 
     lager:debug("attempting to load all docs in account db ~s", [AccountDb]),
-    {'ok', AllDocs} = couch_mgr:all_docs(AccountDb, [{<<"include_docs">>, 'true'}]),
+    {'ok', AllDocs} = kz_datamgr:all_docs(AccountDb, [{<<"include_docs">>, 'true'}]),
     Account = find_account(AllDocs),
     Admin = find_admin(AllDocs),
 

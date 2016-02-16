@@ -26,7 +26,7 @@ handle_route_req(JObj, Props) ->
 
 maybe_route_respond(_JObj, _Call, 'undefined', _Id) -> 'ok';
 maybe_route_respond(ReqJObj, Call, AcctId, Id) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Id) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), Id) of
         {'error', _} -> 'ok';
         {'ok', Doc} ->
             maybe_route_respond(ReqJObj, Call, AcctId, Id, wh_doc:type(Doc))
@@ -133,17 +133,17 @@ save_status(Call, AgentId, Status) ->
 
 update_agent_device(Call, AgentId, <<"login">>) ->
     lager:debug("need to set owner_id to ~s on device ~s", [AgentId, whapps_call:authorizing_id(Call)]),
-    {'ok', Device} = couch_mgr:open_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)),
+    {'ok', Device} = kz_datamgr:open_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)),
     lager:debug("setting owner_id from ~s to ~s", [wh_json:get_value(<<"owner_id">>, Device), AgentId]),
 
     move_agent_device(Call, AgentId, Device);
 update_agent_device(Call, AgentId, <<"logout">>) ->
-    {'ok', Device} = couch_mgr:open_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)),
+    {'ok', Device} = kz_datamgr:open_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)),
 
     case wh_json:get_value(<<"owner_id">>, Device) of
         AgentId ->
             lager:debug("unsetting owner_id from ~s", [wh_json:get_value(<<"owner_id">>, Device)]),
-            {'ok', _} = couch_mgr:save_doc(whapps_call:account_db(Call), wh_json:delete_key(<<"owner_id">>, Device));
+            {'ok', _} = kz_datamgr:save_doc(whapps_call:account_db(Call), wh_json:delete_key(<<"owner_id">>, Device));
         _Other ->
             lager:debug("owner is ~s, not ~s, leaving as-is: ~p", [_Other, AgentId, Device]),
             {'error', 'not_owner'}
@@ -161,9 +161,9 @@ move_agent_device(Call, AgentId, Device) ->
              ]
         of
             [] -> 'ok';
-            OldDevices -> couch_mgr:save_docs(whapps_call:account_db(Call), OldDevices)
+            OldDevices -> kz_datamgr:save_docs(whapps_call:account_db(Call), OldDevices)
         end,
-    {'ok', _} = couch_mgr:save_doc(whapps_call:account_db(Call), wh_json:set_value(<<"owner_id">>, AgentId, Device)).
+    {'ok', _} = kz_datamgr:save_doc(whapps_call:account_db(Call), wh_json:set_value(<<"owner_id">>, AgentId, Device)).
 
 -spec send_new_status(ne_binary(), ne_binary(), wh_amqp_worker:publish_fun()) -> 'ok'.
 send_new_status(AcctId, AgentId, PubFun) ->

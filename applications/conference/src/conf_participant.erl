@@ -429,7 +429,7 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
 maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     lager:debug("deleting doc: ~s/~s", [AccountDb, MediaId]),
-    couch_mgr:del_doc(AccountDb, MediaId),
+    kz_datamgr:del_doc(AccountDb, MediaId),
     'ok';
 maybe_clear(_) -> 'ok'.
 

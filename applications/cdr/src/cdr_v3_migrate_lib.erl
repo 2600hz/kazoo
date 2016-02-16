@@ -104,7 +104,7 @@ generate_test_account({AccountName, AccountRealm, User, Pass}, NumMonths, NumCdr
 -spec get_account_by_realm(ne_binary()) ->
                                   {'ok', account_db()} | {'multiples', any()} | {'error', any()}.
 get_account_by_realm(AccountRealm) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, [{'key', AccountRealm}]) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, [{'key', AccountRealm}]) of
         {'ok', [JObj]} ->
             AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
             _AccountId = wh_util:format_account_id(AccountDb, 'raw'),
@@ -124,13 +124,13 @@ generate_test_account_cdrs(_, _, _, 0) -> 'ok';
 generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
     DateTime = {Date, {random:uniform(23), random:uniform(59), random:uniform(59)}},
     CreatedAt = calendar:datetime_to_gregorian_seconds(DateTime),
-    Props = [{<<"call_id">>, <<(couch_mgr:get_uuid())/binary>>}
+    Props = [{<<"call_id">>, <<(kz_datamgr:get_uuid())/binary>>}
              ,{<<"timestamp">>, CreatedAt}
              ,{<<"pvt_created">>, CreatedAt}
              ,{<<"pvt_modified">>, CreatedAt}
             ],
     Doc = wh_json:set_values(Props, CdrJObjFixture),
-    case couch_mgr:save_doc(AccountDb, Doc) of
+    case kz_datamgr:save_doc(AccountDb, Doc) of
         {'error',_}=_E -> lager:debug("cdr Save Failed: ~p", [_E]);
         {'ok', _} -> 'ok'
     end,
@@ -148,7 +148,7 @@ delete_test_accounts() ->
 
 -spec maybe_get_migrate_account(account_db()) -> 'false' | wh_json:object().
 maybe_get_migrate_account(AccountDb) ->
-    case couch_mgr:get_results(AccountDb, <<"account/listing_by_realm">>, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, <<"account/listing_by_realm">>, ['include_docs']) of
         {'error', _} -> 'false';
         [] -> 'false';
         {'ok', Results} ->
@@ -177,15 +177,15 @@ maybe_delete_test_account(AccountDb) ->
             AccountId = wh_util:format_account_id(AccountDb, 'raw'),
             _ = [delete_account_database(AccountId, {Year, Month})
                  || {Year, Month} <- Months],
-            couch_mgr:del_doc(<<"accounts">>, AccountId),
-            couch_mgr:db_delete(AccountDb)
+            kz_datamgr:del_doc(<<"accounts">>, AccountId),
+            kz_datamgr:db_delete(AccountDb)
     end.
 
 -spec delete_account_database(account_id(), {wh_year(), wh_month()}) ->
                                      'ok' | {'error', any()}.
 delete_account_database(AccountId, {Year, Month}) ->
     AccountMODb = wh_util:format_account_id(AccountId, Year, Month),
-    couch_mgr:db_delete(AccountMODb).
+    kz_datamgr:db_delete(AccountMODb).
 
 -spec get_prev_n_months(wh_year(), wh_month(), pos_integer()) -> wh_proplist().
 get_prev_n_months(Year, Month, NumMonths) when Month =< 12, Month > 0 ->

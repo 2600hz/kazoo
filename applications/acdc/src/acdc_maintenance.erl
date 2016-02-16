@@ -37,7 +37,7 @@
 logout_agents(AccountId) ->
     io:format("Sending notices to logout agents for ~s~n", [AccountId]),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AgentView} = couch_mgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
+    {'ok', AgentView} = kz_datamgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
     _ = [logout_agent(AccountId, wh_doc:id(Agent)) || Agent <- AgentView],
     'ok'.
 
@@ -176,7 +176,7 @@ show_stats([S|Ss]) ->
 
 -spec refresh() -> 'ok'.
 refresh() ->
-    case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
+    case kz_datamgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
         {'ok', []} ->
             lager:debug("no accounts configured for acdc");
         {'ok', Accounts} ->
@@ -192,21 +192,21 @@ refresh() ->
 -spec refresh_account(ne_binary()) -> 'ok'.
 refresh_account(Acct) ->
     MoDB = acdc_stats_util:db_name(Acct),
-    refresh_account(MoDB, couch_mgr:db_create(MoDB)),
+    refresh_account(MoDB, kz_datamgr:db_create(MoDB)),
     lager:debug("refreshed: ~s", [MoDB]).
 
 refresh_account(MoDB, 'true') ->
     lager:debug("created ~s", [MoDB]),
-    couch_mgr:revise_views_from_folder(MoDB, 'acdc');
+    kz_datamgr:revise_views_from_folder(MoDB, 'acdc');
 refresh_account(MoDB, 'false') ->
     lager:debug("exists ~s", [MoDB]),
-    couch_mgr:revise_views_from_folder(MoDB, 'acdc').
+    kz_datamgr:revise_views_from_folder(MoDB, 'acdc').
 
 -spec migrate() -> 'ok'.
 migrate() ->
     migrate_to_acdc_db().
 migrate_to_acdc_db() ->
-    {'ok', Accounts} = couch_mgr:all_docs(?KZ_ACDC_DB),
+    {'ok', Accounts} = kz_datamgr:all_docs(?KZ_ACDC_DB),
     _ = [maybe_remove_acdc_account(wh_doc:id(Account)) || Account <- Accounts],
     io:format("removed any missing accounts from ~s~n", [?KZ_ACDC_DB]),
     _ = [migrate_to_acdc_db(Acct) || Acct <- whapps_util:get_all_accounts('raw')],
@@ -215,11 +215,11 @@ migrate_to_acdc_db() ->
 -spec maybe_remove_acdc_account(ne_binary()) -> 'ok'.
 maybe_remove_acdc_account(<<"_design/", _/binary>>) -> 'ok';
 maybe_remove_acdc_account(AccountId) ->
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case kz_datamgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
-            {'ok', JObj} = couch_mgr:open_cache_doc(?KZ_ACDC_DB, AccountId),
-            {'ok', _Del} = couch_mgr:del_doc(?KZ_ACDC_DB, JObj),
+            {'ok', JObj} = kz_datamgr:open_cache_doc(?KZ_ACDC_DB, AccountId),
+            {'ok', _Del} = kz_datamgr:del_doc(?KZ_ACDC_DB, JObj),
             io:format("account ~p not found in ~s, removing from ~s~n", [AccountId, ?WH_ACCOUNTS_DB, ?KZ_ACDC_DB])
     end.
 
@@ -231,7 +231,7 @@ migrate_to_acdc_db(AccountId) ->
 migrate_to_acdc_db(AccountId, 0) ->
     io:format("retries exceeded, skipping account ~s~n", [AccountId]);
 migrate_to_acdc_db(AccountId, Retries) ->
-    case couch_mgr:get_results(?KZ_ACDC_DB
+    case kz_datamgr:get_results(?KZ_ACDC_DB
                                ,<<"acdc/accounts_listing">>
                                ,[{'key', AccountId}]
                               )
@@ -253,7 +253,7 @@ migrate_to_acdc_db(AccountId, Retries) ->
 -spec maybe_migrate(ne_binary()) -> 'ok'.
 maybe_migrate(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [{'limit', 1}]) of
+    case kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [{'limit', 1}]) of
         {'ok', []} -> 'ok';
         {'ok', [_|_]} ->
             io:format("account ~s has queues, adding to acdc db~n", [AccountId]),
@@ -262,7 +262,7 @@ maybe_migrate(AccountId) ->
                                                ,[{'account_id', AccountId}
                                                  ,{'type', <<"acdc_activation">>}
                                                 ]),
-            couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            kz_datamgr:ensure_saved(?KZ_ACDC_DB, Doc),
             io:format("saved account ~s to db~n", [AccountId]);
         {'error', _E} ->
             io:format("failed to query queue listing for account ~s: ~p~n", [AccountId, _E])

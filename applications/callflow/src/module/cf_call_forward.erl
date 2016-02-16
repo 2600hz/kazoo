@@ -228,13 +228,13 @@ update_callfwd(#callfwd{doc_id=Id
                        }=CF, Call) ->
     lager:info("updating call forwarding settings on ~s", [Id]),
     AccountDb = whapps_call:account_db(Call),
-    {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
+    {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
     CFObj = wh_json:get_ne_value(<<"call_forward">>, JObj, wh_json:new()),
     Updates = [fun(J) -> wh_json:set_value(<<"enabled">>, Enabled, J) end
                ,fun(J) -> wh_json:set_value(<<"number">>, Num, J) end
               ],
     CFObj1 = lists:foldl(fun(F, Acc) -> F(Acc) end, CFObj, Updates),
-    case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"call_forward">>, CFObj1, JObj)) of
+    case kz_datamgr:save_doc(AccountDb, wh_json:set_value(<<"call_forward">>, CFObj1, JObj)) of
         {'error', 'conflict'} ->
             lager:info("update conflicted, trying again"),
             update_callfwd(CF, Call);
@@ -272,7 +272,7 @@ maybe_get_call_forward(_Call, 'undefined') ->
     lager:debug("cannot get call forwarding from undefined"),
     {'error', #callfwd{}};
 maybe_get_call_forward(Call, OwnerId) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), OwnerId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), OwnerId) of
         {'ok', UserJObj} ->
             lager:info("loaded call forwarding object from ~s", [OwnerId]),
             #callfwd{doc_id = wh_doc:id(UserJObj)

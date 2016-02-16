@@ -540,7 +540,7 @@ delete_doc(Context, Id) ->
     Context1 = crossbar_doc:delete(Context, 'permanent'),
     case cb_context:resp_status(Context1) of
         'success' ->
-            couch_mgr:flush_cache_doc(cb_context:account_db(Context), Id),
+            kz_datamgr:flush_cache_doc(cb_context:account_db(Context), Id),
             leak_doc_id(Context1);
         _Status -> Context1
     end.
@@ -738,12 +738,12 @@ migrate_template_to_account(Context, Id) ->
 
 -spec maybe_hard_delete(cb_context:context(), ne_binary()) -> 'ok'.
 maybe_hard_delete(Context, Id) ->
-    case couch_mgr:del_doc(cb_context:account_db(Context), Id) of
+    case kz_datamgr:del_doc(cb_context:account_db(Context), Id) of
         {'ok', _} ->
-            couch_mgr:flush_cache_doc(cb_context:account_db(Context), Id),
+            kz_datamgr:flush_cache_doc(cb_context:account_db(Context), Id),
             lager:debug("hard-deleted old version of ~s from ~s", [Id, cb_context:account_db(Context)]);
         {'error', 'not_found'} ->
-            couch_mgr:flush_cache_doc(cb_context:account_db(Context), Id),
+            kz_datamgr:flush_cache_doc(cb_context:account_db(Context), Id),
             lager:debug("~s wasn't found in ~s", [Id, cb_context:account_db(Context)]);
         {'error', _E} ->
             lager:debug("error deleting ~s from ~s: ~p", [Id, cb_context:account_db(Context), _E])
@@ -768,7 +768,7 @@ maybe_note_notification_preference(AccountDb, AccountJObj) ->
 
 -spec note_notification_preference(ne_binary(), wh_json:object()) -> 'ok'.
 note_notification_preference(AccountDb, AccountJObj) ->
-    case couch_mgr:save_doc(AccountDb
+    case kz_datamgr:save_doc(AccountDb
                             ,kz_account:set_notification_preference(AccountJObj
                                                                     ,<<"teletype">>
                                                                    )
@@ -795,7 +795,7 @@ migrate_template_attachments(Context, Id, Attachments) ->
 -spec migrate_template_attachment(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), cb_context:context()) ->
                                          cb_context:context().
 migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
-    case couch_mgr:fetch_attachment(MasterAccountDb, Id, AName) of
+    case kz_datamgr:fetch_attachment(MasterAccountDb, Id, AName) of
         {'ok', Bin} ->
             ContentType = wh_json:get_value(<<"content_type">>, AMeta),
             lager:debug("saving attachment for ~s(~s): ~s", [Id, AName, ContentType]),
@@ -1087,7 +1087,7 @@ normalize_available_port(Value, Acc, Context) ->
                                             {'ok', wh_json:object()} |
                                             {'error', any()}.
 system_config_notification_doc(DocId) ->
-    couch_mgr:open_cache_doc(?WH_CONFIG_DB, DocId).
+    kz_datamgr:open_cache_doc(?WH_CONFIG_DB, DocId).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->

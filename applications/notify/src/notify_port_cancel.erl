@@ -146,7 +146,7 @@ find_port_info(NotifyJObj) ->
 
 -spec find_port_doc(ne_binary()) -> wh_json:object().
 find_port_doc(PortRequestId) ->
-    case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
+    case kz_datamgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortDoc} -> PortDoc;
         {'error', _} -> wh_json:new()
     end.

@@ -118,12 +118,12 @@ enable_descendant_hooks(AccountId) ->
 reset_webhooks_list() ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     Ids = get_webhooks(MasterAccountDb),
-    _ = couch_mgr:del_docs(MasterAccountDb, Ids),
+    _ = kz_datamgr:del_docs(MasterAccountDb, Ids),
     webhooks_init:init_modules().
 
 -spec get_webhooks(ne_binary()) -> ne_binaries().
 get_webhooks(MasterAccountDb) ->
-    case couch_mgr:get_all_results(MasterAccountDb, ?WEBHOOK_META_LIST) of
+    case kz_datamgr:get_all_results(MasterAccountDb, ?WEBHOOK_META_LIST) of
         {'error', _R} ->
             io:format("failed to load view ~s in ~s", [?WEBHOOK_META_LIST, MasterAccountDb]),
             [];

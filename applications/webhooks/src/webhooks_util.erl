@@ -293,7 +293,7 @@ save_attempt(Attempt, AccountId) ->
             ,Attempt
            ),
 
-    _ = couch_mgr:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
+    _ = kz_datamgr:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
     'ok'.
 
 -spec hook_id(wh_json:object()) -> ne_binary().
@@ -326,7 +326,7 @@ hook_event_lowered(Event) ->
 -spec load_hooks(pid()) -> 'ok'.
 load_hooks(Srv) ->
     lager:debug("loading hooks into memory"),
-    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+    case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/webhooks_listing">> %% excludes disabled
                                ,['include_docs']
                               )
@@ -345,9 +345,9 @@ load_hooks(Srv) ->
 
 -spec init_webhook_db() -> 'ok'.
 init_webhook_db() ->
-    _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
-    _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
+    _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
     'ok'.
 
 -spec load_hooks(pid(), wh_json:objects()) -> 'ok'.
@@ -393,7 +393,7 @@ jobj_to_rec(Hook) ->
 -spec init_webhooks(wh_json:objects()) -> 'ok'.
 -spec init_webhooks(wh_json:objects(), wh_year(), wh_month()) -> 'ok'.
 init_webhooks() ->
-    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+    case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
                                ,[{'group_level', 1}]
                               )
@@ -452,7 +452,7 @@ reenable(AccountId, <<"descendants">>) ->
 enable_account_hooks(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
 
-    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+    case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
                                ,[{'key', AccountId}
                                  ,{'reduce', 'false'}
@@ -470,7 +470,7 @@ enable_hooks(Hooks) ->
     case hooks_to_reenable(Hooks) of
         [] -> io:format("no hooks to re-enable~n", []);
         Reenable ->
-            {'ok', Saved} = couch_mgr:save_docs(?KZ_WEBHOOKS_DB, Reenable),
+            {'ok', Saved} = kz_datamgr:save_docs(?KZ_WEBHOOKS_DB, Reenable),
             _ = webhooks_disabler:flush_hooks(Reenable),
             io:format("re-enabled ~p hooks~nIDs: ", [length(Saved)]),
             Ids = wh_util:join_binary([wh_doc:id(D) || D <- Saved], <<", ">>),
@@ -487,7 +487,7 @@ hooks_to_reenable(Hooks) ->
 -spec enable_descendant_hooks(ne_binary()) -> 'ok'.
 enable_descendant_hooks(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB
                                ,<<"accounts/listing_by_descendants">>
                                ,[{'startkey', [AccountId]}
                                  ,{'endkey', [AccountId, wh_json:new()]}
@@ -532,14 +532,14 @@ init_metadata(Id, JObj, MasterAccountDb) ->
 
 -spec metadata_exists(ne_binary(), ne_binary()) ->
                              {'ok', wh_json:object()} |
-                             couch_mgr:couchbeam_error().
+                             kz_datamgr:couchbeam_error().
 metadata_exists(MasterAccountDb, Id) ->
-    couch_mgr:open_doc(MasterAccountDb, Id).
+    kz_datamgr:open_doc(MasterAccountDb, Id).
 
 -spec load_metadata(ne_binary(), wh_json:object()) -> 'ok'.
 load_metadata(MasterAccountDb, JObj) ->
     Metadata = update_metadata(MasterAccountDb, JObj),
-    case couch_mgr:save_doc(MasterAccountDb, Metadata) of
+    case kz_datamgr:save_doc(MasterAccountDb, Metadata) of
         {'ok', _Saved} ->
             lager:debug("~s initialized successfully", [wh_doc:id(JObj)]);
         {'error', 'conflict'} ->
@@ -564,7 +564,7 @@ available_events() ->
 fetch_available_events() ->
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     View = <<"webhooks/webhook_meta_listing">>,
-    case couch_mgr:get_all_results(MasterAccountDb, View) of
+    case kz_datamgr:get_all_results(MasterAccountDb, View) of
         {'ok', []} -> [];
         {'error', _} -> [];
         {'ok', Available} ->

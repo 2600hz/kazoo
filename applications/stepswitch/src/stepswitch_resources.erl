@@ -679,7 +679,7 @@ get_local_resource(ResourceId, AccountId) ->
 fetch_global_resources() ->
     lager:debug("global resource cache miss, fetching from db"),
     ViewOptions = ['include_docs'],
-    case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, ViewOptions) of
+    case kz_datamgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, ViewOptions) of
         {'error', _R} ->
             lager:warning("unable to fetch global resources: ~p", [_R]),
             [];
@@ -702,7 +702,7 @@ fetch_local_resources(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = ['include_docs'],
     lager:debug("local resource cache miss, fetching from db ~s", [AccountDb]),
-    case couch_mgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, ViewOptions) of
         {'error', _R} ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];

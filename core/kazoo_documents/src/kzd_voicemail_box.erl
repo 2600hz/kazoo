@@ -57,7 +57,11 @@ notification_emails(Box) ->
     notification_emails(Box, []).
 notification_emails(Box, Default) ->
     case wh_json:get_value(?KEY_NOTIFY_EMAILS, Box) of
-        'undefined' -> wh_json:get_value(?KEY_OLD_NOTIFY_EMAILS, Box, Default);
+        'undefined' ->
+            case wh_json:get_value(?KEY_OLD_NOTIFY_EMAILS, Box, Default) of
+                Email when is_binary(Email) -> [Email];
+                Emails -> Emails;
+            end;
         Emails -> Emails
     end.
 

@@ -108,7 +108,7 @@ handle_info('timeout', #state{jobs=[]}=State) ->
 %                   ,{'startkey', [wh_json:new()]}
                    ,{'endkey', Upto}
                    ],
-    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/jobs">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/jobs">>, ViewOptions) of
         {'ok', []} -> {'noreply', State, ?POLLING_INTERVAL};
         {'ok', Jobs} ->
             lager:debug("fetched ~b jobs, attempting to distribute to workers", [length(Jobs)]),
@@ -165,12 +165,12 @@ distribute_jobs([Job|Jobs]) ->
 -spec cleanup_jobs() -> 'ok'.
 cleanup_jobs() ->
     ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
-    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxes/processing_by_node">>, ViewOptions) of
         {'ok', JObjs} ->
             _ = [begin
                      DocId = wh_doc:id(JObj),
                      lager:debug("moving zombie job ~s status to pending", [DocId]),
-                     couch_mgr:update_doc(?WH_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
+                     kz_datamgr:update_doc(?WH_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
                  end
                  || JObj <- JObjs
                 ],

@@ -468,7 +468,7 @@ match(Address, Element) ->
 -spec maybe_faxbox(state()) -> state().
 maybe_faxbox(#state{faxbox_email=Domain}=State) ->
     ViewOptions = [{'key', Domain}, 'include_docs'],
-    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', [JObj]} ->
             FaxBoxDoc= wh_json:get_value(<<"doc">>,JObj),
             AccountId = wh_doc:account_id(FaxBoxDoc),
@@ -483,7 +483,7 @@ maybe_faxbox_owner(#state{faxbox=FaxBoxDoc}=State) ->
         OwnerId ->
             AccountId = wh_doc:account_id(FaxBoxDoc),
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+            case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
                 {'ok', OwnerDoc} ->
                     OwnerEmail = wh_json:get_value(<<"email">>, OwnerDoc),
                     State#state{owner_id=OwnerId, owner_email=OwnerEmail};
@@ -494,7 +494,7 @@ maybe_faxbox_owner(#state{faxbox=FaxBoxDoc}=State) ->
 -spec maybe_faxbox_domain(state()) -> state().
 maybe_faxbox_domain(#state{faxbox_email=Domain}=State) ->
     ViewOptions = [{'key', Domain}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
         {'ok', []} ->
             Error = <<"realm ", Domain/binary, " not found in accounts db">>,
             lager:debug(Error),
@@ -518,7 +518,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
                                              }=State) ->
     ViewOptions = [{'key', From}],
     AccountDb = wh_util:format_account_db(AccountId),
-    case couch_mgr:get_results(AccountDb, <<"users/list_by_email">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"users/list_by_email">>, ViewOptions) of
         {'ok', []} ->
             Error = wh_util:to_binary(io_lib:format("user ~s does not exist in account ~s, trying by rules",[From, AccountId])),
             lager:debug(Error),
@@ -540,7 +540,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
 maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=State) ->
     ViewOptions = [{'key', OwnerId}, 'include_docs'],
     AccountDb = wh_util:format_account_db(AccountId),
-    case couch_mgr:get_results(AccountDb, <<"faxbox/list_by_ownerid">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"faxbox/list_by_ownerid">>, ViewOptions) of
         {'ok', [JObj]} ->
             State#state{faxbox=wh_json:get_value(<<"doc">>,JObj)
                         ,owner_id=OwnerId
@@ -573,7 +573,7 @@ maybe_faxbox_by_rules(AccountId, #state{errors=Errors}=State)
   when is_binary(AccountId) ->
     ViewOptions = ['include_docs'],
     AccountDb = wh_util:format_account_db(AccountId),
-    case couch_mgr:get_results(AccountDb, <<"faxbox/email_permissions">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"faxbox/email_permissions">>, ViewOptions) of
         {'ok', []} ->
             Error = <<"no faxboxes for account ", AccountId/binary>>,
             lager:debug(Error),

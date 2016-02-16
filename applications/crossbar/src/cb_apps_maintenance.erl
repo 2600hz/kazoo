@@ -43,7 +43,7 @@ migrate(Account) when is_binary(Account) ->
 -spec save(ne_binary(), wh_json:object(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
 save(Account, Doc, AccountDoc) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:save_doc(AccountDb, Doc) of
+    case kz_datamgr:save_doc(AccountDb, Doc) of
         {'error', _R}=Error -> Error;
         {'ok', _}=Ok ->
             _ = save_account(Account, AccountDoc),
@@ -59,11 +59,11 @@ save(Account, Doc, AccountDoc) ->
 -spec save_account(ne_binary(), wh_json:object()) -> 'ok'.
 save_account(Account, AccountDoc) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"apps">>, AccountDoc)) of
+    case kz_datamgr:ensure_saved(AccountDb, wh_json:delete_key(<<"apps">>, AccountDoc)) of
         {'error', _R} ->
             lager:error("failed to save ~s : ~p", [AccountDb, _R]);
         {'ok', JObj} ->
-            case couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj) of
+            case kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, JObj) of
                 {'error', _R} ->
                     lager:error("failed to save ~s in accounts db: ~p", [Account, _R]);
                 {'ok', _} -> 'ok'

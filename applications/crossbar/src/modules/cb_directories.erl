@@ -267,7 +267,7 @@ pdf_users(AccountDb, SortBy, [JObj|Users], Acc) ->
 %%--------------------------------------------------------------------
 -spec pdf_user(ne_binary(), ne_binary()) -> wh_proplist().
 pdf_user(AccountDb, UserId) ->
-    case couch_mgr:open_doc(AccountDb, UserId) of
+    case kz_datamgr:open_doc(AccountDb, UserId) of
         {'error', _R} ->
             lager:error("failed to fetch user ~s in ~s: ~p", [UserId, AccountDb, _R]),
             [];
@@ -282,7 +282,7 @@ pdf_user(AccountDb, UserId) ->
 %%--------------------------------------------------------------------
 -spec pdf_callflow(ne_binary(), ne_binary()) -> wh_proplist().
 pdf_callflow(AccountDb, CallflowId) ->
-    case couch_mgr:open_doc(AccountDb, CallflowId) of
+    case kz_datamgr:open_doc(AccountDb, CallflowId) of
         {'error', _R} ->
             lager:error("failed to fetch callflow ~s in ~s: ~p", [CallflowId, AccountDb, _R]),
             [];

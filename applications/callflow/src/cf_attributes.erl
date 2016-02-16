@@ -32,7 +32,7 @@
 -spec temporal_rules(whapps_call:call()) -> wh_json:objects().
 temporal_rules(Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/temporal_rules">>, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/temporal_rules">>, ['include_docs']) of
         {'ok', JObjs} -> JObjs;
         {'error', _E} ->
             lager:debug("failed to find temporal rules: ~p", [_E]),
@@ -50,7 +50,7 @@ groups(Call) ->
     groups(Call, []).
 groups(Call, ViewOptions) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/groups">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/groups">>, ViewOptions) of
         {'ok', JObjs} -> JObjs;
         {'error', _} -> []
     end.
@@ -263,7 +263,7 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
                                        {api_binary(), api_binary()}.
 maybe_get_assigned_number(_, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'error', _R} ->
             Number = default_cid_number(),
             lager:warning("could not open phone_numbers doc <~s> ~s: ~p", [Name, Number, _R]),
@@ -409,7 +409,7 @@ owner_id('undefined', _Call) -> 'undefined';
 owner_id(ObjectId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{'key', ObjectId}],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
         {'ok', [JObj]} -> wh_json:get_value(<<"value">>, JObj);
         {'ok', []} -> 'undefined';
         {'ok', [_|_]=JObjs} ->
@@ -425,7 +425,7 @@ owner_ids('undefined', _Call) -> [];
 owner_ids(ObjectId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{'key', ObjectId}],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
         {'ok', []} -> [];
         {'ok', [JObj]} -> [wh_json:get_value(<<"value">>, JObj)];
         {'ok', [_|_]=JObjs} ->
@@ -490,7 +490,7 @@ owned_by(OwnerId, Call) ->
     ViewOptions = [{'startkey', [OwnerId]}
                    ,{'endkey', [OwnerId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
@@ -514,7 +514,7 @@ owned_by_docs(OwnerId, Call) ->
                    ,{'endkey', [OwnerId, wh_json:new()]}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
@@ -534,7 +534,7 @@ owned_by_query(ViewOptions, Call) ->
     owned_by_query(ViewOptions, Call, <<"value">>).
 owned_by_query(ViewOptions, Call, ViewKey) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [wh_json:get_value(ViewKey, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find owned documents (~p) using ~p", [_R, ViewOptions]),

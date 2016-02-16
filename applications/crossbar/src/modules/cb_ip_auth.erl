@@ -29,7 +29,7 @@
 %%% IP
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?KZ_TOKEN_DB),
+    kz_datamgr:db_create(?KZ_TOKEN_DB),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.ip_auth">>, ?MODULE, 'allowed_methods'),

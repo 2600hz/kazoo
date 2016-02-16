@@ -288,7 +288,7 @@ validate_conference_id('undefined', Call, Loop) ->
     end;
 validate_conference_id(ConferenceId, Call, Loop) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, ConferenceId) of
+    case kz_datamgr:open_doc(AccountDb, ConferenceId) of
         {'ok', JObj} ->
             lager:debug("discovery request contained a valid conference id, building object"),
             {'ok', create_conference(JObj, <<"none">>, Call)};
@@ -305,7 +305,7 @@ validate_collected_conference_id(Call, Loop, Digits) ->
     ViewOptions = [{'key', Digits}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:debug("caller has entered a valid conference id, building object"),
             {'ok', create_conference(wh_json:get_value(<<"doc">>, JObj), Digits, Call)};

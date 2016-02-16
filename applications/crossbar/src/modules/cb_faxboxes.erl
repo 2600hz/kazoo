@@ -116,7 +116,7 @@ resource_exists(_BoxId) -> 'true'.
 -spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 validate_resource(Context) -> Context.
 validate_resource(Context, FaxboxId) ->
-    case couch_mgr:open_cache_doc(cb_context:account_db(Context), FaxboxId) of
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), FaxboxId) of
         {'ok', JObj} -> cb_context:store(Context, <<"faxbox">>, JObj);
         _ -> Context
     end.
@@ -382,7 +382,7 @@ normalize_view_results(JObj, Acc) ->
 -spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->
     ViewOptions = [{'key', wh_util:to_lower_binary(Email)}],
-    case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_FAXES_DB, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_doc:id(JObj) =:= FaxBoxId;
         {'error', 'not_found'} -> 'true';

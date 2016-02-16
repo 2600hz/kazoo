@@ -259,7 +259,7 @@ maybe_migrate_history(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
 
-    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', C2Cs} -> migrate_histories(AccountId, AccountDb, C2Cs);
         {'error', _} -> 'ok'
@@ -277,7 +277,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
         History ->
             Id = wh_doc:id(C2C),
             _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
-            _Resp = couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"pvt_history">>, C2C)),
+            _Resp = kz_datamgr:ensure_saved(AccountDb, wh_json:delete_key(<<"pvt_history">>, C2C)),
             lager:debug("removed history from c2c ~s in ~s: ~p", [Id
                                                                   ,AccountId
                                                                   ,_Resp
@@ -294,7 +294,7 @@ save_history_item(AccountId, HistoryItem, C2CId) ->
                                           ,{'account_id', AccountId}
                                           ,{'created', Timestamp}
                                          ]),
-    couch_mgr:save_doc(AccountModb, JObj).
+    kz_datamgr:save_doc(AccountModb, JObj).
 
 -spec clear_history_set_type(cb_context:context()) -> cb_context:context().
 clear_history_set_type(Context) ->

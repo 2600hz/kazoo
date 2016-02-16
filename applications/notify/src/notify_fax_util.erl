@@ -71,14 +71,14 @@ raw_attachment_binary(Db, FaxId) ->
     raw_attachment_binary(Db, FaxId, 2).
 
 raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
-    case couch_mgr:open_doc(Db, FaxId) of
+    case kz_datamgr:open_doc(Db, FaxId) of
         {'error','not_found'} when Db =/= ?WH_FAXES_DB ->
             raw_attachment_binary(?WH_FAXES_DB, FaxId, Retries);
         {'ok', FaxJObj} ->
             case wh_doc:attachment_names(FaxJObj) of
                 [AttachmentId | _] ->
                     ContentType = wh_doc:attachment_content_type(FaxJObj, AttachmentId, <<"image/tiff">>),
-                    {'ok', AttachmentBin} = couch_mgr:fetch_attachment(Db, FaxId, AttachmentId),
+                    {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, FaxId, AttachmentId),
                     {'ok', AttachmentBin, ContentType};
                 [] ->
                     lager:debug("failed to find the attachment, retrying ~b more times", [Retries]),

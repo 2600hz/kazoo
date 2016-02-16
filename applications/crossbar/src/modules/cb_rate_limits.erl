@@ -138,7 +138,7 @@ validate_post_rate_limits(Context) ->
 -spec get_rate_limits_id_for_thing(cb_context:context(), ne_binary()) -> api_binaries().
 get_rate_limits_id_for_thing(Context, ThingId) ->
     ViewOpt = [{'key', ThingId}],
-    case couch_mgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of
+    case kz_datamgr:get_results(cb_context:account_db(Context), ?LISTING_BY_OWNER, ViewOpt) of
         {'ok', JObjs} ->
             lists:map(fun get_id/1, JObjs);
         {'error', _Err} ->
@@ -206,7 +206,7 @@ validate_set_rate_limits(Context, ThingId) ->
 -spec set_pvt_fields(cb_context:context()) -> cb_context:context().
 set_pvt_fields(Context) ->
     ThingId = thing_id(Context),
-    {'ok', JObj} = couch_mgr:open_cache_doc(cb_context:account_db(Context), ThingId),
+    {'ok', JObj} = kz_datamgr:open_cache_doc(cb_context:account_db(Context), ThingId),
     ThingType = wh_doc:type(JObj),
 
     Props = [{<<"pvt_type">>, <<"rate_limits">>}

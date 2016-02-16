@@ -123,7 +123,7 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
           ,{<<"pvt_type">>, <<"allotment_consumption">>}
           ]
          ),
-    _ = couch_mgr:save_doc(LedgerDb, wh_json:from_list(Props)),
+    _ = kz_datamgr:save_doc(LedgerDb, wh_json:from_list(Props)),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -193,7 +193,7 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
                    ,{'endkey', [Classification, CycleEnd]}
                    ,{'reduce', 'false'}
                   ],
-    case couch_mgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
+    case kz_datamgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
         {'ok', JObjs} -> sum_allotment_consumed_so_far(JObjs, CycleStart);
         {'error', 'not_found'} ->
             add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts);
@@ -224,7 +224,7 @@ sum_allotment_consumed_so_far([JObj|JObjs], CycleStart, Seconds) ->
                                    integer() |
                                    {'error', any()}.
 add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts) ->
-    _ = couch_mgr:revise_views_from_folder(LedgerDb, 'jonny5'),
+    _ = kz_datamgr:revise_views_from_folder(LedgerDb, 'jonny5'),
     allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1).
 
 %%--------------------------------------------------------------------

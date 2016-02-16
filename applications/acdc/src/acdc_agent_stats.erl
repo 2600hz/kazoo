@@ -426,9 +426,9 @@ maybe_archive_status_data(Srv, Match) ->
     case ets:select(?MODULE:status_table_id(), Match) of
         [] -> 'ok';
         Stats ->
-            couch_mgr:suppress_change_notice(),
+            kz_datamgr:suppress_change_notice(),
             ToSave = lists:foldl(fun archive_status_fold/2, dict:new(), Stats),
-            _ = [couch_mgr:save_docs(acdc_stats_util:db_name(Acct), Docs)
+            _ = [kz_datamgr:save_docs(acdc_stats_util:db_name(Acct), Docs)
                  || {Acct, Docs} <- dict:to_list(ToSave)
                 ],
             [gen_listener:cast(Srv, {'update_status', Id, [{#status_stat.is_archived, 'true'}]})

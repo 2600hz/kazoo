@@ -137,7 +137,7 @@ validate_customer(Context, ?HTTP_POST) ->
                           case wh_json:get_value(<<"credit_card">>, J) of
                               'undefined' -> J;
                               _Else ->
-                                  Id = couch_mgr:get_uuid(),
+                                  Id = kz_datamgr:get_uuid(),
                                   wh_json:set_value([<<"credit_card">>, <<"id">>], Id, J)
                           end
                   end

@@ -37,9 +37,9 @@
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?KZ_TOKEN_DB),
+    kz_datamgr:db_create(?KZ_TOKEN_DB),
 
-    _ = couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
     crossbar_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
 
@@ -84,7 +84,7 @@ validate(Context, ?HTTP_DELETE) ->
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     AuthToken = cb_context:auth_token(Context),
-    case couch_mgr:del_doc(?KZ_TOKEN_DB, AuthToken) of
+    case kz_datamgr:del_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', _} ->
             cb_context:setters(Context
                                ,[{fun cb_context:set_resp_status/2, 'success'}
@@ -121,7 +121,7 @@ maybe_save_auth_doc(OldAuthDoc) ->
     case TimeLeft > 0 of
         'true' ->
             lager:debug("auth doc is past time (~ps after) to be saved, saving", [TimeLeft]),
-            couch_mgr:ensure_saved(?KZ_TOKEN_DB
+            kz_datamgr:ensure_saved(?KZ_TOKEN_DB
                                    ,wh_doc:set_modified(OldAuthDoc, Now)
                                   );
         'false' ->
@@ -139,15 +139,15 @@ clean_expired(CreatedBefore) ->
                 ,{'limit', couch_util:max_bulk_insert()}
                ],
 
-    case couch_mgr:get_results(?KZ_TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
+    case kz_datamgr:get_results(?KZ_TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of
         {'error', _E} -> lager:debug("failed to lookup expired tokens: ~p", [_E]);
         {'ok', []} -> lager:debug("no expired tokens found");
         {'ok', L} ->
             lager:debug("removing ~b expired tokens", [length(L)]),
 
-            couch_mgr:suppress_change_notice(),
-            _ = couch_mgr:del_docs(?KZ_TOKEN_DB, L),
-            couch_mgr:enable_change_notice(),
+            kz_datamgr:suppress_change_notice(),
+            _ = kz_datamgr:del_docs(?KZ_TOKEN_DB, L),
+            kz_datamgr:enable_change_notice(),
 
             lager:debug("removed tokens")
     end.
@@ -202,7 +202,7 @@ check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
 check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
     lager:debug("checking auth token: '~s'", [AuthToken]),
-    case couch_mgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
+    case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', JObj} -> is_expired(Context, JObj);
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
@@ -274,9 +274,9 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
 
 -spec get_descendants(ne_binary()) ->
                              {'ok', ne_binaries()} |
-                             couch_mgr:couchbeam_error().
+                             kz_datamgr:couchbeam_error().
 get_descendants(AccountId) ->
-    case couch_mgr:get_results(<<"accounts">>
+    case kz_datamgr:get_results(<<"accounts">>
                                ,<<"accounts/listing_by_descendants">>
                                ,[{'startkey', [AccountId]}
                                  ,{'endkey', [AccountId, wh_json:new()]}

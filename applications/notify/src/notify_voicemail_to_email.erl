@@ -46,7 +46,7 @@ handle_req(JObj, _Props) ->
 
     VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
-    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
+    {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb, VMBoxId),
     {'ok', UserJObj} = get_owner(AccountDb, VMBox),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
@@ -105,7 +105,7 @@ get_owner(_AccountDb, _VMBox, 'undefined') ->
     {'ok', wh_json:new()};
 get_owner(AccountDb, _VMBox, OwnerId) ->
     lager:debug("attempting to load owner: ~s", [OwnerId]),
-    {'ok', _} = couch_mgr:open_cache_doc(AccountDb, OwnerId).
+    {'ok', _} = kz_datamgr:open_cache_doc(AccountDb, OwnerId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -180,11 +180,11 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
 
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
-    {'ok', VMJObj} = couch_mgr:open_doc(DB, DocId),
+    {'ok', VMJObj} = kz_datamgr:open_doc(DB, DocId),
 
     [AttachmentId] = wh_doc:attachment_names(VMJObj),
     lager:debug("attachment id ~s", [AttachmentId]),
-    {'ok', AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
+    {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(DB, DocId, AttachmentId),
 
     AttachmentFileName = get_file_name(VMJObj, Props),
     lager:debug("attachment renamed to ~s", [AttachmentFileName]),

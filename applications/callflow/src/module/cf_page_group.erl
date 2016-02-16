@@ -110,7 +110,7 @@ resolve_endpoint_ids([Member|Members], EndpointIds, Call) ->
                                wh_json:objects().
 get_group_members(Member, Id, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, Id) of
+    case kz_datamgr:open_cache_doc(AccountDb, Id) of
         {'ok', JObj} ->
             Endpoints = wh_json:get_ne_value(<<"endpoints">>, JObj, wh_json:new()),
             DefaultDelay = wh_json:get_value(<<"delay">>, Member),
