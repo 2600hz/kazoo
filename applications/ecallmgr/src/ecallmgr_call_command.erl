@@ -21,6 +21,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(RECORD_SOFTWARE, ecallmgr_config:get(<<"recordng_software_name">>, <<"2600Hz, Inc.'s Kazoo">>)).
+
 -spec exec_cmd(atom(), ne_binary(), wh_json:object(), api_pid()) ->
                       'ok' |
                       'error' |
@@ -1395,7 +1397,7 @@ set_record_call_vars(Node, UUID, JObj) ->
                        ,[{<<"RECORD_APPEND">>, <<"true">>}
                          ,{<<"enable_file_write_buffering">>, <<"false">>}
                          ,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
-                         ,{<<"RECORD_SOFTWARE">>, <<"2600Hz, Inc.'s Kazoo">>}
+                         ,{<<"RECORD_SOFTWARE">>, ?RECORD_SOFTWARE}
                         ]
                        ,Routines
                       ),
