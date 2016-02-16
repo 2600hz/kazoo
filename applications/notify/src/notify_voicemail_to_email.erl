@@ -50,23 +50,22 @@ handle_req(JObj, _Props) ->
     {'ok', UserJObj} = get_owner(AccountDb, VMBox),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
+    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 
     %% If the box has emails, continue processing
     %% andalso the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    case BoxEmails =/= [] andalso kzd_user:voicemail_notification_enabled(UserJObj) of
+    case Emails =/= [] andalso kzd_user:voicemail_notification_enabled(UserJObj) of
         'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
-        'true' ->
-            continue_processing(JObj, AccountDb, VMBox, UserJObj, BoxEmails)
+        'true' -> continue_processing(JObj, AccountDb, VMBox, Emails)
     end.
 
--spec continue_processing(wh_json:object(), ne_binary(), wh_json:object(), wh_json:object(), ne_binaries()) -> 'ok'.
-continue_processing(JObj, AccountDb, VMBox, UserJObj, BoxEmails) ->
+-spec continue_processing(wh_json:object(), ne_binary(), wh_json:object(), ne_binaries()) -> 'ok'.
+continue_processing(JObj, AccountDb, VMBox, Emails) ->
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
     AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
 
-    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 
     'ok' = notify_util:send_update(RespQ, MsgId, <<"pending">>),
     lager:debug("VM->Email enabled for user, sending to ~p", [Emails]),
