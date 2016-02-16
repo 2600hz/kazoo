@@ -132,7 +132,10 @@ authorize_media(_Context, [{<<"media">>, [?LANGUAGES, _Language]}], 'undefined')
     'true';
 
 authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
-    case cb_modules_util:is_superduper_admin(Context) of
+    IsAuthenticated = cb_context:is_authenticated(Context),
+    IsSuperDuperAdmin = cb_modules_util:is_superduper_admin(Context),
+    IsReqVerbGet = cb_context:req_verb(Context) =:= ?HTTP_GET,
+    case IsAuthenticated andalso (IsSuperDuperAdmin orelse IsReqVerbGet) of
         'true' -> 'true';
         'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
     end;
