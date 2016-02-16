@@ -89,9 +89,9 @@ get(EndpointId, Call) ->
 
 -spec maybe_fetch_endpoint(ne_binary(), ne_binary()) ->
                                   {'ok', wh_json:object()} |
-                                  couch_mgr:couchbeam_error().
+                                  kz_datamgr:couchbeam_error().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
-    case couch_mgr:open_cache_doc(AccountDb, EndpointId) of
+    case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
         {'ok', JObj} ->
             maybe_have_endpoint(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
@@ -349,7 +349,7 @@ merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
 -spec get_user(ne_binary(), api_binary() | wh_json:object()) -> wh_json:object().
 get_user(_, 'undefined') -> wh_json:new();
 get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} -> JObj;
         {'error', _R} ->
             lager:warning("failed to load endpoint owner ~s: ~p", [OwnerId, _R]),
@@ -374,7 +374,7 @@ get_users(AccountDb, OwnerIds) ->
 get_users(_, [], Users) ->
     Users;
 get_users(AccountDb, [OwnerId|OwnerIds], Users) ->
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} ->
             get_users(AccountDb, OwnerIds, [JObj|Users]);
         {'error', _R} ->
@@ -468,7 +468,7 @@ flush_account(AccountDb) ->
 
 flush(Db, Id) ->
     kz_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}),
-    {'ok', Rev} = couch_mgr:lookup_doc_rev(Db, Id),
+    {'ok', Rev} = kz_datamgr:lookup_doc_rev(Db, Id),
     Props =
         [{<<"ID">>, Id}
          ,{<<"Database">>, Db}

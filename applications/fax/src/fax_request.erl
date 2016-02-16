@@ -306,7 +306,7 @@ maybe_update_fax_settings(#state{call=Call
                                  ,faxbox_id='undefined'
                                 }=State) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} ->
             case wh_json:is_json_object(<<"fax_settings">>, JObj) of
                 'false' -> maybe_update_fax_settings_from_account(State);
@@ -328,7 +328,7 @@ maybe_update_fax_settings(#state{call=Call
                                  ,faxbox_id=FaxBoxId
                                 }=State) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, FaxBoxId) of
+    case kz_datamgr:open_doc(AccountDb, FaxBoxId) of
         {'ok', JObj} ->
             update_fax_settings(Call, JObj),
             State#state{fax_notify=get_faxbox_notify_list(JObj, AccountDb)};
@@ -341,7 +341,7 @@ get_faxbox_notify_list(FaxBoxDoc, AccountDb) ->
     case wh_json:get_value(<<"owner_id">>, FaxBoxDoc) of
         'undefined' -> DefaultNotify;
         OwnerId ->
-            case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+            case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
                 {'ok', UserDoc} ->
                     List = wh_json:get_value([<<"email">>,<<"send_to">>], DefaultNotify, []),
                     maybe_add_owner_to_notify_list(List, wh_json:get_value(<<"email">>, UserDoc));
@@ -516,7 +516,7 @@ check_for_upload(#state{call=_Call
                                               ,db=FaxDb
                                              }
                        }=State) ->
-    case couch_mgr:open_doc(FaxDb, FaxDocId) of
+    case kz_datamgr:open_doc(FaxDb, FaxDocId) of
         {'ok', FaxDoc} ->
             check_upload_for_attachment(FaxDoc, State);
         {'error', Error} ->
@@ -605,12 +605,12 @@ attachment_url(#state{storage=#fax_storage{id=FaxDocId
                                            ,db=AccountDb
                                           }
                      }) ->
-    _ = case couch_mgr:open_doc(AccountDb, FaxDocId) of
+    _ = case kz_datamgr:open_doc(AccountDb, FaxDocId) of
             {'ok', JObj} ->
                 maybe_delete_attachments(AccountDb, JObj);
             {'error', _} -> 'ok'
         end,
-    Rev = case couch_mgr:lookup_doc_rev(AccountDb, FaxDocId) of
+    Rev = case kz_datamgr:lookup_doc_rev(AccountDb, FaxDocId) of
               {'ok', R} -> <<"?rev=", R/binary>>;
               _ -> <<>>
           end,
@@ -625,7 +625,7 @@ maybe_delete_attachments(AccountDb, JObj) ->
     case wh_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
         {'true', Removed} ->
-            couch_mgr:save_doc(AccountDb, Removed),
+            kz_datamgr:save_doc(AccountDb, Removed),
             lager:debug("removed attachments from faxdoc")
     end.
 

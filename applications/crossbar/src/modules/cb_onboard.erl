@@ -152,7 +152,7 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
                             {proplist(), wh_json:object()}.
 create_account(JObj, Context, {Pass, Fail}) ->
     Account = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
-    Generators = [fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
+    Generators = [fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
                  ],
     NewReqData = lists:foldr(fun(F, J) -> F(J) end, Account, Generators),
     Payload = [cb_context:setters(Context, [{fun cb_context:set_req_data/2, NewReqData}
@@ -246,7 +246,7 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
                        -> {proplist(), wh_json:object()}.
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     User = wh_json:get_value(<<"user">>, JObj, wh_json:new()),
-    Generators = [fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
+    Generators = [fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) when Iteration =:= 1 ->
                            %% ensure the first user is a admin
                            wh_json:set_value(<<"priv_level">>, <<"admin">>, J);
@@ -298,7 +298,7 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                          -> {proplist(), wh_json:object()}.
 create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     Device = wh_json:get_value(<<"device">>, JObj, wh_json:new()),
-    Generators = [fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
+    Generators = [fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) ->
                            User = get_context_jobj(<<"users">>, Pass),
                            case wh_doc:id(User) of
@@ -357,7 +357,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                         -> {proplist(), wh_json:object()}.
 create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     VMBox = wh_json:get_value(<<"vmbox">>, JObj, wh_json:new()),
-    Generators = [fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
+    Generators = [fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) ->
                            User = get_context_jobj(<<"users">>, Pass),
                            case wh_doc:id(User) of
@@ -417,7 +417,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                                                                            ])),
                           wh_json:set_value(<<"flow">>, Flow, J)
                   end
-                  ,fun(J) -> wh_doc:set_id(J, couch_mgr:get_uuid()) end
+                  ,fun(J) -> wh_doc:set_id(J, kz_datamgr:get_uuid()) end
                   ,fun(J) ->
                            case [Num || Num <- wh_json:get_ne_value(<<"numbers">>, J, [])
                                             , not wh_util:is_empty(Num)]
@@ -577,7 +577,7 @@ create_response(Context) ->
                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
                     ],
-            case couch_mgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
+            case kz_datamgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
                 {'ok', Doc} ->
                     AuthToken = wh_doc:id(Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),

@@ -140,7 +140,7 @@ migrate_recorded_names([Account|Accounts]) ->
 migrate_recorded_name(Db) ->
     lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
 
-    case couch_mgr:get_results(Db, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
+    case kz_datamgr:get_results(Db, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
         {'ok', []} -> lager:info("no vmboxes in ~s", [Db]);
         {'error', _E} -> lager:info("unable to get vm box list: ~p", [_E]);
         {'ok', VMBoxes} ->
@@ -158,23 +158,23 @@ do_recorded_name_migration(Db, VMBox) ->
         MediaId ->
             lager:info("vm box ~s has recorded name in doc ~s", [VMBoxId, MediaId]),
             do_recorded_name_migration(Db, MediaId, wh_json:get_value(<<"owner_id">>, VMBox)),
-            {'ok', _} = couch_mgr:save_doc(Db, wh_json:delete_key(?RECORDED_NAME_KEY, VMBox))
+            {'ok', _} = kz_datamgr:save_doc(Db, wh_json:delete_key(?RECORDED_NAME_KEY, VMBox))
     end.
 
 do_recorded_name_migration(_Db, _MediaId, 'undefined') ->
     lager:info("no owner id on vm box");
 do_recorded_name_migration(Db, MediaId, OwnerId) ->
-    {'ok', Owner} = couch_mgr:open_doc(Db, OwnerId),
+    {'ok', Owner} = kz_datamgr:open_doc(Db, OwnerId),
     case wh_json:get_value(?RECORDED_NAME_KEY, Owner) of
         'undefined' ->
             lager:info("no recorded name on owner, setting to ~s", [MediaId]),
-            {'ok', _} = couch_mgr:save_doc(Db, wh_json:set_value(?RECORDED_NAME_KEY, MediaId, Owner)),
+            {'ok', _} = kz_datamgr:save_doc(Db, wh_json:set_value(?RECORDED_NAME_KEY, MediaId, Owner)),
             lager:info("updated owner doc with recorded name doc id ~s", [MediaId]);
         MediaId ->
             lager:info("owner already has recorded name at ~s", [MediaId]);
         OwnerMediaId ->
             lager:info("owner has recorded name at ~s(not ~s), using owners", [OwnerMediaId, MediaId]),
-            couch_mgr:del_doc(Db, MediaId)
+            kz_datamgr:del_doc(Db, MediaId)
     end.
 
 %%--------------------------------------------------------------------
@@ -191,7 +191,7 @@ migrate_menus() ->
 migrate_menus(Account) ->
     Db = wh_util:format_account_id(Account, 'encoded'),
     lager:info("migrating all menus in ~s", [Db]),
-    case couch_mgr:get_results(Db, <<"menus/crossbar_listing">>, ['include_docs']) of
+    case kz_datamgr:get_results(Db, <<"menus/crossbar_listing">>, ['include_docs']) of
         {'ok', []} ->
             lager:info("db ~s has no menus", [Db]),
             'done';
@@ -206,14 +206,14 @@ do_menu_migration(Menu, Db) ->
     Doc = wh_json:get_value(<<"doc">>, Menu),
     MenuId = wh_doc:id(Doc),
     VSN = wh_doc:vsn(Doc, 1),
-    case couch_mgr:fetch_attachment(Db, MenuId, <<"prompt.mp3">>) of
+    case kz_datamgr:fetch_attachment(Db, MenuId, <<"prompt.mp3">>) of
         {'ok', _} when VSN =/= 1 ->
             lager:info("menu ~s in ~s already migrated", [MenuId, Db]);
         {'ok', Bin} ->
             Name = <<(wh_json:get_value(<<"name">>, Doc, <<>>))/binary, " menu greeting">>,
             MediaId = create_media_doc(Name, <<"menu">>, MenuId, Db),
             AName = <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>,
-            {'ok', _} = couch_mgr:put_attachment(Db, MediaId, AName, Bin),
+            {'ok', _} = kz_datamgr:put_attachment(Db, MediaId, AName, Bin),
             'ok' = update_doc([<<"media">>, <<"greeting">>], MediaId, MenuId, Db),
             'ok' = update_doc([<<"pvt_vsn">>], <<"2">>, MenuId, Db),
             lager:info("migrated menu ~s in ~s prompt to /~s/~s/~s", [MenuId, Db, Db, MediaId, AName]);
@@ -236,7 +236,7 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
              ,{<<"media_type">>, <<"mp3">>}
              ,{<<"streamable">>, 'true'}],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"media">>}]),
-    {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
+    {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
     wh_doc:id(JObj).
 
 %%--------------------------------------------------------------------
@@ -249,9 +249,9 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
                         'ok' |
                         {'error', atom()}.
 update_doc(Key, Value, Id, Db) ->
-    case couch_mgr:open_doc(Db, Id) of
+    case kz_datamgr:open_doc(Db, Id) of
         {'ok', JObj} ->
-            case couch_mgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
+            case kz_datamgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
                 {'error', 'conflict'} -> update_doc(Key, Value, Id, Db);
                 {'ok', _} -> 'ok';
                 {'error', _}=E -> lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
@@ -301,8 +301,8 @@ set_account_classifier_action(Action, Classifier, AccountDb) ->
     io:format("found account: ~p", [get_account_name_by_db(AccountDb)]),
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
 
-    couch_mgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
-    couch_mgr:update_doc(<<"accounts">>, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    kz_datamgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    kz_datamgr:update_doc(<<"accounts">>, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
 
     cf_endpoint:flush_account(AccountDb),
 
@@ -355,9 +355,9 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     [User, Realm] = re:split(Uri, <<"@">>),
     {'ok', AccountDb} = whapps_util:get_account_by_realm(Realm),
     Options = [{'key', User}],
-    {'ok', [DeviceDoc]} = couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
+    {'ok', [DeviceDoc]} = kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
     DeviceId = wh_doc:id(DeviceDoc),
-    couch_mgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    kz_datamgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
     cf_endpoint:flush(AccountDb, DeviceId).
 
 %%--------------------------------------------------------------------
@@ -413,7 +413,7 @@ list_account_restrictions(Account) ->
 
 -spec print_call_restrictions(ne_binary(), ne_binary()) -> 'ok'.
 print_call_restrictions(DbName, DocId) ->
-    case couch_mgr:open_doc(DbName, DocId) of
+    case kz_datamgr:open_doc(DbName, DocId) of
         {'ok', JObj} ->
             lists:foreach(fun(Classifier) ->
                              io:format("Classifier ~p:\t\t action ~p\n",[Classifier, wh_json:get_value([<<"call_restriction">>,Classifier,<<"action">>], JObj)])
@@ -425,7 +425,7 @@ print_call_restrictions(DbName, DocId) ->
 
 -spec print_users_level_call_restrictions(ne_binary()) -> 'ok'.
 print_users_level_call_restrictions(DbName) ->
-        case couch_mgr:get_results(DbName, <<"users/crossbar_listing">>) of
+        case kz_datamgr:get_results(DbName, <<"users/crossbar_listing">>) of
         {'ok', JObj} ->
             io:format("\n\nUser level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
@@ -439,7 +439,7 @@ print_users_level_call_restrictions(DbName) ->
 
 -spec print_devices_level_call_restrictions(ne_binary()) -> 'ok'.
 print_devices_level_call_restrictions(DbName) ->
-        case couch_mgr:get_results(DbName, <<"devices/crossbar_listing">>) of
+        case kz_datamgr:get_results(DbName, <<"devices/crossbar_listing">>) of
         {'ok', JObj} ->
             io:format("\n\nDevice level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
@@ -453,7 +453,7 @@ print_devices_level_call_restrictions(DbName) ->
 
 -spec print_trunkstore_call_restrictions(ne_binary()) -> 'ok'.
 print_trunkstore_call_restrictions(DbName) ->
-        case couch_mgr:get_results(DbName, <<"trunkstore/LookUpUserFlags">>) of
+        case kz_datamgr:get_results(DbName, <<"trunkstore/LookUpUserFlags">>) of
         {'ok', JObj} ->
             io:format("\n\nTrunkstore classifiers:\n\n"),
             lists:foreach(fun(UserObj) ->
@@ -483,7 +483,7 @@ update_feature_codes(Account)
     update_feature_codes(wh_util:to_binary(Account));
 update_feature_codes(Account) ->
     AccountDb = wh_util:format_account_db(Account),
-    case couch_mgr:get_results(AccountDb, ?LIST_BY_PATTERN, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, ?LIST_BY_PATTERN, ['include_docs']) of
         {'error', _Reason} ->
             io:format("error listing feature code patterns: ~p\n", [_Reason]);
         {'ok', Patterns} ->
@@ -500,7 +500,7 @@ maybe_update_feature_codes(Db, [Pattern|Patterns]) ->
     case Regex of
         <<"^\\*5([0-9]*)$">> ->
             NewRegex = <<"^\\*5(|[0-9]{2,})$">>,
-            case couch_mgr:update_doc(Db, DocId, [{<<"patterns">>, [NewRegex]}]) of
+            case kz_datamgr:update_doc(Db, DocId, [{<<"patterns">>, [NewRegex]}]) of
                 {'error', _Reason} ->
                     io:format("failed to update doc ~s with new patterns\n", [DocId]);
                 {'ok', _} ->

@@ -14,7 +14,7 @@
 
 -spec handle_api_sms(ne_binary(), ne_binary()) -> 'ok'.
 handle_api_sms(Db, Id) ->
-    {'ok', Doc} = couch_mgr:open_doc(Db, Id),
+    {'ok', Doc} = kz_datamgr:open_doc(Db, Id),
     Status = wh_json:get_value(<<"pvt_status">>, Doc),
     Origin = wh_json:get_value(<<"pvt_origin">>, Doc),
     FetchId = wh_util:rand_hex_binary(16),

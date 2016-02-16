@@ -89,7 +89,7 @@ populate_phone_numbers(Context) ->
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
             ,{<<"pvt_created">>, wh_util:current_tstamp()}
            ],
-    _ = couch_mgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
+    _ = kz_datamgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -554,7 +554,7 @@ get_auth_user_email(Context) ->
         'undefined' -> 'undefined';
         UserId ->
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            case couch_mgr:open_doc(AccountDb, UserId) of
+            case kz_datamgr:open_doc(AccountDb, UserId) of
                 {'ok', User} -> wh_json:get_value(<<"email">>, User);
                 {'error', _} -> 'undefined'
             end

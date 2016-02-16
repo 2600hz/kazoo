@@ -862,7 +862,7 @@ attachment_name(AttachType, Filename, CT) ->
 -spec is_domain_unique(ne_binary(), ne_binary()) -> boolean().
 is_domain_unique(AccountId, Domain) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} ->
             wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj) =:= AccountId;

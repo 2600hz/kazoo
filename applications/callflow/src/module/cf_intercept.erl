@@ -50,7 +50,7 @@ handle(Data, Call) ->
 
 -spec maybe_same_user(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_same_user(Data, Call) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)) of
         {'ok', CallerDeviceJObj} ->
             is_caller_same_user(Data, Call, CallerDeviceJObj);
         {'error', _E} ->
@@ -72,7 +72,7 @@ is_caller_same_user(Data, Call, CallerDeviceJObj) ->
 -spec is_device_same_user(whapps_call:call(), ne_binary(), api_binary()) -> boolean().
 is_device_same_user(_Call, _OwnerId, 'undefined') -> 'false';
 is_device_same_user(Call, OwnerId, DeviceId) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), DeviceId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), DeviceId) of
         {'ok', Target} ->
             OwnerId =:= wh_json:get_value(<<"owner_id">>, Target);
         {'error', _E} ->
@@ -83,7 +83,7 @@ is_device_same_user(Call, OwnerId, DeviceId) ->
 -spec maybe_same_group(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_same_group(Data, Call) ->
     CallerDeviceId = whapps_call:authorizing_id(Call),
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), CallerDeviceId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), CallerDeviceId) of
         {'ok', CallerDeviceJObj} ->
             is_caller_same_group(Data, Call, CallerDeviceJObj);
         {'error', _E} ->
@@ -101,7 +101,7 @@ is_caller_same_group(Data, Call, CallerDeviceJObj) ->
 -spec is_owner_same_group(whapps_call:call(), ne_binary(), ne_binary(), api_binary()) -> boolean().
 is_owner_same_group(_Call, _DeviceId, _OwnerId, 'undefined') -> 'false';
 is_owner_same_group(Call, DeviceId, OwnerId, GroupId) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), GroupId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), GroupId) of
         {'ok', GroupJObj} ->
             wh_json:any(
               fun({EndpointId, Endpoint}) when EndpointId =:= DeviceId ->

@@ -46,7 +46,7 @@ save_cdr(AccountMOD, Doc) ->
 save_cdr(_, _, ?MAX_RETRIES) ->
     {'error', 'max_retries'};
 save_cdr(AccountMODb, Doc, Retries) ->
-    case couch_mgr:save_doc(AccountMODb, Doc) of
+    case kz_datamgr:save_doc(AccountMODb, Doc) of
         {'ok', _}-> 'ok';
         {'error', 'not_found'} ->
             _ = kazoo_modb:create(AccountMODb),

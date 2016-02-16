@@ -490,7 +490,7 @@ query_account_for_admin_emails(AccountId) ->
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', []} -> [];
         {'ok', Users} ->
             [Email
@@ -522,7 +522,7 @@ query_for_account_admin(AccountId) ->
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {'ok', []} -> 'undefined';
         {'ok', Users} ->
             case filter_for_admins(Users) of
@@ -618,7 +618,7 @@ is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     TemplateId = teletype_templates:doc_id(TemplateKey),
 
-    case couch_mgr:open_cache_doc(AccountDb, TemplateId) of
+    case kz_datamgr:open_cache_doc(AccountDb, TemplateId) of
         {'ok', TemplateJObj} ->
             lager:debug("account ~s has ~s, checking if enabled", [AccountId, TemplateId]),
             kz_notification:is_enabled(TemplateJObj);
@@ -636,7 +636,7 @@ is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
 -spec is_notice_enabled_default(ne_binary()) -> boolean().
 is_notice_enabled_default(TemplateKey) ->
     TemplateId = teletype_templates:doc_id(TemplateKey),
-    case couch_mgr:open_cache_doc(?WH_CONFIG_DB, TemplateId) of
+    case kz_datamgr:open_cache_doc(?WH_CONFIG_DB, TemplateId) of
         {'ok', TemplateJObj} ->
             lager:debug("system has ~s, checking if enabled", [TemplateId]),
             kz_notification:is_enabled(TemplateJObj);
@@ -741,7 +741,7 @@ open_doc(Type, 'undefined', DataJObj) ->
     maybe_load_preview(Type, {'error', 'empty_doc_id'}, is_preview(DataJObj));
 open_doc(Type, DocId, DataJObj) ->
     AccountDb = find_account_db(Type, DataJObj),
-    case couch_mgr:open_cache_doc(AccountDb, DocId) of
+    case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E}=Error ->
             maybe_load_preview(Type, Error, is_preview(DataJObj))

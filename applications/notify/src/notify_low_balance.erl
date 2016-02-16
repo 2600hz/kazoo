@@ -139,7 +139,7 @@ get_email(MasterAccountId, MasterAccountId) ->
     lager:debug("attempting to email low balance to master account ~s"
                 ,[MasterAccountId]
                ),
-    case couch_mgr:open_doc(AccountDb, MasterAccountId) of
+    case kz_datamgr:open_doc(AccountDb, MasterAccountId) of
         {'ok', JObj} -> find_billing_email(JObj);
         {'error', _R} ->
             lager:error("could not open account ~s : ~p"
@@ -152,7 +152,7 @@ get_email(AccountId, MasterAccountId) ->
                 ,[AccountId]
                ),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} -> get_email(JObj, AccountId, MasterAccountId);
         {'error', _R} ->
             lager:error("could not open account ~s : ~p", [AccountId, _R]),

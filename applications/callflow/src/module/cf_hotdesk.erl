@@ -273,7 +273,7 @@ get_hotdesk_profile('undefined', Data, Call) ->
     find_hotdesk_profile(Call, Data, ?MAX_LOGIN_ATTEMPTS, 1);
 get_hotdesk_profile(OwnerId, Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} -> from_json(JObj, Data, Call);
         {'error', _R}=E ->
             lager:info("failed to load hotdesking profile for user ~s: ~p", [OwnerId, _R]),
@@ -323,7 +323,7 @@ lookup_hotdesk_id(HotdeskId, Data, Call) ->
     ViewOptions = [{'key', HotdeskId}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:info("found hotdesk id ~s", [HotdeskId]),
             from_json(wh_json:get_value(<<"doc">>, JObj), Data, Call);
@@ -364,7 +364,7 @@ remove_from_endpoints(#hotdesk{endpoint_ids=[EndpointId|Endpoints]
                                      wh_jobj_return().
 update_hotdesk_endpoint(_, 'undefined', _) -> {'error', 'not_found'};
 update_hotdesk_endpoint(AccountDb, EndpointId, Fun) when is_binary(EndpointId) ->
-    case couch_mgr:open_doc(AccountDb, EndpointId) of
+    case kz_datamgr:open_doc(AccountDb, EndpointId) of
         {'ok', JObj} -> update_hotdesk_endpoint(AccountDb, JObj, Fun);
         {'error', _R}=E ->
             lager:warning("unable to fetch hotdesk endpoint ~s: ~p", [EndpointId, _R]),
@@ -372,7 +372,7 @@ update_hotdesk_endpoint(AccountDb, EndpointId, Fun) when is_binary(EndpointId) -
     end;
 update_hotdesk_endpoint(AccountDb, JObj, Fun) ->
     EndpointId = wh_doc:id(JObj),
-    case couch_mgr:save_doc(AccountDb, Fun(JObj)) of
+    case kz_datamgr:save_doc(AccountDb, Fun(JObj)) of
         {'ok', _}=Ok ->
             _ = cf_util:unsolicited_endpoint_mwi_update(AccountDb, EndpointId),
             Ok;
@@ -387,7 +387,7 @@ update_hotdesk_endpoint(AccountDb, JObj, Fun) ->
 get_endpoint_ids(OwnerId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{'key', OwnerId}],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_users">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/hotdesk_users">>, ViewOptions) of
         {'ok', JObjs} ->
             [wh_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} ->

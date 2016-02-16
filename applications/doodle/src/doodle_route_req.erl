@@ -58,7 +58,7 @@ maybe_prepend_preflow(Call, CallFlow) ->
 
 -spec prepend_preflow(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
 prepend_preflow(AccountDb, PreflowId, CallFlow) ->
-    case couch_mgr:open_cache_doc(AccountDb, PreflowId) of
+    case kz_datamgr:open_cache_doc(AccountDb, PreflowId) of
         {'error', _E} ->
             lager:warning("could not open ~s in ~s : ~p", [PreflowId, AccountDb, _E]),
             CallFlow;

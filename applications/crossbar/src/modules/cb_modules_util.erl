@@ -172,7 +172,7 @@ update_mwi(OwnerId, AccountDb) ->
 
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> wh_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
-    case couch_mgr:get_results(DB
+    case kz_datamgr:get_results(DB
                                ,<<"cf_attributes/owned">>
                                ,[{'key', [OwnerID, <<"device">>]}
                                  ,'include_docs'

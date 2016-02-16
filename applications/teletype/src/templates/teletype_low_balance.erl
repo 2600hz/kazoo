@@ -143,7 +143,7 @@ get_user(DataJObj) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     UserId = wh_json:get_value(<<"user_id">>, DataJObj),
 
-    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} -> UserJObj;
         {'error', _E} ->
             lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),

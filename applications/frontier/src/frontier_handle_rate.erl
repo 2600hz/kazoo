@@ -232,7 +232,7 @@ fetch_rates(EntityList, IncludeRealm, MethodList, AccountDB) ->
     lager:info("Run db query..."),
     Keys = [[E, M] || E <- [?DEVICE_DEFAULT_RATES | EntityList], M <- MethodList],
     ViewOpts = [{'keys', Keys}],
-    Results = case couch_mgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
+    Results = case kz_datamgr:get_results(AccountDB, ?RATES_CROSSBAR_LISTING, ViewOpts) of
                   {'ok', JObjs} ->
                       lager:info("Got ~p records for entities ~p from db document", [length(JObjs), EntityList]),
                       JObjs;
@@ -270,11 +270,11 @@ check_fallbacks(Tree, MethodList, Realm) ->
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
     AccountDB = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOpts = [{'key', AccountId}],
-    case couch_mgr:get_results(AccountDB, ?RATES_LISTING_BY_OWNER, ViewOpts) of
+    case kz_datamgr:get_results(AccountDB, ?RATES_LISTING_BY_OWNER, ViewOpts) of
         {'ok', []} -> 'empty';
         {'ok', [JObj]} ->
             Fallback = wh_doc:id(JObj),
-            build_results(couch_mgr:open_cache_doc(AccountDB, Fallback), MethodList, Realm);
+            build_results(kz_datamgr:open_cache_doc(AccountDB, Fallback), MethodList, Realm);
         {'ok', _JObjs} ->
             lager:error("found many results, please check account rate limits for ~s", [AccountDB]),
             'empty';

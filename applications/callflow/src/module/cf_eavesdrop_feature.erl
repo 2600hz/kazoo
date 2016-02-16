@@ -111,7 +111,7 @@ maybe_correct_target({'ok', TargetId, _}, GroupId, Call) ->
 
 -spec find_group_members(ne_binary(), whapps_call:call()) -> ne_binaries().
 find_group_members(GroupId, Call) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), GroupId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), GroupId) of
         {'error', _E} -> [];
         {'ok', GroupJObj} ->
             wh_json:get_keys(<<"endpoints">>, GroupJObj)

@@ -156,7 +156,7 @@ admin_user_properties(DataJObj) ->
 -spec account_admin_user_properties(wh_json:object()) -> wh_proplist().
 account_admin_user_properties(AccountJObj) ->
     AccountDb = wh_doc:account_db(AccountJObj),
-    case couch_mgr:get_all_results(AccountDb, <<"users/crossbar_listing">>) of
+    case kz_datamgr:get_all_results(AccountDb, <<"users/crossbar_listing">>) of
         {'error', _E} ->
             lager:debug("failed to get user listing from ~s: ~p", [AccountDb, _E]),
             [];

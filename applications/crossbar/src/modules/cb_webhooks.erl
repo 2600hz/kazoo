@@ -41,9 +41,9 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
-    _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
+    _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
+    _ = kz_datamgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
     init_master_account_db(),
     maybe_revise_schema(),
 
@@ -65,7 +65,7 @@ init() ->
 init_master_account_db() ->
     case whapps_util:get_master_account_db() of
         {'ok', MasterAccountDb} ->
-            _ = couch_mgr:revise_doc_from_file(MasterAccountDb
+            _ = kz_datamgr:revise_doc_from_file(MasterAccountDb
                                                ,'webhooks'
                                                ,<<"webhooks.json">>
                                               ),
@@ -93,7 +93,7 @@ maybe_revise_schema(SchemaJObj) ->
     end.
 
 maybe_revise_schema(SchemaJObj, MasterDb) ->
-    case couch_mgr:get_results(MasterDb, ?AVAILABLE_HOOKS) of
+    case kz_datamgr:get_results(MasterDb, ?AVAILABLE_HOOKS) of
         {'ok', []} ->
             lager:warning("no hooks are registered; have you started the webhooks app?");
         {'error', _E} ->
@@ -105,7 +105,7 @@ maybe_revise_schema(SchemaJObj, MasterDb) ->
 -spec revise_schema(wh_json:object(), ne_binaries()) -> 'ok'.
 revise_schema(SchemaJObj, HookNames) ->
     Updated = wh_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
-    case couch_mgr:save_doc(?WH_SCHEMA_DB, Updated) of
+    case kz_datamgr:save_doc(?WH_SCHEMA_DB, Updated) of
         {'ok', _} -> lager:info("added hooks enum to schema: ~p", [HookNames]);
         {'error', _E} -> lager:warning("failed to add hooks enum to schema: ~p", [_E])
     end.
@@ -272,9 +272,9 @@ delete_account_webhooks(AccountId) ->
     end.
 
 -spec fetch_account_hooks(ne_binary()) ->
-                                 couch_mgr:get_results_return().
+                                 kz_datamgr:get_results_return().
 fetch_account_hooks(AccountId) ->
-    couch_mgr:get_results(?KZ_WEBHOOKS_DB
+    kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                           ,<<"webhooks/accounts_listing">>
                           ,[{'key', AccountId}
                             ,{'reduce', 'false'}
@@ -284,7 +284,7 @@ fetch_account_hooks(AccountId) ->
 
 -spec delete_account_hooks(wh_json:objects()) -> any().
 delete_account_hooks(ViewJObjs) ->
-    couch_mgr:del_docs(?KZ_WEBHOOKS_DB
+    kz_datamgr:del_docs(?KZ_WEBHOOKS_DB
                        ,[wh_json:get_value(<<"doc">>, ViewJObj)
                          || ViewJObj <- ViewJObjs
                         ]
@@ -618,7 +618,7 @@ cleanup(_SystemDb) -> 'ok'.
 
 -spec cleanup_orphaned_hooks() -> 'ok'.
 cleanup_orphaned_hooks() ->
-    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+    case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
                                ,['group']
                               )
@@ -639,7 +639,7 @@ cleanup_orphaned_hooks(Accounts) ->
            || Account <- Accounts,
               begin
                   AccountId = wh_json:get_value(<<"key">>, Account),
-                  not couch_mgr:db_exists(wh_util:format_account_id(AccountId, 'encoded'))
+                  not kz_datamgr:db_exists(wh_util:format_account_id(AccountId, 'encoded'))
               end
           ],
     _Rm =/= []

@@ -100,7 +100,7 @@ cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
                 ,{'limit', couch_util:max_bulk_insert()}
                 ,'include_docs'
                ],
-    case couch_mgr:get_results(Db, <<"port_requests/listing_by_modified">>, ViewOpts) of
+    case kz_datamgr:get_results(Db, <<"port_requests/listing_by_modified">>, ViewOpts) of
         {'ok', []} -> lager:debug("no port requests older than ~p", [ModifiedBefore]);
         {'ok', OldPortReqeusts} -> cleanup(Db, OldPortReqeusts);
         {'error', _E} -> lager:debug("failed to query old port requests: ~p", [_E])
@@ -115,7 +115,7 @@ cleanup(Db, OldPortRequests) ->
                     should_delete_port_request(wh_json:get_value(<<"key">>, OldPortRequest))
                 ],
     lager:debug("found ~p deletable", [length(Deletable)]),
-    couch_mgr:del_docs(Db, Deletable),
+    kz_datamgr:del_docs(Db, Deletable),
     'ok'.
 
 -spec should_delete_port_request([pos_integer() | ne_binary(),...]) -> boolean().
@@ -483,7 +483,7 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
         _AttachmentMeta ->
             lager:debug("deleting old attachment ~s", [AttachmentId]),
-            couch_mgr:delete_attachment(cb_context:account_db(Context), Id, AttachmentId)
+            kz_datamgr:delete_attachment(cb_context:account_db(Context), Id, AttachmentId)
     end,
     crossbar_doc:save_attachment(Id
                                  ,AttachmentId
@@ -830,7 +830,7 @@ normalize_summary_results(Context) ->
 
 -spec get_account_names(ne_binaries()) -> wh_proplist().
 get_account_names(Keys) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?ACCOUNTS_BY_SIMPLE_ID, Keys) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, ?ACCOUNTS_BY_SIMPLE_ID, Keys) of
         {'ok', JObjs} ->
             [{wh_json:get_value(<<"id">>, JObj)
               ,wh_json:get_value([<<"value">>, <<"name">>], JObj)
@@ -891,7 +891,7 @@ build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
     ViewOptions = [{'startkey', [AccountId]}
                    ,{'endkey', [AccountId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(
+    case kz_datamgr:get_results(
            ?WH_ACCOUNTS_DB
            ,?AGG_VIEW_DESCENDANTS
            ,ViewOptions
@@ -1060,7 +1060,7 @@ check_number_portability(PortId, Number, Context) ->
     E164 = wnm_util:to_e164(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
     PortOptions = [{'key', E164}],
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_REQ_NUMBERS, PortOptions) of
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_REQ_NUMBERS, PortOptions) of
         {'ok', []} -> check_number_existence(E164, Number, Context);
         {'ok', [PortReq]} ->
             check_number_portability(PortId, Number, Context, E164, PortReq);

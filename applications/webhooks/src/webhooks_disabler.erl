@@ -148,10 +148,10 @@ check_failure(AccountId, HookId, Count) ->
 
 -spec disable_hook(ne_binary(), ne_binary()) -> 'ok'.
 disable_hook(AccountId, HookId) ->
-    case couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId) of
+    case kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId) of
         {'ok', HookJObj} ->
             Disabled = kzd_webhook:disable(HookJObj, <<"too many failed attempts">>),
-            _ = couch_mgr:ensure_saved(?KZ_WEBHOOKS_DB, Disabled),
+            _ = kz_datamgr:ensure_saved(?KZ_WEBHOOKS_DB, Disabled),
             filter_cache(AccountId, HookId),
             send_notification(AccountId, HookId),
             lager:debug("auto-disabled and saved hook ~s/~s", [AccountId, HookId]);

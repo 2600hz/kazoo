@@ -300,7 +300,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
             %% caller is the owner, and the pin is not required then we skip requesting the pin
             ViewOptions = [{'key', BoxNum}],
             AccountDb = whapps_call:account_db(Call),
-            case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+            case kz_datamgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
                 {'ok', []} ->
                     lager:info("mailbox ~s doesnt exist", [Mailbox]),
                     find_mailbox(Box, Call, Loop + 1);
@@ -1037,7 +1037,7 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id='undef
     MediaId = recording_media_doc(<<"unavailable greeting">>, Box, Call),
     record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id=MediaId}, Call);
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), MediaId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), MediaId) of
         {'ok', JObj} -> check_media_source(AttachmentName, Box, Call, JObj);
         _ -> overwrite_unavailable_greeting(AttachmentName, Box, Call)
     end.
@@ -1166,7 +1166,7 @@ change_pin(#mailbox{mailbox_id=Id
 
         AccountDb = whapps_call:account_db(Call),
 
-        {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, Id),
+        {'ok', JObj} = kz_datamgr:open_cache_doc(AccountDb, Id),
 
         case validate_box_schema(wh_json:set_value(<<"pin">>, Pin, JObj)) of
             {'ok', PublicJObj} ->
@@ -1174,7 +1174,7 @@ change_pin(#mailbox{mailbox_id=Id
 
                 JObj1 = wh_json:merge_jobjs(PrivJObj, PublicJObj),
 
-                {'ok', _} = couch_mgr:save_doc(AccountDb, JObj1),
+                {'ok', _} = kz_datamgr:save_doc(AccountDb, JObj1),
                 {'ok', _} = whapps_call_command:b_prompt(<<"vm-pin_set">>, Call),
                 lager:info("updated mailbox pin number"),
                 Box;
@@ -1269,7 +1269,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, Call) ->
             system_report(Msg, whapps_call:exec(Funs, Call1));
         'false' ->
             lager:warning("failed to store media: ~p", [MediaId]),
-            couch_mgr:del_doc(whapps_call:account_db(Call), MediaId)
+            kz_datamgr:del_doc(whapps_call:account_db(Call), MediaId)
     end.
 
 -spec system_report(text(), whapps_call:call()) -> 'ok'.
@@ -1384,7 +1384,7 @@ maybe_save_meta(Length, #mailbox{after_notify_action=Action}=Box, Call, MediaId,
             case Action of
                 'delete' ->
                     lager:debug("attachment was sent out via notification, deleteing media file"),
-                    {'ok', _} = couch_mgr:del_doc(whapps_call:account_db(Call), MediaId);
+                    {'ok', _} = kz_datamgr:del_doc(whapps_call:account_db(Call), MediaId);
                 'save' ->
                     lager:debug("attachment was sent out via notification, saving media file"),
                     update_folder(?VM_FOLDER_SAVED, MediaId, Box, Call)
@@ -1407,7 +1407,7 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
 -spec create_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), gregorian_seconds()) ->
                                     wh_json:object().
 create_metadata_object(Length, Call, MediaId, Timestamp) ->
-    ExternalMediaUrl = case couch_mgr:open_doc(whapps_call:account_db(Call), MediaId) of
+    ExternalMediaUrl = case kz_datamgr:open_doc(whapps_call:account_db(Call), MediaId) of
                            {'ok', JObj} -> wh_json:get_value(<<"external_media_url">>, JObj);
                            {'error', _} -> 'undefined'
                        end,
@@ -1451,13 +1451,13 @@ publish_voicemail_saved(Length, Id, Call, MediaId, Timestamp) ->
                               api_object().
 maybe_transcribe(Call, MediaId, 'true') ->
     Db = whapps_call:account_db(Call),
-    {'ok', MediaDoc} = couch_mgr:open_doc(Db, MediaId),
+    {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
     case wh_doc:attachment_names(MediaDoc) of
         [] ->
             lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
             'undefined';
         [AttachmentId|_] ->
-            case couch_mgr:fetch_attachment(Db, MediaId, AttachmentId) of
+            case kz_datamgr:fetch_attachment(Db, MediaId, AttachmentId) of
                 {'ok', Bin} ->
                     lager:info("transcribing first attachment ~s", [AttachmentId]),
                     maybe_transcribe(Db, MediaDoc, Bin, wh_doc:attachment_content_type(MediaDoc, AttachmentId));
@@ -1477,7 +1477,7 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
         {'ok', Resp} ->
             lager:info("transcription resp: ~p", [Resp]),
             MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
-            _ = couch_mgr:ensure_saved(Db, MediaDoc1),
+            _ = kz_datamgr:ensure_saved(Db, MediaDoc1),
             is_valid_transcription(wh_json:get_value(<<"result">>, Resp)
                                    ,wh_json:get_value(<<"text">>, Resp)
                                    ,Resp
@@ -1503,14 +1503,14 @@ is_valid_transcription(_Res, _Txt, _) ->
                            {'ok', wh_json:object()} |
                            {'error', atom()}.
 save_metadata(NewMessage, Db, Id) ->
-    {'ok', JObj} = couch_mgr:open_doc(Db, Id),
+    {'ok', JObj} = kz_datamgr:open_doc(Db, Id),
     Messages = wh_json:get_value([?VM_KEY_MESSAGES], JObj, []),
     case has_message_meta(wh_json:get_value(<<"call_id">>, NewMessage), Messages) of
         'true' ->
             lager:info("message meta already exists in VM Messages"),
             {'ok', JObj};
         'false' ->
-            case couch_mgr:save_doc(Db, wh_json:set_value([?VM_KEY_MESSAGES], [NewMessage | Messages], JObj)) of
+            case kz_datamgr:save_doc(Db, wh_json:set_value([?VM_KEY_MESSAGES], [NewMessage | Messages], JObj)) of
                 {'error', 'conflict'} ->
                     lager:info("saving resulted in a conflict, trying again"),
                     save_metadata(NewMessage, Db, Id);
@@ -1652,7 +1652,7 @@ owner_info(_AccountDb, MailboxJObj, 'undefined') ->
      ,'undefined'
     };
 owner_info(AccountDb, MailboxJObj, OwnerId) ->
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+    case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', OwnerJObj} ->
             {wh_json:find(?RECORDED_NAME_KEY, [OwnerJObj, MailboxJObj]), OwnerId};
         {'error', 'not_found'} ->
@@ -1705,11 +1705,11 @@ get_mailbox_doc(Db, Id, Data, Call) ->
     case wh_util:is_empty(Id) of
         'false' ->
             lager:info("opening ~s", [Id]),
-            couch_mgr:open_doc(Db, Id);
+            kz_datamgr:open_doc(Db, Id);
         'true' when not CGIsEmpty ->
             lager:info("capture group not empty: ~s", [CaptureGroup]),
             Opts = [{'key', CaptureGroup}, 'include_docs'],
-            case couch_mgr:get_results(Db, <<"cf_attributes/mailbox_number">>, Opts) of
+            case kz_datamgr:get_results(Db, <<"cf_attributes/mailbox_number">>, Opts) of
                 {'ok', []} -> {'error', 'not_found'};
                 {'ok', [JObj|_]} -> {'ok', wh_json:get_value(<<"doc">>, JObj, wh_json:new())};
                 Else -> Else
@@ -1729,7 +1729,7 @@ get_user_mailbox_doc(Data, Call) ->
 
 get_user_mailbox_doc(Data, Call, 'undefined') ->
     DeviceId = whapps_call:authorizing_id(Call),
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), DeviceId) of
+    case kz_datamgr:open_cache_doc(whapps_call:account_db(Call), DeviceId) of
         {'ok', DeviceJObj} ->
             case wh_json:get_value(<<"owner_id">>, DeviceJObj) of
                 'undefined' ->
@@ -1872,7 +1872,7 @@ check_attachment_length(AttachmentName, DocId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     MinLength = min_recording_length(Call),
 
-    case couch_mgr:open_doc(AccountDb, DocId) of
+    case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             case wh_doc:attachment_length(JObj, AttachmentName) of
                 'undefined' ->
@@ -1989,7 +1989,7 @@ min_recording_length(Call) ->
 -spec get_new_attachment_url(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    _ = case couch_mgr:open_doc(AccountDb, MediaId) of
+    _ = case kz_datamgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
                 maybe_remove_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
@@ -2002,7 +2002,7 @@ maybe_remove_attachments(AccountDb, MediaId, JObj) ->
     case wh_doc:maybe_remove_attachments(JObj) of
         {'false', _} -> 'ok';
         {'true', Removed} ->
-            couch_mgr:save_doc(AccountDb, Removed),
+            kz_datamgr:save_doc(AccountDb, Removed),
             lager:debug("doc ~s has existing attachments, removing", [MediaId])
     end.
 
@@ -2058,7 +2058,7 @@ message_media_doc(Db
                ,{<<"external_media_url">>, ?MAILBOX_DEFAULT_STORAGE}
               ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"private_media">>}]),
-    {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
+    {'ok', JObj} = kz_datamgr:save_doc(Db, Doc),
     wh_doc:id(JObj).
 
 %%--------------------------------------------------------------------
@@ -2083,7 +2083,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
                ,{<<"streamable">>, 'true'}
               ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
-    {'ok', JObj} = couch_mgr:save_doc(AccountDb, Doc),
+    {'ok', JObj} = kz_datamgr:save_doc(AccountDb, Doc),
     wh_doc:id(JObj).
 
 
@@ -2095,7 +2095,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
 -spec get_messages(mailbox(), whapps_call:call()) -> wh_json:objects().
 get_messages(#mailbox{mailbox_id=Id}, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, Id) of
+    case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', JObj} -> wh_json:get_value(?VM_KEY_MESSAGES, JObj, []);
         _ -> []
     end.
@@ -2176,12 +2176,12 @@ update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, Call) ->
     AccountDb = whapps_call:account_db(Call),
     Folder =:= ?VM_FOLDER_DELETED andalso
         update_doc(<<"pvt_deleted">>, 'true', MediaId, AccountDb),
-    case couch_mgr:open_doc(AccountDb, Id) of
+    case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', JObj} ->
             Messages = [update_folder1(Message, Folder, MediaId, wh_json:get_value(?KEY_MEDIA_ID, Message))
                         || Message <- wh_json:get_value(?VM_KEY_MESSAGES, JObj, [])
                        ],
-            case couch_mgr:save_doc(AccountDb, wh_json:set_value(?VM_KEY_MESSAGES, Messages, JObj)) of
+            case kz_datamgr:save_doc(AccountDb, wh_json:set_value(?VM_KEY_MESSAGES, Messages, JObj)) of
                 {'error', 'conflict'} ->
                     update_folder(Folder, MediaId, Mailbox, Call);
                 {'ok', _}=OK ->
@@ -2217,9 +2217,9 @@ update_folder1(Message, _, _, _) ->
 update_doc(Key, Value, #mailbox{mailbox_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
 update_doc(Key, Value, Id, ?NE_BINARY = Db) ->
-    case couch_mgr:open_doc(Db, Id) of
+    case kz_datamgr:open_doc(Db, Id) of
         {'ok', JObj} ->
-            case couch_mgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
+            case kz_datamgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
                 {'error', 'conflict'} ->
                     update_doc(Key, Value, Id, Db);
                 {'ok', _} -> 'ok';

@@ -85,7 +85,7 @@ maybe_get_doc(_, 'undefined') ->
 maybe_get_doc('undefined', _) ->
     {'error', 'no_account_db'};
 maybe_get_doc(AccountDb, Id) ->
-    couch_mgr:open_doc(AccountDb, Id).
+    kz_datamgr:open_doc(AccountDb, Id).
 
 -spec maybe_execute_action(call_waiting(), whapps_call:call()) -> 'ok' | 'error'.
 maybe_execute_action(#call_waiting{action = Action}=CW, Call) ->
@@ -123,7 +123,7 @@ maybe_update_doc(Enabled
                  ,Retries
                 ) ->
     Updated = wh_json:set_value([<<"call_waiting">>, <<"enabled">>], Enabled, JObj),
-    case couch_mgr:save_doc(AccountDb, Updated) of
+    case kz_datamgr:save_doc(AccountDb, Updated) of
         {'ok', _} ->
             lager:info("call_waiting.enabled set to ~s on ~s ~s"
                        ,[Enabled, wh_doc:type(JObj), wh_doc:id(JObj)]
@@ -149,7 +149,7 @@ retry_update_doc(Enabled
                                }=CW
                  ,Retries
                 ) ->
-    case couch_mgr:open_doc(AccountDb, wh_doc:id(JObj)) of
+    case kz_datamgr:open_doc(AccountDb, wh_doc:id(JObj)) of
         {'ok', NewJObj} ->
             maybe_update_doc(Enabled, CW#call_waiting{jobj = NewJObj}, Retries+1);
         {'error', _R} ->

@@ -54,7 +54,7 @@ init_master_account_db() ->
     end.
 
 init_master_account_db(MasterAccountDb) ->
-    _ = couch_mgr:revise_doc_from_file(MasterAccountDb
+    _ = kz_datamgr:revise_doc_from_file(MasterAccountDb
                                       ,'webhooks'
                                       ,<<"webhooks.json">>
                                       ),

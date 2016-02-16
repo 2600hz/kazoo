@@ -87,7 +87,7 @@ find_conference(Call) ->
 find_conference(_Call, 'undefined') -> {'error', 'realm_unknown'};
 find_conference(Call, AccountDb) ->
     ConferenceId = whapps_call:to_user(Call),
-    case couch_mgr:open_cache_doc(AccountDb, ConferenceId) of
+    case kz_datamgr:open_cache_doc(AccountDb, ConferenceId) of
         {'ok', JObj} ->
             <<"conference">> = wh_doc:type(JObj),
             {'ok', whapps_conference:from_conference_doc(JObj)};

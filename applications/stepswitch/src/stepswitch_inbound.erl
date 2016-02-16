@@ -314,7 +314,7 @@ get_blacklist(AccountId, Blacklists) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     lists:foldl(
         fun(BlacklistId, Acc) ->
-            case couch_mgr:open_cache_doc(AccountDb, BlacklistId) of
+            case kz_datamgr:open_cache_doc(AccountDb, BlacklistId) of
                 {'error', _R} ->
                     lager:error("could not open ~s in ~s: ~p", [BlacklistId, AccountDb, _R]),
                     Acc;

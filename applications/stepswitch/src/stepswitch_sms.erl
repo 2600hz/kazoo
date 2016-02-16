@@ -498,7 +498,7 @@ emergency_cid_number(OffnetReq) ->
                  ],
     Requested = stepswitch_bridge:bridge_emergency_cid_number(OffnetReq),
     lager:debug("ensuring requested CID is emergency enabled: ~s", [Requested]),
-    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', PhoneNumbers} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
             EmergencyEnabled = [Number

@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(wh_change_handler).
 
--behaviour(wh_gen_changes).
+-behaviour(gen_changes).
 
 -export([start_link/2]).
 -export([stop/1]).

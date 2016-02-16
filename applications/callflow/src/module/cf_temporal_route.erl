@@ -150,7 +150,7 @@ get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Rules) when is_binary(T
                                 rules().
 get_temporal_rules([], _, _, _, _, _, Rules) -> lists:reverse(Rules);
 get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
-    case couch_mgr:open_cache_doc(AccountDb, Route) of
+    case kz_datamgr:open_cache_doc(AccountDb, Route) of
         {'error', _R} ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
             get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
@@ -253,7 +253,7 @@ get_temporal_route(JObj, Call) ->
 get_rule_set(RuleSetId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     lager:info("loading temporal rule set ~s", [RuleSetId]),
-    case couch_mgr:open_cache_doc(AccountDb, RuleSetId) of
+    case kz_datamgr:open_cache_doc(AccountDb, RuleSetId) of
         {'error', _E} ->
             lager:error("failed to load ~s in ~s", [RuleSetId, AccountDb]),
             [];
@@ -327,8 +327,8 @@ disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, []
 disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),
-        {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
-        case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, 'false', JObj)) of
+        {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
+        case kz_datamgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, 'false', JObj)) of
             {'ok', _} ->
                 lager:info("set temporal rule ~s to disabled", [Id]),
                 disable_temporal_rules(Temporal, T, Call);
@@ -359,8 +359,8 @@ reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) 
 reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),
-        {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
-        case couch_mgr:save_doc(AccountDb, wh_json:delete_key(<<"enabled">>, JObj)) of
+        {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
+        case kz_datamgr:save_doc(AccountDb, wh_json:delete_key(<<"enabled">>, JObj)) of
             {'ok', _} ->
                 lager:info("reset temporal rule ~s", [Id]),
                 reset_temporal_rules(Temporal, T, Call);
@@ -391,8 +391,8 @@ enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], C
 enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),
-        {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
-        case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, 'true', JObj)) of
+        {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
+        case kz_datamgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, 'true', JObj)) of
             {'ok', _} ->
                 lager:info("set temporal rule ~s to enabled active", [Id]),
                 enable_temporal_rules(Temporal, T, Call);

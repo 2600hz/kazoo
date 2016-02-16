@@ -77,7 +77,7 @@ handle_config(JObj, Srv, ?DOC_EDITED) ->
     case wapi_conf:get_id(JObj) of
         'undefined' -> find_and_update_hook(JObj, Srv);
         HookId ->
-            {'ok', Hook} = couch_mgr:open_doc(?KZ_WEBHOOKS_DB, HookId),
+            {'ok', Hook} = kz_datamgr:open_doc(?KZ_WEBHOOKS_DB, HookId),
             case (not wapi_conf:get_is_soft_deleted(JObj))
                 andalso kzd_webhook:is_enabled(Hook)
 
@@ -125,7 +125,7 @@ find_and_remove_hook(JObj, Srv) ->
                        {'ok', wh_json:object()} |
                        {'error', any()}.
 find_hook(JObj) ->
-    couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB
+    kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB
                              ,wapi_conf:get_id(JObj)
                             ).
 

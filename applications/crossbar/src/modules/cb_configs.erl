@@ -154,7 +154,7 @@ delete(Context, _) ->
 -spec create(ne_binary(), cb_context:context()) -> cb_context:context().
 create(Config, Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    case couch_mgr:lookup_doc_rev(cb_context:account_db(Context), Id) of
+    case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), Id) of
         {'ok', _} -> cb_context:add_system_error('datastore_conflict', Context);
         {'error', _} ->
             JObj = wh_doc:set_id(cb_context:req_data(Context), Id),

@@ -34,7 +34,7 @@ attempt_group(Data, Call) ->
     GroupId = wh_doc:id(Data),
     AccountId = whapps_call:account_id(Call),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, GroupId) of
+    case kz_datamgr:open_cache_doc(AccountDb, GroupId) of
         {'ok', JObj} -> attempt_endpoints(JObj, Data, Call);
         {'error', _R} ->
             lager:debug("unable to open group document ~s in ~s", [GroupId, AccountId]),

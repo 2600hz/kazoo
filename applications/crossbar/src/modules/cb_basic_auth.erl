@@ -118,7 +118,7 @@ check_credentials(Context, AccountId, Credentials, BasicType) ->
 get_credential_doc(AccountId, View, Key) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Options = [{'key', Key}, 'include_docs'],
-    case couch_mgr:get_results(AccountDb, View, Options) of
+    case kz_datamgr:get_results(AccountDb, View, Options) of
         {'ok', [JObj]} -> wh_json:get_value(<<"doc">>, JObj);
         _ -> 'undefined'
     end.

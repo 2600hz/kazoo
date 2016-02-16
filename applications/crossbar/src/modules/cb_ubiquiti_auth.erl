@@ -51,7 +51,7 @@ init() ->
         _ProviderId -> lager:debug("SSO Provider Account ID: ~s", [_ProviderId])
     end,
 
-    couch_mgr:db_create(?KZ_TOKEN_DB),
+    kz_datamgr:db_create(?KZ_TOKEN_DB),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.ubiquiti_auth">>, ?MODULE, 'allowed_methods'),
@@ -178,7 +178,7 @@ maybe_add_account_information('undefined', AuthResponse) ->
     AuthResponse;
 maybe_add_account_information(UUID, AuthResponse) ->
     Options = [{'key', [?SSO_PROVIDER, UUID]}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_sso">>, Options) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_sso">>, Options) of
         {'ok', []} -> AuthResponse;
         {'ok', [AccountJObj]} ->
             AccountId = wh_json:get_value(<<"account_id">>, AccountJObj),

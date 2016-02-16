@@ -108,7 +108,7 @@ lookup_did(DID, AccountId) ->
         {'error', 'not_found'} ->
             Options = [{'key', DID}],
             CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(DID), DID}, {'type', <<"number">>}]}],
-            case couch_mgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
+            case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
                 {'ok', []} ->
                     lager:info("cache miss for ~s, no results", [DID]),
                     {'error', 'no_did_found'};
@@ -185,7 +185,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                                 ,wh_util:to_lower_binary(Name)
                                ]
                        }],
-            case couch_mgr:get_results(AccountDb, <<"trunkstore/LookUpUserFlags">>, Options) of
+            case kz_datamgr:get_results(AccountDb, <<"trunkstore/LookUpUserFlags">>, Options) of
                 {'error', _}=E ->
                     lager:info("cache miss for ~s@~s, err: ~p", [Name, Realm, E]),
                     E;

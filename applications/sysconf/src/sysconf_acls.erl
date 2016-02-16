@@ -71,7 +71,7 @@ system_config_acls(Node) ->
 -spec sip_auth_ips(pid()) -> 'ok'.
 sip_auth_ips(Collector) ->
     ViewOptions = [],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to get view results for sip_auth resources: ~p", [_R]);
         {'ok', JObjs} ->
@@ -151,7 +151,7 @@ handle_sip_auth_result(Collector, JObj, IPs) ->
 -spec local_resources(pid()) -> 'ok'.
 local_resources(Collector) ->
     ViewOptions = ['include_docs'],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_SIP_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to get view results for local resources: ~p", [_R]);
         {'ok', JObjs} ->
@@ -161,7 +161,7 @@ local_resources(Collector) ->
 -spec offnet_resources(pid()) -> 'ok'.
 offnet_resources(Collector) ->
     ViewOptions = ['include_docs'],
-    case couch_mgr:get_results(?WH_OFFNET_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_OFFNET_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
         {'error', _R} ->
             lager:debug("Unable to get view results for offnet resources: ~p", [_R]);
         {'ok', JObjs} ->

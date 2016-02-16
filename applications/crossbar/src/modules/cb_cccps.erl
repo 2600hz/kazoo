@@ -44,17 +44,17 @@ init() ->
 
 -spec maybe_init_db() -> 'ok'.
 maybe_init_db() ->
-    case couch_mgr:db_exists(<<"cccps">>) of
+    case kz_datamgr:db_exists(<<"cccps">>) of
         'true' ->
-             _ = couch_mgr:revise_doc_from_file(<<"cccps">>, 'crossbar', <<"views/cccps.json">>),
+             _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, 'crossbar', <<"views/cccps.json">>),
             'ok';
         'false' -> init_db()
     end.
 
 -spec init_db() -> 'ok'.
 init_db() ->
-    couch_mgr:db_create(<<"cccps">>),
-    _ = couch_mgr:revise_doc_from_file(<<"cccps">>, 'crossbar', <<"views/cccps.json">>),
+    kz_datamgr:db_create(<<"cccps">>),
+    _ = kz_datamgr:revise_doc_from_file(<<"cccps">>, 'crossbar', <<"views/cccps.json">>),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -141,7 +141,7 @@ validate_cccp(Context, Id, ?HTTP_DELETE) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Context2 = crossbar_doc:save(Context),
-    couch_mgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
+    kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
     Context2.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -158,7 +158,7 @@ put(Context, ?AUTODIAL) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     Context2 = crossbar_doc:save(Context),
-    couch_mgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
+    kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
     Context2.
 
 %%--------------------------------------------------------------------
@@ -172,7 +172,7 @@ delete(Context, _) ->
     Context2 = crossbar_doc:delete(Context),
     case cb_context:resp_status(Context2) of
         'success' ->
-            _ = couch_mgr:del_doc(?KZ_CCCPS_DB, wh_doc:id(cb_context:doc(Context2))),
+            _ = kz_datamgr:del_doc(?KZ_CCCPS_DB, wh_doc:id(cb_context:doc(Context2))),
             Context2;
         _ ->
             Context2

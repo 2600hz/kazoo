@@ -56,7 +56,7 @@ init({'ssl', 'http'}, _Req, _Opts) ->
                        {'ok', cowboy_req:req(), cb_context:context()}.
 rest_init(Req0, Opts) ->
     ReqId = case cowboy_req:header(<<"x-request-id">>, Req0) of
-                {'undefined', _} -> couch_mgr:get_uuid();
+                {'undefined', _} -> kz_datamgr:get_uuid();
                 {UserReqId, _} -> wh_util:to_binary(UserReqId)
             end,
     wh_util:put_callid(ReqId),

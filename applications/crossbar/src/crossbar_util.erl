@@ -360,7 +360,7 @@ get_account_doc(<<_/binary>> = Id) ->
                    ).
 
 get_account_doc(<<_/binary>> = Db, <<_/binary>> = Id) ->
-    case couch_mgr:open_cache_doc(Db, Id) of
+    case kz_datamgr:open_cache_doc(Db, Id) of
         {'ok', JObj} -> JObj;
         {'error', R} ->
             lager:warning("error while looking up account realm: ~p", [R]),
@@ -466,7 +466,7 @@ move_account(AccountId, JObj, ToTree) ->
                                 ,{<<"pvt_previous_tree">>, PreviousTree}
                                 ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                ], JObj),
-    case couch_mgr:save_doc(AccountDb, JObj1) of
+    case kz_datamgr:save_doc(AccountDb, JObj1) of
         {'error', _E}=Error -> Error;
         {'ok', _} ->
             {'ok', _} = replicate_account_definition(JObj1),
@@ -512,7 +512,7 @@ update_descendants_tree([], _) -> {'ok', 'done'};
 update_descendants_tree([Descendant|Descendants], Tree) ->
     AccountId = wh_util:format_account_id(Descendant, 'raw'),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
             PreviousTree = kz_account:tree(JObj),
@@ -522,7 +522,7 @@ update_descendants_tree([Descendant|Descendants], Tree) ->
                                         ,{<<"pvt_previous_tree">>, PreviousTree}
                                         ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                        ], JObj),
-            case couch_mgr:save_doc(AccountDb, JObj1) of
+            case kz_datamgr:save_doc(AccountDb, JObj1) of
                 {'error', _E}=Error -> Error;
                 {'ok', _} ->
                     {'ok', _} = replicate_account_definition(JObj1),
@@ -540,7 +540,7 @@ update_descendants_tree([Descendant|Descendants], Tree) ->
                           {'ok', wh_json:object()} |
                           {'error', any()}.
 move_service(AccountId, NewTree, Dirty) ->
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
             move_service_doc(NewTree, Dirty, JObj)
@@ -556,7 +556,7 @@ move_service_doc(NewTree, Dirty, JObj) ->
                                     ,{<<"pvt_previous_tree">>, PreviousTree}
                                     ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                    ]),
-    case couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values(Props, JObj)) of
+    case kz_datamgr:save_doc(?WH_SERVICES_DB, wh_json:set_values(Props, JObj)) of
         {'error', _E}=Error -> Error;
         {'ok', _R}=Ok -> Ok
     end.
@@ -572,7 +572,7 @@ get_descendants(<<_/binary>> = AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
                    ,{'endkey', [AccountId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
             lists:foldl(fun(JObj, Acc) -> filter_by_account_id(JObj, Acc, AccountId) end
                         ,[]
@@ -592,12 +592,12 @@ filter_by_account_id(JObj, Acc, AccountId) ->
 
 -spec mark_dirty(ne_binary() | wh_json:object()) -> wh_std_return().
 mark_dirty(AccountId) when is_binary(AccountId) ->
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _}=E -> E;
         {'ok', JObj} -> mark_dirty(JObj)
     end;
 mark_dirty(JObj) ->
-    couch_mgr:save_doc(?WH_SERVICES_DB
+    kz_datamgr:save_doc(?WH_SERVICES_DB
                        ,wh_json:set_values([{<<"pvt_dirty">>, 'true'}
                                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                            ], JObj
@@ -629,9 +629,9 @@ get_tree(<<_/binary>> = Account) ->
                                           {'error', any()}.
 replicate_account_definition(JObj) ->
     AccountId = wh_doc:id(JObj),
-    case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
-        {'ok', Rev} -> couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
-        _Else       -> couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
+    case kz_datamgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', Rev} -> kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj, Rev));
+        _Else       -> kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -646,7 +646,7 @@ disable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}
                    ,{<<"endkey">>, [AccountId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
             _ = [change_pvt_enabled('false', wh_doc:id(JObj)) || JObj <- JObjs],
             'ok';
@@ -667,7 +667,7 @@ enable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}
                    ,{<<"endkey">>, [AccountId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
             _ = [change_pvt_enabled('true', wh_doc:id(JObj)) || JObj <- JObjs],
             'ok';
@@ -785,14 +785,14 @@ change_pvt_enabled(_, 'undefined') -> 'ok';
 change_pvt_enabled(State, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     try
-        {'ok', JObj1} = couch_mgr:open_doc(AccountDb, AccountId),
+        {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, AccountId),
         lager:debug("set pvt_enabled to ~s on account ~s", [State, AccountId]),
-        {'ok', JObj2} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_enabled">>, State, JObj1)),
-        case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', JObj2} = kz_datamgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_enabled">>, State, JObj1)),
+        case kz_datamgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
             {'ok', Rev} ->
-                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj2, Rev));
+                kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:set_revision(JObj2, Rev));
             _Else ->
-                couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj2))
+                kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, wh_doc:delete_revision(JObj2))
         end
     catch
         _:R ->
@@ -832,7 +832,7 @@ get_language(AccountId, UserId) ->
 -spec get_user_lang(ne_binary(), ne_binary()) -> 'error' | {'ok', ne_binary()}.
 get_user_lang(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', JObj} ->
             case wh_json:get_value(<<"language">>, JObj) of
                 'undefined' -> 'error';
@@ -861,7 +861,7 @@ get_user_timezone(AccountId, 'undefined') ->
     get_account_timezone(AccountId);
 get_user_timezone(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+    case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} -> kzd_user:timezone(UserJObj);
         {'error', _E} -> get_account_timezone(AccountId)
     end.
@@ -947,7 +947,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                                              ,Token
                                             ),
 
-    case couch_mgr:save_doc(?KZ_TOKEN_DB, JObjToken) of
+    case kz_datamgr:save_doc(?KZ_TOKEN_DB, JObjToken) of
         {'ok', Doc} ->
             AuthToken = wh_doc:id(Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
@@ -987,7 +987,7 @@ get_priv_level(_AccountId, 'undefined') ->
                      );
 get_priv_level(AccountId, OwnerId) ->
     AccountDB = wh_util:format_account_db(AccountId),
-    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDB, OwnerId),
+    {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDB, OwnerId),
     wh_json:get_ne_value(<<"priv_level">>, Doc).
 
 -spec get_system_token_restrictions(atom()) -> api_object().
@@ -1001,7 +1001,7 @@ get_system_token_restrictions(AuthModule) ->
 -spec get_account_token_restrictions(ne_binary(), atom()) -> api_object().
 get_account_token_restrictions(AccountId, AuthModule) ->
     AccountDB = wh_util:format_account_db(AccountId),
-    case couch_mgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
+    case kz_datamgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
         {'error', _} -> 'undefined';
         {'ok', RestrictionsDoc} ->
             wh_json:get_first_defined(
@@ -1229,7 +1229,7 @@ get_devices_by_owner(AccountDb, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"device">>]},
                    'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
@@ -1246,7 +1246,7 @@ get_devices_by_owner(AccountDb, OwnerId) ->
                                     {'ok', wh_proplist()} |
                                     {'error', any()}.
 load_descendants_count(ViewOptions) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
         {'error', _E}=Resp -> Resp;
         {'ok', []} -> {'error', 'no_descendants'};
         {'ok', JObjs} ->
@@ -1303,7 +1303,7 @@ maybe_update_descendants_count(AccountId, JObj, NewCount, _, Try) ->
 update_descendants_count(AccountId, JObj, NewCount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Doc = wh_json:set_value(<<"descendants_count">>, NewCount, JObj),
-    case couch_mgr:save_doc(AccountDb, Doc) of
+    case kz_datamgr:save_doc(AccountDb, Doc) of
         {'error', _E} -> 'error';
         {'ok', NewDoc} ->
             _ = replicate_account_definition(NewDoc),

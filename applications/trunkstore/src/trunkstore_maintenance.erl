@@ -38,7 +38,7 @@ migrate() ->
 
 i_understand_migrate() ->
     lager:info("migrating trunkstore information from the ts database"),
-    case couch_mgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, [{<<"include_docs">>, 'true'}]) of
+    case kz_datamgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, [{<<"include_docs">>, 'true'}]) of
         {'error', 'not_found'} ->
             lager:info("ts database not found or ts_account/crossbar_listing view missing");
         {'ok', TSAccts} ->
@@ -78,7 +78,7 @@ move_doc(AcctDB, AcctID, TSJObj) ->
     end.
 
 has_ts_doc(AcctDB) ->
-    case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, []) of
+    case kz_datamgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, []) of
         {'ok', []} -> 'false';
         {'ok', _} -> 'true';
         _ -> 'false'
@@ -91,7 +91,7 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
                                ,{<<"pvt_account_id">>, AcctID}
                               ], wh_json:delete_key(<<"_id">>, wh_doc:delete_revision(TSJObj))),
     lager:info("saving ts doc ~s into ~s", [wh_doc:id(TSJObj), AcctDB]),
-    {'ok', _} = couch_mgr:save_doc(AcctDB, JObj).
+    {'ok', _} = kz_datamgr:save_doc(AcctDB, JObj).
 
 create_credit_doc(AcctDB, AcctID, TSJObj) ->
     Credit = wh_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], TSJObj, 0.0),
@@ -103,11 +103,11 @@ create_credit_doc(AcctDB, AcctID, TSJObj) ->
                                      ,{<<"pvt_account_db">>, AcctDB}
                                      ,{<<"pvt_account_id">>, AcctID}
                                     ]),
-    couch_mgr:save_doc(AcctDB, Transaction).
+    kz_datamgr:save_doc(AcctDB, Transaction).
 
 account_exists_with_realm(Realm) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Realm)}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
         {'ok', []} -> 'false';
         {'ok', [AcctObj]} ->
             {'true'
@@ -119,9 +119,9 @@ account_exists_with_realm(Realm) ->
     end.
 
 create_account(Realm) ->
-    AcctID = couch_mgr:get_uuid(),
+    AcctID = kz_datamgr:get_uuid(),
     AcctDB = wh_util:format_account_id(AcctID, 'encoded'),
-    case couch_mgr:db_create(AcctDB) of
+    case kz_datamgr:db_create(AcctDB) of
         'true' ->
             lager:info("created account db: ~s", [AcctDB]),
             case create_account_doc(Realm, AcctID, AcctDB) of
@@ -149,9 +149,9 @@ create_account_doc(Realm, AcctID, AcctDB) ->
                              ,{<<"pvt_tree">>, [Default]}
                              ,{<<"_id">>, AcctID}
                             ]),
-    case couch_mgr:save_doc(AcctDB, Doc) of
+    case kz_datamgr:save_doc(AcctDB, Doc) of
         {'ok', _} ->
-            {'ok', _} = couch_mgr:save_doc(?WH_ACCOUNTS_DB, Doc);
+            {'ok', _} = kz_datamgr:save_doc(?WH_ACCOUNTS_DB, Doc);
         {'error', _E} ->
             lager:info("failed to save account doc into ~s: ~p", [AcctDB, _E]),
             'ignore'
@@ -203,7 +203,7 @@ set_classifier_action(Action, Classifier, UserR) ->
         {'true', AcctDB, AcctID} ->
             {'ok', Opts} = ts_util:lookup_user_flags(User, Realm, AcctID),
             TSDocId = wh_doc:id(Opts),
-            couch_mgr:update_doc(AcctDB, TSDocId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+            kz_datamgr:update_doc(AcctDB, TSDocId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
             io:format("Success\n");
         'false' ->
             io:format("Failed: account with realm ~p does not exist\n", [Realm])

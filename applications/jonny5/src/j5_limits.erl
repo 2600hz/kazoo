@@ -389,7 +389,7 @@ get_bundled_twoway_limit(AccountDb, JObj) ->
 
 -spec get_bundled_limit(ne_binary(), ne_binary()) -> non_neg_integer().
 get_bundled_limit(AccountDb, View) ->
-    case couch_mgr:get_results(AccountDb, View, []) of
+    case kz_datamgr:get_results(AccountDb, View, []) of
         {'ok', JObjs} -> filter_bundled_limit(JObjs);
         {'error', _R} ->
             lager:debug("failed get bundled limit from ~s in ~s: ~p"
@@ -414,7 +414,7 @@ filter_bundled_limit(JObjs) ->
 %%--------------------------------------------------------------------
 -spec get_limit_jobj(ne_binary()) -> wh_json:object().
 get_limit_jobj(AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, <<"limits">>) of
+    case kz_datamgr:open_doc(AccountDb, <<"limits">>) of
         {'ok', JObj} -> JObj;
         {'error', 'not_found'} ->
             lager:debug("limits doc in account db ~s not found", [AccountDb]),
@@ -437,7 +437,7 @@ create_limit_jobj(AccountDb) ->
               ,{<<"pvt_modified">>, TStamp}
               ,{<<"pvt_vsn">>, 1}
              ]),
-    case couch_mgr:save_doc(AccountDb, JObj) of
+    case kz_datamgr:save_doc(AccountDb, JObj) of
         {'ok', J} ->
             lager:debug("created initial limits document in db ~s", [AccountDb]),
             J;

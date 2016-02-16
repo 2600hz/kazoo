@@ -51,7 +51,7 @@ build_contacts(AccountDb) ->
 
 get_extension_contacts(AccountDb) ->
     ViewOptions = [],
-    case couch_mgr:get_results(AccountDb, <<"contact_list/extensions">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"contact_list/extensions">>, ViewOptions) of
         {error, _} -> [];
         {ok, JObjs} ->
             Includes = get_contact_list_includes(AccountDb),
@@ -79,7 +79,7 @@ get_contact_list_includes(AccountDb) ->
 
 filter_excluded(Contacts, AccountDb) ->
     ViewOptions = [],
-    case couch_mgr:get_results(AccountDb, <<"contact_list/excluded">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"contact_list/excluded">>, ViewOptions) of
         {error, _} -> Contacts;
         {ok, JObjs} ->
             Ids = [wh_doc:id(JObj) || JObj <- JObjs],
@@ -88,7 +88,7 @@ filter_excluded(Contacts, AccountDb) ->
 
 find_missing_names(Contacts, AccountDb) ->
     ViewOptions = [],
-    case couch_mgr:get_results(AccountDb, <<"contact_list/names">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"contact_list/names">>, ViewOptions) of
         {error, _} -> Contacts;
         {ok, JObjs} -> merge_results(JObjs, Contacts)
     end.

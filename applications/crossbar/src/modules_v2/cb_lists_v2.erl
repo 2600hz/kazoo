@@ -33,7 +33,7 @@
 -spec maybe_migrate(ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', Lists} -> migrate(AccountDb, Lists);
         {'error', _} -> 'ok'
@@ -51,9 +51,9 @@ migrate(AccountDb, [List | Lists]) ->
                                                  ,Entry)
                       end,
     Entries1 = lists:map(MigrateEntryFun, Entries),
-    couch_mgr:save_doc(AccountDb, Entries1),
+    kz_datamgr:save_doc(AccountDb, Entries1),
     Doc = wh_json:delete_key(<<"entries">>, wh_json:get_value(<<"doc">>, List)),
-    couch_mgr:save_doc(AccountDb, Doc),
+    kz_datamgr:save_doc(AccountDb, Doc),
     migrate(AccountDb, Lists);
 migrate(_AccountDb, []) ->
     'ok'.
@@ -201,7 +201,7 @@ delete(Context, _ListId, ?ENTRIES) ->
     Docs = [wh_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
     AccountDb = wh_util:format_account_id(cb_context:account_db(Context), 'encoded'),
     %% do we need 'soft' delete as in crossbar_doc?
-    couch_mgr:del_docs(AccountDb, Docs),
+    kz_datamgr:del_docs(AccountDb, Docs),
     Context.
 delete(Context, _ListId, ?ENTRIES, _EntryId) ->
     crossbar_doc:delete(Context).

@@ -73,7 +73,7 @@ content_types_provided(Context, PT1, PT2) ->
 
 content_types_provided(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
     Db = wh_util:format_account_id(cb_context:auth_account_id(Context), 'encoded'),
-    case couch_mgr:open_doc(Db, DocId) of
+    case kz_datamgr:open_doc(Db, DocId) of
         {'error', _} -> Context;
         {'ok', JObj} ->
             CT = wh_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>),

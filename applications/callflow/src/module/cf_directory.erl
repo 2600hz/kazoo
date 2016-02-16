@@ -107,7 +107,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    {'ok', DirJObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call)
+    {'ok', DirJObj} = kz_datamgr:open_cache_doc(whapps_call:account_db(Call)
                                                ,wh_doc:id(Data)
                                               ),
     whapps_call_command:answer(Call),
@@ -281,7 +281,7 @@ username_audio_macro(Call, User) ->
 maybe_play_media(Call, User, MediaId) ->
     AccountDb = whapps_call:account_db(Call),
 
-    case couch_mgr:open_cache_doc(AccountDb, MediaId) of
+    case kz_datamgr:open_cache_doc(AccountDb, MediaId) of
 	{'ok', Doc}    ->
 	    case wh_doc:attachments(Doc) of
 		'undefined'  -> {'tts', <<39, (full_name(User))/binary, 39>>};
@@ -341,7 +341,7 @@ save_current_users(#directory{}=State, Users) -> State#directory{curr_users=User
 %%------------------------------------------------------------------------------
 -spec callflow(whapps_call:call(), directory_user()) -> wh_json:object() | 'fail'.
 callflow(Call, #directory_user{callflow_id=CF}) ->
-    case couch_mgr:open_doc(whapps_call:account_db(Call), CF) of
+    case kz_datamgr:open_doc(whapps_call:account_db(Call), CF) of
         {'ok', JObj} -> JObj;
         {'error', _E} ->
             lager:info("failed to find callflow ~s: ~p", [CF, _E]),
@@ -364,7 +364,7 @@ get_sort_by(_) -> 'last'.
                                    {'ok', directory_users()} |
                                    {'error', any()}.
 get_directory_listing(Db, DirId) ->
-    case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{'key', DirId}, 'include_docs']) of
+    case kz_datamgr:get_results(Db, ?DIR_DOCS_VIEW, [{'key', DirId}, 'include_docs']) of
         {'ok', []} ->
             lager:info("no users have been assigned to directory ~s", [DirId]),
             %% play no users in this directory
