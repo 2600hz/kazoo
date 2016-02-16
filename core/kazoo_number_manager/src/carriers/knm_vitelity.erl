@@ -19,8 +19,8 @@
          ,is_number_billable/1
         ]).
 
--include("../knm.hrl").
--include("../knm_vitelity.hrl").
+-include("knm.hrl").
+-include("knm_vitelity.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

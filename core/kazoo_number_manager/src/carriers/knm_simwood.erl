@@ -20,7 +20,7 @@
          ,should_lookup_cnam/0
         ]).
 
--include("../knm.hrl").
+-include("knm.hrl").
 
 -define(KNM_SW_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".simwood">>).
 

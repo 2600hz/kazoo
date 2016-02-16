@@ -8,7 +8,7 @@
 -module(knm_release_number_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("../src/knm.hrl").
+-include("knm.hrl").
 
 release_number_test_() ->
     Tests = [fun release_unknown_number/1

@@ -15,7 +15,7 @@
 -export([is_valid_location/1]).
 -export([get_location/1]).
 
--include("../knm.hrl").
+-include("knm.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
