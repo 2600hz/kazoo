@@ -47,8 +47,6 @@
 -define(ATOM(X), wh_util:to_atom(X, 'true')).
 -define(SMS_POOL(A,B,C), ?ATOM(<<A/binary,"_", B/binary, "_", C/binary>>) ).
 
--define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -499,7 +497,7 @@ emergency_cid_number(OffnetReq) ->
                  ],
     Requested = stepswitch_bridge:bridge_emergency_cid_number(OffnetReq),
     lager:debug("ensuring requested CID is emergency enabled: ~s", [Requested]),
-    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', PhoneNumbers} ->
             Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
             EmergencyEnabled = [Number
@@ -508,7 +506,7 @@ emergency_cid_number(OffnetReq) ->
                                ],
             emergency_cid_number(Requested, Candidates, EmergencyEnabled);
         {'error', _R} ->
-            lager:error("unable to fetch the ~s from account ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Account, _R]),
+            lager:error("unable to fetch the ~s from account ~s: ~p", [?KNM_PHONE_NUMBERS_DOC, Account, _R]),
             emergency_cid_number(Requested, Candidates, [])
     end.
 

@@ -25,7 +25,6 @@
 
 -define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
 -define(KNM_NUMBER, <<"numbers">>).
--define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 
 -define(FIND_NUMBER_PREFIX
         ,wh_json:from_list([{<<"required">>, 'true'}
@@ -100,7 +99,7 @@ authenticate(Context) ->
     ).
 
 -spec maybe_authenticate(http_method(), req_nouns()) -> boolean().
-maybe_authenticate(?HTTP_GET, [{<<"phone_numbers">>, []}]) ->
+maybe_authenticate(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, []}]) ->
     'true';
 maybe_authenticate(_Verb, _Nouns) ->
     'false'.
@@ -120,7 +119,7 @@ authorize(Context) ->
      ).
 
 -spec maybe_authorize(req_verb(), req_nouns()) -> boolean().
-maybe_authorize(?HTTP_GET, [{<<"phone_numbers">>,[]}]) ->
+maybe_authorize(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC,[]}]) ->
     'true';
 maybe_authorize(_Verb, _Nouns) ->
     'false'.
@@ -326,7 +325,7 @@ initialize_numbers(JObj) ->
                                   wh_json:object().
 set_cascade_quantity(JObj, AccountId) ->
     Service = wh_services:fetch(AccountId),
-    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
+    Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
     wh_json:set_value(<<"cascade_quantity">>, Quantity, JObj).
 
 filter_numbers(JObj, Context) ->
@@ -537,7 +536,7 @@ base_classified(_Context, Number) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
+    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, Context),
     case cb_context:resp_error_code(Context1) of
         404 -> crossbar_util:response(wh_json:new(), Context1);
         _Code ->
@@ -662,7 +661,7 @@ handle_locality_resp(Resp) ->
                                            couch_mgr:couchbeam_error().
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
-    DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
+    DocId = wh_doc:id(cb_context:doc(Context), ?KNM_PHONE_NUMBERS_DOC),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
             J = wh_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),

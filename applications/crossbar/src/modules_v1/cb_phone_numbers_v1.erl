@@ -31,8 +31,6 @@
 
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
--define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
-
 -define(PORT_DOCS, <<"docs">>).
 -define(PORT, <<"port">>).
 -define(ACTIVATE, <<"activate">>).
@@ -86,11 +84,11 @@ populate_phone_numbers(Context) ->
     AccountDb = cb_context:account_db(Context),
     AccountId = cb_context:account_id(Context),
 
-    PVTs = [{<<"_id">>, ?WNM_PHONE_NUMBER_DOC}
+    PVTs = [{<<"_id">>, ?KNM_PHONE_NUMBERS_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
             ,{<<"pvt_account_id">>, AccountId}
             ,{<<"pvt_vsn">>, <<"1">>}
-            ,{<<"pvt_type">>, ?WNM_PHONE_NUMBER_DOC}
+            ,{<<"pvt_type">>, ?KNM_PHONE_NUMBERS_DOC}
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
             ,{<<"pvt_created">>, wh_util:current_tstamp()}
            ],
@@ -170,9 +168,9 @@ resource_exists(_, _, _) -> 'false'.
 %%--------------------------------------------------------------------
 billing(Context) ->
     billing(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
-billing(Context, ?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, _}|_]) ->
+billing(Context, ?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, _}|_]) ->
     Context;
-billing(Context, _, [{?WNM_PHONE_NUMBER_DOC, _}|_]) ->
+billing(Context, _, [{?KNM_PHONE_NUMBERS_DOC, _}|_]) ->
     try wh_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
@@ -194,7 +192,7 @@ billing(Context, _, _) ->
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authenticate(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, []}]) -> 'true'.
+authenticate(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC, []}]) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -208,7 +206,7 @@ authenticate(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC, []}]) -> 'true'.
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authorize(?HTTP_GET, [{?WNM_PHONE_NUMBER_DOC,[]}]) -> 'true'.
+authorize(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC,[]}]) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -406,7 +404,7 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
+    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, Context),
     case cb_context:resp_error_code(Context1) of
         404 -> crossbar_util:response(wh_json:new(), Context1);
         _ -> cb_context:set_resp_data(Context1, clean_summary(Context1))
@@ -429,7 +427,7 @@ clean_summary(Context) ->
                 ,fun(J) -> wh_json:set_value(<<"numbers">>, J, wh_json:new()) end
                 ,fun(J) ->
                     Service =  wh_services:fetch(AccountId),
-                    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
+                    Quantity = wh_services:cascade_category_quantity(?KNM_PHONE_NUMBERS_DOC, [], Service),
                     wh_json:set_value(<<"casquade_quantity">>, Quantity, J)
                 end
                ],
@@ -552,7 +550,7 @@ add_porting_email(Context) ->
     end.
 
 check_phone_number_schema(Context) ->
-    cb_context:validate_request_data(?WNM_PHONE_NUMBER_DOC, Context).
+    cb_context:validate_request_data(?KNM_PHONE_NUMBERS_DOC, Context).
 
 get_auth_user_email(Context) ->
     JObj = cb_context:auth_doc(Context),
@@ -750,11 +748,8 @@ do_collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
 has_tokens(Context) -> has_tokens(Context, 1).
 has_tokens(Context, Count) ->
     Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
-    case kz_buckets:consume_tokens(?APP_NAME
-                                   ,Name
-                                   ,cb_modules_util:token_cost(Context, Count)
-                                  )
-    of
+    Cost = cb_modules_util:token_cost(Context, Count),
+    case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
         'true' -> 'true';
         'false' ->
             lager:warning("rate limiting activation limit reached, rejecting"),

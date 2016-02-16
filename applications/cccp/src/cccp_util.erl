@@ -20,8 +20,6 @@
 
 -define(DEFAULT_CALLEE_REGEX, <<"^\\+?\\d{7,}$">>).
 
--define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
-
 -spec relay_amqp(wh_json:object(), wh_proplist()) -> 'ok'.
 relay_amqp(JObj, Props) ->
     case whapps_call:kvs_fetch('consumer_pid', props:get_value('call', Props)) of
@@ -92,7 +90,7 @@ legalize_outbound_cid(OutboundCID, AccountId) ->
 ensure_valid_caller_id(OutboundCID, AccountId) ->
     {'ok', AccountPhoneNumbersList} =
         kz_datamgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
-                                 ,?WNM_PHONE_NUMBER_DOC
+                                 ,?KNM_PHONE_NUMBERS_DOC
                                 ),
     case lists:member(knm_converters:normalize(OutboundCID)
                       ,wh_json:get_keys(AccountPhoneNumbersList)

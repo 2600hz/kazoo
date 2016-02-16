@@ -468,7 +468,7 @@ find_valid_emergency_number([Number|_]) ->
 -spec valid_emergency_numbers(ne_binary()) -> ne_binaries().
 valid_emergency_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', JObj} ->
             [Number
              || Number <- wh_json:get_public_keys(JObj),
