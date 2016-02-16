@@ -437,8 +437,8 @@ get_redirected(Props) ->
             case props:get_value(<<"variable_sip_redirected_by">>, Props) of
                 'undefined' -> {'undefined' , 'undefined'};
                 Contact ->
-                    [#uri{user=User,ext_opts=Opts}] = nksip_parse:uris(Contact),
-                    {User , props:get_value(<<"reason">>,Opts)}
+                    [#uri{ext_opts=Opts}=Uri] = nksip_parse:uris(Contact),
+                    {nksip_unparse:ruri(Uri#uri{ext_opts='undefined'}) , props:get_value(<<"reason">>,Opts)}
             end;
         _ -> {'undefined' , 'undefined'}
     end.
