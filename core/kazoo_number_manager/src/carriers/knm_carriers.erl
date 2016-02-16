@@ -150,12 +150,9 @@ check_for_existing_did(Number, Acc, Carrier, {'ok', ExistingPhoneNumber}) ->
 create_discovery(Number, Acc) ->
     DiscoveryUpdates =
         [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}],
-    PhoneNumber = knm_number:phone_number(Number),
-    DiscoveryNumber =
-        knm_number:set_phone_number(
-          Number
-          ,knm_phone_number:setters(PhoneNumber, DiscoveryUpdates)
-         ),
+    {'ok', PhoneNumber} =
+        knm_phone_number:setters(knm_number:phone_number(Number), DiscoveryUpdates),
+    DiscoveryNumber = knm_number:set_phone_number(Number, PhoneNumber),
     collect_if_saved(DiscoveryNumber, Acc).
 
 -spec collect_if_saved(knm_number:knm_number(), wh_json:objects()) ->
@@ -171,24 +168,21 @@ collect_if_saved(DiscoveryNumber, Acc) ->
 -spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_phone_number(), ne_binary()) ->
                                               knm_number:knm_number().
 transition_existing_to_discovery(Number, ExistingPhoneNumber, Carrier) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    knm_number:set_phone_number(
-      Number
-      ,knm_phone_number:setters(
-         ExistingPhoneNumber
-         ,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber)}
-           ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber)}
-           ,{fun knm_phone_number:set_module_name/2, Carrier}
-          ]
-        )
-     ).
+    PhoneNumber0 = knm_number:phone_number(Number),
+    {'ok', PhoneNumber} =
+        knm_phone_number:setters(
+          ExistingPhoneNumber
+          ,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
+            ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
+            ,{fun knm_phone_number:set_module_name/2, Carrier}
+           ]
+         ),
+    knm_number:set_phone_number(Number, PhoneNumber).
 
--spec check_existing_phone_number(knm_number:knm_number(), wh_json:objects(), knm_phone_number:knm_phone_number()) -> wh_json:objects().
+-spec check_existing_phone_number(knm_number:knm_number(), wh_json:objects(), knm_phone_number:knm_phone_number()) ->
+                                         wh_json:objects().
 check_existing_phone_number(Number, Acc, PhoneNumber) ->
-    case lists:member(knm_phone_number:state(PhoneNumber)
-                      ,?KNM_AVAILABLE_STATES
-                     )
-    of
+    case lists:member(knm_phone_number:state(PhoneNumber), ?KNM_AVAILABLE_STATES) of
         'true' -> [found_number_to_jobj(Number) | Acc];
         'false' -> Acc
     end.

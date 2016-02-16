@@ -245,11 +245,8 @@ response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
                ,{fun knm_phone_number:set_assign_to/2, AccountId}
               ],
-    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
-    [knm_number:set_phone_number(
-      knm_number:new()
-      ,PhoneNumber
-     )
+    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    [knm_number:set_phone_number(knm_number:new(), PhoneNumber)
      | Acc
     ].
 

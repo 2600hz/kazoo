@@ -128,19 +128,13 @@ create_or_load(Num, Props) ->
 create_or_load(Num, Props, {'error', 'not_found'}) ->
     ensure_can_create(Num, Props),
     Updates = create_updaters(Num, Props),
-
-    Number = set_phone_number(new()
-                              ,knm_phone_number:setters(knm_phone_number:new(), Updates)
-                             ),
-    create_phone_number(Number);
+    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    create_phone_number(set_phone_number(new(), PhoneNumber));
 create_or_load(Num, Props, {'ok', PhoneNumber}) ->
     ensure_can_load_to_create(PhoneNumber),
     Updates = create_updaters(Num, Props),
-    create_phone_number(
-      set_phone_number(new()
-                       ,knm_phone_number:setters(PhoneNumber, Updates)
-                      )
-     ).
+    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
+    create_phone_number(set_phone_number(new(), NewPhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
@@ -337,11 +331,6 @@ update_phone_number(Number, Routines) ->
             wrap_phone_number_return(
               knm_phone_number:save(UpdatedPhoneNumber)
               ,Number
-             );
-        UpdatedPhoneNumber ->
-            wrap_phone_number_return(
-              knm_phone_number:save(UpdatedPhoneNumber)
-              ,Number
              )
     end.
 
@@ -445,13 +434,8 @@ delete(Num, Options) ->
                            knm_number_return().
 delete_number(Number, Options) ->
     Routines = [fun knm_phone_number:release/1],
-    unwind_or_disconnect(
-      set_phone_number(
-        Number
-        ,apply_phone_number_routines(Number, Routines)
-       )
-      ,Options
-     ).
+    {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
+    unwind_or_disconnect(set_phone_number(Number, PhoneNumber), Options).
 
 -spec unwind_or_disconnect(knm_number(), knm_number_options:options()) ->
                                   knm_number_return().
@@ -585,18 +569,14 @@ buy(Num, Account, Options) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 -spec wrap_phone_number_routines(knm_number(), knm_phone_number:set_functions()) ->
                                          knm_number_return().
 wrap_phone_number_routines(Number, Routines) ->
     wrap_phone_number_return(
-      apply_phone_number_routines(Number, Routines)
+      knm_phone_number:setters(phone_number(Number), Routines)
       ,Number
      ).
-
--spec apply_phone_number_routines(knm_number(), knm_phone_number:set_functions()) ->
-                                         knm_phone_number:knm_phone_number().
-apply_phone_number_routines(Number, Routines) ->
-    knm_phone_number:setters(phone_number(Number), Routines).
 
 %%--------------------------------------------------------------------
 %% @private
