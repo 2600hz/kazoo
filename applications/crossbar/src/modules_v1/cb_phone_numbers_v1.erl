@@ -264,7 +264,7 @@ validate_2(Context, ?HTTP_DELETE, ?COLLECTION) ->
     validate_delete(Context);
 validate_2(Context, ?HTTP_GET, ?CLASSIFIERS) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
-                             ,wnm_util:available_classifiers()
+                             ,knm_converters:available_classifiers()
                             );
 validate_2(Context, ?HTTP_GET, Number) ->
     read(Number, Context);
