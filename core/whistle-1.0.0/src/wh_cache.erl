@@ -508,7 +508,7 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
            ) ->
     case expire_objects(Tab) > 0 of
         'true' ->
-            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}, 'hibernate'};
+            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
         'false' ->
             {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}}
     end;
