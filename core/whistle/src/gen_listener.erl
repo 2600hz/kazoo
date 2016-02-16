@@ -441,7 +441,6 @@ handle_call({'$client_call', Request}, From, State) ->
 handle_call({'add_binding', _Binding, _Props}=AddBinding, _From, State) ->
     case handle_cast(AddBinding, State) of
         {'noreply', State1} -> {'reply', 'ok', State1};
-        {'noreply', State1, Timeout} -> {'reply', 'ok', State1, Timeout};
         {'stop', _Reason, _State1}=Stop -> Stop
     end;
 handle_call(Request, From, State) ->
