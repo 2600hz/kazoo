@@ -32,19 +32,19 @@ fetch(Numbers) when is_list(Numbers)->
             handle_resp(Resp)
     end.
 
--spec fetch_req(ne_binaries(), ne_binary()) -> ibrowse_ret().
+-spec fetch_req(ne_binaries(), ne_binary()) -> kz_http:http_ret().
 fetch_req(Numbers, Url) ->
     ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
     Uri = <<Url/binary, "/locality/metadata">>,
-    ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)).
+    kz_http:post(binary:bin_to_list(Uri), [], wh_json:encode(ReqBody)).
 
--spec handle_resp(ibrowse_ret()) ->
+-spec handle_resp(kz_http:http_ret()) ->
                          {'ok', wh_json:object()} |
                          {'error', any()}.
 handle_resp({'error', Reason}) ->
     lager:error("number locality lookup failed: ~p", [Reason]),
     {'error', 'lookup_failed'};
-handle_resp({'ok', "200", _Headers, Body}) ->
+handle_resp({'ok', 200, _Headers, Body}) ->
     handle_resp_body(wh_json:decode(Body));
 handle_resp({'ok', _Status, _, _Body}) ->
     lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),

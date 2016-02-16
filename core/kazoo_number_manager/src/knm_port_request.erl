@@ -58,9 +58,9 @@ current_state(JObj) ->
 public_fields(JObj) ->
     As = wh_doc:attachments(JObj, wh_json:new()),
 
-    wh_json:set_values([{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
-                        ,{<<"created">>, wh_json:get_value(<<"pvt_created">>, JObj)}
-                        ,{<<"updated">>, wh_json:get_value(<<"pvt_modified">>, JObj)}
+    wh_json:set_values([{<<"id">>, wh_doc:id(JObj)}
+                        ,{<<"created">>, wh_doc:created(JObj)}
+                        ,{<<"updated">>, wh_doc:modified(JObj)}
                         ,{<<"uploads">>, normalize_attachments(As)}
                         ,{<<"port_state">>, wh_json:get_value(?PORT_PVT_STATE, JObj, ?PORT_WAITING)}
                         ,{<<"sent">>, wh_json:get_value(?PVT_SENT, JObj, 'false')}
@@ -76,14 +76,14 @@ public_fields(JObj) ->
 -spec get(ne_binary() | knm_phone_number:knm_phone_number()) ->
                  {'ok', wh_json:object()} |
                  {'error', 'not_found'}.
-get(<<_/binary>> = DID) ->
+get(DID)
+  when is_binary(DID) ->
+    ViewOptions = [{'key', DID}, 'include_docs'],
     case
         couch_mgr:get_results(
           ?KZ_PORT_REQUESTS_DB
           ,<<"port_requests/port_in_numbers">>
-          ,[{'key', DID}
-            ,'include_docs'
-           ]
+          ,ViewOptions
          )
     of
         {'ok', []} -> {'error', 'not_found'};
@@ -104,7 +104,7 @@ get(Number) ->
 normalize_attachments(Attachments) ->
     wh_json:map(fun normalize_attachments_map/2, Attachments).
 
-
+%% @private
 -spec normalize_attachments_map(wh_json:key(), wh_json:json_term()) ->
                                        {wh_json:key(), wh_json:json_term()}.
 normalize_attachments_map(K, V) ->
@@ -118,14 +118,10 @@ normalize_attachments_map(K, V) ->
 -spec normalize_numbers(wh_json:object()) -> wh_json:object().
 normalize_numbers(JObj) ->
     Numbers = wh_json:get_value(<<"numbers">>, JObj, wh_json:new()),
-    wh_json:set_value(
-      <<"numbers">>
-      ,wh_json:map(fun normalize_number_map/2
-                   ,Numbers
-                  )
-      ,JObj
-     ).
+    Normalized = wh_json:map(fun normalize_number_map/2, Numbers),
+    wh_json:set_value(<<"numbers">>, Normalized, JObj).
 
+%% @private
 -spec normalize_number_map(wh_json:key(), wh_json:json_term()) ->
                                   {wh_json:key(), wh_json:json_term()}.
 normalize_number_map(N, Meta) ->
@@ -207,7 +203,7 @@ transition(JObj, [_FromState | FromStates], ToState, CurrentState) ->
 -spec charge_for_port(wh_json:object()) -> 'ok' | 'error'.
 -spec charge_for_port(wh_json:object(), ne_binary()) -> 'ok' | 'error'.
 charge_for_port(JObj) ->
-    charge_for_port(JObj, wh_json:get_value(<<"pvt_account_id">>, JObj)).
+    charge_for_port(JObj, wh_doc:account_id(JObj)).
 charge_for_port(_JObj, AccountId) ->
     Services = wh_services:fetch(AccountId),
     Cost = wh_services:activation_charges(<<"number_services">>, <<"port">>, Services),
@@ -227,7 +223,7 @@ send_submitted_requests() ->
                               )
     of
         {'error', _R} ->
-            lager:error("failed to open view port_requests/listing_submitted ~p", [_R]);
+            lager:error("failed to open view ~s ~p", [?VIEW_LISTING_SUBMITTED, _R]);
         {'ok', JObjs} ->
             _ = [maybe_send_request(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
             lager:debug("sent requests")
@@ -374,8 +370,8 @@ send_request(JObj, Url) ->
               ],
     Data = wh_json:encode(wh_json:normalize_jobj(JObj, Remove, Replace)),
 
-    case ibrowse:send_req(Uri, Headers, 'post', Data, []) of
-        {'ok', "200", _Headers, _Resp} ->
+    case kz_http:post(Uri, Headers, Data) of
+        {'ok', 200, _Headers, _Resp} ->
             lager:debug("submitted_port_request successfully sent");
         _Other ->
             lager:error("failed to send submitted_port_request ~p", [_Other]),
@@ -433,10 +429,10 @@ send_attachment(Url, Id, Name, Options, Attachment) ->
                ,{"User-Agent", wh_util:to_list(erlang:node())}
               ],
 
-    Uri =wh_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
+    Uri = wh_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
 
-    case ibrowse:send_req(Uri, Headers, 'post', Attachment, []) of
-        {'ok', "200", _Headers, _Resp} ->
+    case kz_http:post(Uri, Headers, Attachment) of
+        {'ok', 200, _Headers, _Resp} ->
             lager:debug("attachment ~s for submitted_port_request successfully sent", [Name]);
         _Other ->
             lager:error("failed to send attachment ~s for submitted_port_request ~p", [Name, _Other]),

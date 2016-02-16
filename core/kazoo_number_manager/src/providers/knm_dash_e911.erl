@@ -329,46 +329,41 @@ remove_number(Number) ->
                                             {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
     URL = list_to_binary([?DASH_EMERG_URL, "/", wh_util:to_lower_binary(Verb)]),
-    Body = xmerl:export_simple([{Verb, Props}]
-                               ,'xmerl_xml'
-                               ,[{'prolog', ?DASH_XML_PROLOG}]
-                              ),
+    Body = unicode:characters_to_binary(
+             xmerl:export_simple([{Verb, Props}]
+                                 ,'xmerl_xml'
+                                 ,[{'prolog', ?DASH_XML_PROLOG}]
+                                )
+            ),
     Headers = [{"Accept", "*/*"}
                ,{"User-Agent", ?KNM_USER_AGENT}
                ,{"Content-Type", "text/xml"}
               ],
-    HTTPOptions = [{'ssl',[{'verify',0}]}
-                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
+                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
-    case ibrowse:send_req(wh_util:to_list(URL)
-                          ,Headers
-                          ,'post'
-                          ,unicode:characters_to_binary(Body)
-                          ,HTTPOptions
-                          ,180 * ?MILLISECONDS_IN_SECOND
-                         )
-    of
-        {'ok', "401", _, _Response} ->
+    case kz_http:post(wh_util:to_list(URL), Headers, Body, HTTPOptions) of
+        {'ok', 401, _, _Response} ->
             ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),
             {'error', 'authentication'};
-        {'ok', "403", _, _Response} ->
+        {'ok', 403, _, _Response} ->
             ?DASH_DEBUG("Response:~n403~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 403 (unauthorized)"),
             {'error', 'authorization'};
-        {'ok', "404", _, _Response} ->
+        {'ok', 404, _, _Response} ->
             ?DASH_DEBUG("Response:~n404~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 404 (not found)"),
             {'error', 'not_found'};
-        {'ok', "500", _, _Response} ->
+        {'ok', 500, _, _Response} ->
             ?DASH_DEBUG("Response:~n500~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 500 (server error)"),
             {'error', 'server_error'};
-        {'ok', "503", _, _Response} ->
+        {'ok', 503, _, _Response} ->
             ?DASH_DEBUG("Response:~n503~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 503"),
             {'error', 'server_error'};
@@ -382,8 +377,8 @@ emergency_provisioning_request(Verb, Props) ->
                     lager:debug("failed to decode xml: ~p", [R]),
                     {'error', 'empty_response'}
             end;
-        {'error', _}=E ->
-            lager:debug("dash e911 request error: ~p", [E]),
+        {'error', _Reason} ->
+            lager:debug("dash e911 request error: ~p", [_Reason]),
             {'error', 'unreachable'}
     end.
 

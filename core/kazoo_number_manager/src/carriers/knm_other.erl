@@ -58,10 +58,8 @@ find_numbers(Number, Quantity, Options) ->
         'undefined' -> {'error', 'non_available'};
         Url ->
             case props:is_defined(<<"blocks">>, Options) of
-                'false' ->
-                    get_numbers(Url, Number, Quantity, Options);
-                'true' ->
-                    get_blocks(Url, Number, Quantity, Options)
+                'false' -> get_numbers(Url, Number, Quantity, Options);
+                'true' ->  get_blocks(Url, Number, Quantity, Options)
             end
     end.
 
@@ -87,15 +85,15 @@ check_numbers(Numbers, _Props) ->
             ReqBody = wh_json:set_value(<<"data">>, FormatedNumbers, wh_json:new()),
             Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/status">>,
             lager:debug("making request to ~s with body ~p", [Uri, ReqBody]),
-            case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
-                {'error', Reason} ->
-                    lager:error("numbers check failed: ~p", [Reason]),
-                    {'error', Reason};
-                {'ok', "200", _Headers, Body} ->
+            case kz_http:post(binary:bin_to_list(Uri), [], wh_json:encode(ReqBody)) of
+                {'ok', 200, _Headers, Body} ->
                     format_check_numbers(wh_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
                     lager:error("numbers check failed: ~p", [Body]),
-                    {'error', Body}
+                    {'error', Body};
+                E ->
+                    lager:error("numbers check failed: error ~p", [E]),
+                    E
             end
     end.
 
@@ -138,16 +136,16 @@ acquire_number(Number) ->
                                         ),
 
             Uri = <<Url/binary,  "/numbers/", DefaultCountry/binary, "/order">>,
-            case ibrowse:send_req(wh_util:to_list(Uri), [], 'put', wh_json:encode(ReqBody)) of
-                {'error', Reason} ->
-                    knm_errors:unspecified(Reason, Number);
-                {'ok', "200", _Headers, Body} ->
+            case kz_http:put(binary:bin_to_list(Uri), [], wh_json:encode(ReqBody)) of
+                {'ok', 200, _Headers, Body} ->
                     format_acquire_resp(Number, wh_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
                     lager:error("number lookup failed to ~s with ~s: ~s"
                                 ,[Uri, _Status, Body]
                                ),
-                    knm_errors:unspecified('lookup_failed', Number)
+                    knm_errors:unspecified('lookup_failed', Number);
+                {'error', Reason} ->
+                    knm_errors:unspecified(Reason, Number)
             end
     end.
 
@@ -221,23 +219,23 @@ get_numbers(Url, Number, Quantity, Options) ->
     Results = query_for_numbers(Uri),
     handle_number_query_results(Results, Options).
 
--spec query_for_numbers(ne_binary()) -> ibrowse_ret().
+-spec query_for_numbers(ne_binary()) -> kz_http:http_ret().
 -ifdef(TEST).
 query_for_numbers(<<?NUMBER_PHONEBOOK_URL_L, _/binary>>) ->
-    {'ok', "200", [], wh_json:encode(?NUMBERS_RESPONSE)}.
+    {'ok', 200, [], wh_json:encode(?NUMBERS_RESPONSE)}.
 -else.
 query_for_numbers(Uri) ->
     lager:debug("querying ~s for numbers", [Uri]),
-    ibrowse:send_req(wh_util:to_list(Uri), [], 'get').
+    kz_http:get(binary:bin_to_list(Uri)).
 -endif.
 
--spec handle_number_query_results(ibrowse_ret(), wh_proplist()) ->
+-spec handle_number_query_results(kz_http:http_ret(), wh_proplist()) ->
                                          {'error', 'non_available'} |
                                          {'ok', knm_number:knm_numbers()}.
 handle_number_query_results({'error', _Reason}, _Options) ->
     lager:error("number query failed: ~p", [_Reason]),
     {'error', 'non_available'};
-handle_number_query_results({'ok', "200", _Headers, Body}, Options) ->
+handle_number_query_results({'ok', 200, _Headers, Body}, Options) ->
     format_numbers_resp(wh_json:decode(Body), Options);
 handle_number_query_results({'ok', _Status, _Headers, _Body}, _Options) ->
     lager:error("number query failed with ~s: ~s", [_Status, _Body]),
@@ -309,14 +307,14 @@ get_blocks(Url, Number, Quantity, Props) ->
             ,"/search", ReqBody/binary
           >>,
     lager:debug("making request to ~s", [Uri]),
-    case ibrowse:send_req(binary:bin_to_list(Uri), [], 'get') of
-        {'error', Reason} ->
-            lager:error("block lookup error: ~p", [Reason]),
-            {'error', 'non_available'};
-        {'ok', "200", _Headers, Body} ->
+    case kz_http:get(binary:bin_to_list(Uri)) of
+        {'ok', 200, _Headers, Body} ->
             format_blocks_resp(wh_json:decode(Body), Props);
         {'ok', _Status, _Headers, Body} ->
             lager:error("block lookup failed: ~p ~p", [_Status, Body]),
+            {'error', 'non_available'};
+        {'error', Reason} ->
+            lager:error("block lookup error: ~p", [Reason]),
             {'error', 'non_available'}
     end.
 -endif.
