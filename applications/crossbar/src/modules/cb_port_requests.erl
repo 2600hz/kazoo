@@ -56,8 +56,6 @@
 
 -define(PATH_TOKEN_LOA, <<"loa">>).
 
--define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -1513,12 +1511,12 @@ remove_phone_number(Number, _, {_, Acc}) ->
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, cb_context:set_account_db(Context, AccountDb)),
+    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, cb_context:set_account_db(Context, AccountDb)),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', cb_context:doc(Context1)};
         Status ->
-            lager:error("failed to open phone_numbers doc in ~s : ~p", [AccountId, Status]),
+            lager:error("failed to open ~s doc in ~s : ~p", [?KNM_PHONE_NUMBERS_DOC, AccountId, Status]),
             {'error', Status}
     end.
 
@@ -1530,21 +1528,19 @@ get_phone_numbers_doc(Context) ->
 -spec save_phone_numbers_doc(cb_context:context(), wh_json:object()) -> 'ok' | 'error'.
 save_phone_numbers_doc(Context, JObj) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-
     Context1 =
         cb_context:setters(
           Context
           ,[{fun cb_context:set_doc/2, JObj}
-            ,{fun cb_context:set_account_db/2, AccountDb}
+            ,{fun cb_context:set_account_db/2, wh_util:format_account_id(AccountId, 'encoded')}
            ]
          ),
-    Context2 = crossbar_doc:save(Context1),
 
-    case cb_context:resp_status(Context2) of
+    case cb_context:resp_status(crossbar_doc:save(Context1)) of
         'success' -> 'ok';
         _Status ->
-            lager:error("failed to save phone_numbers doc in ~s : ~p", [AccountId, _Status]),
+            lager:error("failed to save ~s doc in ~s : ~p"
+                        ,[?KNM_PHONE_NUMBERS_DOC, AccountId, _Status]),
             'error'
     end.
 

@@ -24,8 +24,6 @@
 
 -include("callflow.hrl").
 
--define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
-
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -265,10 +263,10 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
                                        {api_binary(), api_binary()}.
 maybe_get_assigned_number(_, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'error', _R} ->
             Number = default_cid_number(),
-            lager:warning("could not open phone_numbers doc <~s> ~s: ~p", [Name, Number, _R]),
+            lager:warning("could not open ~s doc <~s> ~s: ~p", [?KNM_PHONE_NUMBERS_DOC, Name, Number, _R]),
             {Number, Name};
         {'ok', JObj} ->
             PublicJObj = wh_json:public_fields(JObj),

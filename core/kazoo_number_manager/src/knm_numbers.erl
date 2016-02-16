@@ -21,8 +21,6 @@
 
 -include("knm.hrl").
 
--define(KNM_PHONE_NUMBERS_DOC, <<"phone_numbers">>).
-
 -type numbers_return() :: [{ne_binary(), knm_number_return()} | {'error', any()}].
 
 %%--------------------------------------------------------------------
@@ -186,12 +184,10 @@ buy(Nums, Account) ->
     [knm_number:buy(Num, Account) || Num <- Nums].
 
 -spec free(ne_binary()) -> 'ok'.
-free(<<__/binary>> = AccountId) ->
-    case couch_mgr:open_cache_doc(
-           wh_util:format_account_id(AccountId, 'encoded')
-           ,?KNM_PHONE_NUMBERS_DOC
-          )
-    of
+free(AccountId)
+  when is_binary(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
         {'ok', JObj} ->
             free_numbers(AccountId, JObj);
         {'error', _E} ->
@@ -202,11 +198,9 @@ free(<<__/binary>> = AccountId) ->
 
 -spec free_numbers(ne_binary(), wh_json:object()) -> 'ok'.
 free_numbers(AccountId, JObj) ->
-    lists:foreach(fun(DID) ->
-                          maybe_free_number(AccountId, DID)
-                  end
-                  ,wh_json:get_public_keys(JObj)
-                 ).
+    _ = [maybe_free_number(AccountId, DID)
+         || DID <- wh_json:get_public_keys(JObj)],
+    'ok'.
 
 -spec maybe_free_number(ne_binary(), ne_binary()) -> 'ok'.
 maybe_free_number(AccountId, DID) ->
@@ -219,10 +213,8 @@ maybe_free_number(AccountId, DID) ->
 
 -spec check_to_free_number(ne_binary(), knm_number:knm_number()) -> 'ok'.
 check_to_free_number(AccountId, Number) ->
-    check_to_free_number(AccountId
-                         ,Number
-                         ,knm_phone_number:assigned_to(knm_number:phone_number(Number))
-                        ).
+    To = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
+    check_to_free_number(AccountId, Number, To).
 
 -spec check_to_free_number(ne_binary(), knm_number:knm_number(), api_binary()) -> 'ok'.
 check_to_free_number(AccountId, Number, AccountId) ->
