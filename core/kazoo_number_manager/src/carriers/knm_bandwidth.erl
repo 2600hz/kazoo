@@ -267,51 +267,44 @@ make_numbers_request(Verb, Props) ->
     Request = [{'developerKey', [DevKey]}
                | Props
               ],
-    Body = xmerl:export_simple([{Verb, ?BW_XML_NAMESPACE, Request}]
-                               ,'xmerl_xml'
-                               ,[{'prolog', ?BW_XML_PROLOG}]
-                              ),
+    Body = unicode:characters_to_binary(
+             xmerl:export_simple([{Verb, ?BW_XML_NAMESPACE, Request}]
+                                 ,'xmerl_xml'
+                                 ,[{'prolog', ?BW_XML_PROLOG}]
+                                )
+            ),
     Headers = [{"Accept", "*/*"}
                ,{"User-Agent", ?KNM_USER_AGENT}
                ,{"X-BWC-IN-Control-Processing-Type", "process"}
                ,{"Content-Type", "text/xml"}
               ],
-    HTTPOptions = [{'ssl', [{'verify', 0}]}
-                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
+                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ],
-    ?BW_DEBUG("Request:~n~s ~s~n~s~n"
-              ,['post', ?BW_NUMBER_URL, Body]
-             ),
-    case ibrowse:send_req(?BW_NUMBER_URL
-                          ,Headers
-                          ,'post'
-                          ,unicode:characters_to_binary(Body)
-                          ,HTTPOptions
-                          ,180 * ?MILLISECONDS_IN_SECOND
-                         )
-    of
-        {'ok', "401", _, _Response} ->
+    ?BW_DEBUG("Request:~n~s ~s~n~s~n", ['post', ?BW_NUMBER_URL, Body]),
+    case kz_http:post(?BW_NUMBER_URL, Headers, Body, HTTPOptions) of
+        {'ok', 401, _, _Response} ->
             ?BW_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 401 (unauthenticated)"),
             {'error', 'authentication'};
-        {'ok', "403", _, _Response} ->
+        {'ok', 403, _, _Response} ->
             ?BW_DEBUG("Response:~n403~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 403 (unauthorized)"),
             {'error', 'authorization'};
-        {'ok', "404", _, _Response} ->
+        {'ok', 404, _, _Response} ->
             ?BW_DEBUG("Response:~n404~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 404 (not found)"),
             {'error', 'not_found'};
-        {'ok', "500", _, _Response} ->
+        {'ok', 500, _, _Response} ->
             ?BW_DEBUG("Response:~n500~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 500 (server error)"),
             {'error', 'server_error'};
-        {'ok', "503", _, _Response} ->
+        {'ok', 503, _, _Response} ->
             ?BW_DEBUG("Response:~n503~n~s~n", [_Response]),
             lager:debug("bandwidth.com request error: 503"),
             {'error', 'server_error'};
-        {'ok', Code, _, [$<,$?,$x,$m,$l|_]=Response} ->
+        {'ok', Code, _, "<?xml"++_=Response} ->
             ?BW_DEBUG("Response:~n~p~n~s~n", [Code, Response]),
             lager:debug("received response from bandwidth.com"),
             try

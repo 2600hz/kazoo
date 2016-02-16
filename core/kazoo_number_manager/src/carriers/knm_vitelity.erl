@@ -261,6 +261,9 @@ response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', any()}.
 -ifdef(TEST).
 query_vitelity(Prefix, Quantity, URI) ->
     {'ok'
@@ -276,15 +279,9 @@ query_vitelity(Prefix, Quantity, URI) ->
         end,
     process_xml_resp(Prefix, Quantity, XML).
 -else.
--spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
-                            {'ok', wh_json:object()} |
-                            {'error', any()}.
 query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
-    case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
-        {'ok', "200", _RespHeaders, RespXML} ->
-            lager:debug("recv 200: ~s", [RespXML]),
-            process_xml_resp(Prefix, Quantity, RespXML);
+    case kz_http:post(wh_util:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
             process_xml_resp(Prefix, Quantity, RespXML);
@@ -460,11 +457,11 @@ purchase_tollfree_options(DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec get_routesip() -> api_binary().
 -ifdef(TEST).
 get_routesip() ->
     <<"1.2.3.4">>.
 -else.
--spec get_routesip() -> api_binary().
 get_routesip() ->
     case whapps_config:get(knm_vitelity_util:config_cat(), <<"routesip">>) of
         [Route|_] -> Route;
@@ -482,7 +479,7 @@ get_routesip() ->
                             knm_number:knm_number().
 query_vitelity(Number, URI) ->
     ?LOG_DEBUG("querying ~s", [URI]),
-    case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
+    case kz_http:post(wh_util:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             ?LOG_DEBUG("recv ~s: ~s", [_RespCode, RespXML]),
             process_xml_resp(Number, RespXML);

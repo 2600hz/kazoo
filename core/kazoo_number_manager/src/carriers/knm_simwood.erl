@@ -115,17 +115,17 @@ should_lookup_cnam() -> 'true'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec query_simwood(ne_binary(), 'get'|'put'|'post'|'delete') ->
+-spec query_simwood(ne_binary(), 'get'|'put'|'delete') ->
                            {'ok', iolist()} |
                            {'error', 'not_available'}.
 query_simwood(URL, Verb) ->
     lager:debug("Querying Simwood. Verb: ~p. URL: ~p.", [Verb, URL]),
-    HTTPOptions = [{'ssl',[{'verify',0}]}
-                   ,{'inactivity_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
+                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
                    ,{'basic_auth', {?SW_AUTH_USERNAME, ?SW_AUTH_PASSWORD}}
                   ],
-    case ibrowse:send_req(wh_util:to_list(URL), [], Verb, [], HTTPOptions) of
+    case kz_http:req(Verb, wh_util:to_binary(URL), [], [], HTTPOptions) of
         {'ok', _Resp, _RespHeaders, Body} ->
             lager:debug("Simwood response ~p: ~p", [_Resp, Body]),
             {'ok', Body};
