@@ -79,14 +79,14 @@ handle_new_voicemail(JObj, _Props) ->
     {'ok', UserJObj} = get_owner(VMBox, DataJObj),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
+    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 
     %% If the box has emails, continue processing
     %% or If the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    (BoxEmails =/= [] orelse kzd_user:voicemail_notification_enabled(UserJObj))
+    (Emails =/= [] andalso
+     (kzd_user:voicemail_notification_enabled(UserJObj) orelse wh_json:is_empty(UserJObj)))
         orelse teletype_util:stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
-
-    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 
     ReqData =
         wh_json:set_values(
