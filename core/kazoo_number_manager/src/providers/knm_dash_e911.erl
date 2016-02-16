@@ -13,7 +13,7 @@
 -export([save/1]).
 -export([delete/1]).
 
--include("../knm.hrl").
+-include("knm.hrl").
 
 -define(KNM_DASH_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".dash_e911">>).
 

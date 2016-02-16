@@ -13,7 +13,7 @@
 -export([save/1]).
 -export([delete/1]).
 
--include("../knm.hrl").
+-include("knm.hrl").
 
 -define(PORT_KEY, <<"port">>).
 -define(SERVER, ?MODULE).

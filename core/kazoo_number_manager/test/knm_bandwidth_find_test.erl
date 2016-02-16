@@ -8,7 +8,7 @@
 -module(knm_bandwidth_find_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("../src/knm.hrl").
+-include("knm.hrl").
 
 find_test_() ->
     [npan_tests()

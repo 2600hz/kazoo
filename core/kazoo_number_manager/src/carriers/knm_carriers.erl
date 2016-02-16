@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_carriers).
 
--include("../knm.hrl").
+-include("knm.hrl").
 
 -export([find/1, find/2, find/3
          ,check/1, check/2

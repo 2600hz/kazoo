@@ -8,7 +8,7 @@
 -module(knm_number_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("../src/knm.hrl").
+-include("knm.hrl").
 
 get_available_test_() ->
     [fun available_as_owner/0

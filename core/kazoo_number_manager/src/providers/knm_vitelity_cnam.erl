@@ -12,7 +12,7 @@
 -export([save/1]).
 -export([delete/1]).
 
--include("../knm.hrl").
+-include("knm.hrl").
 
 -define(SERVER, ?MODULE).
 
