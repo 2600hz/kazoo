@@ -473,12 +473,10 @@ handle_cast({'rm_queue', QueueName}, #state{other_queues=OtherQueues}=State) ->
 handle_cast({'add_responder', Responder, Keys}, #state{responders=Responders}=State) ->
     {'noreply'
      ,State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}
-     ,'hibernate'
     };
 handle_cast({'rm_responder', Responder, Keys}, #state{responders=Responders}=State) ->
     {'noreply'
      ,State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}
-     ,'hibernate'
     };
 handle_cast({'add_binding', _, _}=AddBinding, #state{is_consuming='false'}=State) ->
     Time = ?BIND_WAIT + (crypto:rand_uniform(100, 200)), % wait 100 + [100,200) ms before replaying the binding request
@@ -486,12 +484,12 @@ handle_cast({'add_binding', _, _}=AddBinding, #state{is_consuming='false'}=State
     delayed_cast(self(), AddBinding, Time),
     {'noreply', State};
 handle_cast({'add_binding', Binding, Props}, State) ->
-    {'noreply', handle_add_binding(Binding, Props, State), 'hibernate'};
+    {'noreply', handle_add_binding(Binding, Props, State)};
 handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
                                                    ,bindings=Bs
                                                   }=State) ->
     KeepBs = lists:filter(fun(BP) -> maybe_remove_binding(BP, Binding, Props, Q) end, Bs),
-    {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
+    {'noreply', State#state{bindings=KeepBs}};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
     lager:debug("channel reconnecting"),
     {'noreply', State};
@@ -591,7 +589,7 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                               ,payload=Payload
                                              }}, State) ->
     _ = wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
-    {'noreply', State, 'hibernate'};
+    {'noreply', State};
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
                                              ,payload=Payload
                                             }}, State) ->
@@ -740,13 +738,12 @@ handle_callback_info(Message, #state{module=Module
     _ = stop_timer(OldRef),
     try Module:handle_info(Message, ModuleState) of
         {'noreply', ModuleState1} ->
-            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
+            {'noreply', State#state{module_state=ModuleState1}};
         {'noreply', ModuleState1, Timeout} ->
             Ref = start_timer(Timeout),
             {'noreply', State#state{module_state=ModuleState1
                                     ,module_timeout_ref=Ref
                                    }
-             ,'hibernate'
             };
         {'stop', Reason, ModuleState1} ->
             {'stop', Reason, State#state{module_state=ModuleState1}}
@@ -932,19 +929,19 @@ handle_module_call(Request, From, #state{module=Module
             {'reply', Reply, State#state{module_state=ModuleState1
                                          ,module_timeout_ref='undefined'
                                         }
-             ,'hibernate'};
+            };
         {'reply', Reply, ModuleState1, Timeout} ->
             {'reply', Reply, State#state{module_state=ModuleState1
                                          ,module_timeout_ref=start_timer(Timeout)
                                         }
-             ,'hibernate'};
+            };
         {'noreply', ModuleState1} ->
-            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
+            {'noreply', State#state{module_state=ModuleState1}};
         {'noreply', ModuleState1, Timeout} ->
             {'noreply', State#state{module_state=ModuleState1
                                     ,module_timeout_ref=start_timer(Timeout)
                                    }
-             ,'hibernate'};
+            };
         {'stop', Reason, ModuleState1} ->
             {'stop', Reason, State#state{module_state=ModuleState1}};
         {'stop', Reason, Reply, ModuleState1} ->
@@ -966,13 +963,12 @@ handle_module_cast(Msg, #state{module=Module
     _ = stop_timer(OldRef),
     try Module:handle_cast(Msg, ModuleState) of
         {'noreply', ModuleState1} ->
-            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
+            {'noreply', State#state{module_state=ModuleState1}};
         {'noreply', ModuleState1, Timeout} ->
             Ref = start_timer(Timeout),
             {'noreply', State#state{module_state=ModuleState1
                                     ,module_timeout_ref=Ref
                                    }
-             ,'hibernate'
             };
         {'stop', Reason, ModuleState1} ->
             {'stop', Reason, State#state{module_state=ModuleState1}}
