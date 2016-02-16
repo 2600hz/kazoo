@@ -18,6 +18,7 @@
          ,maybe_transition/2
          ,charge_for_port/1, charge_for_port/2
          ,send_submitted_requests/0
+         ,migrate/0
         ]).
 
 -compile({'no_auto_import', [get/1]}).
@@ -224,10 +225,23 @@ send_submitted_requests() ->
     of
         {'error', _R} ->
             lager:error("failed to open view ~s ~p", [?VIEW_LISTING_SUBMITTED, _R]);
+        {'ok', []} -> 'ok';
         {'ok', JObjs} ->
             _ = [maybe_send_request(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
             lager:debug("sent requests")
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec migrate() -> 'ok'.
+migrate() ->
+    wh_util:put_callid(<<"port_request_migration">>),
+    lager:debug("migrating port request documents, if necessary"),
+    migrate(<<>>, 10),
+    lager:debug("finished migrating port request documents").
 
 %%%===================================================================
 %%% Internal functions
@@ -238,8 +252,7 @@ send_submitted_requests() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec completed_port(wh_json:object()) ->
-                            transition_response().
+-spec completed_port(wh_json:object()) -> transition_response().
 completed_port(PortReq) ->
     case charge_for_port(PortReq) of
         'ok' ->
@@ -254,8 +267,7 @@ completed_port(PortReq) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec transition_numbers(wh_json:object()) ->
-                                transition_response().
+-spec transition_numbers(wh_json:object()) -> transition_response().
 transition_numbers(PortReq) ->
     Numbers = wh_json:get_keys(<<"numbers">>, PortReq),
     PortOps = [enable_number(N) || N <- Numbers],
@@ -276,10 +288,8 @@ transition_numbers(PortReq) ->
 %%--------------------------------------------------------------------
 -spec clear_numbers_from_port(wh_json:object()) -> wh_json:object().
 clear_numbers_from_port(PortReq) ->
-    case couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB
-                            ,wh_json:set_value(<<"numbers">>, wh_json:new(), PortReq)
-                           )
-    of
+    Cleared = wh_json:set_value(<<"numbers">>, wh_json:new(), PortReq),
+    case couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, Cleared) of
         {'ok', PortReq1} -> lager:debug("port numbers cleared"), PortReq1;
         {'error', 'conflict'} ->
             lager:debug("port request doc was updated before we could re-save"),
@@ -312,23 +322,19 @@ enable_number(Num) ->
 -spec maybe_send_request(wh_json:object()) -> 'ok'.
 -spec maybe_send_request(wh_json:object(), api_binary()) -> 'ok'.
 maybe_send_request(JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    wh_util:put_callid(Id),
-
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'error', _R} ->
-            lager:error("failed to open account ~s:~p", [AccountId, _R]);
+    wh_util:put_callid(wh_doc:id(JObj)),
+    AccountId = wh_doc:account_id(JObj),
+    case kz_account:fetch(AccountId) of
         {'ok', AccountDoc} ->
             Url = wh_json:get_value(<<"submitted_port_requests_url">>, AccountDoc),
-            maybe_send_request(JObj, Url)
+            maybe_send_request(JObj, Url);
+        {'error', _R} ->
+            lager:error("failed to open account ~s:~p", [AccountId, _R])
     end.
 
 maybe_send_request(JObj, 'undefined')->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    lager:debug("'submitted_port_requests_url' is not set for account ~s", [AccountId]);
+    lager:debug("'submitted_port_requests_url' is not set for account ~s"
+                ,[wh_doc:account_id(JObj)]);
 maybe_send_request(JObj, Url)->
     case send_request(JObj, Url) of
         'error' -> 'ok';
@@ -346,13 +352,11 @@ maybe_send_request(JObj, Url)->
 %%--------------------------------------------------------------------
 -spec send_request(wh_json:object(), ne_binary()) -> 'error' | 'ok'.
 send_request(JObj, Url) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
-
     Headers = [{"Content-Type", "application/json"}
                ,{"User-Agent", wh_util:to_list(erlang:node())}
               ],
 
-    Uri = wh_util:to_list(<<Url/binary, "/", Id/binary>>),
+    Uri = wh_util:to_list(<<Url/binary, "/", (wh_doc:id(JObj))/binary>>),
 
     Remove = [<<"_rev">>
               ,<<"ui_metadata">>
@@ -398,7 +402,7 @@ send_attachements(Url, JObj) ->
 %%--------------------------------------------------------------------
 -spec fetch_and_send(ne_binary(), wh_json:object()) -> 'ok'.
 fetch_and_send(Url, JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Id = wh_doc:id(JObj),
     Attachments = wh_doc:attachments(JObj, wh_json:new()),
 
     wh_json:foldl(
@@ -453,3 +457,59 @@ set_flag(JObj) ->
         {'error', _R} ->
             lager:debug("failed to set flag for submitted_port_request: ~p", [_R])
     end.
+
+
+-spec migrate(binary(), pos_integer()) -> 'ok'.
+migrate(StartKey, Limit) ->
+    {'ok', Docs} = fetch_docs(StartKey, Limit),
+    try lists:split(Limit, Docs) of
+        {Results, []} ->
+            migrate_docs(Results);
+        {Results, [NextResult]} ->
+            migrate_docs(Results),
+            lager:debug("migrated batch of ~p port requests", [Limit]),
+            timer:sleep(5000),
+            migrate(wh_json:get_value(<<"key">>, NextResult), Limit)
+    catch
+        'error':'badarg' ->
+            migrate_docs(Docs)
+    end.
+
+-spec migrate_docs(wh_json:objects()) -> 'ok'.
+migrate_docs([]) -> 'ok';
+migrate_docs(Docs) ->
+    UpdatedDocs =
+        [UpdatedDoc
+         || Doc <- Docs,
+            (UpdatedDoc = migrate_doc(wh_json:get_value(<<"doc">>, Doc))) =/= 'undefined'
+        ],
+    {'ok', _} = couch_mgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedDocs),
+    'ok'.
+
+-spec migrate_doc(wh_json:object()) -> api_object().
+migrate_doc(PortRequest) ->
+    case wh_json:get_value(<<"pvt_tree">>, PortRequest) of
+        'undefined' -> update_doc(PortRequest);
+        _Tree -> 'undefined'
+    end.
+
+-spec update_doc(wh_json:object()) -> api_object().
+-spec update_doc(wh_json:object(), api_binary()) -> api_object().
+update_doc(PortRequest) ->
+    update_doc(PortRequest, wh_doc:account_id(PortRequest)).
+
+update_doc(_Doc, 'undefined') ->
+    lager:debug("no account id in doc ~s", [wh_doc:id(_Doc)]),
+    'undefined';
+update_doc(PortRequest, AccountId) ->
+    {'ok', AccountDoc} = kz_account:fetch(AccountId),
+    wh_json:set_value(<<"pvt_tree">>, kz_account:tree(AccountDoc), PortRequest).
+
+-spec fetch_docs(binary(), pos_integer()) -> {'ok', wh_json:objects()}.
+fetch_docs(StartKey, Limit) ->
+    couch_mgr:all_docs(?KZ_PORT_REQUESTS_DB
+                       ,[{'startkey', StartKey}
+                         ,{'limit', Limit + 1}
+                         ,'include_docs'
+                        ]
+                      ).

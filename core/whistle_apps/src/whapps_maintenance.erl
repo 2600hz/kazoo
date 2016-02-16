@@ -236,7 +236,7 @@ refresh(?WH_FAXES_DB) ->
 refresh(?KZ_PORT_REQUESTS_DB) ->
     kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
-    _ = wh_util:spawn(fun wh_port_request:migrate/0),
+    _ = wh_util:spawn(fun knm_port_request:migrate/0),
     'ok';
 refresh(?KZ_ACDC_DB) ->
     kz_datamgr:db_create(?KZ_ACDC_DB),

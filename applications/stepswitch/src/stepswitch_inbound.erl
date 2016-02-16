@@ -259,9 +259,9 @@ maybe_transition_port_in(NumberProps, JObj) ->
 -spec transition_port_in(knm_number:number_properties(), wh_json:object()) ->
                                 wh_json:object().
 transition_port_in(NumberProps, JObj) ->
-    case wh_port_request:get(wh_number_properties:number(NumberProps)) of
+    case knm_port_request:get(wh_number_properties:number(NumberProps)) of
         {'ok', PortReq} ->
-            _ = wh_port_request:transition_to_complete(PortReq);
+            _ = knm_port_request:transition_to_complete(PortReq);
         _ ->
             Number = stepswitch_util:get_inbound_destination(JObj),
             wh_number_manager:ported(Number)
