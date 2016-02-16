@@ -26,23 +26,34 @@
          ,process_bulk_carrier_results/2
         ]).
 
--define(DEFAULT_CARRIER_MODULE
-        ,?CARRIER_LOCAL
-       ).
+-define(DEFAULT_CARRIER_MODULE, ?CARRIER_LOCAL).
 -define(CARRIER_MODULES, ?DEFAULT_CARRIER_MODULES).
 
 -else.
--define(DEFAULT_CARRIER_MODULE
-        ,whapps_config:get_binary(?KNM_CONFIG_CAT
-                                  ,<<"available_module_name">>
-                                  ,?CARRIER_LOCAL
-                                 )
+-define(DEFAULT_CARRIER_MODULE,
+        (fun () ->
+                 case
+                     whapps_config:get_binary(?KNM_CONFIG_CAT
+                                              ,<<"available_module_name">>
+                                              ,?CARRIER_LOCAL
+                                             )
+                 of
+                     ?CARRIER_LOCAL_LEGACY -> ?CARRIER_LOCAL;
+                     M -> M
+                 end
+         end)()
        ).
--define(CARRIER_MODULES
-        ,whapps_config:get(?KNM_CONFIG_CAT
-                           ,<<"carrier_modules">>
-                           ,?DEFAULT_CARRIER_MODULES
-                          )
+-define(CARRIER_MODULES,
+        (fun () ->
+                 Ms = whapps_config:get(?KNM_CONFIG_CAT
+                                        ,<<"carrier_modules">>
+                                        ,?DEFAULT_CARRIER_MODULES
+                                       ),
+                 case lists:member(?CARRIER_LOCAL_LEGACY, Ms) of
+                     'false' -> Ms;
+                     'true' -> (Ms -- [?CARRIER_LOCAL_LEGACY]) ++ [?CARRIER_LOCAL]
+                 end
+         end)()
        ).
 -endif.
 

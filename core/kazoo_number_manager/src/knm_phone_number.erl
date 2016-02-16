@@ -551,7 +551,8 @@ set_ported_in(N, Ported) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec module_name(knm_phone_number()) -> api_binary().
-module_name(#knm_phone_number{module_name=Name}) -> Name.
+module_name(#knm_phone_number{module_name = ?CARRIER_LOCAL_LEGACY}) -> ?CARRIER_LOCAL;
+module_name(#knm_phone_number{module_name = Name}) -> Name.
 
 -spec set_module_name(knm_phone_number(), ne_binary()) -> knm_phone_number().
 set_module_name(N, Name) ->

@@ -1,5 +1,5 @@
 /*
-Section: Whistle Number Manager
+Section: Kazoo Number Manager
 Title: Number States
 Language: en-US
 Version: 3.20
@@ -45,7 +45,7 @@ A number that is routing to the cluster but not yet assigned to an account.
 A number assigned to an account but not yet in use (be it a by a callflow, trunkstore, etc).
 
 * `reserved` numbers do not participate in number hunts
-* If the number is coming from the `discovery` state, the carrier module associated (`wnm_local`, `wnm_bandwidth`, etc) will attempt to acquire the number.
+* If the number is coming from the `discovery` state, the carrier module associated (`knm_local`, `knm_bandwidth`, etc) will attempt to acquire the number.
 * `reserved` numbers can be put in service if requested by:
     * The requesting account is the same as the number's assigned account
     * The requesting account is an ancestor of the number's assigned account
