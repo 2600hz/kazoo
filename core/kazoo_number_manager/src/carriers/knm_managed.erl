@@ -79,23 +79,16 @@ do_find_numbers_in_account(Number, Quantity, AccountId) ->
 format_numbers_resp(JObjs) ->
     [format_number_resp(JObj) || JObj <- JObjs].
 
--spec format_number_resp(wh_json:object()) ->
-                                knm_number:knm_number().
+-spec format_number_resp(wh_json:object()) -> knm_number:knm_number().
 format_number_resp(JObj) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
-    Id = wh_doc:id(Doc),
-
-    Updates = [{fun knm_phone_number:set_number/2, Id}
+    Updates = [{fun knm_phone_number:set_number/2, wh_doc:id(Doc)}
                ,{fun knm_phone_number:set_carrier_data/2, Doc}
                ,{fun knm_phone_number:set_module_name/2, ?CARRIER_MANAGED}
               ],
-    knm_number:set_phone_number(
-      knm_number:new()
-      ,knm_phone_number:setters(
-         knm_phone_number:new()
-         ,Updates
-        )
-     ).
+    {'ok', PhoneNumber} =
+        knm_phone_number:setters(knm_phone_number:new(), Updates),
+    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 -spec is_number_billable(knm_number:knm_number()) -> boolean().
 is_number_billable(_Number) -> 'false'.

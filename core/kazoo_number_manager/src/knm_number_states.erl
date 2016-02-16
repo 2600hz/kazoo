@@ -246,19 +246,15 @@ move_phone_number_to_state(PhoneNumber, ToState) ->
 -spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), api_binary()) ->
                                                  knm_phone_number:knm_phone_number().
 move_phone_number_to_state(PhoneNumber, ToState, 'undefined') ->
-    Setters = [{fun knm_phone_number:set_assigned_to/2
-                ,knm_phone_number:assign_to(PhoneNumber)
-               }
-               ,{fun knm_phone_number:set_state/2, ToState}
-              ],
-    knm_phone_number:setters(PhoneNumber, Setters);
+    Setters =
+        [{fun knm_phone_number:set_assigned_to/2, knm_phone_number:assign_to(PhoneNumber)}
+         ,{fun knm_phone_number:set_state/2, ToState}
+        ],
+    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Setters),
+    NewPhoneNumber;
 move_phone_number_to_state(PhoneNumber, ToState, AssignedTo) ->
-    move_phone_number_to_state(
-      PhoneNumber
-      ,ToState
-      ,AssignedTo
-      ,knm_phone_number:assign_to(PhoneNumber)
-     ).
+    AssignTo = knm_phone_number:assign_to(PhoneNumber),
+    move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo).
 
 move_phone_number_to_state(PhoneNumber, ToState, AssignTo, AssignTo) ->
     knm_phone_number:set_state(PhoneNumber, ToState);
@@ -267,7 +263,8 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
                ,{fun knm_phone_number:set_assigned_to/2, AssignTo}
                ,{fun knm_phone_number:set_state/2, ToState}
               ],
-    knm_phone_number:setters(PhoneNumber, Setters).
+    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Setters),
+    NewPhoneNumber.
 
 move_to_deleted_state(Number) ->
     PhoneNumber = knm_number:phone_number(Number),

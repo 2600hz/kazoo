@@ -278,7 +278,7 @@ format_number_resp(DID, CarrierData, AccountId) ->
                ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
                ,{fun knm_phone_number:set_assign_to/2, AccountId}
               ],
-    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------
@@ -375,7 +375,7 @@ block_resp(JObj, AccountId, Num) ->
                ,{fun knm_phone_number:set_number_db/2, NumberDb}
                ,{fun knm_phone_number:set_assign_to/2, AccountId}
               ],
-    PhoneNumber = knm_phone_number:setters(knm_phone_number:new(), Updates),
+    {'ok', PhoneNumber} = knm_phone_number:setters(knm_phone_number:new(), Updates),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%--------------------------------------------------------------------
