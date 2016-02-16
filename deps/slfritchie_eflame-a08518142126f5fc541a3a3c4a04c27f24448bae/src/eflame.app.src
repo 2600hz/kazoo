@@ -3,6 +3,7 @@
   {description, ""},
   {vsn, git},
   {registered, []},
+  {modules, []},
   {applications, [
                   kernel,
                   stdlib

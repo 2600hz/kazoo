@@ -1,7 +1,6 @@
+ROOT = ../..
+PROJECT = eflame
 
-all:
-	mkdir -p ebin
-	erlc -o ebin src/*.erl
+all: compile
 
-clean:
-	rm -f ebin/*.beam
+-include $(ROOT)/make/kz.mk
