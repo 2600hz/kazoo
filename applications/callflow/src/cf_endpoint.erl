@@ -199,7 +199,7 @@ merge_attributes(Endpoint, Type, _Keys) ->
                               wh_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
-    Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),
+    Classifiers = wh_json:get_keys(knm_converters:available_classifiers()),
     Update = merge_call_restrictions(Classifiers, Account, Endpoint, Owner),
     merge_attributes(Keys, Account, Update, Owner);
 merge_attributes([?CF_ATTR_LOWER_KEY|Keys], Account, Endpoint, Owner) ->
@@ -399,7 +399,7 @@ fix_user_restrictions(JObj) ->
                                                    ,<<"action">>
                                                   ], <<"allow">>, J)
                         end
-                end, JObj, wh_json:get_keys(wnm_util:available_classifiers())).
+                end, JObj, wh_json:get_keys(knm_converters:available_classifiers())).
 
 -spec convert_to_single_user(wh_json:objects()) -> wh_json:object().
 convert_to_single_user(JObjs) ->
@@ -433,7 +433,7 @@ singlfy_user_restrictions(JObjs, JObj) ->
                                                     ,<<"action">>
                                                    ], <<"deny">>, J)
                         end
-                end, JObj, wh_json:get_keys(wnm_util:available_classifiers())).
+                end, JObj, wh_json:get_keys(knm_converters:available_classifiers())).
 
 -spec do_all_restrict(ne_binary(), wh_json:object()) -> boolean().
 do_all_restrict(Key, JObj) ->
