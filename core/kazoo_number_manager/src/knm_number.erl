@@ -33,7 +33,10 @@
         ]).
 
 -ifdef(TEST).
--compile(export_all).
+-export([attempt/2]).
+-export([ensure_can_load_to_create/1]).
+-export([ensure_can_create/2]).
+-export([create_or_load/3]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
