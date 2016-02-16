@@ -758,4 +758,4 @@ public_proplist(Key, JObj) ->
 -spec stop_processing(string(), list()) -> no_return().
 stop_processing(Format, Args) ->
     lager:debug(Format, Args),
-    throw('stop').
+    exit('normal').
