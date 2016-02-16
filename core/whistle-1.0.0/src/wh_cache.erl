@@ -684,18 +684,18 @@ maybe_remove_object(#cache_obj{key = Key}, Tab) ->
     maybe_remove_object(Key, Tab);
 maybe_remove_object(Key, Tab) ->
     DeleteSpec =
-        [{#cache_obj{value = '$1'
+        [{#cache_obj{value = Key
                      ,type = 'pointer'
                      ,_ = '_'
                     }
-          ,[{'=:=', {'const', Key}, '$1'}]
+          ,[]
           ,['true']
          }
-         ,{#cache_obj{key = '$1'
+         ,{#cache_obj{key = Key
                       ,type = 'normal'
                       ,_ = '_'
                      }
-           ,[{'=:=', {'const', Key}, '$1'}]
+           ,[]
            ,['true']
           }],
     ets:select_delete(Tab, DeleteSpec).
@@ -736,12 +736,12 @@ maybe_exec_flush_callbacks(Tab) ->
 -spec maybe_exec_store_callbacks(state(), any(), any(), atom()) -> state().
 maybe_exec_store_callbacks(#state{has_monitors='false'}=State, _, _, _) -> State;
 maybe_exec_store_callbacks(State, Key, Value, Tab) ->
-    MatchSpec = [{#cache_obj{value = '$1'
+    MatchSpec = [{#cache_obj{value = Key
                              ,callback = '$2'
                              ,type = 'monitor'
                              ,_ = '_'
                             }
-                  ,[{'=:=', '$1', {'const', Key}}]
+                  ,[]
                   ,['$2']
                  }],
     _ = case ets:select(Tab, MatchSpec) of
@@ -771,11 +771,11 @@ exec_store_callback([Callback|Callbacks], Key, Value, Tab) ->
 
 -spec delete_monitor_callbacks(any(), atom()) -> non_neg_integer().
 delete_monitor_callbacks(Key, Tab) ->
-    DeleteSpec = [{#cache_obj{value = '$1'
+    DeleteSpec = [{#cache_obj{value = Key
                               ,type = 'monitor'
                               ,_ = '_'
                              }
-                   ,[{'=:=', '$1', {'const', Key}}]
+                   ,[]
                    ,['true']
                   }
                  ],
