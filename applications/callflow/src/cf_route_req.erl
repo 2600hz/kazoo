@@ -132,7 +132,8 @@ bucket_cost(Flow) ->
 %%-----------------------------------------------------------------------------
 -spec allow_no_match(whapps_call:call()) -> boolean().
 allow_no_match(Call) ->
-    whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= 'undefined'
+    is_valid_endpoint(whapps_call:custom_channel_var(<<"Referred-By">>, Call), Call)
+        orelse is_valid_endpoint(whapps_call:custom_channel_var(<<"Redirected-By">>, Call), Call)
         orelse allow_no_match_type(Call).
 
 -spec allow_no_match_type(whapps_call:call()) -> boolean().
@@ -307,4 +308,17 @@ get_rerouted_by(Call) ->
     case whapps_call:custom_channel_var(<<"Redirected-By">>, Call) of
         'undefined' -> whapps_call:custom_channel_var(<<"Referred-By">>, Call);
         RedirectedBy -> RedirectedBy
+    end.
+
+-spec is_valid_endpoint(api_binary(), whapps_call:call()) -> boolean().
+is_valid_endpoint('undefined', _) -> 'false';
+is_valid_endpoint(Contact, Call) ->
+    ReOptions = [{'capture', [1], 'binary'}],
+    case catch(re:run(Contact, <<".*sip:(.*)@.*">>, ReOptions)) of
+        {'match', [Match]} ->
+            case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Match) of
+                {'ok', _EndpointId} -> 'true';
+                {'error', 'not_found'} -> 'false'
+            end;
+        _ -> 'false'
     end.
