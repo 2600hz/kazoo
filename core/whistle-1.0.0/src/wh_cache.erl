@@ -524,7 +524,10 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {'reply', []}.
+    case wh_api:node(JObj) =:= wh_util:to_binary(node()) of
+        'true' -> 'ignore';
+        'false' -> {'reply', []}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
