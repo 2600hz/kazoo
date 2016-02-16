@@ -177,10 +177,10 @@ match_invite_format(JObj, <<"Diversions">> = Key, Value) ->
 
     Address = kzsip_diversion:address(Value),
 
-    SIP = wnm_sip:parse(Address),
-    SIP1 = wnm_sip:set_user(SIP, FormatFun(wnm_sip:user(SIP))),
+    SIP = knm_sip:parse(Address),
+    SIP1 = knm_sip:set_user(SIP, FormatFun(knm_sip:user(SIP))),
 
-    Address1 =  wnm_sip:encode(SIP1),
+    Address1 =  knm_sip:encode(SIP1),
 
     wh_json:set_value(Key, kzsip_diversion:set_address(Value, Address1), JObj);
 match_invite_format(JObj, Key, Value) ->
