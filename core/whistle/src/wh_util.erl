@@ -1396,7 +1396,7 @@ write_file(Filename, Bytes, Modes) ->
     end.
 
 %% @public
--spec delete_file(file:name()) -> 'ok'.
+-spec delete_file(file:name_all()) -> 'ok'.
 delete_file(Filename) ->
     case file:delete(Filename) of
         'ok' -> 'ok';

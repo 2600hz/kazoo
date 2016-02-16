@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -17,6 +17,10 @@
          ,render/3
         ]).
 
+-export([log_errors/2
+         ,log_warnings/2
+        ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -24,6 +28,10 @@
          ,terminate/2
          ,code_change/3
         ]).
+
+-type location() :: {integer(), integer()} | integer().
+-type info() :: {location(), atom(), iolist()}.
+-type infos() :: {string(), [info()]}.
 
 -spec start_link(any()) -> startlink_ret().
 start_link(Args) ->
@@ -62,18 +70,22 @@ next_renderer(BackoffMs) ->
         'full' ->
             lager:critical("render farm pool is full! waiting ~bms", [BackoffMs]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2 + backoff_fudge());
-        P -> P
+            next_renderer(next_backoff(BackoffMs));
+        WorkerPid when is_pid(WorkerPid) -> WorkerPid
     catch
         'exit':{'timeout', {'gen_server', 'call', _Args}} ->
             lager:critical("render farm overwhelmed!! back off ~b", [BackoffMs]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2 + backoff_fudge());
+            next_renderer(next_backoff(BackoffMs));
         _E:_R ->
             lager:warning("failed to checkout: ~s: ~p", [_E, _R]),
             timer:sleep(BackoffMs),
-            next_renderer(BackoffMs * 2) + backoff_fudge()
+            next_renderer(next_backoff(BackoffMs))
     end.
+
+-spec next_backoff(pos_integer()) -> pos_integer().
+next_backoff(BackoffMs) ->
+    BackoffMs * 2 + backoff_fudge().
 
 -spec backoff_fudge() -> pos_integer().
 backoff_fudge() ->
@@ -115,9 +127,7 @@ handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModu
              ,'hibernate'
             };
         {'ok', TemplateModule, Warnings} ->
-            lager:debug("compiling template produced warnings: ~p", [Warnings]),
-            lager:debug("template: ~s", [Template]),
-
+            log_warnings(Warnings, Template),
             {'reply'
              ,render_template(TemplateModule, TemplateData)
              ,TemplateModule
@@ -132,9 +142,8 @@ handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModu
             };
         {'error', Errors, Warnings} ->
             lager:debug("failed to compile template"),
-            log_errors(Errors),
-            log_warnings(Warnings),
-            lager:debug("template: ~s", [Template]),
+            log_errors(Errors, Template),
+            log_warnings(Warnings, Template),
             {'reply'
              ,{'error', 'failed_to_compile'}
              ,TemplateModule
@@ -188,28 +197,28 @@ render_template(TemplateModule, TemplateData) ->
             {'error', R}
     end.
 
-log_errors([]) -> 'ok';
-log_errors(Es) ->
-    lager:debug("errors:"),
-    log_error_infos(Es).
+-spec log_errors(infos(), binary()) -> 'ok'.
+log_errors(Es, Template) ->
+    _ = [log_infos("error", Module, Errors, Template) || {Module, Errors} <- Es],
+    'ok'.
 
-log_warnings([]) -> 'ok';
-log_warnings(Ws) ->
-    lager:debug("warnings:"),
-    log_error_infos(Ws).
+-spec log_warnings(infos(), binary()) -> 'ok'.
+log_warnings(Ws, Template) ->
+    _ = [log_infos("warning", Module, Warnings, Template) || {Module, Warnings} <- Ws],
+    'ok'.
 
-log_error_infos([]) -> 'ok';
-log_error_infos([{_File, Info}|Infos]) ->
-    _ = [log_error_info(EI) || EI <- Info],
-    log_error_infos(Infos).
+-spec log_infos(string(), string(), [info()], binary()) -> ['ok'].
+log_infos(Type, Module, Errors, Template) ->
+    lager:info("~s in module ~s", [Type, Module]),
+    [log_info(Error, Template) || Error <- Errors].
 
-log_error_info({Location, _Module, Desc}) ->
-    LocationLog = location_to_log(Location),
-    lager:debug("  at ~s: ~s", [LocationLog, Desc]).
-
--spec location_to_log('non' | integer() | {integer(), integer()}) -> iolist().
-location_to_log('none') -> "pos:none";
-location_to_log({Line, Col}) ->
-    ["pos:{", wh_util:to_list(Line), ",", wh_util:to_list(Col), "}"];
-location_to_log(Pos) ->
-    ["pos:", wh_util:to_list(Pos)].
+-spec log_info(info(), binary()) -> 'ok'.
+log_info({{Row, Column}, _ErlydtlModule, Msg}, Template) ->
+    Rows = binary:split(Template, <<"\n">>, ['global']),
+    ErrorRow = lists:nth(Row, Rows),
+    <<Pre:Column/binary, Rest/binary>> = ErrorRow,
+    lager:info("~p: '~s' '~s'", [Msg, Pre, Rest]);
+log_info({Line, _ErlydtlModule, Msg}, Template) ->
+    Rows = binary:split(Template, <<"\n">>, ['global']),
+    ErrorRow = lists:nth(Line, Rows),
+    lager:info("~p on line ~p: ~s", [Msg, Line, ErrorRow]).

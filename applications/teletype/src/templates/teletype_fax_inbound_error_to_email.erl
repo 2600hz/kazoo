@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz Inc
+%%% @copyright (C) 2014-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -32,8 +32,21 @@
            ]
           )).
 
--define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %} \n\nCaller ID: {% firstof fax.remote_station_id caller_id.number \"unknown number\" %}\nCaller Name: {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {% firstof fax.timestamp|date:\"l, F j, Y \\\\a\\\\t H:i\" date_called|date:\"l, F j, Y \\\\a\\\\t H:i\"}">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3><table><tr><td>Caller ID</td><td>{% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{% firstof fax.timestamp|date:\"l, F j, Y \\\\a\\\\t H:i\" date_called|date:\"l, F j, Y \\\\a\\\\t H:i\"}</td></tr></table><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %}
+
+Caller ID: {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})
+
+Called To: {{to.user}} (Originally dialed number)
+Called On: {% firstof fax.timestamp|date:\"l, F j, Y \\a\\t H:i\" date_called|date:\"l, F j, Y \\a\\t H:i\" %}
+">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3>
+<table>
+<tr><td>Caller ID</td><td>{% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr>
+<tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr>
+<tr><td>Call received</td><td>{% firstof fax.timestamp|date:\"l, F j, Y \\\\a\\\\t H:i\" date_called|date:\"l, F j, Y \\\\a\\\\t H:i\"%}</td></tr>
+</table>
+<p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>
+">>).
 -define(TEMPLATE_SUBJECT, <<"Error Receiving Fax from {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Inbound Fax Error to Email">>).
@@ -81,17 +94,11 @@ handle_fax_inbound(DataJObj) ->
     Macros = build_template_data(
                wh_json:set_values([{<<"error">>, error_data(DataJObj)}], DataJObj)),
 
-    %% Load templates
-    Templates = teletype_templates:fetch(?TEMPLATE_ID, DataJObj),
-
     %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates,
-                            Template =/= 'undefined'
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
     lager:debug("rendered templates"),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz INC
+%%% @copyright (C) 2014-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -14,10 +14,16 @@
         ,{?MODULE, TemplateId, AccountId}
        ).
 
--export([init/2]).
+-export([init/2
+         ,renderer_name/2
+         ,render/2, render/3
+         ,preview/3
+         ,fetch_notification/2
+        ]).
 -export([doc_id/1]).
--export([fetch/1, fetch/2]).
--export([fetch_meta/2]).
+
+-type macro() :: {ne_binary(), ne_binary() | number() | macros()}.
+-type macros() :: [macro()].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,7 +41,235 @@ init(TemplateId, Params) ->
             create(DocId, Params);
         {'error', _E} ->
             lager:warning("failed to find template ~s", [DocId])
+    end,
+    compile_master_renderers(TemplateId).
+
+-spec compile_master_renderers(ne_binary()) -> 'ok'.
+compile_master_renderers(TemplateId) ->
+    _ = [build_renderer(TemplateId, ContentType, Template) ||
+            {ContentType, Template} <- fetch_master_attachments(TemplateId)
+        ],
+    lager:debug("built master renderers for ~s", [TemplateId]).
+
+-spec build_renderer(ne_binary(), ne_binary(), binary()) -> 'ok'.
+build_renderer(TemplateId, ContentType, Template) ->
+    ModuleName = renderer_name(TemplateId, ContentType),
+    case erlydtl:compile_template(Template
+                                 ,ModuleName
+                                 ,[{'out_dir', 'false'}
+                                  ,'return'
+                                  ,'report'
+                                   ,{'auto_escape', 'false'}
+                                  ]
+                                 )
+    of
+        {'ok', Name} ->
+            lager:debug("built ~s renderer for ~s", [TemplateId, Name]);
+        {'ok', Name, []} ->
+            lager:debug("built ~s renderer for ~s", [TemplateId, Name]);
+        {'ok', Name, Warnings} ->
+            lager:debug("compiling template ~s for renderer ~s produced warnings: ~p", [TemplateId, Name, Warnings]);
+        {'error', Errors, Warnings} ->
+            lager:debug("failed to compile template ~s", [TemplateId]),
+            teletype_renderer:log_errors(Errors, Template),
+            teletype_renderer:log_warnings(Warnings, Template),
+            throw({'error', 'failed_template', ModuleName})
     end.
+
+-type template_attachment() :: {ne_binary(), binary()}.
+-type template_attachments() :: [template_attachment()].
+
+-spec fetch_master_attachments(ne_binary()) -> template_attachments().
+fetch_master_attachments(TemplateId) ->
+    fetch_attachments(TemplateId, ?WH_CONFIG_DB).
+
+-spec fetch_attachments(ne_binary(), ne_binary()) -> template_attachments().
+fetch_attachments(TemplateId, Account) ->
+    AccountDb = case Account of
+                    ?WH_CONFIG_DB -> ?WH_CONFIG_DB;
+                    Account -> wh_util:format_account_db(Account)
+                end,
+    DocId = doc_id(TemplateId),
+    case fetch_notification(TemplateId, AccountDb) of
+        {'ok', TemplateDoc} ->
+            wh_json:foldl(fun(AttachmentName, AttachmentProps, Acc) ->
+                                  fetch_attachment(AttachmentName, AttachmentProps, Acc, AccountDb, DocId)
+                          end
+                          ,[]
+                          ,wh_doc:attachments(TemplateDoc)
+                         );
+        {'error', _E} ->
+            lager:error("failed to open ~s:~s: ~p", [AccountDb, DocId, _E]),
+            []
+    end.
+
+-spec fetch_attachment(ne_binary(), wh_json:object(), template_attachments(), ne_binary(), ne_binary()) ->
+                              template_attachments().
+fetch_attachment(AttachmentName, AttachmentProps, Acc, AccountDb, DocId) ->
+    ContentType = wh_json:get_value(<<"content_type">>, AttachmentProps),
+    case couch_mgr:fetch_attachment(AccountDb, DocId, AttachmentName) of
+        {'ok', AttachmentBinary} ->
+            [{ContentType, AttachmentBinary} | Acc];
+        {'error', _E} ->
+            lager:error("failed to fetch attachemt ~s:~s:~s: ~p"
+                       ,[AccountDb, DocId, AttachmentName, _E]
+                       ),
+            Acc
+    end.
+
+-spec preview(ne_binary(), macros(), wh_json:object()) -> wh_proplist().
+preview(TemplateId, Macros, DataJObj) ->
+    render_farm(TemplateId
+               ,Macros
+               ,load_preview_templates(DataJObj)
+               ).
+
+-spec render(ne_binary(), macros()) -> wh_proplist().
+-spec render(ne_binary(), macros(), wh_json:object()) -> wh_proplist().
+-spec render(ne_binary(), macros(), wh_json:object(), boolean()) -> wh_proplist().
+render(TemplateId, Macros) ->
+    render(TemplateId, Macros, wh_json:new()).
+
+render(TemplateId, Macros, DataJObj) ->
+    render(TemplateId, Macros, DataJObj, teletype_util:is_preview(DataJObj)).
+
+render(TemplateId, Macros, DataJObj, 'false') ->
+    case templates_source(TemplateId, DataJObj) of
+        'undefined' ->
+            lager:warning("no source db for template ~s: ~p", [TemplateId, DataJObj]),
+            [];
+        ?WH_CONFIG_DB ->
+            lager:debug("rendering system template for ~s", [TemplateId]),
+            render_masters(TemplateId, Macros);
+        AccountDb ->
+            lager:debug("rendering template ~s from account ~s", [TemplateId, AccountDb]),
+            render_accounts(TemplateId, AccountDb, Macros)
+    end;
+render(TemplateId, Macros, DataJObj, 'true') ->
+    preview(TemplateId, Macros, DataJObj).
+
+-spec templates_source(ne_binary(), api_binary() | wh_json:object()) -> api_binary().
+-spec templates_source(ne_binary(), api_binary(), ne_binary()) -> api_binary().
+templates_source(_TemplateId, 'undefined') ->
+    lager:warning("no account id for template ~s, no template to process", [_TemplateId]),
+    'undefined';
+templates_source(_TemplateId, ?WH_CONFIG_DB) ->
+    ?WH_CONFIG_DB;
+templates_source(TemplateId, <<_/binary>> = AccountId) ->
+    lager:debug("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    templates_source(TemplateId, AccountId, ResellerId);
+templates_source(TemplateId, DataJObj) ->
+    AccountId = teletype_util:find_account_id(DataJObj),
+    templates_source(TemplateId, AccountId).
+
+templates_source(_TemplateId, 'undefined', _ResellerId) ->
+    lager:warning("failed to find parent account for template ~s", [_TemplateId]),
+    'undefined';
+templates_source(TemplateId, AccountId, AccountId) ->
+    case fetch_notification(TemplateId, AccountId) of
+        {'ok', _Template} -> AccountId;
+        {'error', 'not_found'} -> ?WH_CONFIG_DB;
+        {'error', _E} -> 'undefined'
+    end;
+templates_source(TemplateId, AccountId, ResellerId) ->
+    case fetch_notification(TemplateId, AccountId) of
+        {'error', 'not_found'} ->
+            lager:debug("failed to find template ~s in account ~s", [TemplateId, AccountId]),
+            ParentId = teletype_util:get_parent_account_id(AccountId),
+            templates_source(TemplateId, ParentId, ResellerId);
+        {'ok', Template} ->
+            wh_doc:account_id(Template);
+        {'error', _E} -> 'undefined'
+    end.
+
+-spec fetch_notification(ne_binary(), ne_binary()) ->
+                                {'ok', wh_json:object()} |
+                                {'error', any()}.
+fetch_notification(TemplateId, ?WH_CONFIG_DB) ->
+    fetch_notification(TemplateId, ?WH_CONFIG_DB, 'undefined');
+fetch_notification(TemplateId, Account) ->
+    fetch_notification(TemplateId, Account, wh_services:find_reseller_id(Account)).
+
+fetch_notification(TemplateId, 'undefined', _ResellerId) ->
+    couch_mgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
+fetch_notification(TemplateId, ?WH_CONFIG_DB, _ResellerId) ->
+    couch_mgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId), [{'cache_failures', ['not_found']}]);
+fetch_notification(TemplateId, AccountId, AccountId) ->
+    AccountDb = wh_util:format_account_db(AccountId),
+    DocId = doc_id(TemplateId),
+
+    case couch_mgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
+        {'ok', _JObj}=OK -> OK;
+        {'error', _E} -> fetch_notification(TemplateId, 'undefined', AccountId)
+    end;
+fetch_notification(TemplateId, AccountId, ResellerId) ->
+    AccountDb = wh_util:format_account_db(AccountId),
+    DocId = doc_id(TemplateId),
+    case couch_mgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
+        {'ok', _JObj}=OK -> OK;
+        {'error', _E} ->
+            fetch_notification(TemplateId, teletype_util:get_parent_account_id(AccountId), ResellerId)
+    end.
+
+-spec render_masters(ne_binary(), macros()) -> wh_proplist().
+render_masters(TemplateId, Macros) ->
+      [{ContentType, render_master(TemplateId, ContentType, Macros)}
+       || ContentType <- master_content_types(TemplateId)
+      ].
+
+master_content_types(TemplateId) ->
+    case fetch_notification(TemplateId, ?WH_CONFIG_DB) of
+        {'ok', NotificationJObj} ->
+            wh_json:foldl(fun master_content_type/3
+                          ,[]
+                          ,wh_doc:attachments(NotificationJObj)
+                         );
+        {'error', _E} ->
+            lager:warning("failed to find master notification ~s", [TemplateId]),
+            []
+    end.
+
+-spec master_content_type(ne_binary(), wh_json:object(), ne_binaries()) -> ne_binaries().
+master_content_type(_AttachmentName, AttachmentProps, Acc) ->
+    [wh_json:get_value(<<"content_type">>, AttachmentProps) | Acc].
+
+-spec render_master(ne_binary(), ne_binary(), macros()) -> ne_binary().
+render_master(<<_/binary>> = TemplateId, <<_/binary>> = ContentType, Macros) ->
+    ModuleName = teletype_templates:renderer_name(TemplateId, ContentType),
+    try ModuleName:render(Macros) of
+        {'ok', IOList} ->
+            lager:debug("rendered ~s template successfully: ~s", [ContentType, IOList]),
+            iolist_to_binary(IOList);
+        {'error', _E} ->
+            lager:debug("failed to render ~s template: ~p", [ContentType, _E]),
+            throw({'error', 'template_error'})
+    catch
+        'error':'undef' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("something in the template ~s is undefined", [ModuleName]),
+            wh_util:log_stacktrace(ST),
+            throw({'error', 'template_error'});
+        _E:R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("crashed rendering template ~s: ~s: ~p", [ModuleName, _E, R]),
+            wh_util:log_stacktrace(ST),
+            throw({'error', 'template_error'})
+    end.
+
+-spec render_accounts(ne_binary(), ne_binary(), macros()) -> wh_proplist().
+render_accounts(TemplateId, AccountDb, Macros) ->
+    render_farm(TemplateId, Macros, fetch_attachments(TemplateId, AccountDb)).
+
+-spec render_farm(ne_binary(), macros(), wh_proplist()) -> wh_proplist().
+render_farm(TemplateId, Macros, Templates) ->
+    [{ContentType, teletype_util:render(TemplateId, Template, Macros)}
+     || {ContentType, Template} <- Templates
+    ].
+
+-spec renderer_name(ne_binary(), ne_binary()) -> atom().
+renderer_name(TemplateId, ContentType) ->
+    wh_util:to_atom(<<(TemplateId)/binary, ".", ContentType/binary>>, 'true').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -46,193 +280,25 @@ init(TemplateId, Params) ->
 doc_id(Id) ->
     kz_notification:db_id(Id).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch(ne_binary()) -> wh_proplist().
--spec fetch(ne_binary(), api_object() | ne_binary()) -> wh_proplist().
--spec fetch(ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
-fetch(TemplateId) ->
-    fetch_master(TemplateId).
-
-fetch(_TemplateId, 'undefined') ->
-    lager:debug("no account id for ~s, no template available", [_TemplateId]),
-    [];
-fetch(TemplateId, AccountId) when is_binary(AccountId) ->
-    lager:debug("trying to fetch template ~s for ~s", [TemplateId, AccountId]),
-    ResellerId = wh_services:find_reseller_id(AccountId),
-    fetch(TemplateId, AccountId, ResellerId);
-fetch(TemplateId, DataJObj) ->
-    case load_templates(DataJObj) of
-        [] ->
-            fetch(TemplateId, teletype_util:find_account_id(DataJObj));
-        Templates ->
-            lager:debug("preview API has templates defined"),
-            Templates
-    end.
-
--spec load_templates(wh_json:object()) -> wh_proplist().
-load_templates(DataJObj) ->
+-spec load_preview_templates(wh_json:object()) -> wh_proplist().
+load_preview_templates(DataJObj) ->
     props:filter_undefined(
       [{?TEXT_HTML, maybe_decode_html(wh_json:get_value(<<"html">>, DataJObj))}
        ,{?TEXT_PLAIN, wh_json:get_value(<<"text">>, DataJObj)}
       ]).
 
-fetch(TemplateId, AccountId, AccountId) ->
-    case fetch_from_db(TemplateId, AccountId) of
-        {'error', 'not_found'} -> fetch_master(TemplateId);
-        {'error', _} -> [];
-        OK -> OK
-    end;
-fetch(TemplateId, AccountId, ResellerId) ->
-    case fetch_from_db(TemplateId, AccountId) of
-        {'error', 'not_found'} ->
-            fetch_parent(TemplateId, AccountId, ResellerId);
-        {'error', _} -> [];
-        OK -> OK
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_meta(ne_binary(), api_binary()) ->
-                        {'ok', wh_json:object()} |
-                        couch_mgr:couchbeam_error().
--spec fetch_meta(ne_binary(), api_binary(), ne_binary()) ->
-                        {'ok', wh_json:object()} |
-                        couch_mgr:couchbeam_error().
-fetch_meta(TemplateId, AccountId) ->
-    ResellerId = wh_services:find_reseller_id(AccountId),
-    fetch_meta(TemplateId, AccountId, ResellerId).
-
-fetch_meta(TemplateId, 'undefined', _ResellerId) ->
-    fetch_master_meta(TemplateId);
-fetch_meta(TemplateId, AccountId, AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, doc_id(TemplateId)) of
-        {'ok', _TemplateJObj}=OK -> OK;
-        {'error', _E} ->
-            lager:debug("failed to fetch template ~s from ~s ~p", [TemplateId, AccountId, _E]),
-            fetch_master_meta(TemplateId)
-    end;
-fetch_meta(TemplateId, AccountId, ResellerId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, doc_id(TemplateId)) of
-        {'ok', _TemplateJObj}=OK -> OK;
-        {'error', 'not_found'} ->
-            fetch_meta(TemplateId, teletype_util:get_parent_account_id(AccountId), ResellerId);
-        {'error', _E} ->
-            lager:debug("failed to fetch template ~s from ~s ~p", [TemplateId, AccountId, _E]),
-            fetch_master_meta(TemplateId)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_master_meta(ne_binary()) ->
-                               {'ok', wh_json:object()} |
-                               couch_mgr:couchbeam_error().
-fetch_master_meta(TemplateId) ->
-    lager:debug("fetching master meta for ~s", [TemplateId]),
-    couch_mgr:open_cache_doc(?WH_CONFIG_DB, doc_id(TemplateId)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--type fetch_return() :: {ne_binary(), binary()} | 'undefined'.
-
--spec fetch_attachment(ne_binary(), ne_binary(), wh_json:object() | fetch_return()) ->
-                              wh_proplist() | fetch_return().
-fetch_attachment(TemplateId, AccountDb, {AName, Properties}) ->
-    case couch_mgr:fetch_attachment(AccountDb, TemplateId, AName) of
-        {'ok', Contents} ->
-            lager:debug("found template attachment ~s.~s", [TemplateId, AName]),
-            {wh_json:get_value(<<"content_type">>, Properties), Contents};
-        {'error', _E} ->
-            lager:debug("failed to load attachment ~s from ~s(~s): ~p", [AName, TemplateId, AccountDb, _E]),
+-spec maybe_decode_html(api_binary()) -> api_binary().
+maybe_decode_html('undefined') -> 'undefined';
+maybe_decode_html(HTML) ->
+    try base64:decode(HTML) of
+        Decoded -> Decoded
+    catch
+        _E:'badarg' -> HTML;
+        _E:_R ->
+            lager:debug("failed to decode HTML ~s: ~p", [_E, _R]),
             'undefined'
-    end;
-fetch_attachment(TemplateId, AccountDb, Attachments)->
-    props:filter_undefined(
-      [fetch_attachment(TemplateId, AccountDb, Attachment)
-       || Attachment <- wh_json:to_proplist(Attachments)
-      ]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_master(ne_binary()) -> wh_proplist().
-fetch_master(TemplateId) ->
-    DocId = doc_id(TemplateId),
-    lager:debug("fetching master template ~s", [DocId]),
-    case couch_mgr:open_cache_doc(?WH_CONFIG_DB, DocId) of
-        {'ok', TemplateJObj} ->
-            fetch_attachment(
-              DocId
-              ,?WH_CONFIG_DB
-              ,wh_doc:attachments(TemplateJObj, wh_json:new())
-             );
-        {'error', _E} ->
-            lager:debug("failed to fetch template ~s from ~s", [TemplateId, ?WH_CONFIG_DB]),
-            []
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_parent(ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
-fetch_parent(TemplateId, AccountId, AccountId) ->
-    lager:debug("trying to fetch parent template ~s for ~s but account is reseller", [TemplateId, AccountId]),
-    fetch_master(TemplateId);
-fetch_parent(TemplateId, AccountId, ResellerId) ->
-    lager:debug("trying to fetch parent template ~s for ~s", [TemplateId, AccountId]),
-    case teletype_util:get_parent_account_id(AccountId) of
-        'undefined' ->
-            lager:debug("parent account_id for ~s is undefined", [AccountId]),
-            [];
-        ParentAccountId ->
-            fetch(TemplateId, ParentAccountId, ResellerId)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_from_db(ne_binary(), ne_binary()) ->
-                           wh_proplist() |
-                           {'error', any()}.
-fetch_from_db(TemplateId, AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    DocId = doc_id(TemplateId),
-    lager:debug("fetching template ~s in ~s", [DocId, AccountId]),
-    case couch_mgr:open_cache_doc(AccountDb
-                                  ,DocId
-                                  ,[{'cache_failures', ['not_found']}]
-                                 )
-    of
-        {'ok', TemplateJObj} ->
-            fetch_attachment(
-              DocId
-              ,AccountDb
-              ,wh_doc:attachments(TemplateJObj, wh_json:new())
-             );
-        {'error', _E}=E ->
-            lager:debug("failed to fetch template ~s from ~s: ~s", [TemplateId, AccountId, _E]),
-            E
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -565,21 +631,4 @@ save_attachment(DocId, AName, ContentType, Contents) ->
         {'error', _E}=E ->
             lager:debug("failed to add attachment ~s to ~s: ~p", [AName, DocId, _E]),
             E
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_decode_html(api_binary()) -> api_binary().
-maybe_decode_html('undefined') -> 'undefined';
-maybe_decode_html(HTML) ->
-    try base64:decode(HTML) of
-        Decoded -> Decoded
-    catch
-        _E:'badarg' -> HTML;
-        _E:_R ->
-            lager:debug("failed to decode HTML ~s: ~p", [_E, _R]),
-            'undefined'
     end.
