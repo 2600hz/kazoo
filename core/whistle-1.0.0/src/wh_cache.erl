@@ -525,7 +525,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
+handle_event(JObj, _State) ->
     case wh_api:node(JObj) =:= wh_util:to_binary(node()) of
         'true' -> 'ignore';
         'false' -> {'reply', []}
@@ -711,7 +711,7 @@ maybe_exec_erase_callbacks(Key, Tab) ->
         _ -> 'ok'
     end.
 
--spec exec_erase_callbacks(any(), atom(), callback_fun()) -> any().
+-spec exec_erase_callback(any(), atom(), callback_fun()) -> any().
 exec_erase_callback(Key, Tab, Fun) ->
     Value = ets:lookup_element(Tab, Key, #cache_obj.value),
     Fun(Key, Value, 'erase').
