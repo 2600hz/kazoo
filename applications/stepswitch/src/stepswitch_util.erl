@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -99,7 +99,12 @@ lookup_number(Number) ->
 fetch_number(Num) ->
     case wh_number_manager:lookup_account_by_number(Num) of
         {'ok', AccountId, Props} ->
-            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(Num), Num}, {'type', <<"number">>}]}],
+            CacheProps = [{'origin'
+                          ,[{'db', wnm_util:number_to_db_name(Num), Num}
+                           ,{'type', <<"number">>}
+                           ]
+                          }
+                         ],
             kz_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
