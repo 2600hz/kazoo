@@ -590,7 +590,7 @@ maybe_reformat_caller_id(CallerId, Format) ->
 -spec maybe_regex_caller_id(ne_binary(), api_binary(), wh_json:object()) -> ne_binary().
 maybe_regex_caller_id(CallerId, 'undefined', _) -> CallerId;
 maybe_regex_caller_id(CallerId, Regex, Format) ->
-    Normalized = wnm_util:normalize_number(CallerId),
+    Normalized = knm_converters:normalize(CallerId),
     case re:run(Normalized, Regex, [{'capture', 'all_but_first', 'binary'}]) of
         {'match', UseCid} ->
             lager:info("cid rewrite match found ~s from normalized caller id ~s"
