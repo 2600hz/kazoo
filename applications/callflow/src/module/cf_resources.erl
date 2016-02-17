@@ -110,9 +110,22 @@ build_offnet_request(Data, Call) ->
 
 -spec get_channel_vars(whapps_call:call()) -> wh_json:object().
 get_channel_vars(Call) ->
+    AuthId = whapps_call:authorizing_id(Call),
+    EndpointId = whapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, AuthId, Call),
     wh_json:from_list(
-      [{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}]
+      props:filter_undefined(get_channel_vars(EndpointId, Call))
      ).
+
+-spec get_channel_vars(api_binary(), whapps_call:call()) -> wh_json:object().
+get_channel_vars('undefined', _Call) -> [];
+get_channel_vars(EndpointId, Call) ->
+    case cf_endpoint:get(EndpointId, whapps_call:account_db(Call)) of
+        {'ok', Endpoint} ->
+            [{<<"Authorizing-ID">>, EndpointId}
+             ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Endpoint)}
+            ];
+        {'error', _} -> []
+    end.
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().
 get_bypass_e164(Data) ->

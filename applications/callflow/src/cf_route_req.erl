@@ -150,6 +150,7 @@ bucket_cost(Flow) ->
 -spec allow_no_match(whapps_call:call()) -> boolean().
 allow_no_match(Call) ->
     is_valid_endpoint(whapps_call:custom_channel_var(<<"Referred-By">>, Call), Call)
+        orelse is_valid_endpoint(whapps_call:custom_channel_var(<<"Redirected-By">>, Call), Call)
         orelse allow_no_match_type(Call).
 
 -spec allow_no_match_type(whapps_call:call()) -> boolean().
@@ -296,18 +297,19 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
 %%-----------------------------------------------------------------------------
 -spec maybe_referred_call(whapps_call:call()) -> whapps_call:call().
 maybe_referred_call(Call) ->
-    maybe_fix_referred_call(get_referred_by(Call), Call).
+    maybe_fix_restrictions(get_referred_by(Call), Call).
 
--spec maybe_fix_referred_call(api_binary(), whapps_call:call()) -> whapps_call:call().
-maybe_fix_referred_call('undefined', Call) -> Call;
-maybe_fix_referred_call(ReferredBy, Call) ->
-    case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), ReferredBy) of
+-spec maybe_device_redirected(whapps_call:call()) -> whapps_call:call().
+maybe_device_redirected(Call) ->
+    maybe_fix_restrictions(get_redirected_by(Call), Call).
+
+-spec maybe_fix_restrictions(api_binary(), whapps_call:call()) -> whapps_call:call().
+maybe_fix_restrictions('undefined', Call) -> Call;
+maybe_fix_restrictions(Device, Call) ->
+    case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Device) of
         {'ok', EndpointId} -> whapps_call:kvs_store(?RESTRICTED_ENDPOINT_KEY, EndpointId, Call);
         {'error', 'not_found'} ->
-            Keys = [<<"Owner-ID">>
-                    ,<<"Authorizing-Type">>
-                    ,<<"Authorizing-ID">>
-                   ],
+            Keys = [<<"Authorizing-ID">>],
             whapps_call:remove_custom_channel_vars(Keys, Call)
     end.
 
@@ -315,6 +317,11 @@ maybe_fix_referred_call(ReferredBy, Call) ->
 get_referred_by(Call) ->
     ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
     extract_sip_username(ReferredBy).
+
+-spec get_redirected_by(whapps_call:call()) -> api_binary().
+get_redirected_by(Call) ->
+    RedirectedBy = whapps_call:custom_channel_var(<<"Redirected-By">>, Call),
+    extract_sip_username(RedirectedBy).
 
 -spec is_valid_endpoint(api_binary(), whapps_call:call()) -> boolean().
 is_valid_endpoint('undefined', _) -> 'false';
@@ -327,31 +334,6 @@ is_valid_endpoint(Contact, Call) ->
                 {'error', 'not_found'} -> 'false'
             end;
         _ -> 'false'
-    end.
-
--spec maybe_device_redirected(whapps_call:call()) -> whapps_call:call().
-maybe_device_redirected(Call) ->
-    RedirectedBy = whapps_call:custom_channel_var(<<"Redirected-By">>, Call),
-    case extract_sip_username(RedirectedBy) of
-        'undefined' -> Call;
-        Device -> maybe_set_redirected_authz(Device, Call)
-    end.
-
--spec maybe_set_redirected_authz(ne_binary(), whapps_call:call()) -> whapps_call:call().
-maybe_set_redirected_authz(Device, Call) ->
-    case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Device) of
-        {'ok', EndpointId } ->
-            maybe_set_reroute_owner(whapps_call:set_authorization(<<"device">>, EndpointId, Call));
-        {'error', 'not_found'} -> Call
-    end.
-
--spec maybe_set_reroute_owner(whapps_call:call()) -> whapps_call:call().
-maybe_set_reroute_owner(Call) ->
-    case cf_attributes:owner_id(Call) of
-        'undefined' ->
-            whapps_call:remove_custom_channel_vars([<<"Owner-ID">>], Call);
-        OwnerId ->
-            whapps_call:set_owner_id(OwnerId, Call)
     end.
 
 -spec extract_sip_username(api_binary()) -> api_binary().
