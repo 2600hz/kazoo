@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
@@ -223,11 +222,13 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
 
 -spec maybe_play_name(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 maybe_play_name(Conference, Call, Srv) ->
-    case whapps_conference:play_name_on_join(Conference) of
+    case whapps_conference:play_name_on_join(Conference)
+        andalso ?SUPPORT_NAME_ANNOUNCEMENT
+    of
         'true' ->
             PronouncedName = case conf_pronounced_name:lookup_name(Call) of
                                  'undefined' ->
-                                     lager:debug("Recording pronunciation of the name"),
+                                     lager:debug("recording pronunciation of the name"),
                                      conf_pronounced_name:record(Call);
                                  Value ->
                                      lager:debug("has pronounced name: ~p", [Value]),
