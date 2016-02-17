@@ -1553,7 +1553,7 @@ generate_loa_from_port(Context, PortRequest) ->
 
     AccountDoc = cb_context:account_doc(Context),
 
-    Numbers = [wnm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
+    Numbers = [knm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
 
     QRCode = create_qr_code(cb_context:account_id(Context), wh_doc:id(PortRequest)),
 
