@@ -1110,7 +1110,7 @@ number_validation_error(Context, Number, Message) ->
 -spec check_number_existence(ne_binary(), ne_binary(), cb_context:context()) ->
                                     cb_context:context().
 check_number_existence(E164, Number, Context) ->
-    case wh_number_manager:lookup_account_by_number(E164) of
+    case knm_number:lookup_account(E164) of
         {'ok', _AccountId, _} ->
             lager:debug("number ~s exists and belongs to ~s", [E164, _AccountId]),
             number_validation_error(Context, Number, <<"Number exists on the system already">>);

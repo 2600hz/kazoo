@@ -295,7 +295,7 @@ maybe_get_assigned_numbers([Number|_], Name, _) ->
 is_valid_caller_id('undefined', _) -> 'false';
 is_valid_caller_id(Number, Call) ->
     AccountId = whapps_call:account_id(Call),
-    case wh_number_manager:lookup_account_by_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} -> 'true';
         _Else -> 'false'
     end.

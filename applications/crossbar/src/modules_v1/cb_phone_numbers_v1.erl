@@ -444,7 +444,7 @@ clean_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec identify(cb_context:context(), ne_binary()) -> cb_context:context().
 identify(Context, Number) ->
-    case wh_number_manager:lookup_account_by_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'error', 'not_reconcilable'} ->
             cb_context:add_system_error(
                 'bad_identifier'

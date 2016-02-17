@@ -195,7 +195,7 @@ lookup_account_id(JObj) ->
 
 -spec fetch_account_id(ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 fetch_account_id(Number) ->
-    case wh_number_manager:lookup_account_by_number(Number) of
+    case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
             CacheProps = [{'origin', {'db', knm_converters:to_db(Number), Number}}],
             kz_cache:store_local(?HOOKS_CACHE_NAME, cache_key_number(Number), AccountId, CacheProps),
