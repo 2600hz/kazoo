@@ -53,7 +53,7 @@ handle_req(JObj, Props) ->
 -spec maybe_prepend_preflow(wh_json:object(), wh_proplist()
                             ,whapps_call:call(), wh_json:object()
                             ,boolean()
-                           ) -> whapps_call:call().
+                           ) -> 'ok'.
 maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch) ->
     AccountId = whapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
@@ -89,19 +89,33 @@ prepend_preflow(AccountId, PreflowId, Flow) ->
     end.
 
 -spec maybe_reply_to_req(wh_json:object(), wh_proplist()
-                         ,whapps_call:call(), wh_json:object(), boolean()) -> whapps_call:call().
+                         ,whapps_call:call(), wh_json:object(), boolean()) -> 'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request", [wh_doc:id(Flow)
                                                        ,whapps_call:account_id(Call)
                                                       ]),
-    {Name, Cost} = bucket_info(Call, Flow),
-    case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
-        'false' ->
-            lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
+    case maybe_consume_token(Call, Flow) of
+        'false' -> 'ok';
         'true' ->
             ControllerQ = props:get_value('queue', Props),
             NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
             send_route_response(Flow, JObj, NewCall)
+    end.
+
+-spec maybe_consume_token(whapps_call:call(), wh_json:object()) -> boolean().
+maybe_consume_token(Call, Flow) ->
+    case whapps_config:get_is_true(?CF_CONFIG_CAT, <<"calls_consume_tokens">>, 'true') of
+        'false' ->
+            %% If configured to not consume tokens then don't block the call
+            'true';
+        'true' ->
+            {Name, Cost} = bucket_info(Call, Flow),
+            case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
+                'true' -> 'true';
+                'false' ->
+                    lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
+                    'false'
+            end
     end.
 
 -spec bucket_info(whapps_call:call(), wh_json:object()) ->
