@@ -239,7 +239,7 @@ set_endpoint_caller_id(Endpoint, Name, Number) ->
                           ,Endpoint
                          ).
 
--spec format_endpoint(wh_json:object(), api_binary(), filter_fun(), api_binary(), wh_json:object(), ne_binary()) ->
+-spec format_endpoint(wh_json:object(), api_binary(), filter_fun(), wapi_offnet_resource:req(), wh_json:object(), ne_binary()) ->
                              wh_json:object().
 format_endpoint(Endpoint, Number, FilterFun, OffnetReq, SIPHeaders, AccountId) ->
     FormattedEndpoint = apply_formatters(Endpoint, SIPHeaders, AccountId),
@@ -279,7 +279,7 @@ maybe_add_sip_headers(Endpoint, SIPHeaders) ->
         MergedHeaders -> wh_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
     end.
 
--spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
+-spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), wapi_offnet_resource:req()) ->
                                         wh_json:object().
 maybe_endpoint_format_from(Endpoint, Number, OffnetReq) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
@@ -297,7 +297,7 @@ maybe_endpoint_format_from(Endpoint, Number, OffnetReq) ->
                              )
     end.
 
--spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary(), wh_json:object()) ->
+-spec endpoint_format_from(wh_json:object(), ne_binary(), wapi_offnet_resource:req(), wh_json:object()) ->
                                   wh_json:object().
 endpoint_format_from(Endpoint, Number, OffnetReq, CCVs) ->
     FromNumber = wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, Endpoint, Number),
@@ -330,7 +330,7 @@ endpoint_format_from(Endpoint, Number, OffnetReq, CCVs) ->
                              )
     end.
 
--spec get_endpoint_format_from(wh_json:object(), wh_json:object()) -> api_binary().
+-spec get_endpoint_format_from(wapi_offnet_resource:req(), wh_json:object()) -> api_binary().
 get_endpoint_format_from(OffnetReq, CCVs) ->
     DefaultRealm = default_realm(OffnetReq),
     case wh_json:is_true(<<"From-Account-Realm">>, CCVs) of
