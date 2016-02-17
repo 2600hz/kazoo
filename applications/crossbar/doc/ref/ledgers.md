@@ -6,8 +6,21 @@
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`amount` | Ledger amount | `integer` |   | `true`
+`account` | Account info | `object` |   | `false`
+`account.id` | Account ID | `string` |   | `false`
+`account.name` | Account name | `string` |   | `false`
+`amount` | Ledger amount | `integer` |   | `false`
 `description` | Useful description for ledger | `string` |   | `false`
+`period` | Period of ledger | `object` |   | `false`
+`period.end` | Period end | `integer` |   | `false`
+`period.start` | Period start | `integer` |   | `false`
+`source` | Origin of ledger | `object` |   | `true`
+`source.id` | Source ID | `string` |   | `true`
+`source.service` | Source service | `string` |   | `true`
+`usage` | Usage for ledger | `object` |   | `true`
+`usage.quantity` | Usage quantity | `integer` |   | `true`
+`usage.type` | Usage type | `string` |   | `true`
+`usage.unit` | Usage unit | `string` |   | `true`
 
 
 #### Fetch
