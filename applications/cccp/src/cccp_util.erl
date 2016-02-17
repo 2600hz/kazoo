@@ -290,7 +290,7 @@ bridge_to_loopback(CallId, ToDID, CID,  CtrlQ, AccountId) ->
 bridge(CallId, ToDID, CID, Q, CtrlQ, AccountId, AccountCID) ->
     case wnm_util:is_reconcilable(ToDID) of
         'true' ->
-            case wh_number_manager:lookup_account_by_number(ToDID) of
+            case knm_number:lookup_account(ToDID) of
                 {'ok',_,_} ->
                     bridge_to_loopback(CallId, ToDID, CID, CtrlQ, AccountId);
                 _ ->

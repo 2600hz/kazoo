@@ -340,7 +340,7 @@ maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, _AccountId) ->
 -spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
     lager:info("ensure_valid_caller_id flag detected, will check whether CID is legal..."),
-    case wh_number_manager:lookup_account_by_number(CIDNum) of
+    case knm_number:lookup_account(CIDNum) of
         {'ok', AccountId, _} -> CIDNum;
         _Else -> validate_from_user(FromUser, AccountId)
     end.
@@ -348,7 +348,7 @@ validate_external_cid(CIDNum, FromUser, AccountId) ->
 -spec validate_from_user(ne_binary(), ne_binary()) -> ne_binary().
 validate_from_user(FromUser, AccountId) ->
     NormalizedFromUser = knm_converters:normalize(FromUser),
-    case wh_number_manager:lookup_account_by_number(NormalizedFromUser) of
+    case knm_number:lookup_account(NormalizedFromUser) of
         {'ok', AccountId, _} ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;

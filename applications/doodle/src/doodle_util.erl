@@ -424,7 +424,7 @@ lookup_number(Number) ->
                           {'ok', ne_binary(), wh_proplist()} |
                           {'error', any()}.
 fetch_number(Num) ->
-    case wh_number_manager:lookup_account_by_number(Num) of
+    case knm_number:lookup_account(Num) of
         {'ok', AccountId, Props} ->
             CacheProps = [{'origin', [{'db', knm_converters:to_db(Num), Num}, {'type', <<"number">>}]}],
             kz_cache:store_local(?DOODLE_CACHE, cache_key_number(Num), {AccountId, Props}, CacheProps),
