@@ -284,7 +284,6 @@ put(Context, Num, ?ACTIVATE) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Num) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}],
-
     case knm_number:delete(Num, Options) of
         {'error', Reason} -> error_return(Context, Reason);
         {'ok', _} ->

@@ -394,7 +394,8 @@ delete(Context, ?COLLECTION) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
 delete(Context, Number) ->
-    Result = wh_number_manager:release_number(Number, cb_context:auth_account_id(Context)),
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
+    Result = knm_number:delete(Number, Options),
     set_response(Result, Number, Context).
 
 delete(Context, Number, ?PORT_DOCS, Name) ->
@@ -629,22 +630,14 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
 set_response({'ok', {'ok', Doc}}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({'ok', Number}, _, Context) ->
-    crossbar_util:response(knm_phone_number:to_public_json(
-                             knm_number:phone_number(Number)
-                            )
-                           ,Context
-                          );
+    JObj = knm_phone_number:to_public_json(knm_number:phone_number(Number)),
+    crossbar_util:response(JObj, Context);
 set_response({'error', Error}, _, Context) ->
-    cb_context:add_system_error(knm_errors:code(Error)
-                                ,knm_errors:error(Error)
-                                ,Error
-                                ,Context
-                               );
+    Code = knm_errors:code(Error),
+    Msg = knm_errors:error(Error),
+    cb_context:add_system_error(Code, Msg, Error, Context);
 set_response({'dry_run', Services, _}, _, Context) ->
-    crossbar_util:response(
-      wh_services:dry_run(Services)
-      ,Context
-     );
+    crossbar_util:response(wh_services:dry_run(Services), Context);
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
@@ -729,7 +722,9 @@ do_collection_action(Context, ?HTTP_POST, Number) ->
             {State, Error}
     end;
 do_collection_action(Context, ?HTTP_DELETE, Number) ->
-    wh_number_manager:release_number(Number, cb_context:auth_account_id(Context)).
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
+    knm_number:delete(Number, Options).
+
 
 do_collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
     case wh_number_manager:assign_number_to_account(Number
