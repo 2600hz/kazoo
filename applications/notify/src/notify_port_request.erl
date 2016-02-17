@@ -235,7 +235,7 @@ get_attachments(JObj) ->
 -spec get_number_attachments(wh_json:object()) -> attachments().
 get_number_attachments(JObj) ->
     Number = knm_converters:normalize(wh_json:get_value(<<"Number">>, JObj)),
-    NumberDb = wnm_util:number_to_db_name(Number),
+    NumberDb = knm_converters:to_db(Number),
     case kz_datamgr:open_doc(NumberDb, Number) of
         {'ok', NumberJObj} ->
             Attachments = wh_doc:attachments(NumberJObj, wh_json:new()),
