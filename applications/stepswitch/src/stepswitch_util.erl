@@ -301,9 +301,10 @@ maybe_endpoint_format_from(Endpoint, Number, DefaultRealm) ->
 -spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary(), wh_json:object()) ->
                                   wh_json:object().
 endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs) ->
+    FromNumber = wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, Endpoint, Number),
     case wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm) of
         <<_/binary>> = Realm ->
-            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
+            FromURI = <<"sip:", FromNumber/binary, "@", Realm/binary>>,
             lager:debug("setting resource ~s from-uri to ~s"
                         ,[wh_json:get_value(<<"Resource-ID">>, CCVs)
                           ,FromURI
