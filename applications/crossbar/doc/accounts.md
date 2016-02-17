@@ -427,8 +427,9 @@ An account can only be moved by a "superduper_admin" or  if enabled by anyone ab
 
 You can enable that feature by editing the document `crossbar.accounts` in your `system_config` database and set the value to `tree`.
 
-Key || Value || Description
-`allow_move` | "tree" | "superduper_admin" | Who can move a sub-account
+Key | Value | Description
+--- | ----- | -----------
+`allow_move` | enum("tree", "superduper_admin") | Who can move a sub-account
 
 > POST /v2/accounts/{ACCOUNT_ID}/move
 
