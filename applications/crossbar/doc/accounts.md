@@ -38,7 +38,6 @@ Key | Description | Type | Default | Required
 `voicemail.notify` |   | `object` |   | `false`
 `voicemail.notify.callback` |   | `#/definitions/notify.callback` |   | `false`
 
-
 #### Create a new child account
 
 Puts the created account under the account of the owner of the `{AUTH_TOKEN}`. This is a shortcut for `PUT /v2/accounts/{AUTH_ACCOUNT_ID}`
@@ -79,36 +78,156 @@ curl -v -X PUT \
 }
 ```
 
-#### Remove
+#### Remove an account
 
 > DELETE /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "billing_mode": "manual",
+        "call_restriction": {},
+        "caller_id": {},
+        "created": 63621662701,
+        "dial_plan": {},
+        "enabled": true,
+        "id": "{ACCOUNT_ID}",
+        "is_reseller": false,
+        "language": "en-us",
+        "music_on_hold": {},
+        "name": "child account",
+        "preflow": {},
+        "realm": "aeac33.sip.2600hz.com",
+        "reseller_id": "undefined",
+        "ringtones": {},
+        "superduper_admin": false,
+        "timezone": "America/Los_Angeles",
+        "wnm_allow_additions": false
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "undefined",
+    "status": "success"
+}
+
 ```
 
-#### Fetch
+#### Fetch the account doc
 
 > GET /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "billing_mode": "manual",
+        "call_restriction": {},
+        "caller_id": {},
+        "created": 63621662701,
+        "dial_plan": {},
+        "enabled": true,
+        "id": "{ACCOUNT_ID}",
+        "is_reseller": false,
+        "language": "en-us",
+        "music_on_hold": {},
+        "name": "child account",
+        "preflow": {},
+        "realm": "aeac33.sip.2600hz.com",
+        "reseller_id": "undefined",
+        "ringtones": {},
+        "superduper_admin": false,
+        "timezone": "America/Los_Angeles",
+        "wnm_allow_additions": false
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "undefined",
+    "status": "success"
+}
+
 ```
 
-#### Patch
+#### Patch the account doc
 
 > PATCH /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"some_key":"some_value"}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "billing_mode": "manual",
+        "call_restriction": {},
+        "caller_id": {},
+        "created": 63621662701,
+        "dial_plan": {},
+        "enabled": true,
+        "id": "{ACCOUNT_ID}",
+        "is_reseller": false,
+        "language": "en-us",
+        "music_on_hold": {},
+        "name": "child account",
+        "preflow": {},
+        "realm": "aeac33.sip.2600hz.com",
+        "reseller_id": "undefined",
+        "ringtones": {},
+        "some_key":"some_value",
+        "superduper_admin": false,
+        "timezone": "America/Los_Angeles",
+        "wnm_allow_additions": false
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "undefined",
+    "status": "success"
+}
 ```
 
-#### Change
+#### Change the account doc
 
 > POST /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data": {"billing_mode": "manual","call_restriction": {},"caller_id": {},"created": 63621662701,"dial_plan": {},"enabled": true,"is_reseller": false,"language": "en-us","music_on_hold": {},"name": "child account","preflow": {},"realm": "aeac33.sip.2600hz.com","reseller_id": "undefined","ringtones": {},"some_key":"some_value","superduper_admin": false,"timezone": "America/Los_Angeles","wnm_allow_additions": false}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "billing_mode": "manual",
+        "call_restriction": {},
+        "caller_id": {},
+        "created": 63621662701,
+        "dial_plan": {},
+        "enabled": true,
+        "id": "{ACCOUNT_ID}",
+        "is_reseller": false,
+        "language": "en-us",
+        "music_on_hold": {},
+        "name": "child account",
+        "preflow": {},
+        "realm": "aeac33.sip.2600hz.com",
+        "reseller_id": "undefined",
+        "ringtones": {},
+        "some_key":"some_value",
+        "superduper_admin": false,
+        "timezone": "America/Los_Angeles",
+        "wnm_allow_additions": false
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "undefined",
+    "status": "success"
+}
+
 ```
 
 #### Create a new child account
@@ -151,20 +270,50 @@ curl -v -X PUT \
 }
 ```
 
-#### Fetch
+#### Fetch the parent account IDs
 
 > GET /v2/accounts/{ACCOUNT_ID}/parents
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "id": "{PARENT_ACCOUNT_ID}",
+            "name": "{PARENT_ACCOUNT_NAME}"
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
-#### Fetch
+#### Fetch an account's ancestor tree
 
 > GET /v2/accounts/{ACCOUNT_ID}/tree
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "id": "{PARENT_ACCOUNT_ID}",
+            "name": "{PARENT_ACCOUNT_NAME}"
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
 #### Fetch the account's API key
@@ -174,42 +323,112 @@ The API key is used by the `api_auth` API to obtain an `auth_token`. This is int
 > GET /v2/accounts/{ACCOUNT_ID}/api_key
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "api_key": "{API_KEY}"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
-#### Fetch
+#### Fetch sibling accounts
 
 > GET /v2/accounts/{ACCOUNT_ID}/siblings
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "descendants_count": 1,
+            "id": "{ACCOUNT_ID}",
+            "name": "{ACCOUNT_NAME}",
+            "realm": "{ACCOUNT_REALM}"
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "start_key": "",
+    "status": "success"
+}
 ```
 
-#### Fetch
+#### Fetch all descendants of an account
+
+This will include children, grandchildren, etc
 
 > GET /v2/accounts/{ACCOUNT_ID}/descendants
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "id": "{CHILD_ACCOUNT}",
+            "name": "{CHILD_NAME}",
+            "realm": "{CHILD_REALM}",
+            "tree": [
+                "{ACCOUNT_ID}"
+            ]
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "start_key": "",
+    "status": "success"
+}
 ```
 
-#### Fetch
+#### Fetch immediate children of an account
 
 > GET /v2/accounts/{ACCOUNT_ID}/children
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "id": "{CHILD_ACCOUNT}",
+            "name": "{CHILD_NAME}",
+            "realm": "{CHILD_REALM}",
+            "tree": [
+                "{ACCOUNT_ID}"
+            ]
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "start_key": "",
+    "status": "success"
+}
 ```
 
 #### Move an account
 
 An account can only be moved by a "superduper_admin" or  if enabled by anyone above the desired account.
 
-You can enable that feature by editing the document `crossbar.accounts` in you `system_config` database and set the value to `tree`.
+You can enable that feature by editing the document `crossbar.accounts` in your `system_config` database and set the value to `tree`.
 
-```json
-    "allow_move": "tree" // Default to "superduper_admin"
-```
+Key || Value || Description
+`allow_move` | "tree" | "superduper_admin" | Who can move a sub-account
 
 > POST /v2/accounts/{ACCOUNT_ID}/move
 
@@ -218,4 +437,31 @@ curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data": {"to": "{ACCOUNT_ID_DESTINATION}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/move
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "billing_mode": "manual",
+        "call_restriction": {},
+        "caller_id": {},
+        "created": 63621662701,
+        "dial_plan": {},
+        "enabled": true,
+        "id": "{ACCOUNT_ID}",
+        "is_reseller": false,
+        "language": "en-us",
+        "music_on_hold": {},
+        "name": "child account",
+        "preflow": {},
+        "realm": "aeac33.sip.2600hz.com",
+        "reseller_id": "undefined",
+        "ringtones": {},
+        "superduper_admin": false,
+        "timezone": "America/Los_Angeles",
+        "wnm_allow_additions": false
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "undefined",
+    "status": "success"
+}
+
 ```
