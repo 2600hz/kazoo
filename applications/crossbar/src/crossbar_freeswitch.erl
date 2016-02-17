@@ -274,7 +274,7 @@ process_realm(Realm, Dir, Module) ->
 -spec build_freeswitch(pid()) -> any().
 build_freeswitch(Pid) ->
     WorkDir = setup_directory(),
-    AllDBs = wnm_util:get_all_number_dbs(),
+    AllDBs = knm_util:get_all_number_dbs(),
     _ = [crawl_numbers_db(Db) || Db <- AllDBs, is_number_db(Db)],
     process_realms(),
     File = zip_directory(WorkDir),
