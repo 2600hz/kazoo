@@ -32,6 +32,18 @@
          ,to_public_json/1
         ]).
 
+-export([account_id/1, set_account_id/2
+         ,has_pending_port/1
+         ,inbound_cnam_enabled/1
+         ,is_local_number/1
+         ,number/1
+         ,prepend/1
+         ,ringback_media_id/1
+         ,should_force_outbound/1
+         ,transfer_media_id/1
+        ]).
+
+
 -ifdef(TEST).
 -export([attempt/2]).
 -export([ensure_can_load_to_create/1]).
@@ -59,15 +71,15 @@
               ,dry_run_return/0
              ]).
 
--type number_option() :: {'pending_port', boolean()} |
-                         {'local', boolean()} |
-                         {'number', ne_binary()} |
-                         {'account_id', ne_binary()} |
-                         {'prepend', api_binary()} |
+-type number_option() :: {'account_id', ne_binary()} | %%api
+                         {'force_outbound', boolean()} |
                          {'inbound_cnam', boolean()} |
+                         {'local', boolean()} |
+                         {'number', ne_binary()} | %%api
+                         {'pending_port', boolean()} |
+                         {'prepend', api_binary()} | %%|false
                          {'ringback_media', api_binary()} |
-                         {'transfer_media', api_binary()} |
-                         {'force_outbound', boolean()}.
+                         {'transfer_media', api_binary()}.
 
 -type number_options() :: [number_option()].
 
@@ -566,6 +578,52 @@ buy(Num, Account, Options) ->
               ],
     update(Num, Updates, Options).
 
+
+%%--------------------------------------------------------------------
+%% Public get/set number_options()
+%%--------------------------------------------------------------------
+-spec account_id(number_options()) -> ne_binary().
+account_id(Props) when is_list(Props) ->
+    props:get_ne_binary_value('account_id', Props).
+
+-spec set_account_id(number_options(), ne_binary()) -> number_options().
+set_account_id(Props, AccountId=?NE_BINARY) when is_list(Props) ->
+    props:set_value('account_id', AccountId, Props).
+
+-spec has_pending_port(number_options()) -> boolean().
+has_pending_port(Props) when is_list(Props) ->
+    props:get_is_true('pending_port', Props).
+
+-spec inbound_cnam_enabled(number_options()) -> boolean().
+inbound_cnam_enabled(Props) when is_list(Props) ->
+    props:get_is_true('inbound_cnam', Props).
+
+-spec is_local_number(number_options()) -> boolean().
+is_local_number(Props) when is_list(Props) ->
+    props:get_is_true('local', Props).
+
+-spec number(number_options()) -> ne_binary().
+number(Props) when is_list(Props) ->
+    props:get_ne_binary_value('number', Props).
+
+-spec prepend(number_options()) -> api_binary().
+prepend(Props) when is_list(Props) ->
+    props:get_value('prepend', Props).
+
+-spec ringback_media_id(number_options()) -> api_binary().
+ringback_media_id(Props) when is_list(Props) ->
+    props:get_value('ringback_media', Props).
+
+-spec should_force_outbound(number_options()) -> boolean().
+should_force_outbound(Props) when is_list(Props) ->
+    props:get_is_true('force_outbound', Props).
+
+-spec transfer_media_id(number_options()) -> api_binary().
+transfer_media_id(Props) when is_list(Props) ->
+    props:get_value('transfer_media', Props).
+%%--------------------------------------------------------------------
+
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -631,7 +689,7 @@ check_account(PhoneNumber) ->
                      ,{'inbound_cnam', feature_inbound_cname(PhoneNumber)}
                      ,{'ringback_media', find_early_ringback(PhoneNumber)}
                      ,{'transfer_media', find_transfer_ringback(PhoneNumber)}
-                     ,{'force_outbound', should_force_outbound(PhoneNumber)}
+                     ,{'force_outbound', is_force_outbound(PhoneNumber)}
                     ],
             {'ok', AssignedTo, Props}
     end.
@@ -693,23 +751,23 @@ find_transfer_ringback(PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_force_outbound(knm_phone_number:knm_phone_number()) -> boolean().
--spec should_force_outbound(ne_binary(), ne_binary(), boolean()) -> boolean().
-should_force_outbound(PhoneNumber) ->
+-spec is_force_outbound(knm_phone_number:knm_phone_number()) -> boolean().
+-spec is_force_outbound(ne_binary(), ne_binary(), boolean()) -> boolean().
+is_force_outbound(PhoneNumber) ->
     Module = knm_phone_number:module_name(PhoneNumber),
     State = knm_phone_number:state(PhoneNumber),
     ForceOutbound = force_outbound_feature(PhoneNumber),
-    should_force_outbound(State, Module, wh_util:is_true(ForceOutbound)).
+    is_force_outbound(State, Module, wh_util:is_true(ForceOutbound)).
 
-should_force_outbound(?NUMBER_STATE_PORT_IN, Module, _ForceOutbound) ->
+is_force_outbound(?NUMBER_STATE_PORT_IN, Module, _ForceOutbound) ->
     whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_in_outbound">>, 'true')
         orelse force_module_outbound(Module);
-should_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
+is_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
     whapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_out_outbound">>, 'true')
         orelse force_module_outbound(Module);
-should_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
+is_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
     force_local_outbound();
-should_force_outbound(_State, _Module, ForceOutbound) ->
+is_force_outbound(_State, _Module, ForceOutbound) ->
     ForceOutbound.
 
 -spec force_outbound_feature(knm_phone_number:knm_phone_number()) -> boolean().

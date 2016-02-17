@@ -100,7 +100,7 @@ send_route_win(FetchId, CallId, JObj) ->
 -spec set_account_id(ne_binary(), wh_proplist(), wh_json:object()) ->
                             wh_json:object().
 set_account_id(_Inception, NumberProps, JObj) ->
-    AccountId = wh_number_properties:account_id(NumberProps),
+    AccountId = knm_number:account_id(NumberProps),
     AccountRealm = wh_util:get_account_realm(AccountId),
     wh_json:set_values(
       props:filter_undefined(
@@ -122,7 +122,7 @@ set_inception(_Inception, _, JObj) ->
 -spec set_mdn(ne_binary(), wh_proplist(), wh_json:object()) ->
                      wh_json:object().
 set_mdn(<<"on-net">>, NumberProps, JObj) ->
-    Number = wh_number_properties:number(NumberProps),
+    Number = knm_number:number(NumberProps),
     case doodle_util:lookup_mdn(Number) of
         {'ok', Id, OwnerId} ->
             wh_json:set_values(
