@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%% Account module
 %%%
@@ -594,13 +594,13 @@ maybe_import_enabled(Context, JObj, IsEnabled) ->
 -spec disallow_direct_clients(api_binary(), cb_context:context()) -> cb_context:context().
 disallow_direct_clients(AccountId, Context) ->
     AllowDirect = whapps_config:get_is_true(?WH_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true'),
-    maybe_disallow_direct_clients(AllowDirect, AccountId, Context).
+    maybe_disallow_direct_clients(AccountId, Context, AllowDirect).
 
--spec maybe_disallow_direct_clients(boolean(), api_binary(), cb_context:context()) ->
+-spec maybe_disallow_direct_clients(api_binary(), cb_context:context(), boolean()) ->
                                            cb_context:context().
-maybe_disallow_direct_clients('true', _AccountId, Context) ->
+maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
     Context;
-maybe_disallow_direct_clients('false', _AccountId, Context) ->
+maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     AuthAccountId = cb_context:auth_account_id(Context),
     AuthUserReseller = wh_services:get_reseller_id(AuthAccountId),
