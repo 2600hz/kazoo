@@ -574,7 +574,7 @@ maybe_format_caller_id(Call, Format) ->
 -spec maybe_format_caller_id_str(ne_binary(), api_object()) -> ne_binary().
 maybe_format_caller_id_str(Cid, 'undefined') -> Cid;
 maybe_format_caller_id_str(Cid, Format) ->
-    Class = wnm_util:classify_number(Cid),
+    Class = knm_converters:classify(Cid),
     lager:debug("checking for caller id reformating rules for ~s numbers", [Class]),
     case wh_json:get_ne_value(Class, Format) of
         'undefined' -> maybe_reformat_caller_id(Cid, wh_json:get_ne_value(<<"all">>, Format));

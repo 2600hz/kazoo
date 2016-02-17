@@ -54,7 +54,7 @@ maybe_onnet_data(State) ->
         end,
     SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),
     case knm_converters:is_reconcilable(ToDID)
-        orelse wnm_util:classify_number(ToDID) =:= <<"emergency">>
+        orelse knm_converters:classify(ToDID) =:= <<"emergency">>
         orelse wh_json:is_true(<<"hunt_non_reconcilable">>, SrvOptions, 'false')
         orelse whapps_config:get_is_true(?TS_CONFIG_CAT, <<"default_hunt_non_reconcilable">>, 'false')
     of
