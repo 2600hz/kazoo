@@ -12,7 +12,8 @@
 
 -export([normalize/1, normalize/2, normalize/3
          ,is_normalized/1
-         ,is_npan/1 ,is_1npan/1
+         ,is_npan/1, to_npan/1
+         ,is_1npan/1
          ,to_db/1
          ,is_reconcilable/1, is_reconcilable/2
          ,classify/1, available_classifiers/0
@@ -20,26 +21,23 @@
          ,default_converter/0
         ]).
 
--define(DEFAULT_CONVERTERS, [<<"regex">>]).
--define(DEFAULT_CONVERTER, whapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, <<"regex">>)).
+-define(DEFAULT_CONVERTER_B, <<"regex">>).
+-define(DEFAULT_CONVERTERS, [?DEFAULT_CONVERTER_B]).
 
 -ifdef(TEST).
--define(CONVERTER_MOD, 'knm_converter_regex').
+-define(DEFAULT_CONVERTER, ?DEFAULT_CONVERTER_B).
 
 -define(RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX).
 
 -else.
--define(CONVERTER_MOD, wh_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
+-define(DEFAULT_CONVERTER, whapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
 
--define(RECONCILE_REGEX
-        ,whapps_config:get_binary(
-           ?KNM_CONFIG_CAT
-           ,?KEY_RECONCILE_REGEX
-           ,?DEFAULT_RECONCILE_REGEX
-          )
-       ).
+-define(RECONCILE_REGEX,
+        whapps_config:get_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
 
 -endif.
+
+-define(CONVERTER_MOD, wh_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
@@ -106,17 +104,17 @@
 %%--------------------------------------------------------------------
 -spec normalize(ne_binary()) ->
                        ne_binary().
-normalize(<<_/binary>> = Num) ->
+normalize(?NE_BINARY = Num) ->
     (?CONVERTER_MOD):normalize(Num).
 
 -spec normalize(ne_binary(), api_binary()) ->
                        ne_binary().
-normalize(<<_/binary>> = Num, AccountId) ->
+normalize(?NE_BINARY = Num, AccountId) ->
     (?CONVERTER_MOD):normalize(Num, AccountId).
 
 -spec normalize(ne_binary(), api_binary(), wh_json:object()) ->
                        ne_binary().
-normalize(<<_/binary>> = Num, AccountId, DialPlan) ->
+normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
     (?CONVERTER_MOD):normalize(Num, AccountId, DialPlan).
 
 %%--------------------------------------------------------------------
@@ -135,7 +133,16 @@ is_normalized(Num) ->
 %%--------------------------------------------------------------------
 -spec is_npan(ne_binary()) -> boolean().
 is_npan(Num) ->
-    (?CONVERTER_MOD):to_npan(Num) =:= Num.
+    to_npan(Num) =:= Num.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec to_npan(ne_binary()) -> ne_binary().
+to_npan(Num) ->
+    (?CONVERTER_MOD):to_npan(Num).
 
 %%--------------------------------------------------------------------
 %% @public

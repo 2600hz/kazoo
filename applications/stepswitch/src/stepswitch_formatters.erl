@@ -298,7 +298,7 @@ invite_format_fun(JObj) ->
     case wh_json:get_value(<<"Invite-Format">>, JObj) of
         <<"e164">> -> fun knm_converters:normalize/1;
         <<"1npan">> -> fun wnm_util:to_1npan/1;
-        <<"npan">> -> fun wnm_util:to_npan/1
+        <<"npan">> -> fun knm_converters:to_npan/1
     end.
 
 -spec maybe_match(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->

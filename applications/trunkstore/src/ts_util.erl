@@ -243,11 +243,11 @@ invite_format(<<"1npan">>, To) ->
     ];
 invite_format(<<"npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
-     ,{<<"To-DID">>, wnm_util:to_npan(To)}
+     ,{<<"To-DID">>, knm_converters:to_npan(To)}
     ];
 invite_format(<<"npan">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}
-     ,{<<"To-DID">>, wnm_util:to_npan(To)}
+     ,{<<"To-DID">>, knm_converters:to_npan(To)}
     ];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>}].
