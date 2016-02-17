@@ -13,7 +13,7 @@
 -export([normalize/1, normalize/2, normalize/3
          ,is_normalized/1
          ,is_npan/1, to_npan/1
-         ,is_1npan/1
+         ,is_1npan/1, to_1npan/1
          ,to_db/1
          ,is_reconcilable/1, is_reconcilable/2
          ,classify/1, available_classifiers/0
@@ -151,7 +151,16 @@ to_npan(Num) ->
 %%--------------------------------------------------------------------
 -spec is_1npan(ne_binary()) -> boolean().
 is_1npan(Num) ->
-    (?CONVERTER_MOD):to_1npan(Num) =:= Num.
+    to_1npan(Num) =:= Num.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec to_1npan(ne_binary()) -> ne_binary().
+to_1npan(Num) ->
+    (?CONVERTER_MOD):to_1npan(Num).
 
 %%--------------------------------------------------------------------
 %% @public
