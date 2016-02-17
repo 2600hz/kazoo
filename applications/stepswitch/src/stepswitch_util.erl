@@ -214,12 +214,10 @@ build_filter_fun(Name, Number) ->
 -spec format_endpoints(wh_json:objects(), api_binary(), api_binary(), wapi_offnet_resource:req(), filter_fun()) ->
                               wh_json:objects().
 format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
-    DefaultRealm = default_realm(OffnetReq),
     SIPHeaders = stepswitch_util:get_sip_headers(OffnetReq),
     AccountId = wapi_offnet_resource:account_id(OffnetReq),
-
     [format_endpoint(set_endpoint_caller_id(Endpoint, Name, Number)
-                     ,Number, FilterFun, DefaultRealm, SIPHeaders, AccountId
+                     ,Number, FilterFun, OffnetReq, SIPHeaders, AccountId
                     )
      || Endpoint <- Endpoints
     ].
@@ -243,10 +241,10 @@ set_endpoint_caller_id(Endpoint, Name, Number) ->
 
 -spec format_endpoint(wh_json:object(), api_binary(), filter_fun(), api_binary(), wh_json:object(), ne_binary()) ->
                              wh_json:object().
-format_endpoint(Endpoint, Number, FilterFun, DefaultRealm, SIPHeaders, AccountId) ->
+format_endpoint(Endpoint, Number, FilterFun, OffnetReq, SIPHeaders, AccountId) ->
     FormattedEndpoint = apply_formatters(Endpoint, SIPHeaders, AccountId),
     FilteredEndpoint = wh_json:filter(FilterFun, FormattedEndpoint),
-    maybe_endpoint_format_from(FilteredEndpoint, Number, DefaultRealm).
+    maybe_endpoint_format_from(FilteredEndpoint, Number, OffnetReq).
 
 -spec apply_formatters(wh_json:object(), wh_json:object(), ne_binary()) -> wh_json:object().
 apply_formatters(Endpoint, SIPHeaders, AccountId) ->
@@ -283,14 +281,15 @@ maybe_add_sip_headers(Endpoint, SIPHeaders) ->
 
 -spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
                                         wh_json:object().
-maybe_endpoint_format_from(Endpoint, Number, DefaultRealm) ->
+maybe_endpoint_format_from(Endpoint, Number, OffnetReq) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"Format-From-URI">>, CCVs) of
-        'true' -> endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs);
+        'true' -> endpoint_format_from(Endpoint, Number, OffnetReq, CCVs);
         'false' ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
+                                                    ,<<"From-Account-Realm">>
                                                    ]
                                                    ,CCVs
                                                   )
@@ -300,10 +299,11 @@ maybe_endpoint_format_from(Endpoint, Number, DefaultRealm) ->
 
 -spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary(), wh_json:object()) ->
                                   wh_json:object().
-endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs) ->
-    case wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm) of
+endpoint_format_from(Endpoint, Number, OffnetReq, CCVs) ->
+    FromNumber = wh_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, Endpoint, Number),
+    case get_endpoint_format_from(OffnetReq, CCVs) of
         <<_/binary>> = Realm ->
-            FromURI = <<"sip:", Number/binary, "@", Realm/binary>>,
+            FromURI = <<"sip:", FromNumber/binary, "@", Realm/binary>>,
             lager:debug("setting resource ~s from-uri to ~s"
                         ,[wh_json:get_value(<<"Resource-ID">>, CCVs)
                           ,FromURI
@@ -312,6 +312,7 @@ endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs) ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
+                                                    ,<<"From-Account-Realm">>
                                                    ]
                                                    ,UpdatedCCVs
                                                   )
@@ -321,9 +322,18 @@ endpoint_format_from(Endpoint, Number, DefaultRealm, CCVs) ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
                               ,wh_json:delete_keys([<<"Format-From-URI">>
                                                     ,<<"From-URI-Realm">>
+                                                    ,<<"From-Account-Realm">>
                                                    ]
                                                    ,CCVs
                                                   )
                               ,Endpoint
                              )
+    end.
+
+-spec get_endpoint_format_from(wh_json:object(), wh_json:object()) -> api_binary().
+get_endpoint_format_from(OffnetReq, CCVs) ->
+    DefaultRealm = default_realm(OffnetReq),
+    case wh_json:is_true(<<"From-Account-Realm">>, CCVs) of
+        'true' -> DefaultRealm;
+        'false' -> wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm)
     end.

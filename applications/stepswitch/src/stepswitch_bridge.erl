@@ -351,9 +351,7 @@ build_bridge(#state{endpoints=Endpoints
             ])
           ,wapi_offnet_resource:custom_channel_vars(OffnetReq, wh_json:new())
          ),
-
     FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
-
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}

@@ -47,6 +47,7 @@
            ,endpoint_type = <<"sip">> :: ne_binary()
            ,endpoint_options = wh_json:new() :: wh_json:object()
            ,format_from_uri = 'false' :: boolean()
+           ,from_account_realm = 'false' :: boolean()
            ,from_uri_realm :: api_binary()
            ,is_emergency = 'false' :: boolean()
            ,force_port = 'false' :: boolean()
@@ -69,6 +70,7 @@
            ,global = 'true' :: boolean()
            ,format_from_uri = 'false' :: boolean()
            ,from_uri_realm :: api_binary()
+           ,from_account_realm = 'false' :: boolean()
            ,fax_option :: ne_binary() | boolean()
            ,codecs = [] :: ne_binaries()
            ,bypass_media = 'false' :: boolean()
@@ -115,6 +117,7 @@ resource_to_props(#resrc{}=Resource) ->
        ,{<<"Global">>, Resource#resrc.global}
        ,{<<"Format-From-URI">>, Resource#resrc.format_from_uri}
        ,{<<"From-URI-Realm">>, Resource#resrc.from_uri_realm}
+       ,{<<"From-Account-Realm">>, Resource#resrc.from_account_realm}
        ,{<<"Require-Flags">>, Resource#resrc.require_flags}
        ,{<<"Is-Emergency">>, Resource#resrc.is_emergency}
        ,{<<"T38">>, Resource#resrc.fax_option}
@@ -574,24 +577,37 @@ gateway_to_endpoint(Number
         ])).
 
 -spec gateway_from_uri_settings(gateway()) -> wh_proplist().
-gateway_from_uri_settings(#gateway{format_from_uri='true'
-                                   ,from_uri_realm=Realm
-                                  }) ->
-    lager:debug("using gateway from_uri_realm in From: ~s", [Realm]),
-    [{<<"Format-From-URI">>, 'true'}
-     ,{<<"From-URI-Realm">>, Realm}
-    ];
-gateway_from_uri_settings(#gateway{format_from_uri='false'
-                                   ,realm='undefined'
-                                  }) ->
+gateway_from_uri_settings(#gateway{format_from_uri='false'}) ->
     [{<<"Format-From-URI">>, 'false'}];
-gateway_from_uri_settings(#gateway{format_from_uri='false'
+gateway_from_uri_settings(#gateway{format_from_uri='true'
+                                   ,from_uri_realm=FromRealm
                                    ,realm=Realm
+                                   ,from_account_realm=AccountRealm
                                   }) ->
-    lager:debug("using gateway realm in From: ~s", [Realm]),
-    [{<<"Format-From-URI">>, 'true'}
-     ,{<<"From-URI-Realm">>, Realm}
-    ].
+    %% precedence: from_uri_realm -> from_account_realm -> realm
+    case wh_util:is_empty(FromRealm) of
+        'false' ->
+            lager:debug("using resource from_uri_realm in From: ~s", [FromRealm]),
+            [{<<"Format-From-URI">>, 'true'}
+             ,{<<"From-URI-Realm">>, FromRealm}
+            ];
+        'true' when AccountRealm ->
+            lager:debug("using account realm in From", []),
+            [{<<"Format-From-URI">>, 'true'}
+             ,{<<"From-Account-Realm">>, 'true'}
+            ];
+        'true' ->
+            case wh_util:is_empty(Realm) of
+                'true' ->
+                    lager:info("format from URI configured for resource but no realm available"),
+                    [{<<"Format-From-URI">>, 'false'}];
+                'false' ->
+                    lager:debug("using gateway realm in From: ~s", [Realm]),
+                    [{<<"Format-From-URI">>, 'true'}
+                     ,{<<"From-URI-Realm">>, Realm}
+                    ]
+                end
+    end.
 
 -spec maybe_get_t38(gateway(), wapi_offnet_resource:req()) -> wh_proplist().
 maybe_get_t38(#gateway{fax_option=FaxOption}, OffnetJObj) ->
@@ -823,6 +839,7 @@ resource_from_jobj(JObj) ->
                       ,require_flags=wh_json:is_true(<<"require_flags">>, JObj)
                       ,format_from_uri=wh_json:is_true(<<"format_from_uri">>, JObj)
                       ,from_uri_realm=wh_json:get_ne_value(<<"from_uri_realm">>, JObj)
+                      ,from_account_realm=wh_json:is_true(<<"from_account_realm">>, JObj)
                       ,fax_option=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj)
                       ,raw_rules=wh_json:get_value(<<"rules">>, JObj, [])
                       ,rules=resource_rules(JObj)
@@ -939,6 +956,7 @@ gateways_from_jobjs([JObj|JObjs], Resource, Gateways) ->
 gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                                ,format_from_uri=FormatFrom
                                ,from_uri_realm=FromRealm
+                               ,from_account_realm=FromAccountRealm
                                ,fax_option=T38
                                ,codecs=Codecs
                                ,bypass_media=BypassMedia
@@ -955,6 +973,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,invite_format = wh_json:get_value(<<"invite_format">>, JObj, <<"route">>)
              ,format_from_uri = wh_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
              ,from_uri_realm = wh_json:get_ne_value(<<"from_uri_realm">>, JObj, FromRealm)
+             ,from_account_realm=wh_json:is_true(<<"from_account_realm">>, JObj, FromAccountRealm)
              ,is_emergency = wh_json:is_true(<<"emergency">>, JObj, IsEmergency)
              ,fax_option = wh_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
              ,codecs = wh_json:get_value(<<"codecs">>, JObj, Codecs)
