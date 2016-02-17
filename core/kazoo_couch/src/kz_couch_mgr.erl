@@ -7,7 +7,7 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(couch_mgr).
+-module(kz_couch_mgr).
 
 %% System manipulation
 -export([db_exists/1
@@ -86,7 +86,7 @@
               ,couchbeam_error/0
              ]).
 
--include("wh_couch.hrl").
+-include("kz_couch.hrl").
 
 -define(VALID_DBNAME, is_binary(DbName) andalso byte_size(DbName) > 0).
 
@@ -264,7 +264,7 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
 %%--------------------------------------------------------------------
 -spec db_exists(text()) -> boolean().
 db_exists(DbName) when ?VALID_DBNAME ->
-    couch_util:db_exists(get_server(), DbName);
+    kz_couch_util:db_exists(get_server(), DbName);
 db_exists(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_exists(Db);
@@ -273,7 +273,7 @@ db_exists(DbName) ->
 
 -spec admin_db_exists(text()) -> boolean().
 admin_db_exists(DbName) when ?VALID_DBNAME ->
-    couch_util:db_exists(wh_couch_connections:get_admin_server(), DbName);
+    kz_couch_util:db_exists(kz_couch_connections:get_admin_server(), DbName);
 admin_db_exists(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_db_exists(Db);
@@ -291,10 +291,10 @@ admin_db_exists(DbName) ->
 -spec admin_db_info() -> {'ok', ne_binaries()} |
                          couchbeam_error().
 db_info() ->
-    couch_util:db_info(get_server()).
+    kz_couch_util:db_info(get_server()).
 
 admin_db_info() ->
-    couch_util:db_info(wh_couch_connections:get_admin_server()).
+    kz_couch_util:db_info(kz_couch_connections:get_admin_server()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -308,7 +308,7 @@ admin_db_info() ->
                                couchbeam_error().
 
 db_info(DbName) when ?VALID_DBNAME ->
-    couch_util:db_info(get_server(), DbName);
+    kz_couch_util:db_info(get_server(), DbName);
 db_info(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_info(Db);
@@ -316,7 +316,7 @@ db_info(DbName) ->
     end.
 
 admin_db_info(DbName) when ?VALID_DBNAME ->
-    couch_util:db_info(wh_couch_connections:get_admin_server(), DbName);
+    kz_couch_util:db_info(kz_couch_connections:get_admin_server(), DbName);
 admin_db_info(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_db_info(Db);
@@ -337,7 +337,7 @@ admin_db_info(DbName) ->
                                couchbeam_error().
 
 design_info(DbName, DesignName) when ?VALID_DBNAME ->
-    couch_util:design_info(get_server(), DbName, DesignName);
+    kz_couch_util:design_info(get_server(), DbName, DesignName);
 design_info(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> design_info(Db, DesignName);
@@ -345,7 +345,7 @@ design_info(DbName, DesignName) ->
     end.
 
 admin_design_info(DbName, DesignName) when ?VALID_DBNAME ->
-    couch_util:design_info(wh_couch_connections:get_admin_server(), DbName, DesignName);
+    kz_couch_util:design_info(kz_couch_connections:get_admin_server(), DbName, DesignName);
 admin_design_info(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_design_info(Db, DesignName);
@@ -356,7 +356,7 @@ admin_design_info(DbName, DesignName) ->
 -spec admin_design_compact(ne_binary(), ne_binary()) -> boolean().
 
 design_compact(DbName, DesignName) when ?VALID_DBNAME->
-    couch_util:design_compact(get_server(), DbName, DesignName);
+    kz_couch_util:design_compact(get_server(), DbName, DesignName);
 design_compact(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> design_compact(Db, DesignName);
@@ -364,7 +364,7 @@ design_compact(DbName, DesignName) ->
     end.
 
 admin_design_compact(DbName, DesignName) when ?VALID_DBNAME ->
-    couch_util:design_compact(wh_couch_connections:get_admin_server(), DbName, DesignName);
+    kz_couch_util:design_compact(kz_couch_connections:get_admin_server(), DbName, DesignName);
 admin_design_compact(DbName, DesignName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_design_compact(Db, DesignName);
@@ -375,7 +375,7 @@ admin_design_compact(DbName, DesignName) ->
 -spec admin_db_view_cleanup(ne_binary()) -> boolean().
 
 db_view_cleanup(DbName) when ?VALID_DBNAME ->
-    couch_util:db_view_cleanup(get_server(), DbName);
+    kz_couch_util:db_view_cleanup(get_server(), DbName);
 db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_view_cleanup(Db);
@@ -383,7 +383,7 @@ db_view_cleanup(DbName) ->
     end.
 
 admin_db_view_cleanup(DbName) when ?VALID_DBNAME ->
-    couch_util:db_view_cleanup(wh_couch_connections:get_admin_server(), DbName);
+    kz_couch_util:db_view_cleanup(kz_couch_connections:get_admin_server(), DbName);
 admin_db_view_cleanup(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_db_view_cleanup(Db);
@@ -429,7 +429,7 @@ admin_db_view_cleanup(DbName) ->
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(wh_json:from_list(Prop));
 db_replicate(JObj) ->
-    couch_util:db_replicate(get_server(), JObj).
+    kz_couch_util:db_replicate(get_server(), JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -438,13 +438,13 @@ db_replicate(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec db_create(text()) -> boolean().
--spec db_create(text(), couch_util:db_create_options()) -> boolean().
+-spec db_create(text(), kz_couch_util:db_create_options()) -> boolean().
 
 db_create(DbName) ->
     db_create(DbName, []).
 
 db_create(DbName, Options) when ?VALID_DBNAME ->
-    couch_util:db_create(get_server(), DbName, Options);
+    kz_couch_util:db_create(get_server(), DbName, Options);
 db_create(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_create(Db, Options);
@@ -461,7 +461,7 @@ db_create(DbName, Options) ->
 -spec admin_db_compact(text()) -> boolean().
 
 db_compact(DbName) when ?VALID_DBNAME ->
-    couch_util:db_compact(get_server(), DbName);
+    kz_couch_util:db_compact(get_server(), DbName);
 db_compact(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_compact(Db);
@@ -469,7 +469,7 @@ db_compact(DbName) ->
     end.
 
 admin_db_compact(DbName) when ?VALID_DBNAME ->
-    couch_util:db_compact(wh_couch_connections:get_admin_server(), DbName);
+    kz_couch_util:db_compact(kz_couch_connections:get_admin_server(), DbName);
 admin_db_compact(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_db_compact(Db);
@@ -484,7 +484,7 @@ admin_db_compact(DbName) ->
 %%--------------------------------------------------------------------
 -spec db_delete(text()) -> boolean().
 db_delete(DbName) when ?VALID_DBNAME ->
-    couch_util:db_delete(get_server(), DbName);
+    kz_couch_util:db_delete(get_server(), DbName);
 db_delete(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_delete(Db);
@@ -514,7 +514,7 @@ open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
 
 open_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
-    couch_util:open_cache_doc(get_server(), DbName, DocId, Options);
+    kz_couch_util:open_cache_doc(get_server(), DbName, DocId, Options);
 open_cache_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> open_cache_doc(Db, DocId, Options);
@@ -522,7 +522,7 @@ open_cache_doc(DbName, DocId, Options) ->
     end.
 
 add_to_doc_cache(DbName, DocId, Doc) when ?VALID_DBNAME ->
-    couch_util:add_to_doc_cache(DbName, DocId, Doc);
+    kz_couch_util:add_to_doc_cache(DbName, DocId, Doc);
 add_to_doc_cache(DbName, DocId, Doc) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> add_to_doc_cache(Db, DocId, Doc);
@@ -560,7 +560,7 @@ flush_cache_doc(DbName, Doc) ->
                              'ok' |
                              {'error', 'invalid_db_name'}.
 flush_cache_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
-    couch_util:flush_cache_doc(DbName, Doc, Options);
+    kz_couch_util:flush_cache_doc(DbName, Doc, Options);
 flush_cache_doc(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> flush_cache_doc(Db, Doc, Options);
@@ -569,10 +569,10 @@ flush_cache_doc(DbName, Doc, Options) ->
 
 -spec flush_cache_docs() -> 'ok'.
 -spec flush_cache_docs(text()) -> 'ok' | {'error', 'invalid_db_name'}.
-flush_cache_docs() -> couch_util:flush_cache_docs().
+flush_cache_docs() -> kz_couch_util:flush_cache_docs().
 flush_cache_docs(DbName) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> couch_util:flush_cache_docs(Db);
+        {'ok', Db} -> kz_couch_util:flush_cache_docs(Db);
         {'error', _}=E -> E
     end.
 
@@ -594,7 +594,7 @@ open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
 open_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
-    couch_util:open_doc(get_server(), DbName, DocId, Options);
+    kz_couch_util:open_doc(get_server(), DbName, DocId, Options);
 open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> open_doc(Db, DocId, Options);
@@ -614,7 +614,7 @@ admin_open_doc(DbName, DocId) ->
     admin_open_doc(DbName, DocId, []).
 
 admin_open_doc(DbName, DocId, Options) when ?VALID_DBNAME->
-    couch_util:open_doc(wh_couch_connections:get_admin_server(), DbName, DocId, Options);
+    kz_couch_util:open_doc(kz_couch_connections:get_admin_server(), DbName, DocId, Options);
 admin_open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_open_doc(Db, DocId, Options);
@@ -632,7 +632,7 @@ all_docs(DbName) ->
     all_docs(DbName, []).
 
 all_docs(DbName, Options) when ?VALID_DBNAME ->
-    couch_util:all_docs(get_server(), DbName, Options);
+    kz_couch_util:all_docs(get_server(), DbName, Options);
 all_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> all_docs(Db, Options);
@@ -649,7 +649,7 @@ admin_all_docs(DbName) ->
     admin_all_docs(DbName, []).
 
 admin_all_docs(DbName, Options) when ?VALID_DBNAME ->
-    couch_util:all_docs(wh_couch_connections:get_admin_server(), DbName, Options);
+    kz_couch_util:all_docs(kz_couch_connections:get_admin_server(), DbName, Options);
 admin_all_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_all_docs(Db, Options);
@@ -665,7 +665,7 @@ all_design_docs(DbName) ->
     all_design_docs(DbName, []).
 
 all_design_docs(DbName, Options) when ?VALID_DBNAME ->
-    couch_util:all_design_docs(get_server(), DbName, Options);
+    kz_couch_util:all_design_docs(get_server(), DbName, Options);
 all_design_docs(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> all_design_docs(Db, Options);
@@ -683,7 +683,7 @@ all_design_docs(DbName, Options) ->
                             couchbeam_error().
 lookup_doc_rev(_DbName, 'undefined') -> {'error', 'not_found'};
 lookup_doc_rev(DbName, DocId) when ?VALID_DBNAME ->
-    couch_util:lookup_doc_rev(get_server(), DbName, DocId);
+    kz_couch_util:lookup_doc_rev(get_server(), DbName, DocId);
 lookup_doc_rev(DbName, DocId) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> lookup_doc_rev(Db, DocId);
@@ -717,7 +717,7 @@ ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
 
 ensure_saved(DbName, Doc, Options) when ?VALID_DBNAME ->
-    couch_util:ensure_saved(get_server(), DbName, Doc, Options);
+    kz_couch_util:ensure_saved(get_server(), DbName, Doc, Options);
 ensure_saved(DbName, Doc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> ensure_saved(Db, Doc, Options);
@@ -729,7 +729,7 @@ ensure_saved(DbName, Doc, Options) ->
                       couchbeam_error().
 save_doc(DbName, Doc, Options) when ?VALID_DBNAME ->
     OldSetting = maybe_toggle_publish(Options),
-    Result = couch_util:save_doc(get_server(), DbName, Doc, Options),
+    Result = kz_couch_util:save_doc(get_server(), DbName, Doc, Options),
     maybe_revert_publish(OldSetting),
     Result;
 save_doc(DbName, Doc, Options) ->
@@ -766,7 +766,7 @@ save_docs(DbName, Docs) when is_list(Docs) ->
 
 save_docs(DbName, Docs, Options) when is_list(Docs) andalso ?VALID_DBNAME ->
     OldSetting = maybe_toggle_publish(Options),
-    Result = couch_util:save_docs(get_server(), DbName, Docs, Options),
+    Result = kz_couch_util:save_docs(get_server(), DbName, Docs, Options),
     maybe_revert_publish(OldSetting),
     Result;
 save_docs(DbName, Docs, Options) when is_list(Docs) ->
@@ -817,7 +817,7 @@ update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
 del_doc(DbName, Doc) when is_list(Doc) ->
     del_docs(DbName, Doc);
 del_doc(DbName, Doc) when ?VALID_DBNAME ->
-    couch_util:del_doc(get_server(), DbName, Doc);
+    kz_couch_util:del_doc(get_server(), DbName, Doc);
 del_doc(DbName, Doc) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> del_doc(Db, Doc);
@@ -834,7 +834,7 @@ del_doc(DbName, Doc) ->
                       {'ok', wh_json:objects()} |
                       couchbeam_error().
 del_docs(DbName, Docs) when is_list(Docs) andalso ?VALID_DBNAME ->
-    couch_util:del_docs(get_server(), DbName, Docs);
+    kz_couch_util:del_docs(get_server(), DbName, Docs);
 del_docs(DbName, Docs) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> del_docs(Db, Docs);
@@ -848,7 +848,7 @@ del_docs(DbName, Docs) when is_list(Docs) ->
                               {'ok', binary()} |
                               couchbeam_error().
 fetch_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
-    couch_util:fetch_attachment(get_server(), DbName, DocId, AName);
+    kz_couch_util:fetch_attachment(get_server(), DbName, DocId, AName);
 fetch_attachment(DbName, DocId, AName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> fetch_attachment(Db, DocId, AName);
@@ -859,7 +859,7 @@ fetch_attachment(DbName, DocId, AName) ->
                                {'ok', reference()} |
                                {'error', any()}.
 stream_attachment(DbName, DocId, AName) when ?VALID_DBNAME ->
-    couch_util:stream_attachment(get_server(), DbName, DocId, AName, self());
+    kz_couch_util:stream_attachment(get_server(), DbName, DocId, AName, self());
 stream_attachment(DbName, DocId, AName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> stream_attachment(Db, DocId, AName);
@@ -877,7 +877,7 @@ put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 
 put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME ->
-    couch_util:put_attachment(get_server(), DbName, DocId, AName, Contents, Options);
+    kz_couch_util:put_attachment(get_server(), DbName, DocId, AName, Contents, Options);
 put_attachment(DbName, DocId, AName, Contents, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> put_attachment(Db, DocId, AName, Contents, Options);
@@ -894,7 +894,7 @@ delete_attachment(DbName, DocId, AName) ->
     delete_attachment(DbName, DocId, AName, []).
 
 delete_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME ->
-    couch_util:delete_attachment(get_server(), DbName, DocId, AName, Options);
+    kz_couch_util:delete_attachment(get_server(), DbName, DocId, AName, Options);
 delete_attachment(DbName, DocId, AName, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> delete_attachment(Db, DocId, AName, Options);
@@ -926,7 +926,7 @@ get_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
 get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME ->
-    couch_util:get_results(get_server(), DbName, DesignDoc, Options);
+    kz_couch_util:get_results(get_server(), DbName, DesignDoc, Options);
 get_results(DbName, DesignDoc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> get_results(Db, DesignDoc, Options);
@@ -934,7 +934,7 @@ get_results(DbName, DesignDoc, Options) ->
     end.
 
 get_results_count(DbName, DesignDoc, Options) ->
-    couch_util:get_results_count(get_server(), DbName, DesignDoc, Options).
+    kz_couch_util:get_results_count(get_server(), DbName, DesignDoc, Options).
 
 -spec get_result_keys(wh_json:objects()) -> wh_json:keys().
 get_result_keys(JObjs) ->
@@ -958,15 +958,15 @@ get_uuids(Count, Size) -> [get_uuid(Size) || _ <- lists:seq(1, Count)].
 %%%===================================================================
 -spec suppress_change_notice() -> 'false'.
 suppress_change_notice() ->
-    put('$wh_couch_change_notice', 'false').
+    put('$kz_couch_change_notice', 'false').
 
 -spec enable_change_notice() -> 'true'.
 enable_change_notice() ->
-    put('$wh_couch_change_notice', 'true').
+    put('$kz_couch_change_notice', 'true').
 
 -spec change_notice() -> boolean().
 change_notice() ->
-    case get('$wh_couch_change_notice') of
+    case get('$kz_couch_change_notice') of
         'false' -> 'false';
         _Else -> 'true'
     end.
@@ -1069,7 +1069,7 @@ copy_doc(FromDB, FromId, Options) ->
 copy_doc(FromDB, FromId, ToDB, Options) ->
     copy_doc(FromDB, FromId, ToDB, 'undefined', Options).
 copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
-    couch_util:copy_doc(get_server()
+    kz_couch_util:copy_doc(get_server()
                        ,#wh_copy_doc{source_dbname=FromDB
                                      ,source_doc_id=FromId
                                      ,dest_dbname=ToDB
@@ -1091,7 +1091,7 @@ move_doc(FromDB, FromId, Options) ->
 move_doc(FromDB, FromId, ToDB, Options) ->
     move_doc(FromDB, FromId, ToDB, 'undefined', Options).
 move_doc(FromDB, FromId, ToDB, ToId, Options) ->
-    couch_util:move_doc(get_server()
+    kz_couch_util:move_doc(get_server()
                        ,#wh_copy_doc{source_dbname=FromDB
                                      ,source_doc_id=FromId
                                      ,dest_dbname=ToDB
@@ -1101,15 +1101,15 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
 
 -spec get_server() -> #server{}.
 get_server() ->
-    wh_couch_connections:get_server(server_tag()).
+    kz_couch_connections:get_server(server_tag()).
 
 -spec server_tag() -> term().
 server_tag() ->
-    case get('$wh_couch_server_tag') of
+    case get('$kz_couch_server_tag') of
         'undefined' -> 'local';
         Tag -> Tag
     end.
 
 -spec server_tag(term()) -> 'ok'.
 server_tag(Tag) ->
-    put('$wh_couch_server_tag', Tag).
+    put('$kz_couch_server_tag', Tag).

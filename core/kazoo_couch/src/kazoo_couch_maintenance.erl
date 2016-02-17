@@ -6,9 +6,9 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(whistle_couch_maintenance).
+-module(kazoo_couch_maintenance).
 
--include("wh_couch.hrl").
+-include("kz_couch.hrl").
 
 -export([flush/0
          ,flush/1
@@ -78,10 +78,10 @@ cancel_compaction_jobs() ->
     couch_compactor_fsm:cancel_all_jobs().
 
 test_connection() ->
-    wh_couch_connections:test_conn().
+    kz_couch_connections:test_conn().
 
 test_admin_connection() ->
-    wh_couch_connections:test_admin_conn().
+    kz_couch_connections:test_admin_conn().
 
 -spec run_replication(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 run_replication(Host, AdminPort, Port, TargetHost, TargetPort) ->

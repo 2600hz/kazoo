@@ -6,14 +6,17 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
--module(couch_util).
+-module(kz_couch_util).
+
+
+-export([retry504s/1]).
 
 -export([db_classification/1]).
 -export([archive/1
          ,archive/2
         ]).
 
--export([get_new_connection/4
+-export([get_new_connection/1, get_new_connection/4
          ,get_db/2
          ,server_url/1
          ,db_url/2
@@ -74,7 +77,7 @@
 %% Settings-related
 -export([max_bulk_insert/0]).
 
--include("wh_couch.hrl").
+-include("kz_couch.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch
@@ -91,7 +94,7 @@
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()}].
 
--type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
+-type ddoc() :: ne_binary() | 'all_docs' | 'design_docs' | ne_binary() | {ne_binary(), ne_binary()}.
 
 -type db_classifications() :: 'account' | 'modb' | 'acdc' |
                               'numbers' | 'aggregate' | 'system' |
@@ -167,7 +170,7 @@ archive(Db) ->
     archive(Db, filename:join([<<Folder/binary, "/", Db/binary, ".json">>])).
 
 archive(Db, Filename) ->
-    {'ok', DbInfo} = couch_mgr:db_info(Db),
+    {'ok', DbInfo} = kzs_mgr:db_info(Db),
     {'ok', File} = file:open(Filename, ['write']),
     'ok' = file:write(File, <<"[">>),
     io:format("archiving to ~s~n", [Filename]),
@@ -187,7 +190,7 @@ archive(Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
                    ,{'skip', Pos}
                    ,'include_docs'
                   ],
-    case couch_mgr:all_docs(Db, ViewOptions) of
+    case kzs_mgr:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
         {'ok', Docs} ->
             'ok' = archive_docs(File, Docs),
@@ -202,7 +205,7 @@ archive(Db, File, MaxDocs, N, Pos) ->
                    ,{'skip', Pos}
                    ,'include_docs'
                   ],
-    case couch_mgr:all_docs(Db, ViewOptions) of
+    case kzs_mgr:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
         {'ok', Docs} ->
             'ok' = archive_docs(File, Docs),
@@ -235,6 +238,27 @@ max_bulk_insert() -> ?MAX_BULK_INSERT.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec get_new_connection(couch_connection()) ->
+                                server() |
+                                {'error', 'timeout' | 'ehostunreach' | _}.
+get_new_connection(#kz_couch_connection{host=Host
+                                        ,port=Port
+                                        ,username=_User
+                                        ,password=_Pass
+                                        ,tag=Tag
+                                    }) ->
+%%    Options = [{'basic_auth', {User, Pass}}
+    Options = [{'pool', Tag}
+               ,{'pool_name', Tag}
+               ,{'pool_size', 100}
+               ,{'max_sessions', 512}
+               ,{'max_pipeline_size', 10}
+               ,{'connect_timeout', 500}
+               ,{'connect_options', [{'keepalive', true}]}
+%               ,{'timeout', 'infinity'}
+              ], 
+    get_new_conn(Host, Port, Options).
+
 -spec get_new_connection(nonempty_string() | ne_binary(), pos_integer(), string(), string()) ->
                                 server() |
                                 {'error', 'timeout' | 'ehostunreach' | _}.
@@ -411,6 +435,10 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 -spec do_fetch_results(couchbeam_db(), ddoc(), view_options()) ->
                               {'ok', wh_json:objects() | ne_binaries()} |
                               couchbeam_error().
+do_fetch_results(Db, DesignDoc, Options)
+  when is_binary(DesignDoc) ->
+    [DesignName, ViewName | _] = binary:split(DesignDoc, <<"/">>, ['global']),
+    do_fetch_results(Db, {DesignName, ViewName}, map_options(Options));
 do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:fetch(Db, DesignDoc, Options) of
@@ -443,9 +471,23 @@ format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),
     E.
 
+-spec map_options(view_options()) -> view_options().
+map_options(Options) ->
+    lists:map(fun map_view_option/1, Options).
+
+-spec map_view_option(term()) -> term().
+map_view_option({K, V})
+  when is_binary(K) ->
+    {wh_util:to_atom(K, 'true'), V};
+map_view_option(KV) -> KV.
+
 -spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->
                                     {'ok', api_integer()} |
                                     couchbeam_error().
+do_fetch_results_count(Db, DesignDoc, Options)
+  when is_binary(DesignDoc) ->
+    [DesignName, ViewName | _] = binary:split(DesignDoc, <<"/">>, ['global']),
+    do_fetch_results_count(Db, {DesignName, ViewName}, map_options(Options));
 do_fetch_results_count(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:count(Db, DesignDoc, Options) of
@@ -466,7 +508,7 @@ do_get_design_info(#db{}=_Db, _Design) ->  {'error', 'not_found'}.
                                   {'ok', wh_json:object()} |
                                   couchbeam_error().
 open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
-    case kz_cache:peek_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}) of
+    case kz_cache:peek_local(?KZ_COUCH_CACHE, {?MODULE, DbName, DocId}) of
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
@@ -507,7 +549,7 @@ add_to_doc_cache(DbName, DocId, CacheValue) ->
         'true' ->
            cache_if_not_media(CacheProps, DbName, DocId, CacheValue);
         'false' ->
-            kz_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+            kz_cache:store_local(?KZ_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
 
 -spec cache_if_not_media(wh_proplist(), ne_binary(), ne_binary(), wh_json:object() | couchbeam_error()) -> 'ok'.
@@ -524,7 +566,7 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
         <<"media">> -> 'ok';
         <<"private_media">> -> 'ok';
         _Else ->
-            kz_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
+            kz_cache:store_local(?KZ_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object()) -> 'ok'.
@@ -535,23 +577,23 @@ flush_cache_doc(#db{name=Name}, Doc) ->
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
     flush_cache_doc(wh_util:to_binary(Name), Doc, Options);
 flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
-    kz_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId});
+    kz_cache:erase_local(?KZ_COUCH_CACHE, {?MODULE, DbName, DocId});
 flush_cache_doc(DbName, Doc, Options) ->
     flush_cache_doc(DbName, wh_doc:id(Doc), Options).
 
 -spec flush_cache_docs() -> 'ok'.
-flush_cache_docs() -> kz_cache:flush_local(?WH_COUCH_CACHE).
+flush_cache_docs() -> kz_cache:flush_local(?KZ_COUCH_CACHE).
 
 -spec flush_cache_docs(ne_binary() | db()) -> 'ok'.
 flush_cache_docs(#db{name=Name}) ->
     flush_cache_docs(wh_util:to_binary(Name));
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
-                     kz_cache:erase_local(?WH_COUCH_CACHE, K),
+                     kz_cache:erase_local(?KZ_COUCH_CACHE, K),
                      'true';
                 (_, _) -> 'false'
              end,
-    _ = kz_cache:filter_local(?WH_COUCH_CACHE, Filter),
+    _ = kz_cache:filter_local(?KZ_COUCH_CACHE, Filter),
     'ok'.
 
 -spec flush_cache_docs(ne_binary() | db(), ne_binaries() | wh_json:objects()) -> 'ok'.
@@ -782,7 +824,7 @@ maybe_tombstone(JObj, 'false') -> JObj.
 -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
 maybe_set_docid(Doc) ->
     case wh_doc:id(Doc) of
-        'undefined' -> wh_doc:set_id(Doc, couch_mgr:get_uuid());
+        'undefined' -> wh_doc:set_id(Doc, kzs_mgr:get_uuid());
         _ -> Doc
     end.
 
@@ -973,9 +1015,7 @@ retry504s(Fun, Cnt) ->
 
 -spec maybe_publish_docs(couchbeam_db(), wh_json:objects(), wh_json:objects()) -> 'ok'.
 maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
-    case couch_mgr:change_notice()
-        andalso should_publish_db_changes(Db)
-    of
+    case kzs_mgr:change_notice() of
         'true' ->
             _ = wh_util:spawn(
                   fun() ->
@@ -990,8 +1030,7 @@ maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
 
 -spec maybe_publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
 maybe_publish_doc(#db{}=Db, Doc, JObj) ->
-    case couch_mgr:change_notice()
-        andalso should_publish_db_changes(Db)
+    case kzs_mgr:change_notice()
         andalso should_publish_doc(Doc)
     of
         'true' ->
@@ -1002,7 +1041,7 @@ maybe_publish_doc(#db{}=Db, Doc, JObj) ->
 
 -spec maybe_publish_db(ne_binary(), wapi_conf:action()) -> 'ok'.
 maybe_publish_db(DbName, Action) ->
-    case couch_mgr:change_notice() of
+    case kzs_mgr:change_notice() of
         'true' ->
             _ = wh_util:spawn(fun publish_db/2, [DbName, Action]),
             'ok';
@@ -1015,11 +1054,6 @@ should_publish_doc(Doc) ->
         <<"_design/", _/binary>> = _D -> 'false';
         _Else -> 'true'
     end.
-
--spec should_publish_db_changes(couchbeam_db()) -> boolean().
-should_publish_db_changes(#db{name=DbName}) ->
-    Key = <<"publish_", (wh_util:to_binary(db_classification(DbName)))/binary, "_changes">>,
-    whapps_config:get_is_true(?CONFIG_CAT, Key, 'true').
 
 -spec publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
 publish_doc(#db{name=DbName}, Doc, JObj) ->
