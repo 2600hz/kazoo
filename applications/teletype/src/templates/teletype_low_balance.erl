@@ -71,10 +71,16 @@ get_current_balance(DataJObj) ->
 
 -spec get_balance_threshold(wh_json:object()) -> ne_binary().
 get_balance_threshold(DataJObj) ->
-    Default = 5.00,
-    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
-    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
-    wht_util:pretty_print_dollars(Dollars).
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
+    Default = whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+
+    case kz_account:fetch(AccountId) of
+        {'error', _} -> Default;
+        {'ok', JObj} ->
+            TopUp = wh_json:get_float_value([<<"topup">>, <<"threshold">>], JObj, Default),
+            wht_util:pretty_print_dollars(kz_account:threshold(JObj, TopUp))
+    end.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
