@@ -20,6 +20,8 @@
 -define(DEFAULT_EXIT_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)">>).
 -define(EXIT_TONE, whapps_config:get(?CONFIG_CAT, <<"exit_tone">>, ?DEFAULT_EXIT_TONE)).
 
+-define(SUPPORT_NAME_ANNOUNCEMENT, whapps_config:get_is_true(?CONFIG_CAT, <<"support_name_announcement">>, 'true')).
+
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
                                  ,{<<"caller-controls">>, <<"default">>}
                                  ,{<<"interval">>, 20}
