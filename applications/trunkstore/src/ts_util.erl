@@ -364,7 +364,7 @@ maybe_restrict_call(#ts_callflow_state{acctid=AccountId
                                       }
                     ,Command) ->
     Number = props:get_value(<<"To-DID">>, Command),
-    Classification = wnm_util:classify_number(Number),
+    Classification = knm_converters:classify(Number),
     lager:debug("Trunkstore classified number as ~p", [Classification]),
     Username = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Username">>], RRObj),
     Realm = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Realm">>], RRObj),

@@ -109,7 +109,7 @@ maybe_get_rate_discount(JObj, AccountId) ->
             'undefined';
         {'ok', Def} ->
             Number = wh_json:get_value(<<"To-DID">>, JObj),
-            Classification = wnm_util:classify_number(Number),
+            Classification = knm_converters:classify(Number),
             lager:debug("~s number discount percentage: ~p", [Classification, Def]),
             wh_json:get_value([<<"pvt_discounts">>, Classification, <<"percentage">>], Def)
     end.

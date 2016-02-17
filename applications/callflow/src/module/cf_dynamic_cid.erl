@@ -241,7 +241,7 @@ should_restrict_call(Call, Number) ->
     case  cf_endpoint:get(Call) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
-            Classification = wnm_util:classify_number(Number),
+            Classification = knm_converters:classify(Number),
             lager:info("classified number as ~s", [Classification]),
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.

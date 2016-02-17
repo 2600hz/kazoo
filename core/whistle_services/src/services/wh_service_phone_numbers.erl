@@ -114,7 +114,7 @@ update_number_quantities(Services, JObj) ->
     Number = wh_doc:id(JObj),
     ModuleName = wh_json:get_atom_value(?PVT_MODULE_NAME, JObj),
     case is_number_billable(Number, ModuleName)
-        andalso wnm_util:classify_number(Number)
+        andalso knm_converters:classify(Number)
     of
         'false' -> Services;
         'undefined' -> Services;

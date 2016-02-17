@@ -189,7 +189,7 @@ is_number_restricted(Number, DocId, AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
-            Classification = wnm_util:classify_number(Number),
+            Classification = knm_converters:classify(Number),
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
 
