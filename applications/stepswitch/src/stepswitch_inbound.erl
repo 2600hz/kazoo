@@ -66,7 +66,7 @@ maybe_relay_request(JObj) ->
 -spec set_account_id(knm_number:number_properties(), wh_json:object()) ->
                             wh_json:object().
 set_account_id(NumberProps, JObj) ->
-    AccountId = wh_number_properties:account_id(NumberProps),
+    AccountId = knm_number:account_id(NumberProps),
     wh_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
 
 %%--------------------------------------------------------------------
@@ -165,7 +165,7 @@ maybe_format_destination(_NumberProps, JObj) ->
 -spec maybe_set_ringback(knm_number:number_properties(), wh_json:object()) ->
                                 wh_json:object().
 maybe_set_ringback(NumberProps, JObj) ->
-    case wh_number_properties:ringback_media_id(NumberProps) of
+    case knm_number:ringback_media_id(NumberProps) of
         'undefined' -> JObj;
         MediaId ->
             wh_json:set_value(?CCV(<<"Ringback-Media">>), MediaId, JObj)
@@ -180,7 +180,7 @@ maybe_set_ringback(NumberProps, JObj) ->
 -spec maybe_set_transfer_media(knm_number:number_properties(), wh_json:object()) ->
                                       wh_json:object().
 maybe_set_transfer_media(NumberProps, JObj) ->
-    case wh_number_properties:transfer_media_id(NumberProps) of
+    case knm_number:transfer_media_id(NumberProps) of
         'undefined' -> JObj;
         MediaId ->
             wh_json:set_value(?CCV(<<"Transfer-Media">>), MediaId, JObj)
@@ -196,7 +196,7 @@ maybe_set_transfer_media(NumberProps, JObj) ->
 -spec maybe_lookup_cnam(knm_number:number_properties(), wh_json:object()) ->
                                wh_json:object().
 maybe_lookup_cnam(NumberProps, JObj) ->
-    case wh_number_properties:inbound_cnam_enabled(NumberProps) of
+    case knm_number:inbound_cnam_enabled(NumberProps) of
         'false' -> JObj;
         'true' -> stepswitch_cnam:lookup(JObj)
     end.
@@ -209,7 +209,7 @@ maybe_lookup_cnam(NumberProps, JObj) ->
 -spec maybe_add_prepend(knm_number:number_properties(), wh_json:object()) ->
                                wh_json:object().
 maybe_add_prepend(NumberProps, JObj) ->
-    case wh_number_properties:prepend(NumberProps) of
+    case knm_number:prepend(NumberProps) of
         'undefined' -> JObj;
         Prepend -> wh_json:set_value(<<"Prepend-CID-Name">>, Prepend, JObj)
     end.
@@ -250,7 +250,7 @@ relay_request(JObj) ->
 -spec maybe_transition_port_in(knm_number:number_properties(), wh_json:object()) ->
                                       wh_json:object().
 maybe_transition_port_in(NumberProps, JObj) ->
-    case wh_number_properties:has_pending_port(NumberProps) of
+    case knm_number:has_pending_port(NumberProps) of
         'false' -> 'ok';
         'true' -> transition_port_in(NumberProps, JObj)
     end,
@@ -259,7 +259,7 @@ maybe_transition_port_in(NumberProps, JObj) ->
 -spec transition_port_in(knm_number:number_properties(), wh_json:object()) ->
                                 wh_json:object().
 transition_port_in(NumberProps, JObj) ->
-    case knm_port_request:get(wh_number_properties:number(NumberProps)) of
+    case knm_port_request:get(knm_number:number(NumberProps)) of
         {'ok', PortReq} ->
             _ = knm_port_request:transition_to_complete(PortReq);
         _ ->
