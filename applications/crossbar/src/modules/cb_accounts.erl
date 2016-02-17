@@ -222,17 +222,19 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
     Data = cb_context:req_data(Context),
     case wh_json:get_binary_value(<<"to">>, Data) of
         'undefined' ->
-            cb_context:add_validation_error(
-                <<"to">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"Field 'to' is required">>}
-                 ])
-                ,Context
-            );
+            cb_context:add_validation_error(<<"to">>
+                                           ,<<"required">>
+                                           ,wh_json:from_list(
+                                              [{<<"message">>, <<"Field 'to' is required">>}]
+                                             )
+                                           ,Context
+                                           );
         ToAccount ->
             case validate_move(whapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"allow_move">>, <<"superduper_admin">>)
-                               ,Context, AccountId, ToAccount)
+                              ,Context
+                              ,AccountId
+                              ,ToAccount
+                              )
             of
                 'true' -> cb_context:set_resp_status(Context, 'success');
                 'false' -> cb_context:add_system_error('forbidden', Context)
@@ -390,16 +392,15 @@ validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
     AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
     MoveTree = crossbar_util:get_tree(MoveAccount),
     ToTree = crossbar_util:get_tree(ToAccount),
-    L = lists:foldl(
-            fun(Id, Acc) ->
-                case lists:member(Id, ToTree) of
-                    'false' -> Acc;
-                    'true' -> [Id|Acc]
-                end
-            end
-            ,[]
-            ,MoveTree
-        ),
+    L = lists:foldl(fun(Id, Acc) ->
+                            case lists:member(Id, ToTree) of
+                                'false' -> Acc;
+                                'true' -> [Id|Acc]
+                            end
+                    end
+                   ,[]
+                   ,MoveTree
+                   ),
     lists:member(AuthId, L);
 validate_move(_Type, _, _, _) ->
     lager:error("unknow move type ~p", [_Type]),
@@ -929,7 +930,6 @@ load_siblings_results(_AccountId, Context, [JObj|_]) ->
     load_children(Parent, Context);
 load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, AccountId}]),  Context).
-
 
 -spec start_key(cb_context:context()) -> binary().
 start_key(Context) ->
