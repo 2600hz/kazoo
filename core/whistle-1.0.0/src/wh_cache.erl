@@ -222,17 +222,19 @@ peek_local(Srv, K) ->
                          {'ok', term()} |
                          {'error', 'not_found'}.
 fetch_local(Srv, K) ->
-    try ets:lookup_element(Srv, K, #cache_obj.value) of
-        Value ->
+    case peek_local(Srv, K) of
+        {'error', _}=E -> E;
+        {'ok', _Value}=OK ->
             gen_server:cast(Srv, {'update_timestamp', K, wh_util:current_tstamp()}),
-            {'ok', Value}
-    catch
-        'error':'badarg' -> {'error', 'not_found'}
+            OK
     end.
 
 -spec erase_local(atom(), term()) -> 'ok'.
 erase_local(Srv, K) ->
-    gen_server:cast(Srv, {'erase', K}).
+    case peek_local(Srv, K) of
+        {'ok', _} -> gen_server:cast(Srv, {'erase', K});
+        {'error', 'not_found'} -> 'ok'
+    end.
 
 -spec flush_local(atom()) -> 'ok'.
 flush_local(Srv) ->
@@ -502,7 +504,7 @@ handle_info({'timeout', Ref, ?EXPIRE_PERIOD_MSG}
            ) ->
     case expire_objects(Tab) > 0 of
         'true' ->
-            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}, 'hibernate'};
+            {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}};
         'false' ->
             {'noreply', State#state{expire_period_ref=start_expire_period_timer(Period)}}
     end;
@@ -517,8 +519,11 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(JObj, _State) ->
+    case wh_api:node(JObj) =:= wh_util:to_binary(node()) of
+        'true' -> 'ignore';
+        'false' -> {'reply', []}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -656,33 +661,37 @@ maybe_remove_object(#cache_obj{key = Key}, Tab) ->
     maybe_remove_object(Key, Tab);
 maybe_remove_object(Key, Tab) ->
     DeleteSpec =
-        [{#cache_obj{value = '$1'
+        [{#cache_obj{value = Key
                      ,type = 'pointer'
                      ,_ = '_'
                     }
-          ,[{'=:=', {'const', Key}, '$1'}]
+          ,[]
           ,['true']
          }
-         ,{#cache_obj{key = '$1'
+         ,{#cache_obj{key = Key
                       ,type = 'normal'
                       ,_ = '_'
                      }
-           ,[{'=:=', {'const', Key}, '$1'}]
+           ,[]
            ,['true']
           }],
     ets:select_delete(Tab, DeleteSpec).
 
 -spec maybe_exec_erase_callbacks(term(), atom()) -> 'ok'.
 maybe_exec_erase_callbacks(Key, Tab) ->
-    case ets:lookup(Tab, Key) of
-        [#cache_obj{callback=Fun
-                    ,value=Value
-                   }
-        ] when is_function(Fun, 3) ->
-            _ = wh_util:spawn(fun() -> Fun(Key, Value, 'erase') end),
+    try ets:lookup_element(Tab, Key, #cache_obj.callback) of
+        Fun when is_function(Fun, 3) ->
+            wh_util:spawn(fun() -> exec_erase_callback(Key, Tab, Fun) end),
             'ok';
-        _Else -> 'ok'
+        _Callback -> 'ok'
+    catch
+        _ -> 'ok'
     end.
+
+-spec exec_erase_callback(any(), atom(), callback_fun()) -> any().
+exec_erase_callback(Key, Tab, Fun) ->
+    Value = ets:lookup_element(Tab, Key, #cache_obj.value),
+    Fun(Key, Value, 'erase').
 
 -spec maybe_exec_flush_callbacks(atom()) -> 'ok'.
 maybe_exec_flush_callbacks(Tab) ->
@@ -704,12 +713,12 @@ maybe_exec_flush_callbacks(Tab) ->
 -spec maybe_exec_store_callbacks(state(), term(), term(), atom()) -> state().
 maybe_exec_store_callbacks(#state{has_monitors='false'}=State, _, _, _) -> State;
 maybe_exec_store_callbacks(State, Key, Value, Tab) ->
-    MatchSpec = [{#cache_obj{value = '$1'
+    MatchSpec = [{#cache_obj{value = Key
                              ,callback = '$2'
                              ,type = 'monitor'
                              ,_ = '_'
                             }
-                  ,[{'=:=', '$1', {'const', Key}}]
+                  ,[]
                   ,['$2']
                  }],
     _ = case ets:select(Tab, MatchSpec) of
@@ -739,11 +748,11 @@ exec_store_callback([Callback|Callbacks], Key, Value, Tab) ->
 
 -spec delete_monitor_callbacks(term(), atom()) -> non_neg_integer().
 delete_monitor_callbacks(Key, Tab) ->
-    DeleteSpec = [{#cache_obj{value = '$1'
+    DeleteSpec = [{#cache_obj{value = Key
                               ,type = 'monitor'
                               ,_ = '_'
                              }
-                   ,[{'=:=', '$1', {'const', Key}}]
+                   ,[]
                    ,['true']
                   }
                  ],
