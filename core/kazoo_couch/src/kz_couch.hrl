@@ -1,4 +1,4 @@
--ifndef(WH_COUCH_HRL).
+-ifndef(KZ_COUCH_HRL).
 -include_lib("whistle/include/wh_types.hrl"). % get the whistle types
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -16,7 +16,7 @@
                        ,{'connect_timeout', 500}
                       ]).
 
--define(WH_COUCH_CACHE, 'whistle_couch_cache').
+-define(KZ_COUCH_CACHE, 'kazoo_couch_cache').
 
 -define(FIXTURES_FOLDER, "fixtures").
 
@@ -57,7 +57,7 @@
          ,do_compaction = 'false' :: boolean()
          }).
 
--record(wh_couch_connection, {id = wh_util:current_tstamp()
+-record(kz_couch_connection, {id = wh_util:current_tstamp()
                               ,host = "localhost"
                               ,port = ?DEFAULT_PORT
                               ,username = ""
@@ -68,7 +68,7 @@
                               ,server = #server{}
                               ,tag = 'local'
                              }).
--type couch_connection() :: #wh_couch_connection{}.
+-type couch_connection() :: #kz_couch_connection{}.
 -type couch_connections() :: [couch_connection()].
 
 -type couchbeam_db() :: #db{}.
@@ -80,17 +80,5 @@
                      }).
 -type copy_doc() :: #wh_copy_doc{}.
 
-
-%% Temporary fix
--record(wh_gen_changes_state, {
-    start_ref,
-    changes_pid,
-    last_seq=0,
-    mod,
-    modstate,
-    db,
-    options}).
-
-
--define(WH_COUCH_HRL, 'true').
+-define(KZ_COUCH_HRL, 'true').
 -endif.

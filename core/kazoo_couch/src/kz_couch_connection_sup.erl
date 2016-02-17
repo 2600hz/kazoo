@@ -5,11 +5,11 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(wh_couch_connection_sup).
+-module(kz_couch_connection_sup).
 
 -behaviour(supervisor).
 
--include("wh_couch.hrl").
+-include("kz_couch.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -17,7 +17,7 @@
 -export([add/1]).
 -export([init/1]).
 
--define(CHILDREN, [?WORKER('wh_couch_connection')]).
+-define(CHILDREN, [?WORKER('kz_couch_connection')]).
 
 %% ===================================================================
 %% API functions

@@ -5,11 +5,11 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(whistle_couch_sup).
+-module(kazoo_couch_sup).
 
 -behaviour(supervisor).
 
--include("wh_couch.hrl").
+-include("kz_couch.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -24,13 +24,11 @@
                       ,'channel_reconnect_flush'
                      ]).
 
--define(CHILDREN, [?WORKER('whistle_couch_init')
-                   ,?CACHE_ARGS(?WH_COUCH_CACHE, ?CACHE_PROPS)
-                   ,?SUPER('wh_couch_connection_sup')
-                   ,?SUPER('wh_change_handler_sup')
-                   ,?WORKER('wh_couch_connections')
-                   ,?WORKER('wh_couch_bootstrap')
-                   ,?WORKER('couch_compactor_fsm')
+-define(CHILDREN, [?WORKER('kazoo_couch_init')
+                   ,?CACHE_ARGS(?KZ_COUCH_CACHE, ?CACHE_PROPS)
+                   ,?SUPER('kz_couch_connection_sup')
+                   ,?WORKER('kz_couch_connections')
+                   ,?WORKER('kz_couch_bootstrap')
                   ]).
 
 %% ===================================================================

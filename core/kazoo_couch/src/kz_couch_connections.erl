@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(wh_couch_connections).
+-module(kz_couch_connections).
 
 -behaviour(gen_server).
 
@@ -46,7 +46,7 @@
          ,rm_change_handler/3
         ]).
 
--include("wh_couch.hrl").
+-include("kz_couch.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -66,21 +66,21 @@ start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec update(couch_connection()) -> 'ok'.
-update(#wh_couch_connection{}=Connection) ->
+update(#kz_couch_connection{}=Connection) ->
     gen_server:cast(?SERVER, {'update_connection', Connection}).
 
 -spec add(couch_connection()) -> 'ok'.
-add(#wh_couch_connection{}=Connection) ->
+add(#kz_couch_connection{}=Connection) ->
     gen_server:cast(?SERVER, {'add_connection', Connection}).
 
 -spec add_unique(couch_connection()) -> 'ok'.
-add_unique(#wh_couch_connection{}=Connection) ->
+add_unique(#kz_couch_connection{}=Connection) ->
     add_unique(Connection, 'local').
 
 -spec add_unique(couch_connection(), any()) -> 'ok'.
-add_unique(#wh_couch_connection{}=Connection, Tag) ->
+add_unique(#kz_couch_connection{}=Connection, Tag) ->
     case get_by_tag(Tag) of
-        [] -> gen_server:cast(?SERVER, {'add_connection', Connection#wh_couch_connection{tag=Tag}});
+        [] -> gen_server:cast(?SERVER, {'add_connection', Connection#kz_couch_connection{tag=Tag}});
         _ -> 'ok'
     end.
 
@@ -107,7 +107,7 @@ wait_for_connection(Tag, Timeout) ->
 
 -spec get_host() -> string().
 get_host() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1'
+    MatchSpec = [{#kz_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,host = '$3'
                                        ,tag = 'local'
@@ -121,7 +121,7 @@ get_host() ->
 
 -spec get_port() -> integer().
 get_port() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1'
+    MatchSpec = [{#kz_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,port = '$3'
                                        ,tag = 'local'
@@ -135,7 +135,7 @@ get_port() ->
 
 -spec get_admin_port() -> integer().
 get_admin_port() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1'
+    MatchSpec = [{#kz_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,port = '$3'
                                        ,tag = 'local'
@@ -149,7 +149,7 @@ get_admin_port() ->
 
 -spec get_creds() -> {string(), string()}.
 get_creds() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1'
+    MatchSpec = [{#kz_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,username = '$3'
                                        ,password = '$4'
@@ -168,7 +168,7 @@ get_server() ->
 
 -spec get_server(term()) -> #server{}.
 get_server(Tag) ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1'
+    MatchSpec = [{#kz_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,server = '$3'
                                        ,tag = Tag
@@ -182,7 +182,7 @@ get_server(Tag) ->
 
 -spec get_by_tag(term()) -> couch_connections().
 get_by_tag(Label) ->
-    MatchSpec = [{#wh_couch_connection{tag = Label
+    MatchSpec = [{#kz_couch_connection{tag = Label
                                        ,_ = '_'
                                       }
                  ,[]
@@ -192,7 +192,7 @@ get_by_tag(Label) ->
 
 -spec get_admin_server() -> #server{}.
 get_admin_server() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1'
+    MatchSpec = [{#kz_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,server = '$3'
                                        ,tag = 'local'
@@ -209,7 +209,7 @@ get_url() -> get_url('local').
 
 -spec get_url(term()) -> api_binary().
 get_url(Tag) ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1'
+    MatchSpec = [{#kz_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,host = '$3'
                                        ,port = '$4'
@@ -226,7 +226,7 @@ get_url(Tag) ->
 
 -spec get_admin_url() -> api_binary().
 get_admin_url() ->
-    MatchSpec = [{#wh_couch_connection{ready = '$1'
+    MatchSpec = [{#kz_couch_connection{ready = '$1'
                                        ,admin = '$2'
                                        ,host = '$3'
                                        ,port = '$4'
@@ -324,7 +324,7 @@ init([]) ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = ets:new(?MODULE, ['ordered_set'
                           ,{'read_concurrency', 'true'}
-                          ,{'keypos', #wh_couch_connection.id}
+                          ,{'keypos', #kz_couch_connection.id}
                           ,'named_table'
                          ]),
     {'ok', #state{}}.
@@ -358,10 +358,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'add_connection', #wh_couch_connection{}=Connection}, State) ->
+handle_cast({'add_connection', #kz_couch_connection{}=Connection}, State) ->
     maybe_start_new_connection(Connection),
     {'noreply', State};
-handle_cast({'update_connection', #wh_couch_connection{}=Connection}, State) ->
+handle_cast({'update_connection', #kz_couch_connection{}=Connection}, State) ->
     'true' = ets:insert(?MODULE, Connection),
     {'noreply', State};
 handle_cast({'node_cookie', Cookie}, State) ->
@@ -413,7 +413,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_start_new_connection(couch_connection()) -> any().
 maybe_start_new_connection(Connection) ->
-    _ = wh_couch_connection_sup:add(Connection),
+    _ = kz_couch_connection_sup:add(Connection),
     _ = ets:insert(?MODULE, Connection).
 
 -spec get_url(binary(), pos_integer(), string(), string()) -> api_binary().
