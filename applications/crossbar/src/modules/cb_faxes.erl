@@ -290,13 +290,11 @@ patch(Context, ?OUTGOING, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-delete(Context, ?OUTGOING, _Id) ->
-    crossbar_doc:delete(Context);
-delete(Context, ?INCOMING, _Id) ->
+delete(Context, _, _Id) ->
     crossbar_doc:delete(Context).
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-delete(Context, ?INCOMING, Id, ?ATTACHMENT) ->
+delete(Context, _, Id, ?ATTACHMENT) ->
     ANames = wh_doc:attachment_names(cb_context:doc(Context)),
     lists:foldl(fun(AName, Ctx) ->
                         crossbar_doc:delete_attachment(Id, AName, Ctx)
