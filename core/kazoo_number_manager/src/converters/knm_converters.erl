@@ -164,8 +164,7 @@ to_1npan(Num) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% @end
+%% @doc Given a number determine the database name it belongs to.
 %%--------------------------------------------------------------------
 -spec to_db(<<_:40,_:_*8>>) -> api_binary().
 to_db(<<NumPrefix:5/binary, _/binary>>) ->

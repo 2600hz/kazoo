@@ -107,7 +107,7 @@ lookup_did(DID, AccountId) ->
             Resp;
         {'error', 'not_found'} ->
             Options = [{'key', DID}],
-            CacheProps = [{'origin', [{'db', wnm_util:number_to_db_name(DID), DID}, {'type', <<"number">>}]}],
+            CacheProps = [{'origin', [{'db', knm_converters:to_db(DID), DID}, {'type', <<"number">>}]}],
             case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
                 {'ok', []} ->
                     lager:info("cache miss for ~s, no results", [DID]),
