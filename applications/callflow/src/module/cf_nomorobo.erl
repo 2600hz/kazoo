@@ -98,8 +98,8 @@ nomorobo_req(URI, Data) ->
 nomorobo_uri(Call) ->
     lists:foldl(fun uri_replace/2
                 ,?URL
-                ,[{<<"{TO}">>, wnm_util:to_npan(whapps_call:request_user(Call))}
-                  ,{<<"{FROM}">>, wnm_util:to_npan(whapps_call:caller_id_number(Call))}
+                ,[{<<"{TO}">>, knm_converters:to_npan(whapps_call:request_user(Call))}
+                  ,{<<"{FROM}">>, knm_converters:to_npan(whapps_call:caller_id_number(Call))}
                  ]).
 
 -spec uri_replace({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
