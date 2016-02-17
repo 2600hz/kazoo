@@ -286,12 +286,14 @@ dump_local(Srv) -> dump_local(Srv, 'false').
 -spec dump_local(text(), text() | boolean()) -> 'ok'.
 dump_local(Srv, ShowValue) when not is_atom(Srv) ->
     dump_local(wh_util:to_atom(Srv), ShowValue);
-dump_local(Srv, ShowValue) when not is_atom(ShowValue) ->
+dump_local(Srv, ShowValue) when not is_boolean(ShowValue) ->
     dump_local(Srv, wh_util:to_boolean(ShowValue));
 dump_local(Srv, ShowValue) ->
     {PointerTab, MonitorTab} = gen_listener:call(Srv, {'tables'}),
 
-    [dump_table(Tab, ShowValue) || Tab <- [Srv, PointerTab, MonitorTab]],
+    _ = [dump_table(Tab, ShowValue)
+         || Tab <- [Srv, PointerTab, MonitorTab]
+        ],
     'ok'.
 
 dump_table(Tab, ShowValue) ->

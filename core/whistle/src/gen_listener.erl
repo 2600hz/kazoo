@@ -165,7 +165,7 @@
 %%% API
 %%%===================================================================
 -callback init(any()) -> {'ok', module_state()} |
-                         {'ok', module_state(), timeout() | 'hibernateb'} |
+                         {'ok', module_state(), timeout() | 'hibernate'} |
                          {'stop', any()} |
                          'ignore'.
 

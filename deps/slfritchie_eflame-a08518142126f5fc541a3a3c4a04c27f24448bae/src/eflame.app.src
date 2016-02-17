@@ -1,7 +1,7 @@
 {application, eflame,
  [
   {description, ""},
-  {vsn, git},
+  {vsn, "a08518142126f5fc541a3a3c4a04c27f24448bae"},
   {registered, []},
   {modules, []},
   {applications, [
