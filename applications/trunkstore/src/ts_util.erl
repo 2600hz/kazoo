@@ -235,11 +235,11 @@ invite_format(<<"e164_without_plus">>, To) ->
     end;
 invite_format(<<"1npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
-     ,{<<"To-DID">>, wnm_util:to_1npan(To)}
+     ,{<<"To-DID">>, knm_converters:to_1npan(To)}
     ];
 invite_format(<<"1npan">>, To) ->
     [{<<"Invite-Format">>, <<"1npan">>}
-     ,{<<"To-DID">>, wnm_util:to_1npan(To)}
+     ,{<<"To-DID">>, knm_converters:to_1npan(To)}
     ];
 invite_format(<<"npanxxxxxx">>, To) ->
     [{<<"Invite-Format">>, <<"npan">>}

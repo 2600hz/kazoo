@@ -34,19 +34,19 @@ prop_to_npan() ->
              end
            ).
 
-%% %% (AAABBBCCCC, 1AAABBBCCCC) -> 1AAABBBCCCCCC.
-%% prop_to_1npan() ->
-%%     ?FORALL(Number
-%%             ,range(2002000000,19999999999)
-%%             ,begin
-%%                  BinNum = wh_util:to_binary(Number),
-%%                  OneNPAN = ?MODULE_TESTED:to_1npan(BinNum),
-%%                  case byte_size(BinNum) of
-%%                      11 -> OneNPAN =:= BinNum;
-%%                      _ -> OneNPAN =:= <<"1", BinNum/binary>>
-%%                  end
-%%              end
-%%            ).
+%% (AAABBBCCCC, 1AAABBBCCCC) -> 1AAABBBCCCCCC.
+prop_to_1npan() ->
+    ?FORALL(Number
+            ,range(2002000000,19999999999)
+            ,begin
+                 BinNum = wh_util:to_binary(Number),
+                 OneNPAN = ?MODULE_TESTED:to_1npan(BinNum),
+                 case byte_size(BinNum) of
+                     11 -> OneNPAN =:= BinNum;
+                     _ -> OneNPAN =:= <<"1", BinNum/binary>>
+                 end
+             end
+           ).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> +1AAABBBCCCCCC.
 prop_normalize() ->
@@ -85,7 +85,7 @@ to_npan_test_() ->
     Ans = <<"2234567890">>,
     [?_assertEqual(?MODULE_TESTED:to_npan(N), Ans) || N <- Ns].
 
-%% to_1npan_test_() ->
-%%     Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
-%%     Ans = <<"12234567890">>,
-%%     [?_assertEqual(?MODULE_TESTED:to_1npan(N), Ans) || N <- Ns].
+to_1npan_test_() ->
+    Ns = [<<"+12234567890">>, <<"12234567890">>, <<"2234567890">>],
+    Ans = <<"12234567890">>,
+    [?_assertEqual(?MODULE_TESTED:to_1npan(N), Ans) || N <- Ns].
