@@ -75,7 +75,7 @@ method_to_section(<<"nil">>, Acc, _APIPath) -> Acc;
 method_to_section(Method, Acc, APIPath) ->
     [[ "#### ", method_as_action(Method), "\n\n"
      ,"> ", Method, " ", APIPath, "\n\n"
-     ,"```curl\ncurl -v http://{SERVER}:8000", APIPath, "\n```\n\n"
+     ,"```curl\ncurl -v -X ", Method, " \\\n    -H \"X-Auth-Token: {AUTH_TOKEN}\" \\\n    http://{SERVER}:8000", APIPath, "\n```\n\n"
      ]
      | Acc
     ].
@@ -406,9 +406,6 @@ maybe_include_schema(PathName, Module) ->
             {'undefined', 'undefined'}
     end.
 
-path_name(Path, ModuleName) ->
-    wh_util:join_binary([<<>>, ModuleName | format_path_tokens(Path)], <<"/">>).
-
 format_path_tokens(<<"/">>) -> [];
 format_path_tokens(<<_/binary>> = Token) ->
     [format_path_token(Token)];
@@ -447,6 +444,9 @@ module_version(<<_/binary>> = Module) ->
         {'match', [_Name, Version]} -> Version;
         {'match', [_Name]} -> ?CURRENT_VERSION
     end.
+
+path_name(Path, ModuleName) ->
+    wh_util:join_binary([<<>>, ModuleName | format_path_tokens(Path)], <<"/">>).
 
 path_name(Module) when is_atom(Module) ->
     path_name(wh_util:to_binary(Module));
