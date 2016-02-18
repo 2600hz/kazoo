@@ -9,5 +9,8 @@
 -define(APP_VERSION, <<"1.0.0">>).
 
 -define(WHS_CONFIG_CAT, <<"services">>).
+
+-define(SUPPORT_BILLING_ID, whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"support_billing_id">>, 'true')).
+
 -define(WHISTLE_SERVICES_HRL, 'true').
 -endif.

@@ -366,7 +366,11 @@ maybe_sync_reseller(AccountId, ServicesJObj) ->
 get_billing_id(AccountId, ServicesJObj) ->
     case kzd_services:is_reseller(ServicesJObj) of
         'true' -> AccountId;
-        'false' -> kzd_services:billing_id(ServicesJObj, AccountId)
+        'false' ->
+            case ?SUPPORT_BILLING_ID of
+                'true' -> kzd_services:billing_id(ServicesJObj, AccountId);
+                'false' -> AccountId
+            end
     end.
 
 -spec mark_dirty(ne_binary() | kzd_services:doc()) -> wh_std_return().
