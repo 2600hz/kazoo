@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store
 ```
 
 #### Remove
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store
 > DELETE /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 ```
 
 #### Fetch
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 ```
 
 #### Change
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 ```
 
 #### Create
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 > PUT /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 ```
 
 #### Fetch
@@ -51,7 +61,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 ```
 
 #### Change
@@ -59,7 +71,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 > POST /v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 ```
 
 #### Fetch
@@ -67,7 +81,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
 ```
 
 #### Fetch
@@ -75,6 +91,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store/{ID}/{ID}/{ID}
 ```
 

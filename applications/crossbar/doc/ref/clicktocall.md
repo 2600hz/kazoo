@@ -23,7 +23,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/clicktocall
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
 ```
 
 #### Create
@@ -31,7 +33,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
 > PUT /v2/accounts/{ACCOUNT_ID}/clicktocall
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
 ```
 
 #### Remove
@@ -39,7 +43,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
 > DELETE /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 ```
 
 #### Fetch
@@ -47,7 +53,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 ```
 
 #### Patch
@@ -55,7 +63,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 ```
 
 #### Change
@@ -63,7 +73,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 ```
 
 #### Fetch
@@ -71,7 +83,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history
 ```
 
 #### Fetch
@@ -79,7 +93,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/history
 > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 ```
 
 #### Change
@@ -87,6 +103,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 > POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{ID}/connect
 ```
 

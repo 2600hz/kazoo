@@ -16,7 +16,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 ```
 
 #### Create
@@ -24,7 +26,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 > PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 ```
 
 #### Remove
@@ -32,7 +36,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 > DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 ```
 
 #### Fetch
@@ -40,7 +46,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 ```
 
 #### Patch
@@ -48,7 +56,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 ```
 
 #### Change
@@ -56,6 +66,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{ID}
 ```
 

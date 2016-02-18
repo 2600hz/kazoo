@@ -63,7 +63,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/resources
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 ```
 
 #### Create
@@ -71,7 +73,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 > PUT /v2/accounts/{ACCOUNT_ID}/resources
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 ```
 
 #### Remove
@@ -79,7 +83,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 > DELETE /v2/accounts/{ACCOUNT_ID}/resources/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 ```
 
 #### Fetch
@@ -87,7 +93,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/resources/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 ```
 
 #### Change
@@ -95,7 +103,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/resources/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 ```
 
 #### Fetch
@@ -103,7 +113,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/resources/jobs
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 ```
 
 #### Create
@@ -111,7 +123,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/jobs
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 ```
 
 #### Change
@@ -119,7 +133,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 > POST /v2/accounts/{ACCOUNT_ID}/resources/collection
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 ```
 
 #### Create
@@ -127,7 +143,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/collection
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 ```
 
 #### Fetch
@@ -135,6 +153,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 > GET /v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
 ```
 

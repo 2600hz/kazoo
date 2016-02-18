@@ -11,7 +11,9 @@
 > DELETE /v2/accounts/{ACCOUNT_ID}/bulk
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
 ```
 
 #### Fetch
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
 > GET /v2/accounts/{ACCOUNT_ID}/bulk
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
 ```
 
 #### Change
@@ -27,6 +31,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
 > POST /v2/accounts/{ACCOUNT_ID}/bulk
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/bulk
 ```
 

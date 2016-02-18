@@ -11,7 +11,9 @@
 > POST /v2/accounts/{ACCOUNT_ID}/killio/call
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/killio/call
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/killio/call
 ```
 
 #### Create
@@ -19,6 +21,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/killio/call
 > PUT /v2/accounts/{ACCOUNT_ID}/killio/call
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/killio/call
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/killio/call
 ```
 

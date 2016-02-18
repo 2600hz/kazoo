@@ -79,7 +79,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/devices
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
 ```
 
 #### Create
@@ -87,7 +89,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
 > PUT /v2/accounts/{ACCOUNT_ID}/devices
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
 ```
 
 #### Remove
@@ -95,7 +99,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
 > DELETE /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 ```
 
 #### Fetch
@@ -103,7 +109,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 ```
 
 #### Change
@@ -111,7 +119,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 > POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 ```
 
 #### Fetch
@@ -119,7 +129,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/devices/status
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/status
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/status
 ```
 
 #### Change
@@ -127,7 +139,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/status
 > POST /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
 ```
 
 #### Fetch
@@ -135,6 +149,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}
 ```
 

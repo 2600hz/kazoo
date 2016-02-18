@@ -25,7 +25,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/callflows
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
 ```
 
 #### Create
@@ -33,7 +35,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
 > PUT /v2/accounts/{ACCOUNT_ID}/callflows
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
 ```
 
 #### Remove
@@ -41,7 +45,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows
 > DELETE /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Fetch
@@ -49,7 +55,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Patch
@@ -57,7 +65,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 
 #### Change
@@ -65,6 +75,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 > POST /v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/callflows/{MEDIA_ID}
 ```
 

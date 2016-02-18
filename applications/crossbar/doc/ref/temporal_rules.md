@@ -23,7 +23,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
 ```
 
 #### Create
@@ -31,7 +33,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
 > PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
 ```
 
 #### Remove
@@ -39,7 +43,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules
 > DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 ```
 
 #### Fetch
@@ -47,7 +53,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 ```
 
 #### Patch
@@ -55,7 +63,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 ```
 
 #### Change
@@ -63,6 +73,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules/{ID}
 ```
 

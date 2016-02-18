@@ -11,7 +11,9 @@
 > PUT /v2/accounts/{ACCOUNT_ID}/signup
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/signup
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/signup
 ```
 
 #### Change
@@ -19,6 +21,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/signup
 > POST /v2/accounts/{ACCOUNT_ID}/signup/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/signup/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/signup/{ID}
 ```
 
