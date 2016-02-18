@@ -18,7 +18,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/cccps
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
 ```
 
 #### Create
@@ -26,7 +28,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
 > PUT /v2/accounts/{ACCOUNT_ID}/cccps
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
 ```
 
 #### Remove
@@ -34,7 +38,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
 > DELETE /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Fetch
@@ -42,7 +48,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Change
@@ -50,7 +58,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 
 #### Create
@@ -58,6 +68,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 > PUT /v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{ID}
 ```
 

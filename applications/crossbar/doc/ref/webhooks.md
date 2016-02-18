@@ -20,7 +20,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 #### Patch
@@ -28,7 +30,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 > PATCH /v2/accounts/{ACCOUNT_ID}/webhooks
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 #### Create
@@ -36,7 +40,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 > PUT /v2/accounts/{ACCOUNT_ID}/webhooks
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 #### Remove
@@ -44,7 +50,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 > DELETE /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Fetch
@@ -52,7 +60,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Patch
@@ -60,7 +70,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Change
@@ -68,7 +80,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 > POST /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
 #### Fetch
@@ -76,7 +90,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 ```
 
 #### Fetch
@@ -84,6 +100,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 ```
 

@@ -18,7 +18,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/directories
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
 ```
 
 #### Create
@@ -26,7 +28,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
 > PUT /v2/accounts/{ACCOUNT_ID}/directories
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
 ```
 
 #### Remove
@@ -34,7 +38,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
 > DELETE /v2/accounts/{ACCOUNT_ID}/directories/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 ```
 
 #### Fetch
@@ -42,7 +48,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/directories/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 ```
 
 #### Patch
@@ -50,7 +58,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/directories/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 ```
 
 #### Change
@@ -58,6 +68,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/directories/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{ID}
 ```
 

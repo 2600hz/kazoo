@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/transactions
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions
 ```
 
 #### Fetch
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 ```
 
 #### Fetch
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/subscriptions
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recurring
 ```
 
 #### Remove
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/monthly_recur
 > DELETE /v2/accounts/{ACCOUNT_ID}/transactions/debit
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
 ```
 
 #### Fetch
@@ -43,6 +51,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/debit
 > GET /v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/transactions/current_balance
 ```
 

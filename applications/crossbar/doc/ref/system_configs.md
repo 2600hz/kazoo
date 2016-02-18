@@ -11,7 +11,9 @@
 > GET /v2/system_configs
 
 ```curl
-curl -v http://{SERVER}:8000/v2/system_configs
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs
 ```
 
 #### Create
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/system_configs
 > PUT /v2/system_configs
 
 ```curl
-curl -v http://{SERVER}:8000/v2/system_configs
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs
 ```
 
 #### Remove
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/system_configs
 > DELETE /v2/system_configs/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/system_configs/{_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{_ID}
 ```
 
 #### Fetch
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/system_configs/{_ID}
 > GET /v2/system_configs/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/system_configs/{_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{_ID}
 ```
 
 #### Change
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/system_configs/{_ID}
 > POST /v2/system_configs/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/system_configs/{_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{_ID}
 ```
 
 #### Remove
@@ -51,7 +61,9 @@ curl -v http://{SERVER}:8000/v2/system_configs/{_ID}
 > DELETE /v2/system_configs/{_ID}/{NODE}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/system_configs/{_ID}/{NODE}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{_ID}/{NODE}
 ```
 
 #### Fetch
@@ -59,7 +71,9 @@ curl -v http://{SERVER}:8000/v2/system_configs/{_ID}/{NODE}
 > GET /v2/system_configs/{_ID}/{NODE}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/system_configs/{_ID}/{NODE}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{_ID}/{NODE}
 ```
 
 #### Change
@@ -67,6 +81,8 @@ curl -v http://{SERVER}:8000/v2/system_configs/{_ID}/{NODE}
 > POST /v2/system_configs/{_ID}/{NODE}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/system_configs/{_ID}/{NODE}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{_ID}/{NODE}
 ```
 

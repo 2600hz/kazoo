@@ -11,7 +11,9 @@
 > DELETE /v2/accounts/{ACCOUNT_ID}/rate_limits
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
 ```
 
 #### Fetch
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
 > GET /v2/accounts/{ACCOUNT_ID}/rate_limits
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
 ```
 
 #### Change
@@ -27,6 +31,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
 > POST /v2/accounts/{ACCOUNT_ID}/rate_limits
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rate_limits
 ```
 

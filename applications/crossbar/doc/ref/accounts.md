@@ -36,7 +36,9 @@ Key | Description | Type | Default | Required
 > PUT /v2/accounts
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts
 ```
 
 #### Remove
@@ -44,7 +46,9 @@ curl -v http://{SERVER}:8000/v2/accounts
 > DELETE /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
 #### Fetch
@@ -52,7 +56,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 > GET /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
 #### Patch
@@ -60,7 +66,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
 #### Change
@@ -68,7 +76,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 > POST /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
 #### Create
@@ -76,7 +86,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 > PUT /v2/accounts/{ACCOUNT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
 #### Fetch
@@ -84,7 +96,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/parents
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
 ```
 
 #### Fetch
@@ -92,7 +106,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
 > GET /v2/accounts/{ACCOUNT_ID}/tree
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
 ```
 
 #### Fetch
@@ -100,7 +116,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
 > GET /v2/accounts/{ACCOUNT_ID}/api_key
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
 ```
 
 #### Fetch
@@ -108,7 +126,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
 > GET /v2/accounts/{ACCOUNT_ID}/siblings
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
 ```
 
 #### Fetch
@@ -116,7 +136,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
 > GET /v2/accounts/{ACCOUNT_ID}/descendants
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
 ```
 
 #### Fetch
@@ -124,7 +146,29 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
 > GET /v2/accounts/{ACCOUNT_ID}/children
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/reseller
+
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
+```
+
+#### Create
+
+> PUT /v2/accounts/{ACCOUNT_ID}/reseller
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
 ```
 
 #### Change
@@ -132,6 +176,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
 > POST /v2/accounts/{ACCOUNT_ID}/move
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/move
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/move
 ```
 

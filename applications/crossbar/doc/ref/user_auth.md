@@ -18,7 +18,9 @@ Key | Description | Type | Default | Required
 > PUT /v2/user_auth
 
 ```curl
-curl -v http://{SERVER}:8000/v2/user_auth
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/user_auth
 ```
 
 #### Fetch
@@ -26,7 +28,9 @@ curl -v http://{SERVER}:8000/v2/user_auth
 > GET /v2/user_auth/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/user_auth/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/user_auth/{ID}
 ```
 
 #### Create
@@ -34,6 +38,8 @@ curl -v http://{SERVER}:8000/v2/user_auth/{ID}
 > PUT /v2/user_auth/recovery
 
 ```curl
-curl -v http://{SERVER}:8000/v2/user_auth/recovery
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/user_auth/recovery
 ```
 

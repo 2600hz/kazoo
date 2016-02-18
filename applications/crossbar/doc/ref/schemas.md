@@ -11,7 +11,9 @@
 > GET /v2/schemas
 
 ```curl
-curl -v http://{SERVER}:8000/v2/schemas
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/schemas
 ```
 
 #### Fetch
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/schemas
 > GET /v2/schemas/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/schemas/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/schemas/{ID}
 ```
 
 #### Create
@@ -27,6 +31,8 @@ curl -v http://{SERVER}:8000/v2/schemas/{ID}
 > PUT /v2/schemas/{ID}/validation
 
 ```curl
-curl -v http://{SERVER}:8000/v2/schemas/{ID}/validation
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/schemas/{ID}/validation
 ```
 
