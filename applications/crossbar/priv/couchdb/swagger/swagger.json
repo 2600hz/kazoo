@@ -7677,6 +7677,12 @@
         "/v2/accounts/{ACCOUNT_ID}/ledgers": {
             "get": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/credit": {
+            "put": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/ledgers/debit": {
+            "put": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/ledgers/{ID}": {
             "get": {}
         },
@@ -7978,6 +7984,10 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/registrations/{ID}": {
             "delete": {}
+        },
+        "/v2/accounts/{ACCOUNT_ID}/reseller": {
+            "delete": {},
+            "put": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/resource_templates": {
             "get": {},
