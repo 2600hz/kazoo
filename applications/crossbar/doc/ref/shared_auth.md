@@ -14,7 +14,9 @@ Key | Description | Type | Default | Required
 > GET /v2/shared_auth
 
 ```curl
-curl -v http://{SERVER}:8000/v2/shared_auth
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/shared_auth
 ```
 
 #### Create
@@ -22,6 +24,8 @@ curl -v http://{SERVER}:8000/v2/shared_auth
 > PUT /v2/shared_auth
 
 ```curl
-curl -v http://{SERVER}:8000/v2/shared_auth
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/shared_auth
 ```
 

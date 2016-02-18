@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/groups
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
 ```
 
 #### Create
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
 > PUT /v2/accounts/{ACCOUNT_ID}/groups
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
 ```
 
 #### Remove
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups
 > DELETE /v2/accounts/{ACCOUNT_ID}/groups/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
 ```
 
 #### Fetch
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/groups/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
 ```
 
 #### Patch
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/groups/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
 ```
 
 #### Change
@@ -51,6 +61,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/groups/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/groups/{ID}
 ```
 

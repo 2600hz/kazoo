@@ -29,7 +29,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 ```
 
 #### Create
@@ -37,7 +39,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 > PUT /v2/accounts/{ACCOUNT_ID}/port_requests
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 ```
 
 #### Remove
@@ -45,7 +49,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests
 > DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 ```
 
 #### Fetch
@@ -53,7 +59,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 ```
 
 #### Change
@@ -61,7 +69,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 > POST /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 ```
 
 #### Fetch
@@ -69,7 +79,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/canceled
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 ```
 
 #### Fetch
@@ -77,7 +89,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/canceled
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/rejected
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 ```
 
 #### Fetch
@@ -85,7 +99,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/rejected
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/completed
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/completed
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/completed
 ```
 
 #### Fetch
@@ -93,7 +109,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/completed
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 ```
 
 #### Fetch
@@ -101,7 +119,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/scheduled
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/pending
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
 ```
 
 #### Fetch
@@ -109,7 +129,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/pending
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/submitted
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 ```
 
 #### Fetch
@@ -117,7 +139,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/submitted
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
 ```
 
 #### Fetch
@@ -125,7 +149,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/loa
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 ```
 
 #### Create
@@ -133,7 +159,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attach
 > PUT /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments
 ```
 
 #### Patch
@@ -141,7 +169,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attach
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/canceled
 ```
 
 #### Patch
@@ -149,7 +179,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/cancel
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/rejected
 ```
 
 #### Patch
@@ -157,7 +189,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/reject
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/completed
 ```
 
 #### Patch
@@ -165,7 +199,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/comple
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/scheduled
 ```
 
 #### Patch
@@ -173,7 +209,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/schedu
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pending
 ```
 
 #### Patch
@@ -181,7 +219,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/pendin
 > PATCH /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submitted
 ```
 
 #### Remove
@@ -189,7 +229,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/submit
 > DELETE /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 #### Fetch
@@ -197,7 +239,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attach
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 ```
 
 #### Change
@@ -205,6 +249,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attach
 > POST /v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{_ID}/attachments/{ATTACHMENT_ID}
 ```
 

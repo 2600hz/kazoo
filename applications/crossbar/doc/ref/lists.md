@@ -16,7 +16,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/lists
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
 ```
 
 #### Create
@@ -24,7 +26,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
 > PUT /v2/accounts/{ACCOUNT_ID}/lists
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
 ```
 
 #### Remove
@@ -32,7 +36,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
 > DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Fetch
@@ -40,7 +46,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Patch
@@ -48,7 +56,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Change
@@ -56,7 +66,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 > POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Remove
@@ -64,7 +76,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 > DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 ```
 
 #### Fetch
@@ -72,7 +86,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 > GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 ```
 
 #### Create
@@ -80,7 +96,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 > PUT /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 ```
 
 #### Remove
@@ -88,7 +106,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 > DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 ```
 
 #### Fetch
@@ -96,7 +116,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTR
 > GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 ```
 
 #### Patch
@@ -104,7 +126,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTR
 > PATCH /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 ```
 
 #### Change
@@ -112,7 +136,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTR
 > POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}
 ```
 
 #### Change
@@ -120,7 +146,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTR
 > POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/photo
 ```
 
 #### Fetch
@@ -128,6 +156,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTR
 > GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST}/entries/{ENTRY_ID}/vcard
 ```
 
