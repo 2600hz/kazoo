@@ -71,6 +71,8 @@ handle_new_account(JObj, _Props) ->
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
+    %% Give onboarding tools time to add initial users...
+    timer:sleep(30000),
     %% Load templates
     process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
 
@@ -105,10 +107,15 @@ process_req(DataJObj, Templates) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
+-spec admin_user_properties(wh_json:object()) -> wh_proplist().
 admin_user_properties(DataJObj) ->
-    AccountJObj = wh_json:get_value(<<"account">>, DataJObj),
-    account_admin_user_properties(AccountJObj).
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> account_admin_user_properties(JObj);
+        {'error', _} -> []
+    end.
 
+-spec account_admin_user_properties(wh_json:object()) -> wh_proplist().
 account_admin_user_properties(AccountJObj) ->
     AccountDb = wh_doc:account_db(AccountJObj),
     case couch_mgr:get_all_results(AccountDb, <<"users/crossbar_listing">>) of
@@ -119,6 +126,7 @@ account_admin_user_properties(AccountJObj) ->
             find_admin(Users)
     end.
 
+-spec find_admin(api_binaries()) -> wh_proplist().
 find_admin([]) ->
     lager:debug("account has no admin users"),
     [];
@@ -128,6 +136,7 @@ find_admin([User|Users]) ->
         _ -> find_admin(Users)
     end.
 
+-spec admin_properties(wh_json:object()) -> wh_proplist().
 admin_properties(User) ->
     Ks = [<<"first_name">>, <<"last_name">>, <<"email">>, <<"timezone">>],
     [{K, wh_json:get_value(K, User)} || K <- Ks].
