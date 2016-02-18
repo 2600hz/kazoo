@@ -31,6 +31,9 @@
 -export([get_master_account_id/0
          ,get_master_account_db/0
         ]).
+-export([is_master_account/1]).
+-export([account_depth/1]).
+-export([account_has_descendants/1]).
 -export([get_account_name/1]).
 -export([find_oldest_doc/1]).
 -export([get_event_type/1]).
@@ -174,6 +177,38 @@ get_master_account_db() ->
         {'ok', AccountId} ->
             {'ok', wh_util:format_account_id(AccountId, 'encoded')}
     end.
+
+-spec is_master_account(ne_binary()) -> boolean().
+is_master_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case get_master_account_id() of
+        {'ok', AccountId} -> 'true';
+        _Else -> 'false'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec account_depth(ne_binary()) -> 'undefined' | non_neg_integer().
+account_depth(Account) ->
+    {'ok', JObj} = kz_account:fetch(Account),
+    length(kz_account:tree(JObj)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec account_has_descendants(ne_binary()) -> boolean().
+account_has_descendants(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    ViewOptions = [{<<"startkey">>, [AccountId]}
+                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+                  ],
+    {'ok', JObjs} = couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
+    length([JObj || JObj <- JObjs, kz_account:id(JObj) =/= AccountId]) > 0.
 
 %%--------------------------------------------------------------------
 %% @public
