@@ -8528,6 +8528,12 @@
                 }
             }
         },
+        "/v2/schemas/{SCHEMADOC}": {
+            "get": {}
+        },
+        "/v2/schemas/{SCHEMADOC}/validation": {
+            "put": {}
+        },
         "/v2/shared_auth": {
             "delete": {},
             "get": {}
