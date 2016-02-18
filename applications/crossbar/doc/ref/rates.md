@@ -56,51 +56,51 @@ curl -v -X PUT \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/rates/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/rates/{ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/rates/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}
 ```
 
