@@ -322,7 +322,7 @@ put(Context, _AccountId) ->
     ?MODULE:put(Context).
 
 put(Context, AccountId, ?RESELLER) ->
-    case whs_account_conversion:make_reseller(AccountId) of
+    case whs_account_conversion:promote(AccountId) of
         {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
         {'error', 'reseller_descendants'} -> cb_context:add_system_error('account_has_descendants', Context);
         'ok' -> load_account(AccountId, Context)
@@ -350,7 +350,7 @@ delete(Context, Account) ->
     end.
 
 delete(Context, AccountId, ?RESELLER) ->
-    case whs_account_conversion:demote_reseller(AccountId) of
+    case whs_account_conversion:demote(AccountId) of
         {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
         {'error', 'reseller_descendants'} -> cb_context:add_system_error('account_has_descendants', Context);
         'ok' -> load_account(AccountId, Context)
