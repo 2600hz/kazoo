@@ -15,7 +15,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/blacklists
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists
 ```
 
 #### Create
@@ -23,7 +25,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists
 > PUT /v2/accounts/{ACCOUNT_ID}/blacklists
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists
 ```
 
 #### Remove
@@ -31,7 +35,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists
 > DELETE /v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 ```
 
 #### Fetch
@@ -39,7 +45,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 ```
 
 #### Patch
@@ -47,7 +55,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 ```
 
 #### Change
@@ -55,6 +65,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID}
 ```
 

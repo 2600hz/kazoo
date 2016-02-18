@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
 ```
 
 #### Create
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templat
 > PUT /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
 ```
 
 #### Remove
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templat
 > DELETE /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
 ```
 
 #### Fetch
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templat
 > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
 ```
 
 #### Change
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templat
 > POST /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}
 ```
 
 #### Remove
@@ -51,7 +61,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templat
 > DELETE /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
 ```
 
 #### Fetch
@@ -59,7 +71,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templat
 > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
 ```
 
 #### Change
@@ -67,6 +81,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templat
 > POST /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{ID}/image
 ```
 
