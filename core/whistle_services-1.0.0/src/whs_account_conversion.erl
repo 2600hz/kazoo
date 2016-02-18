@@ -146,7 +146,7 @@ maybe_update_services(AccountId, Key, Value) ->
 -spec has_reseller_descendants(ne_binary()) -> boolean().
 has_reseller_descendants(AccountId) ->
     %% its very important that this check not operate against stale data!
-    _ = couch_mgr:flush_cache_docs(),
+    _ = couch_mgr:flush_cache_docs(?WH_SERVICES_DB),
     ViewOptions = [{<<"startkey">>, [AccountId]}
                    ,{<<"endkey">>, [AccountId, wh_json:new()]}
                   ],
