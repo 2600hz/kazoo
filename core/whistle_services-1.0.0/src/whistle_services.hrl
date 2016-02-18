@@ -10,7 +10,11 @@
 
 -define(WHS_CONFIG_CAT, <<"services">>).
 
+-ifndef(TEST).
 -define(SUPPORT_BILLING_ID, whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"support_billing_id">>, 'true')).
+-else.
+-define(SUPPORT_BILLING_ID, 'true').
+-endif.
 
 -define(WHISTLE_SERVICES_HRL, 'true').
 -endif.
