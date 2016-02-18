@@ -7966,10 +7966,10 @@
             "post": {},
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/rates/number/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/rates/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}": {
             "delete": {},
             "get": {},
             "patch": {},
