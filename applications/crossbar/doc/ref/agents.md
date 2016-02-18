@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/agents
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents
 ```
 
 #### Fetch
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents
 > GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}
 ```
 
 #### Fetch
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/agents/stats
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/stats
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/stats
 ```
 
 #### Fetch
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/stats
 > GET /v2/accounts/{ACCOUNT_ID}/agents/status
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status
 ```
 
 #### Fetch
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status
 > GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 ```
 
 #### Change
@@ -51,7 +61,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 > POST /v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 ```
 
 #### Fetch
@@ -59,7 +71,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/queue_status
 > GET /v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 ```
 
 #### Change
@@ -67,7 +81,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 > POST /v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 ```
 
 #### Fetch
@@ -75,7 +91,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/{ID}/status
 > GET /v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 ```
 
 #### Change
@@ -83,6 +101,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/agents/status/{ID}
 ```
 

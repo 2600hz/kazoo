@@ -26,7 +26,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/media
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
 ```
 
 #### Create
@@ -34,7 +36,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
 > PUT /v2/accounts/{ACCOUNT_ID}/media
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
 ```
 
 #### Remove
@@ -42,7 +46,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
 > DELETE /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 ```
 
 #### Fetch
@@ -50,7 +56,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 ```
 
 #### Change
@@ -58,7 +66,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 > POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 ```
 
 #### Fetch
@@ -66,7 +76,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/media/prompts
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts
 ```
 
 #### Fetch
@@ -74,7 +86,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts
 > GET /v2/accounts/{ACCOUNT_ID}/media/languages
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages
 ```
 
 #### Fetch
@@ -82,7 +96,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages
 > GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 ```
 
 #### Change
@@ -90,7 +106,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 > POST /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 ```
 
 #### Fetch
@@ -98,7 +116,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw
 > GET /v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
 ```
 
 #### Fetch
@@ -106,6 +126,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}
 ```
 

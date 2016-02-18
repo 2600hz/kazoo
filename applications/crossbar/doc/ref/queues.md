@@ -28,7 +28,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/queues
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
 ```
 
 #### Create
@@ -36,7 +38,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
 > PUT /v2/accounts/{ACCOUNT_ID}/queues
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
 ```
 
 #### Remove
@@ -44,7 +48,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues
 > DELETE /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 ```
 
 #### Fetch
@@ -52,7 +58,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 ```
 
 #### Patch
@@ -60,7 +68,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 ```
 
 #### Change
@@ -68,7 +78,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 > POST /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 ```
 
 #### Create
@@ -76,7 +88,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}
 > PUT /v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
 ```
 
 #### Fetch
@@ -84,7 +98,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
 > GET /v2/accounts/{ACCOUNT_ID}/queues/stats
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/stats
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/stats
 ```
 
 #### Create
@@ -92,7 +108,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/stats
 > PUT /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
 ```
 
 #### Remove
@@ -100,7 +118,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/eavesdrop
 > DELETE /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 ```
 
 #### Fetch
@@ -108,7 +128,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 > GET /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 ```
 
 #### Change
@@ -116,6 +138,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 > POST /v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/queues/{Q_ID}/roster
 ```
 

@@ -32,7 +32,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/notifications
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
 #### Create
@@ -40,7 +42,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 > PUT /v2/accounts/{ACCOUNT_ID}/notifications
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
 #### Remove
@@ -48,7 +52,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 > DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Fetch
@@ -56,7 +62,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Change
@@ -64,7 +72,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 ```
 
 #### Fetch
@@ -72,7 +82,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 ```
 
 #### Fetch
@@ -80,7 +92,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
 ```
 
 #### Change
@@ -88,6 +102,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{ID}/preview
 ```
 

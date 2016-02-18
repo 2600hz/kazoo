@@ -11,7 +11,9 @@
 > DELETE /v2/accounts/{ACCOUNT_ID}/comments
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
 ```
 
 #### Fetch
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
 > GET /v2/accounts/{ACCOUNT_ID}/comments
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
 ```
 
 #### Create
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
 > PUT /v2/accounts/{ACCOUNT_ID}/comments
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
 ```
 
 #### Remove
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
 > DELETE /v2/accounts/{ACCOUNT_ID}/comments/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{ID}
 ```
 
 #### Fetch
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/comments/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{ID}
 ```
 
 #### Change
@@ -51,6 +61,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/comments/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{ID}
 ```
 

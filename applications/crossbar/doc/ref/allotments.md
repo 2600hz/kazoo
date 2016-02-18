@@ -13,7 +13,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/allotments
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
 ```
 
 #### Change
@@ -21,7 +23,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
 > POST /v2/accounts/{ACCOUNT_ID}/allotments
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
 ```
 
 #### Fetch
@@ -29,6 +33,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments
 > GET /v2/accounts/{ACCOUNT_ID}/allotments/consumed
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments/consumed
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/allotments/consumed
 ```
 

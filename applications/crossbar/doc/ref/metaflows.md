@@ -18,7 +18,9 @@ Key | Description | Type | Default | Required
 > DELETE /v2/accounts/{ACCOUNT_ID}/metaflows
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 ```
 
 #### Fetch
@@ -26,7 +28,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 > GET /v2/accounts/{ACCOUNT_ID}/metaflows
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 ```
 
 #### Change
@@ -34,6 +38,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 > POST /v2/accounts/{ACCOUNT_ID}/metaflows
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/metaflows
 ```
 
