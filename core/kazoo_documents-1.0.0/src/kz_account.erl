@@ -29,6 +29,8 @@
          ,trial_time_left/1, trial_time_left/2
          ,trial_has_expired/1, is_expired/1
          ,is_trial_account/1
+         ,is_reseller/1, promote/1, demote/1
+         ,reseller_id/1, set_reseller_id/2
         ]).
 
 -define(ID, <<"_id">>).
@@ -45,6 +47,8 @@
 -define(NOTIFY_PREF, <<"pvt_notification_preference">>).
 -define(KEY_TRIAL_EXPIRATION, <<"pvt_trial_expires">>).
 -define(KEY_TRIAL_ACCOUNT, <<"is_trial_account">>).
+-define(RESELLER, <<"pvt_reseller">>).
+-define(RESELLER_ID, <<"pvt_reseller_id">>).
 
 -define(PVT_TYPE, <<"account">>).
 
@@ -396,6 +400,52 @@ is_expired(JObj) ->
 -spec is_trial_account(doc()) -> boolean().
 is_trial_account(JObj) ->
     wh_json:is_true(?KEY_TRIAL_ACCOUNT, JObj, 'false').
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_reseller(doc()) -> boolean().
+is_reseller(JObj) ->
+    wh_json:is_true(?RESELLER, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec promote(doc()) -> doc().
+promote(JObj) ->
+    wh_json:set_value(?RESELLER, 'true', JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec demote(doc()) -> doc().
+demote(JObj) ->
+    io:format("demote~n", []),
+    wh_json:set_value(?RESELLER, 'false', JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec reseller_id(doc()) -> doc().
+reseller_id(JObj) ->
+    wh_json:get_value(?RESELLER_ID, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_reseller_id(doc(), ne_binary()) -> doc().
+set_reseller_id(JObj, ResellerId) ->
+    wh_json:set_value(?RESELLER_ID, ResellerId, JObj).
 
 %%%===================================================================
 %%% Internal functions

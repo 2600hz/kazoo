@@ -7,11 +7,11 @@
 %%%-------------------------------------------------------------------
 -module(whs_account_conversion).
 
--export([make_reseller/1
-         ,force_make_reseller/1
+-export([promote/1
+         ,force_promote/1
         ]).
--export([demote_reseller/1
-         ,force_demote_reseller/1
+-export([demote/1
+         ,force_demote/1
         ]).
 -export([cascade_reseller_id/2]).
 -export([set_reseller_id/2]).
@@ -26,26 +26,26 @@
 %% sub accounts
 %% @end
 %%--------------------------------------------------------------------
--spec make_reseller(ne_binary()) -> {'error', _} | 'ok'.
-make_reseller(Account) ->
+-spec promote(ne_binary()) -> {'error', _} | 'ok'.
+promote(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case whapps_util:is_master_account(AccountId) of
         'true' -> {'error', 'master_account'};
         'false' ->
             case has_reseller_descendants(AccountId) of
                 'true' -> {'error', 'reseller_descendants'};
-                'false' -> do_make_reseller(AccountId)
+                'false' -> do_promote(AccountId)
             end
     end.
 
--spec force_make_reseller(ne_binary()) -> {'error', _} | 'ok'.
-force_make_reseller(Account) ->
+-spec force_promote(ne_binary()) -> {'error', _} | 'ok'.
+force_promote(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    do_make_reseller(AccountId).
+    do_promote(AccountId).
 
--spec do_make_reseller(ne_binary()) -> {'error', _} | 'ok'.
-do_make_reseller(AccountId) ->
-    _ = update_account_definition(AccountId, <<"pvt_reseller">>, 'true'),
+-spec do_promote(ne_binary()) -> {'error', _} | 'ok'.
+do_promote(AccountId) ->
+    _ = wh_util:account_update(AccountId, fun kz_account:promote/1),
     _ = maybe_update_services(AccountId, <<"pvt_reseller">>, 'true'),
     io:format("promoting account ~s to reseller status, updating sub accounts~n", [AccountId]),
     cascade_reseller_id(AccountId, AccountId).
@@ -57,26 +57,26 @@ do_make_reseller(AccountId) ->
 %% to the next higher reseller
 %% @end
 %%--------------------------------------------------------------------
--spec demote_reseller(ne_binary()) -> {'error', _} | 'ok'.
-demote_reseller(Account) ->
+-spec demote(ne_binary()) -> {'error', _} | 'ok'.
+demote(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case whapps_util:is_master_account(AccountId) of
         'true' -> {'error', 'master_account'};
         'false' ->
             case has_reseller_descendants(AccountId) of
                 'true' -> {'error', 'reseller_descendants'};
-                'false' -> do_demote_reseller(AccountId)
+                'false' -> do_demote(AccountId)
             end
     end.
 
--spec force_demote_reseller(ne_binary()) -> {'error', _} | 'ok'.
-force_demote_reseller(Account) ->
+-spec force_demote(ne_binary()) -> {'error', _} | 'ok'.
+force_demote(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    do_demote_reseller(AccountId).
+    do_demote(AccountId).
 
--spec do_demote_reseller(ne_binary()) -> {'error', _} | 'ok'.
-do_demote_reseller(AccountId) ->
-    _ = update_account_definition(AccountId, <<"pvt_reseller">>, 'false'),
+-spec do_demote(ne_binary()) -> {'error', _} | 'ok'.
+do_demote(AccountId) ->
+    _ = wh_util:account_update(AccountId, fun kz_account:demote/1),
     _ = maybe_update_services(AccountId, <<"pvt_reseller">>, 'false'),
     ResellerId = wh_services:find_reseller_id(AccountId),
     io:format("demoting reseller status for account ~s, and now belongs to reseller ~s~n", [AccountId, ResellerId]),
@@ -119,7 +119,7 @@ set_reseller_id(Reseller, Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     ResellerId = wh_util:format_account_id(Reseller, 'raw'),
     io:format("setting account ~s reseller id to ~s~n", [AccountId, ResellerId]),
-    _ = update_account_definition(AccountId, <<"pvt_reseller_id">>, ResellerId),
+    _ = wh_util:account_update(AccountId, fun(JObj) -> kz_account:set_reseller_id(JObj, ResellerId) end),
     maybe_update_services(AccountId, <<"pvt_reseller_id">>, ResellerId).
 
 %%--------------------------------------------------------------------
@@ -139,24 +139,6 @@ maybe_update_services(AccountId, Key, Value) ->
                 {'ok', _} -> 'ok';
                 {'error', _R}=Error ->
                     io:format("unable to set ~s on services doc ~s: ~p~n", [Key, AccountId, _R]),
-                    Error
-            end
-    end.
-
--spec update_account_definition(ne_binary(), ne_binary(), any()) -> {'error', _} | 'ok'.
-update_account_definition(AccountId, Key, Value) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'error', _R}=Error ->
-            io:format("unable to open account ~s defintion: ~p~n", [AccountId, _R]),
-            Error;
-        {'ok', JObj} ->
-            case couch_mgr:save_doc(AccountDb, wh_json:set_value(Key, Value, JObj)) of
-                {'ok', NewJObj} ->
-                    _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, NewJObj),
-                    'ok';
-                {'error', _R}=Error ->
-                    io:format("unable to set pvt_reseller on account ~s defintion: ~p~n", [AccountId, _R]),
                     Error
             end
     end.
