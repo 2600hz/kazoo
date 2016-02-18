@@ -143,7 +143,7 @@ sync(Account) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Set teh reseller_id to the provided value on the provided account
+%% Set the reseller_id to the provided value on the provided account
 %% @end
 %%--------------------------------------------------------------------
 -spec set_reseller_id(text(), text()) -> 'ok'.
@@ -180,7 +180,7 @@ cascade_reseller_id(Reseller, Account) ->
 demote_reseller(Account) when not is_binary(Account) ->
     demote_reseller(wh_util:to_binary(Account));
 demote_reseller(Account) ->
-    whs_account_conversion:demote_reseller(Account).
+    whs_account_conversion:demote(Account).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -193,5 +193,5 @@ demote_reseller(Account) ->
 make_reseller(Account) when not is_binary(Account) ->
     make_reseller(wh_util:to_binary(Account));
 make_reseller(Account) ->
-    whs_account_conversion:make_reseller(Account).
+    whs_account_conversion:promote(Account).
 
