@@ -72,6 +72,7 @@
                       ,discovery_event = wh_json:new() :: wh_json:object()
                       ,last_dtmf = <<>> :: binary()
                       ,server = self() :: pid()
+                      ,remote = 'false' :: boolean()
                       ,name_pronounced :: conf_pronounced_name:name_pronounced()
                      }).
 -type participant() :: #participant{}.
@@ -304,7 +305,7 @@ handle_cast({'join_remote', JObj}, #participant{call=Call
                            ,<<"conference">>
                           ),
     bridge_to_conference(Route, Conference, Call),
-    {'noreply', Participant};
+    {'noreply', Participant#participant{remote='true'}};
 handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
     {'noreply', sync_participant(JObj, Call, Participant)};
 handle_cast({'dtmf', Digit}, #participant{last_dtmf = <<"*">>}=Participant) ->
@@ -556,8 +557,9 @@ notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
 -spec play_announce(participant()) -> 'ok'.
 play_announce(#participant{name_pronounced='undefined'
                            ,conference=Conference
+                           ,remote='false'
                           }) ->
-    lager:debug("skipping announce"),
+    lager:debug("skipping name announce"),
     Moderator = case whapps_conference:moderator(Conference) of
         'true' -> 'moderator';
         'false' -> 'member'
@@ -581,7 +583,8 @@ play_announce(#participant{conference=Conference
     case play_entry_tone(Moderator, Conference) of
         'false' -> whapps_conference_command:macro([RecordingCommand, PromptCommand], Conference);
         Command -> whapps_conference_command:macro([Command, RecordingCommand, PromptCommand], Conference)
-    end.
+    end;
+play_announce(_) -> 'ok'.
 
 -spec play_hangup_announce(participant()) -> 'ok'.
 play_hangup_announce(#participant{conference='undefined'}) ->
