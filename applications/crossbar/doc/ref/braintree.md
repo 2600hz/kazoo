@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/credits
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
 ```
 
 #### Create
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
 > PUT /v2/accounts/{ACCOUNT_ID}/braintree/credits
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
 ```
 
 #### Fetch
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/credits
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/transactions
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
 ```
 
 #### Create
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
 > PUT /v2/accounts/{ACCOUNT_ID}/braintree/transactions
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
 ```
 
 #### Fetch
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
 ```
 
 #### Create
@@ -51,7 +61,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
 > PUT /v2/accounts/{ACCOUNT_ID}/braintree/addresses
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
 ```
 
 #### Fetch
@@ -59,7 +71,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/cards
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
 ```
 
 #### Create
@@ -67,7 +81,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
 > PUT /v2/accounts/{ACCOUNT_ID}/braintree/cards
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
 ```
 
 #### Fetch
@@ -75,7 +91,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/customer
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
 ```
 
 #### Change
@@ -83,7 +101,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
 > POST /v2/accounts/{ACCOUNT_ID}/braintree/customer
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
 ```
 
 #### Fetch
@@ -91,7 +111,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/customer
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID}
 ```
 
 #### Remove
@@ -99,7 +121,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{ID
 > DELETE /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 ```
 
 #### Fetch
@@ -107,7 +131,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 ```
 
 #### Change
@@ -115,7 +141,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 ```
 
 #### Remove
@@ -123,7 +151,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ID}
 > DELETE /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 ```
 
 #### Fetch
@@ -131,7 +161,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 ```
 
 #### Change
@@ -139,6 +171,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{ID}
 ```
 

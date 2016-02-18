@@ -17,7 +17,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 ```
 
 #### Change
@@ -25,7 +27,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 ```
 
 #### Remove
@@ -33,7 +37,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 > DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 ```
 
 #### Fetch
@@ -41,7 +47,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 ```
 
 #### Change
@@ -49,7 +57,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 ```
 
 #### Change
@@ -57,7 +67,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{ID}
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/override
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/override
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/override
 ```
 
 #### Fetch
@@ -65,7 +77,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/override
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/current
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/current
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/current
 ```
 
 #### Change
@@ -73,7 +87,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/current
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
 ```
 
 #### Change
@@ -81,7 +97,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/reconciliati
 > POST /v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
 ```
 
 #### Fetch
@@ -89,6 +107,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/synchronizat
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/available/{ID}
 ```
 

@@ -14,7 +14,9 @@ Key | Description | Type | Default | Required
 > DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
 #### Fetch
@@ -22,7 +24,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 > GET /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
 #### Change
@@ -30,6 +34,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 > POST /v2/accounts/{ACCOUNT_ID}/token_restrictions
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```
 
