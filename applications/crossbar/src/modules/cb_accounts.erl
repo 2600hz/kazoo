@@ -17,9 +17,9 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate_resource/1, validate_resource/2, validate_resource/3
          ,validate/1, validate/2, validate/3
-         ,put/1, put/2
+         ,put/1, put/2, put/3
          ,post/2, post/3
-         ,delete/2
+         ,delete/2, delete/3
          ,patch/2
         ]).
 
@@ -47,6 +47,7 @@
 -define(API_KEY, <<"api_key">>).
 -define(TREE, <<"tree">>).
 -define(PARENTS, <<"parents">>).
+-define(RESELLER, <<"reseller">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
@@ -94,6 +95,8 @@ allowed_methods(AccountId) ->
 
 allowed_methods(_, ?MOVE) ->
     [?HTTP_POST];
+allowed_methods(_, ?RESELLER) ->
+    [?HTTP_PUT, ?HTTP_DELETE];
 allowed_methods(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
@@ -128,6 +131,7 @@ resource_exists(_, Path) ->
               ,?MOVE
               ,?TREE
               ,?PARENTS
+              ,?RESELLER
              ],
     lists:member(Path, Paths).
 
@@ -146,8 +150,6 @@ resource_exists(_, Path) ->
 validate_resource(Context) -> Context.
 validate_resource(Context, AccountId) -> load_account_db(AccountId, Context).
 validate_resource(Context, AccountId, _Path) -> load_account_db(AccountId, Context).
-
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -200,6 +202,16 @@ validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?PARENTS, ?HTTP_GET) ->
     load_parents(AccountId, prepare_context('undefined', Context));
+validate_account_path(Context, AccountId, ?RESELLER, ?HTTP_PUT) ->
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> load_account(AccountId, prepare_context(AccountId, Context));
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
+validate_account_path(Context, AccountId, ?RESELLER, ?HTTP_DELETE) ->
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> load_account(AccountId, prepare_context(AccountId, Context));
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
     case cb_context:resp_status(Context1) of
@@ -277,6 +289,7 @@ patch(Context, AccountId) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
 put(Context) ->
     JObj = cb_context:doc(Context),
@@ -308,6 +321,13 @@ put(Context) ->
 put(Context, _AccountId) ->
     ?MODULE:put(Context).
 
+put(Context, AccountId, ?RESELLER) ->
+    case whs_account_conversion:promote(AccountId) of
+        {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
+        {'error', 'reseller_descendants'} -> cb_context:add_system_error('account_has_descendants', Context);
+        'ok' -> load_account(AccountId, Context)
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -315,6 +335,8 @@ put(Context, _AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+
 delete(Context, Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
@@ -325,6 +347,13 @@ delete(Context, Account) ->
             Context1 = delete_remove_services(prepare_context(Context, AccountId, AccountDb)),
             _ = maybe_update_descendants_count(kz_account:tree(cb_context:doc(Context1))),
             Context1
+    end.
+
+delete(Context, AccountId, ?RESELLER) ->
+    case whs_account_conversion:demote(AccountId) of
+        {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
+        {'error', 'reseller_descendants'} -> cb_context:add_system_error('account_has_descendants', Context);
+        'ok' -> load_account(AccountId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -604,17 +633,9 @@ maybe_disallow_direct_clients('false', _AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_delete_request(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_delete_request(AccountId, Context) ->
-    ViewOptions = [{'startkey', [AccountId]}
-                   ,{'endkey', [AccountId, wh_json:new()]}
-                  ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
-        {'error', 'not_found'} -> cb_context:add_system_error('datastore_missing_view', Context);
-        {'error', _} -> cb_context:add_system_error('datastore_fault', Context);
-        {'ok', JObjs} ->
-            case [JObj || JObj <- JObjs, wh_doc:id(JObj) =/= AccountId] of
-                [] -> cb_context:set_resp_status(Context, 'success');
-                _Else -> cb_context:add_system_error('account_has_descendants', Context)
-            end
+    case whapps_util:account_has_descendants(AccountId) of
+        'true' ->  cb_context:add_system_error('account_has_descendants', Context);
+        'false' -> cb_context:set_resp_status(Context, 'success')
     end.
 
 %% @private

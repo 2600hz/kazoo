@@ -381,7 +381,7 @@ create_account(AccountName, Realm, Username, Password) ->
             [AccountDb] ->
                 _ = promote_account(AccountId),
                 _ = allow_account_number_additions(AccountId),
-                _ = whistle_services_maintenance:make_reseller(AccountId),
+                _ = whs_account_conversion:force_promote(AccountId),
                 _ = update_system_config(AccountId),
                 'ok';
             _Else -> 'ok'

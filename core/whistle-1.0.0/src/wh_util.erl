@@ -15,7 +15,7 @@
          ,format_account_db/1
          ,format_account_modb/1, format_account_modb/2
          ,normalize_account_name/1
-         ,account_update/1
+         ,account_update/1, account_update/2
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1
