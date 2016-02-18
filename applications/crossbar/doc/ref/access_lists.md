@@ -17,7 +17,9 @@ Key | Description | Type | Default | Required
 > DELETE /v2/accounts/{ACCOUNT_ID}/access_lists
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
 ```
 
 #### Fetch
@@ -25,7 +27,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
 > GET /v2/accounts/{ACCOUNT_ID}/access_lists
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
 ```
 
 #### Change
@@ -33,6 +37,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
 > POST /v2/accounts/{ACCOUNT_ID}/access_lists
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/access_lists
 ```
 

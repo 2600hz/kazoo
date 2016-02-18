@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/search
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/search
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/search
 ```
 
 #### Fetch
@@ -19,6 +21,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/search
 > GET /v2/accounts/{ACCOUNT_ID}/search/multi
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/search/multi
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/search/multi
 ```
 

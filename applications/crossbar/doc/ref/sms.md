@@ -17,7 +17,9 @@ Key | Description | Type | Default | Required
 > GET /v2/accounts/{ACCOUNT_ID}/sms
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
 ```
 
 #### Create
@@ -25,7 +27,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
 > PUT /v2/accounts/{ACCOUNT_ID}/sms
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
 ```
 
 #### Remove
@@ -33,7 +37,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
 > DELETE /v2/accounts/{ACCOUNT_ID}/sms/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{_ID}
 ```
 
 #### Fetch
@@ -41,6 +47,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/sms/{_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{_ID}
 ```
 

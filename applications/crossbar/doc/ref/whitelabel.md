@@ -11,7 +11,9 @@
 > DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
 #### Fetch
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
 #### Change
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
 #### Create
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 > PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
 #### Fetch
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
 ```
 
 #### Fetch
@@ -51,7 +61,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 ```
 
 #### Change
@@ -59,7 +71,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 ```
 
 #### Fetch
@@ -67,7 +81,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/domains
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 ```
 
 #### Change
@@ -75,7 +91,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 ```
 
 #### Fetch
@@ -83,7 +101,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 ```
 
 #### Change
@@ -91,7 +111,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 ```
 
 #### Fetch
@@ -99,7 +121,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/icon
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 ```
 
 #### Change
@@ -107,7 +131,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 ```
 
 #### Fetch
@@ -115,7 +141,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/logo
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
 ```
 
 #### Fetch
@@ -123,7 +151,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
 ```
 
 #### Fetch
@@ -131,6 +161,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/icon
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/logo
 ```
 
