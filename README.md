@@ -159,12 +159,18 @@ If you have a non-US deployment, please consider sharing your system configurati
 
 ## How to Build
 
-* Once the dependencies are all here, after a fresh `git clone` just `make`.
-* When developing, one can `cd` into any app directory and run:
+* Once the dependencies are all here, after a fresh `git clone https://github.com/2600hz/kazoo.git` just `make`.
+* When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
     * `make` (`make all` or `make clean`)
     * `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
     * `make dialyze` to statically type-check the app (uses [Dialyzer](http://www.erlang.org/doc/man/dialyzer.html))
     * `make test` runs the app / sub-apps test suite, if any.
+        * **Note:** make sure to `make clean all` after running your tests, as test BEAMs are generated in `ebin/`!
+* To run the full test suite it is advised to
+    1. `cd` into the root of the project
+    1. `make compile-test` to compile every app with the `TEST` macro defined
+    1. `make eunit` (instead of `make test`) to run the test suite without recompiling each app
+    * *This way apps can call code from other apps that was compiled with the `TEST` macro defined*
 * `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
     * [More on using releases with Kazoo](https://github.com/2600hz/kazoo/blob/master/doc/engineering/releases.md)
 * `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
