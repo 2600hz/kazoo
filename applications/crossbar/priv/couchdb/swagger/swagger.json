@@ -8511,28 +8511,44 @@
             }
         },
         "/v2/schemas": {
-            "get": {}
-        },
-        "/v2/schemas/{ID}": {
-            "get": {}
-        },
-        "/v2/schemas/{ID}/validation": {
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "schemas",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/schemas"
+            "get": {
+                "description": "Listing of installed webhooks available for subscription",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of schemas installed"
                     }
                 }
             }
         },
         "/v2/schemas/{SCHEMADOC}": {
-            "get": {}
+            "get": {
+                "description": "Get the JSON schema definition",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The schema definition"
+                    }
+                }
+            }
         },
         "/v2/schemas/{SCHEMADOC}/validation": {
-            "put": {}
+            "put": {
+                "description": "Perform a test validation",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The results of the validation"
+                    }
+                }
+
+            }
         },
         "/v2/shared_auth": {
             "delete": {},
