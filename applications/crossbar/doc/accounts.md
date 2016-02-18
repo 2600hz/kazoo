@@ -421,6 +421,31 @@ curl -v -X GET \
 }
 ```
 
+#### Demote a reseller
+
+Requires superduper admin auth token
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/reseller
+
+```curl
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
+```
+
+#### Promote a reseller
+
+Requires superduper admin auth token
+
+> PUT /v2/accounts/{ACCOUNT_ID}/reseller
+
+```curl
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
+```
+
+
 #### Move an account
 
 An account can only be moved by a "superduper_admin" or  if enabled by anyone above the desired account.
