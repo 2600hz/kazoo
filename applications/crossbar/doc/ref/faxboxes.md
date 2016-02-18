@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/faxboxes
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes
 ```
 
 #### Create
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes
 > PUT /v2/accounts/{ACCOUNT_ID}/faxboxes
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes
 ```
 
 #### Remove
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes
 > DELETE /v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 ```
 
 #### Fetch
@@ -35,7 +41,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 ```
 
 #### Patch
@@ -43,7 +51,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 > PATCH /v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 ```
 
 #### Change
@@ -51,6 +61,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 > POST /v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{BOX_ID}
 ```
 

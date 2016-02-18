@@ -11,7 +11,9 @@
 > GET /v2/accounts/{ACCOUNT_ID}/alerts
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
 ```
 
 #### Create
@@ -19,7 +21,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
 > PUT /v2/accounts/{ACCOUNT_ID}/alerts
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
 ```
 
 #### Remove
@@ -27,7 +31,9 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts
 > DELETE /v2/accounts/{ACCOUNT_ID}/alerts/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts/{ID}
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts/{ID}
 ```
 
 #### Fetch
@@ -35,6 +41,8 @@ curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts/{ID}
 > GET /v2/accounts/{ACCOUNT_ID}/alerts/{ID}
 
 ```curl
-curl -v http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts/{ID}
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/alerts/{ID}
 ```
 
