@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2015, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Upload a rate deck, query rates for a given DID
 %%% @end
@@ -80,11 +80,11 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_) ->
+allowed_methods(_RateId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token(),path_token()) -> http_methods().
-allowed_methods(?NUMBER,_) ->
+allowed_methods(?NUMBER, _PhoneNumber) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -99,10 +99,10 @@ allowed_methods(?NUMBER,_) ->
 resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists(_) -> 'true'.
+resource_exists(_RateId) -> 'true'.
 
 -spec resource_exists(path_token(),path_token()) -> 'true'.
-resource_exists(?NUMBER,_) -> 'true'.
+resource_exists(?NUMBER, _PhoneNumber) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->
