@@ -12,5 +12,7 @@
 
 -define(SERVICES_CACHE, 'whistle_services_cache').
 
+-define(SUPPORT_BILLING_ID, whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"support_billing_id">>, 'true')).
+
 -define(WHISTLE_SERVICES_HRL, 'true').
 -endif.

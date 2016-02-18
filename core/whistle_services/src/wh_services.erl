@@ -109,7 +109,10 @@ new(<<_/binary>> = AccountId) ->
 
     JObj = base_service_object(AccountId, AccountJObj),
 
-    BillingId = kzd_services:billing_id(JObj),
+    BillingId = case ?SUPPORT_BILLING_ID of
+                    'true' -> kzd_services:billing_id(JObj);
+                    'false' -> AccountId
+                end,
     IsReseller = kzd_services:is_reseller(JObj),
 
     #wh_services{account_id = AccountId
@@ -156,8 +159,10 @@ from_service_json(JObj) ->
 
 from_service_json(JObj, CalcUpdates) ->
     AccountId = wh_doc:account_id(JObj),
-    BillingId = kzd_services:billing_id(JObj, AccountId),
-
+    BillingId = case ?SUPPORT_BILLING_ID of
+                    'true' -> kzd_services:billing_id(JObj);
+                    'false' -> AccountId
+                end,
     Services = #wh_services{account_id = AccountId
                             ,jobj = JObj
                             ,status = kzd_services:status(JObj)
@@ -244,8 +249,10 @@ fetch_services_doc(AccountId, 'true') ->
 handle_fetch_result(AccountId, JObj) ->
     lager:debug("loaded account service doc ~s", [AccountId]),
     IsReseller = kzd_services:is_reseller(JObj),
-    BillingId = kzd_services:billing_id(JObj, AccountId),
-
+    BillingId = case ?SUPPORT_BILLING_ID of
+                    'true' -> kzd_services:billing_id(JObj);
+                    'false' -> AccountId
+                end,
     #wh_services{account_id = AccountId
                  ,jobj = JObj
                  ,cascade_quantities = cascade_quantities(AccountId, IsReseller)
@@ -367,7 +374,10 @@ save(#wh_services{jobj = JObj
             lager:debug("saved services for ~s: ~s", [AccountId, wh_json:encode(kzd_services:quantities(NewJObj))]),
             IsReseller = kzd_services:is_reseller(NewJObj),
             _ = maybe_clean_old_billing_id(Services),
-            BillingId = kzd_services:billing_id(NewJObj, AccountId),
+            BillingId = case ?SUPPORT_BILLING_ID of
+                            'true' -> kzd_services:billing_id(JObj);
+                            'false' -> AccountId
+                        end,
             Services#wh_services{jobj = NewJObj
                                  ,cascade_quantities = cascade_quantities(AccountId, IsReseller)
                                  ,status = kzd_services:status(NewJObj)
@@ -1248,7 +1258,11 @@ do_cascade_quantities_fold(JObj, J, [_|Keys]) ->
 %%--------------------------------------------------------------------
 -spec depreciated_billing_id(wh_json:object()) -> ne_binary().
 depreciated_billing_id(JObj) ->
-    kzd_services:billing_id(JObj, wh_doc:account_id(JObj)).
+    AccountId = wh_doc:account_id(JObj),
+    case ?SUPPORT_BILLING_ID of
+        'true' -> kzd_services:billing_id(JObj, AccountId);
+        'false' -> AccountId
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
