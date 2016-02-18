@@ -587,8 +587,12 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 -spec handle_info(term(), state()) -> handle_info_ret().
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                               ,payload=Payload
-                                             }}, State) ->
-    _ = wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
+                                             }}
+            ,#state{params=Params}=State) ->
+    _ = case props:is_true('serialize_handle_event', Params, 'false') of
+            'true' -> ?MODULE:handle_event(Payload, CT, BD, State);
+            'false' -> wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State])
+        end,
     {'noreply', State};
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
                                              ,payload=Payload
