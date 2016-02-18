@@ -36,6 +36,12 @@ Upgrading to 4.0 will shift number management from `core/whistle_number_manager`
 
 Upgrading will change the way Kazoo interacts with CouchDB (including deprecating using BigCouch and recommending CouchDB!). For most operations, nothing will be noticeably different.
 
+#### Authorizing-ID
+
+currently, inbound calls from carriers don't have a Authorizing-ID but if the device has a redirection the CDR will have the Authorizing-ID header. this will change in version 4 as we believe the inbound leg should not have the Authorizing-ID set, so the CDR for inbound call (leg a) will not have the Authorizing-ID.
+The b-leg will have the Authorizing-ID set to the device that redirect the call.
+Restrictions will still be applied based on the device that redirected the call.
+
 ## Upcoming
 
 ### May 2016
