@@ -91,6 +91,7 @@
 -export([handle_event/4
          ,handle_return/4
          ,client_handle_event/6
+         ,delayed_cast/3
         ]).
 -export([distribute_event/3]).
 
@@ -496,7 +497,7 @@ handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
 handle_cast({'wh_amqp_assignment', {'new_channel', 'false'}}, State) ->
     {'noreply', handle_amqp_channel_available(State)};
 handle_cast({'federated_event', JObj, BasicDeliver}, State) ->
-    _ = wh_util:spawn(?MODULE, 'distribute_event', [JObj, BasicDeliver, State]),
+    _ = wh_util:spawn(fun distribute_event/3, [JObj, BasicDeliver, State]),
     {'noreply', State};
 handle_cast({'$execute', Module, Function, Args}
             ,#state{federators=[]}=State) ->
@@ -591,7 +592,7 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
             ,#state{params=Params}=State) ->
     _ = case props:is_true('serialize_handle_event', Params, 'false') of
             'true' -> ?MODULE:handle_event(Payload, CT, BD, State);
-            'false' -> wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State])
+            'false' -> wh_util:spawn(fun handle_event/4, [Payload, CT, BD, State])
         end,
     {'noreply', State};
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
