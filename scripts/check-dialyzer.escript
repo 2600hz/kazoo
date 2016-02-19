@@ -9,6 +9,12 @@
 %% API
 
 main([KazooPLT | Args]) ->
+    case lists:suffix(".plt", KazooPLT) of
+        'true' -> 'ok';
+        'false' ->
+            usage(),
+            halt(1)
+    end,
     case [Arg || Arg <- Args,
                  not is_test(Arg)
                      andalso (
@@ -194,6 +200,6 @@ do_scan(PLT, Path) ->
 usage() ->
     %% ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
-    io:format("Usage: ~s  <path to ebin/>+\n", [filename:basename(Arg0)]).
+    io:format("Usage: ~s  <path to .kazoo.plt> <path to ebin/>+\n", [filename:basename(Arg0)]).
 
 %% End of Module

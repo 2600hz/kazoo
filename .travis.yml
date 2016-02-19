@@ -31,10 +31,10 @@ script: make compile
 after_success:
   - if [[ 0 -ne `git status --porcelain -- applications/ core/ | wc -l` ]]; then echo Unstaged changes! && git status --porcelain && exit 1; fi
   - make xref
-  - make build-plt
   - git fetch origin master:master
-  - files="$(git diff --name-only master... -- application/ core/)" || true
-  - ./scripts/check-dialyzer.escript $files
+  - files="$(git diff --name-only master... -- application/ core/)" || true && echo $files
+  - make build-plt
+  - ./scripts/check-dialyzer.escript .kazoo.plt $files
   - make build-release
   - ERL_LIBS="$HOME/proper" make eunit
   - ./scripts/check-whitespace.sh core/ applications/
