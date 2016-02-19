@@ -321,6 +321,7 @@ to_swagger_path(Path, PathMeta, Acc) ->
                ,Methods
                ).
 
+add_swagger_path(<<"nil">>, Acc, _Path, _Parameters) -> Acc;
 add_swagger_path(Method, Acc, Path, Parameters) ->
     MethodJObj = wh_json:get_value([Path, Method], Acc, wh_json:new()),
     Vs = props:filter_undefined(
@@ -469,6 +470,7 @@ path_name(<<_/binary>>=Module) ->
         {'match', [<<"token_auth">>]} -> <<?CURRENT_VERSION/binary, "/shared_auth">>;
         {'match', [<<"ubiquiti_auth">>]} -> <<?CURRENT_VERSION/binary, "/ubiquiti_auth">>;
         {'match', [<<"user_auth">>]} -> <<?CURRENT_VERSION/binary, "/user_auth">>;
+        {'match', [<<"rates">>]} -> <<?CURRENT_VERSION/binary, "/rates">>;
         {'match', [Name]} -> <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
         {'match', [Name, ?CURRENT_VERSION]} ->
             <<?CURRENT_VERSION/binary, "/accounts/{ACCOUNT_ID}/", Name/binary>>;
