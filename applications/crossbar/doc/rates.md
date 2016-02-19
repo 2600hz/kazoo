@@ -33,6 +33,22 @@ Key | Description | Type | Default | Required
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "cost": 0.1,
+            "description": "Default US Rate",
+            "id":"{RATE_ID}",
+            "prefix": "1",
+            "surcharge": 0
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
 #### Upload a ratedeck CSV
@@ -67,17 +83,41 @@ curl -v -X POST \
 }
 ```
 
-#### Create
+#### Create a new rate
+
+The `routes` key will be populated for you, using the `prefix`, unless you specify the `routes` list here.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/rates
 
 ```curl
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data":{"prefix":"1", "iso_country_code":"US", "description":"Default US Rate", "rate_cost":0.1}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "description": "Default US Rate",
+        "id": "561d9c4c75950235d5565d138752452c",
+        "iso_country_code": "US",
+        "prefix": "1",
+        "rate_cost": 0.1,
+        "rate_increment": 60,
+        "rate_minimum": 60,
+        "rate_nocharge_time": 0,
+        "rate_surcharge": 0,
+        "routes": [
+            "^\\+?1.+$"
+        ]
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
-#### Remove
+#### Remove a rate
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
@@ -85,9 +125,26 @@ curl -v -X PUT \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+{
+    "auth_token":"{AUTH_TOKEN}",
+    "data": {
+        "description": "Default US Rate",
+        "id": "{RATE_ID}",
+        "iso_country_code": "US",
+        "prefix": "1",
+        "rate_cost": 0.1,
+        "rate_increment": 60,
+        "rate_minimum": 60,
+        "rate_nocharge_time": 0,
+        "rate_surcharge": 0
+    },
+    "request_id":"{REQUEST_ID}",
+    "revision":"{REVISION}",
+    "status":"success"
+}
 ```
 
-#### Fetch
+#### Fetch a rate
 
 > GET /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
@@ -95,29 +152,98 @@ curl -v -X DELETE \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "description": "Default US Rate",
+        "id": "{RATE_ID}",
+        "iso_country_code": "US",
+        "prefix": "1",
+        "rate_cost": 0.1,
+        "rate_increment": 60,
+        "rate_minimum": 60,
+        "rate_nocharge_time": 0,
+        "rate_surcharge": 0,
+        "routes": [
+            "^\\+?1.+$"
+        ]
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
-#### Patch
+#### Patch a rate's properties
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data":{"description":"Default North America Rate"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "description": "Default North America Rate",
+        "id": "{RATE_ID}",
+        "iso_country_code": "US",
+        "prefix": "1",
+        "rate_cost": 0.1,
+        "rate_increment": 60,
+        "rate_minimum": 60,
+        "rate_nocharge_time": 0,
+        "rate_surcharge": 0,
+        "routes": [
+            "^\\+?1.+$"
+        ]
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
-#### Change
+#### Change a rate doc
 
 > POST /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data":{"description": "Default North America Rate","iso_country_code": "US","prefix": "1","rate_cost": 0.1,"rate_increment": 60,"rate_minimum": 60,"rate_nocharge_time": 0,"rate_surcharge": 0,"routes": ["^\\+?1.+$"]}}'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "description": "Default North America Rate",
+        "id": "{RATE_ID}",
+        "iso_country_code": "US",
+        "prefix": "1",
+        "rate_cost": 0.1,
+        "rate_increment": 60,
+        "rate_minimum": 60,
+        "rate_nocharge_time": 0,
+        "rate_surcharge": 0,
+        "routes": [
+            "^\\+?1.+$"
+        ]
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+
 ```
 
-#### Fetch
+#### Rate a phone number
+
+This API requires that the backend app `hotornot` is running.
+
+The `{PHONENUMBER}` must be reconcilable (see your `reconcile_regex` for that criteria).
 
 > GET /v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}
 
@@ -125,4 +251,39 @@ curl -v -X POST \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "Base-Cost": 0.1,
+        "E164-Number": "+{PHONENUMBER}",
+        "Prefix": "1",
+        "Rate": 0.1,
+        "Rate-Description": "Default US Rate",
+        "Rate-Increment": "60",
+        "Rate-Minimum": "60",
+        "Surcharge": 0.0
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{UNRATEABLE_PHONENUMBER}
+
+```curl
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{UNRATEABLE_PHONENUMBER}
+
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "message": "No rate found for this number"
+    },
+    "error": "500",
+    "message": "No rate found for this number",
+    "request_id": "{REQUEST_ID}",
+    "status": "error"
+}
 ```
