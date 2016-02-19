@@ -46,17 +46,17 @@
 -type httpc_request() :: {string(), wh_proplist()} |
                          {string(), wh_proplist(), string(), http_body()}.
 
--type http_req_id() :: {'http_req_id', reference()} |
-                       {'ok', reference()} |
-                       reference().
+-type req_id() :: {'http_req_id', reference()} |
+                  {'ok', reference()} |
+                  reference().
 
 -type ret() :: {'ok', pos_integer(), wh_proplist(), string() | binary()} |
                {'ok', 'saved_to_file'} |
                {'error', any()} |
-               http_req_id().
+               req_id().
 
 -export_type([ret/0]).
--export_type([http_req_id/0]).
+-export_type([req_id/0]).
 
 %%--------------------------------------------------------------------
 %% @public

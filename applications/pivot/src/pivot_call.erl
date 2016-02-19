@@ -40,7 +40,7 @@
                 ,request_format = <<"twiml">> :: api_binary()
                 ,method = 'get' :: http_method()
                 ,call :: whapps_call:call()
-                ,request_id :: kz_http:http_req_id()
+                ,request_id :: kz_http:req_id()
                 ,request_params :: wh_json:object()
                 ,response_code :: ne_binary()
                 ,response_headers :: binaries() | ne_binary()
@@ -405,7 +405,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec send_req(whapps_call:call(), ne_binary(), http_method(), wh_json:object() | wh_proplist(), boolean()) ->
-                      {'ok', kz_http:http_req_id(), whapps_call:call()} |
+                      {'ok', kz_http:req_id(), whapps_call:call()} |
                       {'stop', whapps_call:call()}.
 send_req(Call, Uri, Method, BaseParams, Debug) when not is_list(BaseParams) ->
     send_req(Call, Uri, Method, wh_json:to_proplist(BaseParams), Debug);
@@ -422,7 +422,7 @@ send_req(Call, Uri, 'post', BaseParams, Debug) ->
     send(UpdatedCall, Uri, 'post', Headers, wh_json:to_querystring(Params), Debug).
 
 -spec send(whapps_call:call(), ne_binary(), http_method(), wh_proplist(), iolist(), boolean()) ->
-                  {'ok', kz_http:http_req_id(), whapps_call:call()} |
+                  {'ok', kz_http:req_id(), whapps_call:call()} |
                   {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
     lager:info("sending req to ~s(~s): ~s", [Uri, Method, iolist_to_binary(ReqBody)]),

@@ -42,7 +42,7 @@
           text :: ne_binary()
           ,contents = <<>> :: binary()
           ,status :: 'streaming' | 'ready'
-          ,kz_http_req_id :: kz_http:http_req_id()
+          ,kz_http_req_id :: kz_http:req_id()
           ,reqs :: [{pid(), reference()}]
           ,meta :: wh_json:object()
           ,timer_ref :: reference()
