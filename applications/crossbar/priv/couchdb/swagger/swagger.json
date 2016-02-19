@@ -5071,6 +5071,7 @@
                     "type": "number"
                 },
                 "routes": {
+                    "default": [],
                     "description": "List of regexs that match valid DIDs for this rate",
                     "items": {
                         "required": false,
@@ -7376,9 +7377,6 @@
         "/v2/accounts/{ACCOUNT_ID}/cdrs/{ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/cdrs/{ID}/{ID}": {
-            "nil": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/channels": {
             "get": {}
         },
@@ -7961,20 +7959,6 @@
             "get": {},
             "post": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/rates": {
-            "get": {},
-            "post": {},
-            "put": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}": {
-            "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}": {
-            "delete": {},
-            "get": {},
-            "patch": {},
-            "post": {}
-        },
         "/v2/accounts/{ACCOUNT_ID}/registrations": {
             "delete": {},
             "get": {}
@@ -8058,9 +8042,6 @@
         },
         "/v2/accounts/{ACCOUNT_ID}/services/plan": {
             "get": {}
-        },
-        "/v2/accounts/{ACCOUNT_ID}/services/{ID}": {
-            "nil": {}
         },
         "/v2/accounts/{ACCOUNT_ID}/siblings": {
             "get": {}
@@ -8455,25 +8436,6 @@
         "/v2/accounts/{ACCOUNT_ID}/whitelabel/{ID}/welcome": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/{PATH}": {
-            "nil": {}
-        },
-        "/v2/accounts/{ID}/Path": {
-            "get": {},
-            "nil": {}
-        },
-        "/v2/accounts/{ID}/move": {
-            "post": {
-                "parameters": {
-                    "in": "body",
-                    "name": "accounts",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/accounts"
-                    }
-                }
-            }
-        },
         "/v2/api_auth": {
             "put": {
                 "parameters": {
@@ -8510,9 +8472,53 @@
                 }
             }
         },
+        "/v2/rates": {
+            "get": {
+                "description": "Listing of available rate docs",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A list of available rate docs"
+                    }
+                }
+            },
+            "post": {},
+            "put": {}
+        },
+        "/v2/rates/number/{PHONENUMBER}": {
+            "get": {}
+        },
+        "/v2/rates/{RATE_ID}": {
+            "delete": {
+                "description": "Delete the rate doc",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The now-deleted rate doc"
+                    }
+                }
+            },
+            "get": {
+                "description": "Get the rate doc",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The rate doc"
+                    }
+                }
+            },
+            "patch": {},
+            "post": {}
+        },
         "/v2/schemas": {
             "get": {
-                "description": "Listing of installed webhooks available for subscription",
+                "description": "Listing of installed schemas available",
                 "produces": [
                     "application/json"
                 ],
@@ -8552,9 +8558,6 @@
         "/v2/shared_auth": {
             "delete": {},
             "get": {}
-        },
-        "/v2/sup": {
-            "nil": {}
         },
         "/v2/sup/{MODULE}": {
             "get": {}
