@@ -242,7 +242,6 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -269,27 +268,21 @@ check_uploaded_file(Context, [{_Name, File}|_]) ->
     lager:debug("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
         'undefined' ->
-            cb_context:add_validation_error(
-                <<"file">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"file contents not found">>}
-                 ])
-                ,Context
-            );
+            error_no_file(Context);
         Bin when is_binary(Bin) ->
             lager:debug("file: ~s", [Bin]),
             cb_context:set_resp_status(Context, 'success')
     end;
 check_uploaded_file(Context, _ReqFiles) ->
-    cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"no file to process">>}
-         ])
-        ,Context
-    ).
+    error_no_file(Context).
+
+-spec error_no_file(cb_context:context()) -> cb_context:context().
+error_no_file(Context) ->
+    cb_context:add_validation_error(<<"file">>
+                                   ,<<"required">>
+                                   ,wh_json:from_list([{<<"message">>, <<"no file to process">>}])
+                                   ,Context
+                                   ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -327,14 +320,7 @@ process_upload_file(Context, [{_Name, File}|_]) ->
                  ,Context
                 );
 process_upload_file(Context, _ReqFiles) ->
-    cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"no file to process">>}
-         ])
-        ,Context
-    ).
+    error_no_file(Context).
 
 -spec convert_file(ne_binary(), ne_binary(), cb_context:context()) ->
                           {'ok', {non_neg_integer(), wh_json:objects()}}.
@@ -409,7 +395,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"direction">>, get_row_direction(Row)}
                        ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
-                       ,{?HTTP_OPTIONS, []}
+                       ,{<<"options">>, []}
                       ]),
 
             {Count + 1, [wh_json:from_list(Props) | JObjs]}
