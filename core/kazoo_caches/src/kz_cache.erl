@@ -296,6 +296,7 @@ dump_local(Srv, ShowValue) ->
         ],
     'ok'.
 
+-spec dump_table(ets:tid(), boolean()) -> 'ok'.
 dump_table(Tab, ShowValue) ->
     Now = wh_util:current_tstamp(),
     io:format("Table ~p~n", [Tab]),
@@ -304,6 +305,7 @@ dump_table(Tab, ShowValue) ->
         ],
     'ok'.
 
+-spec display_cache_obj(cache_obj(), boolean(), gregorian_seconds()) -> 'ok'.
 display_cache_obj(#cache_obj{key=Key
                             ,value=Value
                             ,timestamp=Timestamp
