@@ -307,7 +307,6 @@ add_binding(Srv, {Binding, Props}) when is_list(Props)
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
 
-
 -spec add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), Props}).
@@ -1006,7 +1005,7 @@ handle_rm_binding(Binding, Props, #state{queue=Q
                          ),
     State#state{bindings=KeepBs}.
 
--spec handle_add_binding(binding(), wh_proplist(), state()) ->
+-spec handle_add_binding(binding_module(), wh_proplist(), state()) ->
                                 state().
 handle_add_binding(Binding, Props, #state{queue=Q
                                          ,bindings=Bs
