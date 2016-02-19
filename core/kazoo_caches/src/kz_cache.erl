@@ -712,12 +712,13 @@ maybe_erase_changed(Db, Type, Id, PointerTab) ->
 
 -spec erase_changed(ets:tid(), cache_objs()) -> 'ok'.
 erase_changed(PointerTab, Objects) ->
-    lists:foldl(fun(Object, Removed) ->
-                        erase_changed_object(PointerTab, Object, Removed)
-                end
-                ,[]
-                ,Objects
-               ),
+    _Removed =
+        lists:foldl(fun(Object, Removed) ->
+                            erase_changed_object(PointerTab, Object, Removed)
+                    end
+                   ,[]
+                   ,Objects
+                   ),
     'ok'.
 
 -spec erase_changed_object(ets:tid(), cache_obj(), list()) -> list().
@@ -844,7 +845,7 @@ has_monitors(MonitorTab) ->
 -spec exec_store_callback(callback_funs(), any(), any()) -> 'ok'.
 exec_store_callback(Callbacks, Key, Value) ->
     Args = [Key, Value, 'store'],
-    [wh_util:spawn(Callback, Args) || Callback <- Callbacks],
+    _Pids = [wh_util:spawn(Callback, Args) || Callback <- Callbacks],
     'ok'.
 
 -spec delete_monitor_callbacks(ets:tid(), any()) -> 'true'.
