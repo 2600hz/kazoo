@@ -775,8 +775,7 @@ fetch_document(JObj) ->
         AttachmentNames -> fetch_document_from_attachment(JObj, AttachmentNames)
     end.
 
--spec fetch_document_from_attachment(wh_json:object(), ne_binaries()) ->
-                                            {'ok', pos_integer(), wh_proplist(), ne_binary()}.
+-spec fetch_document_from_attachment(wh_json:object(), ne_binaries()) -> kz_http:ret().
 fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     Extension = filename:extension(AttachmentName),
     DefaultContentType = kz_mime:from_extension(Extension),
