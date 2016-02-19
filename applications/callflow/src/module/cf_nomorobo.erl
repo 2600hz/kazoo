@@ -83,7 +83,7 @@ nomorobo_score(Data, Call) ->
             'undefined'
     end.
 
--spec nomorobo_req(ne_binary(), wh_json:object()) -> kz_http:http_ret().
+-spec nomorobo_req(ne_binary(), wh_json:object()) -> kz_http:ret().
 nomorobo_req(URI, Data) ->
     Username = wh_json:get_value(<<"username">>, Data),
     Password = wh_json:get_value(<<"password">>, Data),

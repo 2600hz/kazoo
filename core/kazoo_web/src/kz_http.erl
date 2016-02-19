@@ -50,21 +50,21 @@
                        {'ok', reference()} |
                        reference().
 
--type http_ret() :: {'ok', pos_integer(), wh_proplist(), string() | binary()} |
-                    {'ok', 'saved_to_file'} |
-                    {'error', any()} |
-                    http_req_id().
+-type ret() :: {'ok', pos_integer(), wh_proplist(), string() | binary()} |
+               {'ok', 'saved_to_file'} |
+               {'error', any()} |
+               http_req_id().
 
--export_type([http_ret/0]).
+-export_type([ret/0]).
 -export_type([http_req_id/0]).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Send synchronous request
 %%--------------------------------------------------------------------
--spec get(string()) -> http_ret().
--spec get(string(), wh_proplist()) -> http_ret().
--spec get(string(), wh_proplist(), wh_proplist()) -> http_ret().
+-spec get(string()) -> ret().
+-spec get(string(), wh_proplist()) -> ret().
+-spec get(string(), wh_proplist(), wh_proplist()) -> ret().
 get(Url) ->
     req('get', Url, [], [], []).
 get(Url, Headers) ->
@@ -72,9 +72,9 @@ get(Url, Headers) ->
 get(Url, Headers, Options) ->
     req('get', Url, Headers, [], Options).
 
--spec options(string()) -> http_ret().
--spec options(string(), wh_proplist()) -> http_ret().
--spec options(string(), wh_proplist(), wh_proplist()) -> http_ret().
+-spec options(string()) -> ret().
+-spec options(string(), wh_proplist()) -> ret().
+-spec options(string(), wh_proplist(), wh_proplist()) -> ret().
 options(Url) ->
     req('options', Url, [], [], []).
 options(Url, Headers) ->
@@ -82,9 +82,9 @@ options(Url, Headers) ->
 options(Url, Headers, Options) ->
     req('options', Url, Headers, [], Options).
 
--spec head(string()) -> http_ret().
--spec head(string(), wh_proplist()) -> http_ret().
--spec head(string(), wh_proplist(), wh_proplist()) -> http_ret().
+-spec head(string()) -> ret().
+-spec head(string(), wh_proplist()) -> ret().
+-spec head(string(), wh_proplist(), wh_proplist()) -> ret().
 head(Url) ->
     req('head', Url, [], [], []).
 head(Url, Headers) ->
@@ -92,9 +92,9 @@ head(Url, Headers) ->
 head(Url, Headers, Options) ->
     req('head', Url, Headers, [], Options).
 
--spec trace(string()) -> http_ret().
--spec trace(string(), wh_proplist()) -> http_ret().
--spec trace(string(), wh_proplist(), wh_proplist()) -> http_ret().
+-spec trace(string()) -> ret().
+-spec trace(string(), wh_proplist()) -> ret().
+-spec trace(string(), wh_proplist(), wh_proplist()) -> ret().
 trace(Url) ->
     req('trace', Url, [], [], []).
 trace(Url, Headers) ->
@@ -102,10 +102,10 @@ trace(Url, Headers) ->
 trace(Url, Headers, Options) ->
     req('trace', Url, Headers, [], Options).
 
--spec delete(string()) -> http_ret().
--spec delete(string(), wh_proplist()) -> http_ret().
--spec delete(string(), wh_proplist(), http_body()) -> http_ret().
--spec delete(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+-spec delete(string()) -> ret().
+-spec delete(string(), wh_proplist()) -> ret().
+-spec delete(string(), wh_proplist(), http_body()) -> ret().
+-spec delete(string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
 delete(Url) ->
     req('delete', Url, [], [], []).
 delete(Url, Headers) ->
@@ -115,10 +115,10 @@ delete(Url, Headers, Body) ->
 delete(Url, Headers, Body, Options) ->
     req('delete', Url, Headers, Body, Options).
 
--spec post(string()) -> http_ret().
--spec post(string(), wh_proplist()) -> http_ret().
--spec post(string(), wh_proplist(), http_body()) -> http_ret().
--spec post(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+-spec post(string()) -> ret().
+-spec post(string(), wh_proplist()) -> ret().
+-spec post(string(), wh_proplist(), http_body()) -> ret().
+-spec post(string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
 post(Url) ->
     req('post', Url, [], [], []).
 post(Url, Headers) ->
@@ -128,10 +128,10 @@ post(Url, Headers, Body) ->
 post(Url, Headers, Body, Options) ->
     req('post', Url, Headers, Body, Options).
 
--spec put(string()) -> http_ret().
--spec put(string(), wh_proplist()) -> http_ret().
--spec put(string(), wh_proplist(), http_body()) -> http_ret().
--spec put(string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+-spec put(string()) -> ret().
+-spec put(string(), wh_proplist()) -> ret().
+-spec put(string(), wh_proplist(), http_body()) -> ret().
+-spec put(string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
 put(Url) ->
     req('put', Url, [], [], []).
 put(Url, Headers) ->
@@ -145,11 +145,11 @@ put(Url, Headers, Body, Options) ->
 %% @public
 %% @doc Send a synchronous HTTP request
 %%--------------------------------------------------------------------
--spec req(string()) -> http_ret().
--spec req(method(), string()) -> http_ret().
--spec req(method(), string(), wh_proplist()) -> http_ret().
--spec req(method(), string(), wh_proplist(), http_body()) -> http_ret().
--spec req(method(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+-spec req(string()) -> ret().
+-spec req(method(), string()) -> ret().
+-spec req(method(), string(), wh_proplist()) -> ret().
+-spec req(method(), string(), wh_proplist(), http_body()) -> ret().
+-spec req(method(), string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
 req(Url) ->
     req('get', Url, [], [], []).
 req(Method, Url) ->
@@ -167,11 +167,11 @@ req(Method, Url, Hdrs, Body, Opts) ->
 %% @public
 %% @doc Send an asynchronous HTTP request
 %%--------------------------------------------------------------------
--spec async_req(pid(), string()) -> http_ret().
--spec async_req(pid(), method(), string()) -> http_ret().
--spec async_req(pid(), method(), string(), wh_proplist()) -> http_ret().
--spec async_req(pid(), method(), string(), wh_proplist(), http_body()) -> http_ret().
--spec async_req(pid(), method(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+-spec async_req(pid(), string()) -> ret().
+-spec async_req(pid(), method(), string()) -> ret().
+-spec async_req(pid(), method(), string(), wh_proplist()) -> ret().
+-spec async_req(pid(), method(), string(), wh_proplist(), http_body()) -> ret().
+-spec async_req(pid(), method(), string(), wh_proplist(), http_body(), wh_proplist()) -> ret().
 async_req(Pid, Url) ->
     async_req(Pid, 'get', Url, [], [], []).
 async_req(Pid, Method, Url) ->
@@ -194,7 +194,7 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
 %% @private
 %% @doc Send request using httpc and handle its response
 %%--------------------------------------------------------------------
--spec execute_request(method(), tuple(), wh_proplist()) -> http_ret().
+-spec execute_request(method(), tuple(), wh_proplist()) -> ret().
 execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Opts1 = get_options(?OPTIONS, Opts),
@@ -208,7 +208,7 @@ execute_request(Method, Request, Opts) ->
 %% @public
 %% @doc Response to caller in a proper manner
 %%--------------------------------------------------------------------
--spec handle_response(httpc_ret()) -> http_ret().
+-spec handle_response(httpc_ret()) -> ret().
 handle_response({'ok', 'saved_to_file'}) ->
     {'ok', 'saved_to_file'};
 handle_response({'ok', ReqId})

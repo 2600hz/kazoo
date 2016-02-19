@@ -321,7 +321,7 @@ post_xml(Url, Body, AdditionalHeaders) ->
     handle_response(Resp).
 
 -type bw_ret() :: {'ok', ne_binary()} | {'error', any()}.
--spec handle_response(kz_http:http_ret()) -> bw_ret().
+-spec handle_response(kz_http:ret()) -> bw_ret().
 handle_response({'ok', 401, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n401~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 401 (unauthenticated)"),
