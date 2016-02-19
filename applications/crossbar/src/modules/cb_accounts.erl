@@ -23,6 +23,7 @@
          ,patch/2
         ]).
 
+-export([notify_new_account/1]).
 -export([is_unique_realm/2]).
 
 -include("../crossbar.hrl").
@@ -1245,9 +1246,6 @@ create_new_account_db(Context) ->
             _ = crossbar_bindings:map(<<"account.created">>, C),
             lager:debug("alerted listeners of new account"),
 
-            _ = notify_new_account(C),
-            lager:debug("sent notification of new account"),
-
             _ = wh_services:reconcile(AccountDb),
             lager:debug("performed initial services reconcile"),
 
@@ -1259,6 +1257,11 @@ create_new_account_db(Context) ->
 
             _ = maybe_set_notification_preference(C),
             lager:debug("set notification preference"),
+
+            %% Give onboarding tools time to add initial users...
+            Delay = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"new_account_notify_delay_s">>, 30),
+            _ = timer:apply_after(Delay * ?MILLISECONDS_IN_SECOND, ?MODULE, 'notify_new_account', [C]),
+            lager:debug("started ~ps timer for new account notification", [Delay]),
             C
     end.
 
@@ -1454,7 +1457,9 @@ notify_new_account(Context) ->
 
 notify_new_account(_Context, 'undefined') -> 'ok';
 notify_new_account(Context, _AuthDoc) ->
+    cb_context:put_reqid(Context),
     JObj = cb_context:doc(Context),
+    lager:debug("triggering new account notification for ~s", [cb_context:account_id(Context)]),
     Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
               ,{<<"Account-Realm">>, kz_account:realm(JObj)}
               ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
