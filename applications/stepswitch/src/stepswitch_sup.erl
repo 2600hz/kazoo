@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2016, 2600Hz
 %%% @doc
 %%% Root supervisor tree for stepswitch routing WhApp
 %%% @end
@@ -17,8 +17,8 @@
 -export([init/1]).
 
 -define(ORIGIN_BINDINGS, [[{'type', <<"resource">>}]
-                           ,[{'type', <<"number">>}]
-                           ,[{'type', <<"dedicated_ip">>}]
+                         ,[{'type', <<"number">>}]
+                         ,[{'type', <<"dedicated_ip">>}]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 

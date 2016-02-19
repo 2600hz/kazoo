@@ -23,6 +23,7 @@
                   , lager
                   , lager_syslog
                   , gproc
+                  , eflame
                   ]}
   ,{mod, {whistle_apps_app, []}}
   ,{env, [{reloader, false}]} % set to true to enable reloader
