@@ -27,10 +27,16 @@ clean: $(MAKEDIRS)
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
 
-eunit: ACTION = test
+clean-kazoo: ACTION = clean
+clean-kazoo: $(KAZOODIRS)
+
+compile-test: ACTION = compile-test
+compile-test: $(KAZOODIRS)
+
+eunit: ACTION = eunit
 eunit: $(KAZOODIRS)
 
-proper: ACTION = test
+proper: ACTION = eunit
 proper: ERLC_OPTS += -DPROPER
 proper: $(KAZOODIRS)
 
