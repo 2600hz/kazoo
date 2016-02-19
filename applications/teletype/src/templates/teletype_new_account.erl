@@ -71,8 +71,6 @@ handle_new_account(JObj, _Props) ->
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    %% Give onboarding tools time to add initial users...
-    timer:sleep(30000),
     %% Load templates
     process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
 
