@@ -91,6 +91,7 @@
             "type": "number"
         },
         "routes": {
+            "default": [],
             "description": "List of regexs that match valid DIDs for this rate",
             "items": {
                 "required": false,
