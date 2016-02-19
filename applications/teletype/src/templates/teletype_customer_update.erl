@@ -18,7 +18,8 @@
 -define(TEMPLATE_ID, <<"customer_update">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
--define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
+-define(ACC_CHILDREN_LIST, <<"accounts/listing_by_children">>).
+-define(ACC_USERS_LIST, <<"users/crossbar_listing">>).
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
@@ -72,7 +73,7 @@ process_req(DataJObj) ->
     ViewOpts = [{'startkey', [SenderId]}
                ,{'endkey', [SenderId, wh_json:new()]}
                ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_children">>, ViewOpts) of
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
         {'ok', Accounts} ->
             process_accounts(Accounts, DataJObj);
         {'error', _Reason} = E ->
@@ -80,6 +81,7 @@ process_req(DataJObj) ->
             E
     end.
 
+-spec process_accounts(wh_json:objects(), wh_json:object()) -> wh_proplist().
 process_accounts(Accounts, DataJObj) ->
     case wh_json:get_value(<<"recipient_id">>, DataJObj) of
         'undefined' ->
@@ -88,37 +90,38 @@ process_accounts(Accounts, DataJObj) ->
             [process_account(wh_json:get_value(<<"value">>, Account), DataJObj) || Account <- Accounts, wh_json:get_value(<<"id">>, Account) == RecipientId]
     end.
 
+-spec process_account(wh_json:object(), wh_json:object()) -> 'ok'|wh_proplist().
 process_account(AccountJObj, DataJObj) ->
     AccountId = wh_json:get_value(<<"id">>, AccountJObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_results(AccountDb,<<"users/crossbar_listing">>,[]) of
-        {'ok', Users} ->
-            Templates = teletype_templates:fetch(?TEMPLATE_ID, DataJObj),
-            select_users_to_update(lists:map(fun(User) -> wh_json:get_value(<<"value">>, User) end, Users), DataJObj, Templates);
-        {'error', _Reason} = E ->
-            lager:info("failed to load users from: ~p", [AccountDb]),
-            E
-    end.
-
-select_users_to_update(Users, DataJObj, Templates) ->
     case wh_json:get_value(<<"user_type">>, DataJObj) of
         <<UserId:32/binary>> ->
-            [send_update_to_user(User, DataJObj, Templates) || User <- Users, wh_json:get_value(<<"id">>, User) == UserId];
-        <<"all_users">> ->
-            [send_update_to_user(User, DataJObj, Templates) || User <- Users];
+            {'ok', UserJObj} = kzd_user:fetch(UserId, AccountId),
+            send_update_to_user(UserJObj, DataJObj);
         _ ->
-            [send_update_to_user(User, DataJObj, Templates) || User <- Users, wh_json:get_value(<<"priv_level">>, User) == <<"admin">>]
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+            {'ok', Users} = couch_mgr:get_results(AccountDb, ?ACC_USERS_LIST, []),
+            select_users_to_update(lists:map(fun(User) -> wh_json:get_value(<<"value">>, User) end, Users), DataJObj)
     end.
 
-send_update_to_user(UserJObj, DataJObj, Templates) ->
+-spec select_users_to_update(wh_proplist(), wh_json:object()) -> wh_proplist().
+select_users_to_update(Users, DataJObj) ->
+    case wh_json:get_value(<<"user_type">>, DataJObj) of
+        <<"all_users">> ->
+            [send_update_to_user(User, DataJObj) || User <- Users];
+        _ ->
+            [send_update_to_user(User, DataJObj) || User <- Users, wh_json:get_value(<<"priv_level">>, User) == <<"admin">>]
+    end.
+
+-spec send_update_to_user(wh_json:object(), wh_json:object()) -> 'ok'.
+send_update_to_user(UserJObj, DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-              ,{<<"system">>, teletype_util:account_params(DataJObj)}
+              ,{<<"account">>, teletype_util:account_params(DataJObj)}
               | build_macro_data(UserJObj)
              ],
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
                 ,Macros

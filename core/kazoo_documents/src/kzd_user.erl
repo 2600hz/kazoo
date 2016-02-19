@@ -17,6 +17,7 @@
          ,enable/1, disable/1
          ,type/0
          ,devices/1
+         ,fetch/2
         ]).
 
 -include("kz_documents.hrl").
@@ -254,3 +255,10 @@ devices(UserJObj) ->
             lager:warning("unable to find documents owned by ~s: ~p", [UserId, _R]),
             []
     end.
+
+-spec fetch(ne_binary(), api_binary()) -> {'ok', doc()} | {'error', any()}.
+fetch(<<_/binary>> = UserId, <<_/binary>> = Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    couch_mgr:open_cache_doc(AccountDb, UserId);
+
+fetch(_, _) -> {'error', 'invalid_parametres'}.

@@ -452,12 +452,6 @@
 -define(CUSTOMER_UPDATE_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_CUSTOMER_UPDATE_HEADERS, [<<"Recipient-ID">>
                                            ,<<"User-Type">>
-                                           ,<<"Subject">>
-                                           ,<<"From">>
-                                           ,<<"Reply-To">>
-                                           ,<<"To">>,<<"CC">>,<<"BCC">>
-                                           ,<<"HTML">>
-                                           ,<<"Plain">>
                                            | ?DEFAULT_OPTIONAL_HEADERS
                                           ]).
 -define(CUSTOMER_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
