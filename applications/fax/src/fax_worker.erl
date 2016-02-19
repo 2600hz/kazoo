@@ -338,7 +338,7 @@ handle_cast('prepare_job', #state{job_id=JobId
             end;
         {'ok', Status, _, _} ->
             lager:debug("failed to fetch file for job: http response ~p", [Status]),
-            _ = send_error_status(State, Status),
+            _ = send_error_status(State, integer_to_binary(Status)),
             release_failed_job('fetch_failed', Status, JObj),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)};
@@ -768,9 +768,7 @@ elapsed_time(JObj) ->
     Created = wh_doc:created(JObj, Now),
     Now - Created.
 
--spec fetch_document(wh_json:object()) ->
-                            {'ok', string(), wh_proplist(), ne_binary()} |
-                            {'error', any()}.
+-spec fetch_document(wh_json:object()) -> kz_http:http_ret().
 fetch_document(JObj) ->
     case wh_doc:attachment_names(JObj) of
         [] -> fetch_document_from_url(JObj);
@@ -1011,15 +1009,15 @@ reset(State) ->
 send_status(State, Status) ->
     send_status(State, Status, ?FAX_SEND, 'undefined').
 
--spec send_error_status(state(), text()) -> any().
+-spec send_error_status(state(), ne_binary()) -> any().
 send_error_status(State, Status) ->
     send_status(State, Status, ?FAX_ERROR, 'undefined').
 
--spec send_status(state(), text(), api_object()) -> any().
+-spec send_status(state(), ne_binary(), api_object()) -> any().
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_SEND, FaxInfo).
 
--spec send_status(state(), text(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> any().
 send_status(#state{job=JObj
                    ,page=Page
                    ,job_id=JobId
@@ -1035,7 +1033,7 @@ send_status(#state{job=JObj
                  ,{<<"Account-ID">>, AccountId}
                  ,{<<"Cloud-Job-ID">>, CloudJobId}
                  ,{<<"Cloud-Printer-ID">>, CloudPrinterId}
-                 ,{<<"Status">>, wh_util:to_binary(Status)}
+                 ,{<<"Status">>, Status}
                  ,{<<"Fax-State">>, FaxState}
                  ,{<<"Fax-Info">>, FaxInfo}
                  ,{<<"Direction">>, ?FAX_OUTGOING}

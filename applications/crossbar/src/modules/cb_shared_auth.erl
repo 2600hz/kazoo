@@ -241,8 +241,8 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
               ],
     lager:debug("validating shared token ~s via ~s", [SharedToken, Url]),
     case kz_http:get(Url, Headers) of
-        {'ok', "200", _, Resp} -> {'ok', Resp};
-        {'ok', "401", _, _} -> {'forbidden', 'shared_token_rejected'};
+        {'ok', 200, _, Resp} -> {'ok', Resp};
+        {'ok', 401, _, _} -> {'forbidden', 'shared_token_rejected'};
         Resp -> {'error', Resp}
     end.
 

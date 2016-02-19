@@ -73,7 +73,7 @@ send_cdr(Url, JObj, Retries) ->
                      ,[{'timeout', 1000}]
                     ) of
         {'ok', _StatusCode, _RespHeaders, _RespBody} ->
-            lager:debug("cdr server at ~s responded with a ~s: ~s", [Url, _StatusCode, _RespBody]);
+            lager:debug("cdr server at ~s responded with a ~p: ~s", [Url, _StatusCode, _RespBody]);
         _Else ->
             lager:debug("sending cdr to server at ~s caused error: ~p", [Url, _Else]),
             send_cdr(Url, JObj, Retries-1)

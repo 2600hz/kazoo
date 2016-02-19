@@ -858,7 +858,7 @@ get_prefix(City) ->
             Req = binary:bin_to_list(<<Url/binary, "/", Country/binary, "/city?pattern=">>),
             Uri = lists:append(Req, ReqParam),
             case kz_http:get(Uri) of
-                {'ok', "200", _Headers, Body} ->
+                {'ok', 200, _Headers, Body} ->
                     JObj = wh_json:decode(Body),
                     case wh_json:get_value(<<"data">>, JObj) of
                         'undefined' -> {'error ', JObj};
@@ -989,7 +989,7 @@ get_locality(Numbers, UrlType) ->
             ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
             Uri = <<Url/binary, "/locality/metadata">>,
             case kz_http:post(binary:bin_to_list(Uri), [], wh_json:encode(ReqBody)) of
-                {'ok', "200", _Headers, Body} ->
+                {'ok', 200, _Headers, Body} ->
                     handle_locality_resp(wh_json:decode(Body));
                 {'ok', _Status, _, _Body} ->
                     lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),

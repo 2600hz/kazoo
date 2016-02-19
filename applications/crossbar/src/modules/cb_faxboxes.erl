@@ -442,7 +442,7 @@ register_cloud_printer(Context, FaxboxId) ->
               ],
     Url = wh_util:to_list(?GPC_URL_REGISTER),
     case kz_http:post(Url, Headers, Body) of
-        {'ok', "200", _RespHeaders, RespJSON} ->
+        {'ok', 200, _RespHeaders, RespJSON} ->
             JObj = wh_json:decode(RespJSON),
             case wh_json:is_true(<<"success">>, JObj, 'false') of
                 'true' ->
@@ -452,7 +452,7 @@ register_cloud_printer(Context, FaxboxId) ->
                     []
             end;
         {'ok', _RespCode, _RespHeaders, _RespJSON} ->
-            lager:info("unexpected resp ~s: ~s", [_RespCode, _RespJSON]),
+            lager:info("unexpected resp ~p: ~s", [_RespCode, _RespJSON]),
             [];
         {'error', _R} ->
             lager:info("error querying: ~p", [_R]),

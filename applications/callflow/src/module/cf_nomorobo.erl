@@ -69,10 +69,10 @@ nomorobo_score(Data, Call) ->
     lager:info("sending request to nomorobo: ~s", [URI]),
 
     try nomorobo_req(URI, Data) of
-        {'ok', "200", _Headers, Body} ->
+        {'ok', 200, _Headers, Body} ->
             nomorobo_score_from_resp(Body);
         {'ok', _Status, _Headers, _Body} ->
-            lager:debug("failed to query: ~s: ~s", [_Status, _Body]),
+            lager:debug("failed to query: ~p: ~s", [_Status, _Body]),
             'undefined';
         {'error', _E} ->
             lager:debug("error querying: ~p", [_E]),

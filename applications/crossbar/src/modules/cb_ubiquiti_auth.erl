@@ -141,13 +141,13 @@ maybe_authenticate_user(Context) ->
                       ,wh_json:encode(login_req(Context))
                      )
     of
-        {'ok', "200", RespHeaders, RespBody} ->
+        {'ok', 200, RespHeaders, RespBody} ->
             lager:debug("successfully authenticated to '~s'", [LoginURL]),
             cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(Context, RespHeaders, RespBody)}
                                          ,{fun cb_context:set_resp_status/2, 'success'}
                                         ]);
         {'ok', _RespCode, _RespHeaders, _RespBody} ->
-            lager:debug("recv non-200(~s) code from '~s': ~s", [_RespCode, LoginURL, _RespBody]),
+            lager:debug("recv non-200(~p) code from '~s': ~s", [_RespCode, LoginURL, _RespBody]),
             crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
         {'error', _Error} ->
             lager:debug("failed to query '~s': ~p", [LoginURL, _Error]),
