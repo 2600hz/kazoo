@@ -338,7 +338,7 @@ handle_cast('prepare_job', #state{job_id=JobId
             end;
         {'ok', Status, _, _} ->
             lager:debug("failed to fetch file for job: http response ~p", [Status]),
-            _ = send_error_status(State, Status),
+            _ = send_error_status(State, integer_to_binary(Status)),
             release_failed_job('fetch_failed', Status, JObj),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)};
@@ -481,7 +481,7 @@ attempt_to_acquire_job(JObj, _Q, Status) ->
 
 -spec release_failed_job(atom(), any(), wh_json:object()) -> 'failure'.
 release_failed_job('fetch_failed', Status, JObj) ->
-    Msg = wh_util:to_binary(io_lib:format("could not retrieve file, http response ~p", [Status])),
+    Msg = <<"could not retrieve file, http response ~p", (integer_to_binary(Status))/binary>>,
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 0}
               ,{<<"result_text">>, Msg}
@@ -768,17 +768,14 @@ elapsed_time(JObj) ->
     Created = wh_doc:created(JObj, Now),
     Now - Created.
 
--spec fetch_document(wh_json:object()) ->
-                            {'ok', string(), wh_proplist(), ne_binary()} |
-                            {'error', any()}.
+-spec fetch_document(wh_json:object()) -> kz_http:ret().
 fetch_document(JObj) ->
     case wh_doc:attachment_names(JObj) of
         [] -> fetch_document_from_url(JObj);
         AttachmentNames -> fetch_document_from_attachment(JObj, AttachmentNames)
     end.
 
--spec fetch_document_from_attachment(wh_json:object(), ne_binaries()) ->
-                                            {'ok', string(), wh_proplist(), ne_binary()}.
+-spec fetch_document_from_attachment(wh_json:object(), ne_binaries()) -> kz_http:ret().
 fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     Extension = filename:extension(AttachmentName),
     DefaultContentType = kz_mime:from_extension(Extension),
@@ -788,9 +785,7 @@ fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES_DB, wh_doc:id(JObj), AttachmentName),
     {'ok', 200, Props, Contents}.
 
--spec fetch_document_from_url(wh_json:object()) ->
-                                     {'ok', string(), wh_proplist(), ne_binary()} |
-                                     {'error', any()}.
+-spec fetch_document_from_url(wh_json:object()) -> kz_http:ret().
 fetch_document_from_url(JObj) ->
     FetchRequest = wh_json:get_value(<<"document">>, JObj),
     Url = wh_json:get_string_value(<<"url">>, FetchRequest),
@@ -1011,15 +1006,15 @@ reset(State) ->
 send_status(State, Status) ->
     send_status(State, Status, ?FAX_SEND, 'undefined').
 
--spec send_error_status(state(), text()) -> any().
+-spec send_error_status(state(), ne_binary()) -> any().
 send_error_status(State, Status) ->
     send_status(State, Status, ?FAX_ERROR, 'undefined').
 
--spec send_status(state(), text(), api_object()) -> any().
+-spec send_status(state(), ne_binary(), api_object()) -> any().
 send_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_SEND, FaxInfo).
 
--spec send_status(state(), text(), ne_binary(), api_object()) -> any().
+-spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> any().
 send_status(#state{job=JObj
                    ,page=Page
                    ,job_id=JobId
@@ -1035,7 +1030,7 @@ send_status(#state{job=JObj
                  ,{<<"Account-ID">>, AccountId}
                  ,{<<"Cloud-Job-ID">>, CloudJobId}
                  ,{<<"Cloud-Printer-ID">>, CloudPrinterId}
-                 ,{<<"Status">>, wh_util:to_binary(Status)}
+                 ,{<<"Status">>, Status}
                  ,{<<"Fax-State">>, FaxState}
                  ,{<<"Fax-Info">>, FaxInfo}
                  ,{<<"Direction">>, ?FAX_OUTGOING}

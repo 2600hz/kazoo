@@ -38,12 +38,12 @@
 
 -type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
 -type provider_return() :: {'error', provider_errors()} |
-                           kz_http:http_ret().
+                           kz_http:ret().
 -type create_resp() :: provider_return() |
                        {'ok', ne_binary(), ne_binary()} | %% {'ok', ContentType, BinaryData}
                        {'error', 'tts_provider_failure', binary()}.
 
--type asr_resp() :: kz_http:http_req_id() |
+-type asr_resp() :: kz_http:req_id() |
                     {'ok', wh_json:object()} | %% {'ok', JObj}
                     {'error', provider_errors()} |
                     {'error',  'asr_provider_failure', wh_json:object()}.
@@ -230,11 +230,11 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
                         ,[ReqID, props:get_value('receiver', Options)]
                        ),
             {'ok', ReqID};
-        {'ok', "200", _Headers, Content2} ->
+        {'ok', 200, _Headers, Content2} ->
             lager:debug("asr of media succeeded: ~s", [Content2]),
             {'ok', wh_json:decode(Content2)};
-        {'ok', Code, _Hdrs, Content2} ->
-            lager:debug("asr of media failed with code ~s", [Code]),
+        {'ok', _Code, _Hdrs, Content2} ->
+            lager:debug("asr of media failed with code ~p", [_Code]),
             lager:debug("resp: ~s", [Content2]),
             {'error', 'asr_provider_failure', wh_json:decode(Content2)}
     end.
@@ -293,11 +293,11 @@ asr_commands(Bin, Commands, ContentType, Locale, Options) ->
         {'http_req_id', ReqID} ->
             lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(receiver, Options)]),
             {'ok', ReqID};
-        {'ok', "200", _Headers, Content} ->
+        {'ok', 200, _Headers, Content} ->
             lager:debug("asr of media succeeded: ~s", [Content]),
             {'ok', wh_json:decode(Content)};
-        {'ok', Code, _Hdrs, Content} ->
-            lager:debug("asr of media failed with code ~s", [Code]),
+        {'ok', _Code, _Hdrs, Content} ->
+            lager:debug("asr of media failed with code ~s", [_Code]),
             lager:debug("resp: ~s", [Content]),
             {'error', 'asr_provider_failure', wh_json:decode(Content)}
     end.
@@ -335,8 +335,8 @@ asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Opts) ->
 asr_commands(_, _, _, _, _, _) ->
     {'error', 'unknown_provider'}.
 
--spec create_response(ne_binary(), kz_http:http_ret()) ->
-                             kz_http:http_req_id() |
+-spec create_response(ne_binary(), kz_http:ret()) ->
+                             kz_http:req_id() |
                              {'ok', ne_binary(), ne_binary()} |
                              {'error', 'tts_provider_failure', binary()}.
 create_response(_Engine, {'error', _R}) ->
@@ -345,7 +345,7 @@ create_response(_Engine, {'error', _R}) ->
 create_response(_Engine, {'http_req_id', ReqID}) ->
     lager:debug("speech file streaming as ~p", [ReqID]),
     {'ok', ReqID};
-create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
+create_response(<<"voicefabric">> = _Engine, {'ok', 200, Headers, Content}) ->
     _ = [lager:debug("hdr: ~p", [H]) || H <- Headers],
     lager:debug("converting media"),
     {'ok', Rate} = voicefabric_get_media_rate(Headers),
@@ -370,18 +370,18 @@ create_response(<<"voicefabric">> = _Engine, {'ok', "200", Headers, Content}) ->
                                           ,Headers
                                          ),
             lager:debug("corrected headers"),
-            create_response(<<"default">>, {'ok', "200", NewHeaders, WavContent});
+            create_response(<<"default">>, {'ok', 200, NewHeaders, WavContent});
         {'error', _Reason} ->
             lager:debug("failed: ~p", [_Reason]),
             {'error', 'tts_provider_failure', <<"converting failed">>}
     end;
-create_response(_Engine, {'ok', "200", Headers, Content}) ->
+create_response(_Engine, {'ok', 200, Headers, Content}) ->
     ContentType = props:get_value("Content-Type", Headers),
     ContentLength = props:get_value("Content-Length", Headers),
     lager:debug("created speech file ~s of length ~s", [ContentType, ContentLength]),
     {'ok', wh_util:to_binary(ContentType), Content};
-create_response(Engine, {'ok', Code, RespHeaders, Content}) ->
-    lager:warning("creating speech file failed with code ~p: ~p", [Code, Content]),
+create_response(Engine, {'ok', _Code, RespHeaders, Content}) ->
+    lager:warning("creating speech file failed with code ~p: ~p", [_Code, Content]),
     _ = [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
     {'error', 'tts_provider_failure', create_error_response(Engine, RespHeaders, Content)}.
 

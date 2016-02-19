@@ -321,29 +321,29 @@ post_xml(Url, Body, AdditionalHeaders) ->
     handle_response(Resp).
 
 -type bw_ret() :: {'ok', ne_binary()} | {'error', any()}.
--spec handle_response(kz_http:http_ret()) -> bw_ret().
-handle_response({'ok', "401", _, _Response}) ->
+-spec handle_response(kz_http:ret()) -> bw_ret().
+handle_response({'ok', 401, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n401~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 401 (unauthenticated)"),
     {'error', 'authentication'};
-handle_response({'ok', "403", _, _Response}) ->
+handle_response({'ok', 403, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n403~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 403 (unauthorized)"),
     {'error', 'authorization'};
-handle_response({'ok', "404", _, _Response}) ->
+handle_response({'ok', 404, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n404~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 404 (not found)"),
     {'error', 'not_found'};
-handle_response({'ok', "500", _, _Response}) ->
+handle_response({'ok', 500, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n500~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 500 (server error)"),
     {'error', 'server_error'};
-handle_response({'ok', "503", _, _Response}) ->
+handle_response({'ok', 503, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n503~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 503"),
     {'error', 'server_error'};
-handle_response({'ok', Code, _, "<?xml"++_=Response}) ->
-    ?DEBUG_APPEND("Response:~n~p~n~s~n", [Code, Response]),
+handle_response({'ok', _Code, _, "<?xml"++_=Response}) ->
+    ?DEBUG_APPEND("Response:~n~p~n~s~n", [_Code, Response]),
     lager:debug("received response from bandwidth.com"),
     try
         {Xml, _} = xmerl_scan:string(Response),
@@ -353,9 +353,9 @@ handle_response({'ok', Code, _, "<?xml"++_=Response}) ->
             lager:debug("failed to decode xml: ~p", [R]),
             {'error', 'empty_response'}
     end;
-handle_response({'ok', Code, _, _Response}) ->
-    ?DEBUG_APPEND("Response:~n~p~n~s~n", [Code, _Response]),
-    lager:debug("bandwidth.com empty response: ~p", [Code]),
+handle_response({'ok', _Code, _, _Response}) ->
+    ?DEBUG_APPEND("Response:~n~p~n~s~n", [_Code, _Response]),
+    lager:debug("bandwidth.com empty response: ~p", [_Code]),
     {'error', 'empty_response'};
 handle_response({'error', _}=E) ->
     lager:debug("bandwidth.com request error: ~p", [E]),

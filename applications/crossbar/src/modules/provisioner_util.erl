@@ -274,7 +274,7 @@ get_provision_defaults(Context) ->
                 ]),
     lager:debug("attempting to pull provisioning configs from ~s", [UrlString]),
     case kz_http:get(UrlString, Headers) of
-        {'ok', "200", _, Response} ->
+        {'ok', 200, _, Response} ->
             lager:debug("great success, accquired provisioning template"),
             JResp = wh_json:decode(Response),
             cb_context:setters(Context
@@ -282,7 +282,7 @@ get_provision_defaults(Context) ->
                                  ,{fun cb_context:set_resp_status/2, 'success'}
                                 ]);
         {'ok', Status, _, _} ->
-            lager:debug("could not get provisioning template defaults: ~s", [Status]),
+            lager:debug("could not get provisioning template defaults: ~p", [Status]),
             crossbar_util:response('error', <<"Error retrieving content from external site">>, 500, Context);
         {'error', _R} ->
             lager:debug("could not get provisioning template defaults: ~p", [_R]),
@@ -738,10 +738,10 @@ send_provisioning_request(Template, MACAddress) ->
                 ]),
     lager:debug("provisioning via ~s", [UrlString]),
     case kz_http:post(UrlString, Headers, ProvisionRequest) of
-        {'ok', "200", _, Response} ->
+        {'ok', 200, _, Response} ->
             lager:debug("SUCCESS! BOOM! ~s", [Response]);
         {'ok', Code, _, Response} ->
-            lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response]);
+            lager:debug("ERROR! OH NO! ~p. ~s", [Code, Response]);
         {'error', R} ->
             lager:debug("ERROR! OH NO! ~p", [R])
     end.

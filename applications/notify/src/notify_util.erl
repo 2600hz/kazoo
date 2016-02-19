@@ -418,9 +418,8 @@ qr_code_image(Text) ->
     CHL = wh_util:uri_encode(Text),
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
-    case kz_http:get(wh_util:to_list(Url))
-    of
-        {'ok', "200", _RespHeaders, RespBody} ->
+    case kz_http:get(wh_util:to_list(Url)) of
+        {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
             [{<<"image">>, base64:encode(RespBody)}];
         _E ->
@@ -445,7 +444,8 @@ post_json(Url, JObj, OnErrorCallback) ->
     Encoded = wh_json:encode(JObj),
 
     case kz_http:post(wh_util:to_list(Url), Headers, Encoded) of
-        {'ok', "2" ++ _, _ResponseHeaders, _ResponseBody} ->
+        {'ok', _2xx, _ResponseHeaders, _ResponseBody}
+          when (_2xx - 200) < 100 -> %% ie: match "2"++_
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);
         _Error ->
             lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),

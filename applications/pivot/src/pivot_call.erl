@@ -40,7 +40,7 @@
                 ,request_format = <<"twiml">> :: api_binary()
                 ,method = 'get' :: http_method()
                 ,call :: whapps_call:call()
-                ,request_id :: kz_http:http_req_id()
+                ,request_id :: kz_http:req_id()
                 ,request_params :: wh_json:object()
                 ,response_code :: ne_binary()
                 ,response_headers :: binaries() | ne_binary()
@@ -245,8 +245,8 @@ handle_cast({'cdr', JObj}, #state{cdr_uri=Url
 
     case kz_http:post(wh_util:to_list(Url), Headers, Body) of
         {'ok', RespCode, RespHeaders, RespBody} ->
-            maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
-            lager:debug("recv ~s from cdr url ~s", [RespCode, Url]);
+            maybe_debug_resp(Debug, Call, integer_to_binary(RespCode), RespHeaders, RespBody),
+            lager:debug("recv ~p from cdr url ~s", [RespCode, Url]);
         {'error', _E} ->
             lager:debug("failed to send CDR: ~p", [_E])
     end,
@@ -326,21 +326,23 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}, #state{request_id=Req
                            }
      ,'hibernate'};
 
-handle_info({'http', {ReqId, {{_, "4"++_=StatusCode, _}, RespHeaders, _}}}
-            ,#state{request_id=ReqId}=State) ->
-    lager:info("recv client failure status code ~s", [StatusCode]),
+handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, _}}}
+            ,#state{request_id=ReqId}=State)
+  when (StatusCode - 400) < 100 ->
+    lager:info("recv client failure status code ~p", [StatusCode]),
     {'noreply', State#state{
                   response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_code = integer_to_binary(StatusCode)
                   ,response_headers=RespHeaders
                  }
     };
-handle_info({'http', {ReqId, {{_, "5"++_=StatusCode, _}, RespHeaders, _}}}
-            ,#state{request_id=ReqId}=State) ->
-    lager:info("recv server failure status code ~s", [StatusCode]),
+handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, _}}}
+            ,#state{request_id=ReqId}=State)
+  when (StatusCode - 500) < 100 ->
+    lager:info("recv server failure status code ~p", [StatusCode]),
     {'noreply', State#state{
                   response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_code = integer_to_binary(StatusCode)
                   ,response_headers=RespHeaders
                  }
     };
@@ -403,7 +405,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec send_req(whapps_call:call(), ne_binary(), http_method(), wh_json:object() | wh_proplist(), boolean()) ->
-                      {'ok', kz_http:http_req_id(), whapps_call:call()} |
+                      {'ok', kz_http:req_id(), whapps_call:call()} |
                       {'stop', whapps_call:call()}.
 send_req(Call, Uri, Method, BaseParams, Debug) when not is_list(BaseParams) ->
     send_req(Call, Uri, Method, wh_json:to_proplist(BaseParams), Debug);
@@ -420,7 +422,7 @@ send_req(Call, Uri, 'post', BaseParams, Debug) ->
     send(UpdatedCall, Uri, 'post', Headers, wh_json:to_querystring(Params), Debug).
 
 -spec send(whapps_call:call(), ne_binary(), http_method(), wh_proplist(), iolist(), boolean()) ->
-                  {'ok', kz_http:http_req_id(), whapps_call:call()} |
+                  {'ok', kz_http:req_id(), whapps_call:call()} |
                   {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
     lager:info("sending req to ~s(~s): ~s", [Uri, Method, iolist_to_binary(ReqBody)]),

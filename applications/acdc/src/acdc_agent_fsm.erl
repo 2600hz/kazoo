@@ -1701,16 +1701,12 @@ notify(Url, 'get', Data) ->
 
 -spec notify(iolist(), [], 'get' | 'post', binary(), wh_proplist()) -> 'ok'.
 notify(Uri, Headers, Method, Body, Opts) ->
-    case kz_http:req(Method
-                     ,wh_util:to_list(Uri)
-                     ,Headers
-                     ,Body
-                     ,[{'connect_timeout', 200}
-                        ,{'timeout', 1000}
-                        | Opts
-                      ]
-                    )
-    of
+    Options = [{'connect_timeout', 200}
+               ,{'timeout', 1000}
+               | Opts
+              ],
+    URI = wh_util:to_list(Uri),
+    case kz_http:req(Method, URI, Headers, Body, Options) of
         {'ok', _Status, _ResponseHeaders, _ResponseBody} ->
             lager:debug("~s req to ~s: ~s", [Method, Uri, _Status]);
         {'error', _E} ->

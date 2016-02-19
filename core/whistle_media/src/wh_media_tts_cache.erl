@@ -42,7 +42,7 @@
           text :: ne_binary()
           ,contents = <<>> :: binary()
           ,status :: 'streaming' | 'ready'
-          ,kz_http_req_id :: kz_http:http_req_id()
+          ,kz_http_req_id :: kz_http:req_id()
           ,reqs :: [{pid(), reference()}]
           ,meta :: wh_json:object()
           ,timer_ref :: reference()
@@ -228,14 +228,14 @@ handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_i
      ,'hibernate'
     };
 
-handle_info({'http', {ReqID, {{_, StatusCode, _}, Hdrs, Contents}}}, #state{kz_http_req_id=ReqID
-                                                                      ,reqs=Reqs
-                                                                      ,timer_ref=TRef
-                                                                     }=State) ->
+handle_info({'http', {ReqID, {{_, _StatusCode, _}, Hdrs, Contents}}}, #state{kz_http_req_id=ReqID
+                                                                             ,reqs=Reqs
+                                                                             ,timer_ref=TRef
+                                                                            }=State) ->
     _ = stop_timer(TRef),
     Res = {wh_json:normalize(wh_json:from_list(kv_to_bin(Hdrs))), Contents},
 
-    lager:debug("finished receiving file contents with status code ~p", [StatusCode]),
+    lager:debug("finished receiving file contents with status code ~p", [_StatusCode]),
     _ = [gen_server:reply(From, Res) || From <- Reqs],
 
     lager:debug("finished receiving file contents"),

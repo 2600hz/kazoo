@@ -279,13 +279,13 @@ make_request(Number, JObj) ->
                      ,get_http_options(Url)
                     )
     of
-        {'ok', "404", _, _} ->
+        {'ok', 404, _, _} ->
             lager:debug("cnam lookup for ~s returned 404", [Number]),
             'undefined';
         {'ok', Status, _, <<>>} ->
             lager:debug("cnam lookup for ~s returned as ~p and empty body", [Number, Status]),
             'undefined';
-        {'ok', Status, _, ResponseBody} when size (ResponseBody) > 18 ->
+        {'ok', Status, _, ResponseBody} when size(ResponseBody) > 18 ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             wh_util:truncate_right_binary(ResponseBody, 18);
         {'ok', Status, _, ResponseBody} ->
