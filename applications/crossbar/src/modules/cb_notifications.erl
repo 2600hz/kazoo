@@ -316,7 +316,6 @@ put(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     case cb_context:req_files(Context) of
         [] ->
@@ -352,20 +351,20 @@ set_system_macros(Context) ->
             Context
     end.
 
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?CUSTOMER_UPDATE, ?MESSAGE) ->
-    case
-        whapps_util:amqp_pool_request(
-          build_customer_update_payload(Context)
-          ,fun wapi_notifications:publish_customer_update/1
-          ,fun wapi_notifications:customer_update_v/1
-        )
+    case wh_amqp_worker:call(build_customer_update_payload(Context)
+                             ,fun wapi_notifications:publish_customer_update/1
+                             ,fun wapi_notifications:customer_update_v/1
+                            )
     of
         {'ok', _Resp} ->
-            lager:debug("published customer_update notification");
+            lager:debug("published customer_update notification"),
+            Context;
         {'error', _E} ->
-            lager:debug("failed to publish_customer update notification: ~p", [_E])
-    end,
-    Context;
+            lager:debug("failed to publish_customer update notification: ~p", [_E]),
+            crossbar_util:response('error', <<"Failed to send message">>, Context)
+    end;
 
 post(Context, Id, ?PREVIEW) ->
     Notification = cb_context:doc(Context),
@@ -405,7 +404,7 @@ build_customer_update_payload(Context) ->
        ,{<<"CC">>, cb_context:req_value(Context, <<"cc">>)}
        ,{<<"BCC">>, cb_context:req_value(Context, <<"bcc">>)}
        ,{<<"HTML">>, cb_context:req_value(Context, <<"html">>)}
-       ,{<<"Plain">>, cb_context:req_value(Context, <<"plain">>)}
+       ,{<<"Text">>, cb_context:req_value(Context, <<"plain">>)}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
