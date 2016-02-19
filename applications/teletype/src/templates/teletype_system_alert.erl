@@ -143,9 +143,9 @@ handle_req_as_http(JObj, 'undefined', UseEmail) ->
 handle_req_as_http(JObj, Url, UseEmail) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = wh_json:encode(JObj),
-
     case kz_http:post(wh_util:to_list(Url), Headers, Encoded) of
-        {'ok', "2" ++ _, _ResponseHeaders, _ResponseBody} ->
+        {'ok', _2xx, _ResponseHeaders, _ResponseBody}
+          when (_2xx - 200) < 100 -> %% ie: match "2"++_
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);
         _Error ->
             lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),

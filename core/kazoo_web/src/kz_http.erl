@@ -20,40 +20,47 @@
          ,handle_response/1
         ]).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include("kz_web.hrl").
 
--define(HTTP_OPTIONS, [timeout, connect_timeout, ssl
-                       ,essl, autoredirect, proxy_auth
-                       ,version, relaxed, url_encode]).
--define(OPTIONS, [sync, stream, body_format
-                  ,full_result , headers_as_is, socket_opts
-                  ,receiver, ipv6_host_with_brackets]).
+-type method() :: 'delete' |
+                  'get' |
+                  'head' |
+                  'options' |
+                  'post' |
+                  'put' |
+                  'trace'.
 
 -type http_body() :: string() | binary().
--type httpc_result() :: {term(), wh_proplist(), http_body()} |
-                        {string(), string() |binary()} |
+
+-type httpc_result() :: {any(), wh_proplist(), http_body()} |
+                        {string(), string() | binary()} |
                         reference().
--type httpc_ret() :: {ok, httpc_result()} |
-                     {ok, saved_to_file} |
-                     {error, {connect_failed, term()} | {send_failed, term()} | term()}.
+
+-type httpc_ret() :: {'ok', httpc_result()} |
+                     {'ok', 'saved_to_file'} |
+                     {'error', {'connect_failed', any()} |
+                               {'send_failed', any()} |
+                               any()
+                     }.
+
 -type httpc_request() :: {string(), wh_proplist()} |
                          {string(), wh_proplist(), string(), http_body()}.
 
--type http_req_id() :: {'http_req_id', reference()} | {'ok', reference()} | reference().
--export_type([http_req_id/0]).
+-type http_req_id() :: {'http_req_id', reference()} |
+                       {'ok', reference()} |
+                       reference().
 
--type http_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
-                       {'ok', 'saved_to_file'} |
-                       {'error', any()} |
-                       http_req_id().
+-type http_ret() :: {'ok', pos_integer(), wh_proplist(), string() | binary()} |
+                    {'ok', 'saved_to_file'} |
+                    {'error', any()} |
+                    http_req_id().
+
 -export_type([http_ret/0]).
+-export_type([http_req_id/0]).
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Send synchronous request
-%% @end
+%% @doc Send synchronous request
 %%--------------------------------------------------------------------
 -spec get(string()) -> http_ret().
 -spec get(string(), wh_proplist()) -> http_ret().
@@ -136,15 +143,13 @@ put(Url, Headers, Body, Options) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Send a synchronous HTTP request
-%% @end
+%% @doc Send a synchronous HTTP request
 %%--------------------------------------------------------------------
 -spec req(string()) -> http_ret().
--spec req(atom(), string()) -> http_ret().
--spec req(atom(), string(), wh_proplist()) -> http_ret().
--spec req(atom(), string(), wh_proplist(), http_body()) -> http_ret().
--spec req(atom(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+-spec req(method(), string()) -> http_ret().
+-spec req(method(), string(), wh_proplist()) -> http_ret().
+-spec req(method(), string(), wh_proplist(), http_body()) -> http_ret().
+-spec req(method(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
 req(Url) ->
     req('get', Url, [], [], []).
 req(Method, Url) ->
@@ -160,15 +165,13 @@ req(Method, Url, Hdrs, Body, Opts) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Send a asynchronous HTTP request
-%% @end
+%% @doc Send an asynchronous HTTP request
 %%--------------------------------------------------------------------
 -spec async_req(pid(), string()) -> http_ret().
--spec async_req(pid(), atom(), string()) -> http_ret().
--spec async_req(pid(), atom(), string(), wh_proplist()) -> http_ret().
--spec async_req(pid(), atom(), string(), wh_proplist(), http_body()) -> http_ret().
--spec async_req(pid(), atom(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
+-spec async_req(pid(), method(), string()) -> http_ret().
+-spec async_req(pid(), method(), string(), wh_proplist()) -> http_ret().
+-spec async_req(pid(), method(), string(), wh_proplist(), http_body()) -> http_ret().
+-spec async_req(pid(), method(), string(), wh_proplist(), http_body(), wh_proplist()) -> http_ret().
 async_req(Pid, Url) ->
     async_req(Pid, 'get', Url, [], [], []).
 async_req(Pid, Method, Url) ->
@@ -180,14 +183,18 @@ async_req(Pid, Method, Url, Headers, Body) ->
 async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
     {Headers, Options} = maybe_basic_auth(Hdrs, Opts),
     Request = build_request(Method, Url, Headers, Body),
-    execute_request(Method, Request, [{receiver, Pid}, {sync, false}, {stream, self} | Options]).
+    NewOptions = [{'receiver', Pid}
+                  ,{'sync', 'false'}
+                  ,{'stream', 'self'}
+                  | Options
+                 ],
+    execute_request(Method, Request, NewOptions).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Send request using httpc and handle its response
-%% @end
 %%--------------------------------------------------------------------
--spec execute_request(atom(), tuple(), wh_proplist()) -> http_ret().
+-spec execute_request(method(), tuple(), wh_proplist()) -> http_ret().
 execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Opts1 = get_options(?OPTIONS, Opts),
@@ -199,66 +206,71 @@ execute_request(Method, Request, Opts) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Response to caller in a proper manner
-%% @end
+%% @doc Response to caller in a proper manner
 %%--------------------------------------------------------------------
 -spec handle_response(httpc_ret()) -> http_ret().
 handle_response({'ok', 'saved_to_file'}) ->
     {'ok', 'saved_to_file'};
-handle_response({'ok', ReqId}) when is_reference(ReqId) ->
+handle_response({'ok', ReqId})
+  when is_reference(ReqId) ->
     {'http_req_id', ReqId};
-handle_response({'ok', {{_, StatusCode, _}, Headers, Body}}) ->
+handle_response({'ok', {{_, StatusCode, _}, Headers, Body}})
+  when is_integer(StatusCode) ->
     {'ok', StatusCode, Headers, Body};
 handle_response({'error', 'timeout'}) ->
     lager:debug("connection timeout"),
     {'error', 'timeout'};
-handle_response({'error', {failed_connect,[{_, Address}, {_, _, nxdomain}]}}) ->
-    lager:debug("non existent domain ~p", Address),
-    {'error', {failed_connect, nxdomain}};
-handle_response({'error', {failed_connect,[{_, Address}, {_, _, econnrefused}]}}) ->
-    lager:debug("connection refused to ~p", Address),
-    {'error', {failed_connect, econnrefused}};
-handle_response({'error', {malformed_url, _, Url}}) ->
+handle_response({'EXIT', {Error,_Trace}}) ->
+    lager:debug("caught EXIT ~p: ~p", [Error, _Trace]),
+    {'error', Error};
+handle_response({'error', {'failed_connect',[{_, _Address}, {_, _, 'nxdomain'}]}}) ->
+    lager:debug("non existent domain ~p", [_Address]),
+    {'error', {'failed_connect', 'nxdomain'}};
+handle_response({'error', {'failed_connect',[{_, _Address}, {_, _, 'econnrefused'}]}}) ->
+    lager:debug("connection refused to ~p", [_Address]),
+    {'error', {'failed_connect', 'econnrefused'}};
+handle_response({'error', {'malformed_url', _, Url}}) ->
     lager:debug("failed to parse the URL ~p", Url),
-    {'error', {malformed_url, Url}};
+    {'error', {'malformed_url', Url}};
 handle_response({'error', Error}) ->
     lager:debug("request failed with ~p", [Error]),
-    Error.
+    {'error', Error}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Build <code>Authorization</code> header using <code>basic_auth</code> option
-%% @end
 %%--------------------------------------------------------------------
 -spec maybe_basic_auth(wh_proplist(), wh_proplist()) -> {wh_proplist(), wh_proplist()}.
 maybe_basic_auth(Headers, Options) ->
     case props:get_value('basic_auth', Options) of
         'undefined' -> {Headers, Options};
         {Username, Password} ->
-            BasicAuth = {"Authorization"
-                         , "Basic " ++ base64:encode_to_string(<<Username/binary, ":", Password/binary>>)
-                        },
-            {[BasicAuth | Headers], props:delete('basic_auth', Options)}
+            AuthString = "Basic " ++ base64:encode_to_string(<<Username/binary, ":", Password/binary>>),
+            BasicAuth = {"Authorization", AuthString},
+            {[BasicAuth|Headers], props:delete('basic_auth', Options)}
     end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Build httpc request argument based on method
-%% @end
 %%--------------------------------------------------------------------
--spec build_request(atom(), string(), wh_proplist(), http_body()) -> httpc_request().
-build_request(Method, Url, Headers, _Body) when (Method =:= 'options') orelse
-                                                (Method =:= 'get') orelse
-                                                (Method =:= 'head') orelse
-                                                (Method =:= 'trace') ->
+-spec build_request(method(), string(), wh_proplist(), http_body()) -> httpc_request().
+build_request(Method, Url, Headers, _Body) when (Method == 'options');
+                                                (Method == 'get');
+                                                (Method == 'head');
+                                                (Method == 'trace') ->
     {Url, Headers};
-build_request(Method, Url, Headers, Body) when (Method =:= 'post') orelse
-                                               (Method =:= 'put') orelse
-                                               (Method =:= 'delete') ->
-    ContentType = case props:get_value("Content-Type", Headers) of
-                      'undefined' -> [];
-                      C -> C
-                  end,
+build_request(Method, Url, Headers, Body) when (Method == 'post');
+                                               (Method == 'put');
+                                               (Method == 'delete') ->
+    ContentType = props:get_first_defined(["Content-Type"
+                                           ,"content-type"
+                                           ,'content_type'
+                                           ,<<"Content-Type">>
+                                           ,<<"content-type">>
+                                           ,<<"content_type">>
+                                          ]
+                                          ,Headers
+                                          ,""),
     {Url, Headers, ContentType, Body}.
 
 %%--------------------------------------------------------------------
@@ -271,5 +283,3 @@ build_request(Method, Url, Headers, Body) when (Method =:= 'post') orelse
 -spec get_options(list(), wh_proplist()) -> wh_proplist().
 get_options(Type, Options) ->
     [{K, V} || {K, V} <- Options, lists:member(K, Type)].
-
-

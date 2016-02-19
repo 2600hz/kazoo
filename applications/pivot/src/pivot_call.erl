@@ -245,8 +245,8 @@ handle_cast({'cdr', JObj}, #state{cdr_uri=Url
 
     case kz_http:post(wh_util:to_list(Url), Headers, Body) of
         {'ok', RespCode, RespHeaders, RespBody} ->
-            maybe_debug_resp(Debug, Call, RespCode, RespHeaders, RespBody),
-            lager:debug("recv ~s from cdr url ~s", [RespCode, Url]);
+            maybe_debug_resp(Debug, Call, integer_to_binary(RespCode), RespHeaders, RespBody),
+            lager:debug("recv ~p from cdr url ~s", [RespCode, Url]);
         {'error', _E} ->
             lager:debug("failed to send CDR: ~p", [_E])
     end,
@@ -326,21 +326,23 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}, #state{request_id=Req
                            }
      ,'hibernate'};
 
-handle_info({'http', {ReqId, {{_, "4"++_=StatusCode, _}, RespHeaders, _}}}
-            ,#state{request_id=ReqId}=State) ->
-    lager:info("recv client failure status code ~s", [StatusCode]),
+handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, _}}}
+            ,#state{request_id=ReqId}=State)
+  when (StatusCode - 400) < 100 ->
+    lager:info("recv client failure status code ~p", [StatusCode]),
     {'noreply', State#state{
                   response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_code = integer_to_binary(StatusCode)
                   ,response_headers=RespHeaders
                  }
     };
-handle_info({'http', {ReqId, {{_, "5"++_=StatusCode, _}, RespHeaders, _}}}
-            ,#state{request_id=ReqId}=State) ->
-    lager:info("recv server failure status code ~s", [StatusCode]),
+handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, _}}}
+            ,#state{request_id=ReqId}=State)
+  when (StatusCode - 500) < 100 ->
+    lager:info("recv server failure status code ~p", [StatusCode]),
     {'noreply', State#state{
                   response_content_type=props:get_value(<<"content-type">>, RespHeaders)
-                  ,response_code=wh_util:to_binary(StatusCode)
+                  ,response_code = integer_to_binary(StatusCode)
                   ,response_headers=RespHeaders
                  }
     };

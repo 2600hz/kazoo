@@ -296,7 +296,7 @@ send_request(JObj, Url) ->
     Data = wh_json:encode(wh_json:normalize_jobj(JObj, Remove, Replace)),
 
     case kz_http:post(Uri, Headers, Data) of
-        {'ok', "200", _Headers, _Resp} ->
+        {'ok', 200, _Headers, _Resp} ->
             lager:debug("submitted_port_request successfully sent");
         _Other ->
             lager:error("failed to send submitted_port_request ~p", [_Other]),
@@ -341,7 +341,7 @@ send_attachement(Url, Id, Name, Options, Attachment) ->
     Uri =wh_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
 
     case kz_http:post(Uri, Headers, Attachment) of
-        {'ok', "200", _Headers, _Resp} ->
+        {'ok', 200, _Headers, _Resp} ->
             lager:debug("attachment ~s for submitted_port_request successfully sent", [Name]);
         _Other ->
             lager:error("failed to send attachment ~s for submitted_port_request ~p", [Name, _Other]),

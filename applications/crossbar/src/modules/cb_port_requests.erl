@@ -1601,7 +1601,7 @@ create_qr_code(AccountId, PortRequestId) ->
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
     case kz_http:get(wh_util:to_list(Url)) of
-        {'ok', "200", _RespHeaders, RespBody} ->
+        {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
             [{<<"image">>, base64:encode(RespBody)}];
         _E ->

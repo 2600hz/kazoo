@@ -234,7 +234,8 @@ refresh_token(#oauth_app{name=ClientId
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, wh_util:to_list(V)], "=") ] end, Fields)),"&"),
     case kz_http:post(wh_util:to_list(URL), Headers, Body) of
-        {'ok', 200, _RespHeaders, RespXML} -> {'ok', wh_json:decode(RespXML)};
+        {'ok', 200, _RespHeaders, RespXML} ->
+            {'ok', wh_json:decode(RespXML)};
         Else ->
             lager:debug("unable to get new oauth token: ~p", [Else]),
             {'error', Else}

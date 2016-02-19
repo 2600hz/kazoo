@@ -171,37 +171,27 @@ fire_hook(_JObj, Hook, _URI, _Method, 0) ->
     lager:debug("retries exhausted for ~s", [_URI]);
 fire_hook(JObj, Hook, URI, 'get', Retries) ->
     lager:debug("sending event via 'get'(~b): ~s", [Retries, URI]),
-    fire_hook(JObj
-              ,Hook
-              ,URI
-              ,'get'
-              ,Retries
-              ,kz_http:get(URI ++ [$?|wh_json:to_querystring(JObj)], ?HTTP_REQ_HEADERS(Hook), ?HTTP_OPTS)
-             );
+    Fired = kz_http:get(URI ++ [$?|wh_json:to_querystring(JObj)], ?HTTP_REQ_HEADERS(Hook), ?HTTP_OPTS),
+    fire_hook(JObj, Hook, URI, 'get', Retries, Fired);
 fire_hook(JObj, Hook, URI, 'post', Retries) ->
     lager:debug("sending event via 'post'(~b): ~s", [Retries, URI]),
+    Fired = kz_http:post(URI
+                        ,[{"Content-Type", "application/x-www-form-urlencoded"}
+                          | ?HTTP_REQ_HEADERS(Hook)
+                         ]
+                        ,wh_json:to_querystring(JObj)
+                        ,?HTTP_OPTS
+                        ),
 
-    fire_hook(JObj
-              ,Hook
-              ,URI
-              ,'post'
-              ,Retries
-              ,kz_http:post(URI
-                            ,[{"Content-Type", "application/x-www-form-urlencoded"}
-                               | ?HTTP_REQ_HEADERS(Hook)
-                             ]
-                            ,wh_json:to_querystring(JObj)
-                            ,?HTTP_OPTS
-                           )
-             ).
+    fire_hook(JObj, Hook, URI, 'post', Retries, Fired).
 
 -spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), kz_http:http_ret()) -> 'ok'.
-fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
+fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', 200, _, _RespBody}) ->
     lager:debug("sent hook call event successfully"),
     successful_hook(Hook);
 fire_hook(_JObj, Hook, _URI, _Method, Retries, {'ok', RespCode, _, RespBody}) ->
-    _ = failed_hook(Hook, Retries, RespCode, RespBody),
-    lager:debug("non-200 response code: ~s on account ~s", [RespCode, Hook#webhook.account_id]);
+    _ = failed_hook(Hook, Retries, integer_to_binary(RespCode), RespBody),
+    lager:debug("non-200 response code: ~p on account ~s", [RespCode, Hook#webhook.account_id]);
 fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
     lager:debug("failed to fire hook: ~p", [E]),
     _ = failed_hook(Hook, Retries, E),
@@ -230,7 +220,7 @@ successful_hook(#webhook{hook_id=HookId
 
 -spec failed_hook(webhook()) -> 'ok'.
 -spec failed_hook(webhook(), hook_retries(), any()) -> 'ok'.
--spec failed_hook(webhook(), hook_retries(), string(), binary()) -> 'ok'.
+-spec failed_hook(webhook(), hook_retries(), ne_binary(), binary()) -> 'ok'.
 failed_hook(#webhook{hook_id=HookId
                      ,account_id=AccountId
                     }) ->
@@ -254,9 +244,9 @@ failed_hook(#webhook{hook_id=HookId
                 [{<<"hook_id">>, HookId}
                  ,{<<"result">>, <<"failure">>}
                  ,{<<"reason">>, <<"bad response code">>}
-                 ,{<<"response_code">>, wh_util:to_binary(RespCode)}
-                 ,{<<"response_body">>, wh_util:to_binary(RespBody)}
-                 ,{<<"retries_left">>, Retries-1}
+                 ,{<<"response_code">>, RespCode}
+                 ,{<<"response_body">>, RespBody}
+                 ,{<<"retries_left">>, Retries - 1}
                 ]),
     save_attempt(Attempt, AccountId).
 
@@ -278,7 +268,7 @@ failed_hook(#webhook{hook_id=HookId
                 [{<<"hook_id">>, HookId}
                  ,{<<"result">>, <<"failure">>}
                  ,{<<"reason">>, <<"kazoo http client error">>}
-                 ,{<<"retries_left">>, Retries-1}
+                 ,{<<"retries_left">>, Retries - 1}
                  ,{<<"client_error">>, Error}
                 ]),
     save_attempt(Attempt, AccountId).

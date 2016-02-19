@@ -215,28 +215,28 @@ emergency_provisioning_request(Verb, Props) ->
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
     case kz_http:post(wh_util:to_list(URL), Headers, unicode:characters_to_binary(Body), HTTPOptions) of
-        {'ok', "401", _, _Response} ->
+        {'ok', 401, _, _Response} ->
             ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),
             {'error', 'authentication'};
-        {'ok', "403", _, _Response} ->
+        {'ok', 403, _, _Response} ->
             ?DASH_DEBUG("Response:~n403~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 403 (unauthorized)"),
             {'error', 'authorization'};
-        {'ok', "404", _, _Response} ->
+        {'ok', 404, _, _Response} ->
             ?DASH_DEBUG("Response:~n404~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 404 (not found)"),
             {'error', 'not_found'};
-        {'ok', "500", _, _Response} ->
+        {'ok', 500, _, _Response} ->
             ?DASH_DEBUG("Response:~n500~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 500 (server error)"),
             {'error', 'server_error'};
-        {'ok', "503", _, _Response} ->
+        {'ok', 503, _, _Response} ->
             ?DASH_DEBUG("Response:~n503~n~s~n", [_Response]),
             lager:debug("dash e911 request error: 503"),
             {'error', 'server_error'};
-        {'ok', Code, _, Response} ->
-            ?DASH_DEBUG("Response:~n~p~n~s~n", [Code, Response]),
+        {'ok', _Code, _, Response} ->
+            ?DASH_DEBUG("Response:~n~p~n~s~n", [_Code, Response]),
             lager:debug("received response from dash e911"),
             try xmerl_scan:string(Response) of
                 {Xml, _} -> {'ok', Xml}
