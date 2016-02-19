@@ -481,7 +481,7 @@ attempt_to_acquire_job(JObj, _Q, Status) ->
 
 -spec release_failed_job(atom(), any(), wh_json:object()) -> 'failure'.
 release_failed_job('fetch_failed', Status, JObj) ->
-    Msg = wh_util:to_binary(io_lib:format("could not retrieve file, http response ~p", [Status])),
+    Msg = <<"could not retrieve file, http response ~p", (integer_to_binary(Status))/binary>>,
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 0}
               ,{<<"result_text">>, Msg}
@@ -776,7 +776,7 @@ fetch_document(JObj) ->
     end.
 
 -spec fetch_document_from_attachment(wh_json:object(), ne_binaries()) ->
-                                            {'ok', string(), wh_proplist(), ne_binary()}.
+                                            {'ok', pos_integer(), wh_proplist(), ne_binary()}.
 fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     Extension = filename:extension(AttachmentName),
     DefaultContentType = kz_mime:from_extension(Extension),
@@ -786,9 +786,7 @@ fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
     {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES_DB, wh_doc:id(JObj), AttachmentName),
     {'ok', 200, Props, Contents}.
 
--spec fetch_document_from_url(wh_json:object()) ->
-                                     {'ok', string(), wh_proplist(), ne_binary()} |
-                                     {'error', any()}.
+-spec fetch_document_from_url(wh_json:object()) -> kz_http:ret().
 fetch_document_from_url(JObj) ->
     FetchRequest = wh_json:get_value(<<"document">>, JObj),
     Url = wh_json:get_string_value(<<"url">>, FetchRequest),
