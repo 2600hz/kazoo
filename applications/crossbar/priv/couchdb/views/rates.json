@@ -3,7 +3,7 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc._id, {\"name\":doc.rate_name, \"cost\":doc.rate_cost, \"prefix\":doc.prefix, \"description\":doc.description, \"surcharge\":doc.rate_surcharge, \"carrier\":doc.carrier}); }"
+            "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc._id, {\"name\":doc.rate_name, \"cost\":doc.rate_cost, \"prefix\":doc.prefix, \"description\":doc.description, \"surcharge\":doc.rate_surcharge, \"carrier\":doc.carrier, \"id\":doc._id}); }"
         },
         "lookup": {
             "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(parseInt(doc.prefix), null); }"
