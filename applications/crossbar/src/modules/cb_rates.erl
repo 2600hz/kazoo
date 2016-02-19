@@ -238,9 +238,38 @@ validate_patch(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"rate">>));
+    Doc = lists:foldl(fun doc_updates/2
+                      ,cb_context:doc(Context)
+                      ,[{fun wh_doc:set_type/2, <<"rate">>}
+                        ,fun ensure_routes_set/1
+                       ]
+                     ),
+    cb_context:set_doc(Context, Doc);
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
+
+-spec doc_updates({fun(), ne_binary()} | fun(), wh_json:object()) ->
+                         wh_json:object().
+doc_updates({Fun, Value}, Doc) when is_function(Fun, 2) ->
+    Fun(Doc, Value);
+doc_updates(Fun, Doc) when is_function(Fun, 1) ->
+    Fun(Doc).
+
+-spec ensure_routes_set(wh_json:object()) -> wh_json:object().
+-spec ensure_routes_set(wh_json:object(), api_binaries()) -> wh_json:object().
+ensure_routes_set(Doc) ->
+    ensure_routes_set(Doc, wh_json:get_value(<<"routes">>, Doc)).
+
+ensure_routes_set(Doc, 'undefined') ->
+    add_default_route(Doc, wh_json:get_value(<<"prefix">>, Doc));
+ensure_routes_set(Doc, []) ->
+    add_default_route(Doc, wh_json:get_value(<<"prefix">>, Doc));
+ensure_routes_set(Doc, _) ->
+    Doc.
+
+-spec add_default_route(wh_json:object(), ne_binary()) -> wh_json:object().
+add_default_route(Doc, Prefix) ->
+    wh_json:set_value(<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>], Doc).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -513,20 +542,21 @@ save_processed_rates(Context, Count) ->
 -spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->
     case wh_amqp_worker:call([{<<"To-DID">>, Phonenumber}
-                              ,{<<"Send-Empty">>, 'true'}
+                             ,{<<"Send-Empty">>, 'true'}
+                             ,{<<"Msg-ID">>, cb_context:req_id(Context)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]
-                             ,fun wapi_rate:publish_req/1
-                             ,fun wapi_rate:resp_v/1
-                             ,10 * ?MILLISECONDS_IN_SECOND
+                            ,fun wapi_rate:publish_req/1
+                            ,fun wapi_rate:resp_v/1
+                            ,3 * ?MILLISECONDS_IN_SECOND
                             )
     of
         {'ok', Rate} ->
-            lager:debug("found rate for ~s", [Phonenumber]),
+            lager:debug("found rate for ~s: ~p", [Phonenumber, Rate]),
             maybe_handle_rate(Phonenumber, Context, Rate);
         _E ->
             lager:debug("failed to query for number ~s: ~p", [Phonenumber, _E]),
-            cb_context:add_system_error('No rate found for this number', Context)
+            cb_context:add_system_error(<<"No rate found for this number">>, Context)
     end.
 
 -spec maybe_handle_rate(ne_binary(), cb_context:context(), wh_json:object()) ->
@@ -535,7 +565,7 @@ maybe_handle_rate(Phonenumber, Context, Rate) ->
     case wh_json:get_value(<<"Base-Cost">>, Rate) of
         'undefined' ->
             lager:debug("empty rate response for ~s", [Phonenumber]),
-            cb_context:add_system_error('No rate found for this number', Context);
+            cb_context:add_system_error(<<"No rate found for this number">>, Context);
         _BaseCost ->
             normalize_view(wh_json:set_value(<<"E164-Number">>, Phonenumber, Rate), Context)
     end.
