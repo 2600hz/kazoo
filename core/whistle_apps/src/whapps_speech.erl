@@ -38,7 +38,7 @@
 
 -type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
 -type provider_return() :: {'error', provider_errors()} |
-                           kz_http:http_ret().
+                           kz_http:ret().
 -type create_resp() :: provider_return() |
                        {'ok', ne_binary(), ne_binary()} | %% {'ok', ContentType, BinaryData}
                        {'error', 'tts_provider_failure', binary()}.
@@ -335,7 +335,7 @@ asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Opts) ->
 asr_commands(_, _, _, _, _, _) ->
     {'error', 'unknown_provider'}.
 
--spec create_response(ne_binary(), kz_http:http_ret()) ->
+-spec create_response(ne_binary(), kz_http:ret()) ->
                              kz_http:http_req_id() |
                              {'ok', ne_binary(), ne_binary()} |
                              {'error', 'tts_provider_failure', binary()}.

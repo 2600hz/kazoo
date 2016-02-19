@@ -526,7 +526,7 @@ device_payload(JObj) ->
       ]
      ).
 
--spec handle_resp(kz_http:http_ret(), ne_binary(), ne_binary()) -> 'ok'.
+-spec handle_resp(kz_http:ret(), ne_binary(), ne_binary()) -> 'ok'.
 handle_resp({'ok', 200, _, Resp}, _AccountId, _AuthToken) ->
     lager:debug("provisioning success ~s", [decode(Resp)]);
 handle_resp({'ok', Code, _, Resp}, AccountId, AuthToken) ->

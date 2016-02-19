@@ -768,7 +768,7 @@ elapsed_time(JObj) ->
     Created = wh_doc:created(JObj, Now),
     Now - Created.
 
--spec fetch_document(wh_json:object()) -> kz_http:http_ret().
+-spec fetch_document(wh_json:object()) -> kz_http:ret().
 fetch_document(JObj) ->
     case wh_doc:attachment_names(JObj) of
         [] -> fetch_document_from_url(JObj);
