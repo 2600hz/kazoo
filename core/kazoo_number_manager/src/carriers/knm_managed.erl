@@ -132,7 +132,7 @@ generate_numbers(AccountId, Number, Quantity)
   when Quantity > 0
        andalso is_integer(Number)
        andalso is_integer(Quantity) ->
-    save_doc(AccountId, Number),
+    {'ok', _JObj} = save_doc(AccountId, Number),
     generate_numbers(AccountId, Number+1, Quantity-1).
 
 -spec import_numbers(ne_binary(), ne_binaries()) ->
