@@ -201,10 +201,6 @@ validate(Context, ?FIX) ->
         cb_context:set_resp_status(Context, 'success')
         ,wh_json:new()
     );
-validate(Context, ?PREFIX) ->
-    find_prefix(Context);
-validate(Context, ?COLLECTION) ->
-    validate_collection(Context, cb_context:req_verb(Context));
 validate(Context, ?CLASSIFIERS) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                              ,knm_converters:available_classifiers()
@@ -218,7 +214,6 @@ validate(Context, ?CLASSIFIERS, Number) ->
     maybe_classify(Context, Number);
 validate(Context, _Number, ?ACTIVATE) ->
     cb_context:validate_request_data(?KNM_NUMBER, Context).
-
 
 %%--------------------------------------------------------------------
 %% @public
