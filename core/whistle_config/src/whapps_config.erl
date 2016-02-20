@@ -502,7 +502,7 @@ update_pvt_fields(Category, JObj, PvtFields) ->
 %% @doc Lock configuration document
 %%-----------------------------------------------------------------------------
 -spec lock_db() -> 'ok'.
--spec lock_db(ne_binary()) -> 'ok'.
+-spec lock_db(text() | boolean()) -> 'ok'.
 lock_db() ->
     lock_db('true').
 
