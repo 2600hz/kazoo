@@ -283,11 +283,11 @@ get(Category, Keys, Default, Node) when not is_binary(Node) ->
 get(Category, Keys, Default, Node) ->
     case get_category(Category) of
         {'ok', JObj} -> get_value(Category, Node, Keys, Default, JObj);
-        {'error', 'timeout'} ->
-            Default;
-        {'error', _} ->
+        {'error', 'not_found'} ->
             lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             _ = set(Category, Keys, Default),
+            Default;
+        {'error', _} ->
             Default
     end.
 
