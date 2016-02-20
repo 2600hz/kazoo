@@ -329,6 +329,7 @@ setters(Number, Routines) ->
     end.
 
 -type set_function() :: fun((knm_phone_number()) -> setter_acc()) |
+                        fun((knm_phone_number(), V) -> setter_acc()) |
                         {fun((knm_phone_number(), V) -> setter_acc()), V} |
                         {fun((knm_phone_number(), K, V) -> setter_acc()), [K | V,...]}.
 -type set_functions() :: [set_function()].
