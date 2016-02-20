@@ -286,8 +286,6 @@ get(Category, Keys, Default, Node) ->
         {'error', 'not_found'} ->
             lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             _ = set(Category, Keys, Default),
-            Default;
-        {'error', _} ->
             Default
     end.
 
