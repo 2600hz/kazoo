@@ -181,7 +181,7 @@ crawl_number_db(Db) ->
 
 -spec crawl_number_db(ne_binary(), wh_proplist()) -> 'ok'.
 crawl_number_db(Db, Options) ->
-    case couch_mgr:all_docs(Db, Options) of
+    case kz_datamgr:all_docs(Db, Options) of
         {'error', _E} ->
             lager:debug("failed to crawl number db ~s: ~p", [Db, _E]);
         {'ok', []} ->
@@ -210,7 +210,7 @@ crawl_number_docs(Db, Docs) ->
 -spec number(ne_binary(), ne_binary()) -> wnm_number:wnm_number() | 'not_found'.
 number(_Db, <<"_design/", _/binary>>) -> 'not_found';
 number(Db, Number) ->
-    case couch_mgr:open_doc(Db, Number) of
+    case kz_datamgr:open_doc(Db, Number) of
         {'ok', JObj} -> wnm_number:json_to_record(JObj, 'false');
         {'error', E} ->
             lager:debug("error getting document for number ~s in db ~s : ~p", [Number, Db, E]),

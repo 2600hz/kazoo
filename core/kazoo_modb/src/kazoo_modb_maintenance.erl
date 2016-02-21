@@ -66,7 +66,7 @@ delete_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountModb) ->
     delete_modb(wh_util:format_account_db(AccountModb));
 delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb) ->
     'ok' = couch_util:archive(AccountModb),
-    _Deleted = couch_mgr:db_delete(AccountModb),
+    _Deleted = kz_datamgr:db_delete(AccountModb),
     io:format("    deleted: ~p~n", [_Deleted]),
     timer:sleep(5 * ?MILLISECONDS_IN_SECOND).
 

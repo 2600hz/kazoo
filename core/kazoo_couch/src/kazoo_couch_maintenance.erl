@@ -39,15 +39,15 @@
 -spec flush(ne_binary()) -> 'ok'.
 -spec flush(ne_binary(), ne_binary()) -> 'ok'.
 flush() ->
-    _ = couch_mgr:flush_cache_docs(),
+    _ = kz_datamgr:flush_cache_docs(),
     io:format("flushed all cached docs from Couch~n").
 
 flush(Account) ->
-    _ = couch_mgr:flush_cache_docs(wh_util:format_account_id(Account, 'encoded')),
+    _ = kz_datamgr:flush_cache_docs(wh_util:format_account_id(Account, 'encoded')),
     io:format("flushed all docs cached for account ~s~n", [Account]).
 
 flush(Account, DocId) ->
-    _ = couch_mgr:flush_cache_doc(wh_util:format_account_id(Account, 'encoded'), DocId),
+    _ = kz_datamgr:flush_cache_doc(wh_util:format_account_id(Account, 'encoded'), DocId),
     io:format("flushed cached doc ~s for account ~s~n", [DocId, Account]).
 
 start_auto_compaction() ->
@@ -118,7 +118,7 @@ change_api_url(AppName, ApiUrl) ->
 change_api_url(AppName, ApiUrl, Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
 
-    _ = case couch_mgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
+    _ = case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
             {'ok', JObjs} ->
                 io:format("checking users in account ~s~n", [Account]),
                 _ = [maybe_update_user_urls(AppName, ApiUrl, AccountDb, wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
@@ -141,7 +141,7 @@ maybe_update_user_urls(AppName, ApiUrl, AccountDb, UserJObj) ->
                        ]
                      ),
             {'ok', _} =
-                couch_mgr:ensure_saved(AccountDb
+                kz_datamgr:ensure_saved(AccountDb
                                        ,wh_json:set_value([<<"apps">>, AppName, <<"api_url">>], ApiUrl, UserJObj)
                                       ),
             'ok'

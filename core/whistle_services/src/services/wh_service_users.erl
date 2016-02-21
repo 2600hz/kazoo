@@ -28,7 +28,7 @@ reconcile(Services) ->
     ViewOptions = ['reduce'
                    ,'group'
                   ],
-    case couch_mgr:get_results(AccountDb, <<"services/users">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"services/users">>, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to get current users in service: ~p", [_R]),
             Services;

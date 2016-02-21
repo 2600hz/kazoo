@@ -90,7 +90,7 @@ maybe_find_attachment(Db, Id) ->
                                          {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
                                          {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment_in_db(Db, Id) ->
-    case couch_mgr:open_cache_doc(Db, Id, [{'cache_failures', ['not_found']}]) of
+    case kz_datamgr:open_cache_doc(Db, Id, [{'cache_failures', ['not_found']}]) of
         {'error', _R} ->
             lager:debug("unable to open media doc ~s in ~s: ~p", [Id, Db, _R]),
             {'error', 'not_found'};

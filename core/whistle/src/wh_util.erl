@@ -478,10 +478,10 @@ set_allow_number_additions(Account, IsAllowed) ->
 -spec account_update(ne_binary(), function()) -> 'ok' | {'error', any()}.
 account_update(AccountJObj) ->
     AccountDb = wh_doc:account_db(AccountJObj),
-    case couch_mgr:ensure_saved(AccountDb, AccountJObj) of
+    case kz_datamgr:ensure_saved(AccountDb, AccountJObj) of
         {'error', _R}=E -> E;
         {'ok', SavedJObj} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, SavedJObj)
+            kz_datamgr:ensure_saved(?WH_ACCOUNTS_DB, SavedJObj)
     end.
 
 account_update(Account, UpdateFun) ->
@@ -507,7 +507,7 @@ get_account_realm(AccountId) ->
 
 get_account_realm('undefined', _) -> 'undefined';
 get_account_realm(Db, AccountId) ->
-    case couch_mgr:open_cache_doc(Db, AccountId) of
+    case kz_datamgr:open_cache_doc(Db, AccountId) of
         {'ok', JObj} -> kz_account:realm(JObj);
         {'error', _R} ->
             lager:debug("error while looking up account realm in ~s: ~p", [AccountId, _R]),

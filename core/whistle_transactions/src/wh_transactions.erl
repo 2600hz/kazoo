@@ -49,7 +49,7 @@ call_charges(Ledger, CallId, 'true') ->
                    ,{'startkey', [CallId]}
                    ,{'endkey', [CallId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
+    case kz_datamgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
         {'ok', []} -> 0;
         {'ok', [JObj]} -> wh_json:get_integer_value(<<"value">>, JObj, 0);
         {'error', _R} ->
@@ -64,7 +64,7 @@ call_charges(Ledger, CallId, 'false') ->
                    ,{'endkey', [CallId, wh_json:new()]}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
+    case kz_datamgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
         {'ok', []} -> [];
         {'ok', JObjs} ->
             [wh_transaction:from_json(wh_json:get_value(<<"doc">>, JObj))
@@ -85,7 +85,7 @@ call_charges(Ledger, CallId, Event, 'true') ->
                    ,{'group_level', 1}
                    ,{'key', [CallId, Event]}
                   ],
-    case couch_mgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
+    case kz_datamgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
         {'ok', []} -> 0;
         {'ok', [JObj]} -> wh_json:get_integer_value(<<"value">>, JObj, 0);
         {'error', _R} ->
@@ -99,7 +99,7 @@ call_charges(Ledger, CallId, Event, 'false') ->
                    ,{'key', [CallId, Event]}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
+    case kz_datamgr:get_results(LedgerDb, <<"transactions/per_minute_cost">>, ViewOptions) of
         {'ok', []} -> [];
         {'ok', JObjs} ->
             [wh_transaction:from_json(wh_json:get_value(<<"doc">>, JObj))

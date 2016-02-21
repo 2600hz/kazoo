@@ -88,7 +88,7 @@ init([Db, Id, Attachment, CallId]) ->
                                     {'stop', _} |
                                     {'ok', state()}.
 maybe_start_file_cache(Db, Id, Attachment) ->
-    case couch_mgr:open_doc(Db, Id) of
+    case kz_datamgr:open_doc(Db, Id) of
         {'error', 'not_found'} ->
             lager:warning("failed to find '~s' in '~s'", [Id, Db]),
             {'stop', 'not_found'};
@@ -98,7 +98,7 @@ maybe_start_file_cache(Db, Id, Attachment) ->
         {'ok', JObj} ->
             lager:debug("starting cache for ~s on ~s in ~s", [Attachment, Id, Db]),
             Meta = wh_doc:attachment(JObj, Attachment, wh_json:new()),
-            {'ok', Ref} = couch_mgr:stream_attachment(Db, Id, Attachment),
+            {'ok', Ref} = kz_datamgr:stream_attachment(Db, Id, Attachment),
             {'ok', #state{db=Db
                           ,doc=Id
                           ,attach=Attachment

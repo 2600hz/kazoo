@@ -88,7 +88,7 @@ save(JObj) ->
     case enabled() of
         'false' -> {'error', 'alerts_disabled'};
         'true' ->
-            couch_mgr:save_doc(?WH_ALERTS_DB, JObj)
+            kz_datamgr:save_doc(?WH_ALERTS_DB, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -105,7 +105,7 @@ delete(AlertId) when is_binary(AlertId) ->
         {'ok', JObj} -> delete(JObj)
     end;
 delete(JObj) ->
-    couch_mgr:save_doc(?WH_ALERTS_DB
+    kz_datamgr:save_doc(?WH_ALERTS_DB
                        ,wh_doc:set_soft_deleted(JObj, 'true')
                       ).
 

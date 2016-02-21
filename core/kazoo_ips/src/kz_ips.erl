@@ -43,7 +43,7 @@ available(Zone, Quantity) ->
                      ,{'limit', Quantity}
                     ]
                    ),
-    case couch_mgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/available_listing">>
                                ,ViewOptions
                               )
@@ -71,7 +71,7 @@ available(Zone, Quantity) ->
 assigned(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     ViewOptions = [{'key', AccountId}],
-    case couch_mgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/assigned_to_listing">>
                                ,ViewOptions
                               )
@@ -100,7 +100,7 @@ zones() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
                   ],
-    case couch_mgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/zone_listing">>
                                ,ViewOptions
                               )
@@ -131,7 +131,7 @@ hosts() ->
     ViewOptions = [{'group', 'true'}
                    ,{'group_level', 1}
                   ],
-    case couch_mgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/host_listing">>
                                ,ViewOptions
                               )
@@ -160,7 +160,7 @@ hosts() ->
                      {'error', any()}.
 summary(Host) ->
     ViewOptions = props:filter_undefined([{'key', Host}]),
-    case couch_mgr:get_results(?WH_DEDICATED_IP_DB
+    case kz_datamgr:get_results(?WH_DEDICATED_IP_DB
                                ,<<"dedicated_ips/summary_listing">>
                                ,ViewOptions
                               )

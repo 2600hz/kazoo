@@ -47,7 +47,7 @@ number_db_to_csv(Fields, NumberDb) ->
 number_db_to_csv(Fields, NumberDb, StartKey) ->
     batch_process(Fields
                   ,NumberDb
-                  ,couch_mgr:all_docs(NumberDb
+                  ,kz_datamgr:all_docs(NumberDb
                                       ,[{'startkey', StartKey}
                                         ,{'endkey', <<"+\uffff">>}
                                         ,{'limit', ?PAGE_SIZE + 1}

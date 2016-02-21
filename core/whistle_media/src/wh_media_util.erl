@@ -347,7 +347,7 @@ get_account_prompt(Name, Lang, Call, OriginalLang) ->
                            {'ok', wh_json:object()} |
                            {'error', 'not_found'}.
 lookup_prompt(Db, Id) ->
-    case couch_mgr:open_cache_doc(Db, Id) of
+    case kz_datamgr:open_cache_doc(Db, Id) of
         {'ok', Doc} ->
             prompt_is_usable(Doc);
         Error -> Error

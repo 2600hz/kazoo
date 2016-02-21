@@ -21,8 +21,8 @@
 %%--------------------------------------------------------------------
 -spec refresh_database() -> 'ok'.
 refresh_database() ->
-    _ = couch_mgr:db_create(?WH_DEDICATED_IP_DB),
-    _ = couch_mgr:revise_docs_from_folder(?WH_DEDICATED_IP_DB
+    _ = kz_datamgr:db_create(?WH_DEDICATED_IP_DB),
+    _ = kz_datamgr:revise_docs_from_folder(?WH_DEDICATED_IP_DB
                                           ,'kazoo_ips'
                                           ,"views"
                                          ),

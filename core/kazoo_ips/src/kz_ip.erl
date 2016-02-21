@@ -69,7 +69,7 @@ create(IP, Zone, Host) ->
               ,{<<"pvt_created">>, Timestamp}
              ]
             ),
-    case couch_mgr:save_doc(?WH_DEDICATED_IP_DB, JObj) of
+    case kz_datamgr:save_doc(?WH_DEDICATED_IP_DB, JObj) of
         {'error', 'not_found'} ->
             kz_ip_utils:refresh_database(
               fun() -> ?MODULE:create(IP, Zone, Host) end
@@ -96,7 +96,7 @@ create(IP, Zone, Host) ->
                    {'ok', ip()} |
                    {'error', any()}.
 fetch(IP) ->
-    case couch_mgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
+    case kz_datamgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> {'ok', from_json(JObj)};
         {'error', _R}=E ->
             lager:debug("unable to fetch dedicated ip ~s: ~p"
@@ -171,13 +171,13 @@ release(IP) ->
                      {'ok', ip()} |
                     {'error', any()}.
 delete(<<_/binary>> = IP) ->
-    case couch_mgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
+    case kz_datamgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> delete(from_json(JObj));
         {'error', _}=E -> E
     end;
 delete(IP) ->
     'true' = is_dedicated_ip(IP),
-    couch_mgr:del_doc(?WH_DEDICATED_IP_DB, to_json(IP)).
+    kz_datamgr:del_doc(?WH_DEDICATED_IP_DB, to_json(IP)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -268,7 +268,7 @@ is_available(IP) ->
                   {'ok', ip()} |
                   {'error', any()}.
 save(JObj, PrevAccountId) ->
-    case couch_mgr:save_doc(?WH_DEDICATED_IP_DB, JObj) of
+    case kz_datamgr:save_doc(?WH_DEDICATED_IP_DB, JObj) of
         {'ok', J} ->
             AccountId = wh_json:get_value(<<"pvt_assigned_to">>, J),
             _ = reconcile_services(PrevAccountId, AccountId),

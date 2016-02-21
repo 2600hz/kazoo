@@ -320,7 +320,7 @@ owner(Box) ->
     end.
 
 owner(Box, OwnerId) ->
-    case couch_mgr:open_cache_doc(wh_doc:account_db(Box)
+    case kz_datamgr:open_cache_doc(wh_doc:account_db(Box)
                                   ,OwnerId
                                  )
     of

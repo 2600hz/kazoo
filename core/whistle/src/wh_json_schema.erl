@@ -20,7 +20,7 @@
 -spec load(ne_binary() | string()) -> {'ok', wh_json:object()} |
                                       {'error', any()}.
 load(<<_/binary>> = Schema) ->
-    case couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
+    case kz_datamgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
         {'ok', JObj} -> {'ok', wh_json:insert_value(<<"id">>, Schema, JObj)}
     end;
@@ -29,9 +29,9 @@ load(Schema) -> load(wh_util:to_binary(Schema)).
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.
 flush() ->
-    couch_mgr:flush_cache_docs(?WH_SCHEMA_DB).
+    kz_datamgr:flush_cache_docs(?WH_SCHEMA_DB).
 flush(Schema) ->
-    couch_mgr:flush_cache_doc(?WH_SCHEMA_DB, Schema).
+    kz_datamgr:flush_cache_doc(?WH_SCHEMA_DB, Schema).
 
 -spec add_defaults(api_object() | ne_binary(), ne_binary() | wh_json:object()) -> api_object().
 add_defaults(JObj, <<_/binary>> = Schema) ->

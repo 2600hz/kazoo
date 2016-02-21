@@ -45,7 +45,7 @@ playback(Media, Options) ->
                    {'error', any()}.
 store(Db, Id, Attachment) ->
     Options = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
-    Rev = case couch_mgr:lookup_doc_rev(Db, Id) of
+    Rev = case kz_datamgr:lookup_doc_rev(Db, Id) of
               {'ok', R} -> <<"?rev=", R/binary>>;
               _ -> <<>>
           end,

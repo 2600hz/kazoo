@@ -56,7 +56,7 @@ import_prompts(Path) ->
     import_prompts(Path, wh_media_util:default_prompt_language()).
 
 import_prompts(Path, Lang) ->
-    couch_mgr:db_create(?WH_MEDIA_DB),
+    kz_datamgr:db_create(?WH_MEDIA_DB),
     MediaPath = filename:join([Path, "*.{wav,mp3}"]),
     case filelib:wildcard(wh_util:to_list(MediaPath)) of
         [] ->
@@ -92,7 +92,7 @@ import_prompt(Path) ->
     import_prompt(Path, wh_media_util:default_prompt_language()).
 
 import_prompt(Path, Lang) ->
-    couch_mgr:db_create(?WH_MEDIA_DB),
+    kz_datamgr:db_create(?WH_MEDIA_DB),
     timer:sleep(250),
     case file:read_file(Path) of
         {'ok', Contents} ->
@@ -137,7 +137,7 @@ import_prompt(Path0, Lang0, Contents) ->
                   ,{<<"pvt_account_db">>, ?WH_MEDIA_DB}
                  ]),
 
-    case couch_mgr:ensure_saved(?WH_MEDIA_DB, MetaJObj) of
+    case kz_datamgr:ensure_saved(?WH_MEDIA_DB, MetaJObj) of
         {'ok', MetaJObj1} ->
             io:format("  saved metadata about '~s'~n", [Path]),
             upload_prompt(ID
@@ -166,7 +166,7 @@ upload_prompt(_ID, _AttachmentName, _Contents, _Options, 0) ->
     io:format("  retries exceeded for uploading ~s to ~s~n", [_AttachmentName, _ID]),
     {'error', 'retries_exceeded'};
 upload_prompt(ID, AttachmentName, Contents, Options, Retries) ->
-    case couch_mgr:put_attachment(?WH_MEDIA_DB, ID, AttachmentName, Contents, Options) of
+    case kz_datamgr:put_attachment(?WH_MEDIA_DB, ID, AttachmentName, Contents, Options) of
         {'ok', _MetaJObj} ->
             io:format("  uploaded prompt binary to ~s as ~s~n", [ID, AttachmentName]);
         {'error', 'conflict'} ->
@@ -180,7 +180,7 @@ upload_prompt(ID, AttachmentName, Contents, Options, Retries) ->
 -spec maybe_cleanup_metadoc(ne_binary(), any()) -> {'error', any()}.
 maybe_cleanup_metadoc(ID, E) ->
     io:format("  deleting metadata from ~s~n", [?WH_MEDIA_DB]),
-    case couch_mgr:del_doc(?WH_MEDIA_DB, ID) of
+    case kz_datamgr:del_doc(?WH_MEDIA_DB, ID) of
         {'ok', _} ->
             io:format("  removed metadata for ~s~n", [ID]),
             {'error', E};
@@ -193,7 +193,7 @@ maybe_cleanup_metadoc(ID, E) ->
                                 'ok' |
                                 {'error', any()}.
 maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
-    case couch_mgr:open_doc(?WH_MEDIA_DB, ID) of
+    case kz_datamgr:open_doc(?WH_MEDIA_DB, ID) of
         {'ok', JObj} ->
             case wh_doc:attachment(JObj, AttachmentName) of
                 'undefined' ->
@@ -210,7 +210,7 @@ maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
 
 -spec refresh() -> 'ok'.
 refresh() ->
-    couch_mgr:revise_doc_from_file(?WH_MEDIA_DB, 'crossbar', "account/media.json"),
+    kz_datamgr:revise_doc_from_file(?WH_MEDIA_DB, 'crossbar', "account/media.json"),
     'ok'.
 
 -spec maybe_migrate_system_config(ne_binary()) -> 'ok'.
@@ -219,7 +219,7 @@ maybe_migrate_system_config(ConfigId) ->
     maybe_migrate_system_config(ConfigId, 'false').
 
 maybe_migrate_system_config(ConfigId, DeleteAfter) ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, ConfigId) of
+    case kz_datamgr:open_doc(?WH_CONFIG_DB, ConfigId) of
         {'error', 'not_found'} -> 'ok';
         {'ok', JObj} ->
             migrate_system_config(wh_doc:public_fields(JObj)),
@@ -229,7 +229,7 @@ maybe_migrate_system_config(ConfigId, DeleteAfter) ->
 -spec maybe_delete_system_config(ne_binary(), boolean()) -> 'ok'.
 maybe_delete_system_config(_ConfigId, 'false') -> 'ok';
 maybe_delete_system_config(ConfigId, 'true') ->
-    {'ok', _} = couch_mgr:del_doc(?WH_CONFIG_DB, ConfigId),
+    {'ok', _} = kz_datamgr:del_doc(?WH_CONFIG_DB, ConfigId),
     io:format("deleted ~s from ~s", [ConfigId, ?WH_CONFIG_DB]).
 
 -spec migrate_system_config(wh_json:object()) -> 'ok'.
@@ -241,12 +241,12 @@ migrate_system_config(ConfigJObj) ->
                                      ,ConfigJObj
                                     ),
     io:format("saving updated media config~n", []),
-    {'ok', _} = couch_mgr:save_doc(?WH_CONFIG_DB, UpdatedMediaJObj),
+    {'ok', _} = kz_datamgr:save_doc(?WH_CONFIG_DB, UpdatedMediaJObj),
     'ok'.
 
 -spec get_media_config_doc() -> {'ok', wh_json:object()}.
 get_media_config_doc() ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, ?WHM_CONFIG_CAT) of
+    case kz_datamgr:open_doc(?WH_CONFIG_DB, ?WHM_CONFIG_CAT) of
         {'ok', _MediaJObj}=OK -> OK;
         {'error', 'not_found'} ->
             {'ok', wh_json:from_list([{<<"_id">>, ?WHM_CONFIG_CAT}])}
@@ -313,7 +313,7 @@ remove_empty_media_docs(AccountId) ->
 
 -spec remove_empty_media_docs(ne_binary(), ne_binary()) -> 'ok'.
 remove_empty_media_docs(AccountId, AccountDb) ->
-    case couch_mgr:get_results(AccountDb, <<"media/crossbar_listing">>, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, <<"media/crossbar_listing">>, ['include_docs']) of
         {'ok', []} ->
             io:format("no media docs in account ~s~n", [AccountId]);
         {'ok', MediaDocs} ->
@@ -354,5 +354,5 @@ maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
 
 -spec remove_media_doc(ne_binary(), wh_json:object()) -> 'ok'.
 remove_media_doc(AccountDb, MediaJObj) ->
-    {'ok', _Doc} = couch_mgr:del_doc(AccountDb, MediaJObj),
+    {'ok', _Doc} = kz_datamgr:del_doc(AccountDb, MediaJObj),
     io:format("removed media doc ~s~n", [wh_doc:id(MediaJObj)]).

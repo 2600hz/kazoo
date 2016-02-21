@@ -26,7 +26,7 @@
 -spec reconcile(wh_services:services(), ne_binary()) -> wh_services:services().
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
-    case couch_mgr:open_doc(?ACCOUNTS_DB, AccountId) of
+    case kz_datamgr:open_doc(?ACCOUNTS_DB, AccountId) of
         {'error', _R} ->
             lager:debug("unable to get current ui apps in service: ~p for account: ~s", [_R, AccountId]),
             Services;

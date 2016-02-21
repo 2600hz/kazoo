@@ -82,7 +82,7 @@
 update_all_accounts(File) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
-                          couch_mgr:revise_doc_from_file(AccountDb, 'crossbar', File)
+                          kz_datamgr:revise_doc_from_file(AccountDb, 'crossbar', File)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
@@ -96,7 +96,7 @@ update_all_accounts(File) ->
 revise_whapp_views_in_accounts(App) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
-                          couch_mgr:revise_views_from_folder(AccountDb, App)
+                          kz_datamgr:revise_views_from_folder(AccountDb, App)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
@@ -131,7 +131,7 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
                       ,{<<"filter">>, FilterDoc}
                       ,{<<"create_target">>, 'true'}
                      ],
-    try couch_mgr:db_replicate(ReplicateProps) of
+    try kz_datamgr:db_replicate(ReplicateProps) of
         {'ok', _} ->
             lager:debug("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
         {'error', _} ->
@@ -153,7 +153,7 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 get_master_account_id() ->
     case whapps_config:get(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
         'undefined' ->
-            R = couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, ['include_docs']),
+            R = kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, ['include_docs']),
             find_master_account_id(R);
         Default -> {'ok', Default}
     end.
@@ -257,7 +257,7 @@ find_oldest_doc([First|Docs]) ->
 get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
-    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>
+    {'ok', Dbs} = kz_datamgr:admin_all_docs(<<"dbs">>
                                           ,[{'startkey', <<"account/">>}
                                             ,{'endkey', <<"account/\ufff0">>}
                                            ]),
@@ -272,7 +272,7 @@ get_all_accounts_and_mods() ->
     get_all_accounts_and_mods(?REPLICATE_ENCODING).
 
 get_all_accounts_and_mods(Encoding) ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    {'ok', Databases} = kz_datamgr:db_info(),
     [format_db(Db, Encoding)
      || Db <- Databases,
         is_account_db(Db)
@@ -299,7 +299,7 @@ get_all_account_mods() ->
     get_all_account_mods(?REPLICATE_ENCODING).
 
 get_all_account_mods(Encoding) ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    {'ok', Databases} = kz_datamgr:db_info(),
     [wh_util:format_account_modb(Db, Encoding)
      || Db <- Databases,
         is_account_mod(Db)
@@ -375,7 +375,7 @@ get_ccvs_by_ip(IP) ->
                                {'ok', wh_proplist()} |
                                {'error', 'not_found'}.
 do_get_ccvs_by_ip(IP) ->
-    case couch_mgr:get_results(?WH_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}]) of
+    case kz_datamgr:get_results(?WH_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}]) of
         {'ok', []} ->
             lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
             kz_cache:store_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), {'error', 'not_found'}),
@@ -426,7 +426,7 @@ get_accounts_by(What, CacheKey, View) ->
 -spec do_get_accounts_by(ne_binary(), tuple(), ne_binary()) -> getby_return().
 do_get_accounts_by(What, CacheKey, View) ->
     ViewOptions = [{'key', What}],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, View, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, View, ViewOptions) of
         {'ok', [JObj]} ->
             AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
             _ = cache(CacheKey, [AccountDb]),
@@ -524,7 +524,7 @@ update_views(Db, Views) ->
     update_views(Db, Views, 'false').
 
 update_views(Db, Views, Remove) ->
-    case couch_mgr:all_design_docs(Db, ['include_docs']) of
+    case kz_datamgr:all_design_docs(Db, ['include_docs']) of
         {'ok', Found} -> update_views(Found, Db, Views, Remove);
         {'error', _R} ->
             lager:debug("unable to fetch current design docs: ~p", [_R])
@@ -533,7 +533,7 @@ update_views(Db, Views, Remove) ->
 update_views([], _, [], _) -> 'ok';
 update_views([], Db, [{Id,View}|Views], Remove) ->
     lager:debug("adding view '~s' to '~s'", [Id, Db]),
-    _ = couch_mgr:ensure_saved(Db, View),
+    _ = kz_datamgr:ensure_saved(Db, View),
     update_views([], Db, Views, Remove);
 update_views([Found|Finds], Db, Views, Remove) ->
     Id = wh_doc:id(Found),
@@ -542,7 +542,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
     case props:get_value(Id, Views) of
         'undefined' when Remove ->
             lager:debug("removing view '~s' from '~s'", [Id, Db]),
-            _ = couch_mgr:del_doc(Db, Doc),
+            _ = kz_datamgr:del_doc(Db, Doc),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         'undefined' ->
             update_views(Finds, Db, props:delete(Id, Views), Remove);
@@ -552,7 +552,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
         View2 ->
             lager:debug("updating view '~s' in '~s'", [Id, Db]),
             Rev = wh_doc:revision(Doc),
-            _ = couch_mgr:ensure_saved(Db, wh_doc:set_revision(View2, Rev)),
+            _ = kz_datamgr:ensure_saved(Db, wh_doc:set_revision(View2, Rev)),
             update_views(Finds, Db, props:delete(Id, Views), Remove)
     end.
 
@@ -566,13 +566,13 @@ update_views([Found|Finds], Db, Views, Remove) ->
 add_aggregate_device(_, 'undefined') -> 'ok';
 add_aggregate_device(Db, Device) ->
     DeviceId = wh_doc:id(Device),
-    _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
+    _ = case kz_datamgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
             {'ok', Rev} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:set_revision(Device, Rev));
+                kz_datamgr:ensure_saved(?WH_SIP_DB, wh_doc:set_revision(Device, Rev));
             {'error', 'not_found'} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                couch_mgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Device))
+                kz_datamgr:ensure_saved(?WH_SIP_DB, wh_doc:delete_revision(Device))
         end,
     'ok'.
 
@@ -585,11 +585,11 @@ add_aggregate_device(Db, Device) ->
 -spec rm_aggregate_device(ne_binary(), api_object() | api_binary()) -> 'ok'.
 rm_aggregate_device(_, 'undefined') -> 'ok';
 rm_aggregate_device(Db, DeviceId) when is_binary(DeviceId) ->
-    case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
+    case kz_datamgr:open_doc(?WH_SIP_DB, DeviceId) of
         {'error', 'not_found'} -> 'ok';
         {'ok', JObj} ->
             lager:debug("removing aggregated device ~s/~s", [Db, DeviceId]),
-            _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            _ = kz_datamgr:del_doc(?WH_SIP_DB, JObj),
             'ok'
     end;
 rm_aggregate_device(Db, Device) ->

@@ -390,7 +390,7 @@ audio_macro([], Call) -> noop(Call);
 audio_macro(Prompts, Call) -> audio_macro(Prompts, Call, []).
 
 audio_macro([], Call, Queue) ->
-    NoopId = couch_mgr:get_uuid(),
+    NoopId = kz_datamgr:get_uuid(),
     Prompts = [wh_json:from_list(
                  [{<<"Application-Name">>, <<"noop">>}
                   ,{<<"Msg-ID">>, NoopId}
@@ -1221,7 +1221,7 @@ play(Media, Call) -> play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
     play(Media, Terminators, 'undefined', Call).
 play(Media, Terminators, Leg, Call) ->
-    NoopId = couch_mgr:get_uuid(),
+    NoopId = kz_datamgr:get_uuid(),
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                                    ,{<<"Msg-ID">>, NoopId}
@@ -1264,7 +1264,7 @@ tts(SayMe, Voice, Lang, Terminators, Call) ->
         ,Call
        ).
 tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
-    NoopId = couch_mgr:get_uuid(),
+    NoopId = kz_datamgr:get_uuid(),
 
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Call-ID">>, whapps_call:call_id(Call)}
@@ -1954,7 +1954,7 @@ b_conference(ConfId, Mute, Deaf, Moderator, Profile, Reinvite, Call) ->
 -spec b_noop(whapps_call:call()) -> whapps_api_std_return().
 
 noop(Call) ->
-    NoopId = couch_mgr:get_uuid(),
+    NoopId = kz_datamgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
                ,{<<"Msg-ID">>, NoopId}
               ],
@@ -1974,7 +1974,7 @@ b_noop(Call) -> wait_for_noop(Call, noop(Call)).
 -spec b_flush(whapps_call:call()) -> whapps_api_std_return().
 
 flush(Call) ->
-    NoopId = couch_mgr:get_uuid(),
+    NoopId = kz_datamgr:get_uuid(),
     Command = [{<<"Application-Name">>, <<"noop">>}
                ,{<<"Msg-ID">>, NoopId}
                ,{<<"Insert-At">>, <<"flush">>}

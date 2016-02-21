@@ -14,18 +14,18 @@
 
 -spec single_attachment_url/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 single_attachment_url(AccountDb, MediaId, AttachmentName) ->
-    _ = case couch_mgr:open_doc(AccountDb, MediaId) of
+    _ = case kz_datamgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
                 [begin
                      lager:debug("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
-                     couch_mgr:delete_attachment(AccountDb, MediaId, Attach)
+                     kz_datamgr:delete_attachment(AccountDb, MediaId, Attach)
                  end
                  || Attach <- wh_doc:attachment_names(JObj),
                     Attach =/= AttachmentName
                 ];
             {'error', _} -> 'ok'
         end,
-    Rev = case couch_mgr:lookup_doc_rev(AccountDb, MediaId) of
+    Rev = case kz_datamgr:lookup_doc_rev(AccountDb, MediaId) of
               {'ok', R} -> <<"?rev=", R/binary>>;
               _ -> <<>>
           end,
