@@ -10,7 +10,7 @@
 
                  , whistle_apps
                  , whistle_amqp
-                 , whistle_couch
+                 , kazoo_data
 
                  , lager
                  ]},
