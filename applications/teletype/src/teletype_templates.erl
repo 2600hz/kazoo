@@ -16,7 +16,7 @@
 
 -export([init/2
          ,renderer_name/2
-         ,render/2, render/3
+         ,render/2, render/3, render/4
          ,preview/3
          ,fetch_notification/2
         ]).

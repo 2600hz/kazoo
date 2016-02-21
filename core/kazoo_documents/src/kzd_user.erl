@@ -256,9 +256,9 @@ devices(UserJObj) ->
             []
     end.
 
--spec fetch(ne_binary(), api_binary()) -> {'ok', doc()} | {'error', any()}.
-fetch(<<_/binary>> = UserId, <<_/binary>> = Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+-spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
+fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_cache_doc(AccountDb, UserId);
-
-fetch(_, _) -> {'error', 'invalid_parametres'}.
+fetch(_, _) ->
+    {'error', 'invalid_parametres'}.

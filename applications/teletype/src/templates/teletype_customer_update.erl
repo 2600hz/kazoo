@@ -57,7 +57,7 @@ init() ->
                                            ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> wh_proplist()|'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:customer_update_v(JObj),
     DataJObj = wh_json:normalize(JObj),
@@ -67,35 +67,31 @@ handle_req(JObj, _Props) ->
         'true' -> process_req(DataJObj)
     end.
 
--spec process_req(wh_json:object()) -> 'ok'.
+-spec process_req(wh_json:object()) -> wh_proplist()|'ok'.
 process_req(DataJObj) ->
+    case wh_json:get_value(<<"recipient_id">>, DataJObj) of
+        <<RecipientId:32/binary>> -> process_account(RecipientId, DataJObj);
+        'undefined' -> process_accounts(DataJObj)
+    end.
+
+-spec process_accounts(wh_json:object()) -> wh_proplist()|'ok'.
+process_accounts(DataJObj) ->
     SenderId = wh_json:get_value(<<"account_id">>, DataJObj),
     ViewOpts = [{'startkey', [SenderId]}
                ,{'endkey', [SenderId, wh_json:new()]}
                ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
         {'ok', Accounts} ->
-            process_accounts(Accounts, DataJObj);
+            [process_account(wh_json:get_value(<<"id">>, Account), DataJObj) || Account <- Accounts];
         {'error', _Reason} = E ->
-            lager:info("failed to load children. error: ~p", [E]),
-            E
+            lager:info("failed to load children. error: ~p", [E])
     end.
 
--spec process_accounts(wh_json:objects(), wh_json:object()) -> wh_proplist().
-process_accounts(Accounts, DataJObj) ->
-    case wh_json:get_value(<<"recipient_id">>, DataJObj) of
-        'undefined' ->
-            [process_account(wh_json:get_value(<<"value">>, Account), DataJObj) || Account <- Accounts];
-        RecipientId ->
-            [process_account(wh_json:get_value(<<"value">>, Account), DataJObj) || Account <- Accounts, wh_json:get_value(<<"id">>, Account) == RecipientId]
-    end.
-
--spec process_account(wh_json:object(), wh_json:object()) -> 'ok'|wh_proplist().
-process_account(AccountJObj, DataJObj) ->
-    AccountId = wh_json:get_value(<<"id">>, AccountJObj),
+-spec process_account(ne_binary(), wh_json:object()) -> wh_proplist()|'ok'.
+process_account(AccountId, DataJObj) ->
     case wh_json:get_value(<<"user_type">>, DataJObj) of
         <<UserId:32/binary>> ->
-            {'ok', UserJObj} = kzd_user:fetch(UserId, AccountId),
+            {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
             send_update_to_user(UserJObj, DataJObj);
         _ ->
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -119,7 +115,7 @@ send_update_to_user(UserJObj, DataJObj) ->
               | build_macro_data(UserJObj)
              ],
 
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj, 'true'),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
