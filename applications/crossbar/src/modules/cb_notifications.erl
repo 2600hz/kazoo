@@ -275,10 +275,7 @@ may_be_validate_recipient_id(Context) ->
 
 -spec validate_recipient_id(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_recipient_id(RecipientId, Context) ->
-    SenderId = case cb_context:account_id(Context) of
-                   'undefined' -> cb_context:auth_account_id(Context);
-                   AccountId -> AccountId
-               end,
+    SenderId = sender_account_id(Context),
     ViewOpts = [{'startkey', [SenderId]}
                ,{'endkey', [SenderId, wh_json:new()]}
                ],
@@ -293,6 +290,16 @@ validate_recipient_id(RecipientId, Context) ->
             lager:info("failed to load children. error: ~p", [E]),
             Context
     end.
+
+-spec sender_account_id(cb_context:context()) -> ne_binary().
+sender_account_id(Context) ->
+    sender_account_id(Context, cb_context:account_id(Context)).
+
+-spec sender_account_id(cb_context:context(), ne_binary()|'undefined') -> ne_binary().
+sender_account_id(Context, 'undefined') ->
+    cb_context:auth_account_id(Context);
+sender_account_id(_Context, AccountId) ->
+    AccountId.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -389,10 +396,7 @@ post(Context, Id, ?PREVIEW) ->
 
 -spec build_customer_update_payload(cb_context:context()) -> wh_proplist().
 build_customer_update_payload(Context) ->
-    SenderId = case cb_context:account_id(Context) of
-                   'undefined' -> cb_context:auth_account_id(Context);
-                   AccountId -> AccountId
-               end,
+    SenderId = sender_account_id(Context),
     props:filter_empty(
       [{<<"Account-ID">>, SenderId}
        ,{<<"Recipient-ID">>, cb_context:req_value(Context, <<"recipient_id">>)}
@@ -494,8 +498,10 @@ publish_fun(<<"webhook_disabled">>) ->
     fun wapi_notifications:publish_webhook_disabled/1;
 publish_fun(<<"denied_emergency_bridge">>) ->
     fun wapi_notifications:publish_denied_emergency_bridge/1;
+publish_fun(<<"customer_update">>) ->
+    fun wapi_notifications:publish_customer_update/1;
 publish_fun(_Id) ->
-    lager:debug("no wapi_notification:publish_~s/1 defined", [_Id]),
+    lager:debug("no wapi_notifications:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.
 
 -spec preview_fold(ne_binary(), {wh_proplist(), wh_json:object()}) ->
@@ -901,7 +907,8 @@ update_template(Context, Id, FileJObj) ->
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     lager:debug("file content type for ~s: ~s", [Id, CT]),
-    Opts = [{'content_type', CT}],
+ %   Opts = [{'content_type', CT}],
+    Opts = [{'content_type', wh_util:to_list(CT)}], % Temporary until couchbeam update
 
     AttachmentName = attachment_name_by_content_type(CT),
 
