@@ -37,6 +37,7 @@
 -define(CUSTOMER_UPDATE, <<"customer_update">>).
 -define(MESSAGE, <<"message">>).
 -define(CB_LIST_SMTP_LOG, <<"notifications/smtp_log">>).
+-define(ACC_CHILDREN_LIST, <<"accounts/listing_by_children">>).
 
 -define(MACROS, <<"macros">>).
 
@@ -279,7 +280,7 @@ validate_recipient_id(RecipientId, Context) ->
     ViewOpts = [{'startkey', [SenderId]}
                ,{'endkey', [SenderId, wh_json:new()]}
                ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_children">>, ViewOpts) of
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
         {'ok', Accounts} ->
             AccountIds = lists:map(fun(Account) -> wh_json:get_value(<<"id">>, Account) end, Accounts),
             case lists:member(RecipientId, AccountIds) of
