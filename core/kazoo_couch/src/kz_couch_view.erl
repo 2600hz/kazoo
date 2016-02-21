@@ -44,7 +44,11 @@ design_info(#server{}=Conn, DBName, Design) ->
                              couchbeam_error().
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = kz_couch_util:get_db(Conn, DBName),
-    do_fetch_results(Db, 'design_docs', Options).
+    Filter = [{'startkey', <<"_design/">>}
+              ,{'endkey', <<"_design0">>}
+              | Options
+             ],
+    do_fetch_results(Db, 'all_docs', Filter).
 
 -spec all_docs(server(), ne_binary(), view_options()) ->
                       {'ok', wh_json:objects()} |
