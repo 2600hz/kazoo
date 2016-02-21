@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(kazoo_couch_init).
+-module(kazoo_data_init).
 
 -include_lib("whistle/include/wh_types.hrl").
 

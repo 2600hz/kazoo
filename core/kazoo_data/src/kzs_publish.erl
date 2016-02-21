@@ -1,0 +1,161 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2016, 2600Hz
+%%% @doc
+%%% data adapter behaviour
+%%% @end
+%%% @contributors
+%%%-----------------------------------------------------------------------------
+-module(kzs_publish).
+
+
+-export([prepare_publish/1
+         ,maybe_publish_db/2
+         ,maybe_publish_doc/3
+         ,maybe_publish_docs/3
+         ,publish_db/2
+         ,publish_doc/3
+         ,publish_fields/1, publish_fields/2
+         ,publish/3
+        ]).
+
+-include("kz_data.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
+
+
+-spec maybe_tombstone(wh_json:object()) -> wh_json:object().
+-spec maybe_tombstone(wh_json:object(), boolean()) -> wh_json:object().
+maybe_tombstone(JObj) ->
+    maybe_tombstone(JObj, wh_json:is_true(<<"_deleted">>, JObj, 'false')).
+
+maybe_tombstone(JObj, 'true') ->
+    wh_json:delete_keys(?PUBLISH_FIELDS, JObj);
+maybe_tombstone(JObj, 'false') -> JObj.
+
+-spec prepare_publish(wh_json:object()) ->
+                             {wh_json:object(), wh_json:object()}.
+prepare_publish(JObj) ->
+    {maybe_tombstone(JObj), wh_json:from_list(publish_fields(JObj))}.
+
+-spec maybe_publish_docs(db(), wh_json:objects(), wh_json:objects()) -> 'ok'.
+maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
+    case kzs_mgr:change_notice() of
+        'true' ->
+            _ = wh_util:spawn(
+                  fun() ->
+                          [publish_doc(Db, Doc, JObj)
+                           || {Doc, JObj} <- lists:zip(Docs, JObjs)
+                                  , should_publish_doc(Doc)
+                          ]
+                  end),
+            'ok';
+        'false' -> 'ok'
+    end.
+
+-spec maybe_publish_doc(db(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_publish_doc(#db{}=Db, Doc, JObj) ->
+    case kzs_mgr:change_notice()
+        andalso should_publish_doc(Doc)
+    of
+        'true' ->
+            _ = wh_util:spawn(fun publish_doc/3, [Db, Doc, JObj]),
+            'ok';
+        'false' -> 'ok'
+    end.
+
+-spec maybe_publish_db(ne_binary(), wapi_conf:action()) -> 'ok'.
+maybe_publish_db(DbName, Action) ->
+    case kzs_mgr:change_notice() of
+        'true' ->
+            _ = wh_util:spawn(fun publish_db/2, [DbName, Action]),
+            'ok';
+        'false' -> 'ok'
+    end.
+
+-spec should_publish_doc(wh_json:object()) -> boolean().
+should_publish_doc(Doc) ->
+    case wh_doc:id(Doc) of
+        <<"_design/", _/binary>> = _D -> 'false';
+        _Else -> 'true'
+    end.
+
+-spec publish_doc(db(), wh_json:object(), wh_json:object()) -> 'ok'.
+publish_doc(#db{name=DbName}, Doc, JObj) ->
+    case wh_doc:is_soft_deleted(Doc)
+        orelse wh_json:is_true(<<"_deleted">>, Doc)
+    of
+        'true' ->
+            publish('deleted', wh_util:to_binary(DbName), publish_fields(Doc, JObj));
+        'false' ->
+            case wh_doc:revision(JObj) of
+                <<"1-", _/binary>> ->
+                    publish('created', wh_util:to_binary(DbName), publish_fields(Doc, JObj));
+                _Else ->
+                    publish('edited', wh_util:to_binary(DbName), publish_fields(Doc, JObj))
+            end
+    end.
+
+-spec publish_db(ne_binary(), wapi_conf:action()) -> 'ok'.
+publish_db(DbName, Action) ->
+    Props =
+        [{<<"Type">>, 'database'}
+         ,{<<"ID">>, DbName}
+         ,{<<"Database">>, DbName}
+         | wh_api:default_headers(<<"configuration">>
+                                  ,<<"db_", (wh_util:to_binary(Action))/binary>>
+                                  ,?CONFIG_CAT
+                                  ,<<"1.0.0">>
+                                 )
+        ],
+    Fun = fun(P) -> wapi_conf:publish_db_update(Action, DbName, P) end,
+    whapps_util:amqp_pool_send(Props, Fun).
+
+-spec publish_fields(wh_json:object()) -> wh_proplist().
+-spec publish_fields(wh_json:object(), wh_json:object()) -> wh_json:object().
+publish_fields(Doc) ->
+    [{Key, V} || Key <- ?PUBLISH_FIELDS,
+                 not wh_util:is_empty(V = wh_json:get_value(Key, Doc))
+    ].
+
+publish_fields(Doc, JObj) ->
+    wh_json:set_values(publish_fields(Doc), JObj).
+
+-spec publish(wapi_conf:action(), ne_binary(), wh_json:object()) -> 'ok'.
+publish(Action, Db, Doc) ->
+    Type = wh_doc:type(Doc),
+    Id = wh_doc:id(Doc),
+
+    IsSoftDeleted = wh_doc:is_soft_deleted(Doc),
+    EventName = doc_change_event_name(Action, IsSoftDeleted),
+
+    Props =
+        [{<<"ID">>, Id}
+         ,{<<"Type">>, Type}
+         ,{<<"Database">>, Db}
+         ,{<<"Rev">>, wh_doc:revision(Doc)}
+         ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
+         ,{<<"Date-Modified">>, wh_doc:created(Doc)}
+         ,{<<"Date-Created">>, wh_doc:modified(Doc)}
+         ,{<<"Is-Soft-Deleted">>, IsSoftDeleted}
+         | wh_api:default_headers(<<"configuration">>
+                                  ,EventName
+                                  ,?CONFIG_CAT
+                                  ,<<"1.0.0">>
+                                 )
+        ],
+    Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
+    whapps_util:amqp_pool_send(Props, Fun).
+
+-spec doc_change_event_name(wapi_conf:action(), boolean()) -> ne_binary().
+doc_change_event_name(_Action, 'true') ->
+    ?DOC_DELETED;
+doc_change_event_name(Action, 'false') ->
+    <<"doc_", (wh_util:to_binary(Action))/binary>>.
+
+-spec doc_acct_id(ne_binary(), wh_json:object()) -> ne_binary().
+doc_acct_id(Db, Doc) ->
+    case wh_doc:account_id(Doc) of
+        'undefined' -> wh_util:format_account_id(Db, 'raw');
+        AccountId -> AccountId
+    end.
+
+
