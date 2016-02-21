@@ -50,7 +50,7 @@ find_numbers_in_account(Number, Quantity,AccountId) ->
                    ,{'limit', Quantity}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(?WH_INUM, <<"numbers/status">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_INUM, <<"numbers/status">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("found no available inum numbers for account ~p", [AccountId]),
             {'error', 'non_available'};
@@ -135,7 +135,7 @@ gen_numbers(_AccountId, _Number, 0) ->
     'ok'.
 
 save_doc(JObj) ->
-    case couch_mgr:save_doc(?WH_INUM, JObj) of
+    case kz_datamgr:save_doc(?WH_INUM, JObj) of
         {'error', 'not_found'} ->
             create_inum_db(),
             save_doc(JObj);
@@ -143,11 +143,11 @@ save_doc(JObj) ->
     end.
 
 update_doc(Number,UpdateProps) ->
-    couch_mgr:update_doc(?WH_INUM, Number, UpdateProps).
+    kz_datamgr:update_doc(?WH_INUM, Number, UpdateProps).
 
 create_inum_db() ->
-    _ = couch_mgr:db_create(?WH_INUM),
-    _ = couch_mgr:revise_doc_from_file(?WH_INUM, 'whistle_apps', ?INUM_VIEW_FILE),
+    _ = kz_datamgr:db_create(?WH_INUM),
+    _ = kz_datamgr:revise_doc_from_file(?WH_INUM, 'whistle_apps', ?INUM_VIEW_FILE),
     'ok'.
 
 -spec should_lookup_cnam() -> 'true'.

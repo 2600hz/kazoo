@@ -84,7 +84,7 @@ get_top_up(JObj) ->
                           {'error', error()}.
 maybe_top_up(Account, Balance, Amount, Threshold) when Balance =< Threshold ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
+    case kz_datamgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R}=E -> E;
         {'ok', ServicesJObj} ->
             Transactions = kzd_services:transactions(ServicesJObj),

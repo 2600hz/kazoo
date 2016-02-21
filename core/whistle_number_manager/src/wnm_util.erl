@@ -325,7 +325,7 @@ number_to_db_name(_) ->
 
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->
-    {'ok', Dbs} = couch_mgr:admin_all_docs(<<"dbs">>, [{'startkey', ?WNM_DB_PREFIX}
+    {'ok', Dbs} = kz_datamgr:admin_all_docs(<<"dbs">>, [{'startkey', ?WNM_DB_PREFIX}
                                                        ,{'endkey', <<?WNM_DB_PREFIX_L, "\ufff0">>}
                                                       ]),
     [cow_qs:urlencode(wh_doc:id(View))

@@ -134,7 +134,7 @@ running_apps_list() ->
 -spec initialize_whapps() -> 'ok'.
 initialize_whapps() ->
     wh_util:put_callid(?LOG_SYSTEM_ID),
-    case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
+    case kz_datamgr:db_exists(?WH_ACCOUNTS_DB) of
         'false' -> whapps_maintenance:refresh();
         'true' -> 'ok'
     end,

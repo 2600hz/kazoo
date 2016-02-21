@@ -91,7 +91,7 @@ reconcile_numbers(NumberDb) when not is_binary(NumberDb) ->
     reconcile_numbers(wh_util:to_binary(NumberDb));
 reconcile_numbers(NumberDb) ->
     Db = wh_util:to_binary(http_uri:encode(wh_util:to_list(NumberDb))),
-    case couch_mgr:all_docs(Db) of
+    case kz_datamgr:all_docs(Db) of
         {'error', _R}=E -> E;
         {'ok', JObjs} ->
             Numbers = [Number
@@ -255,7 +255,7 @@ create_and_activate_phone_number(Number, AccountId) ->
 -spec get_callflow_account_numbers(ne_binary()) -> wh_json:keys().
 get_callflow_account_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_all_results(AccountDb, ?CALLFLOW_VIEW) of
+    case kz_datamgr:get_all_results(AccountDb, ?CALLFLOW_VIEW) of
         {'ok', Numbers} ->
             [wh_json:get_value(<<"key">>, Number) || Number <- Numbers];
         {'error', _} ->
@@ -284,7 +284,7 @@ is_trunkstore_account(JObj) ->
 -spec get_trunkstore_account_numbers(ne_binary(), ne_binary()) -> ne_binaries().
 get_trunkstore_account_numbers(AccountId, AccountDb) ->
     lager:debug("looking in ~s for trunkstore DIDs", [AccountDb]),
-    case couch_mgr:get_results(AccountDb, <<"trunkstore/LookUpDID">>, []) of
+    case kz_datamgr:get_results(AccountDb, <<"trunkstore/LookUpDID">>, []) of
         {'ok', []} ->
             lager:debug("no trunkstore DIDs listed in account ~s, trying ts db", [AccountDb]),
             get_trunkstore_account_numbers(AccountId);
@@ -293,7 +293,7 @@ get_trunkstore_account_numbers(AccountId, AccountDb) ->
             Assigned = [wh_json:get_value(<<"key">>, JObj) || JObj <- JObjs],
 
             TSDocId = wh_doc:id(hd(JObjs)),
-            {'ok', TSDoc} = couch_mgr:open_doc(AccountDb, TSDocId),
+            {'ok', TSDoc} = kz_datamgr:open_doc(AccountDb, TSDocId),
             lager:debug("fetched ts doc ~s from ~s", [TSDocId, AccountDb]),
 
             wh_json:get_keys(wh_json:get_value(<<"DIDs_Unassigned">>, TSDoc, wh_json:new())) ++ Assigned;
@@ -304,7 +304,7 @@ get_trunkstore_account_numbers(AccountId, AccountDb) ->
 
 -spec get_trunkstore_account_numbers(ne_binary()) -> ne_binaries().
 get_trunkstore_account_numbers(AccountId) ->
-    case couch_mgr:open_doc(?TS_DB, AccountId) of
+    case kz_datamgr:open_doc(?TS_DB, AccountId) of
         {'ok', JObj} ->
             case is_trunkstore_account(JObj) of
                 'true' ->

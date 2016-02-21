@@ -29,7 +29,7 @@ fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
     AccoundDb = wh_util:format_account_id(Account, 'encoded'),
-    couch_mgr:open_cache_doc(AccoundDb, ?ID).
+    kz_datamgr:open_cache_doc(AccoundDb, ?ID).
 
 %%--------------------------------------------------------------------
 %% @public

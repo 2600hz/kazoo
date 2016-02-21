@@ -44,7 +44,7 @@ get_results(_Account, _View, _ViewOptions, Retry) when Retry =< 0 ->
 get_results(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    case couch_mgr:get_results(EncodedMODb, View, ViewOptions) of
+    case kz_datamgr:get_results(EncodedMODb, View, ViewOptions) of
         {'error', 'not_found'} ->
             get_results_not_found(Account, View, ViewOptions, Retry);
         Results -> Results
@@ -55,7 +55,7 @@ get_results(Account, View, ViewOptions, Retry) ->
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    case couch_mgr:db_exists(EncodedMODb) of
+    case kz_datamgr:db_exists(EncodedMODb) of
         'true' ->
             refresh_views(AccountMODb),
             get_results(Account, View, ViewOptions, Retry-1);
@@ -107,7 +107,7 @@ open_doc(Account, DocId, Year, Month) ->
                         {'error', atom()}.
 couch_open(AccountMODb, DocId) ->
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    case couch_mgr:open_doc(EncodedMODb, DocId) of
+    case kz_datamgr:open_doc(EncodedMODb, DocId) of
         {'ok', _}=Ok -> Ok;
         {'error', _E}=Error ->
             lager:error("fail to open doc ~p in ~p reason: ~p", [DocId, EncodedMODb, _E]),
@@ -149,7 +149,7 @@ couch_save(AccountMODb, _Doc, 0) ->
     {'error', 'doc_save_failed'};
 couch_save(AccountMODb, Doc, Retry) ->
      EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    case couch_mgr:save_doc(EncodedMODb, Doc) of
+    case kz_datamgr:save_doc(EncodedMODb, Doc) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             lager:warning("modb ~p not found, creating...", [AccountMODb]),
@@ -221,14 +221,14 @@ maybe_create(<<"account%2F", AccountId/binary>>) ->
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    do_create(AccountMODb, couch_mgr:db_exists(EncodedMODb)).
+    do_create(AccountMODb, kz_datamgr:db_exists(EncodedMODb)).
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true') -> 'ok';
 do_create(AccountMODb, 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    _ = couch_mgr:db_create(EncodedMODb),
+    _ = kz_datamgr:db_create(EncodedMODb),
     _ = refresh_views(EncodedMODb),
     create_routines(AccountMODb).
 
@@ -296,7 +296,7 @@ maybe_archive_modb(AccountMODb) ->
             lager:info("account modb ~s needs archiving", [AccountMODb]),
             'ok' = couch_util:archive(AccountMODb),
             lager:info("account modb ~s archived, removing the db", [AccountMODb]),
-            Rm = couch_mgr:db_delete(AccountMODb),
+            Rm = kz_datamgr:db_delete(AccountMODb),
             lager:info("account modb ~s deleted: ~p", [AccountMODb, Rm]);
         'false' ->
             lager:info("account modb ~s still current enough to keep", [AccountMODb])
@@ -316,7 +316,7 @@ should_archive(AccountMODb, Year, Month) ->
 %% @doc
 %% Delete an modb if it is no longer associated with its account.
 %% (That is: orphaned).
-%% AccountMODb must be 'encoded' otherwise couch_mgr:db_delete/1 will fail.
+%% AccountMODb must be 'encoded' otherwise kz_datamgr:db_delete/1 will fail.
 %% AccountIds should be whapps_util:get_all_accounts('raw').
 %% Returns whether AccountMODb has been deleted.
 %% @end
@@ -330,7 +330,7 @@ maybe_delete(AccountMODb, AccountIds) ->
 -spec delete_if_orphaned(ne_binary(), boolean()) -> boolean().
 delete_if_orphaned(_AccountMODb, 'false') -> 'false';
 delete_if_orphaned(AccountMODb, 'true') ->
-    Succeeded = couch_mgr:db_delete(AccountMODb),
+    Succeeded = kz_datamgr:db_delete(AccountMODb),
     lager:debug("cleanse orphaned modb ~p... ~p", [AccountMODb,Succeeded]),
     Succeeded.
 
@@ -346,7 +346,7 @@ get_range(AccountId, From, To) ->
                                         ,{FromYear, FromMonth}
                                         ,{ToYear, ToMonth}
                                        ),
-        couch_mgr:db_exists(MODb)
+        kz_datamgr:db_exists(MODb)
     ].
 
 -type year_month_tuple() :: {wh_year(), wh_month()}.

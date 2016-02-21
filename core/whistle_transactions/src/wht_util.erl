@@ -260,7 +260,7 @@ get_balance_from_account(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_results(AccountDb, View, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, View, ViewOptions) of
         {'ok', []} ->
             lager:debug("no current balance for ~s", [AccountId]),
             0;

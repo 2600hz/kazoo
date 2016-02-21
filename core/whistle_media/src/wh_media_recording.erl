@@ -442,14 +442,14 @@ store_recording_meta(#state{call=Call
                  ,Db
                 ),
     kazoo_modb:create(Db),
-    case couch_mgr:ensure_saved(Db, MediaDoc) of
+    case kz_datamgr:ensure_saved(Db, MediaDoc) of
         {'ok', JObj} -> wh_doc:revision(JObj);
         {'error', _}= Err -> Err
     end.
 
 -spec maybe_store_recording_meta(state()) -> ne_binary() | {'error', any()}.
 maybe_store_recording_meta(#state{doc_db=Db, doc_id=DocId}=State) ->
-    case couch_mgr:lookup_doc_rev(Db, DocId) of
+    case kz_datamgr:lookup_doc_rev(Db, DocId) of
         {'ok', Rev} -> Rev;
         _ -> store_recording_meta(State)
     end.
@@ -518,9 +518,9 @@ maybe_add_connection(Tag, []) ->
     Conn = couch_connection(Tag),
     wh_couch_connections:add_unique(Conn, Tag),
     wh_couch_connections:wait_for_connection(Tag, ?MILLISECONDS_IN_MINUTE),
-    couch_mgr:server_tag(Tag);
+    kz_datamgr:server_tag(Tag);
 maybe_add_connection(Tag, [_|_]) ->
-    couch_mgr:server_tag(Tag).
+    kz_datamgr:server_tag(Tag).
 
 -spec couch_connection(atom()) -> couch_connection().
 couch_connection('third_party') ->

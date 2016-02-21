@@ -44,7 +44,7 @@ fix_account_numbers(<<_/binary>> = Account) ->
     fix_numbers(PhoneNumbers),
 
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    couch_mgr:flush_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC).
+    kz_datamgr:flush_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -55,7 +55,7 @@ fix_account_numbers(<<_/binary>> = Account) ->
 get_phone_numbers(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
+    case kz_datamgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'ok', JObj} -> extract_numbers(AccountId, JObj);
         {'error', _E} ->
             io:format("failed to open phone_numbers doc for account ~s ~p~n", [AccountId, _E]),
@@ -106,7 +106,7 @@ extract_numbers_fold(Number, JObj, Acc, Props) ->
 -spec get_number_doc(ne_binary()) -> api_object().
 get_number_doc(Number) ->
     NumberDb = wnm_util:number_to_db_name(Number),
-    case couch_mgr:open_doc(NumberDb, Number) of
+    case kz_datamgr:open_doc(NumberDb, Number) of
         {'ok', JObj} -> JObj;
         {'error', _E} ->
             io:format("failed to open ~s doc ~p~n", [Number, _E]),
@@ -121,8 +121,8 @@ get_number_doc(Number) ->
 -spec get_trunkstore_numbers(ne_binary()) -> ne_binaries().
 get_trunkstore_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_all_results(AccountDb, <<"trunkstore/LookUpDID">>) of
-        {'ok', JObjs} -> couch_mgr:get_result_keys(JObjs);
+    case kz_datamgr:get_all_results(AccountDb, <<"trunkstore/LookUpDID">>) of
+        {'ok', JObjs} -> kz_datamgr:get_result_keys(JObjs);
         {'error', _E} ->
             io:format("failed to get trunkstore numbers: ~p~n", [_E]),
             []
@@ -136,8 +136,8 @@ get_trunkstore_numbers(AccountId) ->
 -spec get_callflow_numbers(ne_binary()) -> ne_binaries().
 get_callflow_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_all_results(AccountDb, <<"callflow/listing_by_number">>) of
-        {'ok', JObjs} -> couch_mgr:get_result_keys(JObjs);
+    case kz_datamgr:get_all_results(AccountDb, <<"callflow/listing_by_number">>) of
+        {'ok', JObjs} -> kz_datamgr:get_result_keys(JObjs);
         {'error', _E} ->
             io:format("failed to get callflow numbers: ~p~n", [_E]),
             []
@@ -223,7 +223,7 @@ fix_assignment(AccountId, PhoneNumbersAssignment, NumberAssignment, Number) ->
 -spec fix_phone_numbers_doc_assignment(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 fix_phone_numbers_doc_assignment(AccountId, Number) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
+    case kz_datamgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc: ~p~n", [Number, _E]);
         {'ok', JObj} ->
@@ -232,7 +232,7 @@ fix_phone_numbers_doc_assignment(AccountId, Number) ->
 
 fix_phone_numbers_doc_assignment(AccountId, Number, AccountDb, JObj) ->
     JObj1 = wh_json:set_value([Number, <<"assigned_to">>], AccountId, JObj),
-    case couch_mgr:ensure_saved(AccountDb, JObj1) of
+    case kz_datamgr:ensure_saved(AccountDb, JObj1) of
         {'ok', _} ->
             io:format("[~s] phone_numbers doc assigned_to (~s) fixed~n", [Number, AccountId]);
         {'error', _E1} ->
@@ -249,7 +249,7 @@ fix_phone_numbers_doc_assignment(AccountId, Number, AccountDb, JObj) ->
 remove_number(AccountId, Number) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
 
-    case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
+    case kz_datamgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc: ~p~n", [Number, _E]);
         {'ok', JObj} ->
@@ -267,7 +267,7 @@ maybe_remove_non_porting(AccountId, Number, AccountDb, JObj) ->
 
 remove_number(_AccountId, Number, AccountDb, JObj) ->
     JObj1 = wh_json:delete_key(Number, JObj),
-    case couch_mgr:ensure_saved(AccountDb, JObj1) of
+    case kz_datamgr:ensure_saved(AccountDb, JObj1) of
         {'ok', _} ->
             io:format("[~s] phone_numbers doc fixed, number removed~n", [Number]);
         {'error', _E1} ->
@@ -284,7 +284,7 @@ remove_number(_AccountId, Number, AccountDb, JObj) ->
 -spec maybe_add_to_account(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_add_to_account(Number, AccountId, NumberAssignment)->
     AccountDb = wh_util:format_account_id(NumberAssignment, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
+    case kz_datamgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc for account [~s]: ~p~n", [Number, NumberAssignment, _E]);
         {'ok', JObj} ->
@@ -312,16 +312,16 @@ maybe_add_to_account(Number, AccountId, NumberAssignment, JObj) ->
 -spec add_to_account(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 add_to_account(Number, AccountId, NumberAssignment, Doc)->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
+    case kz_datamgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc for account [~s]: ~p~n", [Number, AccountId, _E]);
         {'ok', JObj} ->
             NumJObj = wh_json:set_value(<<"assigned_to">>, NumberAssignment, wh_json:get_value(Number, JObj)),
             Doc1 = wh_json:set_value(Number, NumJObj, Doc),
             NumberAssignmentDb = wh_util:format_account_id(NumberAssignment, 'encoded'),
-            case couch_mgr:ensure_saved(NumberAssignmentDb, Doc1) of
+            case kz_datamgr:ensure_saved(NumberAssignmentDb, Doc1) of
                 {'ok', _} ->
-                    couch_mgr:flush_cache_doc(NumberAssignmentDb, ?PHONE_NUMBERS),
+                    kz_datamgr:flush_cache_doc(NumberAssignmentDb, ?PHONE_NUMBERS),
                     io:format("[~s] number added to right account (~s)~n", [Number, NumberAssignment]);
                 {'error', _E1} ->
                     io:format("[~s] failed to add number to right account (~s) ~p~n", [Number, NumberAssignment, _E1])
@@ -384,12 +384,12 @@ fix_used_by(AccountId, UsedBy, _NumberDocUsedBy, _PhoneNumbersDocUsedBy, Number)
 -spec fix_number_doc_used_by(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 fix_number_doc_used_by(_AccountId, Number, UsedBy) ->
     NumberDb = wnm_util:number_to_db_name(Number),
-    case couch_mgr:open_doc(NumberDb, Number) of
+    case kz_datamgr:open_doc(NumberDb, Number) of
         {'error', _E} ->
             io:format("[~s] failed to open number doc: ~p~n", [Number, _E]);
         {'ok', JObj} ->
             JObj1 = wh_json:set_value(<<"used_by">>, UsedBy, JObj),
-            case couch_mgr:ensure_saved(NumberDb, JObj1) of
+            case kz_datamgr:ensure_saved(NumberDb, JObj1) of
                 {'ok', _} ->
                     io:format("[~s] number doc used_by (~s) fixed~n", [Number, UsedBy]);
                 {'error', _E1} ->
@@ -405,12 +405,12 @@ fix_number_doc_used_by(_AccountId, Number, UsedBy) ->
 -spec fix_phone_numbers_doc_used_by(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 fix_phone_numbers_doc_used_by(AccountId, Number, UsedBy) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
+    case kz_datamgr:open_doc(AccountDb, ?PHONE_NUMBERS) of
         {'error', _E} ->
             io:format("[~s] failed to open phone_numbers doc: ~p~n", [Number, _E]);
         {'ok', JObj} ->
             JObj1 = wh_json:set_value([Number, <<"used_by">>], UsedBy, JObj),
-            case couch_mgr:ensure_saved(AccountDb, JObj1) of
+            case kz_datamgr:ensure_saved(AccountDb, JObj1) of
                 {'ok', _} ->
                     io:format("[~s] phone_numbers doc used_by (~s) fixed~n", [Number, UsedBy]);
                 {'error', _E1} ->

@@ -16,9 +16,7 @@
                        ,{'connect_timeout', 500}
                       ]).
 
--define(KZ_COUCH_CACHE, 'kazoo_couch_cache').
-
--define(FIXTURES_FOLDER, "fixtures").
+-define(RETRY_504(F), kz_couch_util:retry504s(fun() -> F end)).
 
 -define(CONFIG_CAT, ?SYSCONFIG_COUCH).
 
@@ -62,11 +60,11 @@
                               ,port = ?DEFAULT_PORT
                               ,username = ""
                               ,password = ""
+                              ,options :: wh_proplist()
                               ,connected = 'false'
                               ,ready = 'false'
                               ,admin = 'false'
                               ,server = #server{}
-                              ,tag = 'local'
                              }).
 -type couch_connection() :: #kz_couch_connection{}.
 -type couch_connections() :: [couch_connection()].

@@ -45,7 +45,7 @@ maybe_add_oauth_user(JObj, TokenObj) ->
 add_oauth_user(#oauth_app{user_prefix=Prefix}=App, JObj, TokenObj) ->
     UserID = wh_json:get_value(<<"user_id">>, TokenObj),
     DocId = <<Prefix/binary, "-",UserID/binary>>,
-    case couch_mgr:open_doc(?KZ_OAUTH_DB, DocId) of
+    case kz_datamgr:open_doc(?KZ_OAUTH_DB, DocId) of
         {'ok', OAuthDoc} ->
             maybe_update_oauth_doc(DocId, JObj, TokenObj, App, OAuthDoc);
         {'error', 'not_found'} ->
@@ -78,7 +78,7 @@ save_oauth_doc(App, DocId, JObj, TokenObj, RefreshTokenObj) ->
            ,{<<"scopes">>, binary:split(wh_json:get_value(<<"scope">>, TokenObj), <<" ">>) }
            ,{<<"refresh_token">>, wh_json:get_value(<<"refresh_token">>, RefreshTokenObj) }
           ]),
-    case couch_mgr:update_doc(?KZ_OAUTH_DB, DocId, Doc) of
+    case kz_datamgr:update_doc(?KZ_OAUTH_DB, DocId, Doc) of
         {'ok', DocObj} -> load_profile(App, JObj, TokenObj, DocObj);
         {'error', _R} ->
             lager:debug("unable to update oauth document ~s: ~p", [DocId, _R]),

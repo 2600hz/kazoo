@@ -18,17 +18,8 @@
          ,compactor_pid/0
         ]).
 
--define(ORIGIN_BINDINGS, [[]]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                      ,'new_node_flush'
-                      ,'channel_reconnect_flush'
-                     ]).
 
--define(CHILDREN, [?WORKER('kazoo_couch_init')
-                   ,?CACHE_ARGS(?KZ_COUCH_CACHE, ?CACHE_PROPS)
-                   ,?SUPER('kz_couch_connection_sup')
-                   ,?WORKER('kz_couch_connections')
-                   ,?WORKER('kz_couch_bootstrap')
+-define(CHILDREN, [
                   ]).
 
 %% ===================================================================

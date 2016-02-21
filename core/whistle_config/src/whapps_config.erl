@@ -354,7 +354,7 @@ update_category(Category, Key, Value, Node, Options) when not is_binary(Node) ->
     update_category(Category, Key, Value, wh_util:to_binary(Node), Options);
 update_category(Category, Keys, Value, Node, Options) ->
     lager:debug("setting ~s(~p): ~p", [Category, Keys, Value]),
-    case couch_mgr:open_cache_doc(?WH_CONFIG_DB, Category) of
+    case kz_datamgr:open_cache_doc(?WH_CONFIG_DB, Category) of
         {'ok', JObj} ->
             lager:debug("updating category ~s(~s).~s to ~p", [Category
                                                               ,Node
@@ -391,7 +391,7 @@ update_category(Category, JObj, PvtFields) ->
         {'ok', _}=OK -> OK;
         {'error', 'conflict'} ->
             lager:debug("conflict saving ~s, merging and saving", [Category]),
-            {'ok', Updated} = couch_mgr:open_doc(?WH_CONFIG_DB, Category),
+            {'ok', Updated} = kz_datamgr:open_doc(?WH_CONFIG_DB, Category),
             Merged = wh_json:merge_jobjs(Updated, wh_json:public_fields(JObj)),
             lager:debug("updating from ~s to ~s", [wh_doc:revision(JObj), wh_doc:revision(Merged)]),
             update_category(Category, Merged, PvtFields)
@@ -424,19 +424,19 @@ maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
 
     JObj1 = update_pvt_fields(Category, JObj, PvtFields),
 
-    case couch_mgr:save_doc(?WH_CONFIG_DB, JObj1) of
+    case kz_datamgr:save_doc(?WH_CONFIG_DB, JObj1) of
         {'ok', SavedJObj} ->
             lager:debug("saved cat ~s to db ~s (~s)", [Category, ?WH_CONFIG_DB, wh_doc:revision(SavedJObj)]),
-            couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, SavedJObj),
+            kz_datamgr:add_to_doc_cache(?WH_CONFIG_DB, Category, SavedJObj),
             {'ok', SavedJObj};
         {'error', 'not_found'} when not Looped ->
             lager:debug("attempting to create ~s DB", [?WH_CONFIG_DB]),
-            couch_mgr:db_create(?WH_CONFIG_DB),
+            kz_datamgr:db_create(?WH_CONFIG_DB),
             maybe_save_category(Category, JObj, PvtFields, 'true');
         {'error', 'conflict'}=E -> E;
         {'error', _R} ->
             lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
-            couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, JObj1),
+            kz_datamgr:add_to_doc_cache(?WH_CONFIG_DB, Category, JObj1),
             {'ok', JObj1}
     end.
 
@@ -487,11 +487,11 @@ is_locked() ->
 %%-----------------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() ->
-    couch_mgr:flush_cache_docs(?WH_CONFIG_DB).
+    kz_datamgr:flush_cache_docs(?WH_CONFIG_DB).
 
 -spec flush(ne_binary()) -> 'ok'.
 flush(Category) ->
-    couch_mgr:flush_cache_doc(?WH_CONFIG_DB, Category).
+    kz_datamgr:flush_cache_doc(?WH_CONFIG_DB, Category).
 
 -spec flush(ne_binary(), ne_binary()) -> 'ok'.
 -spec flush(ne_binary(), ne_binary() | ne_binaries(), atom() | ne_binary()) -> 'ok'.
@@ -511,7 +511,7 @@ flush(Category, Keys, Node) ->
         {'error', _} -> 'ok';
         {'ok', JObj} ->
             J = wh_json:delete_key([Node | Keys], JObj),
-            _ = couch_mgr:add_to_doc_cache(?WH_CONFIG_DB, Category, J),
+            _ = kz_datamgr:add_to_doc_cache(?WH_CONFIG_DB, Category, J),
             'ok'
     end.
 
@@ -526,4 +526,4 @@ flush(Category, Keys, Node) ->
 %%-----------------------------------------------------------------------------
 -spec get_category(ne_binary()) -> fetch_ret().
 get_category(Category) ->
-    couch_mgr:open_cache_doc(?WH_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]).
+    kz_datamgr:open_cache_doc(?WH_CONFIG_DB, Category, [{'cache_failures', ['not_found']}]).

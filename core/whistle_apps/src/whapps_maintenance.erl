@@ -68,7 +68,7 @@ rebuild_token_auth() ->
 
 -spec rebuild_token_auth(text() | integer()) -> 'ok'.
 rebuild_token_auth(Pause) ->
-    _ = couch_mgr:db_delete(?KZ_TOKEN_DB),
+    _ = kz_datamgr:db_delete(?KZ_TOKEN_DB),
     timer:sleep(wh_util:to_integer(Pause)),
     refresh(?KZ_TOKEN_DB),
     'ok'.
@@ -171,56 +171,56 @@ refresh([Database|Databases], Pause, Total) ->
 
 -spec get_databases() -> ne_binaries().
 get_databases() ->
-    {'ok', Databases} = couch_mgr:db_info(),
+    {'ok', Databases} = kz_datamgr:db_info(),
     ?KZ_SYSTEM_DBS ++ [Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))].
 
 refresh(?WH_CONFIG_DB) ->
-    couch_mgr:db_create(?WH_CONFIG_DB),
-    couch_mgr:revise_doc_from_file(?WH_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
+    kz_datamgr:db_create(?WH_CONFIG_DB),
+    kz_datamgr:revise_doc_from_file(?WH_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
     cleanup_invalid_notify_docs(),
     delete_system_media_references();
 refresh(?KZ_OAUTH_DB) ->
-    couch_mgr:db_create(?KZ_OAUTH_DB),
+    kz_datamgr:db_create(?KZ_OAUTH_DB),
     kazoo_oauth_maintenance:register_common_providers();
 refresh(?KZ_WEBHOOKS_DB) ->
-    couch_mgr:db_create(?KZ_WEBHOOKS_DB),
-    couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>);
+    kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>);
 refresh(?WH_OFFNET_DB) ->
-    couch_mgr:db_create(?WH_OFFNET_DB),
+    kz_datamgr:db_create(?WH_OFFNET_DB),
     stepswitch_maintenance:refresh();
 refresh(?WH_SERVICES_DB) ->
-    couch_mgr:db_create(?WH_SERVICES_DB),
+    kz_datamgr:db_create(?WH_SERVICES_DB),
     whistle_services_maintenance:refresh();
 refresh(?WH_SIP_DB) ->
-    couch_mgr:db_create(?WH_SIP_DB),
+    kz_datamgr:db_create(?WH_SIP_DB),
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json('registrar', <<"auth.json">>)
              ,whapps_util:get_view_json('crossbar', <<"views/resources.json">>)
             ],
     whapps_util:update_views(?WH_SIP_DB, Views, 'true');
 refresh(?WH_SCHEMA_DB) ->
-    couch_mgr:db_create(?WH_SCHEMA_DB),
-    couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, 'crossbar', "schemas"),
+    kz_datamgr:db_create(?WH_SCHEMA_DB),
+    kz_datamgr:revise_docs_from_folder(?WH_SCHEMA_DB, 'crossbar', "schemas"),
     'ok';
 refresh(?WH_MEDIA_DB) ->
-    couch_mgr:db_create(?WH_MEDIA_DB),
+    kz_datamgr:db_create(?WH_MEDIA_DB),
     whistle_media_maintenance:refresh(),
     'ok';
 refresh(?WH_RATES_DB) ->
-    couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:revise_docs_from_folder(?WH_RATES_DB, 'hotornot', "views"),
-    _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', <<"views/rates.json">>),
-    couch_mgr:load_fixtures_from_folder(?WH_RATES_DB, 'hotornot'),
+    kz_datamgr:db_create(?WH_RATES_DB),
+    kz_datamgr:revise_docs_from_folder(?WH_RATES_DB, 'hotornot', "views"),
+    _ = kz_datamgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', <<"views/rates.json">>),
+    kz_datamgr:load_fixtures_from_folder(?WH_RATES_DB, 'hotornot'),
     'ok';
 refresh(?WH_ANONYMOUS_CDR_DB) ->
-    couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
+    kz_datamgr:db_create(?WH_ANONYMOUS_CDR_DB),
+    _ = kz_datamgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
     'ok';
 refresh(?WH_DEDICATED_IP_DB) ->
-    couch_mgr:db_create(?WH_DEDICATED_IP_DB),
+    kz_datamgr:db_create(?WH_DEDICATED_IP_DB),
     kz_ip_utils:refresh_database();
 refresh(?WH_ACCOUNTS_DB) ->
-    couch_mgr:db_create(?WH_ACCOUNTS_DB),
+    kz_datamgr:db_create(?WH_ACCOUNTS_DB),
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json('whistle_apps', ?ACCOUNTS_AGG_VIEW_FILE)
              ,whapps_util:get_view_json('whistle_apps', ?SEARCH_VIEW_FILE)
@@ -229,37 +229,37 @@ refresh(?WH_ACCOUNTS_DB) ->
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views, 'true'),
     'ok';
 refresh(?WH_FAXES_DB) ->
-    couch_mgr:db_create(?WH_FAXES_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_FAXES_DB, 'fax', ?FAXES_VIEW_FILE),
-    _ = couch_mgr:revise_doc_from_file(?WH_FAXES_DB, 'fax', ?FAXBOX_VIEW_FILE),
+    kz_datamgr:db_create(?WH_FAXES_DB),
+    _ = kz_datamgr:revise_doc_from_file(?WH_FAXES_DB, 'fax', ?FAXES_VIEW_FILE),
+    _ = kz_datamgr:revise_doc_from_file(?WH_FAXES_DB, 'fax', ?FAXBOX_VIEW_FILE),
     'ok';
 refresh(?KZ_PORT_REQUESTS_DB) ->
-    couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
+    kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
     _ = wh_util:spawn(fun wh_port_request:migrate/0),
     'ok';
 refresh(?KZ_ACDC_DB) ->
-    couch_mgr:db_create(?KZ_ACDC_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
+    kz_datamgr:db_create(?KZ_ACDC_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
     'ok';
 refresh(?KZ_CCCPS_DB) ->
-    couch_mgr:db_create(?KZ_CCCPS_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_CCCPS_DB, 'crossbar', <<"views/cccps.json">>),
+    kz_datamgr:db_create(?KZ_CCCPS_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_CCCPS_DB, 'crossbar', <<"views/cccps.json">>),
     'ok';
 refresh(?KZ_TOKEN_DB) ->
-    _ = couch_mgr:db_create(?KZ_TOKEN_DB),
-    couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    _ = kz_datamgr:db_create(?KZ_TOKEN_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
     'ok';
 refresh(?WH_ALERTS_DB) ->
-    _ = couch_mgr:db_create(?WH_ALERTS_DB),
-    couch_mgr:revise_doc_from_file(?WH_ALERTS_DB, 'crossbar', "views/alerts.json"),
+    _ = kz_datamgr:db_create(?WH_ALERTS_DB),
+    kz_datamgr:revise_doc_from_file(?WH_ALERTS_DB, 'crossbar', "views/alerts.json"),
     'ok';
 refresh(Database) when is_binary(Database) ->
     case couch_util:db_classification(Database) of
         'account' -> refresh_account_db(Database);
         'modb' -> kazoo_modb:refresh_views(Database);
         'system' ->
-            couch_mgr:db_create(Database),
+            kz_datamgr:db_create(Database),
             'ok';
         _Else -> 'ok'
     end.
@@ -272,8 +272,8 @@ refresh(Database) when is_binary(Database) ->
 %%--------------------------------------------------------------------
 -spec cleanup_invalid_notify_docs() -> 'ok'.
 cleanup_invalid_notify_docs() ->
-    _ = couch_mgr:db_archive(<<"system_config">>),
-    case couch_mgr:all_docs(?WH_CONFIG_DB, ['include_docs']) of
+    _ = kz_datamgr:db_archive(<<"system_config">>),
+    case kz_datamgr:all_docs(?WH_CONFIG_DB, ['include_docs']) of
         {'ok', JObjs} -> cleanup_invalid_notify_docs(JObjs);
         {'error', _R} ->
             lager:warning("unable to fetch all system config docs: ~p", [_R])
@@ -291,7 +291,7 @@ cleanup_invalid_notify_docs([JObj|JObjs]) ->
 -spec maybe_remove_invalid_notify_doc(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_remove_invalid_notify_doc(<<"notification">>, <<"notification", _/binary>>, _) -> 'ok';
 maybe_remove_invalid_notify_doc(<<"notification">>, _, JObj) ->
-    _ = couch_mgr:del_doc(?WH_CONFIG_DB, JObj),
+    _ = kz_datamgr:del_doc(?WH_CONFIG_DB, JObj),
     'ok';
 maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
 
@@ -329,8 +329,8 @@ migrate_config_setting(From, To) ->
 migrate_config_setting(UpdatedFrom, Removed, To) ->
     case add_config_setting(To, Removed) of
         {'ok', UpdatedTo} ->
-            {'ok', _} = couch_mgr:save_doc(?WH_CONFIG_DB, UpdatedTo),
-            {'ok', _} = couch_mgr:save_doc(?WH_CONFIG_DB, UpdatedFrom),
+            {'ok', _} = kz_datamgr:save_doc(?WH_CONFIG_DB, UpdatedTo),
+            {'ok', _} = kz_datamgr:save_doc(?WH_CONFIG_DB, UpdatedFrom),
             'ok';
         {'error', Reason} -> {'error', {'add', Reason}}
     end.
@@ -345,7 +345,7 @@ add_config_setting({Id, Setting}, Values) ->
                                 'ok' |
                                 {'error', any()}.
 add_config_setting(Id, Setting, Values) when is_binary(Id) ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, Id) of
+    case kz_datamgr:open_doc(?WH_CONFIG_DB, Id) of
         {'ok', JObj} -> add_config_setting(JObj, Setting, Values);
         {'error', 'not_found'} ->
             add_config_setting(
@@ -399,7 +399,7 @@ remove_config_setting({Id, Setting}) ->
                                    {'ok', wh_json:object(), migrate_values()} |
                                    {'error', any()}.
 remove_config_setting(Id, Setting) when is_binary(Id) ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, Id) of
+    case kz_datamgr:open_doc(?WH_CONFIG_DB, Id) of
         {'ok', JObj} -> remove_config_setting(JObj, Setting);
         {'error', _}=Error -> Error
     end;
@@ -449,25 +449,25 @@ refresh_account_db(Database) ->
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
 remove_depreciated_account_views(AccountDb) ->
-    _ = couch_mgr:del_doc(AccountDb, <<"_design/limits">>),
-    _ = couch_mgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
+    _ = kz_datamgr:del_doc(AccountDb, <<"_design/limits">>),
+    _ = kz_datamgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
     'ok'.
 
 -spec ensure_account_definition(ne_binary(), ne_binary()) -> 'ok'.
 ensure_account_definition(AccountDb, AccountId) ->
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} -> get_definition_from_accounts(AccountDb, AccountId);
         {'ok', _} -> 'ok'
     end.
 
 -spec get_definition_from_accounts(ne_binary(), ne_binary()) -> 'ok'.
 get_definition_from_accounts(AccountDb, AccountId) ->
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} -> couch_mgr:ensure_saved(AccountDb, wh_doc:delete_revision(JObj));
+    case kz_datamgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', JObj} -> kz_datamgr:ensure_saved(AccountDb, wh_doc:delete_revision(JObj));
         {'error', 'not_found'} ->
             io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
                      ,[AccountId]),
-            _ = couch_mgr:db_archive(AccountDb),
+            _ = kz_datamgr:db_archive(AccountDb),
             maybe_delete_db(AccountDb)
     end.
 
@@ -506,7 +506,7 @@ remove_depreciated_databases([Database|Databases]) ->
     _ = case couch_util:db_classification(Database) of
             'depreciated' ->
                 io:format("    archive and remove depreciated database ~s~n", [Database]),
-                _ = couch_mgr:db_archive(Database),
+                _ = kz_datamgr:db_archive(Database),
                 maybe_delete_db(Database);
             _Else -> 'ok'
         end,
@@ -520,7 +520,7 @@ remove_depreciated_databases([Database|Databases]) ->
 %%--------------------------------------------------------------------
 -spec cleanup_aggregated_accounts() -> 'ok'.
 cleanup_aggregated_accounts() ->
-    case couch_mgr:all_docs(?WH_ACCOUNTS_DB, []) of
+    case kz_datamgr:all_docs(?WH_ACCOUNTS_DB, []) of
         {'ok', JObjs} -> cleanup_aggregated_accounts(JObjs);
         _ -> 'ok'
     end.
@@ -540,7 +540,7 @@ cleanup_aggregated_accounts([JObj|JObjs]) ->
 cleanup_aggregated_account(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} -> remove_aggregated_account(AccountDb);
         _Else -> 'ok'
     end.
@@ -548,9 +548,9 @@ cleanup_aggregated_account(Account) ->
 -spec remove_aggregated_account(ne_binary()) -> 'ok'.
 remove_aggregated_account(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    {'ok', JObj} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+    {'ok', JObj} = kz_datamgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
     io:format("    removing invalid ~s doc ~s~n", [?WH_ACCOUNTS_DB, AccountId]),
-    _ = couch_mgr:del_doc(?WH_ACCOUNTS_DB, JObj),
+    _ = kz_datamgr:del_doc(?WH_ACCOUNTS_DB, JObj),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -561,7 +561,7 @@ remove_aggregated_account(Account) ->
 %%--------------------------------------------------------------------
 -spec cleanup_aggregated_devices() -> 'ok'.
 cleanup_aggregated_devices() ->
-    case couch_mgr:all_docs(?WH_SIP_DB, []) of
+    case kz_datamgr:all_docs(?WH_SIP_DB, []) of
         {'ok', JObjs} -> cleanup_aggregated_devices(JObjs);
         _ -> 'ok'
     end.
@@ -579,7 +579,7 @@ cleanup_aggregated_devices([JObj|JObjs]) ->
 
 -spec cleanup_aggregated_device(ne_binary()) -> 'ok'.
 cleanup_aggregated_device(DocId) ->
-    {'ok', JObj} = couch_mgr:open_doc(?WH_SIP_DB, DocId),
+    {'ok', JObj} = kz_datamgr:open_doc(?WH_SIP_DB, DocId),
     case wh_json:get_first_defined([<<"pvt_account_db">>
                                    ,<<"pvt_account_id">>
                                    ], JObj)
@@ -593,11 +593,11 @@ cleanup_aggregated_device(DocId) ->
 
 -spec verify_aggregated_device(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 verify_aggregated_device(AccountDb, AccountId, JObj) ->
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} ->
             io:format("    removing ~s doc ~s referencing missing db ~s~n"
                      ,[?WH_SIP_DB, AccountId, AccountDb]),
-            _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            _ = kz_datamgr:del_doc(?WH_SIP_DB, JObj),
             'ok';
         _Else -> 'ok'
     end.
@@ -616,7 +616,7 @@ cleanup_voicemail_media(Account) ->
     Medias = get_medias(Account),
     Messages = get_messages(Account),
     ExtraMedia = lists:subtract(Medias, Messages),
-    case couch_mgr:del_docs(AccountDb, ExtraMedia) of
+    case kz_datamgr:del_docs(AccountDb, ExtraMedia) of
         {'ok', _}=Res -> Res;
         {'error', _E}=Err ->
             lager:error("could not delete docs ~p: ~p", [ExtraMedia, _E]),
@@ -636,7 +636,7 @@ cleanup_orphan_modbs() ->
 get_messages(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     ViewOptions = ['include_docs'],
-    case couch_mgr:get_results(AccountDb, ?VMBOX_VIEW, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?VMBOX_VIEW, ViewOptions) of
         {'ok', ViewRes} ->
             lists:foldl(fun extract_messages/2, [], ViewRes);
         {'error', _E} ->
@@ -656,7 +656,7 @@ extract_messages(JObj, CurMessages) ->
 get_medias(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     ViewOptions = [],
-    case couch_mgr:get_results(AccountDb, ?PMEDIA_VIEW, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, ?PMEDIA_VIEW, ViewOptions) of
         {'ok', ViewRes} -> [wh_doc:id(JObj) || JObj<- ViewRes];
         {'error', _E} ->
             lager:error("could not load view ~p: ~p", [?PMEDIA_VIEW, _E]),
@@ -683,7 +683,7 @@ migrate_all_limits(Accounts) ->
 
 migrate_limits_fold(AccountDb, Current, Total) ->
     io:format("checking limits doc in database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
-    _ = case couch_mgr:open_doc(AccountDb, <<"limits">>) of
+    _ = case kz_datamgr:open_doc(AccountDb, <<"limits">>) of
             {'error', 'not_found'} -> migrate_limits(AccountDb);
             _Else -> 'ok'
         end,
@@ -697,7 +697,7 @@ migrate_limits(Account) ->
     TwowayTrunks = whapps_config:get(<<"jonny5">>, <<"default_twoway_trunks">>),
     InboundTrunks = whapps_config:get(<<"jonny5">>, <<"default_inbound_trunks">>),
 
-    AccountDb = case couch_mgr:db_exists(Account) of
+    AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
                     'false' -> wh_util:format_account_id(Account, 'encoded')
                 end,
@@ -715,7 +715,7 @@ migrate_limits(Account) ->
                 ,{<<"pvt_vsn">>, 1}
                ]
               )),
-    _ = couch_mgr:save_doc(AccountDb, JObj),
+    _ = kz_datamgr:save_doc(AccountDb, JObj),
     'ok'.
 
 -spec clean_trunkstore_docs(ne_binary(), integer(), integer()) ->
@@ -724,7 +724,7 @@ clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
     ViewOptions = ['include_docs'
                    ,{'reduce', 'false'}
                   ],
-    case couch_mgr:get_results(AccountDb, <<"trunkstore/crossbar_listing">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"trunkstore/crossbar_listing">>, ViewOptions) of
         {'ok', JObjs} -> clean_trunkstore_docs(AccountDb, JObjs, TwowayTrunks, InboundTrunks);
         {'error', _}=E -> E
     end.
@@ -740,7 +740,7 @@ clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
     _ = case wh_json:get_ne_value(<<"servers">>, Doc) =:= 'undefined'
             andalso wh_json:get_ne_value(<<"pvt_created_by">>, Doc) =:= <<"jonny5">>
         of
-            'true' -> couch_mgr:save_doc(AccountDb, wh_doc:set_soft_deleted(Doc, 'true'));
+            'true' -> kz_datamgr:save_doc(AccountDb, wh_doc:set_soft_deleted(Doc, 'true'));
             'false' -> 'ok'
         end,
     NewTrunks = case wh_json:get_integer_value([<<"account">>, <<"trunks">>], Doc, 0) of
@@ -779,11 +779,11 @@ migrate_media_fold(AccountDb, Current, Total) ->
 migrate_media(Account) when not is_binary(Account) ->
     migrate_media(wh_util:to_binary(Account));
 migrate_media(Account) ->
-    AccountDb = case couch_mgr:db_exists(Account) of
+    AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;
                     'false' -> wh_util:format_account_id(Account, 'encoded')
                 end,
-    case couch_mgr:get_results(AccountDb, <<"media/listing_by_name">>, []) of
+    case kz_datamgr:get_results(AccountDb, <<"media/listing_by_name">>, []) of
         {'ok', []} -> io:format("no public media files in db ~s~n", [AccountDb]);
         {'ok', [_|_]=JObjs1}->
             _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs1],
@@ -791,7 +791,7 @@ migrate_media(Account) ->
         {'error', _}=E1 ->
             io:format("unable to fetch media files in db ~s: ~p~n", [AccountDb, E1])
     end,
-    case couch_mgr:get_results(AccountDb, <<"media/listing_private_media">>, []) of
+    case kz_datamgr:get_results(AccountDb, <<"media/listing_private_media">>, []) of
         {'ok', []} -> io:format("no private media files in db ~s~n", [AccountDb]);
         {'ok', JObjs2}->
             _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs2],
@@ -820,7 +820,7 @@ ensure_aggregate_devices(Accounts).
 ensure_aggregate_device(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountRealm = wh_util:get_account_realm(AccountDb),
-    case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
+    case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
         {'ok', Devices} ->
             _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),
             refresh_account_devices(AccountDb, AccountRealm, Devices);
@@ -865,7 +865,7 @@ find_invalid_acccount_dbs() ->
 
 find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} -> [AccountDb|Acc];
         {'ok', _} -> Acc
     end.
@@ -881,7 +881,7 @@ maybe_migrate_attachments(AccountDb, Id, JObj) ->
     case wh_doc:attachments(JObj) of
         'undefined' ->
             io:format("media doc ~s/~s has no attachments, removing~n", [AccountDb, Id]),
-            couch_mgr:save_doc(AccountDb, wh_doc:set_soft_deleted(JObj, 'true'));
+            kz_datamgr:save_doc(AccountDb, wh_doc:set_soft_deleted(JObj, 'true'));
         Attachments ->
             _ = [catch migrate_attachment(AccountDb, JObj, K, V)
                  || {K,V} <- wh_json:to_proplist(Attachments)
@@ -891,7 +891,7 @@ maybe_migrate_attachments(AccountDb, Id, JObj) ->
 -spec migrate_attachment(ne_binary(), wh_json:object()) -> 'ok'.
 migrate_attachment(AccountDb, ViewJObj) ->
     Id = wh_doc:id(ViewJObj),
-    _ = case couch_mgr:open_doc(AccountDb, Id) of
+    _ = case kz_datamgr:open_doc(AccountDb, Id) of
             {'error', _}=E1 ->
                 io:format("unable to open media for attachment migration ~s/~s: ~p~n", [AccountDb, Id, E1]);
             {'ok', JObj1} ->
@@ -899,7 +899,7 @@ migrate_attachment(AccountDb, ViewJObj) ->
         end,
 
     %% we must reopen the doc since the _attachments has changed or we will effectively remove all attachments!
-    case couch_mgr:open_doc(AccountDb, Id) of
+    case kz_datamgr:open_doc(AccountDb, Id) of
         {'error', _}=E2 ->
             io:format("unable to open media for depreciated field removal ~s/~s: ~p~n", [AccountDb, Id, E2]);
         {'ok', JObj2} ->
@@ -914,9 +914,9 @@ remove_deprecated_attachment_properties(AccountDb, Id, JObj) ->
     Result = case (J =/= JObj) andalso wh_json:get_value(<<"source_id">>, J) of
                  'false' -> 'ignore';
                  'undefined' ->
-                     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"upload">>, J));
+                     kz_datamgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"upload">>, J));
                  _Else ->
-                     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"recording">>, J))
+                     kz_datamgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"recording">>, J))
              end,
     case Result of
         'ignore' -> 'ok';
@@ -997,7 +997,7 @@ maybe_update_attachment(AccountDb, Id, {OrigAttach, _CT1}, {NewAttach, CT}) ->
 -spec try_load_attachment(ne_binary(), ne_binary(), ne_binary()) ->
                                  binary().
 try_load_attachment(AccountDb, Id, OrigAttach) ->
-    case couch_mgr:fetch_attachment(AccountDb, Id, OrigAttach) of
+    case kz_datamgr:fetch_attachment(AccountDb, Id, OrigAttach) of
         {'ok', Content} -> Content;
         {'error', _R}=E ->
             io:format("unable to fetch attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttach, _R]),
@@ -1007,14 +1007,14 @@ try_load_attachment(AccountDb, Id, OrigAttach) ->
 -spec maybe_resave_attachment(binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                      'ok'.
 maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
-    {'ok', Rev} = couch_mgr:lookup_doc_rev(AccountDb, Id),
+    {'ok', Rev} = kz_datamgr:lookup_doc_rev(AccountDb, Id),
     Options = [{'content_type', CT}
                ,{'rev', Rev}
               ],
     %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
     %%   so rather than check the put return fetch the new attachment and compare it to the old
-    Result = couch_mgr:put_attachment(AccountDb, Id, NewAttach, Content1, Options),
-    {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
+    Result = kz_datamgr:put_attachment(AccountDb, Id, NewAttach, Content1, Options),
+    {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),
 
     case wh_doc:attachment_length(JObj, OrigAttach)
         =:= wh_doc:attachment_length(JObj, NewAttach)
@@ -1036,7 +1036,7 @@ maybe_resave_attachment(Content1, AccountDb, Id, OrigAttach, NewAttach, CT) ->
 maybe_cleanup_old_attachment(_AccountDb, _Id, NewAttach, NewAttach) ->
     io:format("updated content type for ~s/~s/~s~n", [_AccountDb, _Id, NewAttach]);
 maybe_cleanup_old_attachment(AccountDb, Id, OrigAttach, NewAttach) ->
-    case couch_mgr:delete_attachment(AccountDb, Id, OrigAttach) of
+    case kz_datamgr:delete_attachment(AccountDb, Id, OrigAttach) of
         {'ok', _} ->
             io:format("updated attachment name ~s/~s/~s~n", [AccountDb, Id, NewAttach]),
             'ok';
@@ -1089,7 +1089,7 @@ maybe_delete_db(Database) ->
     case whapps_config:get_is_true(?SYSCONFIG_COUCH, <<"allow_maintenance_db_delete">>, 'false') of
         'true' ->
             lager:warning("deleting database ~s", [Database]),
-            couch_mgr:db_delete(Database);
+            kz_datamgr:db_delete(Database);
         'false' ->
             lager:warning("database deletion requested but disabled for ~s", [Database])
     end.
@@ -1139,12 +1139,12 @@ purge_doc_type(Type, Account, ChunkSize) ->
             ,{'limit', ChunkSize}
             ,'include_docs'
            ],
-    case couch_mgr:get_results(Db, <<"maintenance/listing_by_type">>, Opts) of
+    case kz_datamgr:get_results(Db, <<"maintenance/listing_by_type">>, Opts) of
         {'error', _}=E -> E;
         {'ok', []} -> 'ok';
         {'ok', Ds} ->
             lager:debug('deleting up to ~p documents of type ~p', [ChunkSize, Type]),
-            couch_mgr:del_docs(Db, [wh_json:get_value(<<"doc">>, D) || D <- Ds]),
+            kz_datamgr:del_docs(Db, [wh_json:get_value(<<"doc">>, D) || D <- Ds]),
             purge_doc_type(Type, Account, ChunkSize)
     end.
 
@@ -1180,7 +1180,7 @@ show_status(CallId, 'true', Resp) ->
 -spec delete_system_media_references() -> 'ok'.
 delete_system_media_references() ->
     DocId = wh_call_response:config_doc_id(),
-    case couch_mgr:open_doc(?WH_CONFIG_DB, DocId) of
+    case kz_datamgr:open_doc(?WH_CONFIG_DB, DocId) of
         {'ok', CallResponsesDoc} ->
             delete_system_media_references(DocId, CallResponsesDoc);
         {'error', 'not_found'} -> 'ok'
@@ -1196,7 +1196,7 @@ delete_system_media_references(DocId, CallResponsesDoc) ->
         NewDefault ->
             io:format("updating ~s with stripped system_media references~n", [DocId]),
             NewCallResponsesDoc = wh_json:set_value(TheKey, NewDefault, CallResponsesDoc),
-            _Resp = couch_mgr:save_doc(?WH_CONFIG_DB, NewCallResponsesDoc),
+            _Resp = kz_datamgr:save_doc(?WH_CONFIG_DB, NewCallResponsesDoc),
             'ok'
     end.
 

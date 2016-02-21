@@ -57,7 +57,7 @@ maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) -
 get_global_from_account(Account, Category, _Key, _Default) ->
     AccountId = account_id(Account),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]).
+    kz_datamgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]).
 
 -spec get_global_from_doc(ne_binary(), wh_json:key(), wh_json:json_term(), wh_json:object()) ->
                                  wh_json:object().
@@ -72,7 +72,7 @@ get(Account, Config) ->
     AccountId = account_id(Account),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     DocId = config_doc_id(Config),
-    case couch_mgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
+    case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
         {'error', _} -> wh_doc:set_id(wh_json:new(), DocId);
         {'ok', JObj} -> JObj
     end.
@@ -81,11 +81,11 @@ get(Account, Config) ->
 -spec flush(account(), ne_binary()) -> 'ok'.
 flush(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    couch_mgr:flush_cache_docs(AccountDb).
+    kz_datamgr:flush_cache_docs(AccountDb).
 
 flush(Account, Config) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    couch_mgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
+    kz_datamgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
 
 -spec get(account(), ne_binary(), wh_json:key()) ->
                  wh_json:json_term() | 'undefined'.
@@ -102,7 +102,7 @@ set(Account, Config, Key, Value) ->
     JObj = wh_json:set_value(Key, Value, ?MODULE:get(Account, Config)),
 
     AccountDb = account_db(Account),
-    {'ok', JObj1} = couch_mgr:ensure_saved(AccountDb
+    {'ok', JObj1} = kz_datamgr:ensure_saved(AccountDb
                                            ,wh_doc:update_pvt_parameters(JObj
                                                                          ,AccountDb
                                                                          ,[{'type', <<"account_config">>}
@@ -117,7 +117,7 @@ set_global(Account, Category, Key, Value) ->
     AccountId = account_id(Account),
     AccountDb = account_db(Account),
 
-    Doc = case couch_mgr:open_cache_doc(AccountDb, Category, [{'cache_failures', ['not_found']}]) of
+    Doc = case kz_datamgr:open_cache_doc(AccountDb, Category, [{'cache_failures', ['not_found']}]) of
               {'ok', JObj} -> JObj;
               {'error', _} -> wh_json:set_value(Key, whapps_config:get(Category, Key), wh_json:new())
           end,
@@ -127,7 +127,7 @@ set_global(Account, Category, Key, Value) ->
                              ,wh_doc:update_pvt_parameters(Doc, AccountDb, [{'type', <<"account_config">>}])
                             ),
 
-    {'ok', JObj1} = couch_mgr:ensure_saved(AccountDb, Doc1),
+    {'ok', JObj1} = kz_datamgr:ensure_saved(AccountDb, Doc1),
     kz_cache:erase_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category)),
     JObj1.
 

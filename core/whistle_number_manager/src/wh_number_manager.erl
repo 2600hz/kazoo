@@ -165,7 +165,7 @@ fetch_account_by_number(Number) ->
                                      {'error', lookup_errors()}.
 lookup_account_in_ports(N, Error) ->
     Number = wnm_util:to_e164(N),
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB
                                ,<<"port_requests/port_in_numbers">>
                                ,[{'key', Number}]
                               )
@@ -592,7 +592,7 @@ reconcile_number(Number, AssignTo, AuthBy) ->
 free_numbers(AccountId) ->
     lager:debug("attempting to free all numbers assigned to account ~s", [AccountId]),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', JObj} ->
             _ = [release_number(Key, 'system')
                  || Key <- wh_json:get_keys(wh_json:public_fields(JObj))
@@ -806,7 +806,7 @@ fetch_attachment(Number, Name, AuthBy) ->
                     (#number{number=Num}) ->
                          Db = wnm_util:number_to_db_name(Num),
                          lager:debug("attempting to fetch attachement ~s", [Name]),
-                         couch_mgr:fetch_attachment(Db, Num, Name)
+                         kz_datamgr:fetch_attachment(Db, Num, Name)
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
@@ -840,7 +840,7 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
                          lager:debug("attempting to put attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
                          Rev = wh_doc:revision(JObj),
-                         couch_mgr:put_attachment(Db, Num, Name, Content, [{'rev', Rev}|Options])
+                         kz_datamgr:put_attachment(Db, Num, Name, Content, [{'rev', Rev}|Options])
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
@@ -873,7 +873,7 @@ delete_attachment(Number, Name, AuthBy) ->
                     (#number{number=Num}) ->
                          lager:debug("attempting to delete attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
-                         couch_mgr:delete_attachment(Db, Num, Name)
+                         kz_datamgr:delete_attachment(Db, Num, Name)
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).

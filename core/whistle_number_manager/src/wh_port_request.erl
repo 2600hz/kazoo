@@ -35,8 +35,8 @@
 
 -spec init() -> any().
 init() ->
-    _ = couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
-    couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
+    _ = kz_datamgr:db_create(?KZ_PORT_REQUESTS_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>).
 
 -spec current_state(wh_json:object()) -> api_binary().
 current_state(JObj) ->
@@ -184,9 +184,9 @@ transition_numbers(PriorState, JObj) ->
 -spec finalize_number_transition(ne_binary(), {wh_json:object(), wh_proplist()}) ->
                                         transition_response().
 finalize_number_transition(_, {JObj, []}) ->
-    {'ok', _Updated} = couch_mgr:ensure_saved(?KZ_PORT_REQUESTS_DB, JObj);
+    {'ok', _Updated} = kz_datamgr:ensure_saved(?KZ_PORT_REQUESTS_DB, JObj);
 finalize_number_transition(PriorState, {JObj, Errors}) ->
-    _ = couch_mgr:ensure_saved(
+    _ = kz_datamgr:ensure_saved(
           ?KZ_PORT_REQUESTS_DB
           ,wh_json:set_value(?PORT_PVT_STATE, PriorState, JObj)
          ),
@@ -228,7 +228,7 @@ enable_number(N) ->
 
 -spec send_submitted_requests() -> 'ok'.
 send_submitted_requests() ->
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB
                                ,?VIEW_LISTING_SUBMITTED
                                ,['include_docs']
                               )
@@ -318,7 +318,7 @@ fetch_and_send(Url, JObj) ->
 
     wh_json:foldl(
       fun(Key, Value, 'ok') ->
-              case couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
+              case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, Id, Key) of
                   {'error', _R} ->
                       lager:error("failed to fetch attachment ~s : ~p", [Key, _R]),
                       throw('error');
@@ -351,7 +351,7 @@ send_attachement(Url, Id, Name, Options, Attachment) ->
 -spec set_flag(wh_json:object()) -> 'ok'.
 set_flag(JObj) ->
     Doc = wh_json:set_value(?PVT_SENT, 'true', JObj),
-    case couch_mgr:save_doc(?KZ_PORT_REQUESTS_DB, Doc) of
+    case kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, Doc) of
         {'ok', _} ->
             lager:debug("flag for submitted_port_request successfully set");
         {'error', _R} ->
@@ -390,7 +390,7 @@ migrate_docs(Docs) ->
          || Doc <- Docs,
             (UpdatedDoc = migrate_doc(wh_json:get_value(<<"doc">>, Doc))) =/= 'undefined'
         ],
-    {'ok', _} = couch_mgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedDocs),
+    {'ok', _} = kz_datamgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedDocs),
     'ok'.
 
 -spec migrate_doc(wh_json:object()) -> api_object().
@@ -415,7 +415,7 @@ update_doc(PortRequest, AccountId) ->
 
 -spec fetch_docs(binary(), pos_integer()) -> {'ok', wh_json:objects()}.
 fetch_docs(StartKey, Limit) ->
-    couch_mgr:all_docs(?KZ_PORT_REQUESTS_DB
+    kz_datamgr:all_docs(?KZ_PORT_REQUESTS_DB
                        ,[{'startkey', StartKey}
                          ,{'limit', Limit + 1}
                          ,'include_docs'

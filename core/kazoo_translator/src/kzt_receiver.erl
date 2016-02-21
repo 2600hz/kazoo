@@ -670,7 +670,7 @@ recording_meta(Call, MediaName) ->
                    ])
                  ,AcctDb
                 ),
-    couch_mgr:save_doc(AcctDb, MediaDoc).
+    kz_datamgr:save_doc(AcctDb, MediaDoc).
 
 recording_name(ALeg, BLeg) ->
     DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),

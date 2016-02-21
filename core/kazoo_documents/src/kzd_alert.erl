@@ -78,7 +78,7 @@ id(JObj) ->
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = AlertId) ->
-    couch_mgr:open_cache_doc(?WH_ALERTS_DB, AlertId).
+    kz_datamgr:open_cache_doc(?WH_ALERTS_DB, AlertId).
 
 %%--------------------------------------------------------------------
 %% @public

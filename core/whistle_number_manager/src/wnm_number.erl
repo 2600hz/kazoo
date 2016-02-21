@@ -180,7 +180,7 @@ fetch_number(#number{number_db=Db
                     }=N
              ,PublicFields
             ) ->
-    case couch_mgr:open_cache_doc(Db, Num, [{'cache_failures', ['not_found']}]) of
+    case kz_datamgr:open_cache_doc(Db, Num, [{'cache_failures', ['not_found']}]) of
         {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
         {'error', 'not_found'} ->
             lager:debug("unable to find number ~s/~s", [Db, Num]),
@@ -233,7 +233,7 @@ maybe_correct_used_by(#number{number=Number
                                  {'error', 'not_found'}.
 find_port_in_number(#number{number=Number}) -> find_port_in_number(Number);
 find_port_in_number(Number) when is_binary(Number) ->
-    case couch_mgr:get_results(?KZ_PORT_REQUESTS_DB
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB
                                ,<<"port_requests/port_in_numbers">>
                                ,[{'key', Number}
                                  ,'include_docs'
@@ -321,7 +321,7 @@ save_phone_number_docs([{Account, JObj}|Props]
     save_phone_number_docs(Props, Number);
 save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:save_doc(AccountDb, JObj) of
+    case kz_datamgr:save_doc(AccountDb, JObj) of
         {'ok', _} ->
             lager:debug("saved updated phone_numbers doc in account db ~s", [AccountDb]),
             save_phone_number_docs(Props, Number);
@@ -869,11 +869,11 @@ save_number_doc(#number{number_db=Db
                         ,number=Num
                         ,number_doc=JObj
                        }=Number) ->
-    case couch_mgr:ensure_saved(Db, maybe_set_locality(JObj, Number)) of
+    case kz_datamgr:ensure_saved(Db, maybe_set_locality(JObj, Number)) of
         {'error', 'not_found'} ->
             lager:debug("attempting to creating new database '~s' for number '~s'", [Db, Num]),
-            'true' = couch_mgr:db_create(Db),
-            couch_mgr:revise_views_from_folder(Db, 'whistle_number_manager'),
+            'true' = kz_datamgr:db_create(Db),
+            kz_datamgr:revise_views_from_folder(Db, 'whistle_number_manager'),
             save_number_doc(Number);
         {'error', Reason} ->
             lager:debug("failed to save '~s' in '~s': ~p", [Num, Db, Reason]),
@@ -905,7 +905,7 @@ delete_number_doc(#number{number_db=Db
                           ,number=Num
                           ,number_doc=JObj
                          }=Number) ->
-    case couch_mgr:del_doc(Db, JObj) of
+    case kz_datamgr:del_doc(Db, JObj) of
         {'ok', _} ->
             lager:debug("deleted '~s' from '~s'", [Num, Db]),
             Number#number{number_doc=wh_json:new()};
@@ -925,7 +925,7 @@ delete_number_doc(#number{number_db=Db
                                                     {'ok', wh_json:object()} |
                                                     {'error', any()}.
 resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
-    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'error', _R}=E ->
             lager:info("failed to resolve phone numbers conflict in account ~s: ~p", [AccountDb, _R]),
             E;
@@ -1238,7 +1238,7 @@ load_phone_number_doc(Account, 'false') ->
             ,{<<"pvt_type">>, ?WNM_PHONE_NUMBER_DOC}
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
            ],
-    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case kz_datamgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', J} ->
             lager:debug("loaded phone_numbers from ~s", [AccountId]),
             JObj = wh_json:set_values(PVTs, J),
