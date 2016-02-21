@@ -13,7 +13,7 @@
 
                   , whistle
                   , whistle_amqp
-                  , whistle_couch
+                  , kazoo_data
                   , kazoo_bindings
                   , whistle_apps
 

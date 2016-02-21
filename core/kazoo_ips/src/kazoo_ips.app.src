@@ -9,7 +9,7 @@
                    , crypto
 
                    , whistle
-                   , whistle_couch
+                   , kazoo_data
                    , whistle_services
 
                    , lager
