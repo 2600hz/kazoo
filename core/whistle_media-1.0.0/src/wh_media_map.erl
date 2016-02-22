@@ -40,7 +40,7 @@
 -define(BINDINGS, [{'conf', [{'doc_type', <<"media">>}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_media_doc'}
-                      ,[{<<"configuration">>, <<"*">>}]
+                     ,[{<<"configuration">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -174,13 +174,15 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'add_mapping', AccountId, JObj}, _From, State) ->
-    maybe_add_prompt(AccountId, JObj),
+    _ = wh_util:spawn(fun maybe_add_prompt/2, [AccountId, JObj]),
     {'reply', 'ok', State};
 handle_call({'rm_mapping', AccountId, PromptId}, _From, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
     {'reply', ets:delete(table_id(), mapping_id(AccountId, PromptId)), State};
 handle_call({'new_map', Map}, _From, State) ->
     {'reply', ets:insert_new(table_id(), Map), State};
+handle_call({'insert_map', Map}, _From, State) ->
+    {'reply', ets:insert(table_id(), Map), State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
@@ -196,7 +198,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'add_mapping', AccountId, JObj}, State) ->
-    maybe_add_prompt(AccountId, JObj),
+    _ = wh_util:spawn(fun maybe_add_prompt/2, [AccountId, JObj]),
     {'noreply', State};
 handle_cast({'rm_mapping', AccountId, PromptId}, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
@@ -336,19 +338,18 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
     #media_map{languages=Langs}=Map = get_map(AccountId, PromptId),
 
     lager:debug("adding language ~s for prompt ~s to map for ~s", [Lang, PromptId, AccountId]),
-    ets:insert(table_id()
-               ,Map#media_map{
-                  account_id=AccountId
-                  ,prompt_id=PromptId
-                  ,languages=wh_json:set_value(Lang
-                                               ,wh_media_util:prompt_path(wh_doc:account_id(JObj)
-                                                                          ,wh_doc:id(JObj)
+    gen_listener:call(?MODULE, {'insert_map'
+                               ,Map#media_map{account_id=AccountId
+                                             ,prompt_id=PromptId
+                                             ,languages=wh_json:set_value(Lang
+                                                                         ,wh_media_util:prompt_path(wh_doc:account_id(JObj)
+                                                                                                   ,wh_doc:id(JObj)
+                                                                                                   )
+                                                                         ,Langs
                                                                          )
-                                               ,Langs
-                                              )
-                 }
-              ),
-    'ok'.
+                                             }
+                               }
+                     ).
 
 -spec get_map(ne_binary()) -> media_map().
 -spec get_map(ne_binary(), ne_binary()) -> media_map().
@@ -380,10 +381,12 @@ get_map(AccountId, PromptId) ->
 init_account_map(AccountId, PromptId) ->
     SystemMap = get_map(PromptId),
     MapId = mapping_id(AccountId, PromptId),
-    'true' = gen_listener:call(?MODULE, {'new_map', SystemMap#media_map{
-                                                      id=MapId
-                                                      ,account_id=AccountId
-                                                     }}).
+    'true' = gen_listener:call(?MODULE
+                              ,{'new_map', SystemMap#media_map{id=MapId
+                                                              ,account_id=AccountId
+                                                              }
+                               }
+                              ).
 
 -spec load_account_map(ne_binary(), ne_binary()) -> media_map().
 load_account_map(AccountId, PromptId) ->
