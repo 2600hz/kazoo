@@ -304,8 +304,7 @@ move(Num, MoveTo, Options) ->
                      knm_number_return().
 move_to(Number, MoveTo) ->
     AccountId = wh_util:format_account_id(MoveTo, 'raw'),
-    PhoneNumber = phone_number(Number),
-    MovedPhoneNumber = knm_phone_number:set_assign_to(PhoneNumber, AccountId),
+    MovedPhoneNumber = knm_phone_number:set_assign_to(phone_number(Number), AccountId),
     MovedNumber = set_phone_number(Number, MovedPhoneNumber),
 
     Routines = [fun knm_number_states:to_in_service/1
