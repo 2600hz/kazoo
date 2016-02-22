@@ -44,6 +44,8 @@
          ,doc/1, set_doc/2
         ]).
 
+-export([list_attachments/2]).
+
 -include("knm.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
@@ -599,6 +601,23 @@ doc(#knm_phone_number{doc=Doc}) -> Doc.
 -spec set_doc(knm_phone_number(), wh_json:object()) -> knm_phone_number().
 set_doc(N, JObj=?JSON_WRAPPER(_)) ->
     N#knm_phone_number{doc=JObj}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec list_attachments(knm_phone_number(), ne_binary()) -> {'ok', wh_json:object()} |
+                                                           {'error', any()}.
+list_attachments(PhoneNumber, AuthBy) ->
+    AssignedTo = assigned_to(PhoneNumber),
+    case
+        state(PhoneNumber) == ?NUMBER_STATE_PORT_IN
+        andalso wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true')
+    of
+        'true' -> {'ok', wh_doc:attachments(doc(PhoneNumber), wh_json:new())};
+        'false' -> {'error', 'unauthorized'}
+    end.
 
 %%%===================================================================
 %%% Internal functions
