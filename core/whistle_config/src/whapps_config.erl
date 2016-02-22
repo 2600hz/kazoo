@@ -49,7 +49,7 @@
                         nonempty_string() | Default.
 -spec get_string(config_category(), config_key(), Default, ne_binary()) ->
                         nonempty_string() | Default.
--ifndef(TEST).
+
 get_string(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
@@ -59,11 +59,6 @@ get_string(Category, Key, Default) ->
     get_string(Category, Key, Default, wh_util:to_binary(node())).
 get_string(Category, Key, Default, Node) ->
     wh_util:to_list(get(Category, Key, Default, Node)).
--else.
-get_string(_, _) -> 'undefined'.
-get_string(_, _, Default) -> wh_util:to_list(Default).
-get_string(_, _, Default, _) -> wh_util:to_list(Default).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -72,7 +67,7 @@ get_string(_, _, Default, _) -> wh_util:to_list(Default).
 -spec get_binary(config_category(), config_key()) -> api_binary().
 -spec get_binary(config_category(), config_key(), Default) -> binary() | Default.
 -spec get_binary(config_category(), config_key(), Default, ne_binary()) -> binary() | Default.
--ifndef(TEST).
+
 get_binary(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
@@ -82,11 +77,6 @@ get_binary(Category, Key, Default) ->
     get_binary(Category, Key, Default, wh_util:to_binary(node())).
 get_binary(Category, Key, Default, Node) ->
     wh_util:to_binary(get(Category, Key, Default, Node)).
--else.
-get_binary(_, _) -> 'undefined'.
-get_binary(_, _, Default) -> wh_util:to_binary(Default).
-get_binary(_, _, Default, _) -> wh_util:to_binary(Default).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -95,7 +85,7 @@ get_binary(_, _, Default, _) -> wh_util:to_binary(Default).
 -spec get_atom(config_category(), config_key()) -> api_atom().
 -spec get_atom(config_category(), config_key(), Default) -> atom() | Default.
 -spec get_atom(config_category(), config_key(), Default, ne_binary()) -> atom() | Default.
--ifndef(TEST).
+
 get_atom(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
@@ -105,11 +95,6 @@ get_atom(Category, Key, Default) ->
     get_atom(Category, Key, Default, wh_util:to_binary(node())).
 get_atom(Category, Key, Default, Node) ->
     wh_util:to_atom(get(Category, Key, Default, Node), 'true').
--else.
-get_atom(_, _) -> 'undefined'.
-get_atom(_, _, Default) -> wh_util:to_atom(Default, 'true').
-get_atom(_, _, Default, _) -> wh_util:to_atom(Default, 'true').
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -118,7 +103,7 @@ get_atom(_, _, Default, _) -> wh_util:to_atom(Default, 'true').
 -spec get_integer(config_category(), config_key()) -> api_integer().
 -spec get_integer(config_category(), config_key(), Default) -> integer() | Default.
 -spec get_integer(config_category(), config_key(), Default, ne_binary()) -> integer() | Default.
--ifndef(TEST).
+
 get_integer(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
@@ -128,11 +113,6 @@ get_integer(Category, Key, Default) ->
     get_integer(Category, Key, Default, wh_util:to_binary(node())).
 get_integer(Category, Key, Default, Node) ->
     wh_util:to_integer(get(Category, Key, Default, Node)).
--else.
-get_integer(_, _) -> 'undefined'.
-get_integer(_, _, Default) -> wh_util:to_integer(Default).
-get_integer(_, _, Default, _) -> wh_util:to_integer(Default).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -141,7 +121,7 @@ get_integer(_, _, Default, _) -> wh_util:to_integer(Default).
 -spec get_float(config_category(), config_key()) -> api_float().
 -spec get_float(config_category(), config_key(), Default) -> float() | Default.
 -spec get_float(config_category(), config_key(), Default, ne_binary()) -> float() | Default.
--ifndef(TEST).
+
 get_float(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
@@ -151,11 +131,6 @@ get_float(Category, Key, Default) ->
     get_float(Category, Key, Default, wh_util:to_binary(node())).
 get_float(Category, Key, Default, Node) ->
     wh_util:to_float(get(Category, Key, Default, Node)).
--else.
-get_float(_, _) -> 'undefined'.
-get_float(_, _, Default) -> wh_util:to_float(Default).
-get_float(_, _, Default, _) -> wh_util:to_float(Default).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -164,7 +139,7 @@ get_float(_, _, Default, _) -> wh_util:to_float(Default).
 -spec get_is_false(config_category(), config_key()) -> api_boolean().
 -spec get_is_false(config_category(), config_key(), Default) -> boolean() | Default.
 -spec get_is_false(config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
--ifndef(TEST).
+
 get_is_false(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
@@ -174,11 +149,6 @@ get_is_false(Category, Key, Default) ->
     get_is_false(Category, Key, Default, wh_util:to_binary(node())).
 get_is_false(Category, Key, Default, Node) ->
     wh_util:is_false(get(Category, Key, Default, Node)).
--else.
-get_is_false(_, _) -> 'undefined'.
-get_is_false(_, _, Default) -> wh_util:is_false(Default).
-get_is_false(_, _, Default, _) -> wh_util:is_false(Default).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -187,7 +157,7 @@ get_is_false(_, _, Default, _) -> wh_util:is_false(Default).
 -spec get_is_true(config_category(), config_key()) -> api_boolean().
 -spec get_is_true(config_category(), config_key(), Default) -> boolean() | Default.
 -spec get_is_true(config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
--ifndef(TEST).
+
 get_is_true(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
@@ -197,11 +167,6 @@ get_is_true(Category, Key, Default) ->
     get_is_true(Category, Key, Default, wh_util:to_binary(node())).
 get_is_true(Category, Key, Default, Node) ->
     wh_util:is_true(get(Category, Key, Default, Node)).
--else.
-get_is_true(_, _) -> 'undefined'.
-get_is_true(_, _, Default) -> wh_util:is_true(Default).
-get_is_true(_, _, Default, _) -> wh_util:is_true(Default).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -210,7 +175,7 @@ get_is_true(_, _, Default, _) -> wh_util:is_true(Default).
 -spec get_non_empty(config_category(), config_key()) -> _ | 'undefined'.
 -spec get_non_empty(config_category(), config_key(), Default) -> _ | Default.
 -spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> _ | Default.
--ifndef(TEST).
+
 get_non_empty(Category, Key) ->
     get_non_empty(Category, Key, 'undefined').
 get_non_empty(Category, Key, Default) ->
@@ -221,16 +186,11 @@ get_non_empty(Category, Key, Default, Node) ->
         'true' -> Default;
         'false' -> Value
     end.
--else.
-get_non_empty(_, _) -> 'undefined'.
-get_non_empty(_, _, Default) -> Default.
-get_non_empty(_, _, Default, _) -> Default.
--endif.
 
 -spec get_ne_binary(config_category(), config_key()) -> api_binary().
 -spec get_ne_binary(config_category(), config_key(), Default) -> ne_binary() | Default.
 -spec get_ne_binary(config_category(), config_key(), Default, ne_binary()) -> ne_binary() | Default.
--ifndef(TEST).
+
 get_ne_binary(Category, Key) ->
     get_ne_binary(Category, Key, 'undefined').
 get_ne_binary(Category, Key, Default) ->
@@ -241,11 +201,6 @@ get_ne_binary(Category, Key, Default, Node) ->
         'true' -> Default;
         'false' -> wh_util:to_binary(Value)
     end.
--else.
-get_ne_binary(_, _) -> 'undefined'.
-get_ne_binary(_, _, Default) -> wh_util:to_binary(Default).
-get_ne_binary(_, _, Default, _) -> wh_util:to_binary(Default).
--endif.
 
 %%-----------------------------------------------------------------------------
 %% @public
