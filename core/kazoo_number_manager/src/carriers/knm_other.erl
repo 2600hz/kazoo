@@ -66,7 +66,7 @@ find_numbers(Number, Quantity, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the local system for a quanity of available numbers
+%% Query the local system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -141,8 +141,7 @@ acquire_number(Number) ->
                     format_acquire_resp(Number, wh_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
                     lager:error("number lookup failed to ~s with ~s: ~s"
-                                ,[Uri, _Status, Body]
-                               ),
+                                ,[Uri, _Status, Body]),
                     knm_errors:unspecified('lookup_failed', Number);
                 {'error', Reason} ->
                     knm_errors:unspecified(Reason, Number)

@@ -237,12 +237,9 @@ activation_charge(DID, AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Query the various providers for available numbers.
-%% force leading +
-%% @end
+%% @doc Normalize then query the various providers for available numbers.
 %%--------------------------------------------------------------------
--type checked_numbers() :: [{atom(), {'ok', wh_json:object()} |
+-type checked_numbers() :: [{module(), {'ok', wh_json:object()} |
                              {'error', any()} |
                              {'EXIT', any()}
                             }].
@@ -260,9 +257,7 @@ check(Numbers, Options) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Create a list of all available carrier modules
-%% @end
+%% @doc Create a list of all available carrier modules
 %%--------------------------------------------------------------------
 -spec available_carriers() -> atoms().
 available_carriers() ->
