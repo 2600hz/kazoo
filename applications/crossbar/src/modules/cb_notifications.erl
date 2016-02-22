@@ -444,7 +444,7 @@ handle_preview_response(Context, Resp) ->
             crossbar_util:response_202(<<"Notification processing">>, Context)
     end.
 
--spec headers(ne_binary()) -> ne_binary().
+-spec headers(ne_binary()) -> ne_binaries().
 headers(<<"voicemail_to_email">>) ->
     wapi_notifications:headers(<<"voicemail">>);
 headers(<<"port_request_admin">>) ->
