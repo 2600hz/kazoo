@@ -141,16 +141,13 @@ load(DocId, Context, Options) ->
     load(DocId, Context, Options, cb_context:resp_status(Context)).
 
 load(_DocId, Context, _Options, 'error') -> Context;
-load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
-    OpenFun = case props:get_is_true('use_cache', Opts, 'true') of
-                  'true' ->  fun kz_datamgr:open_cache_doc/3;
-                  'false' -> fun kz_datamgr:open_doc/3
-              end,
-    case OpenFun(cb_context:account_db(Context), DocId, Opts) of
+load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
+    OpenFun = get_open_function(Options),
+    case OpenFun(cb_context:account_db(Context), DocId, Options) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
-            check_document_type(DocId, Context, JObj, Opts)
+            check_document_type(DocId, Context, JObj, Options)
     end;
 load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
@@ -167,33 +164,42 @@ load([_|_]=IDs, Context, Opts, _RespStatus) ->
                             )
     end.
 
--spec check_document_type(api_binary(), cb_context:context(), wh_json:object(), wh_proplist() | boolean()) ->
+-spec get_open_function(wh_proplist()) -> function().
+get_open_function(Options) ->
+    case props:get_is_true('use_cache', Options, 'true') of
+        'true' ->  fun kz_datamgr:open_cache_doc/3;
+        'false' -> fun kz_datamgr:open_doc/3
+    end.
+
+-spec check_document_type(api_binary(), cb_context:context(), wh_json:object(), wh_proplist()) ->
                               cb_context:context().
-check_document_type(DocId, Context, JObj, Options) when is_list(Options) ->
+check_document_type(DocId, Context, JObj, Options) ->
     JObjType = wh_doc:type(JObj),
-    ReqType = props:get_value(<<"pvt_type">>, Options),
-    IsTypeMatched = document_type_match(cb_context:req_nouns(Context), JObjType, ReqType),
-    check_document_type(DocId, Context, JObj, IsTypeMatched);
-check_document_type(DocId, Context, _JObj, 'false') ->
-    ErrorCause = wh_json:from_list([{<<"cause">>, DocId}]),
-    cb_context:add_system_error('bad_identifier', ErrorCause, Context);
-    % handle_successful_load(Context, _JObj);
-check_document_type(_DocId, Context, JObj, 'true') ->
-    handle_successful_load(Context, JObj).
+    ExpectedType = props:get_value(?OPTION_EXPECTED_TYPE, Options),
+    [{ReqType, _}| _] = cb_context:req_nouns(Context),
+    case document_type_match(JObjType, ExpectedType, ReqType) of
+        'true' -> handle_successful_load(Context, JObj);
+        'false' ->
+            ErrorCause = wh_json:from_list([{<<"cause">>, DocId}]),
+            cb_context:add_system_error('bad_identifier', ErrorCause, Context)
+    end.
 
-
--spec document_type_match(list(), api_binary(), api_binary()) -> boolean().
-document_type_match(_ReqNouns, 'undefined', _ReqType) ->
+-spec document_type_match(api_binary(), api_binary(), ne_binary()) -> boolean().
+document_type_match('undefined', _ExpectedType, _ReqType) ->
     io:format("document doesn't have type, _ReqType: ~p~n", [_ReqType]),
     'true';
-document_type_match([{Mod, _}| _], Mod, 'undefined') ->
-    io:format("expected type is not specified, checking against module name, Mod: ~p~n", [Mod]),
+document_type_match(_JObjType, 'any', _) ->
+    io:format("allowing any expected type!~n", []),
     'true';
-document_type_match(_ReqNouns, Type, Type) ->
-    io:format("matched, Type: ~p ~n~n", [Type]),
+document_type_match(ExpectedType, ExpectedType, _) ->
+    io:format("expected type is not specified, checking against module name, Mod: ~p~n", [ExpectedType]),
     'true';
-document_type_match(_ReqNouns, JObjType, ReqType) ->
-    io:format("doesn't matched, ReqType: ~p, JObjType: ~p~n~n", [ReqType, JObjType]),
+document_type_match(ReqType, _, ReqType) ->
+    io:format("matched, Type: ~p ~n~n", [ReqType]),
+    'true';
+document_type_match(_JObjType, _ExpectedType, _ReqType) ->
+    io:format("the document type ~s does not match the expected type ~s nor the requested type ~s~n"
+              ,[_JObjType, _ExpectedType, _ReqType]),
     'false'.
 
 -spec handle_successful_load(cb_context:context(), wh_json:object()) -> cb_context:context().
