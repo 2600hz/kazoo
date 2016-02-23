@@ -57,7 +57,7 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -include("ecallmgr.hrl").
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -130,9 +130,9 @@ check_sync(Username, Realm) ->
 
 -spec send_check_sync(atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_check_sync(Node, Username, Realm, Contact) ->
-    To = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
-    From = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
-    AOR = nksip_unparse:ruri(#uri{user=Username, domain=Realm}),
+    To = kzsip_uri:uri(#uri{user=Username, domain=Realm}),
+    From = kzsip_uri:uri(#uri{user=Username, domain=Realm}),
+    AOR = kzsip_uri:ruri(#uri{user=Username, domain=Realm}),
     SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                ,{"contact-uri", Contact}
@@ -162,9 +162,9 @@ send_mwi_update(JObj, Username, Realm, Node, Registration) ->
     ToURI = #uri{user=wh_json:get_value(<<"To-User">>, Registration, Username)
                  ,domain=wh_json:get_value(<<"To-Host">>, Registration, Realm)
                 },
-    To = nksip_unparse:uri(ToURI),
-    ToAccount = nksip_unparse:ruri(ToURI),
-    From = nksip_unparse:uri(#uri{user=wh_json:get_value(<<"From-User">>, Registration, Username)
+    To = kzsip_uri:uri(ToURI),
+    ToAccount = kzsip_uri:ruri(ToURI),
+    From = kzsip_uri:uri(#uri{user=wh_json:get_value(<<"From-User">>, Registration, Username)
                                   ,domain=wh_json:get_value(<<"From-Host">>, Registration, Realm)
                                  }),
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
@@ -210,7 +210,7 @@ register_overwrite(JObj, Props) ->
                    ,Username
                    ,Realm
                   ),
-    SipUri = nksip_unparse:uri(#uri{user=Username, domain=Realm}),
+    SipUri = kzsip_uri:uri(#uri{user=Username, domain=Realm}),
     PrevBody = wh_util:to_list(<<"Replaced-By:", (wh_util:to_binary(NewContact))/binary>>),
     NewBody = wh_util:to_list(<<"Overwrote:", (wh_util:to_binary(PrevContact))/binary>>),
     PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}

@@ -20,7 +20,7 @@
          ,code_change/3
         ]).
 
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
@@ -433,7 +433,7 @@ get_redirected(Props) ->
                 'undefined' -> {'undefined' , 'undefined'};
                 Contact ->
                     [#uri{ext_opts=Opts}=Uri] = nksip_parse:uris(Contact),
-                    {nksip_unparse:ruri(Uri#uri{ext_opts='undefined'}) , props:get_value(<<"reason">>,Opts)}
+                    {kzsip_uri:ruri(Uri#uri{ext_opts='undefined'}) , props:get_value(<<"reason">>,Opts)}
             end;
         _ -> {'undefined' , 'undefined'}
     end.
