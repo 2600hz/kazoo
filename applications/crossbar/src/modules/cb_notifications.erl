@@ -675,11 +675,13 @@ read(Context, Id, LoadFrom) ->
 
 -spec read_system(cb_context:context(), ne_binary()) -> cb_context:context().
 read_system(Context, Id) ->
-    crossbar_doc:load(Id, cb_context:set_account_db(Context, ?WH_CONFIG_DB)).
+    crossbar_doc:load(Id
+                      ,cb_context:set_account_db(Context, ?WH_CONFIG_DB)
+                      ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())).
 
 -spec read_account(cb_context:context(), ne_binary(), load_from()) -> cb_context:context().
 read_account(Context, Id, LoadFrom) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kz_notification:pvt_type())),
     case {cb_context:resp_error_code(Context1)
           ,cb_context:resp_status(Context1)
          }
@@ -1117,7 +1119,7 @@ on_successful_validation(Id, Context) ->
 
     CleanedContext = cb_context:set_doc(Context, ReqTemplate),
 
-    Context1 = crossbar_doc:load_merge(Id, CleanedContext),
+    Context1 = crossbar_doc:load_merge(Id, CleanedContext, ?TYPE_CHECK_OPTION(kz_notification:pvt_type())),
 
     case {cb_context:resp_status(Context1)
           ,cb_context:resp_error_code(Context1)
@@ -1206,7 +1208,9 @@ leak_attachments_fold(_Attachment, Props, Acc) ->
 load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
     Year  = wh_util:to_integer(YYYY),
     Month = wh_util:to_integer(MM),
-    crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month)).
+    crossbar_doc:load(Id
+                      ,cb_context:set_account_modb(Context, Year, Month)
+                      ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())).
 
 -spec load_smtp_log(cb_context:context()) -> cb_context:context().
 load_smtp_log(Context) ->

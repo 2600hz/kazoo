@@ -496,7 +496,7 @@ fix_envelope(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_user(api_binary(), cb_context:context()) -> cb_context:context().
-load_user(UserId, Context) -> crossbar_doc:load(UserId, Context).
+load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -578,7 +578,7 @@ on_successful_validation('undefined', Context) ->
                                                )
                             );
 on_successful_validation(UserId, Context) ->
-    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context)).
+    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type()))).
 
 -spec maybe_import_credintials(api_binary(), cb_context:context()) -> cb_context:context().
 maybe_import_credintials(UserId, Context) ->

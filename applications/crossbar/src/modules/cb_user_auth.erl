@@ -140,6 +140,7 @@ put(Context, ?RECOVERY) ->
 %%--------------------------------------------------------------------
 -spec maybe_get_auth_token(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_get_auth_token(Context, AuthToken) ->
+    io:format("maybe_get_auth_token Token ~p~n~n", [AuthToken]),
     Context1 = crossbar_doc:load(AuthToken, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -199,7 +200,7 @@ maybe_authenticate_user(Context) ->
 
 maybe_authenticate_user(Context, Credentials, <<"md5">>, <<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-
+    io:format("maybe_authenticate_user Credentials~p~n", [Credentials]),
     Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
                                       ,[{'key', Credentials}]
                                       ,cb_context:set_account_db(Context, AccountDb)
@@ -212,6 +213,7 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, <<_/binary>> = Account)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, <<_/binary>> = Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    io:format("maybe_authenticate_user Credentials~p~n", [Credentials]),
     Context1 = crossbar_doc:load_view(?ACCT_SHA1_LIST
                                       ,[{'key', Credentials}]
                                       ,cb_context:set_account_db(Context, AccountDb)
@@ -384,7 +386,7 @@ reset_users_password(Context) ->
                                 ,{<<"pvt_sha1_auth">>, SHA1}
                                 ,{<<"require_password_update">>, 'true'}
                                ], JObj),
-
+    io:format("reset_users_password~n"),
     Context1 = crossbar_doc:save(
                  cb_context:setters(Context, [{fun cb_context:set_doc/2, JObj1}
                                               ,{fun cb_context:set_req_verb/2, ?HTTP_POST}

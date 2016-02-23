@@ -525,7 +525,9 @@ delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
 %%--------------------------------------------------------------------
 -spec load_port_request(cb_context:context(), ne_binary()) -> cb_context:context().
 load_port_request(Context, Id) ->
-    crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)).
+    crossbar_doc:load(Id
+                      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                      ,?TYPE_CHECK_OPTION(<<"port_request">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -963,7 +965,9 @@ summary_attachments(Context, Id) ->
 on_successful_validation(Context, 'undefined') ->
     on_successful_validation(Context, 'undefined', 'true');
 on_successful_validation(Context, Id) ->
-    Context1 = crossbar_doc:load_merge(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)),
+    Context1 = crossbar_doc:load_merge(Id
+                                       ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                       ,?TYPE_CHECK_OPTION(<<"port_request">>)),
     on_successful_validation(Context1, Id, can_update_port_request(Context1)).
 
 on_successful_validation(Context, Id, 'true') ->
@@ -1497,7 +1501,9 @@ remove_phone_number(Number, _, {_, Acc}) ->
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC, cb_context:set_account_db(Context, AccountDb)),
+    Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC
+                                 ,cb_context:set_account_db(Context, AccountDb)
+                                 ,?TYPE_CHECK_OPTION(<<"port_request">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', cb_context:doc(Context1)};

@@ -601,7 +601,7 @@ get_screenshot(Context, Number) ->
 %%--------------------------------------------------------------------
 -spec load_apps_store(cb_context:context()) -> cb_context:context().
 load_apps_store(Context) ->
-    Context1 = crossbar_doc:load(kzd_apps_store:id(), Context),
+    Context1 = crossbar_doc:load(kzd_apps_store:id(), Context, ?TYPE_CHECK_OPTION(kzd_apps_store:id())),
     case {cb_context:resp_status(Context1), cb_context:resp_error_code(Context1)} of
         {'error', 404} ->
             AccountId = cb_context:account_id(Context),

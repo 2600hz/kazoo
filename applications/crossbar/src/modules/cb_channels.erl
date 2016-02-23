@@ -283,7 +283,7 @@ group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
             {EPs, Context1} = user_endpoints(Context, EndpointId),
             {EPs ++ Acc, Context1};
         <<"device">> ->
-            Context1 = crossbar_doc:load(EndpointId, Context),
+            Context1 = crossbar_doc:load(EndpointId, Context, ?TYPE_CHECK_OPTION(kz_device:type())),
             {[cb_context:doc(Context1) | Acc], Context1};
         _Type ->
             lager:debug("skipping type ~s", [_Type]),

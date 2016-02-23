@@ -185,7 +185,7 @@ validate_patch(Context) ->
               end,
     case IsValid of
         'true' ->
-            Context1 = crossbar_doc:load(DocId, Context),
+            Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())),
             case cb_context:resp_status(Context1) of
                 'success' ->
                     PatchJObj = cb_context:req_data(Context),
@@ -273,7 +273,7 @@ delete_faxbox(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Ctx1 = crossbar_doc:load(Id, Context),
+    Ctx1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())),
     case cb_context:doc(Ctx1) of
         'undefined' -> Ctx1;
         Doc -> maybe_oauth_req(Doc, cb_context:req_value(Context, <<"oauth">>), Ctx1)
@@ -350,7 +350,7 @@ on_faxbox_successful_validation('undefined', Context) ->
                          )
                       );
 on_faxbox_successful_validation(DocId, Context) ->
-    crossbar_doc:load_merge(DocId, Context).
+    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())).
 
 -spec generate_email_address(cb_context:context()) -> ne_binary().
 generate_email_address(Context) ->

@@ -209,7 +209,7 @@ validate_account_path(Context, AccountId, ?RESELLER, ?HTTP_DELETE) ->
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
-    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
+    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context), ?TYPE_CHECK_OPTION(?PVT_TYPE)),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
@@ -241,7 +241,7 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
             end
     end;
 validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
-    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
+    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context), ?TYPE_CHECK_OPTION(?PVT_TYPE)),
     case cb_context:resp_status(Context1) of
         'success' -> load_account_tree(Context1);
         _Else -> Context1
@@ -552,7 +552,7 @@ validate_account_schema(AccountId, Context) ->
 on_successful_validation('undefined', Context) ->
     set_private_properties(Context);
 on_successful_validation(AccountId, Context) ->
-    Context1 = crossbar_doc:load_merge(AccountId, Context),
+    Context1 = crossbar_doc:load_merge(AccountId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
     maybe_import_enabled(Context1).
 
 -spec maybe_import_enabled(cb_context:context()) ->
@@ -657,7 +657,7 @@ validate_patch_request(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_account(ne_binary(), cb_context:context()) -> cb_context:context().
 load_account(AccountId, Context) ->
-    leak_pvt_fields(crossbar_doc:load(AccountId, Context)).
+    leak_pvt_fields(crossbar_doc:load(AccountId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 %%--------------------------------------------------------------------
 %% @private

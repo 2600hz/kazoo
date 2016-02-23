@@ -308,7 +308,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"directory">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
             load_directory_users(Id, Context1);
@@ -367,7 +367,7 @@ on_successful_validation('undefined', Context) ->
                        ,wh_doc:set_type(cb_context:doc(Context), <<"directory">>)
                       );
 on_successful_validation(DocId, Context) ->
-    crossbar_doc:load_merge(DocId, Context).
+    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"directory">>)).
 
 %%--------------------------------------------------------------------
 %% @private

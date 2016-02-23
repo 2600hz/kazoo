@@ -155,7 +155,8 @@ validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 -spec validate_user_id(api_binary(), cb_context:context(), wh_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
-        {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
+        {'ok', Doc} ->
+            validate_request_type(UserId, Context, Doc);
         {'error', 'not_found'} ->
             cb_context:add_system_error(
                 'bad_identifier'
@@ -163,6 +164,13 @@ validate_user_id(UserId, Context) ->
                 ,Context
             );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
+    end.
+
+validate_request_type(UserId, Context, Doc) ->
+    case wh_doc:type(Doc) =:= kzd_user:type() of
+        'true' -> validate_user_id(UserId, Context, Doc);
+        'false' ->
+            cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, UserId}]), Context)
     end.
 
 validate_user_id(UserId, Context, Doc) ->
