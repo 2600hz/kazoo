@@ -1,8 +1,0 @@
-{application, ibrowse,
-        [{description, "Erlang HTTP client application"},
-         {vsn, "4.0.1"},
-         {modules, []},
-         {registered, []},
-         {applications, [kernel,stdlib]},
-	 {env, []},
-	 {mod, {ibrowse_app, []}}]}.

@@ -1,9 +1,0 @@
-{application, gen_leader, [
-  {description, "a project to revive and modernize the gen_leader library"},
-  {vsn, "0.0.1"},
-  {modules, []},
-  {registered, []},
-  {applications, [kernel, stdlib]}
-]}.
-
-

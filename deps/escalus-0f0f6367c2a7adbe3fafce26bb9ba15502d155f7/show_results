@@ -1,3 +1,0 @@
-#!/bin/bash
-FILE=`ls -t logs/ct_run.ct@*/ejabberd.escalus.logs/run.*/suite.log.html | head -n 1`
-$BROWSER file:///$PWD/$FILE

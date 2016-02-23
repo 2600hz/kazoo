@@ -1,1 +1,0 @@
-{ok, PWD} = file:get_cwd(), code:add_patha(filename:join(PWD, "deps/proper-1.0/ebin")).
