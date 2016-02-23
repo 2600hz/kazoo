@@ -353,7 +353,7 @@ do_db_compact(#db{}=Db) ->
     end.
 
 -spec do_db_view_cleanup(db()) -> boolean().
-do_db_view_cleanup(#db{}=Db) -> 'true'.
+do_db_view_cleanup(#db{}=_Db) -> 'true'.
 %    'ok' =:= ?RETRY_504(couchbeam:view_cleanup(Db)).
 
 %%% View-related functions -----------------------------------------------------
@@ -455,7 +455,7 @@ do_fetch_results_count(Db, DesignDoc, Options) ->
 -spec do_get_design_info(couchbeam_db(), ne_binary()) ->
                                 {'ok', wh_json:object()} |
                                 couchbeam_error().
-do_get_design_info(#db{}=Db, Design) ->  {'error', 'not_found'}.
+do_get_design_info(#db{}=_Db, _Design) ->  {'error', 'not_found'}.
 %    ?RETRY_504(couchbeam:design_info(Db, Design)).
 
 %% Document related functions --------------------------------------------------
@@ -827,7 +827,7 @@ do_fetch_attachment(#db{}=Db, DocId, AName) ->
 -spec do_stream_attachment(couchbeam_db(), ne_binary(), ne_binary(), pid()) ->
                                   {'ok', reference()} |
                                   couchbeam_error().
-do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->  {'error', 'not_found'}.
+do_stream_attachment(#db{}=_Db, _DocId, _AName, _Caller) ->  {'error', 'not_found'}.
 %    couchbeam:stream_fetch_attachment(Db, DocId, AName, Caller).
 
 -spec do_put_attachment(couchbeam_db(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
