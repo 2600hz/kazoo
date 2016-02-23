@@ -167,19 +167,6 @@ handle_cast('$start_change_feed', #wh_gen_changes_state{last_seq='undefined'
             erlang:send_after(random_wait(), self(), '$try_change_feed'),
             {'noreply', State}
     end;
-handle_cast('$start_change_feed', #wh_gen_changes_state{db=Db
-                                                     ,options=Options
-                                                    }=State) ->
-    case couchbeam_changes:stream(Db, self(), update_since(Options, State)) of
-        {'ok', StartRef, ChangesPid} ->
-            erlang:monitor(process, ChangesPid),
-            unlink(ChangesPid),
-            {'noreply', State#wh_gen_changes_state{start_ref=StartRef
-                                                ,changes_pid=ChangesPid
-                                               }};
-        {'error', Error} ->
-            {'stop', Error, State}
-    end;
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
 handle_cast(Msg, #wh_gen_changes_state{mod=Module
@@ -217,29 +204,6 @@ handle_info('$poll_for_changes', #wh_gen_changes_state{last_seq='undefined'
             {'noreply', State#wh_gen_changes_state{last_seq=UpdateSeq}}
     catch
         _:_ ->
-            erlang:send_after(random_wait(), self(), '$poll_for_changes'),
-            {'noreply', State}
-    end;
-handle_info('$poll_for_changes', #wh_gen_changes_state{db=Db
-                                                    ,options=Options
-                                                    ,mod=Module
-                                                    ,modstate=ModState
-                                                   }=State) ->
-    case couchbeam_changes:fetch(Db, update_since(Options, State)) of
-        {'ok', _, []} ->
-            erlang:send_after(random_wait(), self(), '$poll_for_changes'),
-            {'noreply', State};
-        {'ok', [_, _]=LastSeq, Rows} ->
-            erlang:send_after(random_wait(), self(), '$poll_for_changes'),
-            case catch Module:handle_change(Rows, ModState) of
-                {'noreply', NewModState} ->
-                    {'noreply', State#wh_gen_changes_state{modstate=NewModState, last_seq=LastSeq}};
-                {'noreply', NewModState, A} when A =:= 'hibernate' orelse is_number(A) ->
-                    {'noreply', State#wh_gen_changes_state{modstate=NewModState, last_seq=LastSeq}, A};
-                {'stop', Reason, NewModState} ->
-                    {'stop', Reason, State#wh_gen_changes_state{modstate=NewModState, last_seq=LastSeq}}
-            end;
-        _Else ->
             erlang:send_after(random_wait(), self(), '$poll_for_changes'),
             {'noreply', State}
     end;
