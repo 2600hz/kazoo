@@ -91,7 +91,7 @@ handle_query(JObj, N, 'false') ->
 %%     ];
 %% raw_resp(Name) ->
 %%     raw_resp(folsom_metrics_meter:get_value(Name)).
-%% 
+%%
 %% -spec ewma_to_json(#ewma{}) -> wh_json:object().
 %% ewma_to_json(#ewma{alpha=Alpha
 %%                    ,interval=Interval
