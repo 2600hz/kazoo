@@ -102,7 +102,7 @@ init([Module, Db, Options, InitArgs]) ->
     case Module:init(InitArgs) of
         {'ok', ModState} ->
             ?MODULE:cast(self(), '$start_change_feed'),
-            {'ok', #gen_changes_state{mod=Module
+            {'ok', #wh_gen_changes_state{mod=Module
                                       ,modstate=ModState
                                       ,db=Db
                                       ,options=proplists:delete(since, Options)
@@ -124,25 +124,25 @@ init([Module, Db, Options, InitArgs]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call('$get_seq', _From, #gen_changes_state{last_seq=Seq}=State) ->
+handle_call('$get_seq', _From, #wh_gen_changes_state{last_seq=Seq}=State) ->
     {'reply', Seq, State};
-handle_call(Request, From, #gen_changes_state{mod=Module
+handle_call(Request, From, #wh_gen_changes_state{mod=Module
                                               ,modstate=ModState
                                              }=State) ->
     case Module:handle_call(Request, From, ModState) of
         {'reply', Reply, NewModState} ->
-            {'reply', Reply, State#gen_changes_state{modstate=NewModState}};
+            {'reply', Reply, State#wh_gen_changes_state{modstate=NewModState}};
         {'reply', Reply, NewModState, A}
           when A =:= hibernate orelse is_number(A) ->
-            {'reply', Reply, State#gen_changes_state{modstate=NewModState}, A};
+            {'reply', Reply, State#wh_gen_changes_state{modstate=NewModState}, A};
         {'noreply', NewModState} ->
-            {'noreply', State#gen_changes_state{modstate=NewModState}};
+            {'noreply', State#wh_gen_changes_state{modstate=NewModState}};
         {'noreply', NewModState, A} when A =:= 'hibernate' orelse is_number(A) ->
-            {'noreply', State#gen_changes_state{modstate=NewModState}, A};
+            {'noreply', State#wh_gen_changes_state{modstate=NewModState}, A};
         {'stop', Reason, NewModState} ->
-            {'stop', Reason, State#gen_changes_state{modstate=NewModState}};
+            {'stop', Reason, State#wh_gen_changes_state{modstate=NewModState}};
         {'stop', Reason, Reply, NewModState} ->
-            {'stop', Reason, Reply, State#gen_changes_state{modstate=NewModState}}
+            {'stop', Reason, Reply, State#wh_gen_changes_state{modstate=NewModState}}
   end.
 
 %%--------------------------------------------------------------------
@@ -155,26 +155,26 @@ handle_call(Request, From, #gen_changes_state{mod=Module
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('$start_change_feed', #gen_changes_state{last_seq='undefined'
+handle_cast('$start_change_feed', #wh_gen_changes_state{last_seq='undefined'
                                                      ,db=Db
                                                     }=State) ->
     try get_update_seq(Db) of
         UpdateSeq ->
             gen_server:cast(self(), '$start_change_feed'),
-            {'noreply', State#gen_changes_state{last_seq=UpdateSeq}}
+            {'noreply', State#wh_gen_changes_state{last_seq=UpdateSeq}}
     catch
         _:_ ->
             erlang:send_after(random_wait(), self(), '$try_change_feed'),
             {'noreply', State}
     end;
-handle_cast('$start_change_feed', #gen_changes_state{db=Db
+handle_cast('$start_change_feed', #wh_gen_changes_state{db=Db
                                                      ,options=Options
                                                     }=State) ->
     case couchbeam_changes:stream(Db, self(), update_since(Options, State)) of
         {'ok', StartRef, ChangesPid} ->
             erlang:monitor(process, ChangesPid),
             unlink(ChangesPid),
-            {'noreply', State#gen_changes_state{start_ref=StartRef
+            {'noreply', State#wh_gen_changes_state{start_ref=StartRef
                                                 ,changes_pid=ChangesPid
                                                }};
         {'error', Error} ->
@@ -182,16 +182,16 @@ handle_cast('$start_change_feed', #gen_changes_state{db=Db
     end;
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
-handle_cast(Msg, #gen_changes_state{mod=Module
+handle_cast(Msg, #wh_gen_changes_state{mod=Module
                                     ,modstate=ModState
                                    }=State) ->
     case Module:handle_cast(Msg, ModState) of
         {'noreply', NewModState} ->
-            {'noreply', State#gen_changes_state{modstate=NewModState}};
+            {'noreply', State#wh_gen_changes_state{modstate=NewModState}};
         {'noreply', NewModState, A} when A =:= 'hibernate' orelse is_number(A) ->
-            {'noreply', State#gen_changes_state{modstate=NewModState}, A};
+            {'noreply', State#wh_gen_changes_state{modstate=NewModState}, A};
         {'stop', Reason, NewModState} ->
-            {'stop', Reason, State#gen_changes_state{modstate=NewModState}}
+            {'stop', Reason, State#wh_gen_changes_state{modstate=NewModState}}
     end.
 
 %%--------------------------------------------------------------------
@@ -207,20 +207,20 @@ handle_cast(Msg, #gen_changes_state{mod=Module
 handle_info('$try_change_feed', State) ->
     gen_server:cast(self(), '$start_change_feed'),
     {'noreply', State};
-handle_info('$poll_for_changes', #gen_changes_state{last_seq='undefined'
+handle_info('$poll_for_changes', #wh_gen_changes_state{last_seq='undefined'
                                                     ,db=Db
                                                    }=State) ->
     io:format("started polling ~s for changes~n", [Db#db.name]),
     try get_update_seq(Db) of
         UpdateSeq ->
             self() ! '$poll_for_changes',
-            {'noreply', State#gen_changes_state{last_seq=UpdateSeq}}
+            {'noreply', State#wh_gen_changes_state{last_seq=UpdateSeq}}
     catch
         _:_ ->
             erlang:send_after(random_wait(), self(), '$poll_for_changes'),
             {'noreply', State}
     end;
-handle_info('$poll_for_changes', #gen_changes_state{db=Db
+handle_info('$poll_for_changes', #wh_gen_changes_state{db=Db
                                                     ,options=Options
                                                     ,mod=Module
                                                     ,modstate=ModState
@@ -233,19 +233,19 @@ handle_info('$poll_for_changes', #gen_changes_state{db=Db
             erlang:send_after(random_wait(), self(), '$poll_for_changes'),
             case catch Module:handle_change(Rows, ModState) of
                 {'noreply', NewModState} ->
-                    {'noreply', State#gen_changes_state{modstate=NewModState, last_seq=LastSeq}};
+                    {'noreply', State#wh_gen_changes_state{modstate=NewModState, last_seq=LastSeq}};
                 {'noreply', NewModState, A} when A =:= 'hibernate' orelse is_number(A) ->
-                    {'noreply', State#gen_changes_state{modstate=NewModState, last_seq=LastSeq}, A};
+                    {'noreply', State#wh_gen_changes_state{modstate=NewModState, last_seq=LastSeq}, A};
                 {'stop', Reason, NewModState} ->
-                    {'stop', Reason, State#gen_changes_state{modstate=NewModState, last_seq=LastSeq}}
+                    {'stop', Reason, State#wh_gen_changes_state{modstate=NewModState, last_seq=LastSeq}}
             end;
         _Else ->
             erlang:send_after(random_wait(), self(), '$poll_for_changes'),
             {'noreply', State}
     end;
-handle_info({'error', Ref, LastSeq, Error}, #gen_changes_state{start_ref=Ref}=State) ->
+handle_info({'error', Ref, LastSeq, Error}, #wh_gen_changes_state{start_ref=Ref}=State) ->
     handle_info({'error', {LastSeq, Error}}, State);
-handle_info({'change', Ref, Msg}, #gen_changes_state{mod=Module
+handle_info({'change', Ref, Msg}, #wh_gen_changes_state{mod=Module
                                                      ,modstate=ModState
                                                      ,start_ref=Ref
                                                     }=State) ->
@@ -258,13 +258,13 @@ handle_info({'change', Ref, Msg}, #gen_changes_state{mod=Module
              end,
     case catch Module:handle_change(Msg, ModState) of
         {'noreply', NewModState} ->
-            {'noreply', State2#gen_changes_state{modstate=NewModState}};
+            {'noreply', State2#wh_gen_changes_state{modstate=NewModState}};
         {'noreply', NewModState, A} when A =:= 'hibernate' orelse is_number(A) ->
-            {'noreply', State2#gen_changes_state{modstate=NewModState}, A};
+            {'noreply', State2#wh_gen_changes_state{modstate=NewModState}, A};
         {'stop', Reason, NewModState} ->
-            {'stop', Reason, State2#gen_changes_state{modstate=NewModState}}
+            {'stop', Reason, State2#wh_gen_changes_state{modstate=NewModState}}
     end;
-handle_info({'DOWN', MRef, 'process', Pid, _}, #gen_changes_state{changes_pid=Pid
+handle_info({'DOWN', MRef, 'process', Pid, _}, #wh_gen_changes_state{changes_pid=Pid
                                                                   ,db=Db
                                                                   ,options=Options
                                                                  }=State) ->
@@ -279,24 +279,24 @@ handle_info({'DOWN', MRef, 'process', Pid, _}, #gen_changes_state{changes_pid=Pi
         'true' ->
             Server = wh_couch_connections:get_server(),
             gen_server:cast(self(), '$start_change_feed'),
-            {'noreply', State#gen_changes_state{db=Db#db{server=Server}
+            {'noreply', State#wh_gen_changes_state{db=Db#db{server=Server}
                                                 ,last_seq='undefined'
                                                }}
     end;
-handle_info(Info, #gen_changes_state{mod=Module
+handle_info(Info, #wh_gen_changes_state{mod=Module
                                      ,modstate=ModState
                                     }=State) ->
     case Module:handle_info(Info, ModState) of
         {'noreply', NewModState} ->
-            {'noreply', State#gen_changes_state{modstate=NewModState}};
+            {'noreply', State#wh_gen_changes_state{modstate=NewModState}};
         {'noreply', NewModState, A} when A =:= 'hibernate' orelse is_number(A) ->
-            {'noreply', State#gen_changes_state{modstate=NewModState}, A};
+            {'noreply', State#wh_gen_changes_state{modstate=NewModState}, A};
         {'stop', Reason, NewModState} ->
-            {'stop', Reason, State#gen_changes_state{modstate=NewModState}}
+            {'stop', Reason, State#wh_gen_changes_state{modstate=NewModState}}
     end.
 
 maybe_update_seq([_, _]=Seq, State) ->
-    State#gen_changes_state{last_seq=Seq};
+    State#wh_gen_changes_state{last_seq=Seq};
 maybe_update_seq(_, State) -> State.
 
 %%--------------------------------------------------------------------
@@ -310,7 +310,7 @@ maybe_update_seq(_, State) -> State.
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(Reason, #gen_changes_state{mod=Module
+terminate(Reason, #wh_gen_changes_state{mod=Module
                                      ,modstate=ModState
                                      ,changes_pid=Pid
                                     }) ->
@@ -340,11 +340,11 @@ get_update_seq(#db{server=Server, name=DbName}) ->
     {'ok', JObj} = couch_util:db_info(Server, wh_util:to_binary(DbName)),
     couchbeam_doc:get_value(<<"update_seq">>, JObj).
 
--spec update_since(wh_proplist(), #gen_changes_state{}) -> wh_proplist().
-update_since(Options, #gen_changes_state{last_seq=[SeqNumber, SeqHash]}) ->
+-spec update_since(wh_proplist(), #wh_gen_changes_state{}) -> wh_proplist().
+update_since(Options, #wh_gen_changes_state{last_seq=[SeqNumber, SeqHash]}) ->
     Seq = <<"[", (wh_util:to_binary(SeqNumber))/binary, ",\"", SeqHash/binary, "\"]">>,
     [{'since', wh_util:to_list(Seq)} | Options];
-update_since(Options, #gen_changes_state{last_seq=Seq}) ->
+update_since(Options, #wh_gen_changes_state{last_seq=Seq}) ->
     [{'since', Seq} | Options].
 
 -spec random_wait() -> 10000..120000.
