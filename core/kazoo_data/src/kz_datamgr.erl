@@ -7,6 +7,15 @@
 %%%-------------------------------------------------------------------
 -module(kz_datamgr).
 
+
+-export([db_classification/1]).
+
+%% Settings-related
+-export([max_bulk_insert/0]).
+
+%% format
+-export([format_error/1]).
+
 %% System manipulation
 -export([db_exists/1
          ,db_info/0, db_info/1
@@ -15,6 +24,7 @@
          ,db_view_cleanup/1
          ,db_delete/1
          ,db_replicate/1
+         ,db_archive/1, db_archive/2
         ]).
 %% -export([admin_db_exists/1
 %%          ,admin_db_info/0, admin_db_info/1
@@ -77,11 +87,6 @@
          ,change_notice/0
         ]).
 -export([server_tag/0, server_tag/1]).
-
-%% Types
--export_type([get_results_return/0
-              ,data_error/0
-             ]).
 
 -include("kz_data.hrl").
 
@@ -487,6 +492,27 @@ db_delete(DbName) ->
         {'ok', Db} -> db_delete(Db);
         {'error', _}=E -> E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Archive a database (takes an 'encoded' DbName)
+%% @end
+%%--------------------------------------------------------------------
+-spec db_archive(ne_binary()) -> 'ok'.
+-spec db_archive(ne_binary(), ne_binary()) -> 'ok'.
+db_archive(DbName) ->
+ Folder = whapps_config:get(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
+ archive(DbName, filename:join([<<Folder/binary, "/", Db/binary, ".json">>])).
+
+db_archive(DbName, Filename) when ?VALID_DBNAME ->
+    kzs_db:db_archive(get_server(), DbName, Filename);
+db_archive(DbName, Filename) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> db_archive(Db, Filename);
+        {'error', _}=E -> E
+    end.
+
 
 %%%===================================================================
 %%% Document Functions
@@ -908,8 +934,6 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--type get_results_return() :: {'ok', wh_json:objects() | wh_json:keys()} |
-                              data_error().
 -spec get_all_results(ne_binary(), ne_binary()) -> get_results_return().
 -spec get_results(ne_binary(), ne_binary()) -> get_results_return().
 -spec get_results(ne_binary(), ne_binary(), view_options()) -> get_results_return().
@@ -1049,3 +1073,17 @@ server_tag() ->
 -spec server_tag(term()) -> 'ok'.
 server_tag(Tag) ->
     put('$kz_dataserver_tag', Tag).
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc How many documents are chunked when doing a bulk save
+%% @end
+%%------------------------------------------------------------------------------
+-spec max_bulk_insert() -> ?MAX_BULK_INSERT.
+max_bulk_insert() -> ?MAX_BULK_INSERT.
+
+-spec db_classification(text()) -> db_classifications().
+db_classification(DBName) -> kzs_util:db_classification(DBName).
+
+-spec format_error(any()) -> any().
+format_error(Error) -> kzs_server:format_error(Error).

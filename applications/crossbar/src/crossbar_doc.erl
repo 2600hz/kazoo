@@ -70,7 +70,7 @@
                         fun((cb_context:context()) -> startkey()) |
                         fun((wh_proplist(), cb_context:context()) -> startkey()).
 
--type view_options() :: couch_util:view_options() |
+-type view_options() :: kazoo_data:view_options() |
                         [{'databases', ne_binaries()} |
                          {'startkey_fun', startkey_fun()}
                         ].
@@ -1035,7 +1035,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_errors(couch_util:couchbeam_errors(), api_binary() | api_binaries(), cb_context:context()) ->
+-spec handle_couch_mgr_errors(kazoo_data:data_errors(), api_binary() | api_binaries(), cb_context:context()) ->
                                      cb_context:context().
 handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),

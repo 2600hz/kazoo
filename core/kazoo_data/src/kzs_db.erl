@@ -18,16 +18,11 @@
          ,db_info/1
          ,db_info/2
          ,db_exists/2
+         ,db_archive/3
         ]).
 
 
 -include("kz_data.hrl").
-
--type db_create_options() :: [{'q',integer()} | {'n',integer()}].
-
--export_type([db_create_options/0
-             ]).
-
 
 
 %%% DB-related functions ---------------------------------------------
@@ -67,3 +62,6 @@ db_info({App, Conn}, DbName) -> App:db_info(Conn, DbName).
 
 -spec db_exists(server(), ne_binary()) -> boolean().
 db_exists({App, Conn}, DbName) -> App:db_exists(Conn, DbName).
+
+-spec db_archive(server(), ne_binary(), ne_binary()) -> boolean().
+db_archive({App, Conn}, DbName, Filename) -> App:db_archive(Conn, DbName, Filename).

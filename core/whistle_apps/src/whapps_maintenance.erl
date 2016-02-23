@@ -255,7 +255,7 @@ refresh(?WH_ALERTS_DB) ->
     kz_datamgr:revise_doc_from_file(?WH_ALERTS_DB, 'crossbar', "views/alerts.json"),
     'ok';
 refresh(Database) when is_binary(Database) ->
-    case couch_util:db_classification(Database) of
+    case kz_datamgr:db_classification(Database) of
         'account' -> refresh_account_db(Database);
         'modb' -> kazoo_modb:refresh_views(Database);
         'system' ->
@@ -503,7 +503,7 @@ remove_depreciated_databases() ->
 -spec remove_depreciated_databases(ne_binaries()) -> 'ok'.
 remove_depreciated_databases([]) -> 'ok';
 remove_depreciated_databases([Database|Databases]) ->
-    _ = case couch_util:db_classification(Database) of
+    _ = case kz_datamgr:db_classification(Database) of
             'depreciated' ->
                 io:format("    archive and remove depreciated database ~s~n", [Database]),
                 _ = kz_datamgr:db_archive(Database),

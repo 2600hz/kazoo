@@ -349,7 +349,7 @@ convert_file(ContentType, _, _) ->
 -spec csv_to_rates(ne_binary(), cb_context:context()) ->
                           {'ok', {integer(), wh_json:objects()}}.
 csv_to_rates(CSV, Context) ->
-    BulkInsert = couch_util:max_bulk_insert(),
+    BulkInsert = kz_datamgr:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
                                  ,fun(Row, {Count, JObjs}) ->
                                           process_row(Context, Row, Count, JObjs, BulkInsert)

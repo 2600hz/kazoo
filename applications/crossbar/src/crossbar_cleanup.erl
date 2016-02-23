@@ -311,7 +311,7 @@ cleanup_account_soft_deletes(Account) ->
 do_cleanup(Db) ->
     case kz_datamgr:get_results(Db
                                ,<<"maintenance/soft_deletes">>
-                               ,[{'limit', couch_util:max_bulk_insert()}]
+                               ,[{'limit', kz_datamgr:max_bulk_insert()}]
                               ) of
         {'ok', []} -> 'ok';
         {'ok', L} ->

@@ -10,8 +10,6 @@
 %% ====================================================================
 -export([connection/0]).
 
-%% Settings-related
--export([max_bulk_insert/0]).
 
 ensure_driver_app(App) ->
     application:ensure_all_started(App).
@@ -33,20 +31,6 @@ connection(#{driver := App, tag := Tag}=Map) ->
     #data_connection{props=Map, app=App, tag=Tag};
 connection(#{}=Map) ->
     connection(maps:merge(?MERGE_MAP, Map)).
-
-
-       
-%%------------------------------------------------------------------------------
-%% @public
-%% @doc How many documents are chunked when doing a bulk save
-%% @end
-%%------------------------------------------------------------------------------
--spec max_bulk_insert() -> ?MAX_BULK_INSERT.
-max_bulk_insert() -> ?MAX_BULK_INSERT.
-    
-
-
-
 
 %% ====================================================================
 %% Internal functions

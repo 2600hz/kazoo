@@ -294,7 +294,7 @@ maybe_archive_modb(AccountMODb) ->
     case should_archive(AccountMODb, Year, Month) of
         'true' ->
             lager:info("account modb ~s needs archiving", [AccountMODb]),
-            'ok' = couch_util:archive(AccountMODb),
+            'ok' = kz_datamgr:db_archive(AccountMODb),
             lager:info("account modb ~s archived, removing the db", [AccountMODb]),
             Rm = kz_datamgr:db_delete(AccountMODb),
             lager:info("account modb ~s deleted: ~p", [AccountMODb, Rm]);

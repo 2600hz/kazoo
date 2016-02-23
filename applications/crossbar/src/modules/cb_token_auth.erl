@@ -136,7 +136,7 @@ clean_expired() ->
 clean_expired(CreatedBefore) ->
     ViewOpts = [{'startkey', 0}
                 ,{'endkey', CreatedBefore}
-                ,{'limit', couch_util:max_bulk_insert()}
+                ,{'limit', kz_datamgr:max_bulk_insert()}
                ],
 
     case kz_datamgr:get_results(?KZ_TOKEN_DB, <<"token_auth/listing_by_mtime">>, ViewOpts) of

@@ -39,7 +39,7 @@ init_dbs() ->
 -spec maybe_init_account(wh_json:object(), wh_proplist()) -> 'ok' | 'false'.
 maybe_init_account(JObj, _Props) ->
     Database = wapi_conf:get_database(JObj),
-    couch_util:db_classification(Database) =:= 'account'
+    kz_datamgr:db_classification(Database) =:= 'account'
         andalso do_init(Database).
 
 -spec init_master_account_db() -> 'ok'.
