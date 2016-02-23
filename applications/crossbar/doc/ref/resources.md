@@ -80,32 +80,32 @@ curl -v -X PUT \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/resources/{ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/resources/{ID}
+> GET /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/resources/{ID}
+> POST /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
 #### Fetch
@@ -150,11 +150,11 @@ curl -v -X PUT \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
+> GET /v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}
 ```
 
