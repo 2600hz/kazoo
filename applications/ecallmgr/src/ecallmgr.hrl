@@ -190,6 +190,7 @@
                                ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
                                ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
                                ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
+                               ,{<<"Fail-On-Single-Reject">>, <<"fail_on_single_reject">>}
                                ,{<<"failure_causes">>, <<"failure_causes">>}
                                ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
                                ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
