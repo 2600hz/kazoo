@@ -21,7 +21,7 @@ Key | Description | Type | Default | Required
 `rate_name` | Friendly name of the rate | `string` |   | `false`
 `rate_nocharge_time` | If the call duration is shorter than this threshold, the call is not billed | `integer` | `0` | `false`
 `rate_surcharge` | The upfront cost of connecting the call | `number` | `0` | `false`
-`routes` | List of regexs that match valid DIDs for this rate | `array(string)` |   | `false`
+`routes` | List of regexs that match valid DIDs for this rate | `array(string)` | `[]` | `false`
 `routes.[]` |   | `string` |   | `false`
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
 
