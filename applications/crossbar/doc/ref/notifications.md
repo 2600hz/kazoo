@@ -87,6 +87,16 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
 ```
 
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message
+
+```curl
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message
+```
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/smtplog/{_ID}
