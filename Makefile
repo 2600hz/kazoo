@@ -17,7 +17,7 @@ $(if $(wildcard *crash.dump), rm *crash.dump)
 all: deps compile rel/dev-vm.args
 
 compile: ACTION = all
-compile: $(MAKEDIRS)
+compile: deps $(MAKEDIRS)
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
@@ -52,15 +52,6 @@ proper: $(KAZOODIRS)
 test: ACTION = test
 test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
-
-dep-init: Makefile.deps
-	mkdir -p deps
-	cp Makefile.deps deps/Makefile
-
-clean-deps:
-	rm -rf deps
-	mkdir deps
-	cp Makefile.deps deps/Makefile
 
 core:
 	$(MAKE) -C core/ all
