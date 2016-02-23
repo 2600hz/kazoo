@@ -41,7 +41,7 @@
          ,auth_by/1 ,set_auth_by/2, is_authorized/1
          ,dry_run/1 ,set_dry_run/2
          ,locality/1 ,set_locality/2
-         ,doc/1, set_doc/2
+         ,doc/1, set_doc/2, update_doc/2
         ]).
 
 -export([list_attachments/2]).
@@ -601,6 +601,11 @@ doc(#knm_phone_number{doc=Doc}) -> Doc.
 -spec set_doc(knm_phone_number(), wh_json:object()) -> knm_phone_number().
 set_doc(N, JObj=?JSON_WRAPPER(_)) ->
     N#knm_phone_number{doc=JObj}.
+
+-spec update_doc(knm_phone_number(), wh_json:object()) -> knm_phone_number().
+update_doc(N, JObj=?JSON_WRAPPER(_)) ->
+    Updated = wh_json:merge_jobjs(doc(N), JObj),
+    N#knm_phone_number{doc = Updated}.
 
 %%--------------------------------------------------------------------
 %% @public
