@@ -360,7 +360,7 @@ load_user_devices(Context) ->
 -spec maybe_load_thing(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_load_thing(Context, ThingId) ->
     case is_reset_request(Context) of
-        'true' -> crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(kz_device:type())); //validating device
+        'true' -> crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(kz_device:type())); %%validating device
         'false' ->
             lager:debug("user failed to include reset=true"),
             reset_validation_error(Context)
