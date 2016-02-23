@@ -14,7 +14,7 @@ dep_amqp_client_commit = rabbitmq_v3_6_0
 
 dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
 
-dep_socketio = git https://github.com/lazedo/socket.io-cowboy 0.1
+dep_socketio = git https://github.com/lazedo/socket.io-cowboy 0.2
 
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 
