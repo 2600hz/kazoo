@@ -19,88 +19,88 @@ Key | Description | Type | Default | Required
 `rate_name` | Friendly name of the rate | `string` |   | `false`
 `rate_nocharge_time` | If the call duration is shorter than this threshold, the call is not billed | `integer` | `0` | `false`
 `rate_surcharge` | The upfront cost of connecting the call | `number` | `0` | `false`
-`routes` | List of regexs that match valid DIDs for this rate | `array(string)` |   | `false`
+`routes` | List of regexs that match valid DIDs for this rate | `array(string)` | `[]` | `false`
 `routes.[]` |   | `string` |   | `false`
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
 
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates
+> GET /v2/rates
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+    http://{SERVER}:8000/v2/rates
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/rates
+> POST /v2/rates
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+    http://{SERVER}:8000/v2/rates
 ```
 
 #### Create
 
-> PUT /v2/accounts/{ACCOUNT_ID}/rates
+> PUT /v2/rates
 
 ```curl
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates
+    http://{SERVER}:8000/v2/rates
 ```
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+> DELETE /v2/rates/{RATE_ID}
 
 ```curl
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+    http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+> GET /v2/rates/{RATE_ID}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+    http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
 #### Patch
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+> PATCH /v2/rates/{RATE_ID}
 
 ```curl
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+    http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+> POST /v2/rates/{RATE_ID}
 
 ```curl
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
+    http://{SERVER}:8000/v2/rates/{RATE_ID}
 ```
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}
+> GET /v2/rates/number/{PHONENUMBER}
 
 ```curl
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/rates/number/{PHONENUMBER}
+    http://{SERVER}:8000/v2/rates/number/{PHONENUMBER}
 ```
 
