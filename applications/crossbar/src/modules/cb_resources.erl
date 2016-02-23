@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for resource documents
@@ -129,10 +129,10 @@ allowed_methods(?COLLECTION) ->
     [?HTTP_PUT, ?HTTP_POST];
 allowed_methods(?JOBS) ->
     [?HTTP_GET, ?HTTP_PUT];
-allowed_methods(_) ->
+allowed_methods(_ResourceId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(?JOBS, _Id) ->
+allowed_methods(?JOBS, _JobId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
