@@ -242,9 +242,9 @@ validate_collection(Context) ->
 -spec validate_collection_fold(wh_json:object(), collection_fold_acc()) -> collection_fold_acc().
 validate_collection_fold(Resource, C) ->
     Id = wh_doc:id(Resource, kz_datamgr:get_uuid()),
-    case validate_collection_resource(wh_json:set_value(<<"id">>, Id, Resource)
-                                      ,C
-                                      ,cb_context:req_verb(C)
+    case validate_collection_resource(wh_doc:set_id(Resource, Id)
+                                     ,C
+                                     ,cb_context:req_verb(C)
                                      )
     of
         {'ok', C1} ->
