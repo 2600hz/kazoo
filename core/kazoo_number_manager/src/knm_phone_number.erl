@@ -604,7 +604,7 @@ set_doc(N, JObj=?JSON_WRAPPER(_)) ->
 
 -spec update_doc(knm_phone_number(), wh_json:object()) -> knm_phone_number().
 update_doc(N, JObj=?JSON_WRAPPER(_)) ->
-    Updated = wh_json:merge_jobjs(doc(N), JObj),
+    Updated = wh_json:merge_jobjs(doc(N), wh_json:public_fields(JObj)),
     N#knm_phone_number{doc = Updated}.
 
 %%--------------------------------------------------------------------
