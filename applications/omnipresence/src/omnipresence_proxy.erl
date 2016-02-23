@@ -73,7 +73,7 @@ sip_authorize(_Method, Auth, Req, _Call) ->
         'true' -> 'ok';
         'false' when Realm =:= <<"teste.sip.90e9.com">> -> 'ok';
         'false' ->
-            case nksip_lib:get_value({'digest', Realm}, Auth) of
+            case nklib_util:get_value({'digest', Realm}, Auth) of
                 'true' -> 'ok';
                 'false' -> 'forbidden';
                 'undefined' -> {'proxy_authenticate', Realm}
