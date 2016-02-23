@@ -14,6 +14,8 @@ Base = [ {'++', Core}
          ,{'--', ['rabbitmq_codegen']}
          %% exmpp Duplicated modules: tls specified in ssl and exmpp
        , {'--', [exmpp]}
+         %% .erlang.mk is for tracking dependencies
+       , {'--', ['.erlang.mk']}
        ],
 LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
 Based = [{A, 'load'} || A <- lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) )],
