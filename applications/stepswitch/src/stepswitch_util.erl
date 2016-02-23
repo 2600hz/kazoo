@@ -220,7 +220,10 @@ build_filter_fun(Name, Number) ->
                               wh_json:objects().
 format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
     SIPHeaders = stepswitch_util:get_sip_headers(OffnetReq),
-    AccountId = wapi_offnet_resource:account_id(OffnetReq),
+    AccountId = wapi_offnet_resource:hunt_account_id(
+                  OffnetReq
+                  ,wapi_offnet_resource:account_id(OffnetReq)
+                 ),
     [format_endpoint(set_endpoint_caller_id(Endpoint, Name, Number)
                      ,Number, FilterFun, OffnetReq, SIPHeaders, AccountId
                     )
