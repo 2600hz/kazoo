@@ -1,6 +1,6 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
-       nksip gproc poolboy syslog lager_syslog eflame socketio hep ecsv
+       nklib nkpacket nkdocker nkservice nksip gproc poolboy syslog lager_syslog eflame socketio hep ecsv
 
 dep_escalus = hex 2.6.4
 
@@ -16,6 +16,8 @@ dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50
 
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 
+dep_jiffy = hex 0.14.7
+
 
 ### need to update upstream ###
 dep_socketio = git https://github.com/lazedo/socket.io-cowboy 0.2
@@ -24,3 +26,9 @@ dep_hep = git https://github.com/lazedo/hep 1.5.4
 
 dep_ecsv = git https://github.com/lazedo/ecsv 0.2.1
 
+## martelo ##
+dep_nksip = git https://github.com/NetComposer/nksip
+dep_nklib = git https://github.com/NetComposer/nklib
+dep_nkservice = git https://github.com/NetComposer/nkservice
+dep_nkpacket = git https://github.com/NetComposer/nkpacket
+dep_nkdocker = git https://github.com/NetComposer/nkdocker
