@@ -6,13 +6,10 @@ KAZOODIRS = core/Makefile \
 
 DEPS_DIR = deps/Makefile
 
-MAKEDIRS = deps/Makefile \
-	   core/Makefile \
+MAKEDIRS = core/Makefile \
 	   applications/Makefile
 
 .PHONY: $(MAKEDIRS) core deps apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-release build-release tar-release release
-
-$(if $(wildcard *crash.dump), rm *crash.dump)
 
 all: deps compile rel/dev-vm.args
 
