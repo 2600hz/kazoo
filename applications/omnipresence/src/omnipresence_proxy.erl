@@ -9,7 +9,7 @@
 -module(omnipresence_proxy).
 
 -include("omnipresence.hrl").
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -180,8 +180,8 @@ update_manager(Request) ->
 
     FirstRoute = lists:nth(1, RecordRoutes),
     LastRoute = lists:last(RecordRoutes),
-    [FirstContact] = nksip_parse_uri:uris(FirstRoute),
-    [LastContact] = nksip_parse_uri:uris(LastRoute),
+    [FirstContact] = kzsip_uri:uris(FirstRoute),
+    [LastContact] = kzsip_uri:uris(LastRoute),
     Opts = [ C || {<<"transport">> , _B} = C <- LastContact#uri.opts],
     ProxyContact = LastContact#uri{user = ToUser, opts = Opts},
 
@@ -190,10 +190,10 @@ update_manager(Request) ->
     Props = [{<<"Subscription-ID">>, SubscriptionId}
              ,{<<"Call-ID">>, CallId}
              ,{<<"Event-Package">>, EventName}
-             ,{<<"From">>, nksip_unparse:uri(From)}
-             ,{<<"User">>, nksip_unparse:uri(To)}
-             ,{<<"Proxy-Route">>, nksip_unparse:uri(FirstContact)}
-             ,{<<"Contact">>, nksip_unparse:uri(ProxyContact)}
+             ,{<<"From">>, kzsip_uri:uri(From)}
+             ,{<<"User">>, kzsip_uri:uri(To)}
+             ,{<<"Proxy-Route">>, kzsip_uri:uri(FirstContact)}
+             ,{<<"Contact">>, kzsip_uri:uri(ProxyContact)}
              ,{<<"Expires">>, wh_util:to_integer(Expires)}
              ,{<<"AOR">>, AOR}
             ],

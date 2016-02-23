@@ -25,7 +25,7 @@
         ]).
 
 -include("pusher.hrl").
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -83,7 +83,7 @@ maybe_process_reg_success('undefined', _JObj) -> 'ok';
 maybe_process_reg_success(UA, JObj) ->
     OriginalContact = wh_json:get_value(<<"Original-Contact">>, JObj),
 
-    [#uri{opts=A, ext_opts=B}] = nksip_parse_uri:uris(OriginalContact),
+    [#uri{opts=A, ext_opts=B}] = kzsip_uri:uris(OriginalContact),
     Params = A ++ B,
 
     TokenKey = wh_json:get_value(?TOKEN_KEY, UA),

@@ -44,7 +44,7 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).

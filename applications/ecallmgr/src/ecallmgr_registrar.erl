@@ -42,7 +42,7 @@
 -endif.
 
 -include("ecallmgr.hrl").
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -908,8 +908,8 @@ fix_contact(Contact) ->
 bridge_uri(_Contact, 'undefined', _, _) -> 'undefined';
 bridge_uri('undefined', _Proxy, _, _) -> 'undefined';
 bridge_uri(Contact, Proxy, Username, Realm) ->
-    [#uri{}=UriContact] = nksip_parse_uri:uris(Contact),
-    [#uri{}=UriProxy] = nksip_parse_uri:uris(Proxy),
+    [#uri{}=UriContact] = kzsip_uri:uris(Contact),
+    [#uri{}=UriProxy] = kzsip_uri:uris(Proxy),
     Scheme = UriContact#uri.scheme,
     Transport = props:get_value(<<"transport">>, UriContact#uri.opts),
     BridgeUri = #uri{scheme=Scheme
@@ -917,11 +917,11 @@ bridge_uri(Contact, Proxy, Username, Realm) ->
                      ,domain=Realm
                      ,opts=props:filter_undefined(
                              [{<<"transport">>, Transport}
-                              ,{<<"fs_path">>, nksip_unparse:ruri(UriProxy)}
+                              ,{<<"fs_path">>, kzsip_uri:ruri(UriProxy)}
                              ]
                             )
                     },
-    nksip_unparse:ruri(BridgeUri).
+    kzsip_uri:ruri(BridgeUri).
 
 -spec existing_or_new_registration(ne_binary(), ne_binary()) -> registration().
 existing_or_new_registration(Username, Realm) ->

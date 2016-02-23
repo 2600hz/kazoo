@@ -14,7 +14,7 @@
         ]).
 
 -include("omnipresence.hrl").
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -spec extract_user(ne_binary()) -> {ne_binary(), ne_binary(), ne_binaries()}.
 extract_user(User) ->

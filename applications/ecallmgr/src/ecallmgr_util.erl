@@ -42,7 +42,7 @@
 
 -include_lib("whistle/src/api/wapi_dialplan.hrl").
 -include("ecallmgr.hrl").
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(HTTP_GET_PREFIX, "http_cache://").
 
@@ -1088,14 +1088,14 @@ fix_contact(OriginalContact, Username, Realm)
 fix_contact([<<>> | Options], Username, Realm) ->
     [<<"sip:", Username/binary, "@", Realm/binary>> | Options];
 fix_contact([Contact | Options], Username, Realm) ->
-    case nksip_parse_uri:uris(Contact) of
+    case kzsip_uri:uris(Contact) of
         [#uri{user = <<>>, domain = <<>>}=Uri] ->
-            fix_contact([nksip_unparse:ruri(Uri#uri{user=Username, domain=Realm}) | Options], Username, Realm);
+            fix_contact([kzsip_uri:ruri(Uri#uri{user=Username, domain=Realm}) | Options], Username, Realm);
         [#uri{user = <<>>}=Uri] ->
-            fix_contact([nksip_unparse:ruri(Uri#uri{user=Username}) | Options], Username, Realm);
+            fix_contact([kzsip_uri:ruri(Uri#uri{user=Username}) | Options], Username, Realm);
         [#uri{domain = <<>>}=Uri] ->
-            fix_contact([nksip_unparse:ruri(Uri#uri{domain=Realm}) | Options], Username, Realm);
+            fix_contact([kzsip_uri:ruri(Uri#uri{domain=Realm}) | Options], Username, Realm);
         [#uri{}=Uri] ->
-            list_to_binary([nksip_unparse:ruri(Uri)] ++ [<<";", Option/binary>> || Option <- Options]);
+            list_to_binary([kzsip_uri:ruri(Uri)] ++ [<<";", Option/binary>> || Option <- Options]);
         _Else -> 'undefined'
     end.
