@@ -10,10 +10,8 @@ Base = [ {'++', Core}
        , {'--', [skel]}
 
        , {'++', Deps}
-         %% Name is amqp_client, not rabbitmq_erlang_client
-       , {'--', [rabbitmq_erlang_client]}, {'++',  [amqp_client]}
-         %% Manually added: is a dep of RabbitMQ client
-       , {'++', [rabbit_common]}
+         %% Manually remove: is a build-only dep of RabbitMQ client
+         ,{'--', ['rabbitmq_codegen']}
          %% exmpp Duplicated modules: tls specified in ssl and exmpp
        , {'--', [exmpp]}
        ],
@@ -29,7 +27,6 @@ end ++
 [ {lib_dirs, [ "applications"
              , "core"
              , "deps"
-             , hd(filelib:wildcard("deps/rabbitmq_erlang_client-*/deps"))
              ]}
 
 , {include_src, false}

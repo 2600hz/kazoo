@@ -13,7 +13,6 @@
                   , whistle_amqp
                   , kazoo_web
 
-                  , ibrowse
                   , couchbeam
                   , lager
                   ]}
