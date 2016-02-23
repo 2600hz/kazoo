@@ -103,7 +103,7 @@
 new() -> ?JSON_WRAPPER([]).
 
 -spec encode(json_term()) -> text().
-encode(JObj) -> ejson:encode(JObj).
+encode(JObj) -> jiffy:encode(JObj).
 
 -spec decode(iolist() | ne_binary()) -> json_term().
 -spec decode(iolist() | ne_binary(), ne_binary()) -> json_term().
@@ -112,7 +112,7 @@ decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
     decode(Thing, <<"application/json">>).
 
 decode(JSON, <<"application/json">>) ->
-    try ejson:decode(JSON) of
+    try jiffy:decode(JSON) of
         JObj -> JObj
     catch
         'throw':{'error',{_Loc, 'invalid_string'}}=E ->
