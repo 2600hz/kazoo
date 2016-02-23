@@ -432,7 +432,7 @@ get_redirected(Props) ->
             case props:get_value(<<"variable_sip_redirected_by">>, Props) of
                 'undefined' -> {'undefined' , 'undefined'};
                 Contact ->
-                    [#uri{ext_opts=Opts}=Uri] = kzsip_uri:(Contact),
+                    [#uri{ext_opts=Opts}=Uri] = kzsip_uri:uris(Contact),
                     {kzsip_uri:ruri(Uri#uri{ext_opts='undefined'}) , props:get_value(<<"reason">>,Opts)}
             end;
         _ -> {'undefined' , 'undefined'}
