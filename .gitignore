@@ -33,4 +33,6 @@ rel/dev-vm.args
 rel/vm.args
 core/whistle/src/kz_mime.erl
 core/whistle/mime.types
+erlang.mk
+.erlang.mk
 

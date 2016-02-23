@@ -1,0 +1,11 @@
+ROOT = ..
+DEPS_DIR = $(CURDIR)
+
+ERLC_OPTS += +debug_info
+
+clean::
+	@find . ! -path . -type d | xargs rm -rf
+
+-include ../deps.mk
+-include ../erlang.mk
+

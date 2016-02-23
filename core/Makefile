@@ -1,6 +1,7 @@
 ROOT = ..
 
 MAKEDIRS = */Makefile
+ERL_LIBS = $(CURDIR)/$(ROOT)/deps/
 
 .PHONY: all compile compile-test clean clean-test eunit test first $(MAKEDIRS)
 
@@ -25,7 +26,8 @@ test: ACTION = test
 test: $(MAKEDIRS)
 
 first:
-	$(MAKE) -C whistle/ $(ACTION)
+	ERL_LIBS=$(ERL_LIBS) $(MAKE) -C whistle/ $(ACTION)
+	ERL_LIBS=$(ERL_LIBS) $(MAKE) -C kazoo_data/ $(ACTION)
 
 $(MAKEDIRS): first
-	$(MAKE) -C $(@D)    $(ACTION)
+	ERL_LIBS=$(ERL_LIBS) $(MAKE) -C $(@D)    $(ACTION)
