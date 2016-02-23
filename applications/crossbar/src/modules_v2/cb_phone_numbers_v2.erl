@@ -465,7 +465,7 @@ post_collection(Context, ReqJObj) ->
 post_number(Context, Number, ReqJObj) ->
     Options = [{'assigned_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'dry_run', not cb_context:accept_charges(Context)}
+               ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:create(Number, Options),
@@ -504,7 +504,7 @@ put_collection(Context, ReqJObj) ->
 put_number(Context, Number, ReqJObj) ->
     Options = [{'assigned_to', cb_context:account_id(Context)}
                ,{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'dry_run', not cb_context:accept_charges(Context)}
+               ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:create(Number, Options),
@@ -538,7 +538,7 @@ activate_collection(Context, ReqJObj) ->
                              cb_context:context().
 activate_number(Context, Number, ReqJObj) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
-               ,{'dry_run', not cb_context:accept_charges(Context)}
+               ,{'dry_run', not cb_context:accepting_charges(Context)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:buy(Number, cb_context:account_id(Context), Options),
@@ -554,7 +554,7 @@ create_port(Context, Number, ReqJObj) ->
                                        ,cb_context:account_id(Context)
                                        ,cb_context:auth_account_id(Context)
                                        ,cb_context:doc(Context)
-                                       ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
+                                       ,not cb_context:accepting_charges(Context)
                                       ),
     Fun = fun() ->
                   NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
@@ -569,7 +569,7 @@ reserve_number(Context, Number, ReqJObj) ->
                                               ,cb_context:account_id(Context)
                                               ,cb_context:auth_account_id(Context)
                                               ,cb_context:doc(Context)
-                                              ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
+                                              ,cb_context:accepting_charges(Context)
                                              ),
     Fun = fun() ->
                   NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
@@ -1301,7 +1301,7 @@ collection_process(Context, Numbers, Action) ->
 collection_process_result(Context, JObj) ->
     case wh_json:get_value(<<"error">>, JObj) of
         'undefined' ->
-            case not cb_context:accept_charges(Context) of
+            case not cb_context:accepting_charges(Context) of
                 'true' -> {'dry_run', ?COLLECTION, JObj};
                 'false' -> {'ok', JObj}
             end;
