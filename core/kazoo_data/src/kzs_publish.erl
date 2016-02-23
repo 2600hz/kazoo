@@ -38,7 +38,7 @@ prepare_publish(JObj) ->
 
 -spec maybe_publish_docs(db(), wh_json:objects(), wh_json:objects()) -> 'ok'.
 maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
-    case kzs_mgr:change_notice() of
+    case kz_datamgr:change_notice() of
         'true' ->
             _ = wh_util:spawn(
                   fun() ->
@@ -53,7 +53,7 @@ maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
 
 -spec maybe_publish_doc(db(), wh_json:object(), wh_json:object()) -> 'ok'.
 maybe_publish_doc(#db{}=Db, Doc, JObj) ->
-    case kzs_mgr:change_notice()
+    case kz_datamgr:change_notice()
         andalso should_publish_doc(Doc)
     of
         'true' ->
@@ -64,7 +64,7 @@ maybe_publish_doc(#db{}=Db, Doc, JObj) ->
 
 -spec maybe_publish_db(ne_binary(), wapi_conf:action()) -> 'ok'.
 maybe_publish_db(DbName, Action) ->
-    case kzs_mgr:change_notice() of
+    case kz_datamgr:change_notice() of
         'true' ->
             _ = wh_util:spawn(fun publish_db/2, [DbName, Action]),
             'ok';

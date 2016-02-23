@@ -35,14 +35,14 @@ do_load_gen() ->
     Start = os:timestamp(),
     AccountId = wh_util:rand_hex_binary(16),
     AccountDb = wh_util:format_account_db(AccountId),
-    'true' = couch_mgr:db_create(AccountDb),
+    'true' = kz_datamgr:db_create(AccountDb),
 
     io:format("building ~p~n", [AccountDb]),
 
     Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,400)],
-    {'ok', Saved} = couch_mgr:save_docs(AccountDb, Docs),
+    {'ok', Saved} = kz_datamgr:save_docs(AccountDb, Docs),
     _Result = (catch do_stuff_to_docs(Start, AccountDb, Saved)),
-    couch_mgr:db_delete(AccountDb),
+    kz_datamgr:db_delete(AccountDb),
     io:format("deleted ~s~nafter ~p~n", [AccountDb, _Result]).
 
 new_doc(AccountDb, Ref) ->
@@ -97,11 +97,11 @@ wait_for_cache(Start) ->
 perform_op({'edit', Doc}, Acc, AccountDb) ->
     Inc = wh_json:get_integer_value(<<"inc">>, Doc, 0),
     Edited = wh_json:set_value(<<"inc">>, Inc+1, Doc),
-    {'ok', Saved} = couch_mgr:save_doc(AccountDb, Edited),
-    {'ok', _Loaded} = couch_mgr:open_cache_doc(AccountDb, wh_doc:id(Saved)),
+    {'ok', Saved} = kz_datamgr:save_doc(AccountDb, Edited),
+    {'ok', _Loaded} = kz_datamgr:open_cache_doc(AccountDb, wh_doc:id(Saved)),
     [Saved | Acc];
 perform_op({'delete', Doc}, Acc, AccountDb) ->
-    couch_mgr:del_doc(AccountDb, Doc),
+    kz_datamgr:del_doc(AccountDb, Doc),
     Acc;
 perform_op({'noop', Doc}, Acc, _AccountDb) ->
     [Doc | Acc].

@@ -10,7 +10,7 @@
 
 
 %% Doc related
--export([open_cache_doc/4
+-export([open_cache_doc/2, open_cache_doc/3, open_cache_doc/4
          ,add_to_doc_cache/3
          ,flush_cache_doc/2
          ,flush_cache_doc/3
@@ -23,6 +23,24 @@
 
 -include("kz_data.hrl").
 
+-spec open_cache_doc(text(), ne_binary()) ->
+                            {'ok', wh_json:object()} |
+                            couchbeam_error() |
+                            {'error', 'not_found'}.
+open_cache_doc(DbName, DocId) ->
+    open_cache_doc(DbName, DocId, []).
+
+-spec open_cache_doc(text(), ne_binary(), wh_proplist()) ->
+                            {'ok', wh_json:object()} |
+                            couchbeam_error() |
+                            {'error', 'not_found'}.
+open_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
+    open_cache_doc(get_server(), DbName, DocId, Options);
+open_cache_doc(DbName, DocId, Options) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> open_cache_doc(Db, DocId, Options);
+        {'error', _}=E -> E
+    end.
 
 -spec open_cache_doc(server(), ne_binary(), ne_binary(), wh_proplist()) ->
                                   {'ok', wh_json:object()} |

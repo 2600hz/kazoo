@@ -207,7 +207,7 @@ account_has_descendants(Account) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}
                    ,{<<"endkey">>, [AccountId, wh_json:new()]}
                   ],
-    {'ok', JObjs} = couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
+    {'ok', JObjs} = kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
     length([JObj || JObj <- JObjs, kz_account:id(JObj) =/= AccountId]) > 0.
 
 %%--------------------------------------------------------------------
