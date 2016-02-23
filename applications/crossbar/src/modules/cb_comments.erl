@@ -369,7 +369,9 @@ load_doc(Context) ->
     load_doc(Context, Type, Id).
 
 load_doc(Context, <<"port_requests">>, [Id]) ->
-    crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB));
+    crossbar_doc:load(Id
+                      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                      ,?TYPE_CHECK_OPTION(<<"port_request">>));
 load_doc(Context, _Type, [Id]) ->
     crossbar_doc:load(Id, Context);
 load_doc(Context, _Type, _) ->

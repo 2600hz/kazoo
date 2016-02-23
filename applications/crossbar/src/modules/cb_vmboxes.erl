@@ -272,7 +272,7 @@ on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_voicemail_box:type()}],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(VMBoxId, Context) ->
-    crossbar_doc:load_merge(VMBoxId, Context).
+    crossbar_doc:load_merge(VMBoxId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -292,7 +292,7 @@ validate_patch(Context, DocId)->
 %%--------------------------------------------------------------------
 -spec load_vmbox(ne_binary(), cb_context:context()) -> cb_context:context().
 load_vmbox(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
+    crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -312,7 +312,7 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec load_message_summary(ne_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(DocId, Context) ->
-    Context1 = crossbar_doc:load(DocId, Context),
+    Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             Messages = [Message
@@ -334,7 +334,7 @@ load_message_summary(DocId, Context) ->
 load_message(DocId, MediaId, 'undefined', Context) ->
     load_message(DocId, MediaId, wh_json:new(), Context);
 load_message(DocId, MediaId, UpdateJObj, Context) ->
-    Context1 = crossbar_doc:load(DocId, Context),
+    Context1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             load_message_from_messages(DocId, MediaId, UpdateJObj, Context1);

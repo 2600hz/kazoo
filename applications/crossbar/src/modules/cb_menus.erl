@@ -147,7 +147,7 @@ create_menu(Context) ->
 %%--------------------------------------------------------------------
 -spec load_menu(ne_binary(), cb_context:context()) -> cb_context:context().
 load_menu(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
+    crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -187,7 +187,7 @@ on_successful_validation('undefined', Context) ->
                                                    ,cb_context:doc(Context)
                                                   ));
 on_successful_validation(DocId, Context) ->
-    crossbar_doc:load_merge(DocId, Context).
+    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
 
 %%--------------------------------------------------------------------
 %% @private

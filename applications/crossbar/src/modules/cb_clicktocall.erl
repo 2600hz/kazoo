@@ -131,7 +131,7 @@ maybe_authorize(Context) ->
 is_auth_required(Context) ->
     Nouns = cb_context:req_nouns(Context),
     [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
-    JObj = cb_context:doc(crossbar_doc:load(C2CID, Context)),
+    JObj = cb_context:doc(crossbar_doc:load(C2CID, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))),
     wh_json:is_true(<<"auth_required">>, JObj, 'true').
 
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
@@ -223,7 +223,7 @@ load_c2c_summary(Context) ->
 
 -spec load_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c(C2CId, Context) ->
-    crossbar_doc:load(C2CId, Context).
+    crossbar_doc:load(C2CId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)).
 
 -spec load_c2c_history(ne_binary(), cb_context:context()) -> cb_context:context().
 load_c2c_history(_C2CId, Context) ->
@@ -239,7 +239,7 @@ create_c2c(Context) ->
 
 -spec update_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
 update_c2c(C2CId, Context) ->
-    OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C) end,
+    OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C, ?TYPE_CHECK_OPTION(?PVT_TYPE)) end,
     cb_context:validate_request_data(<<"clicktocall">>, Context, OnSuccess).
 
 -spec validate_patch_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -248,7 +248,7 @@ validate_patch_c2c(C2CId, Context) ->
 
 -spec establish_c2c(ne_binary(), cb_context:context()) -> cb_context:context().
 establish_c2c(C2CId, Context) ->
-    Context1 = crossbar_doc:load(C2CId, Context),
+    Context1 = crossbar_doc:load(C2CId, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
     case cb_context:resp_status(Context1) of
         'success' -> originate_call(C2CId, Context1);
         _Status -> Context1

@@ -170,5 +170,7 @@
                                             )
        ).
 
+-define(TYPE_CHECK_OPTION(ExpectedType), [{<<"pvt_type">>, ExpectedType}]).
+
 -define(CROSSBAR_HRL, 'true').
 -endif.

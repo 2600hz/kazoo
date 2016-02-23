@@ -159,7 +159,7 @@ fix_req_pagination(Context) ->
 %%--------------------------------------------------------------------
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Context, Id) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"pivot">>)).
 
 %%--------------------------------------------------------------------
 %% @private

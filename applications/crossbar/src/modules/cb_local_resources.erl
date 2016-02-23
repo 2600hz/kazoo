@@ -156,7 +156,7 @@ check_resource_schema(ResourceId, Context) ->
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, wh_doc:set_type(cb_context:doc(Context), <<"resource">>));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"resource">>)).
 
 %%--------------------------------------------------------------------
 %% @private
