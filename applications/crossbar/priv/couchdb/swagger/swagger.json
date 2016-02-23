@@ -7782,6 +7782,9 @@
             "get": {},
             "put": {}
         },
+        "/v2/accounts/{ACCOUNT_ID}/notifications/customer_update/message": {
+            "post": {}
+        },
         "/v2/accounts/{ACCOUNT_ID}/notifications/smtplog": {
             "get": {}
         },
@@ -7995,10 +7998,10 @@
             "get": {},
             "put": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/resources/jobs/{_ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}": {
             "get": {}
         },
-        "/v2/accounts/{ACCOUNT_ID}/resources/{ID}": {
+        "/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}": {
             "delete": {},
             "get": {},
             "post": {}
