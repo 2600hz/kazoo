@@ -272,21 +272,7 @@ get_new_conn(Host, Port, Opts) ->
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
-server_url(#server{host=Host, port=Port, options=Options}) ->
-    UserPass = case props:get_value('basic_auth', Options) of
-                   'undefined' -> <<>>;
-                   {U, P} -> list_to_binary([U, <<":">>, P])
-               end,
-    Protocol = case wh_util:is_true(props:get_value('is_ssl', Options)) of
-                   'false' -> <<"http">>;
-                   'true' -> <<"https">>
-               end,
-
-    list_to_binary([Protocol, <<"://">>, UserPass
-                    ,<<"@">>, wh_util:to_binary(Host)
-                    ,<<":">>, wh_util:to_binary(Port)
-                    ,<<"/">>
-                   ]).
+server_url(#server{url=Url}) -> Url.
 
 -spec db_url(server(), ne_binary()) -> ne_binary().
 db_url(#server{}=Conn, DbName) ->
