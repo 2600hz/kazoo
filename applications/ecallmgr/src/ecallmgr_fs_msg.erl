@@ -303,7 +303,7 @@ format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
             [#uri{user=_ToUser
                   ,domain=ToIP
                   ,port=ToPort
-                 }=_ToContact] = kzsip_uri:(Contact),
+                 }=_ToContact] = kzsip_uri:uris(Contact),
             {'ok', props:filter_empty(
                      [{"to", wh_util:to_list(ToURI)}
                       ,{"to_sip_ip", wh_util:to_list(ToIP)}
@@ -322,7 +322,7 @@ format_route_endpoint(Endpoint, _Props, _JObj) ->
     [#uri{user=_ToUser
           ,domain=ToIP
           ,port=ToPort
-         }=_ToContact] = kzsip_uri:(ToURI),
+         }=_ToContact] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
              [{"to", wh_util:to_list(ToURI)}
               ,{"to_sip_ip", wh_util:to_list(ToIP)}
@@ -340,7 +340,7 @@ format_bounce_endpoint(Endpoint, Props, JObj) ->
     [#uri{user=_ToUser
           ,domain=ToIP
           ,port=ToPort
-         }=_ToContact] = kzsip_uri:(ToURI),
+         }=_ToContact] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
       [{"to", wh_util:to_list(To)}
        ,{"to_sip_ip", wh_util:to_list(ToIP)}
@@ -392,7 +392,7 @@ get_event_uris_props({K, F}, Props) ->
     get_event_uris_props( get_uri( props:get_value(F, Props) ), K);
 get_event_uris_props('undefined', _) -> [];
 get_event_uris_props(Uri, Base) ->
-    [#uri{user=User, domain=Realm}=_URI] = kzsip_uri:(Uri),
+    [#uri{user=User, domain=Realm}=_URI] = kzsip_uri:uris(Uri),
     [{Base, <<User/binary, "@", Realm/binary>>}
      ,{<<Base/binary, "-User">>, User }
      ,{<<Base/binary, "-Realm">>, Realm }].
