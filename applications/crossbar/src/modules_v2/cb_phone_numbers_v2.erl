@@ -541,7 +541,7 @@ activate_number(Context, Number, ReqJObj) ->
                ,{'dry_run', not wh_json:is_true(<<"accept_charges">>, ReqJObj)}
                ,{'public_fields', cb_context:doc(Context)}
               ],
-    Result = knm_number:buy(Num, cb_context:account_id(Context), Options),
+    Result = knm_number:buy(Number, cb_context:account_id(Context), Options),
     Fun = fun() ->
                   NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
                   ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?ACTIVATE)
@@ -1065,7 +1065,7 @@ identify(Context, Number) ->
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Number, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
-    Result = knm_number:get(Num, [{'auth_by', AuthAccountId}]),
+    Result = knm_number:get(Number, [{'auth_by', AuthAccountId}]),
     Fun = fun() -> Context end,
     set_response(Result, Number, Context, Fun).
 
@@ -1170,8 +1170,7 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response({'ok', operation_return()} |
-                   operation_return() |
+-spec set_response(knm_number_return() |
                    {'dry_run', wh_proplist()} |
                    {'dry_run', ne_binary(), wh_json:object()} |
                    {binary(), binary()}
@@ -1336,29 +1335,23 @@ collection_action(Context, Number, _) ->
     number_action(Context, Number, cb_context:req_verb(Context)).
 
 -spec number_action(cb_context:context(), path_token(), http_method()) ->
-                           operation_return().
+                           knm_number_return().
 number_action(Context, Number, ?HTTP_PUT) ->
-    wh_number_manager:create_number(Number
-                                    ,cb_context:account_id(Context)
-                                    ,cb_context:auth_account_id(Context)
-                                    ,wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))
-                                   );
+    Options = [{'assigned_to', cb_context:account_id(Context)}
+               ,{'auth_by', cb_context:auth_account_id(Context)}
+               ,{'dry_run', not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context))}
+               ,{'public_fields', wh_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
+              ],
+    knm_number:create(Number, Options);
 number_action(Context, Number, ?HTTP_POST) ->
-    case wh_number_manager:get_public_fields(Number, cb_context:auth_account_id(Context)) of
-        {'ok', JObj} ->
-            Doc1 = wh_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
-            DryRun = (not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context), 'false')),
-            wh_number_manager:set_public_fields(Number
-                                                ,wh_json:merge_jobjs(JObj, Doc1)
-                                                ,cb_context:auth_account_id(Context)
-                                                ,DryRun
-                                               );
-        {State, Error} ->
-            lager:error("error while fetching number ~p : ~p", [Number, Error]),
-            {State, Error}
-    end;
+    Options = [{'assigned_to', cb_context:account_id(Context)}
+               ,{'auth_by', cb_context:auth_account_id(Context)}
+               ,{'dry_run', not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context))}
+              ],
+    ToMerge = wh_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
+    knm_number:update(Number, [{fun knm_phone_number:update_doc/2, ToMerge}], Options);
 number_action(Context, Number, ?HTTP_DELETE) ->
-    wh_number_manager:release_number(Number, cb_context:auth_account_id(Context)).
+    knm_number:delete(Number, [{'auth_by', cb_context:auth_account_id(Context)}]).
 
 %%--------------------------------------------------------------------
 %% @private
