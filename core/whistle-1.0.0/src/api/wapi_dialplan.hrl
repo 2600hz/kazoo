@@ -54,6 +54,7 @@
           ,<<"Enable-T38-Fax-Request">>
           ,<<"Enable-T38-Gateway">>
           ,<<"Enable-T38-Passthrough">>
+          ,<<"Fail-On-Single-Reject">>
           ,<<"Force-Fax">>
           ,<<"Hold-Media">>
           ,<<"Ignore-Completed-Elsewhere">>

@@ -54,7 +54,7 @@
          ,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
-         ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8
+         ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8, b_bridge/9
          ,unbridge/1, unbridge/2, unbridge/3
         ]).
 -export([page/2, page/3, page/4, page/5, page/6]).
@@ -958,10 +958,13 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) -
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, <<"false">>, Call).
 bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, FailOnSingleReject, Call) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Endpoints">>, Endpoints}
      ,{<<"Timeout">>, Timeout}
      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+     ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
      ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
      ,{<<"Dial-Endpoint-Method">>, Strategy}
      ,{<<"Custom-SIP-Headers">>, SIPHeaders}
@@ -989,6 +992,9 @@ bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Cal
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call) ->
     Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, Call),
     send_command(Command, Call).
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, FailOnSingleReject, Call) ->
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreFoward, FailOnSingleReject, Call),
+    send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
     bridge(Endpoints, Call),
@@ -1010,6 +1016,9 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
     b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, Call),
+    b_bridge_wait(Timeout, Call).
+b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call) ->
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, IgnoreForward, FailOnSingleReject, Call),
     b_bridge_wait(Timeout, Call).
 
 -spec b_bridge_wait(pos_integer(), whapps_call:call()) -> whapps_api_bridge_return().
