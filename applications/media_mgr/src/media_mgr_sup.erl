@@ -15,9 +15,7 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?SUPER('whistle_media_sup')
-                   ,?WORKER('media_listener')
-                  ]).
+-define(CHILDREN, [?WORKER('media_listener')]).
 
 %% ===================================================================
 %% API functions

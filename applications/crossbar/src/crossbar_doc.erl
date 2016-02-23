@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2015, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -693,8 +693,8 @@ do_delete(Context, JObj, CouchFun) ->
             DocId = wh_doc:id(JObj),
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', _} ->
-            lager:debug("'deleted' ~s from ~s"
-                        ,[wh_doc:id(JObj), cb_context:account_db(Context)]
+            lager:debug("'deleted' ~s from ~s using ~p"
+                        ,[wh_doc:id(JObj), cb_context:account_db(Context), CouchFun]
                        ),
             Context1 = handle_couch_mgr_success(JObj, Context),
             _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),

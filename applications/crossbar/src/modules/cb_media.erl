@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz
+%%% @copyright (C) 2011-2016, 2600Hz
 %%% @doc
 %%% Account module
 %%%
@@ -54,6 +54,8 @@
 %%% API
 %%%===================================================================
 init() ->
+    application:start('whistle_media'),
+
     _ = crossbar_bindings:bind(<<"*.content_types_provided.media">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.media">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.media">>, ?MODULE, 'allowed_methods'),
@@ -381,21 +383,21 @@ put_media(Context, _AccountId) ->
     TTS = is_tts(JObj),
 
     Routines = [fun crossbar_doc:save/1
-                ,fun(C) when TTS ->
-                         Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
-                         Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
+               ,fun(C) when TTS ->
+                        Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
+                        Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
 
-                         maybe_update_tts(C, Text, Voice, cb_context:resp_status(C));
-                    (C) -> C
-                 end
-                ,fun(C) when TTS ->
-                         Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
-                         Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
+                        maybe_update_tts(C, Text, Voice, cb_context:resp_status(C));
+                   (C) -> C
+                end
+               ,fun(C) when TTS ->
+                        Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
+                        Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
 
-                         maybe_save_tts(C, Text, Voice, cb_context:resp_status(C));
-                    (C) -> C
-                 end
-                ],
+                        maybe_save_tts(C, Text, Voice, cb_context:resp_status(C));
+                   (C) -> C
+                end
+               ],
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
@@ -524,7 +526,11 @@ maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _MediaId) ->
-    crossbar_doc:delete(Context).
+    case kzd_media:is_prompt(cb_context:resp_data(Context)) of
+        'true' -> crossbar_doc:delete(Context, 'permanent');
+        'false' -> crossbar_doc:delete(Context)
+    end.
+
 delete(Context, MediaId, ?BIN_DATA) ->
     delete_media_binary(cow_qs:urlencode(MediaId), Context, cb_context:account_id(Context)).
 
@@ -814,12 +820,10 @@ load_media_meta(Context, MediaId, _AccountId) ->
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(MediaId, Context) ->
-    check_media_schema(MediaId, Context).
-
-check_media_schema(MediaId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(MediaId, C) end,
     cb_context:validate_request_data(<<"media">>, Context, OnSuccess).
 
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_media:type()}
              ,{<<"media_source">>, <<"upload">>}
@@ -830,8 +834,10 @@ on_successful_validation(MediaId, Context) ->
     Context1 = crossbar_doc:load_merge(MediaId, Context),
     maybe_validate_prompt(MediaId, Context1, cb_context:resp_status(Context1)).
 
+-spec maybe_validate_prompt(ne_binary(), cb_context:context(), crossbar_status()) ->
+                                   cb_context:context().
 maybe_validate_prompt(MediaId, Context, 'success') ->
-    case wh_json:get_value(<<"prompt_id">>, cb_context:doc(Context)) of
+    case kzd_media:prompt_id(cb_context:doc(Context)) of
         'undefined' -> Context;
         PromptId ->
             validate_prompt(MediaId, Context, PromptId)
@@ -839,37 +845,40 @@ maybe_validate_prompt(MediaId, Context, 'success') ->
 maybe_validate_prompt(_MediaId, Context, _Status) ->
     Context.
 
+-spec validate_prompt(ne_binary(), cb_context:context(), ne_binary()) ->
+                             cb_context:context().
 validate_prompt(MediaId, Context, PromptId) ->
-    Language = wh_util:to_lower_binary(wh_json:get_value(<<"language">>, cb_context:doc(Context))),
+    Language = wh_util:to_lower_binary(kzd_media:language(cb_context:doc(Context))),
     case wh_media_util:prompt_id(PromptId, Language) of
         MediaId -> Context;
         _OtherId ->
             lager:info("attempt to change prompt id '~s' is not allowed on existing media doc '~s'"
-                       ,[PromptId, MediaId]
+                      ,[PromptId, MediaId]
                       ),
-            cb_context:add_validation_error(
-              <<"prompt_id">>
-              ,<<"invalid">>
-              ,wh_json:from_list(
-                 [{<<"message">>, <<"Changing the prompt_id on an existing prompt is not allowed">>}
-                  ,{<<"cause">>, PromptId}
-                 ])
-              ,Context
-             )
+            cb_context:add_validation_error(<<"prompt_id">>
+                                           ,<<"invalid">>
+                                           ,wh_json:from_list(
+                                              [{<<"message">>, <<"Changing the prompt_id on an existing prompt is not allowed">>}
+                                              ,{<<"cause">>, PromptId}
+                                              ])
+                                           ,Context
+                                           )
     end.
 
 -spec maybe_add_prompt_fields(cb_context:context()) -> wh_proplist().
 maybe_add_prompt_fields(Context) ->
     JObj = cb_context:doc(Context),
-    case wh_json:get_value(<<"prompt_id">>, JObj) of
+    case kzd_media:prompt_id(JObj) of
         'undefined' -> [];
         PromptId ->
-            Language = wh_util:to_lower_binary(wh_json:get_value(<<"language">>, JObj, wh_media_util:default_prompt_language())),
+            Language = wh_util:to_lower_binary(kzd_media:language(JObj, wh_media_util:default_prompt_language())),
             ID = wh_media_util:prompt_id(PromptId, Language),
+
             lager:debug("creating properties for prompt ~s (~s)", [PromptId, Language]),
+
             [{<<"_id">>, ID}
-             ,{<<"language">>, Language}
-             ,{<<"name">>, wh_json:get_value(<<"name">>, JObj, ID)}
+            ,{<<"language">>, Language}
+            ,{<<"name">>, wh_json:get_value(<<"name">>, JObj, ID)}
             ]
     end.
 
