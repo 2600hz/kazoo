@@ -27,7 +27,6 @@ test: $(MAKEDIRS)
 
 first:
 	ERL_LIBS=$(ERL_LIBS) $(MAKE) -C whistle/ $(ACTION)
-	ERL_LIBS=$(ERL_LIBS) $(MAKE) -C kazoo_data/ $(ACTION)
 
 $(MAKEDIRS): first
 	ERL_LIBS=$(ERL_LIBS) $(MAKE) -C $(@D)    $(ACTION)
