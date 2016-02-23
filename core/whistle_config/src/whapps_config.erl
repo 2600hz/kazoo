@@ -366,7 +366,7 @@ update_category(Category, Keys, Value, Node, Options) ->
             lager:debug("config ~s not found, using empty for now", [Category]),
             update_category(Category, Keys, Value, Node, Options, wh_json:new());
         {'error', _Reason}=E ->
-            lager:debug("failed to update category ~s: ~p", [Category, couch_util:format_error(_Reason)]),
+            lager:debug("failed to update category ~s: ~p", [Category, kz_datamgr:format_error(_Reason)]),
             E
     end.
 

@@ -65,6 +65,17 @@
 
 -type view_options() :: list(view_option()).
 
+-type db_classifications() :: 'account' | 'modb' | 'acdc' |
+                              'numbers' | 'aggregate' | 'system' |
+                              'deprecated' | 'undefined'.
+
+-type db_create_options() :: [{'q',integer()} | {'n',integer()}].
+
+-type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
+
+-type get_results_return() :: {'ok', wh_json:objects() | wh_json:keys()} |
+                              data_error().
+
 -define(DEFAULT_DATA_SECTION, [{local, bigcouch}]).
 -define(MERGE_PROPS, [{driver, kazoo_couch}
                       ,{tag, local}

@@ -2,7 +2,15 @@
 
 -behaviour(application).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("kz_data.hrl").
+
+-export_type([db_create_options/0
+              ,data_error/0
+              ,data_errors/0
+              ,get_results_return/0
+              ,db_classifications/0
+              ,view_options/0
+             ]).
 
 %% Application callbacks
 -export([start/2, stop/1]).

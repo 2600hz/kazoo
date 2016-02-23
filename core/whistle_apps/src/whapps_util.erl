@@ -333,10 +333,10 @@ is_matched_account_mod(_, _) ->
     'false'.
 
 -spec is_account_mod(ne_binary()) -> boolean().
-is_account_mod(Db) -> couch_util:db_classification(Db) =:= 'modb'.
+is_account_mod(Db) -> kz_datamgr:db_classification(Db) =:= 'modb'.
 
 -spec is_account_db(ne_binary()) -> boolean().
-is_account_db(Db) -> couch_util:db_classification(Db) =:= 'account'.
+is_account_db(Db) -> kz_datamgr:db_classification(Db) =:= 'account'.
 
 
 -type getby_return() :: {'ok', ne_binary()} |
