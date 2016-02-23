@@ -96,7 +96,7 @@ cascade_reseller_id(Reseller, Account) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}
                    ,{<<"endkey">>, [AccountId, wh_json:new()]}
                   ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+    case kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'error', _R}=Error ->
             lager:debug("unable to determin descendants of ~s: ~p", [AccountId, _R]),
             Error;
@@ -130,12 +130,12 @@ set_reseller_id(Reseller, Account) ->
 %%--------------------------------------------------------------------
 -spec maybe_update_services(ne_binary(), ne_binary(), any()) -> {'error', _} | 'ok'.
 maybe_update_services(AccountId, Key, Value) ->
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+    case kz_datamgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R}=Error ->
             io:format("unable to open services doc ~s: ~p~n", [AccountId, _R]),
             Error;
         {'ok', JObj} ->
-            case couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(Key, Value, JObj)) of
+            case kz_datamgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(Key, Value, JObj)) of
                 {'ok', _} -> 'ok';
                 {'error', _R}=Error ->
                     io:format("unable to set ~s on services doc ~s: ~p~n", [Key, AccountId, _R]),
@@ -146,11 +146,11 @@ maybe_update_services(AccountId, Key, Value) ->
 -spec has_reseller_descendants(ne_binary()) -> boolean().
 has_reseller_descendants(AccountId) ->
     %% its very important that this check not operate against stale data!
-    _ = couch_mgr:flush_cache_docs(?WH_SERVICES_DB),
+    _ = kz_datamgr:flush_cache_docs(?WH_SERVICES_DB),
     ViewOptions = [{<<"startkey">>, [AccountId]}
                    ,{<<"endkey">>, [AccountId, wh_json:new()]}
                   ],
-    {'ok', JObjs} = couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
+    {'ok', JObjs} = kz_datamgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
     lists:any(fun(JObj) ->
                   wh_services:is_reseller(kz_account:id(JObj))
               end, JObjs).

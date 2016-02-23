@@ -69,7 +69,6 @@ start_link() ->
 init([]) ->
     process_flag('trap_exit', 'true'),
     lager:debug("starting new sysconf server"),
-    _ = wh_couch_connections:add_change_handler(?WH_CONFIG_DB),
     {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
