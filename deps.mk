@@ -18,7 +18,7 @@ dep_socketio = git https://github.com/lazedo/socket.io-cowboy 0.1
 
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 
-dep_hep = git https://github.com/sipcapture/hep-erlang 6811f38cc188226c72d51baa4218e7cebe88a7c1
+dep_hep = git https://github.com/lazedo/hep 1.5.4
 
 dep_ecsv = git https://github.com/rcouch/ecsv 0.2
 
