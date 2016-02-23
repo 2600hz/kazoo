@@ -8,6 +8,19 @@ Version: 3.20
 # Kazoo Devices
 Learn how to use the 2600hz mobile API set to activate and manage phones.
 
+## Ringtones
+
+You can setup internal and external ringtones by adding this:
+
+```json
+{
+    "name": "Device with custom ringtones",
+    "ringtones": {
+        "internal": "alert info SIP header",
+        "external": "alert info SIP header"
+    }
+}
+```
 
 ## Static Presence ID
 
@@ -60,3 +73,45 @@ Occassionally a phone's BLF might be out of sync with the true state of the phon
     curl -v -X POST -H "X-Auth-Token:{AUTH_TOKEN}" http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence
 
 No data payload at this time is required. This will send the appropriate internal command to reset the presence of the device (following `presence_id` if required.
+
+## Load a user's devices
+
+Often you'll want to see what devices belong to a user, or devices that a user has hot-desked into.
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices
+    {"auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "device_type": "sip_device",
+            "enabled": true,
+            "hotdesked": false,
+            "id": "{DEVICE_ID_1}",
+            "mac_address": "",
+            "name": "USER_ID_DEVICE",
+            "owner_id": "{USER_ID}"
+        },
+        {
+            "device_type": "sip_device",
+            "enabled": true,
+            "hotdesked": true,
+            "id": "{DEVICE_ID_2}",
+            "mac_address": "",
+            "name": "OWNER_ID_DEVICE",
+            "owner_id": "{OWNER_ID}"
+        }
+      ],
+     "request_id": "{REQUEST_ID}",
+     "revision": "{REVISION}",
+     "status": "success"
+    }
+
+Notice that the first device, `{DEVICE_ID_1}` is owned by `{USER_ID}` but the second device, `{DEVICE_ID_2}`, is owned by `{OWNER_ID}` **and** is currently hotdesked to `{USER_ID}` (see the `"hotdesked":true` attribute).
+
+## Create an Authn-By-IP Device
+
+Here is a minimal API request that creates a device that will authenticate by IP address instead of username/password:
+
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices \
+    -d '{"data":{"enabled":true,"name":"mkbs","sip":{"invite_format":"e164", "ip":"{IP_ADDRESS}","method":"ip"}}}'

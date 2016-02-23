@@ -80,7 +80,7 @@ send_auth_resp(#auth_user{password=Password
 send_auth_error(JObj) ->
     %% NOTE: Kamailio needs registrar errors since it is blocking with no
     %%   timeout (at the moment) but when we seek auth for INVITEs we need
-    %%   to wait for conferences, ect.  Since Kamailio does not honor
+    %%   to wait for conferences, etc.  Since Kamailio does not honor
     %%   Defer-Response we can use that flag on registrar errors
     %%   to queue in Kazoo but still advance Kamailio.
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -199,7 +199,7 @@ get_tel_uri(Number) -> <<"<tel:", Number/binary,">">>.
 %%-----------------------------------------------------------------------------
 -spec lookup_auth_user(ne_binary(), ne_binary(), wh_json:object()) ->
                               {'ok', auth_user()} |
-                              {'error', _}.
+                              {'error', any()}.
 lookup_auth_user(Username, Realm, Req) ->
     case get_auth_user(Username, Realm) of
         {'error', _}=E -> E;
@@ -275,49 +275,10 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %%-----------------------------------------------------------------------------
 -spec lookup_account_by_ip(ne_binary()) ->
                                   {'ok', wh_proplist()} |
-                                  couch_mgr:couchbeam_error().
+                                  {'error', 'not_founnd'}.
 lookup_account_by_ip(IP) ->
     lager:debug("looking up IP: ~s in db ~s", [IP, ?WH_SIP_DB]),
-    case wh_cache:peek_local(?REG_CACHE, ip_cache_key(IP)) of
-        {'ok', _AccountCCVs}=OK -> OK;
-        {'error', 'not_found'} -> fetch_account_by_ip(IP)
-    end.
-
--spec fetch_account_by_ip(ne_binary()) ->
-                                 {'ok', wh_proplist()} |
-                                 couch_mgr:couchbeam_error().
-fetch_account_by_ip(IP) ->
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, [{'key', IP}]) of
-        {'ok', []} ->
-            lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
-            {'error', 'not_found'};
-        {'ok', [Doc|_]} ->
-            lager:debug("found IP ~s in db ~s (~s)", [IP, ?WH_SIP_DB, wh_doc:id(Doc)]),
-            AccountCCVs = account_ccvs_from_ip_auth(Doc),
-            wh_cache:store_local(?REG_CACHE, ip_cache_key(IP), AccountCCVs),
-            {'ok', AccountCCVs};
-        {'error', _E} = Error ->
-            lager:debug("error looking up by IP: ~s: ~p", [IP, _E]),
-            Error
-    end.
-
--spec ip_cache_key(ne_binary()) -> {'auth_ip', ne_binary()}.
-ip_cache_key(IP) ->
-    {'auth_ip', IP}.
-
--spec account_ccvs_from_ip_auth(wh_json:object()) -> wh_proplist().
-account_ccvs_from_ip_auth(Doc) ->
-    AccountID = wh_json:get_value([<<"value">>, <<"account_id">>], Doc),
-    OwnerID = wh_json:get_value([<<"value">>, <<"owner_id">>], Doc),
-    AuthType = wh_json:get_value([<<"value">>, <<"authorizing_type">>], Doc, <<"anonymous">>),
-
-    props:filter_undefined(
-      [{<<"Account-ID">>, AccountID}
-       ,{<<"Owner-ID">>, OwnerID}
-       ,{<<"Authorizing-ID">>, wh_doc:id(Doc)}
-       ,{<<"Inception">>, <<"on-net">>}
-       ,{<<"Authorizing-Type">>, AuthType}
-      ]).
+    whapps_util:get_ccvs_by_ip(IP).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -327,7 +288,7 @@ account_ccvs_from_ip_auth(Doc) ->
 %%-----------------------------------------------------------------------------
 -spec check_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
                              {'ok', auth_user()} |
-                             {'error', _}.
+                             {'error', any()}.
 check_auth_user(JObj, Username, Realm, Req) ->
     case is_account_enabled(JObj)
         andalso maybe_auth_type_enabled(JObj)
@@ -389,7 +350,7 @@ is_owner_enabled(AccountDb, OwnerId) ->
 
 -spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
                                {'ok', auth_user()} |
-                               {'error', _}.
+                               {'error', any()}.
 jobj_to_auth_user(JObj, Username, Realm, Req) ->
     AuthValue = get_auth_value(JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),
@@ -443,7 +404,7 @@ get_auth_method(JObj) ->
 
 -spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
                                {'ok', auth_user()} |
-                               {'error', _}.
+                               {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     GsmDoc = wh_json:get_value(<<"gsm">>, JObj),
     CachedNonce = wh_json:get_value(<<"nonce">>, GsmDoc, wh_util:rand_hex_binary(16)),

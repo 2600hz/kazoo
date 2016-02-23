@@ -315,7 +315,7 @@
 -define(TIMEOFF(Var), 
     io:format("~s :: ~10.2f ms : ~p~n", [
         string:copies(" ", length(erlang:get(debug_timer))), 
-        (timer:now_diff(now(), hd(erlang:get(debug_timer)))/1000), Var
+        (timer:now_diff(erlang:timestamp(), hd(erlang:get(debug_timer)))/1000), Var
     ]), 
     erlang:put(debug_timer, tl(erlang:get(debug_timer)))).
 -endif.

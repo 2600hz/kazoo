@@ -30,7 +30,7 @@
          ,put/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 %%%===================================================================
 %%% API
@@ -240,9 +240,9 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
                ,{"X-Auth-Token", wh_util:to_list(SharedToken)}
               ],
     lager:debug("validating shared token ~s via ~s", [SharedToken, Url]),
-    case ibrowse:send_req(Url, Headers, 'get') of
-        {'ok', "200", _, Resp} -> {'ok', Resp};
-        {'ok', "401", _, _} -> {'forbidden', 'shared_token_rejected'};
+    case kz_http:get(Url, Headers) of
+        {'ok', 200, _, Resp} -> {'ok', Resp};
+        {'ok', 401, _, _} -> {'forbidden', 'shared_token_rejected'};
         Resp -> {'error', Resp}
     end.
 
@@ -277,7 +277,7 @@ import_missing_account(_AccountId, 'undefined') ->
     lager:debug("shared auth reply did not define an account definition"),
     'false';
 import_missing_account(AccountId, Account) ->
-    %% check if the acount datbase exists
+    %% check if the account database exists
     Db = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:db_exists(Db) of
         %% if the account database exists make sure it has the account

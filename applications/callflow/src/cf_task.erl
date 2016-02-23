@@ -23,6 +23,8 @@
 
 -include("callflow.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {call :: whapps_call:call()
                 ,callback :: fun()
                 ,args :: list()
@@ -45,13 +47,11 @@
 -define(CONSUME_OPTIONS, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the listener and binds to the call channel destroy events
-%% @end
+%% @doc Starts the listener and binds to the call channel destroy events
 %%--------------------------------------------------------------------
 -spec start_link(whapps_call:call(), fun(), list()) -> startlink_ret().
 start_link(Call, Fun, Args) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', ?QUEUE_NAME}       % optional to include
@@ -97,7 +97,7 @@ init([Call, Callback, Args]) ->
 %% Handle call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(term(), term(), state()) ->
+-spec handle_call(any(), any(), state()) ->
                          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
@@ -108,7 +108,7 @@ handle_call(_Request, _From, State) ->
 %% Handle cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) ->
+-spec handle_cast(any(), state()) ->
                          {'noreply', state()} |
                          {'stop', 'normal', state()}.
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
@@ -128,7 +128,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(term(), state()) -> {'noreply', state()}.
+-spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info({'DOWN', Ref, 'process', Pid, Reason}
             ,#state{ref=Ref
                     ,pid=Pid
@@ -147,6 +147,7 @@ handle_info(Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(wh_json:object(), state()) -> {'reply', wh_proplist()}.
+handle_event(_JObj, #state{pid='undefined'}) -> 'ignore';
 handle_event(_JObj, #state{pid=Pid}) ->
     {'reply', [{'cf_task_pid', Pid}]}.
 
@@ -159,7 +160,7 @@ handle_event(_JObj, #state{pid=Pid}) ->
 %% with Reason. The return value is ignored.
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), state()) -> any().
+-spec terminate(any(), state()) -> any().
 terminate(_Reason, _State) ->
     lager:debug("callflow task terminating: ~p", [_Reason]).
 
@@ -169,7 +170,7 @@ terminate(_Reason, _State) ->
 %% Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(term(), state(), term()) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -179,15 +180,16 @@ launch_task(#state{queue=Q
                    ,callback=Callback
                    ,args=Args
                   }=State) ->
-    Self = self(),
-    {Pid, Ref} = spawn_monitor(
-                   fun() ->
-                           whapps_call:put_callid(Call),
-                           wh_amqp_channel:consumer_pid(Self),
-                           Funs = [{fun whapps_call:kvs_store/3, 'consumer_pid', Self}
-                                   ,{fun whapps_call:set_controller_queue/2, Q}
-                                  ],
-                           apply(Callback, Args ++ [whapps_call:exec(Funs, Call)])
-                   end),
+    {Pid, Ref} = wh_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
     lager:debug("watching task execute in ~p (~p)", [Pid, Ref]),
     State#state{pid=Pid, ref=Ref}.
+
+%% @private
+-spec task_launched(api_binary(), whapps_call:call(), fun(), list(), pid()) -> any().
+task_launched(Q, Call, Callback, Args, Parent) ->
+    whapps_call:put_callid(Call),
+    wh_amqp_channel:consumer_pid(Parent),
+    Funs = [{fun whapps_call:kvs_store/3, 'consumer_pid', Parent}
+            ,{fun whapps_call:set_controller_queue/2, Q}
+           ],
+    apply(Callback, Args ++ [whapps_call:exec(Funs, Call)]).

@@ -18,7 +18,7 @@
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"blacklists/crossbar_listing">>).
 
@@ -98,15 +98,15 @@ validate_set(Context, ?HTTP_DELETE, DocId) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(format_numbers(Context)).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(format_numbers(Context)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(format_numbers(Context)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
@@ -193,3 +193,32 @@ on_successful_validation(Id, Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj) | Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec format_numbers(cb_context:context()) -> cb_context:context().
+format_numbers(Context) ->
+    Doc = cb_context:doc(Context),
+    Numbers =
+        wh_json:foldl(
+            fun format_numbers_foldl/3
+            ,wh_json:get_value(<<"raw_numbers">>, Doc, wh_json:new())
+            ,wh_json:get_value(<<"numbers">>, Doc, wh_json:new())
+        ),
+    cb_context:set_doc(
+        Context
+        ,wh_json:set_value(<<"numbers">>, Numbers, Doc)
+    ).
+
+
+-spec format_numbers_foldl(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+format_numbers_foldl(Number, Data, JObj) ->
+    case wh_util:anonymous_caller_id_number() of
+        Number -> wh_json:set_value(Number, Data, JObj);
+        _Else ->
+            E164 = wnm_util:normalize_number(Number),
+            wh_json:set_value(E164, Data, JObj)
+    end.

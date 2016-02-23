@@ -8,7 +8,7 @@ Language: en-US
 
 The Call Inspector Crossbar resource allows the client to query and inspect data related to the Call Inspector application.
 
-[More info on Call Inspector](applications/call_inspector/doc/index.md).
+[More info on Call Inspector](https://github.com/2600hz/kazoo/blob/master/applications/call_inspector/doc/index.md).
 
 ## Enabling in Crossbar
 

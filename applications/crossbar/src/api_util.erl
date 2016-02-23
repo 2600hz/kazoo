@@ -171,7 +171,7 @@ get_req_data(Context, {<<"multipart/form-data">>, Req}, QS) ->
 %% cURL defaults to this content-type, so check it for JSON if parsing fails
 get_req_data(Context, {<<"application/x-www-form-urlencoded">>, Req1}, QS) ->
     lager:debug("application/x-www-form-urlencoded content type when getting req data"),
-    maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req1, QS);
+    handle_failed_multipart(cb_context:set_query_string(Context, QS), Req1, QS);
 
 get_req_data(Context, {<<"application/json">>, Req1}, QS) ->
     lager:debug("application/json content type when getting req data"),
@@ -204,7 +204,7 @@ get_req_data(Context, {<<"multipart/", C/binary>>, Req}, QS) ->
     lager:debug("multipart ~s content type when getting req data", [C]),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
 get_req_data(Context, {ContentType, Req1}, QS) ->
-    lager:debug("unknown content-type: ~p", [ContentType]),
+    lager:debug("file's content-type: ~p", [ContentType]),
     extract_file(cb_context:set_query_string(Context, QS), ContentType, Req1).
 
 -spec maybe_extract_multipart(cb_context:context(), cowboy_req:req(), wh_json:object()) ->
@@ -215,7 +215,9 @@ maybe_extract_multipart(Context, Req0, QS) ->
         Resp -> Resp
     catch
         _E:_R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST),
             handle_failed_multipart(Context, Req0, QS)
     end.
 
@@ -227,21 +229,21 @@ handle_failed_multipart(Context, Req0, QS) ->
 
     try get_url_encoded_body(ReqBody) of
         JObj ->
-            handle_url_encoded_body(Context, Req1, QS, JObj)
+            handle_url_encoded_body(Context, Req1, QS, ReqBody, JObj)
     catch
         _E:_R ->
             lager:debug("failed to extract url-encoded request body: ~s: ~p", [_E, _R]),
             try_json(ReqBody, QS, Context, Req1)
     end.
 
--spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), wh_json:object()) ->
+-spec handle_url_encoded_body(cb_context:context(), cowboy_req:req(), wh_json:object(), binary(), wh_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
                                      halt_return().
-handle_url_encoded_body(Context, Req, QS, JObj) ->
+handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
     case wh_json:get_values(JObj) of
-        {['true'], [JSON]} ->
-            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [JSON]),
-            try_json(JSON, QS, Context, Req);
+        {['true'], [_JSON]} ->
+            lager:debug("failed to parse url-encoded request body, but we'll give json a go on ~p", [_JSON]),
+            try_json(ReqBody, QS, Context, Req);
         _Vs ->
             lager:debug("was able to parse request body as url-encoded: ~p", [JObj]),
             Setters = [{fun cb_context:set_req_json/2, JObj}
@@ -280,21 +282,21 @@ try_json(ReqBody, QS, Context, Req) ->
 get_url_encoded_body(ReqBody) ->
     wh_json:from_list(cow_qs:parse_qs(ReqBody)).
 
--type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} | {'done', cowboy_req:req()} | cowboy_req:req().
-
+-type cowboy_multipart_response() :: {'ok', cow_multipart:headers(), cowboy_req:req()} |
+                                     {'done', cowboy_req:req()} |
+                                     cowboy_req:req().
 
 -spec extract_multipart(cb_context:context(), cowboy_multipart_response(), wh_json:object()) ->
-                               {cb_context:context(), cowboy_req:req()} |
-                               halt_return().
+                               {cb_context:context(), cowboy_req:req()}.
 extract_multipart(Context, {'done', Req}, _QS) ->
     {Context, Req};
 extract_multipart(Context, {'ok', Headers, Req}, QS) ->
     {Ctx, R} = get_req_data(Context, {props:get_value(<<"content-type">>, Headers), Req}, QS),
     extract_multipart(
-        Ctx
-        ,cowboy_req:part(R)
-        ,QS
-    );
+      Ctx
+      ,cowboy_req:part(R)
+      ,QS
+     );
 extract_multipart(Context, Req, QS) ->
     extract_multipart(
       Context
@@ -348,7 +350,7 @@ handle_max_filesize_exceeded(Context, Req1) ->
                                                      [{<<"message">>, <<"Files must not be more than ", MaxLen/binary, " bytes">>}
                                                       ,{<<"target">>, Maximum}
                                                      ])
-                                                  ,Context
+                                                  ,cb_context:set_resp_error_code(Context, 413) %% payload too large
                                                  )
                 ).
 
@@ -385,6 +387,7 @@ uploaded_filename(Context) ->
             Filename
     end.
 
+-spec default_filename() -> ne_binary().
 default_filename() ->
     <<"uploaded_file_", (wh_util:to_binary(wh_util:current_tstamp()))/binary>>.
 
@@ -393,22 +396,20 @@ default_filename() ->
                            halt_return().
 decode_base64(Context, CT, Req0) ->
     decode_base64(Context, CT, Req0, []).
+
 decode_base64(Context, CT, Req0, Body) ->
     case cowboy_req:body(Req0) of
         {'error', 'badlength'} ->
             lager:debug("the request body was most likely too big"),
-            ?MODULE:halt(Req0
-                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
-                                                          ,<<"File was larger than allowed">>
-                                                          ,Context
-                                                          ));
+            handle_max_filesize_exceeded(Context, Req0);
         {'error', E} ->
             lager:debug("error getting request body: ~p", [E]),
             ?MODULE:halt(Req0
                          ,cb_context:set_resp_status(
                             cb_context:set_resp_data(Context, E)
                             ,'fatal'
-                           ));
+                           )
+                        );
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);
         {'ok', Base64Data, Req1} ->
@@ -427,10 +428,7 @@ decode_base64(Context, CT, Req0, Body) ->
                                           ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
-            FileName = <<"uploaded_file_"
-                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
-                       >>,
-            {cb_context:set_req_files(Context, [{FileName, FileJObj}]), Req1}
+            {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req1}
     end.
 
 -spec get_request_body(cowboy_req:req()) ->
@@ -547,7 +545,7 @@ get_http_verb(Method, Context) ->
 %%--------------------------------------------------------------------
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
--type cb_mods_with_tokens() :: [cb_mod_with_tokens(),...] | [].
+-type cb_mods_with_tokens() :: [cb_mod_with_tokens()].
 -spec parse_path_tokens(cb_context:context(), path_tokens()) -> cb_mods_with_tokens().
 parse_path_tokens(Context, Tokens) ->
     parse_path_tokens(Context, Tokens, []).
@@ -574,7 +572,7 @@ parse_path_tokens(Context, [Mod|T], Events) ->
 
 -spec is_cb_module(cb_context:context(), ne_binary()) -> boolean().
 is_cb_module(Context, Elem) ->
-    try (wh_util:to_atom(<<"cb_", Elem/binary>>)):module_info('imports') of
+    try (wh_util:to_atom(<<"cb_", Elem/binary>>)):module_info('exports') of
         _ -> 'true'
     catch
         'error':'badarg' -> 'false'; %% atom didn't exist already
@@ -588,7 +586,7 @@ is_cb_module_version(Context, Elem) ->
         'true'  ->
             ApiVersion = cb_context:api_version(Context),
             ModuleName = <<"cb_", Elem/binary, "_", ApiVersion/binary>>,
-            try (wh_util:to_atom(ModuleName)):module_info('imports') of
+            try (wh_util:to_atom(ModuleName)):module_info('exports') of
                 _ -> 'true'
             catch
                 'error':'badarg' -> 'false'; %% atom didn't exist already
@@ -625,7 +623,7 @@ allow_methods(Responses, ReqVerb, HttpVerb) ->
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
 
--spec allow_methods_fold(http_methods(), set()) -> set().
+-spec allow_methods_fold(http_methods(), sets:set()) -> sets:set().
 allow_methods_fold(Response, Acc) ->
     sets:union(Acc, sets:from_list(uppercase_all(Response))).
 
@@ -666,7 +664,7 @@ is_authentic(Req, Context, ?HTTP_OPTIONS) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
 is_authentic(Req, Context0, _ReqVerb) ->
-    Event = api_util:create_event_name(Context0, <<"authenticate">>),
+    Event = ?MODULE:create_event_name(Context0, <<"authenticate">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             is_authentic(Req, Context0, _ReqVerb, cb_context:req_nouns(Context0));
@@ -687,7 +685,7 @@ is_authentic(Req, Context, _ReqVerb, []) ->
     lager:debug("failed to authenticate"),
     ?MODULE:halt(Req, cb_context:add_system_error('invalid_credentials', Context));
 is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
-    Event = api_util:create_event_name(Context, <<"authenticate.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(Context, <<"authenticate.", Mod/binary>>),
     Payload = [Context | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [] ->
@@ -715,23 +713,60 @@ prefer_new_context([{'halt', Context1}|_], Req, _) ->
     lager:debug("authn halted"),
     ?MODULE:halt(Req, Context1).
 
+
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
                             {cowboy_req:req(), cb_context:context()}.
 get_auth_token(Req0, Context) ->
     case cowboy_req:header(<<"x-auth-token">>, Req0) of
         {'undefined', Req1} ->
             case cb_context:req_value(Context, <<"auth_token">>) of
-                'undefined' ->
-                    lager:debug("no auth token found"),
-                    {Req1, Context};
+                'undefined' -> get_authorization_token(Req1, Context);
                 Token ->
                     lager:debug("using auth token found"),
-                    {Req1, cb_context:set_auth_token(Context, Token)}
+                    {Req1, cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
+                                                        ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
+                                                       ]
+                                             )}
             end;
         {Token, Req1} ->
             lager:debug("using auth token from header"),
-            {Req1, cb_context:set_auth_token(Context, Token)}
+            {Req1, cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
+                                                ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
+                                               ]
+                                     )}
     end.
+
+-spec get_authorization_token(cowboy_req:req(), cb_context:context()) ->
+                            {cowboy_req:req(), cb_context:context()}.
+get_authorization_token(Req0, Context) ->
+    case cowboy_req:header(<<"authorization">>, Req0) of
+        {'undefined', Req1} ->
+            case cb_context:req_value(Context, <<"authorization">>) of
+                'undefined' ->
+                    lager:debug("no auth token found"),
+                    {Req1, Context};
+                Authorization ->
+                    lager:debug("using token ~s from url", [Authorization]),
+                    {Req1, set_auth_context(Context, Authorization)}
+            end;
+        {Authorization, Req1} ->
+            lager:debug("using token ~s from header", [Authorization]),
+            {Req1, set_auth_context(Context, Authorization)}
+    end.
+
+-spec set_auth_context(cb_context:context(), ne_binary() | {ne_binary(), atom()}) -> cb_context:context().
+set_auth_context(Context, {Token, TokenType}) ->
+    cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
+                                 ,{fun cb_context:set_auth_token_type/2, TokenType}
+                                ]
+                      );
+set_auth_context(Context, Authorization) ->
+    set_auth_context(Context, get_authorization_token_type(Authorization)).
+
+-spec get_authorization_token_type(ne_binary()) -> {ne_binary(), atom()}.
+get_authorization_token_type(<<"Basic ", Token/binary>>) -> {Token, 'basic'};
+get_authorization_token_type(<<"Bearer ", Token/binary>>) -> {Token, 'oauth'};
+get_authorization_token_type(Token) -> {Token, 'unknown'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -754,7 +789,7 @@ is_permitted_verb(Req, Context, ?HTTP_OPTIONS) ->
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {'true', Req, Context};
 is_permitted_verb(Req, Context0, _ReqVerb) ->
-    Event = api_util:create_event_name(Context0, <<"authorize">>),
+    Event = ?MODULE:create_event_name(Context0, <<"authorize">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
@@ -776,7 +811,7 @@ is_permitted_nouns(Req, Context, _ReqVerb, []) ->
     lager:debug("no one authz'd the request"),
     ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context));
 is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
-    Event = api_util:create_event_name(Context0, <<"authorize.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
         [] ->
@@ -808,7 +843,7 @@ is_known_content_type(Req, Context, ?HTTP_DELETE) ->
 is_known_content_type(Req0, Context0, _ReqVerb) ->
     Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                            Event = api_util:create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
+                            Event = ?MODULE:create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, cb_context:req_nouns(Context0)),
@@ -836,7 +871,7 @@ is_known_content_type(Req, Context, CT, CTAs) ->
 fold_in_content_type({Type, Sub}, Acc) ->
     [{Type, Sub, []} | Acc].
 
--spec is_acceptable_content_type(content_type(), [content_type(),...] | []) -> boolean().
+-spec is_acceptable_content_type(content_type(), [content_type()]) -> boolean().
 is_acceptable_content_type(CTA, CTAs) ->
     [ 'true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
 
@@ -874,7 +909,7 @@ does_resource_exist(Context) ->
     does_resource_exist(Context, cb_context:req_nouns(Context)).
 
 does_resource_exist(Context, [{Mod, Params}|_]) ->
-    Event = api_util:create_event_name(Context, <<"resource_exists.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(Context, <<"resource_exists.", Mod/binary>>),
     Responses = crossbar_bindings:map(Event, Params),
     crossbar_bindings:any(Responses) and 'true';
 does_resource_exist(_Context, _ReqNouns) ->
@@ -914,7 +949,7 @@ validate(Context, ReqNouns) ->
 
 -spec validate_data(cb_context:context(), list()) -> cb_context:context().
 validate_data(Context, [{Mod, Params}|_]) ->
-    Event = api_util:create_event_name(Context, <<"validate.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(Context, <<"validate.", Mod/binary>>),
     Payload = [cb_context:set_resp_status(Context, 'fatal') | Params],
     cb_context:import_errors(crossbar_bindings:fold(Event, Payload)).
 
@@ -928,7 +963,7 @@ validate_resources(Context, ReqNouns) ->
 
 -spec validate_resources_fold(req_noun(), cb_context:context()) -> cb_context:context().
 validate_resources_fold({Mod, Params}, ContextAcc) ->
-    Event = api_util:create_event_name(ContextAcc, <<"validate_resource.", Mod/binary>>),
+    Event = ?MODULE:create_event_name(ContextAcc, <<"validate_resource.", Mod/binary>>),
     Payload = [ContextAcc | Params],
     crossbar_bindings:fold(Event, Payload).
 
@@ -941,7 +976,7 @@ validate_resources_fold({Mod, Params}, ContextAcc) ->
 %%--------------------------------------------------------------------
 -spec process_billing(cb_context:context()) -> cb_context:context().
 process_billing(Context)->
-    Event = api_util:create_event_name(Context, <<"billing">>),
+    Event = ?MODULE:create_event_name(Context, <<"billing">>),
     process_billing_response(Context, crossbar_bindings:fold(Event, Context)).
 
 process_billing_response(Context, NewContext) ->
@@ -1026,7 +1061,7 @@ finish_request(_Req, Context) ->
     [{Mod, _}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
-    _ = wh_util:spawn('crossbar_bindings', 'map', [Event, Context]),
+    _ = wh_util:spawn(fun crossbar_bindings:map/2, [Event, Context]),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -1164,9 +1199,11 @@ halt(Req0, Context) ->
     Req3 = ?MODULE:add_cors_headers(Req2, Context),
     lager:debug("ensured CORS headers are on the response"),
 
+    Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),
+
     lager:debug("setting status code: ~p", [StatusCode]),
-    {'ok', Req4} = cowboy_req:reply(StatusCode, Req3),
-    {'halt', Req4, Context}.
+    {'ok', Req5} = cowboy_req:reply(StatusCode, Req4),
+    {'halt', Req5, cb_context:set_resp_status(Context, 'halt')}.
 
 -spec create_event_name(cb_context:context(), ne_binary() | ne_binaries()) -> ne_binary().
 create_event_name(Context, Segments) when is_list(Segments) ->

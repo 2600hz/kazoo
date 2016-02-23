@@ -97,7 +97,7 @@ succeeded(Res) when is_list(Res) ->
 %% Helpers for the result set helpers
 %% @end
 %%-------------------------------------------------------------------------
--spec check_bool({boolean(), term()} | boolean()) -> boolean().
+-spec check_bool({boolean(), any()} | boolean()) -> boolean().
 check_bool({'true', _}) -> 'true';
 check_bool('true') -> 'true';
 check_bool(_) -> 'false'.
@@ -107,7 +107,7 @@ check_bool(_) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_failed({boolean() | 'halt', _} | boolean() | term()) -> boolean().
+-spec filter_out_failed({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
 filter_out_failed({'true', _}) -> 'true';
 filter_out_failed('true') -> 'true';
 filter_out_failed({'halt', _}) -> 'true';
@@ -121,7 +121,7 @@ filter_out_failed(Term) -> not wh_util:is_empty(Term).
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', _} | boolean() | term()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
 filter_out_succeeded({'halt', _}) -> 'true';
@@ -132,13 +132,13 @@ filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
--type bind_results() :: [bind_result(),...] | [].
+-type bind_results() :: [bind_result()].
 -spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
                   bind_result() | bind_results().
 bind(Bindings, Module, Fun) ->
     bind(Bindings, Module, Fun, 'undefined').
 
--spec bind(ne_binary() | ne_binaries(), atom(), atom(), term()) ->
+-spec bind(ne_binary() | ne_binaries(), atom(), atom(), any()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
@@ -149,7 +149,7 @@ bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
 unbind(Bindings, Module, Fun) ->
     unbind(Bindings, Module, Fun, 'undefined').
 
--spec unbind(ne_binary() | ne_binaries(), atom(), atom(), term()) -> 'ok'.
+-spec unbind(ne_binary() | ne_binaries(), atom(), atom(), any()) -> 'ok'.
 unbind([_|_]=Bindings, Module, Fun, Payload) ->
     _ = [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings],
     'ok';

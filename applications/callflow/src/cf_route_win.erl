@@ -8,8 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_route_win).
 
--export([handle_req/2
-         ,maybe_restrict_call/2
+-export([execute_callflow/2
         ]).
 
 -include("callflow.hrl").
@@ -24,21 +23,9 @@
               )
        ).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
-handle_req(JObj, _Options) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    wh_util:put_callid(CallId),
-    lager:info("callflow has received a route win, taking control of the call"),
-    case whapps_call:retrieve(CallId, ?APP_NAME) of
-        {'ok', Call} ->
-            maybe_restrict_call(JObj, whapps_call:from_route_win(JObj, Call));
-        {'error', R} ->
-            lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
-    end.
-
--spec maybe_restrict_call(wh_json:object(), whapps_call:call()) ->
+-spec execute_callflow(wh_json:object(), whapps_call:call()) ->
                                  'ok' | {'ok', pid()}.
-maybe_restrict_call(JObj, Call) ->
+execute_callflow(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
@@ -53,7 +40,14 @@ maybe_restrict_call(JObj, Call) ->
 
 -spec should_restrict_call(whapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
-    case cf_endpoint:get(Call) of
+	DefaultEndpointId = whapps_call:authorizing_id(Call),
+	EndpointId = whapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
+	should_restrict_call(EndpointId, Call).
+
+-spec should_restrict_call(api_binary(), whapps_call:call()) -> boolean().
+should_restrict_call('undefined', _Call) -> 'false';
+should_restrict_call(EndpointId, Call) ->
+    case cf_endpoint:get(EndpointId, Call) of
         {'error', _R} -> 'false';
         {'ok', JObj} -> maybe_service_unavailable(JObj, Call)
     end.
@@ -139,7 +133,7 @@ enforce_closed_groups(JObj, Call) ->
             maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call)
     end.
 
--spec get_caller_groups(wh_json:objects(), wh_json:object(), whapps_call:call()) -> set().
+-spec get_caller_groups(wh_json:objects(), wh_json:object(), whapps_call:call()) -> sets:set().
 get_caller_groups(Groups, JObj, Call) ->
     Ids = [whapps_call:authorizing_id(Call)
            ,wh_json:get_value(<<"owner_id">>, JObj)
@@ -153,7 +147,7 @@ get_caller_groups(Groups, JObj, Call) ->
                 ,Ids
                ).
 
--spec maybe_device_groups_intersect(ne_binary(), set(), wh_json:objects(), whapps_call:call()) -> boolean().
+-spec maybe_device_groups_intersect(ne_binary(), sets:set(), wh_json:objects(), whapps_call:call()) -> boolean().
 maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
     CalleeGroups = get_group_associations(CalleeId, Groups),
     case sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0 of
@@ -171,11 +165,11 @@ maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
             sets:size(sets:intersection(CallerGroups, UsersGroups)) =:= 0
     end.
 
--spec get_group_associations(ne_binary(), wh_json:objects()) -> set().
+-spec get_group_associations(ne_binary(), wh_json:objects()) -> sets:set().
 get_group_associations(Id, Groups) ->
     get_group_associations(Id, Groups, sets:new()).
 
--spec get_group_associations(ne_binary(), wh_json:objects(), set()) -> set().
+-spec get_group_associations(ne_binary(), wh_json:objects(), sets:set()) -> sets:set().
 get_group_associations(Id, Groups, Set) ->
     lists:foldl(fun(Group, S) ->
                         case wh_json:get_value([<<"value">>, Id], Group) of
@@ -211,6 +205,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                 ,fun set_language/1
                 ,fun update_ccvs/1
+                ,fun maybe_start_recording/1
                 %% all funs above here return whapps_call:call()
                 ,fun execute_callflow/1
                 ,fun maybe_start_metaflow/1
@@ -276,15 +271,19 @@ update_ccvs(Call) ->
     whapps_call:set_custom_channel_vars(Props, Call).
 
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
+-spec maybe_start_metaflow(whapps_call:call(), api_binary()) -> whapps_call:call().
 maybe_start_metaflow(Call) ->
+    maybe_start_metaflow(Call, whapps_call:custom_channel_var(<<"Metaflow-App">>, Call)).
+
+maybe_start_metaflow(Call, 'undefined') ->
     maybe_start_endpoint_metaflow(Call, whapps_call:authorizing_id(Call)),
+    Call;
+maybe_start_metaflow(Call, App) ->
+    lager:debug("metaflow app ~s", [App]),
     Call.
 
 -spec maybe_start_endpoint_metaflow(whapps_call:call(), api_binary()) -> 'ok'.
-maybe_start_endpoint_metaflow(Call, 'undefined') ->
-    Account = whapps_call:account_id(Call),
-    HackedCall = whapps_call:set_authorizing_id(Account, Call),
-    maybe_start_endpoint_metaflow(HackedCall, Account);
+maybe_start_endpoint_metaflow(_Call, 'undefined') -> 'ok';
 maybe_start_endpoint_metaflow(Call, EndpointId) ->
     lager:debug("looking up endpoint for ~s", [EndpointId]),
     case cf_endpoint:get(EndpointId, Call) of
@@ -293,6 +292,16 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
             cf_util:maybe_start_metaflow(Call, Endpoint);
         {'error', _E} -> 'ok'
     end.
+
+-spec maybe_start_recording(whapps_call:call()) -> whapps_call:call().
+maybe_start_recording(Call) ->
+    maybe_start_endpoint_recording(Call, cf_endpoint:get(Call)).
+
+-spec maybe_start_endpoint_recording(whapps_call:call(), cf_api_std_return()) -> 'ok'.
+maybe_start_endpoint_recording(Call, {'ok', Endpoint}) ->
+    Data = wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()),
+    cf_util:maybe_start_call_recording(Data, Call);
+maybe_start_endpoint_recording(Call, _) -> Call.
 
 -spec get_incoming_security(whapps_call:call()) -> wh_proplist().
  get_incoming_security(Call) ->

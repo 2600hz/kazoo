@@ -42,9 +42,9 @@
         ]).
 -endif.
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
--define(URL, <<"http://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
+-define(URL, <<"https://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -69,10 +69,10 @@ nomorobo_score(Data, Call) ->
     lager:info("sending request to nomorobo: ~s", [URI]),
 
     try nomorobo_req(URI, Data) of
-        {'ok', "200", _Headers, Body} ->
+        {'ok', 200, _Headers, Body} ->
             nomorobo_score_from_resp(Body);
         {'ok', _Status, _Headers, _Body} ->
-            lager:debug("failed to query: ~s: ~s", [_Status, _Body]),
+            lager:debug("failed to query: ~p: ~s", [_Status, _Body]),
             'undefined';
         {'error', _E} ->
             lager:debug("error querying: ~p", [_E]),
@@ -83,25 +83,16 @@ nomorobo_score(Data, Call) ->
             'undefined'
     end.
 
--spec nomorobo_req(ne_binary(), wh_json:object()) -> ibrowse_ret().
+-spec nomorobo_req(ne_binary(), wh_json:object()) -> kz_http:ret().
 nomorobo_req(URI, Data) ->
-    ibrowse:send_req(wh_util:to_list(URI)
-                     ,[]
-                     ,'get'
-                     ,[]
-                     ,nomorobo_req_options(Data)
-                    ).
+    Username = wh_json:get_value(<<"username">>, Data),
+    Password = wh_json:get_value(<<"password">>, Data),
 
--spec nomorobo_req_options(wh_json:object()) -> list().
-nomorobo_req_options(Data) ->
-    Username = wh_json:get_string_value(<<"username">>, Data),
-    Password = wh_json:get_string_value(<<"password">>, Data),
+    Options = [{'basic_auth', {Username, Password}}
+               ,{'ssl', [{'verify', 'verify_none'}]}
+              ],
 
-    [{'basic_auth', {Username, Password}}
-     ,{'ssl_options', [{'verify', 'verify_none'}
-                      ]}
-     ,{'response_format', 'binary'}
-    ].
+    kz_http:get(wh_util:to_list(URI), [], Options).
 
 -spec nomorobo_uri(whapps_call:call()) -> ne_binary().
 nomorobo_uri(Call) ->

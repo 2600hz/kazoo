@@ -47,6 +47,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {}).
 
 -define(CONFERENCES_TBL, 'ecallmgr_conferences').
@@ -71,15 +73,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE,
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE,
                             [{'responders', ?RESPONDERS}
                              ,{'bindings', ?BINDINGS}
                              ,{'queue_name', ?QUEUE_NAME}
@@ -126,15 +124,15 @@ details(UUID) ->
 
 -spec create(wh_proplist(), atom()) -> conference().
 create(Props, Node) ->
-    gen_server:call(?MODULE, {'conference_create', Props, Node}).
+    gen_server:call(?SERVER, {'conference_create', Props, Node}).
 
 -spec update(ne_binary(), wh_proplist()) -> 'ok'.
 update(UUID, Update) ->
-    gen_server:call(?MODULE, {'conference_update', UUID, Update}).
+    gen_server:call(?SERVER, {'conference_update', UUID, Update}).
 
 -spec destroy(ne_binary()) -> 'ok'.
 destroy(UUID) ->
-    gen_server:call(?MODULE, {'conference_destroy', UUID}).
+    gen_server:call(?SERVER, {'conference_destroy', UUID}).
 
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
@@ -162,15 +160,15 @@ participants_to_json(Participants) ->
 
 -spec participant_create(wh_proplist(), atom(), ne_binary()) -> participant().
 participant_create(Props, Node, CallId) ->
-    gen_server:call(?MODULE, {'participant_create', Props, Node, CallId}).
+    gen_server:call(?SERVER, {'participant_create', Props, Node, CallId}).
 
 -spec participant_update(ne_binary(), wh_proplist()) -> 'ok'.
 participant_update(CallId, Update) ->
-    gen_server:call(?MODULE, {'participant_update', CallId, Update}).
+    gen_server:call(?SERVER, {'participant_update', CallId, Update}).
 
 -spec participant_destroy(ne_binary()) -> 'ok'.
 participant_destroy(CallId) ->
-    gen_server:call(?MODULE, {'participant_destroy', CallId}).
+    gen_server:call(?SERVER, {'participant_destroy', CallId}).
 
 -spec participant_callid(ne_binary(), non_neg_integer()) -> api_binary().
 participant_callid(UUID, MemberId) ->
@@ -184,10 +182,10 @@ participant_callid(UUID, MemberId) ->
     end.
 
 -spec sync_node(atom()) -> 'ok'.
-sync_node(Node) -> gen_server:cast(?MODULE, {'sync_node', Node}).
+sync_node(Node) -> gen_server:cast(?SERVER, {'sync_node', Node}).
 
 -spec flush_node(atom()) -> 'ok'.
-flush_node(Node) -> gen_server:cast(?MODULE, {'flush_node', Node}).
+flush_node(Node) -> gen_server:cast(?SERVER, {'flush_node', Node}).
 
 -spec handle_search_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_req(JObj, _Props) ->
@@ -730,11 +728,11 @@ maybe_destroy_conference(UUID) ->
         _ -> 'false'
     end.
 
--spec get_conference_dictionary(conferences()) -> dict().
+-spec get_conference_dictionary(conferences()) -> dict:dict().
 get_conference_dictionary(Conferences) ->
     get_conference_dictionary(Conferences, dict:new()).
 
--spec get_conference_dictionary(conferences(), dict()) -> dict().
+-spec get_conference_dictionary(conferences(), dict:dict()) -> dict:dict().
 get_conference_dictionary([], Dictionary) -> Dictionary;
 get_conference_dictionary([#conference{uuid=UUID}=Conference
                            | Conferences
@@ -743,11 +741,11 @@ get_conference_dictionary([#conference{uuid=UUID}=Conference
 get_conference_dictionary([_|Conferences], Dictionary) ->
     get_conference_dictionary(Conferences, Dictionary).
 
--spec get_participant_dictionary(participants()) -> dict().
+-spec get_participant_dictionary(participants()) -> dict:dict().
 get_participant_dictionary(Participants) ->
     get_participant_dictionary(Participants, dict:new()).
 
--spec get_participant_dictionary(participants(), dict()) -> dict().
+-spec get_participant_dictionary(participants(), dict:dict()) -> dict:dict().
 get_participant_dictionary([], Dictionary) -> Dictionary;
 get_participant_dictionary([#participant{uuid=UUID}=Participant
                             | Participants
@@ -756,7 +754,7 @@ get_participant_dictionary([#participant{uuid=UUID}=Participant
 get_participant_dictionary([_|Participants], Dictionary) ->
     get_participant_dictionary(Participants, Dictionary).
 
--spec sync_conferences(dict(), atom()) -> 'ok'.
+-spec sync_conferences(dict:dict(), atom()) -> 'ok'.
 sync_conferences(Conferences, Node) ->
     MatchSpec = [{#conference{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$2', {'const', Node}}]
@@ -780,7 +778,7 @@ sync_conferences(Conferences, Node) ->
         ],
     'ok'.
 
--spec sync_participants(dict(), atom()) -> 'ok'.
+-spec sync_participants(dict:dict(), atom()) -> 'ok'.
 sync_participants(Participants, Node) ->
     MatchSpec = [{#participant{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$2', {'const', Node}}]

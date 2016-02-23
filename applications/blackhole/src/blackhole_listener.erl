@@ -25,6 +25,8 @@
 
 -include("blackhole.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {}).
 -type state() :: #state{}.
 
@@ -43,21 +45,18 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
-                           ,?MODULE
-                           ,[{'bindings', ?BINDINGS}
-                            ,{'responders', ?RESPONDERS}
-                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                            ], []).
+    gen_listener:start_link({'local', ?SERVER}
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                             ], []).
 
 -spec handle_amqp_event(wh_json:object(), wh_proplist(), gen_listener:basic_deliver() | ne_binary()) -> any().
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
@@ -68,19 +67,19 @@ handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
 
 -spec add_call_binding(ne_binary()) -> 'ok'.
 add_call_binding(AccountId) ->
-    gen_listener:cast(?MODULE, {'add_call_binding', AccountId}).
+    gen_listener:cast(?SERVER, {'add_call_binding', AccountId}).
 
 -spec remove_call_binding(ne_binary()) -> 'ok'.
 remove_call_binding(AccountId) ->
-    gen_listener:cast(?MODULE, {'remove_call_binding', AccountId}).
+    gen_listener:cast(?SERVER, {'remove_call_binding', AccountId}).
 
 -spec add_binding(atom(), wh_proplist()) -> 'ok'.
 add_binding(Wapi, Options) ->
-    gen_listener:add_binding(?MODULE, Wapi, Options).
+    gen_listener:add_binding(?SERVER, Wapi, Options).
 
 -spec remove_binding(atom(), wh_proplist()) -> 'ok'.
 remove_binding(Wapi, Options) ->
-    gen_listener:rm_binding(?MODULE, Wapi, Options).
+    gen_listener:rm_binding(?SERVER, Wapi, Options).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -147,10 +146,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()) | _, state()) ->
+-spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()), state()) ->
                          {'noreply', state()}.
 handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
-    _ = wh_util:spawn(?MODULE, 'handle_amqp_event', [JObj, [], call_routing(EventType, JObj)]),
+    _ = wh_util:spawn(fun handle_amqp_event/3, [JObj, [], call_routing(EventType, JObj)]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.

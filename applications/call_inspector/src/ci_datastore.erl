@@ -12,6 +12,8 @@
 
 -include("call_inspector.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0]).
 -export([store_chunk/1]).
@@ -43,11 +45,10 @@
 
 -type datum() :: {'chunks', [ci_chunk:chunk()]} |
                  {'analysis', [ci_analysis:analysis()]}.
--type data() :: [datum(),...] | [].
+-type data() :: [datum()].
 
 -export_type([data/0]).
 
--define(SERVER, ?MODULE).
 -define(CI_DIR, "/tmp/2600hz-call_inspector").
 
 %%%===================================================================
@@ -55,12 +56,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -113,15 +111,9 @@ flush(CallId) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', #state{}}.
 init([]) ->
     mkdir(?CI_DIR),
     {'ok', #state{}}.
@@ -140,7 +132,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(atom(), _, state()) -> handle_call_ret().
+-spec handle_call(atom(), any(), state()) -> handle_call_ret().
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
     Reply = 'ok',

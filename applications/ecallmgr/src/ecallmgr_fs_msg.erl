@@ -29,8 +29,6 @@
           ,options :: wh_proplist()
          }).
 
--define(SERVER, ?MODULE).
-
 -define(BINDINGS(Node), [{'sms', [{'route_id', Node}
                                   ,{'restrict_to', ['route']}
                                  ]
@@ -49,24 +47,21 @@
 -include_lib("nksip/include/nksip.hrl").
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom()) -> startlink_ret().
 -spec start_link(atom(), wh_proplist()) -> startlink_ret().
-
-start_link(Node) ->
-    start_link(Node, []).
-
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
     NodeBin = wh_util:to_binary(Node),
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'responders', ?RESPONDERS}
                               ,{'bindings', ?BINDINGS(NodeBin)}
                               ,{'queue_name', ?QUEUE_NAME(NodeBin)}
@@ -139,7 +134,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', Props}, #state{node=Node}=State) ->
-    _ = wh_util:spawn(?MODULE, 'process_fs_event', [Node, Props]),
+    _ = wh_util:spawn(fun process_fs_event/2, [Node, Props]),
     {'noreply', State, 'hibernate'};
 handle_info({'EXIT', _, _}, State) ->
     {'noreply', State};
@@ -378,7 +373,7 @@ process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
          ,{<<"Status">>, props:get_value(<<"Status">>, Props)}
              | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
         ])),
-    lager:debug("Recieved delivery event for message ~s",[CallId]),
+    lager:debug("received delivery event for message ~s",[CallId]),
     EventProps = get_event_uris(Props, BaseProps),
     wh_amqp_worker:cast(EventProps, fun(A) -> wapi_sms:publish_targeted_delivery(ServerId, A) end);
 

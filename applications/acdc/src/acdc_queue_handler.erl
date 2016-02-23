@@ -18,6 +18,7 @@
         ]).
 
 -include("acdc.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 -spec handle_call_event(ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
@@ -79,13 +80,13 @@ handle_config_change(JObj, _Props) ->
                        ).
 
 -spec handle_queue_change(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-handle_queue_change(_, AccountId, QueueId, <<"doc_created">>) ->
+handle_queue_change(_, AccountId, QueueId, ?DOC_CREATED) ->
     lager:debug("maybe starting new queue for ~s: ~s", [AccountId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
         'undefined' -> acdc_queues_sup:new(AccountId, QueueId);
         P when is_pid(P) -> 'ok'
     end;
-handle_queue_change(AccountDb, AccountId, QueueId, <<"doc_edited">>) ->
+handle_queue_change(AccountDb, AccountId, QueueId, ?DOC_EDITED) ->
     lager:debug("maybe updating existing queue for ~s: ~s", [AccountId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
         'undefined' -> acdc_queues_sup:new(AccountId, QueueId);
@@ -98,7 +99,7 @@ handle_queue_change(AccountDb, AccountId, QueueId, <<"doc_edited">>) ->
             Mgr = acdc_queue_sup:manager(QueueSup),
             acdc_queue_manager:refresh(Mgr, JObj)
     end;
-handle_queue_change(_, AccountId, QueueId, <<"doc_deleted">>) ->
+handle_queue_change(_, AccountId, QueueId, ?DOC_DELETED) ->
     lager:debug("maybe stopping existing queue for ~s: ~s", [AccountId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of
         'undefined' -> lager:debug("no queue(~s) started for account ~s", [QueueId, AccountId]);

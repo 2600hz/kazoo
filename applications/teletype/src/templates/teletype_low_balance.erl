@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz Inc
+%%% @copyright (C) 2014-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
          ,handle_low_balance/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"low_balance">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
@@ -71,10 +71,16 @@ get_current_balance(DataJObj) ->
 
 -spec get_balance_threshold(wh_json:object()) -> ne_binary().
 get_balance_threshold(DataJObj) ->
-    Default = 5.00,
-    Key = [<<"account">>, <<"topup">>, <<"threshold">>],
-    Dollars = wh_json:get_float_value(Key, DataJObj, Default),
-    wht_util:pretty_print_dollars(Dollars).
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
+    ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
+    Default = whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+
+    case kz_account:fetch(AccountId) of
+        {'error', _} -> Default;
+        {'ok', JObj} ->
+            TopUp = wh_json:get_float_value([<<"topup">>, <<"threshold">>], JObj, Default),
+            wht_util:pretty_print_dollars(kz_account:threshold(JObj, TopUp))
+    end.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
@@ -86,14 +92,9 @@ handle_req(DataJObj) ->
              ],
 
     %% Load templates
-    Templates = teletype_templates:fetch(?TEMPLATE_ID, DataJObj),
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
-    %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
-
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])

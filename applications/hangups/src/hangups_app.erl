@@ -16,18 +16,23 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
-start(_, _) -> hangups:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_Type, _Args) ->
+    _ = declare_exchanges(),
+    hangups_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
-stop(_) -> hangups:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.
+
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_call:declare_exchanges(),
+    wapi_self:declare_exchanges().

@@ -20,6 +20,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -type bindings() :: atom() | [atom(),...] | ne_binary() | ne_binaries().
 
 -record(state, {node :: atom()
@@ -40,15 +42,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom(), bindings(), bindings()) -> startlink_ret().
 start_link(Node, Bindings, Subclasses) ->
-    gen_server:start_link(?MODULE, [Node, Bindings, Subclasses], []).
+    gen_server:start_link(?SERVER, [Node, Bindings, Subclasses], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -169,21 +167,20 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
             handle_no_switch({'tcp', Socket, Data}, State)
     end;
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
-                                         ,node=Node
-                                         ,idle_alert=Timeout
-                                         ,switch_uri=SwitchURI
-                                         ,switch_url=SwitchURL
+                                          ,node=Node
+                                          ,idle_alert=Timeout
+                                          ,switch_uri=SwitchURI
+                                          ,switch_url=SwitchURL
                                          }=State) ->
     try binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                                  ,{<<"Switch-URI">>, SwitchURI}
-                                                ]) ++ Props ,
-            _ = wh_util:spawn(fun() ->
-                                      maybe_send_event(EventName, UUID, EventProps, Node),
-                                      process_event(EventName, UUID, EventProps, Node)
-                              end),
+                                                 ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+                                                ]
+                                               ) ++ Props ,
+            _ = wh_util:spawn(fun process_stream/4, [EventName, UUID, EventProps, Node]),
             {'noreply', State, Timeout};
         _Else ->
             io:format("~p~n", [_Else]),
@@ -206,7 +203,8 @@ handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     {'noreply', State#state{socket='undefined'}};
 handle_info('timeout', #state{node=Node, idle_alert=Timeout}=State) ->
     lager:warning("event stream for ~p on node ~p is unexpectedly idle",
-                  [get_event_bindings(State), Node]),
+                  [get_event_bindings(State), Node]
+                 ),
     {'noreply', State, Timeout};
 handle_info(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
@@ -215,9 +213,9 @@ handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State, Timeout}.
 
--spec handle_no_switch({'tcp', term(), binary()}, state()) ->
+-spec handle_no_switch({'tcp', any(), binary()}, state()) ->
                               {'noreply', state(), wh_timeout()} |
-                              {'stop', _, state()}.
+                              {'stop', any(), state()}.
 handle_no_switch({'tcp', Socket, Data}, State) ->
     case handle_info({'tcp', Socket, Data}, State#state{switch_info='true'}) of
         {'noreply', _State, Timeout} -> {'noreply', State, Timeout};
@@ -300,10 +298,10 @@ get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) 
 
 -spec maybe_bind(atom(), atoms()) ->
                         {'ok', {text(), inet:port_number()}} |
-                        {'error', _}.
+                        {'error', any()}.
 -spec maybe_bind(atom(), atoms(), non_neg_integer()) ->
                         {'ok', {text(), inet:port_number()}} |
-                        {'error', _}.
+                        {'error', any()}.
 maybe_bind(Node, Bindings) ->
     maybe_bind(Node, Bindings, 0).
 
@@ -320,9 +318,33 @@ maybe_bind(Node, Bindings, Attempts) ->
             maybe_bind(Node, Bindings, Attempts+1)
     end.
 
+-spec process_stream(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+process_stream(<<"CHANNEL_CREATE">> = EventName, UUID, EventProps, Node) ->
+    Props = ecallmgr_fs_loopback:filter(Node, UUID, EventProps, 'true'),
+    maybe_send_event(EventName, UUID, Props, Node),
+    process_event(EventName, UUID, Props, Node);
+process_stream(<<"sofia::transferor">> = EventName, UUID, Props, Node) ->
+    case props:get_value(<<"variable_refer_uuid">>, Props) of
+        'undefined' -> 'ok';
+        ReferUUID ->
+            lager:debug("found refer uuid ~s for interaction caching", [ReferUUID]),
+            {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID),
+            CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, ReferUUID, CDR),
+            lager:debug("caching interaction id ~s for callid ~s", [CDR, ReferUUID]),
+            ecallmgr_fs_command:set(Node, ReferUUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
+    end,
+    maybe_send_event(EventName, UUID, Props, Node),
+    process_event(EventName, UUID, Props, Node);
+process_stream(EventName, UUID, EventProps, Node) ->
+    maybe_send_event(EventName, UUID, EventProps, Node),
+    process_event(EventName, UUID, EventProps, Node).
+
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
-process_event(<<"CHANNEL_CREATE">>, UUID, _Props, Node) ->
+process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     wh_util:put_callid(UUID),
+    _ = ecallmgr_fs_channel:new(Props, Node),
+    _ = ecallmgr_fs_channel:maybe_update_interaction_id(Props, Node),
     maybe_start_event_listener(Node, UUID);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
@@ -353,7 +375,7 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     wh_util:put_callid(UUID),
     BridgeID = props:get_value(<<"variable_bridge_uuid">>, Props),
     DialPlan = props:get_value(<<"Caller-Dialplan">>, Props),
-    Direction = props:get_value(<<"Call-Direction">>, Props),
+    Direction = kzd_freeswitch:call_direction(Props),
     App = props:get_value(<<"variable_current_application">>, Props),
     Destination = props:get_value(<<"Caller-Destination-Number">>, Props),
 
@@ -407,7 +429,7 @@ maybe_send_call_event(CallId, Props, Node) ->
 
 -spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
-    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
+    case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
         {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> 'ok'
     end.

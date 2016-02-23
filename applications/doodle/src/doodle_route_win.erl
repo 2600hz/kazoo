@@ -23,26 +23,14 @@
 -define(RESTRICTED_MSG, <<"endpoint is restricted from making this call">>).
 -define(SCHEDULED(Call), whapps_call:custom_channel_var(<<"Scheduled-Delivery">>, 0, Call)).
 
--export([handle_req/2
-         ,maybe_replay_sms/2
+-export([execute_text_flow/2
         ]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
-handle_req(JObj, _Options) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    wh_util:put_callid(CallId),
-    lager:info("doodle has received a route win, taking control of the call"),
-    case whapps_call:retrieve(CallId) of
-        {'ok', Call} -> maybe_scheduled_delivery(JObj, Call);
-        {'error', R} ->
-            lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
-    end.
-
--spec maybe_scheduled_delivery(wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
-maybe_scheduled_delivery(JObj, Call) ->
+-spec execute_text_flow(wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
+execute_text_flow(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
-            lager:debug("endpoint is restricted from making this call, terminate", []),
+            lager:debug("endpoint is restricted from sending this text, terminate", []),
             _ = send_service_unavailable(JObj, Call),
             doodle_util:save_sms(doodle_util:set_flow_error(<<"error">>, ?RESTRICTED_MSG, Call)),
             'ok';
@@ -64,21 +52,8 @@ maybe_scheduled_delivery(_JObj, Call, DeliveryAt, Now)
     Call1 = whapps_call:kvs_store(<<"flow_schedule">>, wh_json:from_list(Schedule), Call),
     doodle_util:save_sms(doodle_util:set_flow_status(<<"pending">>, Call1));
 maybe_scheduled_delivery(JObj, Call, _, _) ->
-    lager:info("setting initial information about the call"),
+    lager:info("setting initial information about the text"),
     bootstrap_callflow_executer(JObj, Call).
-
--spec maybe_replay_sms(wh_json:object(), whapps_call:call()) -> 'ok' | {'ok', pid()}.
-maybe_replay_sms(JObj, Call) ->
-    case should_restrict_call(Call) of
-        'true' ->
-            lager:debug("endpoint is restricted from making this call, terminate", []),
-            _ = send_service_unavailable(JObj, Call),
-            doodle_util:save_sms(doodle_util:set_flow_error(<<"error">>, ?RESTRICTED_MSG, Call)),
-            'ok';
-        'false' ->
-            lager:info("setting initial information about the call"),
-            bootstrap_callflow_executer(JObj, Call)
-    end.
 
 -spec should_restrict_call(whapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
@@ -151,7 +126,7 @@ enforce_closed_groups(JObj, Call) ->
             maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call)
     end.
 
--spec get_caller_groups(wh_json:objects(), wh_json:object(), whapps_call:call()) -> set().
+-spec get_caller_groups(wh_json:objects(), wh_json:object(), whapps_call:call()) -> sets:set().
 get_caller_groups(Groups, JObj, Call) ->
     Ids = [whapps_call:authorizing_id(Call)
            ,wh_json:get_value(<<"owner_id">>, JObj)
@@ -162,7 +137,7 @@ get_caller_groups(Groups, JObj, Call) ->
                         get_group_associations(Id, Groups, Set)
                 end, sets:new(), Ids).
 
--spec maybe_device_groups_intersect(ne_binary(), set(), wh_json:objects(), whapps_call:call()) -> boolean().
+-spec maybe_device_groups_intersect(ne_binary(), sets:set(), wh_json:objects(), whapps_call:call()) -> boolean().
 maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
     CalleeGroups = get_group_associations(CalleeId, Groups),
     case sets:size(sets:intersection(CallerGroups, CalleeGroups)) =:= 0 of
@@ -177,11 +152,11 @@ maybe_device_groups_intersect(CalleeId, CallerGroups, Groups, Call) ->
             sets:size(sets:intersection(CallerGroups, UsersGroups)) =:= 0
     end.
 
--spec get_group_associations(ne_binary(), wh_json:objects()) -> set().
+-spec get_group_associations(ne_binary(), wh_json:objects()) -> sets:set().
 get_group_associations(Id, Groups) ->
     get_group_associations(Id, Groups, sets:new()).
 
--spec get_group_associations(ne_binary(), wh_json:objects(), set()) -> set().
+-spec get_group_associations(ne_binary(), wh_json:objects(), sets:set()) -> sets:set().
 get_group_associations(Id, Groups, Set) ->
     lists:foldl(fun(Group, S) ->
                         case wh_json:get_value([<<"value">>, Id], Group) of

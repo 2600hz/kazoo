@@ -28,6 +28,8 @@
 -include("hangups.hrl").
 -include_lib("folsom/include/folsom.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_query'}
                       ,[{<<"hangups">>, <<"query_req">>}]
                      }
@@ -42,25 +44,19 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_query(wh_json:object(), wh_proplist()) ->
-                          any().
--spec handle_query(wh_json:object(), ne_binary(), boolean()) ->
-                          any().
+-spec handle_query(wh_json:object(), wh_proplist()) -> any().
+-spec handle_query(wh_json:object(), ne_binary(), boolean()) -> any().
 handle_query(JObj, _Props) ->
     'true' = wapi_hangups:query_req_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),

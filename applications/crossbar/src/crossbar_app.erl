@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,21 +19,19 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
-                   {'ok', pid()} |
-                   {'ok', pid(), term()} |
-                   {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> crossbar:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    crossbar_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
-stop(_State) -> crossbar:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    _ = cowboy:stop_listener('api_resource'),
+    _ = cowboy:stop_listener('api_resource_ssl'),
+    _ = crossbar_bindings:flush(),
+    'ok'.

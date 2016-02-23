@@ -21,7 +21,7 @@
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"resources/crossbar_listing">>).
 -define(JOBS_LIST, <<"resources/jobs_listing">>).
@@ -387,10 +387,10 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
 -spec read_job(cb_context:context(), ne_binary()) -> cb_context:context().
-read_job(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = JobId) ->
+read_job(Context, ?MATCH_MODB_PREFIX(Year,Month,_) = JobId) ->
     Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb)));
-read_job(Context, <<Year:4/binary, Month:1/binary, "-", _/binary>> = JobId) ->
+read_job(Context, ?MATCH_MODB_PREFIX_M1(Year,Month,_) = JobId) ->
     Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
     leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb)));
 read_job(Context, JobId) ->

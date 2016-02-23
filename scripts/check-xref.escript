@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -sname xref
+%%! -sname kazoo_xref
 %% -*- coding: utf-8 -*-
 
 -mode('compile').
@@ -14,8 +14,7 @@ main([]) ->
     usage(),
     halt(-1);
 main(Paths) ->
-    'ok' = code:add_pathsa(Paths),
-    AllPaths = code:get_path(),
+    AllPaths = all_paths(Paths),
     {'ok', _Pid} = xref:start(?SERVER),
     'ok' = xref:set_library_path(?SERVER, AllPaths),
     'ok' = xref:set_default(?SERVER, [ {'warnings', 'false'}
@@ -57,6 +56,16 @@ main(Paths) ->
 
 %% Internals
 
+all_paths(Paths) ->
+    OfARelease = fun (Path) -> lists:member("_rel", filename:split(Path)) end,
+    case lists:any(OfARelease, Paths) of
+        false ->
+            %% ie: we are not Xref-ing an Erlang release.
+            'ok' = code:add_pathsa(Paths),
+            code:get_path();
+        true -> Paths
+    end.
+
 filter('undefined_function_calls', Results) ->
     ToKeep = fun
                  %% apns:start/0 calls the fun only if it exists
@@ -64,6 +73,20 @@ filter('undefined_function_calls', Results) ->
 
                  %% OTP Xref errors
                  ({{eunit_test,_,_}, {_,_,_}}) -> 'false';
+                 ({{cerl_to_icode,_,_}, {_,_,_}}) -> 'false';
+                 ({{compile,_,_}, {_,_,_}}) -> 'false';
+                 ({{dialyzer_cl,_,_}, {_,_,_}}) -> 'false';
+                 ({{diameter_lib,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_beam_to_icode,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_consttab,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_bincomp,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_mulret,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_pp,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_split_arith,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_icode_type,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_main,_,_}, {_,_,_}}) -> 'false';
+                 ({{hipe_unified_loader,_,_}, {_,_,_}}) -> 'false';
+                 ({{init,_,_}, {_,_,_}}) -> 'false';
 
                  %% DTL modules that only exist at runtime
                  ({{_,_,_}, {sub_package_dialog,_,_}}) -> 'false';

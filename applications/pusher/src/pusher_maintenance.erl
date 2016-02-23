@@ -17,7 +17,7 @@ add_google_app(AppId, Secret) ->
     whapps_config:set_node(?CONFIG_CAT, <<"google">>, Secret, AppId),
     'ok'.
 
--spec add_apple_app(binary(), binary()) -> 'ok' | {'error', _}.
+-spec add_apple_app(binary(), binary()) -> 'ok' | {'error', any()}.
 add_apple_app(AppId, Certfile) ->
     case file:read_file(Certfile) of
         {'ok', Binary} ->

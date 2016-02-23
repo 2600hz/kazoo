@@ -1,8 +1,10 @@
 -ifndef(CALLFLOW_HRL).
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("whistle_apps/src/whapps_call_command_types.hrl").
+-include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -type cf_exe_response() :: {'stop'} |
                            {'continue'} |
@@ -12,6 +14,8 @@
                          ,'channel_hungup' |
                          'channel_unbridge' |
                          'timeout' |
+                         'invalid_endpoint_id' |
+                         'not_found' |
                          wh_json:object()
                         }.
 -type cf_api_std_return() :: cf_api_error() | {'ok', wh_json:object()}.
@@ -21,9 +25,10 @@
 -type cf_api_binary() :: binary() | 'undefined'.
 
 -define(APP_NAME, <<"callflow">>).
--define(APP_VERSION, <<"0.8.2">> ).
+-define(APP_VERSION, <<"4.0.0">> ).
 
 -define(RECORDED_NAME_KEY, [<<"media">>, <<"name">>]).
+-define(CF_RECORDING_ID_KEY, <<"Recording-ID">>).
 
 -define(CONFIRM_FILE(Call), wh_media_util:get_prompt(<<"ivr-group_confirm">>, Call)).
 
@@ -48,6 +53,8 @@
 -define(DEFAULT_TIMEZONE
         ,whapps_config:get(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
        ).
+
+-define(RESTRICTED_ENDPOINT_KEY, <<"Restricted-Endpoint-ID">>).
 
 -define(CALLFLOW_HRL, 'true').
 -endif.

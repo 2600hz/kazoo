@@ -29,7 +29,7 @@ handle_eavesdrop_req(JObj, _Props) ->
 
 -spec get_endpoints(ne_binary(), ne_binary()) ->
                            {'ok', wh_json:objects()} |
-                           {'error', _}.
+                           {'error', any()}.
 get_endpoints(AccountId, EndpointId) ->
     cf_endpoint:build(EndpointId, new_call(AccountId)).
 

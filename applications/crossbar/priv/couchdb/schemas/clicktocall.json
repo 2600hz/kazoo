@@ -17,6 +17,16 @@
             "required": false,
             "type": "string"
         },
+        "dial_first": {
+            "description": "Determinates what will be dialed first: extension or contact",
+            "enum": [
+                "extension",
+                "contact"
+            ],
+            "name": "Dial first",
+            "required": false,
+            "type": "string"
+        },
         "extension": {
             "description": "The extension to connect to when the click to call is invoked",
             "name": "Extension Number",

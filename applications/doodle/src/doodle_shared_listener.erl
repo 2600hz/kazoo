@@ -20,9 +20,11 @@
         ]).
 
 -include("doodle.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {}).
-
 
 
 -define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
@@ -35,8 +37,8 @@
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
                      ,{'doodle_notify_handler', [{<<"directory">>, <<"reg_success">>}]}
-                     ,{'doodle_doc_handler', [{<<"configuration">>, <<"doc_created">>}]}
-                     ,{'doodle_doc_handler', [{<<"configuration">>, <<"doc_edited">>}]}
+                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_CREATED}]}
+                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_EDITED}]}
                     ]).
 -define(QUEUE_NAME, <<"doodle_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -47,14 +49,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}

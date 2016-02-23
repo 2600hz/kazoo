@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%% Iterate over each account, find configured queues and configured
 %%% agents, and start the attendant processes
@@ -21,10 +21,11 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    _ = wh_util:spawn(?MODULE, 'init_acdc', []),
+    _ = declare_exchanges(),
+    _ = wh_util:spawn(fun init_acdc/0, []),
     'ignore'.
 
--spec init_acdc() -> _.
+-spec init_acdc() -> any().
 init_acdc() ->
     wh_util:put_callid(?MODULE),
     case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
@@ -40,7 +41,7 @@ init_acdc() ->
             lager:debug("failed to query acdc db: ~p", [_E])
     end.
 
--spec init_db() -> _.
+-spec init_db() -> any().
 init_db() ->
     _ = couch_mgr:db_create(?KZ_ACDC_DB),
     _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>).
@@ -61,7 +62,7 @@ init_acct(Account) ->
                 ,couch_mgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
                ).
 
--spec init_acct_queues(ne_binary()) -> _.
+-spec init_acct_queues(ne_binary()) -> any().
 init_acct_queues(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
@@ -71,7 +72,7 @@ init_acct_queues(Account) ->
                 ,couch_mgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
                ).
 
--spec init_acct_agents(ne_binary()) -> _.
+-spec init_acct_agents(ne_binary()) -> any().
 init_acct_agents(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
@@ -81,7 +82,7 @@ init_acct_agents(Account) ->
                 ,couch_mgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
                ).
 
--spec init_queues(ne_binary(), couch_mgr:get_results_return()) -> _.
+-spec init_queues(ne_binary(), couch_mgr:get_results_return()) -> any().
 init_queues(_, {'ok', []}) -> 'ok';
 init_queues(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading queues in account ~s, trying again in a moment", [AccountId]),
@@ -99,7 +100,7 @@ init_queues(AccountId, {'ok', Qs}) ->
     acdc_stats:init_db(AccountId),
     [acdc_queues_sup:new(AccountId, wh_doc:id(Q)) || Q <- Qs].
 
--spec init_agents(ne_binary(), couch_mgr:get_results_return()) -> _.
+-spec init_agents(ne_binary(), couch_mgr:get_results_return()) -> any().
 init_agents(_, {'ok', []}) -> 'ok';
 init_agents(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading agents in account ~s, trying again in a moment", [AccountId]),
@@ -131,3 +132,17 @@ try_again(AccountId, View, F) ->
               AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
               F(AccountId, couch_mgr:get_results(AccountDb, View, []))
       end).
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = wapi_acdc_agent:declare_exchanges(),
+    _ = wapi_acdc_queue:declare_exchanges(),
+    _ = wapi_acdc_stats:declare_exchanges(),
+    _ = wapi_call:declare_exchanges(),
+    _ = wapi_conf:declare_exchanges(),
+    _ = wapi_dialplan:declare_exchanges(),
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_resource:declare_exchanges(),
+    _ = wapi_route:declare_exchanges(),
+    _ = wapi_presence:declare_exchanges(),
+    wapi_self:declare_exchanges().

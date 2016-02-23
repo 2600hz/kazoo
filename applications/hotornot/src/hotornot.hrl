@@ -4,7 +4,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"hotornot">>).
--define(APP_VERSION, <<"0.2.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -type trunking_options() :: ne_binaries().
 

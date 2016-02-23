@@ -28,7 +28,7 @@
          ,patch/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
@@ -296,7 +296,7 @@ post(Context, UserId, ?PHOTO) ->
     Headers = wh_json:get_value(<<"headers">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, Headers),
     Content = wh_json:get_value(<<"contents">>, FileObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
     crossbar_doc:save_attachment(UserId, ?PHOTO, Content, Context, Opts).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -522,17 +522,17 @@ vcard_field_divide_by_length(Row, Acc) ->
 merge_user_channels_jobjs(JObjs) ->
     merge_user_channels_jobjs(JObjs, dict:new()).
 
--spec merge_user_channels_jobjs(wh_json:objects(), dict()) -> wh_json:objects().
+-spec merge_user_channels_jobjs(wh_json:objects(), dict:dict()) -> wh_json:objects().
 merge_user_channels_jobjs([], Dict) ->
     [Channel || {_, Channel} <- dict:to_list(Dict)];
 merge_user_channels_jobjs([JObj|JObjs], Dict) ->
     merge_user_channels_jobjs(JObjs, merge_user_channels_jobj(JObj, Dict)).
 
--spec merge_user_channels_jobj(wh_json:object(), dict()) -> dict().
+-spec merge_user_channels_jobj(wh_json:object(), dict:dict()) -> dict:dict().
 merge_user_channels_jobj(JObj, Dict) ->
     lists:foldl(fun merge_user_channels_fold/2, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
 
--spec merge_user_channels_fold(wh_json:object(), dict()) -> dict().
+-spec merge_user_channels_fold(wh_json:object(), dict:dict()) -> dict:dict().
 merge_user_channels_fold(Channel, D) ->
     UUID = wh_json:get_value(<<"uuid">>, Channel),
     dict:store(UUID, Channel, D).

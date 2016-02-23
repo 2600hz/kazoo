@@ -29,7 +29,7 @@
 %% cleanup process
 -export([start_link/0, init_it/0]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(SIGNUP_DB, <<"signups">>).
 
@@ -42,11 +42,11 @@
 
 -record(state, {cleanup_interval = 5 * ?SECONDS_IN_HOUR :: integer() %% once every 5 hours (in seconds)
                 ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
-                ,register_cmd = 'undefined' :: 'undefined' | atom()
-                ,activation_email_plain = 'undefined' :: 'undefined' | atom()
-                ,activation_email_html = 'undefined' :: 'undefined' | atom()
-                ,activation_email_from = 'undefined' :: 'undefined' | atom()
-                ,activation_email_subject = 'undefined' :: 'undefined' | atom()
+                ,register_cmd = 'undefined' :: api_atom()
+                ,activation_email_plain = 'undefined' :: api_atom()
+                ,activation_email_html = 'undefined' :: api_atom()
+                ,activation_email_from = 'undefined' :: api_atom()
+                ,activation_email_subject = 'undefined' :: api_atom()
                }).
 
 %%%===================================================================
@@ -133,42 +133,59 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_new_signup(Context#cb_context{db_name=?SIGNUP_DB}).
+validate(Context) ->
+    case cb_context:req_verb(Context) of
+        ?HTTP_PUT ->
+            validate_new_signup(cb_context:set_account_db(Context, ?SIGNUP_DB))
+    end.
 
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, ActivationKey) ->
-    check_activation_key(ActivationKey, Context#cb_context{db_name=?SIGNUP_DB}).
+validate(Context, ActivationKey) ->
+    case cb_context:req_verb(Context) of
+        ?HTTP_POST ->
+            check_activation_key(ActivationKey, cb_context:set_account_db(Context, ?SIGNUP_DB))
+    end.
 
 -spec authorize(cb_context:context()) -> 'true'.
-authorize(#cb_context{req_nouns=[{<<"signup">>,[]}]}) -> 'true';
-authorize(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) -> 'true'.
+-spec authorize_nouns(cb_context:req_nouns()) -> 'true'.
+authorize(Context) ->
+    authorize_nouns(cb_context:req_nouns(Context)).
+
+authorize_nouns([{<<"signup">>,[]}]) -> 'true';
+authorize_nouns([{<<"signup">>,[_]}]) -> 'true'.
 
 -spec authenticate(cb_context:context()) -> 'true'.
-authenticate(#cb_context{req_nouns=[{<<"signup">>,[]}]}) -> 'true';
-authenticate(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) -> 'true'.
+-spec authenticate_nouns(cb_context:req_nouns()) -> 'true'.
+authenticate(Context) ->
+    authenticate_nouns(cb_context:req_nouns(Context)).
+
+authenticate_nouns([{<<"signup">>,[]}]) -> 'true';
+authenticate_nouns([{<<"signup">>,[_]}]) -> 'true'.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(#cb_context{doc=JObj}=Context, _) ->
+post(Context, _) ->
+    JObj = cb_context:doc(Context),
     case activate_signup(JObj) of
         {'ok', Account, User} ->
             _ = couch_mgr:del_doc(?SIGNUP_DB, JObj),
-            Context#cb_context{resp_status='success'
-                               ,resp_data=wh_json:from_list([{<<"account">>, Account}
-                                                             ,{<<"user">>, User}
-                                                            ])
-                              };
+            NewRespData = wh_json:from_list([{<<"account">>, Account}
+                                             ,{<<"user">>, User}
+                                            ]),
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                         ,{fun cb_context:set_resp_data/2, NewRespData}
+                                        ]);
         _Else ->
             cb_context:add_system_error('datastore_fault', Context)
     end.
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
-        #cb_context{resp_status='success'}=Context1 ->
+    Context1 = crossbar_doc:save(cb_context:set_account_db(Context, ?SIGNUP_DB)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
             P = crossbar_sup:find_proc(?MODULE),
             P ! {'send_activation_email', Context1},
             P ! {'register', Context},
-            Context1#cb_context{resp_data=[]};
+            cb_context:set_resp_data(Context1, []);
         _ ->
                 cb_context:add_system_error('datastore_fault', Context)
     end.
@@ -183,17 +200,19 @@ put(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_new_signup(cb_context:context()) -> cb_context:context().
-validate_new_signup(#cb_context{req_data=JObj}=Context) ->
+validate_new_signup(Context) ->
+    JObj = cb_context:req_data(Context),
     {AccountErrors, Account} = validate_account(wh_json:get_value(<<"account">>, JObj), Context),
     {UserErrors, User} = validate_user(wh_json:get_value(<<"user">>, JObj), Context),
     case {AccountErrors, UserErrors} of
         {[], []} ->
-            Context#cb_context{doc=wh_json:from_list([{<<"pvt_user">>, User}
-                                                      ,{<<"pvt_account">>, Account}
-                                                      ,{<<"pvt_activation_key">>, create_activation_key()}
-                                                     ])
-                               ,resp_status='success'
-                              };
+            NewDoc = wh_json:from_list([{<<"pvt_user">>, User}
+                                        ,{<<"pvt_account">>, Account}
+                                        ,{<<"pvt_activation_key">>, create_activation_key()}
+                                       ]),
+            cb_context:setters(Context, [{fun cb_context:set_doc/2, NewDoc}
+                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ]);
         _Else ->
             crossbar_util:response_invalid_data(wh_json:from_list([{<<"account">>, AccountErrors}
                                                                    ,{<<"user">>, UserErrors}
@@ -213,12 +232,13 @@ validate_account('undefined', _) ->
     {[<<"account">>], 'undefined'};
 validate_account(Account, Context) ->
     case is_unique_realm(wh_json:get_value(<<"realm">>, Account))
-        andalso crossbar_maintenance:create_account(Context#cb_context{req_data=Account}) of
+        andalso crossbar_maintenance:create_account(cb_context:set_req_data(Context, Account)) of
         'false' ->
             {[<<"duplicate realm">>], 'undefined'};
-        {'ok', #cb_context{resp_status='success', doc=Acct}} ->
+        {'ok', Context1} ->
+            'success' = cb_context:resp_status(Context1),
             lager:debug("signup account is valid"),
-            {[], Acct};
+            {[], cb_context:doc(Context1)};  %% doc = AccountJObj
         {'error', Errors} ->
             {Errors, 'undefined'}
     end.
@@ -235,11 +255,13 @@ validate_user('undefined', _) ->
     lager:debug("signup did not contain an user definition"),
     {[<<"user">>], 'undefined'};
 validate_user(User, Context) ->
-    case cb_users_v1:create_user(Context#cb_context{req_data=User}) of
-        #cb_context{resp_status='success', doc=Usr} ->
+    Context1 = cb_users_v1:create_user(cb_context:set_req_data(Context, User)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
             lager:debug("signup user is valid"),
-            {[], Usr};
-        #cb_context{resp_data=Errors} ->
+            {[], cb_context:doc(Context1)};
+        _ ->
+            Errors = cb_context:resp_data(Context1),
             lager:debug("signup user definition is not valid"),
             {Errors, 'undefined'}
     end.
@@ -274,7 +296,9 @@ check_activation_key(ActivationKey, Context) ->
             crossbar_util:response('error', <<"invalid activation key">>, 403, Context);
         {'ok', [JObj|_]} ->
             lager:debug("activation key is valid"),
-            Context#cb_context{resp_status='success', doc=wh_json:get_value(<<"doc">>, JObj)};
+            cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
+                                         ,{fun cb_context:set_doc/2, wh_json:get_value(<<"doc">>, JObj)}
+                                        ]);
         _ ->
             lager:debug("db error while looking up activation key"),
             crossbar_util:response('error', <<"invalid activation key">>, 403, Context)
@@ -310,9 +334,11 @@ activate_account('undefined') ->
     {'error', 'account_undefined'};
 activate_account(Account) ->
     Event = <<"*.execute.put.accounts">>,
-    Payload = [#cb_context{doc=Account}],
-    case crossbar_bindings:fold(Event, Payload) of
-        #cb_context{resp_status='success', resp_data=JObj} ->
+    Payload = [cb_context:set_doc(cb_context:new(), Account)],
+    Context1 = crossbar_bindings:fold(Event, Payload),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
             AccountId = wh_doc:id(JObj),
             lager:debug("created new account ~s", [AccountId]),
             {'ok', JObj};
@@ -337,9 +363,13 @@ activate_user(Account, User) ->
     AccountId = wh_doc:id(Account),
     Db = wh_util:format_account_id(AccountId, 'encoded'),
     Event = <<"*.execute.put.users">>,
-    Payload = [#cb_context{doc=User, db_name=Db}],
-    case crossbar_bindings:fold(Event, Payload) of
-        #cb_context{resp_status='success', resp_data=JObj} ->
+    Payload = [cb_context:setters(cb_context:new(), [{fun cb_context:set_doc/2, User}
+                                                     ,{fun cb_context:set_account_db/2, Db}
+                                                    ])],
+    Context1 = crossbar_bindings:fold(Event, Payload),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:resp_data(Context1),
             UserId = wh_doc:id(JObj),
             lager:debug("created new user ~s in account ~s", [UserId, AccountId]),
             {'ok', Account, JObj};
@@ -372,12 +402,12 @@ exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
 -spec send_activation_email(cb_context:context(), #state{}) ->
                                    {'ok', pid()} |
                                    {'error', term()}.
-send_activation_email(#cb_context{doc=JObj
-                                  ,req_id=ReqId
-                                 }=Context
+send_activation_email(Context
                       ,#state{activation_email_subject=SubjectTmpl
                               ,activation_email_from=FromTmpl
                              }=State) ->
+    JObj = cb_context:doc(Context),
+    ReqId = cb_context:req_id(Context),
     Props = template_props(Context),
     To = wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
     Subject = case SubjectTmpl:render(Props) of
@@ -413,7 +443,7 @@ send_activation_email(#cb_context{doc=JObj
 %% if they have been provided
 %% @end
 %%--------------------------------------------------------------------
--spec create_body(#state{}, wh_proplist(), [] | [mail_message_body(),...]) -> [] | [mail_message_body(),...].
+-spec create_body(#state{}, wh_proplist(), [mail_message_body()]) -> [mail_message_body()].
 create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= 'undefined' ->
     case Tmpl:render(Props) of
         {'ok', Content} ->
@@ -448,11 +478,11 @@ create_body(_, _, Body) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec template_props(cb_context:context()) -> [{ne_binary(), wh_proplist() | ne_binary()},...].
-template_props(#cb_context{doc=JObj
-                           ,req_data=Data
-                           ,raw_host=RawHost
-                           ,port=Port
-                          }) ->
+template_props(Context) ->
+    JObj = cb_context:doc(Context),
+    Data = cb_context:req_data(Context),
+    RawHost = Context#cb_context.raw_host,
+    Port = Context#cb_context.port,
     ApiHost = list_to_binary(["http://", RawHost, ":", wh_util:to_list(Port), "/"]),
     %% remove the redundant request data
     Req = wh_json:delete_keys([<<"account">>, <<"user">>], Data),
@@ -547,7 +577,7 @@ init_state() ->
 
 -spec get_configs() -> {'ok', proplist()} |
                        {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
-                        | {integer(), module(), term()}
+                        | {integer(), module(), any()}
                        }.
 get_configs() ->
     file:consult(lists:flatten(?SIGNUP_CONF)).

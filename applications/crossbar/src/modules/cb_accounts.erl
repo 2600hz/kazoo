@@ -17,15 +17,16 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate_resource/1, validate_resource/2, validate_resource/3
          ,validate/1, validate/2, validate/3
-         ,put/1, put/2
+         ,put/1, put/2, put/3
          ,post/2, post/3
-         ,delete/2
+         ,delete/2, delete/3
          ,patch/2
         ]).
 
+-export([notify_new_account/1]).
 -export([is_unique_realm/2]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -47,6 +48,7 @@
 -define(API_KEY, <<"api_key">>).
 -define(TREE, <<"tree">>).
 -define(PARENTS, <<"parents">>).
+-define(RESELLER, <<"reseller">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
@@ -94,6 +96,8 @@ allowed_methods(AccountId) ->
 
 allowed_methods(_, ?MOVE) ->
     [?HTTP_POST];
+allowed_methods(_, ?RESELLER) ->
+    [?HTTP_PUT, ?HTTP_DELETE];
 allowed_methods(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
@@ -128,6 +132,7 @@ resource_exists(_, Path) ->
               ,?MOVE
               ,?TREE
               ,?PARENTS
+              ,?RESELLER
              ],
     lists:member(Path, Paths).
 
@@ -146,8 +151,6 @@ resource_exists(_, Path) ->
 validate_resource(Context) -> Context.
 validate_resource(Context, AccountId) -> load_account_db(AccountId, Context).
 validate_resource(Context, AccountId, _Path) -> load_account_db(AccountId, Context).
-
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -200,6 +203,16 @@ validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?PARENTS, ?HTTP_GET) ->
     load_parents(AccountId, prepare_context('undefined', Context));
+validate_account_path(Context, AccountId, ?RESELLER, ?HTTP_PUT) ->
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> load_account(AccountId, prepare_context(AccountId, Context));
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
+validate_account_path(Context, AccountId, ?RESELLER, ?HTTP_DELETE) ->
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> load_account(AccountId, prepare_context(AccountId, Context));
+        'false' -> cb_context:add_system_error('forbidden', Context)
+    end;
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
     case cb_context:resp_status(Context1) of
@@ -249,7 +262,7 @@ post(Context, AccountId) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            _ = wh_util:spawn('provisioner_util', 'maybe_update_account', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
             JObj = cb_context:doc(Context1),
             _ = replicate_account_definition(JObj),
             support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, JObj)
@@ -277,6 +290,7 @@ patch(Context, AccountId) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
 put(Context) ->
     JObj = cb_context:doc(Context),
@@ -308,6 +322,13 @@ put(Context) ->
 put(Context, _AccountId) ->
     ?MODULE:put(Context).
 
+put(Context, AccountId, ?RESELLER) ->
+    case whs_account_conversion:promote(AccountId) of
+        {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
+        {'error', 'reseller_descendants'} -> cb_context:add_system_error('account_has_descendants', Context);
+        'ok' -> load_account(AccountId, Context)
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -315,6 +336,8 @@ put(Context, _AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+
 delete(Context, Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
@@ -327,6 +350,13 @@ delete(Context, Account) ->
             Context1
     end.
 
+delete(Context, AccountId, ?RESELLER) ->
+    case whs_account_conversion:demote(AccountId) of
+        {'error', 'master_account'} -> cb_context:add_system_error('forbidden', Context);
+        {'error', 'reseller_descendants'} -> cb_context:add_system_error('account_has_descendants', Context);
+        'ok' -> load_account(AccountId, Context)
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -335,7 +365,7 @@ delete(Context, Account) ->
 -spec maybe_update_descendants_count(ne_binaries()) -> 'ok'.
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
-    _ = wh_util:spawn('crossbar_util', 'descendants_count', [lists:last(Tree)]),
+    _ = wh_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -345,7 +375,7 @@ maybe_update_descendants_count(Tree) ->
 %%--------------------------------------------------------------------
 -spec create_apps_store_doc(ne_binary()) -> 'ok'.
 create_apps_store_doc(AccountId) ->
-    _ = wh_util:spawn('cb_apps_util', 'create_apps_store_doc', [AccountId]),
+    _ = wh_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -604,17 +634,9 @@ maybe_disallow_direct_clients('false', _AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_delete_request(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_delete_request(AccountId, Context) ->
-    ViewOptions = [{'startkey', [AccountId]}
-                   ,{'endkey', [AccountId, wh_json:new()]}
-                  ],
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
-        {'error', 'not_found'} -> cb_context:add_system_error('datastore_missing_view', Context);
-        {'error', _} -> cb_context:add_system_error('datastore_fault', Context);
-        {'ok', JObjs} ->
-            case [JObj || JObj <- JObjs, wh_doc:id(JObj) =/= AccountId] of
-                [] -> cb_context:set_resp_status(Context, 'success');
-                _Else -> cb_context:add_system_error('account_has_descendants', Context)
-            end
+    case whapps_util:account_has_descendants(AccountId) of
+        'true' ->  cb_context:add_system_error('account_has_descendants', Context);
+        'false' -> cb_context:set_resp_status(Context, 'success')
     end.
 
 %% @private
@@ -1224,9 +1246,6 @@ create_new_account_db(Context) ->
             _ = crossbar_bindings:map(<<"account.created">>, C),
             lager:debug("alerted listeners of new account"),
 
-            _ = notify_new_account(C),
-            lager:debug("sent notification of new account"),
-
             _ = wh_services:reconcile(AccountDb),
             lager:debug("performed initial services reconcile"),
 
@@ -1238,6 +1257,11 @@ create_new_account_db(Context) ->
 
             _ = maybe_set_notification_preference(C),
             lager:debug("set notification preference"),
+
+            %% Give onboarding tools time to add initial users...
+            Delay = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"new_account_notify_delay_s">>, 30),
+            _ = timer:apply_after(Delay * ?MILLISECONDS_IN_SECOND, ?MODULE, 'notify_new_account', [C]),
+            lager:debug("started ~ps timer for new account notification", [Delay]),
             C
     end.
 
@@ -1301,7 +1325,10 @@ create_account_definition(Context) ->
              ,{<<"pvt_created">>, TStamp}
              ,{<<"pvt_vsn">>, <<"1">>}
             ],
-    case couch_mgr:save_doc(AccountDb, wh_json:set_values(Props, cb_context:doc(Context))) of
+
+    JObj = maybe_set_trial_expires(wh_json:set_values(Props, cb_context:doc(Context))),
+
+    case couch_mgr:save_doc(AccountDb, JObj) of
         {'ok', AccountDef}->
             _ = replicate_account_definition(AccountDef),
             cb_context:setters(Context
@@ -1313,6 +1340,20 @@ create_account_definition(Context) ->
             lager:debug("unable to create account definition: ~p", [_R]),
             throw(cb_context:add_system_error('datastore_fault', Context))
     end.
+
+-spec maybe_set_trial_expires(wh_json:object()) -> wh_json:object().
+maybe_set_trial_expires(JObj) ->
+    case kz_account:is_trial_account(JObj) of
+        'false' -> JObj;
+        'true' -> set_trial_expires(JObj)
+    end.
+
+-spec set_trial_expires(wh_json:object()) -> wh_json:object().
+set_trial_expires(JObj) ->
+    TrialTime = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"trial_time">>, ?SECONDS_IN_DAY * 14),
+    Expires = wh_util:now_s(wh_util:now()) + TrialTime,
+    kz_account:set_trial_expiration(JObj, Expires).
+
 
 -spec load_initial_views(cb_context:context()) -> 'ok'.
 load_initial_views(Context)->
@@ -1349,7 +1390,7 @@ ensure_views(Context, [Id|Ids], Retries) ->
 %%--------------------------------------------------------------------
 -spec replicate_account_definition(wh_json:object()) ->
                                           {'ok', wh_json:object()} |
-                                          {'error', _}.
+                                          {'error', any()}.
 replicate_account_definition(JObj) ->
     AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
@@ -1416,7 +1457,9 @@ notify_new_account(Context) ->
 
 notify_new_account(_Context, 'undefined') -> 'ok';
 notify_new_account(Context, _AuthDoc) ->
+    cb_context:put_reqid(Context),
     JObj = cb_context:doc(Context),
+    lager:debug("triggering new account notification for ~s", [cb_context:account_id(Context)]),
     Notify = [{<<"Account-Name">>, kz_account:name(JObj)}
               ,{<<"Account-Realm">>, kz_account:realm(JObj)}
               ,{<<"Account-API-Key">>, kz_account:api_key(JObj)}
@@ -1530,7 +1573,8 @@ delete_mod_dbs(AccountId, Year, Month) ->
 delete_remove_from_accounts(Context) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->
-            _ = wh_util:spawn('provisioner_util', 'maybe_delete_account', [Context]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_delete_account/1, [Context]),
+            _ = wh_util:spawn(fun cb_mobile_manager:delete_account/1, [Context]),
             crossbar_doc:delete(
               cb_context:setters(Context
                                  ,[{fun cb_context:set_account_db/2, ?WH_ACCOUNTS_DB}

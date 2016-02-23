@@ -28,10 +28,11 @@
 
 -include("ts.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{'ts_route_req', [{<<"dialplan">>, <<"route_req">>}]}]).
 -define(BINDINGS, [{'route', []}]).
 
--define(SERVER, ?MODULE).
 -define(ROUTE_QUEUE_NAME, <<"trunkstore_listener">>).
 -define(ROUTE_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(ROUTE_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
@@ -41,14 +42,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
                                       ,{'queue_name', ?ROUTE_QUEUE_NAME}
                                       ,{'queue_options', ?ROUTE_QUEUE_OPTIONS}

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz Inc
+%%% @copyright (C) 2015-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
          ,handle_req/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"port_rejected">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
@@ -82,26 +82,18 @@ process_req(DataJObj) ->
     end.
 
 -spec handle_port_request(wh_json:object()) -> 'ok'.
--spec handle_port_request(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_port_request(DataJObj) ->
-    handle_port_request(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
-
-handle_port_request(_DataJObj, []) ->
-    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
-handle_port_request(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
              ],
 
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_meta(?TEMPLATE_ID
-                                      ,teletype_util:find_account_id(DataJObj)
-                                     ),
+        teletype_templates:fetch_notification(?TEMPLATE_ID
+                                             ,teletype_util:find_account_id(DataJObj)
+                                             ),
 
     Subject =
         teletype_util:render_subject(

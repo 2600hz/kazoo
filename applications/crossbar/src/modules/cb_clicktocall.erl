@@ -12,6 +12,8 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%   Edouard Swiac
+%%%   KAZOO-4175: Sponsored by Conversant Ltd,
+%%%       implemented by SIPLABS, LLC (Ilya Ashchepkov)
 %%%-------------------------------------------------------------------
 -module(cb_clicktocall).
 
@@ -28,7 +30,7 @@
          ,maybe_migrate_history/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CONNECT_CALL, <<"connect">>).
 -define(HISTORY, <<"history">>).
@@ -326,11 +328,10 @@ originate_call(C2CId, Context, Contact) ->
     ReqId = cb_context:req_id(Context),
     AccountId = cb_context:account_id(Context),
     AccountModb = cb_context:account_modb(Context),
-
+    Request = build_originate_req(Contact, Context),
     _Pid = wh_util:spawn(
              fun() ->
                      wh_util:put_callid(ReqId),
-                     Request = build_originate_req(Contact, Context),
                      Status = exec_originate(Request),
                      lager:debug("got status ~p", [Status]),
 
@@ -347,8 +348,9 @@ originate_call(C2CId, Context, Contact) ->
                                                        ]),
                      kazoo_modb:save_doc(AccountId, HistoryItem)
              end),
-    lager:debug("attempting call in ~p", [_Pid]),
-    crossbar_util:response_202(<<"processing request">>, Context).
+    JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
+    lager:debug("attempting call in ~p", [JObj]),
+    crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request)).
 
 -spec exec_originate(api_terms()) ->
                             {'success', ne_binary()} |
@@ -402,6 +404,7 @@ handle_originate_resp({'timeout', _T}) ->
     lager:debug("timed out while originating: ~p", [_T]),
     {'error', <<"timed out">>}.
 
+-record(contact, {route, number, name}).
 -spec build_originate_req(ne_binary(), cb_context:context()) -> api_terms().
 build_originate_req(Contact, Context) ->
     AccountId = cb_context:account_id(Context),
@@ -412,30 +415,40 @@ build_originate_req(Contact, Context) ->
     FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
     OutboundNumber = wh_json:get_value(<<"caller_id_number">>, JObj, Contact),
     AutoAnswer = wh_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
+    {Caller, Callee} = get_caller_callee(wh_json:get_value(<<"dial_first">>, JObj, <<"extension">>)
+                                         ,#contact{number = OutboundNumber
+                                                   ,name = FriendlyName
+                                                   ,route = Contact}
+                                         ,#contact{number = CalleeNumber
+                                                   ,name = CalleeName
+                                                   ,route = Exten}),
 
     lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
+    {'ok', AccountDoc} = kz_account:fetch(AccountId),
 
     CCVs = [{<<"Account-ID">>, AccountId}
-            ,{<<"Auto-Answer">>, AutoAnswer}
-            ,{<<"Retain-CID">>, <<"true">>}
+            ,{<<"Auto-Answer-Loopback">>, AutoAnswer}
             ,{<<"Authorizing-ID">>, wh_doc:id(JObj)}
             ,{<<"Inherit-Codec">>, <<"false">>}
             ,{<<"Authorizing-Type">>, <<"device">>}
+            ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+            ,{<<"From-URI">>, <<CalleeNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+            ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ],
 
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
 
-    Endpoint = [{<<"Invite-Format">>, <<"route">>}
-                ,{<<"Route">>,  <<"loopback/", Exten/binary, "/context_2">>}
-                ,{<<"To-DID">>, Exten}
-                ,{<<"To-Realm">>, wh_json:get_value(<<"realm">>, AccountDoc)}
+    Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
+                ,{<<"Route">>,  Callee#contact.route}
+                ,{<<"To-DID">>, Callee#contact.route}
+                ,{<<"To-Realm">>, kz_account:realm(AccountDoc)}
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ],
 
     MsgId = wh_json:get_value(<<"msg_id">>, JObj, wh_util:rand_hex_binary(16)),
+    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-clicktocall">>,
     props:filter_undefined(
       [{<<"Application-Name">>, <<"transfer">>}
-       ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
+       ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Caller#contact.route}])}
        ,{<<"Msg-ID">>, MsgId}
        ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
        ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, JObj, 30)}
@@ -443,18 +456,29 @@ build_originate_req(Contact, Context) ->
        ,{<<"Media">>, wh_json:get_value(<<"media">>, JObj)}
        ,{<<"Hold-Media">>, wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)}
        ,{<<"Presence-ID">>, wh_json:get_value(<<"presence_id">>, JObj)}
-       ,{<<"Outbound-Callee-ID-Name">>, CalleeName}
-       ,{<<"Outbound-Callee-ID-Number">>, CalleeNumber}
-       ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
-       ,{<<"Outbound-Caller-ID-Number">>, OutboundNumber}
+       ,{<<"Outbound-Callee-ID-Name">>, Callee#contact.name}
+       ,{<<"Outbound-Callee-ID-Number">>, Callee#contact.number}
+       ,{<<"Outbound-Caller-ID-Name">>, Caller#contact.name}
+       ,{<<"Outbound-Caller-ID-Number">>, Caller#contact.number}
+       ,{<<"Outbound-Call-ID">>, CallId}
        ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, JObj)}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Continue-On-Fail">>, 'true'}
        ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
+                                            ,<<"Auto-Answer-Loopback">>, <<"Loopback-Request-URI">>
+                                            ,<<"From-URI">>, <<"Request-URI">>
+                                           ]}
+       ,{<<"Simplify-Loopback">>, <<"false">>}
+       ,{<<"Loopback-Bowout">>, <<"false">>}
+       ,{<<"Start-Control-Process">>, <<"false">>}
        | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
+
+-spec get_caller_callee(ne_binary(), #contact{}, #contact{}) -> {#contact{}, #contact{}}.
+get_caller_callee(<<"extension">>, Contact, Extension) -> {Contact, Extension};
+get_caller_callee(<<"contact">>, Contact, Extension) -> {Extension, Contact}.
 
 -spec get_ignore_early_media(wh_json:object()) -> boolean().
 get_ignore_early_media(JObj) ->
@@ -469,8 +493,7 @@ is_resp(JObj) ->
 -spec get_c2c_contact(api_binary()) -> api_binary().
 get_c2c_contact('undefined') -> 'undefined';
 get_c2c_contact(Contact) ->
-    Encoded = mochiweb_util:quote_plus(wh_util:to_list(Contact)),
-    wnm_util:to_e164(wh_util:to_binary(Encoded)).
+    wnm_util:to_e164(kz_http_util:urlencode(Contact)).
 
 -spec create_c2c_history_item({'success', ne_binary()} | {'error', ne_binary()}, ne_binary()) -> wh_proplist().
 create_c2c_history_item({'success', CallId}, Contact) ->

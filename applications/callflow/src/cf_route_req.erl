@@ -18,10 +18,17 @@
         ,whapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, 'false')
        ).
 
+-define(DEFAULT_ROUTE_WIN_TIMEOUT, 3000).
+-define(ROUTE_WIN_TIMEOUT_KEY, <<"route_win_timeout">>).
+-define(ROUTE_WIN_TIMEOUT, whapps_config:get_integer(?CF_CONFIG_CAT, ?ROUTE_WIN_TIMEOUT_KEY, ?DEFAULT_ROUTE_WIN_TIMEOUT)).
+
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
-    Call = maybe_device_redirected(whapps_call:from_route_req(JObj)),
+    Routines = [fun maybe_referred_call/1
+                ,fun maybe_device_redirected/1
+               ],
+    Call = whapps_call:exec(Routines, whapps_call:from_route_req(JObj)),
     case is_binary(whapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
         andalso callflow_resource_allowed(Call)
@@ -46,7 +53,7 @@ handle_req(JObj, Props) ->
 -spec maybe_prepend_preflow(wh_json:object(), wh_proplist()
                             ,whapps_call:call(), wh_json:object()
                             ,boolean()
-                           ) -> whapps_call:call().
+                           ) -> 'ok'.
 maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch) ->
     AccountId = whapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
@@ -64,7 +71,8 @@ maybe_prepend_preflow(JObj, Props, Call, Flow, NoMatch) ->
             end
     end.
 
--spec prepend_preflow(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+-spec prepend_preflow(ne_binary(), ne_binary(), wh_json:object()) ->
+                             wh_json:object().
 prepend_preflow(AccountId, PreflowId, Flow) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, PreflowId) of
@@ -75,27 +83,43 @@ prepend_preflow(AccountId, PreflowId, Flow) ->
             Children = wh_json:from_list([{<<"_">>, wh_json:get_value(<<"flow">>, Flow)}]),
             Preflow = wh_json:set_value(<<"children">>
                                         ,Children
-                                        ,wh_json:get_value(<<"flow">>, Doc)),
+                                        ,wh_json:get_value(<<"flow">>, Doc)
+                                       ),
             wh_json:set_value(<<"flow">>, Preflow, Flow)
     end.
 
 -spec maybe_reply_to_req(wh_json:object(), wh_proplist()
-                         ,whapps_call:call(), wh_json:object(), boolean()) -> whapps_call:call().
+                         ,whapps_call:call(), wh_json:object(), boolean()) -> 'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request", [wh_doc:id(Flow)
                                                        ,whapps_call:account_id(Call)
                                                       ]),
-    {Name, Cost} = bucket_info(Call, Flow),
-    case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
-        'false' ->
-            lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
+    case maybe_consume_token(Call, Flow) of
+        'false' -> 'ok';
         'true' ->
             ControllerQ = props:get_value('queue', Props),
-            cache_call(Flow, NoMatch, ControllerQ, Call),
-            send_route_response(Flow, JObj, ControllerQ, Call)
+            NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
+            send_route_response(Flow, JObj, NewCall)
     end.
 
--spec bucket_info(whapps_call:call(), wh_json:object()) -> {ne_binary(), pos_integer()}.
+-spec maybe_consume_token(whapps_call:call(), wh_json:object()) -> boolean().
+maybe_consume_token(Call, Flow) ->
+    case whapps_config:get_is_true(?CF_CONFIG_CAT, <<"calls_consume_tokens">>, 'true') of
+        'false' ->
+            %% If configured to not consume tokens then don't block the call
+            'true';
+        'true' ->
+            {Name, Cost} = bucket_info(Call, Flow),
+            case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
+                'true' -> 'true';
+                'false' ->
+                    lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]),
+                    'false'
+            end
+    end.
+
+-spec bucket_info(whapps_call:call(), wh_json:object()) ->
+                         {ne_binary(), pos_integer()}.
 bucket_info(Call, Flow) ->
     case wh_json:get_value(<<"pvt_bucket_name">>, Flow) of
         'undefined' -> {bucket_name_from_call(Call, Flow), bucket_cost(Flow)};
@@ -125,7 +149,8 @@ bucket_cost(Flow) ->
 %%-----------------------------------------------------------------------------
 -spec allow_no_match(whapps_call:call()) -> boolean().
 allow_no_match(Call) ->
-    whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= 'undefined'
+    is_valid_endpoint(whapps_call:custom_channel_var(<<"Referred-By">>, Call), Call)
+        orelse is_valid_endpoint(whapps_call:custom_channel_var(<<"Redirected-By">>, Call), Call)
         orelse allow_no_match_type(Call).
 
 -spec allow_no_match_type(whapps_call:call()) -> boolean().
@@ -146,6 +171,7 @@ allow_no_match_type(Call) ->
 -spec callflow_should_respond(whapps_call:call()) -> boolean().
 callflow_should_respond(Call) ->
     case whapps_call:authorizing_type(Call) of
+        <<"account">> -> 'true';
         <<"user">> -> 'true';
         <<"device">> -> 'true';
         <<"callforward">> -> 'true';
@@ -175,23 +201,36 @@ is_resource_allowed(ResourceType) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_route_response(wh_json:object(), wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
-send_route_response(Flow, JObj, Q, Call) ->
+-spec send_route_response(wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok'.
+send_route_response(Flow, JObj, Call) ->
+    lager:info("callflows knows how to route the call! sending park response"),
     AccountId = whapps_call:account_id(Call),
-    Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                                   ,{<<"Routes">>, []}
-                                   ,{<<"Method">>, <<"park">>}
-                                   ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
-                                   ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
-                                   ,{<<"Pre-Park">>, pre_park_action(Call)}
-                                   ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
-                                   ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
-                                   | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-                                  ]),
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    Resp = props:filter_undefined(
+             [{?KEY_MSG_ID, wh_api:msg_id(JObj)}
+              ,{?KEY_MSG_REPLY_ID, whapps_call:call_id_direct(Call)}
+              ,{<<"Routes">>, []}
+              ,{<<"Method">>, <<"park">>}
+              ,{<<"Transfer-Media">>, get_transfer_media(Flow, JObj)}
+              ,{<<"Ringback-Media">>, get_ringback_media(Flow, JObj)}
+              ,{<<"Pre-Park">>, pre_park_action(Call)}
+              ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
+              ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    ServerId = wh_api:server_id(JObj),
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
-    whapps_util:amqp_pool_send(Resp, Publisher),
-    lager:info("callflows knows how to route the call! sent park response").
+    case wh_amqp_worker:call(Resp
+                             ,Publisher
+                             ,fun wapi_route:win_v/1
+                             ,?ROUTE_WIN_TIMEOUT
+                            )
+    of
+        {'ok', RouteWin} ->
+            lager:info("callflow has received a route win, taking control of the call"),
+            cf_route_win:execute_callflow(RouteWin, whapps_call:from_route_win(RouteWin, Call));
+        {'error', _E} ->
+            lager:info("callflow didn't received a route win, exiting : ~p", [_E])
+    end.
 
 -spec get_transfer_media(wh_json:object(), wh_json:object()) -> api_binary().
 get_transfer_media(Flow, JObj) ->
@@ -232,22 +271,22 @@ pre_park_action(Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call()) -> 'ok'.
-cache_call(Flow, NoMatch, ControllerQ, Call) ->
-    Updaters = [fun(C) ->
-                        Props = [{'cf_flow_id', wh_doc:id(Flow)}
-                                 ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
-                                 ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
-                                 ,{'cf_no_match', NoMatch}
-                                 ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow, ?DEFAULT_METAFLOWS(whapps_call:account_id(Call)))}
-                                ],
-                        whapps_call:kvs_store_proplist(Props, C)
-                end
-                ,fun(C) -> whapps_call:set_controller_queue(ControllerQ, C) end
-                ,fun(C) -> whapps_call:set_application_name(?APP_NAME, C) end
-                ,fun(C) -> whapps_call:set_application_version(?APP_VERSION, C) end
+-spec update_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call()) ->
+                         whapps_call:call().
+update_call(Flow, NoMatch, ControllerQ, Call) ->
+    Props = [{'cf_flow_id', wh_doc:id(Flow)}
+             ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
+             ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
+             ,{'cf_no_match', NoMatch}
+             ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow, ?DEFAULT_METAFLOWS(whapps_call:account_id(Call)))}
+            ],
+
+    Updaters = [{fun whapps_call:kvs_store_proplist/2, Props}
+                ,{fun whapps_call:set_controller_queue/2, ControllerQ}
+                ,{fun whapps_call:set_application_name/2, ?APP_NAME}
+                ,{fun whapps_call:set_application_version/2, ?APP_VERSION}
                ],
-    whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), ?APP_NAME).
+    whapps_call:exec(Updaters, Call).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -256,14 +295,52 @@ cache_call(Flow, NoMatch, ControllerQ, Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
+-spec maybe_referred_call(whapps_call:call()) -> whapps_call:call().
+maybe_referred_call(Call) ->
+    maybe_fix_restrictions(get_referred_by(Call), Call).
+
 -spec maybe_device_redirected(whapps_call:call()) -> whapps_call:call().
 maybe_device_redirected(Call) ->
-    case whapps_call:custom_channel_var(<<"Redirected-By">>, Call) of
-        'undefined' -> Call;
-        Device ->
-            case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Device) of
-                {'ok', EndpointId } ->
-                    whapps_call:set_authorization(<<"device">>, EndpointId, Call);
-                {'error', 'not_found'} -> Call
-            end
+    maybe_fix_restrictions(get_redirected_by(Call), Call).
+
+-spec maybe_fix_restrictions(api_binary(), whapps_call:call()) -> whapps_call:call().
+maybe_fix_restrictions('undefined', Call) -> Call;
+maybe_fix_restrictions(Device, Call) ->
+    case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Device) of
+        {'ok', EndpointId} -> whapps_call:kvs_store(?RESTRICTED_ENDPOINT_KEY, EndpointId, Call);
+        {'error', 'not_found'} ->
+            Keys = [<<"Authorizing-ID">>],
+            whapps_call:remove_custom_channel_vars(Keys, Call)
+    end.
+
+-spec get_referred_by(whapps_call:call()) -> api_binary().
+get_referred_by(Call) ->
+    ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
+    extract_sip_username(ReferredBy).
+
+-spec get_redirected_by(whapps_call:call()) -> api_binary().
+get_redirected_by(Call) ->
+    RedirectedBy = whapps_call:custom_channel_var(<<"Redirected-By">>, Call),
+    extract_sip_username(RedirectedBy).
+
+-spec is_valid_endpoint(api_binary(), whapps_call:call()) -> boolean().
+is_valid_endpoint('undefined', _) -> 'false';
+is_valid_endpoint(Contact, Call) ->
+    ReOptions = [{'capture', [1], 'binary'}],
+    case catch(re:run(Contact, <<".*sip:(.*)@.*">>, ReOptions)) of
+        {'match', [Match]} ->
+            case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Match) of
+                {'ok', _EndpointId} -> 'true';
+                {'error', 'not_found'} -> 'false'
+            end;
+        _ -> 'false'
+    end.
+
+-spec extract_sip_username(api_binary()) -> api_binary().
+extract_sip_username('undefined') -> 'undefined';
+extract_sip_username(Contact) ->
+    ReOptions = [{'capture', [1], 'binary'}],
+    case catch(re:run(Contact, <<".*sip:(.*)@.*">>, ReOptions)) of
+        {'match', [Match]} -> Match;
+        _ -> 'undefined'
     end.

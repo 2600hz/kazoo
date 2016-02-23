@@ -20,7 +20,7 @@
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(PVT_TYPE, <<"rate">>).
@@ -153,7 +153,7 @@ validate_rate(Context, Id, ?HTTP_DELETE) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context) ->
     _ = init_db(),
-    _ = wh_util:spawn(fun() -> upload_csv(Context) end),
+    _ = wh_util:spawn(fun upload_csv/1, [Context]),
     crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
 post(Context, _RateId) ->
     crossbar_doc:save(Context).
@@ -310,7 +310,7 @@ normalize_view_results(JObj, Acc) ->
 -spec upload_csv(cb_context:context()) -> 'ok'.
 upload_csv(Context) ->
     _ = cb_context:put_reqid(Context),
-    Now = erlang:now(),
+    Now = wh_util:now(),
     {'ok', {Count, Rates}} = process_upload_file(Context),
     lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, wh_util:elapsed_ms(Now)]),
     _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
@@ -401,10 +401,12 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"pvt_rate_cost">>, InternalRate}
                        ,{<<"pvt_carrier">>, <<"default">>}
                        ,{<<"pvt_type">>, <<"rate">>}
-                       ,{<<"rate_increment">>, 60}
-                       ,{<<"rate_minimum">>, 60}
+                       ,{<<"routes">>, get_row_routes(Row)}
+                       ,{<<"rate_increment">>, get_row_increment(Row)}
+                       ,{<<"rate_minimum">>, get_row_minimum(Row)}
                        ,{<<"rate_surcharge">>, get_row_surcharge(Row)}
                        ,{<<"rate_cost">>, get_row_rate(Row)}
+                       ,{<<"direction">>, get_row_direction(Row)}
                        ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
                        ,{?HTTP_OPTIONS, []}
@@ -477,6 +479,32 @@ get_row_rate([_|_]=_R) ->
     lager:info("rate not found on row: ~p", [_R]),
     'undefined'.
 
+get_row_routes([_, _, _, _, _, _, _, Routes | _]) ->
+    [wh_util:to_binary(X) || X <- string:tokens(wh_util:to_list(Routes), ";")];
+get_row_routes([_|_]) ->
+    'undefined'.
+
+get_row_increment([_, _, _, _, _, _, _, _, Increment | _]) ->
+    case wh_util:to_float(Increment) of
+        Inc when Inc < 10 -> 10;
+        Inc -> Inc
+    end;
+get_row_increment([_|_]) ->
+    60.
+
+get_row_minimum([_, _, _, _, _, _, _, _, _, Minimum | _]) ->
+    case wh_util:to_float(Minimum) of
+        Min when Min < 10 -> 10;
+        Min -> Min
+    end;
+get_row_minimum([_|_]) ->
+    60.
+
+get_row_direction([_, _, _, _, _, _, _, _, _, _, Direction | _]) ->
+    [wh_util:to_binary(X) || X <- string:tokens(wh_util:to_list(Direction), ";")];
+get_row_direction([_|_]) ->
+    'undefined'.
+
 -spec strip_quotes(ne_binary()) -> ne_binary().
 strip_quotes(Bin) ->
     binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, ['global']).
@@ -490,7 +518,7 @@ constrain_weight(X) -> X.
 save_processed_rates(Context, Count) ->
     wh_util:spawn(
       fun() ->
-              Now = erlang:now(),
+              Now = wh_util:now(),
               _ = cb_context:put_reqid(Context),
               _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
               lager:debug("saved up to ~b docs (took ~b ms)", [Count, wh_util:elapsed_ms(Now)])

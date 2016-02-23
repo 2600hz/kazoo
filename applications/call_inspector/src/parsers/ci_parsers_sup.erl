@@ -14,10 +14,13 @@
 -export([start_child/2
          ,stop_child/1
          ,children/0
-         ,child/1
         ]).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
+
+-define(SERVER, ?MODULE).
+
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
@@ -25,13 +28,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -46,7 +47,7 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
@@ -54,40 +55,29 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, []}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 -type parser() :: 'ci_parser_freeswitch' | 'ci_parser_kamailio' | 'ci_parser_hep'.
--spec start_child(parser(), [{'parser_args',_,_} | {'parser_args',_,_,_}]) ->
+-spec start_child(parser(), [{'parser_args',any(),any()} | {'parser_args',any(),any(),any()}]) ->
                          {'ok', atom()}.
 start_child(Module, Args) ->
     Id = ci_parsers_util:make_name(lists:keyfind('parser_args', 1, Args)),
     ChildSpec = ?WORKER_NAME_ARGS(Module, Id, Args),
-    case supervisor:start_child(?MODULE, ChildSpec) of
+    case supervisor:start_child(?SERVER, ChildSpec) of
         {'ok', _Pid} -> {'ok', Id};
         {'error', {'already_started', _Pid}} -> {'ok', Id}
     end.
 
 -spec stop_child(atom()) -> 'ok'.
 stop_child(Id) ->
-    'ok' = supervisor:terminate_child(?MODULE, Id),
-    'ok' = supervisor:delete_child(?MODULE, Id).
+    'ok' = supervisor:terminate_child(?SERVER, Id),
+    'ok' = supervisor:delete_child(?SERVER, Id).
 
 -spec children() -> [atom()].
 children() ->
     [Id
-     || {Id, _Pid, _Type, _Modules} <- supervisor:which_children(?MODULE)
+     || {Id, _Pid, _Type, _Modules} <- supervisor:which_children(?SERVER)
     ].
-
--spec child(pid()) -> api_atom().
-child(PID) ->
-    case [Id
-          || {Id, Pid, _Type, _Modules} <- supervisor:which_children(?MODULE),
-             Pid =:= PID
-         ]
-    of
-        [Id] -> Id;
-        [] -> 'undefined'
-    end.
 
 %% Internals
 

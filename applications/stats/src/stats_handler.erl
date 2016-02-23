@@ -27,7 +27,7 @@ handle_event(JObj, Props) ->
     lager:debug("event occurred ~p ~p",[JObj, Props]).
 
 get_db(Table) ->
-    case wh_cache:peek_local(?STATS_CACHE, Table) of
+    case kz_cache:peek_local(?STATS_CACHE, Table) of
         {'ok', Records} -> Records;
         _ -> []
     end.
@@ -35,7 +35,7 @@ get_db(Table) ->
 save_db(_, []) -> 'ok';
 save_db(Table, Values) ->
     lager:debug("trying to store in ~s: ~p", [Table, Values]),
-    wh_cache:store_local(?STATS_CACHE, Table, Values).
+    kz_cache:store_local(?STATS_CACHE, Table, Values).
 
 store_items('undefined', _, Vals) ->
     lager:debug("cannot find the node name ~p~n",[Vals]),

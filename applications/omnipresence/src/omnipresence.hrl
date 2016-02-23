@@ -6,7 +6,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"omnipresence">>).
--define(APP_VERSION, <<"1.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(CONFIG_CAT, <<"omnipresence">>).
 -define(CACHE_NAME, 'omnipresence_cache').
@@ -19,13 +19,14 @@
 -define(DIALOG_EVENT, <<"dialog">>).
 -define(MWI_EVENT, <<"message-summary">>).
 -define(PRESENCE_EVENT, <<"presence">>).
+-define(OMNIPRESENCE_EVENT_ALL, <<"all">>).
 
 -define(FAKE_CALLID(C), wh_util:to_hex_binary(crypto:hash(md5, C))).
 
 -record(omnip_subscription, {
           user                                  :: api_binary() | '_' %% user@realm.com
           ,from                                 :: api_binary() | <<>> | '_' %% user@realm.com
-          ,stalker                              :: api_binary() | '_' % amqp queue to publish updates to
+          ,stalker                              :: api_binary() | '_' | '$2' % amqp queue to publish updates to
           ,expires = 0                          :: non_neg_integer() | '_' | '$2'
           ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$1'
           ,protocol = <<"sip">>                 :: ne_binary() | '_' % protocol
@@ -42,10 +43,11 @@
           ,last_sequence = 0                    :: non_neg_integer() | '_'
           ,last_reply = 0                       :: non_neg_integer() | '_'
           ,last_body                            :: api_binary() | '_'
+          ,user_agent                            :: api_binary() | '_'
          }).
 
 -type subscription() :: #omnip_subscription{}.
--type subscriptions() :: [subscription(),...] | [].
+-type subscriptions() :: [subscription()].
 
 -record(channel, {call_id     :: api_binary()
                   ,direction  :: api_binary()
@@ -54,7 +56,9 @@
                  }).
 
 -type channel() :: #channel{}.
--type channels() :: [channel(),...] | [].
+-type channels() :: [channel()].
+
+-define(SUBSCRIPTION_SIP_VERSION, 2).
 
 -define(OMNIPRESENCE_HRL, 'true').
 -endif.

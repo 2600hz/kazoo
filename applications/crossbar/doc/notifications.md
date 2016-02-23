@@ -20,7 +20,7 @@ Example:
          ]
      }
      ,"from": "peter@email.com"
-     ,"subject": "Hello {{user.first_name}}, you recieved a new voicemail!"
+     ,"subject": "Hello {{user.first_name}}, you received a new voicemail!"
      ,"enabled": true
      ,"template_charset": "utf-8"
      ,"macros": {
@@ -241,7 +241,7 @@ Similar to the PUT, POST will update an existing config:
 
 Omit `/accounts/{ACCOUNT_ID}` to update the system's version.
 
-#### Delete - remove a notification template
+#### DELETE - remove a notification template
 
     curl -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type:application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -293,8 +293,105 @@ All accounts will continue to be processed by the `notify` app until the Crossba
 
 ## Logs
 
-* GET - Gets the notification(s) smtp log.
+* GET - Gets the notification(s) SMTP log.
 
 ```
-curl  -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain"  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/logs
+curl -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/smtplog
+```
+
+## Customer update
+
+* POST - Send a message to all reseller's children or to a particular account.
+
+Send message to all reseller's accounts:
+```
+curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/notifications/customer_update/message -d '{}'
+curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{SENDER(RESELLER)_ACCOUNT_ID}/notifications/customer_update/message -d '{}'
+```
+
+Send message to a particular acount:
+```
+curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/notifications/customer_update/message -d '{"data":{"recipient_id": "33ca3929ed585e0e423eb39e4ffe1452"}}'
+curl -X POST -H 'X-Auth-Token: {AUTH_TOKEN}' -H 'Content-Type: text/plain'  http://server:8000/v2/accounts/{SENDER(RESELLER)_ACCOUNT_ID}/notifications/customer_update/message -d '{"data":{"recipient_id": "33ca3929ed585e0e423eb39e4ffe1452"}}'
+```
+
+You can send a message to all users, admins only or a particular user within an account. Just add a user_type field to your payload:
+
+All users:
+```
+... -d '{"data":{"user_type": "all_users"}}'
+````
+
+Particular user:
+```
+... -d '{"data":{"user_type": "{ACCOUNT_ID}"}}'
+````
+
+Admin privileged users only. Default. Could be omitted:
+```
+... -d '{"data":{"user_type": "admins_only"}}'
+````
+
+You can send a message with changed subject, html and plain text templates by providing full notification document payload:
+
+```
+{
+    "data": {
+        "recipient_id": "33ca3929ed585e0e423eb39e4ffe1452",
+        "user_type": "3d9b564d5c95d52d81a2e49ea0c57941",
+        "id": "customer_update",
+        "account_overridden": true,
+        "enabled": true,
+        "category": "user",
+        "friendly_name": "Customer update",
+        "from": "info@onnet.su",
+        "subject": "Test Reseller customer update",
+        "bcc": {
+            "email_addresses": [],
+            "type": ""
+        },
+        "cc": {
+            "email_addresses": [],
+            "type": ""
+        },
+        "macros": {
+            "user.email": {
+                "description": "Email of the user",
+                "friendly_name": "Email",
+                "i18n_label": "user_email"
+            },
+            "user.first_name": {
+                "description": "First Name",
+                "friendly_name": "First Name",
+                "i18n_label": "first_name"
+            },
+            "user.last_name": {
+                "description": "Last Name",
+                "friendly_name": "Last Name",
+                "i18n_label": "last_name"
+            },
+            "user.timezone": {
+                "description": "Timezone of the user",
+                "friendly_name": "Timezone",
+                "i18n_label": "user_timezone"
+            },
+            "user.username": {
+                "description": "Username",
+                "friendly_name": "Username",
+                "i18n_label": "username"
+            }
+        },
+        "template_charset": "utf-8",
+        "html": "PHA+RGVhciB7e3VzZXIuZmlyc3RfbmFtZX19IHt7dXNlci5sYXN0X25hbWV9fS48L3A+CjxwPkhlcmUgYXJlIHNvbWUgbmV3cyB0aGF0IHdlIGhhdmUgc2VsZWN0ZWQgZm9yIHlvdTwvcD4KPHA+QmVzdCByZWdhcmRzLDwvcD4KPHA+T25OZXQgSW5ub3ZhdGlvbnMgTGltaXRlZC48L3A+",
+        "plain": "Dear {{user.first_name}} {{user.last_name}}.\n\nHere are some more news that we have selected for you.\n\nBest regards,\nOnNet Innovations Limited.",
+        "templates": {
+            "text/html": {
+                "length": 161
+            },
+            "text/plain": {
+                "length": 136
+            }
+        },
+    }
+}
 ```

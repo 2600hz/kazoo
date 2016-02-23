@@ -16,7 +16,7 @@
 
 -record(builder_action, {module_fun_name :: atom()
                          ,metaflow_key :: ne_binary()
-                         ,builders = [] :: [{pos_integer(), atom()},...] | []
+                         ,builders = [] :: [{pos_integer(), atom()}]
                         }).
 -type builder_action() :: #builder_action{}.
 
@@ -48,7 +48,7 @@ add_default_account_metaflow(AccountId) ->
 
 -spec intro_builder(wh_json:object(), save_fun()) -> 'ok'.
 intro_builder(Default, SaveFun) ->
-    wh_util:ensure_started('konami'),
+    application:ensure_started('konami'),
     io:format("The current default metaflow:~n"),
     io:format("  Binding Digit: ~s~n"
               ,[wh_json:get_value(<<"binding_digit">>, Default, konami_config:binding_digit())]
@@ -125,7 +125,7 @@ pattern_builder(Default, SaveFun) ->
                                  }
                 ).
 
--spec print_builders(wh_proplist()) -> ['ok',...] | [].
+-spec print_builders(wh_proplist()) -> ['ok'].
 print_builders(Builders) ->
     [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders].
 

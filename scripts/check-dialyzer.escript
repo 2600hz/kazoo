@@ -6,11 +6,15 @@
 
 -export([main/1]).
 
--define(PLT, ".kazoo.plt").
-
 %% API
 
-main(Args) ->
+main([KazooPLT | Args]) ->
+    case lists:suffix(".plt", KazooPLT) of
+        'true' -> 'ok';
+        'false' ->
+            usage(),
+            halt(1)
+    end,
     case [Arg || Arg <- Args,
                  not is_test(Arg)
                      andalso (
@@ -25,10 +29,13 @@ main(Args) ->
             usage(),
             halt(0);
         Paths ->
-            Count = lists:sum([warn(Path) || Path <- Paths]),
+            Count = lists:sum([warn(KazooPLT,Path) || Path <- Paths]),
             io:format("~p Dialyzer warnings\n", [Count]),
             halt(Count)
-    end.
+    end;
+main(_) ->
+    usage(),
+    halt(0).
 
 %% Internals
 
@@ -52,36 +59,36 @@ root_dir(Path) ->
 
 file_exists(Filename) ->
     case file:read_file_info(Filename) of
-        {ok, _}         -> 'true';
-        {error, enoent} -> 'false';
-        {error, _Reason} -> 'false';
+        {'ok', _}           -> 'true';
+        {'error', 'enoent'} -> 'false';
+        {'error', _Reason}  -> 'false';
         _ -> 'false'
     end.
 
-warn(Path) ->
+warn(PLT, Path) ->
     case {is_beam(Path), is_erl(Path)} of
         {'true',_} ->
-            do_warn(Path);
+            do_warn(PLT, Path);
         {_,'true'} ->
             RootDir = root_dir(Path),
             Module  = filename:basename(Path, ".erl"),
             Beam = filename:join([RootDir, "ebin", Module++".beam"]),
             case file_exists(Beam) of
-                'true' -> do_warn(Beam);
+                'true' -> do_warn(PLT, Beam);
                 'false' -> io:format("file ~s doesn't exist~n", [Beam]),
                            0
             end;
         {_,_} ->
             io:format("going through ~p\n", [Path]),
             Files = filelib:wildcard(filename:join(Path, "*.beam")),
-            R = lists:sum([do_warn(File) || File <- Files]),
+            R = lists:sum([do_warn(PLT, File) || File <- Files]),
             io:format("~p warnings for ~p\n", [R, Path]),
             R
     end.
 
-do_warn(Path) ->
+do_warn(PLT, Path) ->
     length([ print(W)
-             || W <- scan(Path)
+             || W <- scan(PLT, Path)
                     , filter(W)
            ]).
 
@@ -96,10 +103,10 @@ filter(W) ->
         {warn_callgraph, _, {call_to_missing,[application,ensure_all_started,1]}} -> 'false';
         {warn_matching, {"src/konami_code_fsm.erl",_}, {pattern_match,["pattern 'true'","'false'"]}} -> 'false';
 
-        %% MAYBE remove `error_handling` to disable those
+        %% MAYBE remove error_handling to disable those
         {warn_return_only_exit, {"src/modules/cb_sup.erl",_}, {no_return,[only_explicit,system_terminate,4]}} -> 'false';
 
-        %% Dialyzer says `Server` can't matcch but it can
+        %% Dialyzer says Server can't match but it can
         {warn_matching, {"src/wh_nodes.erl",_}, {pattern_match_cov,["variable Server","{<<_:8,_:_*8>>,<<_:8,_:_*8>>}"]}} -> 'false';
 
         %% ETS false positives, from core/
@@ -141,8 +148,8 @@ filter(W) ->
         {warn_matching, {"src/wh_amqp_assignments.erl",_},{pattern_match,["pattern {'wh_amqp_assignment', Timestamp, _, _, _, _, _, _, _, _, _, Watchers}","{'error','no_channel'}"]}} -> 'false';
 
         %% More ETS false positives, from applications/
-        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, <<97:8/integer-unit:1,108:8/integer-unit:1,108:8/integer-unit:1>>, Channels>",_]}} -> 'false';
-        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, Fields, Channels>",_]}} -> 'false';
+        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, <<97:8/integer-unit:1,108:8/integer-unit:1,108:8/integer-unit:1>>, Channels>",_]}} -> 'false';
+        {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _}], Continuation}, Fields, Channels>",_]}} -> 'false';
 
         _ ->
             %% io:format("W = ~p\n", [W]),
@@ -154,17 +161,17 @@ print({Tag, _Loc, _Warning} = W) ->
 print(_Err) ->
     _Err.
 
-scan(Thing) ->
-    try do_scan(Thing) of
+scan(PLT, Thing) ->
+    try do_scan(PLT, Thing) of
         Ret -> Ret
     catch 'throw':{'dialyzer_error',Error} ->
-            io:format("~s", [Error]),
-            [255]
+            io:format("~s\n", [Error]),
+            []
     end.
 
-do_scan(Path) ->
+do_scan(PLT, Path) ->
     io:format("scanning ~p\n", [Path]),
-    dialyzer:run([ {'init_plt', ?PLT}
+    dialyzer:run([ {'init_plt', PLT}
                  , {'analysis_type', 'succ_typings'}
                  %% , {'files_rec', [Path]}
                  , {'files', [Path]}
@@ -193,6 +200,6 @@ do_scan(Path) ->
 usage() ->
     %% ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
-    io:format("Usage: ~s  <path to ebin/>+\n", [filename:basename(Arg0)]).
+    io:format("Usage: ~s  <path to .kazoo.plt> <path to ebin/>+\n", [filename:basename(Arg0)]).
 
 %% End of Module

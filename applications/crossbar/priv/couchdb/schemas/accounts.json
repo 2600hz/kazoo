@@ -39,30 +39,7 @@
             "type": "object"
         },
         "dial_plan": {
-            "additionalProperties": {
-                "properties": {
-                    "description": {
-                        "description": "Friendly name for this regex dialplan",
-                        "name": "Name",
-                        "required": false,
-                        "type": "string"
-                    },
-                    "prefix": {
-                        "description": "Prefix the prepend to the capture group after applying the regex",
-                        "name": "Prefix",
-                        "required": false,
-                        "type": "string"
-                    },
-                    "suffix": {
-                        "description": "Suffix the append to the capture group after applying the regex",
-                        "name": "Suffix",
-                        "required": false,
-                        "type": "string"
-                    }
-                },
-                "required": false,
-                "type": "object"
-            },
+            "$ref": "dialplans",
             "default": {},
             "description": "A list of default rules used to modify dialed numbers",
             "name": "Default Dialplan",
@@ -185,6 +162,21 @@
             "name": "Default Timezone",
             "required": false,
             "type": "string"
+        },
+        "voicemail": {
+            "properties": {
+                "notify": {
+                    "properties": {
+                        "callback": {
+                            "$ref": "notify.callback"
+                        }
+                    },
+                    "required": false,
+                    "type": "object"
+                }
+            },
+            "required": false,
+            "type": "object"
         }
     },
     "required": true,

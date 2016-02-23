@@ -17,7 +17,7 @@
 -export([update_user/3]).
 -export([check_MAC/2]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include("provisioner_v5.hrl").
 
 %%--------------------------------------------------------------------
@@ -194,12 +194,10 @@ save_device(AccountId, Device, Request, AuthToken) ->
 -spec check_MAC(ne_binary(), ne_binary()) -> ne_binary() | 'false'.
 check_MAC(MacAddress, AuthToken) ->
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('devices', MacAddress),
     lager:debug("pre-provisioning via ~s", [UrlString]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'get', [], HTTPOptions),
-    case Resp of
-        {'ok', "200", _RespHeaders, JSONStr} ->
+    case kz_http:get(UrlString, Headers) of
+        {'ok', 200, _RespHeaders, JSONStr} ->
             JObj = wh_json:decode(JSONStr),
             wh_json:get_value([<<"data">>, <<"account_id">>], JObj);
         _AnythingElse -> 'false'
@@ -221,7 +219,7 @@ set_owner(JObj) ->
 
 -spec get_owner(api_binary(), ne_binary()) ->
                        {'ok', wh_json:object()} |
-                       {'error', _}.
+                       {'error', any()}.
 get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -327,16 +325,21 @@ settings_feature_keys(JObj) ->
     Brand = get_brand(JObj),
     Family = get_family(JObj),
     AccountId = wh_doc:account_id(JObj),
-    wh_json:foldl(
-      fun(Key, Value, Acc) ->
-              Type = wh_json:get_binary_value(<<"type">>, Value),
-              V = wh_json:get_binary_value(<<"value">>, Value),
-              FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
-              maybe_add_feature_key(Key, FeatureKey, Acc)
-      end
-      ,wh_json:new()
-      ,FeatureKeys
-     ).
+    Keys =
+        wh_json:foldl(
+          fun(Key, Value, Acc) ->
+                  Type = wh_json:get_binary_value(<<"type">>, Value),
+                  V = wh_json:get_binary_value(<<"value">>, Value),
+                  FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
+                  maybe_add_feature_key(Key, FeatureKey, Acc)
+          end
+          ,wh_json:new()
+          ,FeatureKeys
+         ),
+    case get_line_key(Brand, Family) of
+        'undefined' -> Keys;
+        LineKey -> wh_json:set_value(<<"account">>, LineKey, Keys)
+    end.
 
 -spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary()) ->
                              api_object().
@@ -346,38 +349,48 @@ get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
         'undefined' -> 'undefined';
         Presence ->
             wh_json:from_list(
-              [{<<"label">>, <<>>}
-               ,{<<"value">>, Presence}
-               ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-               ,{<<"account">>, get_line_key(Brand, Family)}
-              ])
+              props:filter_undefined(
+                [{<<"label">>, Presence}
+                 ,{<<"value">>, Presence}
+                 ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+                 ,{<<"account">>, get_line_key(Brand, Family)}
+                ])
+             )
     end;
 get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
     wh_json:from_list(
-      [{<<"label">>, Value}
-       ,{<<"value">>, Value}
-       ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-       ,{<<"account">>, get_line_key(Brand, Family)}
-      ]);
+      props:filter_undefined(
+        [{<<"label">>, Value}
+         ,{<<"value">>, Value}
+         ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+         ,{<<"account">>, get_line_key(Brand, Family)}
+        ])
+     );
 get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
             wh_json:from_list(
-              [{<<"label">>, <<>>}
-               ,{<<"value">>, <<"*3", Presence/binary>>}
-               ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-               ,{<<"account">>, get_line_key(Brand, Family)}
-              ])
+              props:filter_undefined(
+                [{<<"label">>, <<>>}
+                 ,{<<"value">>, <<"*3", Presence/binary>>}
+                 ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+                 ,{<<"account">>, get_line_key(Brand, Family)}
+                ]
+               )
+             )
     end;
 get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
     wh_json:from_list(
-      [{<<"label">>, <<>>}
-       ,{<<"value">>, <<"*3", Value/binary>>}
-       ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
-       ,{<<"account">>, get_line_key(Brand, Family)}
-      ]).
+      props:filter_undefined(
+        [{<<"label">>, <<>>}
+         ,{<<"value">>, <<"*3", Value/binary>>}
+         ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+         ,{<<"account">>, get_line_key(Brand, Family)}
+        ]
+       )
+     ).
 
 -spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
 get_line_key(<<"yealink">>, _) -> <<"0">>;
@@ -392,7 +405,7 @@ get_feature_key_type(Type, Brand, Family) ->
                              ).
 
 -spec get_user(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} |
-                                            {'error', _}.
+                                            {'error', any()}.
 get_user(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:open_cache_doc(AccountDb, UserId).
@@ -451,33 +464,29 @@ settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Data = wh_json:encode(device_payload(JObj)),
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("provisioning via ~s: ~s", [UrlString, Data]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
-    handle_resp(Resp);
+    Resp = kz_http:post(UrlString, Headers, Data),
+    handle_resp(Resp, AccountId, AuthToken);
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("unprovisioning via ~s", [UrlString]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
-    handle_resp(Resp);
+    Resp = kz_http:delete(UrlString, Headers),
+    handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_delete', _, AuthToken, AccountId, _) ->
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('accounts', AccountId),
     lager:debug("accounts delete via ~s", [UrlString]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'delete', [], HTTPOptions),
-    handle_resp(Resp);
+    Resp = kz_http:delete(UrlString, Headers),
+    handle_resp(Resp, AccountId, AuthToken);
 send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
     Data = wh_json:encode(account_payload(JObj, AccountId)),
     Headers = req_headers(AuthToken),
-    HTTPOptions = [],
     UrlString = req_uri('accounts', AccountId),
     lager:debug("account update via ~s: ~s", [UrlString, Data]),
-    Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
-    handle_resp(Resp).
+    Resp = kz_http:post(UrlString, Headers, Data),
+    handle_resp(Resp, AccountId, AuthToken).
 
 -spec req_uri('accounts' | 'devices', ne_binary()) -> iolist().
 req_uri('accounts', AccountId) ->
@@ -517,13 +526,47 @@ device_payload(JObj) ->
       ]
      ).
 
--spec handle_resp(ibrowse_ret()) -> 'ok'.
-handle_resp({'ok', "200", _, Resp}) ->
+-spec handle_resp(kz_http:ret(), ne_binary(), ne_binary()) -> 'ok'.
+handle_resp({'ok', 200, _, Resp}, _AccountId, _AuthToken) ->
     lager:debug("provisioning success ~s", [decode(Resp)]);
-handle_resp({'ok', Code, _, Resp}) ->
-    lager:warning("provisioning error ~p. ~s", [Code, decode(Resp)]);
-handle_resp(_Error) ->
+handle_resp({'ok', Code, _, Resp}, AccountId, AuthToken) ->
+    JObj = decode(Resp),
+    _ = create_alert(JObj, AccountId, AuthToken),
+    lager:warning("provisioning error ~p. ~s", [Code, JObj]);
+handle_resp(_Error, _AccountId, _AuthToken) ->
     lager:error("provisioning fatal error ~p", [_Error]).
+
+create_alert(JObj, AccountId, AuthToken) ->
+    Props = [
+        {<<"metadata">>, JObj}
+        ,{<<"category">>, <<"provisioner">>}
+    ],
+
+    OwnerId =
+        case couch_mgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
+            {'error', _R} -> 'undefined';
+            {'ok', JObj} ->
+                wh_json:get_value(<<"owner_id">>, JObj)
+        end,
+    From = [
+        wh_json:from_list([{<<"type">>, <<"account">>}, {<<"value">>, AccountId}])
+        ,wh_json:from_list([{<<"type">>, <<"user">>}, {<<"value">>, OwnerId}])
+    ],
+
+    To = [
+        wh_json:from_list([{<<"type">>, AccountId}, {<<"value">>, <<"admins">>}])
+        ,wh_json:from_list([{<<"type">>, wh_services:get_reseller_id(AccountId)}, {<<"value">>, <<"admins">>}])
+    ],
+
+    {'ok', JObj} =
+        whapps_alert:create(
+            <<"Provisioning Error">>
+            ,<<"Error trying to provision device">>
+            ,From
+            ,To
+            ,Props
+        ),
+    whapps_alert:save(JObj).
 
 -spec decode(string()) -> ne_binary().
 decode(JSON) ->
@@ -544,9 +587,15 @@ req_headers(Token) ->
          ,{"User-Agent", wh_util:to_list(erlang:node())}
         ]).
 
--spec get_cluster_id() -> 'undefined' | string().
+-spec get_cluster_id() -> string().
 get_cluster_id() ->
-    whapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>).
+    case whapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>) of
+        'undefined' ->
+            ClusterId = wh_util:rand_hex_binary(16),
+            {'ok', _JObj} = whapps_config:set_default(?MOD_CONFIG_CAT, <<"cluster_id">>, ClusterId),
+            wh_util:to_list(ClusterId);
+        ClusterId -> ClusterId
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

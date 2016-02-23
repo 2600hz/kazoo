@@ -106,10 +106,11 @@ These properties may exist on a CDR for a fax request (inbound or outbound):
 * fax\_result\_text - Error String, if any, or 'OK' if successful
 * fax\_result\_code - [Result code](http://wiki.freeswitch.org/wiki/Variable_fax_result_code) of the transmission
 * fax\_success - boolean for whether the fax was considered a success
+* fax\_t38 - boolean for whether the fax T.38 was used
 
 ## Crossbar
 
-Using Crossbar to modify metaflows is very simple. There are only three GETs
+Using Crossbar to query cdrs is very simple. There are 3 different GETs
 
 * GET /v1/accounts/{account\_id}/cdrs - Gets the current CDRs for the account
 * GET /v1/accounts/{account\_id}/cdrs/{cdr\_id} - Gets details of the CDR
@@ -138,3 +139,12 @@ Using Crossbar to modify metaflows is very simple. There are only three GETs
 #### _GET_ - Fetch account CDRs in csv format:
 
     curl -v -X GET -H "Accept: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
+
+### Interaction CDRs
+
+Crossbar cdrs was extended to provide simplified interaction call detail records. It groups all CDRs that interacted with eachouther to form a list of calls.
+
+* GET /v1/accounts/{account\_id}/cdrs/interaction - Gets the current interaction CDRs for the account
+* GET /v1/accounts/{account\_id}/cdrs/interaction/{cdr\_id} - Gets details of the interaction CDR, usually first leg
+* GET /v1/accounts/{account\_id}/cdrs/legs/{cdr\_id} - Gets CDRs for the legs of call interaction
+* GET /v1/accounts/{account\_id}/users/{user\_id}/cdrs/interaction - Gets the current interaction CDRs for the user

@@ -21,10 +21,12 @@
          ,delete/3, delete/4
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(OUTGOING, <<"outgoing">>).
 -define(INCOMING, <<"incoming">>).
+-define(INBOX, <<"inbox">>).
+-define(OUTBOX, <<"outbox">>).
 -define(SMTP_LOG, <<"smtplog">>).
 
 -define(ATTACHMENT, <<"attachment">>).
@@ -32,6 +34,7 @@
 -define(CB_LIST_ALL, <<"faxes/crossbar_listing">>).
 -define(CB_LIST_BY_FAXBOX, <<"faxes/list_by_faxbox">>).
 -define(CB_LIST_BY_OWNERID, <<"faxes/list_by_ownerid">>).
+-define(CB_LIST_BY_FOLDER, <<"faxes/list_by_folder">>).
 -define(CB_LIST_BY_ACCOUNT, <<"faxes/list_by_account">>).
 -define(CB_LIST_SMTP_LOG, <<"faxes/smtp_log">>).
 
@@ -72,7 +75,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.faxes">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,7 +94,11 @@ allowed_methods() ->
 
 allowed_methods(?SMTP_LOG) ->
     [?HTTP_GET];
+allowed_methods(?INBOX) ->
+    [?HTTP_GET];
 allowed_methods(?INCOMING) ->
+    [?HTTP_GET];
+allowed_methods(?OUTBOX) ->
     [?HTTP_GET];
 allowed_methods(?OUTGOING) ->
     [?HTTP_GET, ?HTTP_PUT].
@@ -100,9 +107,17 @@ allowed_methods(?SMTP_LOG, _Id) ->
     [?HTTP_GET];
 allowed_methods(?INCOMING, _Id) ->
     [?HTTP_GET, ?HTTP_DELETE];
+allowed_methods(?INBOX, _Id) ->
+    [?HTTP_GET, ?HTTP_DELETE];
+allowed_methods(?OUTBOX, _Id) ->
+    [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?OUTGOING, _Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
+allowed_methods(?INBOX, _Id, ?ATTACHMENT) ->
+    [?HTTP_GET, ?HTTP_DELETE];
+allowed_methods(?OUTBOX, _Id, ?ATTACHMENT) ->
+    [?HTTP_GET, ?HTTP_DELETE];
 allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
@@ -124,20 +139,25 @@ resource_exists() -> 'true'.
 
 resource_exists(?SMTP_LOG) -> 'true';
 resource_exists(?INCOMING) -> 'true';
+resource_exists(?INBOX) -> 'true';
+resource_exists(?OUTBOX) -> 'true';
 resource_exists(?OUTGOING) -> 'true'.
 
 resource_exists(?SMTP_LOG, _Id) -> 'true';
 resource_exists(?INCOMING, _Id) -> 'true';
+resource_exists(?INBOX, _Id) -> 'true';
+resource_exists(?OUTBOX, _Id) -> 'true';
 resource_exists(?OUTGOING, _Id) -> 'true'.
 
+resource_exists(?INBOX, _Id, ?ATTACHMENT) -> 'true';
+resource_exists(?OUTBOX, _Id, ?ATTACHMENT) -> 'true';
 resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
 
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
+-spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
 content_types_accepted(Context) ->
     maybe_add_types_accepted(Context, cb_context:req_verb(Context)).
 
--spec content_types_accepted(cb_context:context(), path_token()) ->
-                                    cb_context:context().
 content_types_accepted(Context, ?OUTGOING) ->
     maybe_add_types_accepted(Context, cb_context:req_verb(Context));
 content_types_accepted(Context, _) -> Context.
@@ -156,10 +176,26 @@ maybe_add_types_accepted(Context, _) -> Context.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(Context, ?INCOMING, <<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, ?ATTACHMENT) ->
-    Ctx = cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+content_types_provided(Context, ?OUTBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
+    Year  = wh_util:to_integer(YYYY),
+    Month = wh_util:to_integer(MM),
+    Ctx = cb_context:set_account_modb(Context, Year, Month),
+    content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
+content_types_provided(Context, ?INBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
+    Year  = wh_util:to_integer(YYYY),
+    Month = wh_util:to_integer(MM),
+    Ctx = cb_context:set_account_modb(Context, Year, Month),
+    content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
+content_types_provided(Context, ?INCOMING, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
+    Year  = wh_util:to_integer(YYYY),
+    Month = wh_util:to_integer(MM),
+    Ctx = cb_context:set_account_modb(Context, Year, Month),
     content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
+    content_types_provided_for_fax(Context, FaxId, cb_context:req_verb(Context));
+content_types_provided(Context, ?INBOX, FaxId, ?ATTACHMENT) ->
+    content_types_provided_for_fax(Context, FaxId, cb_context:req_verb(Context));
+content_types_provided(Context, ?OUTBOX, FaxId, ?ATTACHMENT) ->
     content_types_provided_for_fax(Context, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, _, _, _) ->
     Context.
@@ -182,6 +218,7 @@ content_types_provided_for_fax(Context) ->
         [AttachmentId|_] ->
             CT = wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId),
             [Type, SubType] = binary:split(CT, <<"/">>),
+            lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
             cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end.
 
@@ -206,9 +243,13 @@ validate(Context) ->
 validate(Context, ?OUTGOING) ->
     validate_outgoing_fax(Context, cb_context:req_verb(Context));
 validate(Context, ?INCOMING) ->
-    incoming_summary(Context);
+    inbox_summary(Context);
+validate(Context, ?INBOX) ->
+    inbox_summary(Context);
+validate(Context, ?OUTBOX) ->
+    outbox_summary(Context);
 validate(Context, ?SMTP_LOG) ->
-    smtp_summary(Context).
+    load_smtp_log(Context).
 
 validate_outgoing_fax(Context, ?HTTP_GET) ->
     outgoing_summary(cb_context:set_account_db(Context, ?WH_FAXES_DB));
@@ -218,7 +259,11 @@ validate_outgoing_fax(Context, ?HTTP_PUT) ->
 validate(Context, ?SMTP_LOG, Id) ->
     load_smtp_log_doc(Id, Context);
 validate(Context, ?INCOMING, Id) ->
-    load_incoming_fax_doc(Id, Context);
+    load_modb_fax_doc(Id, Context);
+validate(Context, ?INBOX, Id) ->
+    load_modb_fax_doc(Id, Context);
+validate(Context, ?OUTBOX, Id) ->
+    load_modb_fax_doc(Id, Context);
 validate(Context, ?OUTGOING, Id) ->
     validate_outgoing_fax(Context, Id, cb_context:req_verb(Context)).
 
@@ -231,13 +276,17 @@ validate_outgoing_fax(Context, Id, ?HTTP_PATCH) ->
 validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
     read(Id, cb_context:set_account_db(Context, ?WH_FAXES_DB)).
 
+validate(Context, ?INBOX, Id, ?ATTACHMENT) ->
+    validate_modb_fax_attachment(Context, Id, cb_context:req_verb(Context));
+validate(Context, ?OUTBOX, Id, ?ATTACHMENT) ->
+    validate_modb_fax_attachment(Context, Id, cb_context:req_verb(Context));
 validate(Context, ?INCOMING, Id, ?ATTACHMENT) ->
-    validate_incoming_fax_attachment(Context, Id, cb_context:req_verb(Context)).
+    validate_modb_fax_attachment(Context, Id, cb_context:req_verb(Context)).
 
-validate_incoming_fax_attachment(Context, Id, ?HTTP_GET) ->
+validate_modb_fax_attachment(Context, Id, ?HTTP_GET) ->
     load_fax_binary(Id, Context);
-validate_incoming_fax_attachment(Context, Id, ?HTTP_DELETE) ->
-    load_incoming_fax_doc(Id, Context).
+validate_modb_fax_attachment(Context, Id, ?HTTP_DELETE) ->
+    load_modb_fax_doc(Id, Context).
 
 
 %%--------------------------------------------------------------------
@@ -288,13 +337,11 @@ patch(Context, ?OUTGOING, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-delete(Context, ?OUTGOING, _Id) ->
-    crossbar_doc:delete(Context);
-delete(Context, ?INCOMING, _Id) ->
+delete(Context, _, _Id) ->
     crossbar_doc:delete(Context).
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-delete(Context, ?INCOMING, Id, ?ATTACHMENT) ->
+delete(Context, _, Id, ?ATTACHMENT) ->
     ANames = wh_doc:attachment_names(cb_context:doc(Context)),
     lists:foldl(fun(AName, Ctx) ->
                         crossbar_doc:delete_attachment(Id, AName, Ctx)
@@ -319,13 +366,15 @@ create(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(<<Year:4/binary, Month:2/binary, "-", _/binary>> = Id, Context) ->
-    crossbar_doc:load(Id, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
+read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
+    Year  = wh_util:to_integer(YYYY),
+    Month = wh_util:to_integer(MM),
+    crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month));
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
--spec load_incoming_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
-load_incoming_fax_doc(Id, Context) ->
+-spec load_modb_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
+load_modb_fax_doc(Id, Context) ->
     read(Id, Context).
 
 -spec load_smtp_log_doc(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -454,6 +503,24 @@ maybe_reset_job(Context, 'success') ->
     end;
 maybe_reset_job(Context, _Status) -> Context.
 
+-spec get_filter_doc(cb_context:context()) -> wh_json:object().
+get_filter_doc(Context) ->
+    case cb_context:fetch(Context, <<"faxbox">>) of
+        'undefined' -> maybe_user_filter_doc(Context);
+        JObj -> JObj
+    end.
+
+-spec maybe_user_filter_doc(cb_context:context()) -> wh_json:object().
+maybe_user_filter_doc(Context) ->
+    case cb_context:user_id(Context) of
+        'undefined' -> wh_json:new();
+        UserId ->
+            Options = [{'id', UserId}
+                       ,{'type', <<"user">>}
+                      ],
+            wh_doc:update_pvt_parameters(wh_json:new(), 'undefined', Options)
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -461,10 +528,10 @@ maybe_reset_job(Context, _Status) -> Context.
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec incoming_summary(cb_context:context()) -> cb_context:context().
-incoming_summary(Context) ->
-    JObj = cb_context:doc(Context),
-    {View, PreFilter, PostFilter} = get_incoming_view_and_filter(JObj),
+-spec fax_modb_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+fax_modb_summary(Context, Folder) ->
+    JObj = get_filter_doc(Context),
+    {View, PreFilter, PostFilter} = get_incoming_view_and_filter(JObj, Folder),
     case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(View
@@ -475,18 +542,24 @@ incoming_summary(Context) ->
         Ctx -> Ctx
     end.
 
--spec get_incoming_view_and_filter(wh_json:object()) ->
+-spec inbox_summary(cb_context:context()) -> cb_context:context().
+inbox_summary(Context) -> fax_modb_summary(Context, ?INBOX).
+
+-spec outbox_summary(cb_context:context()) -> cb_context:context().
+outbox_summary(Context) -> fax_modb_summary(Context, ?OUTBOX).
+
+-spec get_incoming_view_and_filter(wh_json:object(), ne_binary()) ->
           {ne_binary(), api_binaries(), api_binaries()}.
-get_incoming_view_and_filter(JObj) ->
+get_incoming_view_and_filter(JObj, Folder) ->
     Id = wh_doc:id(JObj),
     case wh_doc:type(JObj) of
-        <<"faxbox">> -> {?CB_LIST_BY_FAXBOX, [Id], 'undefined'};
-        <<"user">> -> {?CB_LIST_BY_OWNERID, [Id], 'undefined'};
-        _Else -> {?CB_LIST_ALL, 'undefined', [wh_json:new()]}
+        <<"faxbox">> -> {?CB_LIST_BY_FAXBOX, [Id, Folder], 'undefined'};
+        <<"user">> -> {?CB_LIST_BY_OWNERID, [Id, Folder], 'undefined'};
+        _Else -> {?CB_LIST_BY_FOLDER, [Folder], [wh_json:new()]}
     end.
 
--spec smtp_summary(cb_context:context()) -> cb_context:context().
-smtp_summary(Context) ->
+-spec load_smtp_log(cb_context:context()) -> cb_context:context().
+load_smtp_log(Context) ->
     case cb_modules_util:range_modb_view_options(Context) of
         {'ok', ViewOptions} ->
             crossbar_doc:load_view(?CB_LIST_SMTP_LOG
@@ -504,7 +577,7 @@ smtp_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
-load_fax_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, Context) ->
+load_fax_binary(?MATCH_MODB_PREFIX(Year,Month,_) = FaxId, Context) ->
     do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
 load_fax_binary(FaxId, Context) ->
     do_load_fax_binary(FaxId, Context).
@@ -544,7 +617,7 @@ set_fax_binary(Context, AttachmentId) ->
 %%--------------------------------------------------------------------
 -spec outgoing_summary(cb_context:context()) -> cb_context:context().
 outgoing_summary(Context) ->
-    JObj = cb_context:doc(Context),
+    JObj = cb_context:fetch(Context, <<"faxbox">>, wh_json:new()),
     {View, ViewOptions} =
         case wh_doc:type(JObj) of
             <<"faxbox">> ->
@@ -597,7 +670,7 @@ save_attachment(Context, Filename, FileJObj) ->
     DocId = wh_doc:id(JObj),
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
+    Opts = [{'content_type', CT}
             ,{'rev', wh_doc:revision(JObj)}
            ],
     set_pending(crossbar_doc:save_attachment(DocId

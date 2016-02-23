@@ -23,6 +23,8 @@
 
 -include("dth.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{'dth_cdr_handler'
                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                      }
@@ -35,10 +37,9 @@
                    }
                   ]).
 
--define(SERVER, ?MODULE).
--define(BLACKLIST_REFRESH, 60000).
+-define(BLACKLIST_REFRESH, 60 * ?MILLISECONDS_IN_SECOND).
 
--record(state, {wsdl_model = 'undefined' :: 'undefined' | term()
+-record(state, {wsdl_model = 'undefined' :: 'undefined' | #wsdl{}
                 ,dth_cdr_url = <<>> :: binary()
                }).
 
@@ -47,15 +48,12 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
+                                     ,{'bindings', ?BINDINGS}
                                      ], []).
 
 %%%===================================================================
@@ -74,26 +72,29 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    gen_listener:cast(self(), 'blacklist_refresh'),
+
     {'ok', Configs} = file:consult([code:priv_dir('dth'), "/startup.config"]),
     URL = props:get_value('dth_cdr_url', Configs),
 
-    erlang:send_after(0, self(), 'blacklist_refresh'),
+    {'ok', #state{dth_cdr_url=URL}}.
 
+-spec maybe_init_model() -> 'undefined' | #wsdl{}.
+maybe_init_model() ->
     WSDLFile = [code:priv_dir('dth'), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir('dth', 'include'), "/dthsoap.hrl"],
 
-    'true' = filelib:is_regular(WSDLFile),
-
-    case filelib:is_regular(WSDLHrlFile) of
-        'true' -> 'ok';
-        'false' ->
+    case {filelib:is_regular(WSDLFile), filelib:is_regular(WSDLHrlFile)} of
+        {'false', _} ->
+            lager:warning("DTH can't startup properly: failed to find WSDL ~p", [WSDLFile]),
+            'undefined';
+        {'true', 'true'} ->
+            detergent:initModel(WSDLFile);
+        {'true', 'false'} ->
             'true' = filelib:is_regular(WSDLFile),
-            'ok' = detergent:write_hrl(WSDLFile, WSDLHrlFile)
-    end,
-
-    {'ok', #state{wsdl_model=detergent:initModel(WSDLFile)
-                ,dth_cdr_url=URL
-               }}.
+            'ok' = detergent:write_hrl(WSDLFile, WSDLHrlFile),
+            detergent:initModel(WSDLFile)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -122,6 +123,13 @@ handle_call(_Req, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('blacklist_refresh', #state{wsdl_model='undefined'}=State) ->
+    gen_listener:delayed_cast(self(), 'blacklist_refresh', ?BLACKLIST_REFRESH),
+    {'noreply', State#state{wsdl_model=maybe_init_model()}};
+handle_cast('blacklist_refresh', #state{wsdl_model=WSDL}=State) ->
+    gen_listener:delayed_cast(self(), 'blacklist_refresh', ?BLACKLIST_REFRESH),
+    _ = wh_util:spawn(fun refresh_blacklist/1, [WSDL]),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -135,10 +143,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('blacklist_refresh', #state{wsdl_model=WSDL}=State) ->
-    erlang:send_after(?BLACKLIST_REFRESH, self(), 'blacklist_refresh'),
-    _ = wh_util:spawn(fun() -> refresh_blacklist(WSDL) end),
-    {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -164,7 +168,7 @@ handle_event(_JObj, #state{dth_cdr_url=Url, wsdl_model=WSDL}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), #state{}) -> 'ok'.
+-spec terminate(any(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("dth: ~p termination", [_Reason]).
 
@@ -182,12 +186,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec refresh_blacklist(_) -> 'ok'.
+-spec refresh_blacklist(#wsdl{}) -> 'ok'.
 refresh_blacklist(WSDL) ->
-    {'ok', _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
+    case detergent:call(WSDL, "GetBlockList", []) of
+        {'ok', _, [Response]}  -> refresh_blacklist_response(Response);
+        {'error', 'req_timedout'} ->
+            lager:info("failed to call WSDL, request timed out");
+        {'error', _E} -> lager:info("failed to call WSDL: ~p", [_E])
+    end.
+
+-spec refresh_blacklist_response(#'p:GetBlockListResponse'{}) -> 'ok'.
+refresh_blacklist_response(Response) ->
     BlockListEntries = get_blocklist_entries(Response),
     lager:debug("Entries: ~p", [BlockListEntries]),
-    wh_cache:store_local(?DTH_CACHE, dth_util:blacklist_cache_key(), BlockListEntries).
+    kz_cache:store_local(?DTH_CACHE, dth_util:blacklist_cache_key(), BlockListEntries).
 
 -spec get_blocklist_entries(#'p:GetBlockListResponse'{}) -> wh_json:object().
 get_blocklist_entries(#'p:GetBlockListResponse'{

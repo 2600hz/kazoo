@@ -132,7 +132,7 @@ Class3 - 60 (180 Class3 + 60 Class2 = 240, 300-240 = 60)
 ### Request
 
 - Verb: `POST`
-- Url: `/v2/accounts/{{ACCOUNT_ID}}/limits`
+- Url: `/v2/accounts/{{ACCOUNT_ID}}/allotments`
 - Payload:
 
 ```

@@ -28,11 +28,11 @@
          ,validate/1, validate/2, validate/3, validate/4
          ,put/1
          ,post/2, post/3
-         ,delete/2
+         ,delete/2 ,delete/3
          ,patch/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
@@ -89,7 +89,7 @@ allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
 allowed_methods(_, ?PHOTO) ->
-    [?HTTP_POST];
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
 allowed_methods(_, ?VCARD) ->
     [?HTTP_GET].
 
@@ -111,6 +111,9 @@ content_types_provided(Context, _) ->
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
                                                                    ,{<<"text">>, <<"directory">>}]}]);
+content_types_provided(Context, _, ?PHOTO) ->
+    cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"octet-stream">>}
+                                                                   ,{<<"application">>, <<"base64">>}]}]);
 content_types_provided(Context, _, _) ->
     Context.
 content_types_provided(Context, _, _, _) ->
@@ -130,7 +133,8 @@ content_types_provided(Context, _, _, _) ->
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, ?VCARD) -> 'true'.
+resource_exists(_, ?VCARD) -> 'true';
+resource_exists(_, ?PHOTO) -> 'true'.
 resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -249,7 +253,9 @@ validate(Context, UserId, ?VCARD) ->
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
         'false' -> convert_to_vcard(Context1)
-    end.
+    end;
+validate(Context, UserId, ?PHOTO) ->
+    validate_photo(Context, UserId , cb_context:req_verb(Context)).
 
 validate(Context, UserId, ?QUICKCALL_PATH_TOKEN, _) ->
     Context1 = crossbar_util:maybe_validate_quickcall(load_user(UserId, Context)),
@@ -273,6 +279,13 @@ validate_user(Context, UserId, ?HTTP_DELETE) ->
 validate_user(Context, UserId, ?HTTP_PATCH) ->
     validate_patch(UserId, Context).
 
+validate_photo(Context, UserId, ?HTTP_POST) ->
+    load_user(UserId, Context);
+validate_photo(Context, UserId, ?HTTP_DELETE) ->
+    load_user(UserId, Context);
+validate_photo(Context, UserId, _) ->
+    load_attachment(UserId, ?PHOTO, Context).
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
@@ -292,7 +305,7 @@ post(Context, UserId, ?PHOTO) ->
     Headers = wh_json:get_value(<<"headers">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, Headers),
     Content = wh_json:get_value(<<"contents">>, FileObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
     crossbar_doc:save_attachment(UserId, ?PHOTO, Content, Context, Opts).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -310,12 +323,44 @@ put(Context) ->
     crossbar_services:maybe_dry_run(Context, Callback).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
 delete(Context, _Id) ->
     crossbar_doc:delete(Context).
+
+delete(Context, UserId, ?PHOTO) ->
+    crossbar_doc:delete_attachment(UserId, ?PHOTO, Context).
+
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
     crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec load_attachment(ne_binary(), cb_context:context()) ->
+                             cb_context:context().
+-spec load_attachment(ne_binary(), ne_binary(), cb_context:context()) ->
+                             cb_context:context().
+load_attachment(AttachmentId, Context) ->
+    cb_context:add_resp_headers(
+      crossbar_doc:load_attachment(cb_context:doc(Context)
+                                   ,AttachmentId
+                                   ,Context
+                                  )
+      ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+        ,{<<"Content-Type">>, wh_doc:attachment_content_type(cb_context:doc(Context), AttachmentId)}
+        ,{<<"Content-Length">>, wh_doc:attachment_length(cb_context:doc(Context), AttachmentId)}
+       ]).
+
+load_attachment(UserId, AttachmentId, Context) ->
+    Context1 = load_user(UserId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_attachment(AttachmentId, Context1);
+        _ -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -353,7 +398,7 @@ update_devices_presence(Context, DeviceDocs) ->
 
 -spec user_devices(cb_context:context()) ->
                           {'ok', kz_device:docs()} |
-                          {'error', _}.
+                          {'error', any()}.
 user_devices(Context) ->
     UserId = wh_doc:id(cb_context:doc(Context)),
     AccountDb = cb_context:account_db(Context),

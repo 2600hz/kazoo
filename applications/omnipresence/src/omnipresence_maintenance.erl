@@ -15,6 +15,8 @@
          ,subscribe/2
          ,send_mwi_update/3
          ,list_terminated_callids/0
+         ,reset_subscription/1, reset_subscription/2
+         ,reset_subscriber/1, reset_subscriber/2
         ]).
 
 -spec count_current_subscriptions() -> 'no_return'.
@@ -88,13 +90,13 @@ subscribe(Realm, User) ->
     end.
 
 -spec send_mwi_update(ne_binary(), ne_binary() | integer(), ne_binary() | integer() ) -> 'ok'.
-send_mwi_update(User, New, Waiting) when is_binary(New) ->
-  send_mwi_update(User, wh_util:to_integer(New), Waiting);
-send_mwi_update(User, New, Waiting) when is_binary(Waiting) ->
-  send_mwi_update(User, New, wh_util:to_integer(Waiting));
-send_mwi_update(User, New, Waiting) ->
+send_mwi_update(User, New, Saved) when is_binary(New) ->
+  send_mwi_update(User, wh_util:to_integer(New), Saved);
+send_mwi_update(User, New, Saved) when is_binary(Saved) ->
+  send_mwi_update(User, New, wh_util:to_integer(Saved));
+send_mwi_update(User, New, Saved) ->
     Command = [{<<"Messages-New">>, New}
-               ,{<<"Messages-Waiting">>, Waiting}
+               ,{<<"Messages-Saved">>, Saved}
                ,{<<"Call-ID">>, wh_util:rand_hex_binary(16) }
                ,{<<"To">>, User}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -110,3 +112,29 @@ list_terminated_callids() ->
                          ,<<", ">>
                         )
                       ]).
+
+-spec reset_subscription(ne_binary()) -> any().
+reset_subscription(User) ->
+    [Username, Realm | _] = binary:split(User, <<"@">>, ['global']),
+    reset_subscription(Username, Realm).
+
+-spec reset_subscription(ne_binary(), ne_binary()) -> any().
+reset_subscription(User, Realm) ->
+    JObj = wh_json:from_list(
+             [{<<"Realm">>, Realm}
+              ,{<<"Username">>, User}
+             ]),
+    omnip_subscriptions:reset(JObj).
+
+-spec reset_subscriber(ne_binary()) -> any().
+reset_subscriber(User) ->
+    case omnip_subscriptions:find_user_subscriptions(?OMNIPRESENCE_EVENT_ALL, User) of
+        {'ok', Subs} ->
+            List = [Username || #omnip_subscription{user=Username} <- Subs],
+            [reset_subscription(Sub) || Sub <- lists:usort(List)];
+        _ -> 'ok'
+    end.
+
+-spec reset_subscriber(ne_binary(), ne_binary()) -> any().
+reset_subscriber(User, Realm) ->
+    reset_subscriber(<<User/binary, "@", Realm/binary>>).

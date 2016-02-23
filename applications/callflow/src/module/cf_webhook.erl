@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_webhook).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 -export([handle_webhook/2]).
@@ -21,10 +21,10 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    _ = wh_util:spawn(?MODULE, 'handle_webhook', [Data, Call]),
+    _ = wh_util:spawn(fun handle_webhook/2, [Data, Call]),
     cf_exe:continue(Call).
 
--spec handle_webhook(wh_json:object(), whapps_call:call()) -> 'ok' | {'error', _}.
+-spec handle_webhook(wh_json:object(), whapps_call:call()) -> 'ok' | {'error', any()}.
 handle_webhook(Data, Call) ->
     CallJObj = format_call_data(Call),
     Hook = set_hook(Data, CallJObj),

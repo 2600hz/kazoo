@@ -10,7 +10,7 @@
 
 -behaviour(gen_server).
 
--include("../call_inspector.hrl").
+-include("call_inspector.hrl").
 
 %% API
 -export([start_link/1]).
@@ -24,7 +24,8 @@
          ,code_change/3
         ]).
 
--record(state, {logfile :: file:name()
+-record(state, {parser_id :: atom()
+                ,logfile :: file:name()
                 ,iodevice :: file:io_device()
                 ,logip :: ne_binary()
                 ,logport :: pos_integer()
@@ -39,12 +40,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link(term()) -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(list()) -> startlink_ret().
 start_link(Args) ->
     ServerName = ci_parsers_util:make_name(Args),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
@@ -64,9 +62,12 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init({'parser_args', LogFile, LogIP, LogPort}) ->
+init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
+    ParserId = ci_parsers_util:make_name(Args),
+    _ = wh_util:put_callid(ParserId),
     NewDev = ci_parsers_util:open_file(LogFile),
-    State = #state{logfile = LogFile
+    State = #state{parser_id = ParserId
+                   ,logfile = LogFile
                    ,iodevice = NewDev
                    ,logip = LogIP
                    ,logport = LogPort
@@ -119,7 +120,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('start_parsing', State=#state{iodevice = IoDevice
+handle_info('start_parsing', State=#state{parser_id = ParserId
+                                          ,iodevice = IoDevice
                                           ,logip = LogIP
                                           ,logport = LogPort
                                           ,timer = OldTimer
@@ -129,7 +131,7 @@ handle_info('start_parsing', State=#state{iodevice = IoDevice
             'undefined' -> 'ok';
             _ -> erlang:cancel_timer(OldTimer)
         end,
-    NewCounter = extract_chunks(IoDevice, LogIP, LogPort, Counter),
+    NewCounter = extract_chunks(ParserId, IoDevice, LogIP, LogPort, Counter),
     NewTimer = erlang:send_after(ci_parsers_util:parse_interval()
                                  ,self()
                                  ,'start_parsing'
@@ -171,17 +173,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec extract_chunks(file:io_device(), ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
-extract_chunks(Dev, LogIP, LogPort, Counter) ->
+-spec extract_chunks(atom(), file:io_device(), ne_binary(), pos_integer(), pos_integer()) -> pos_integer().
+extract_chunks(ParserId, Dev, LogIP, LogPort, Counter) ->
     case extract_chunk(Dev) of
         [] -> Counter;
         {{'callid',Callid}, Data0} ->
-            NewCounter = make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0),
-            extract_chunks(Dev, LogIP, LogPort, NewCounter);
+            NewCounter = make_and_store_chunk(ParserId, LogIP, LogPort, Callid, Counter, Data0),
+            extract_chunks(ParserId, Dev, LogIP, LogPort, NewCounter);
         {'buffers', Buffers} ->
             StoreEach =
                 fun ({{'callid',Callid}, Data0}, ACounter) ->
-                        make_and_store_chunk(LogIP, LogPort, Callid, ACounter, Data0)
+                        make_and_store_chunk(ParserId, LogIP, LogPort, Callid, ACounter, Data0)
                 end,
             lists:foldl(StoreEach, Counter, Buffers)
     end.
@@ -189,9 +191,9 @@ extract_chunks(Dev, LogIP, LogPort, Counter) ->
 -type key() :: {'callid', ne_binary()}.
 -type data() :: [ne_binary() | {ne_binary()}].
 
--spec make_and_store_chunk(ne_binary(), pos_integer(), ne_binary(), pos_integer(), data()) ->
+-spec make_and_store_chunk(atom(), ne_binary(), pos_integer(), ne_binary(), pos_integer(), data()) ->
                                   pos_integer().
-make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
+make_and_store_chunk(ParserId, LogIP, LogPort, Callid, Counter, Data0) ->
     {Data, Ts} = cleanse_data_and_get_timestamp(Data0),
     %% Counter is a fallback time ID (for old logfile format)
     {NewCounter, Timestamp} = case Ts of
@@ -199,7 +201,6 @@ make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
                                   _Ts -> {Counter, Ts}
                               end,
     ReversedData0 = lists:reverse(Data0),
-    ParserId = ci_parsers_sup:child(self()),
     Chunk =
         ci_chunk:setters(ci_chunk:new()
                          ,[{fun ci_chunk:data/2, Data}
@@ -211,9 +212,10 @@ make_and_store_chunk(LogIP, LogPort, Callid, Counter, Data0) ->
                            ,{fun ci_chunk:dst_ip/2, to(ReversedData0,LogIP)}
                            ,{fun ci_chunk:src_port/2, from_port(ReversedData0,LogPort)}
                            ,{fun ci_chunk:dst_port/2, to_port(ReversedData0,LogPort)}
+                           ,{fun ci_chunk:c_seq/2, c_seq(Data)}
                           ]
                         ),
-    lager:debug("parsed chunk ~s (~s)", [ci_chunk:call_id(Chunk), ParserId]),
+    lager:debug("parsed chunk ~s", [ci_chunk:call_id(Chunk)]),
     ci_datastore:store_chunk(Chunk),
     NewCounter.
 
@@ -277,7 +279,7 @@ cleanse_data_and_get_timestamp(Data0) ->
                 ,Data0
                ).
 
--spec cleanse_data_fold({ne_binary() | erlang:timestamp()} | ne_binary()
+-spec cleanse_data_fold({ne_binary() | wh_now()} | ne_binary()
                         ,cleanse_acc()
                        ) -> cleanse_acc().
 cleanse_data_fold({RawTimestamp}, {Acc, TS}) ->
@@ -323,16 +325,16 @@ rm_newline(Line0) ->
     Line.
 
 -spec label(ne_binary()) -> api_binary().
-label(<<"recieved internal reply ", Label/binary>>) -> Label;
-label(<<"recieved ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
+label(<<"received internal reply ", Label/binary>>) -> Label;
+label(<<"received ", _Protocol:3/binary, " request ", Label/binary>>) -> Label;
 label(<<"external reply ", Label/binary>>) -> Label;
 label(<<"received failure reply ", Label/binary>>) -> Label;
-label(<<"recieved ", Label/binary>>) -> Label;
+label(<<"received ", Label/binary>>) -> Label;
 label(_Other) -> 'undefined'.
 
 -spec from(ne_binaries(), Default) -> ne_binary() | Default.
 from([], Default) -> Default;
-from([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
+from([<<"start|received internal reply", _/binary>>|_Data], Default) -> Default;
 from([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
 from([<<"log|source ", From/binary>>|_Data], Default) ->
     get_ip(From, Default);
@@ -348,7 +350,7 @@ get_ip(Bin, Default) ->
 
 -spec to(ne_binaries(), Default) -> ne_binary() | Default.
 to([], Default) -> Default;
-to([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
+to([<<"start|received internal reply",_/binary>>|Data], Default) ->
     to(Data, Default);
 to([<<"start|",_/binary>>|_Data], Default) -> Default;
 to([<<"pass|",To/binary>>|_Data], Default) ->
@@ -358,7 +360,7 @@ to([_Datum|Data], Default) ->
 
 -spec from_port(ne_binaries(), Default) -> ne_binary() | Default.
 from_port([], Default) -> Default;
-from_port([<<"start|recieved internal reply", _/binary>>|_Data], Default) -> Default;
+from_port([<<"start|received internal reply", _/binary>>|_Data], Default) -> Default;
 from_port([<<"log|external reply", _/binary>>|_Data], Default) -> Default;
 from_port([<<"log|source ", From/binary>>|_Data], Default) ->
     get_port(From, Default);
@@ -374,10 +376,16 @@ get_port(Bin, Default) ->
 
 -spec to_port(ne_binaries(), Default) -> ne_binary() | Default.
 to_port([], Default) -> Default;
-to_port([<<"start|recieved internal reply",_/binary>>|Data], Default) ->
+to_port([<<"start|received internal reply",_/binary>>|Data], Default) ->
     to_port(Data, Default);
 to_port([<<"start|",_/binary>>|_Data], Default) -> Default;
 to_port([<<"pass|",To/binary>>|_Data], Default) ->
     get_port(To, Default);
 to_port([_Datum|Data], Default) ->
     to(Data, Default).
+
+
+-spec c_seq(ne_binaries()) -> api_binary().
+c_seq([<<"cseq ", CSeq/binary>>|_Data]) -> CSeq;
+c_seq([]) -> 'undefined';
+c_seq([_Datum|Data]) -> c_seq(Data).

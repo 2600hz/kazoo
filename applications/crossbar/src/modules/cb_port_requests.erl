@@ -19,29 +19,26 @@
          ,validate/1, validate/2, validate/3, validate/4
          ,get/3
          ,put/1, put/3
-         ,post/2, post/3, post/4
+         ,patch/3
+         ,post/2, post/4
          ,delete/2, delete/4
          ,cleanup/1
-
-         ,update_default_template/0
          ,find_template/1, find_template/2
          ,authority/1
         ]).
 
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("whistle_number_manager/include/wh_port_request.hrl").
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(MY_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".port_requests">>).
 
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
 -define(TEMPLATE_ATTACHMENT_ID, <<"template">>).
 
--define(LOA_BUILDER, whapps_config:get(?MY_CONFIG_CAT, <<"loa_builder">>, <<"htmldoc">>)).
-
--define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"pdf">>}
-                                ,{<<"application">>, <<"octet-stream">>}
+-define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}
                                 ,{<<"text">>, <<"plain">>}
+                                | ?PDF_CONTENT_TYPES
                                ]).
 
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
@@ -81,6 +78,7 @@ init() ->
                 ,{<<"*.validate.port_requests">>, 'validate'}
                 ,{<<"*.execute.get.port_requests">>, 'get'}
                 ,{<<"*.execute.put.port_requests">>, 'put'}
+                ,{<<"*.execute.patch.port_requests">>, 'patch'}
                 ,{<<"*.execute.post.port_requests">>, 'post'}
                 ,{<<"*.execute.delete.port_requests">>, 'delete'}
                ],
@@ -158,17 +156,17 @@ allowed_methods(_Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(_Id, ?PORT_SUBMITTED) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_PENDING) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_SCHEDULED) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_COMPLETE) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_REJECT) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_CANCELED) ->
-    [?HTTP_POST];
+    [?HTTP_PATCH];
 allowed_methods(_Id, ?PORT_ATTACHMENT) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_Id, ?PATH_TOKEN_LOA) ->
@@ -229,7 +227,7 @@ content_types_provided(Context, _Id) ->
     Context.
 
 content_types_provided(Context, _Id, ?PATH_TOKEN_LOA) ->
-    cb_context:add_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"x-pdf">>}]}]);
+    cb_context:add_content_types_provided(Context, [{'to_binary', ?PDF_CONTENT_TYPES}]);
 content_types_provided(Context, _Id, _) ->
     Context.
 
@@ -378,7 +376,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
 
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'headers', [{'content_type', CT}]}],
+    Opts = [{'content_type', CT}],
 
     crossbar_doc:save_attachment(Id
                                  ,cb_modules_util:attachment_name(Filename, CT)
@@ -394,107 +392,92 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+patch(Context, Id, ?PORT_SUBMITTED) ->
+    Callback =
+        fun() ->
+            Context1 = do_patch(Context, Id),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    send_port_notification(Context1, Id, ?PORT_SUBMITTED);
+                _ -> Context1
+            end
+        end,
+    crossbar_services:maybe_dry_run(Context, Callback);
+patch(Context, Id, ?PORT_PENDING) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_PENDING);
+        _ -> Context1
+    end;
+patch(Context, Id, ?PORT_SCHEDULED) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_SCHEDULED);
+        _ -> Context1
+    end;
+patch(Context, Id, ?PORT_COMPLETE) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_COMPLETE);
+        _ -> Context1
+    end;
+patch(Context, Id, ?PORT_REJECT) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_REJECT);
+        _ -> Context1
+    end;
+patch(Context, Id, ?PORT_CANCELED) ->
+    Context1 = do_patch(Context, Id),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            send_port_notification(Context1, Id, ?PORT_CANCELED);
+        _ -> Context1
+    end.
+
+-spec do_patch(cb_context:context(), path_token()) -> cb_context:context().
+do_patch(Context, _Id) ->
+    UpdatedDoc =
+        wh_json:merge_recursive(
+            cb_context:doc(Context)
+            ,wh_json:public_fields(cb_context:req_data(Context))
+        ),
+    Setters = [fun update_port_request_for_save/1
+              ,{fun cb_context:set_doc/2, UpdatedDoc}
+              ],
+    Context1 = crossbar_doc:save(cb_context:setters(Context, Setters)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_resp_data(
+                Context1
+                ,wh_port_request:public_fields(cb_context:doc(Context1))
+            );
+        _Status ->
+            Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verb is POST, execute the actual action, usually a db save
+%% (after a merge perhaps).
+%% @end
+%%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     do_post(Context, Id).
 
-post(Context, Id, ?PORT_SUBMITTED) ->
-    Callback =
-        fun() ->
-            _  = add_to_phone_numbers_doc(Context),
-            try send_port_request_notification(Context, Id) of
-                _ ->
-                    lager:debug("port request notification sent"),
-                    do_post(Context, Id)
-            catch
-                _E:_R ->
-                    lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
-                    cb_context:add_system_error(
-                      'bad_gateway'
-                      ,<<"failed to send port request email">>
-                      ,Context
-                     )
-            end
-        end,
-    crossbar_services:maybe_dry_run(Context, Callback);
-post(Context, Id, ?PORT_PENDING) ->
-    try send_port_pending_notification(Context, Id) of
-        _ ->
-            lager:debug("port pending notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port pending notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port pending email">>
-              ,Context
-             )
-    end;
-post(Context, Id, ?PORT_SCHEDULED) ->
-    try send_port_scheduled_notification(Context, Id) of
-        _ ->
-            lager:debug("port scheduled notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port scheduled notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port scheduled email">>
-              ,Context
-             )
-    end;
-post(Context, Id, ?PORT_COMPLETE) ->
-    try send_ported_notification(Context, Id) of
-        _ ->
-            lager:debug("ported notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the ported notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send ported email">>
-              ,Context
-             )
-    end;
-post(Context, Id, ?PORT_REJECT) ->
-    try send_port_rejected_notification(Context, Id) of
-        _ ->
-            lager:debug("port rejected notification sent"),
-            post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port rejected notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port cancel email">>
-              ,Context
-             )
-    end;
-post(Context, Id, ?PORT_CANCELED) ->
-    _ = remove_from_phone_numbers_doc(Context),
-    try send_port_cancel_notification(Context, Id) of
-        _ ->
-            lager:debug("port cancel notification sent"),
-            do_post(Context, Id)
-    catch
-        _E:_R ->
-            lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
-            cb_context:add_system_error(
-              'bad_gateway'
-              ,<<"failed to send port cancel email">>
-              ,Context
-             )
-    end.
-
 post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileJObj),
     CT = wh_json:get_string_value([<<"headers">>, <<"content_type">>], FileJObj),
-    Opts = [{'headers', [{'content_type', CT}]}],
+    Opts = [{'content_type', CT}],
 
     case wh_doc:attachment(cb_context:doc(Context), AttachmentId) of
         'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
@@ -599,17 +582,17 @@ validate_port_request(Context, Id, ?HTTP_POST) ->
 validate_port_request(Context, Id, ?HTTP_DELETE) ->
     is_deletable(load_port_request(Context, Id)).
 
-validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_SUBMITTED, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_SUBMITTED);
-validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_PENDING, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_PENDING);
-validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_SCHEDULED, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_SCHEDULED);
-validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_COMPLETE, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_COMPLETE);
-validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_REJECT, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_REJECT);
-validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_POST) ->
+validate_port_request(Context, Id, ?PORT_CANCELED, ?HTTP_PATCH) ->
     maybe_move_state(Context, Id, ?PORT_CANCELED).
 
 %%--------------------------------------------------------------------
@@ -778,8 +761,8 @@ load_summary_fold(Context, Type) ->
         _Else -> Context
     end.
 
-
--spec load_summary_by_range_fold(cb_context:context(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> cb_context:context().
+-spec load_summary_by_range_fold(cb_context:context(), ne_binary(), gregorian_seconds(), gregorian_seconds()) ->
+                                        cb_context:context().
 load_summary_by_range_fold(Context, Type, From, To) ->
     Summary = cb_context:resp_data(Context),
     case cb_context:resp_data(
@@ -807,12 +790,12 @@ load_summary(Context, ViewOptions) ->
            end,
     maybe_normalize_summary_results(
       crossbar_doc:load_view(View
-                            ,['include_docs'
-                             ,'descending'
-                              | ViewOptions
-                             ]
-                            ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                            ,fun normalize_view_results/2
+                             ,['include_docs'
+                               ,'descending'
+                               | ViewOptions
+                              ]
+                             ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                             ,fun normalize_view_results/2
                             )
       ,props:get_value('normalize', ViewOptions, 'true')
      ).
@@ -837,8 +820,8 @@ normalize_summary_results(Context) ->
       Context,
       [wh_json:from_list(
          [{<<"account_id">>, AccountId}
-         ,{<<"account_name">>, props:get_value(AccountId, Names, <<"unknown">>)}
-         ,{<<"port_requests">>, JObjs}
+          ,{<<"account_name">>, props:get_value(AccountId, Names, <<"unknown">>)}
+          ,{<<"port_requests">>, JObjs}
          ]
         )
        || {AccountId, JObjs} <- dict:to_list(Dict)
@@ -878,7 +861,7 @@ summary_by_number(Context, Number) ->
      ).
 
 -spec summary_descendants_by_number(cb_context:context(), ne_binary()) ->
-                                        cb_context:context().
+                                           cb_context:context().
 summary_descendants_by_number(Context, Number) ->
     ViewOptions = [{'keys', build_keys(Context, Number)}
                    ,'include_docs'
@@ -890,7 +873,7 @@ summary_descendants_by_number(Context, Number) ->
       ,fun normalize_view_results/2
      ).
 
--type descendant_keys() :: [ne_binaries(),...] | [].
+-type descendant_keys() :: [ne_binaries()].
 
 -spec build_keys(cb_context:context(), ne_binary()) ->
                         descendant_keys().
@@ -922,7 +905,7 @@ build_keys_from_account(E164, [AccountId, ?PORT_DESCENDANTS]) ->
               fun(JObj, Acc) ->
                       build_descendant_key(JObj, Acc, E164)
               end
-              ,[[AccountId, E164]]
+              ,[]
               ,JObjs
              )
     end.
@@ -958,7 +941,9 @@ leak_pvt_fields(Res, JObj) ->
                   'undefined' -> J;
                   Value -> wh_json:set_value(Key, Value, J)
               end
-      end, JObj, Fields
+      end
+      ,JObj
+      ,Fields
      ).
 
 %%--------------------------------------------------------------------
@@ -994,7 +979,10 @@ on_successful_validation(Context, Id, 'true') ->
 
     Context1 = lists:foldl(fun(Number, ContextAcc) ->
                                    check_number_portability(Id, Number, ContextAcc)
-                           end, Context, Numbers),
+                           end
+                           ,Context
+                           ,Numbers
+                          ),
 
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -1008,6 +996,7 @@ on_successful_validation(Context, _Id, 'false') ->
       "port state ~s is not valid for updating a port request"
       ,[PortState]
      ),
+
     cb_context:add_validation_error(
       PortState
       ,<<"type">>
@@ -1228,123 +1217,23 @@ generate_loa(Context, _RespStatus) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec generate_loa_from_port(cb_context:context(), wh_json:object()) ->
-                                    cb_context:context().
--spec generate_loa_from_port(cb_context:context(), wh_json:object(), ne_binary()) ->
-                                    cb_context:context().
-generate_loa_from_port(Context, PortRequest) ->
-    generate_loa_from_port(Context, PortRequest, ?LOA_BUILDER).
-
-generate_loa_from_port(Context, PortRequest, <<"htmldoc">>) ->
-    cb_loa_htmldoc:generate_loa(Context, PortRequest).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec find_template(ne_binary()) -> ne_binary().
 -spec find_template(ne_binary(), api_binary()) -> ne_binary().
 find_template(ResellerId) ->
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    case couch_mgr:fetch_attachment(ResellerDb, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> default_template()
-    end.
+    {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
+    Template.
 
 find_template(ResellerId, 'undefined') ->
     find_template(ResellerId);
 find_template(ResellerId, CarrierName) ->
-    CarrierTemplate = list_to_binary([?TEMPLATE_DOC_ID
-                                      ,<<".">>
-                                      ,wh_util:to_lower_binary(wh_util:uri_encode(CarrierName))
-                                     ]),
-    lager:debug("looking for carrier template ~s or plain template for reseller ~s", [CarrierTemplate, ResellerId]),
-    ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
-    case couch_mgr:fetch_attachment(ResellerDb, CarrierTemplate, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> find_carrier_template(ResellerDb, CarrierTemplate)
+    TemplateName = <<(wh_util:to_lower_binary(wh_util:uri_encode(CarrierName)))/binary, ".tmpl">>,
+    lager:debug("looking for carrier template ~s or plain template for reseller ~s"
+                ,[TemplateName, ResellerId]
+               ),
+    case kz_pdf:find_template(ResellerId, <<"loa">>, TemplateName) of
+        {'error', _} -> find_template(ResellerId);
+        {'ok', Template} -> Template
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec find_carrier_template(ne_binary(), ne_binary()) -> ne_binary().
-find_carrier_template(ResellerDb, CarrierTemplate) ->
-    case couch_mgr:fetch_attachment(ResellerDb, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> default_carrier_template(CarrierTemplate)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec default_template() -> ne_binary().
-default_template() ->
-    case couch_mgr:fetch_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> create_default_template()
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec default_carrier_template(ne_binary()) -> ne_binary().
-default_carrier_template(CarrierTemplate) ->
-    case couch_mgr:fetch_attachment(?WH_CONFIG_DB, CarrierTemplate, ?TEMPLATE_ATTACHMENT_ID) of
-        {'ok', Template} -> Template;
-        {'error', _} -> default_template()
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec create_default_template() -> ne_binary().
-create_default_template() ->
-    {'ok', _Doc} =
-        couch_mgr:save_doc(?WH_CONFIG_DB
-                           ,wh_json:from_list([{<<"template_name">>, <<"loa">>}
-                                               ,{<<"_id">>, ?TEMPLATE_DOC_ID}
-                                              ])
-                          ),
-    save_default_template().
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec update_default_template() -> ne_binary().
-update_default_template() ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID) of
-        {'ok', _Doc} -> save_default_template();
-        {'error', 'not_found'} -> create_default_template()
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec save_default_template() -> ne_binary().
-save_default_template() ->
-    PrivDir = code:priv_dir('crossbar'),
-    TemplateFile = filename:join([PrivDir, <<"couchdb">>, <<"templates">>, <<"loa.tmpl">>]),
-    lager:debug("loading template from ~s", [TemplateFile]),
-
-    {'ok', Template} = file:read_file(TemplateFile),
-
-    {'ok', _} =
-        couch_mgr:put_attachment(?WH_CONFIG_DB, ?TEMPLATE_DOC_ID, ?TEMPLATE_ATTACHMENT_ID, Template),
-    Template.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1383,6 +1272,60 @@ has_new_comment(OldComments, NewComments) ->
     NewTime = wh_json:get_value(<<"timestamp">>, lists:last(NewComments)),
 
     OldTime < NewTime.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec send_port_notification(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec send_port_notification(cb_context:context(), path_token(), path_token(), function()) -> cb_context:context().
+send_port_notification(Context, Id, ?PORT_SUBMITTED=State) ->
+     _  = add_to_phone_numbers_doc(Context),
+    send_port_notification(Context, Id, State, fun send_port_request_notification/2);
+send_port_notification(Context, Id, ?PORT_PENDING=State) ->
+    send_port_notification(Context, Id, State, fun send_port_pending_notification/2);
+send_port_notification(Context, Id, ?PORT_SCHEDULED=State) ->
+    send_port_notification(Context, Id, State, fun send_port_scheduled_notification/2);
+send_port_notification(Context, Id, ?PORT_COMPLETE=State) ->
+    send_port_notification(Context, Id, State, fun send_ported_notification/2);
+send_port_notification(Context, Id, ?PORT_REJECT=State) ->
+    send_port_notification(Context, Id, State, fun send_port_rejected_notification/2);
+send_port_notification(Context, Id, ?PORT_CANCELED=State) ->
+    _ = remove_from_phone_numbers_doc(Context),
+    send_port_notification(Context, Id, State, fun send_port_cancel_notification/2).
+
+send_port_notification(Context, Id, State, Fun) ->
+    try Fun(Context, Id) of
+        _ ->
+            lager:debug("port ~s notification sent", [State]),
+            Context
+    catch
+        _E:_R ->
+            lager:debug("failed to send the  port ~s notification: ~s:~p", [State, _E, _R]),
+            _ = revert_patch(Context),
+            cb_context:add_system_error(
+              'bad_gateway'
+              ,wh_json:from_list([{<<"message">>, <<"failed to send port ", State/binary,  " email">>}])
+              ,Context
+             )
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec revert_patch(cb_context:context()) -> cb_context:context().
+revert_patch(Context) ->
+    Doc = cb_context:doc(Context),
+    DBDoc = cb_context:fetch(Context, 'db_doc'),
+
+    Rev = wh_doc:revision(Doc),
+
+    RevertedDoc = wh_doc:set_revision(DBDoc, Rev),
+
+    crossbar_doc:save(cb_context:set_doc(Context, RevertedDoc)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1564,7 +1507,7 @@ remove_phone_number(Number, _, {_, Acc}) ->
 %%--------------------------------------------------------------------
 -spec get_phone_numbers_doc(cb_context:context()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 get_phone_numbers_doc(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -1601,4 +1544,67 @@ save_phone_numbers_doc(Context, JObj) ->
         _Status ->
             lager:error("failed to save phone_numbers doc in ~s : ~p", [AccountId, _Status]),
             'error'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec generate_loa_from_port(cb_context:context(), wh_json:object()) ->
+                                    cb_context:context().
+generate_loa_from_port(Context, PortRequest) ->
+    AccountId = cb_context:account_id(Context),
+
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerDoc = cb_context:account_doc(cb_context:set_account_id(Context, ResellerId)),
+
+    AccountDoc = cb_context:account_doc(Context),
+
+    Numbers = [wnm_util:pretty_print(N) || N <- wh_json:get_keys(<<"numbers">>, PortRequest)],
+
+    QRCode = create_qr_code(cb_context:account_id(Context), wh_doc:id(PortRequest)),
+
+    generate_loa_from_template(Context
+                               ,props:filter_undefined(
+                                  [{<<"reseller">>, wh_json:to_proplist(ResellerDoc)}
+                                   ,{<<"account">>, wh_json:to_proplist(AccountDoc)}
+                                   ,{<<"numbers">>, Numbers}
+                                   ,{<<"bill">>, wh_json:to_proplist(wh_json:get_value(<<"bill">>, PortRequest, wh_json:new()))}
+                                   ,{<<"request">>, wh_json:to_proplist(PortRequest)}
+                                   ,{<<"qr_code">>, QRCode}
+                                   ,{<<"type">>, <<"loa">>}
+                                  ])
+                               ,ResellerId
+                               ,wh_json:get_value(<<"carrier">>, PortRequest)
+                              ).
+
+-spec generate_loa_from_template(cb_context:context(), wh_proplist(), ne_binary(), api_binary()) ->
+                                        cb_context:context().
+generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
+    Template = find_template(ResellerId, Carrier),
+    case kz_pdf:generate(ResellerId, TemplateData, Template) of
+        {'error', _R} -> cb_context:set_resp_status(Context, 'error');
+        {'ok', PDF} ->
+            cb_context:set_resp_status(
+              cb_context:set_resp_data(Context, PDF)
+              ,'success'
+             )
+    end.
+
+-spec create_qr_code(api_binary(), api_binary()) -> wh_proplist() | 'undefined'.
+create_qr_code('undefined', _) -> 'undefined';
+create_qr_code(_, 'undefined') -> 'undefined';
+create_qr_code(AccountId, PortRequestId) ->
+    lager:debug("create qr code for ~s - ~s", [AccountId, PortRequestId]),
+    CHL = <<AccountId/binary, "-", PortRequestId/binary>>,
+    Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
+
+    case kz_http:get(wh_util:to_list(Url)) of
+        {'ok', 200, _RespHeaders, RespBody} ->
+            lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
+            [{<<"image">>, base64:encode(RespBody)}];
+        _E ->
+            lager:debug("failed to generate QR code: ~p", [_E]),
+            'undefined'
     end.

@@ -1,0 +1,44 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "notify.callback",
+    "description": "Schema for a callback options",
+    "name": "Callback notification options",
+    "properties": {
+        "attempts": {
+            "description": "How many attempts without answer will system do",
+            "required": false,
+            "type": "integer"
+        },
+        "disabled": {
+            "description": "Determines if the system will call to callback number",
+            "required": false,
+            "type": "boolean"
+        },
+        "interval_s": {
+            "description": "How long will system wait between call back notification attempts",
+            "required": false,
+            "type": "integer"
+        },
+        "number": {
+            "description": "Number for callback notifications about new messages",
+            "required": false,
+            "type": "string"
+        },
+        "schedule": {
+            "description": "Schedules interval between callbacks",
+            "items": {
+                "description": "callbacks interval",
+                "type": "integer"
+            },
+            "required": false,
+            "type": "array"
+        },
+        "timeout_s": {
+            "description": "How long will system wait for answer to callback",
+            "required": false,
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

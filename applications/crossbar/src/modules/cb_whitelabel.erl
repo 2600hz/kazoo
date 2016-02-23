@@ -21,7 +21,7 @@
          ,delete/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(WHITELABEL_ID, <<"whitelabel">>).
 -define(LOGO_REQ, <<"logo">>).
@@ -291,7 +291,7 @@ validate_attachment(Context, ?WELCOME_REQ, ?HTTP_GET) ->
 validate_attachment(Context, AttachType, ?HTTP_POST) ->
     validate_attachment_post(Context, AttachType, cb_context:req_files(Context)).
 
--spec validate_attachment_post(cb_context:context(), path_token(), _) ->
+-spec validate_attachment_post(cb_context:context(), path_token(), any()) ->
                                       cb_context:context().
 validate_attachment_post(Context, ?LOGO_REQ, []) ->
     cb_context:add_validation_error(
@@ -808,7 +808,7 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
     [{Filename, FileObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
 
     JObj1 = case whitelabel_binary_meta(Context, AttachType) of
                 'undefined' -> JObj;

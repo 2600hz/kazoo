@@ -39,6 +39,8 @@
 
 -include("doodle.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(CALL_SANITY_CHECK, 30 * ?MILLISECONDS_IN_SECOND).
 
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
@@ -52,6 +54,7 @@
 -record(state, {call = whapps_call:new() :: whapps_call:call()
                 ,flow = wh_json:new() :: wh_json:object()
                 ,cf_module_pid :: {pid(), reference()} | 'undefined'
+                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
                 ,self = self()
@@ -63,11 +66,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {'ok', Pid} | 'ignore' | {'error', Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
@@ -78,7 +77,7 @@ start_link(Call) ->
                 }
                 ,{'self', []}
                ],
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', Bindings}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
@@ -201,10 +200,10 @@ get_all_branch_keys(Call) ->
 
 -spec attempt(whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', term()}}.
+                     {'attempt_resp', {'error', any()}}.
 -spec attempt(wh_json:key(), whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', term()}}.
+                     {'attempt_resp', {'error', any()}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).
 
 attempt(Key, Srv) when is_pid(Srv) ->
@@ -330,10 +329,8 @@ handle_cast({'update_call', NewCall}, #state{call=OldCall, queue=Q}=State) ->
     {'noreply', State#state{call=Call}};
 
 handle_cast({'continue', Key}, #state{flow=Flow
-                                      ,cf_module_pid=OldPidRef
                                      }=State) ->
     lager:info("continuing to child '~s'", [Key]),
-    maybe_stop_caring(OldPidRef),
 
     case wh_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
@@ -353,7 +350,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             end
     end;
 handle_cast('stop', #state{call=Call}=State) ->
-    _ = wh_util:spawn('doodle_util', 'save_sms', [whapps_call:clear_helpers(Call)]),
+    _ = wh_util:spawn(fun doodle_util:save_sms/1, [whapps_call:clear_helpers(Call)]),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
@@ -389,8 +386,8 @@ handle_cast('initialize', #state{call=Call}) ->
     log_call_information(Call),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> whapps_call:kvs_store('consumer_pid', self(), C) end
-                ,fun(C) -> whapps_call:call_id_helper(fun doodle_exe:callid/2, C) end
-                ,fun(C) -> whapps_call:control_queue_helper(fun doodle_exe:control_queue/2, C) end
+                ,fun(C) -> whapps_call:call_id_helper(fun ?MODULE:callid/2, C) end
+                ,fun(C) -> whapps_call:control_queue_helper(fun ?MODULE:control_queue/2, C) end
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     {'noreply', #state{call=CallWithHelpers
@@ -452,6 +449,19 @@ handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
+handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_old_pid={Pid, Ref}
+                                            ,call=Call
+                                           }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
+    {'noreply', State#state{cf_module_old_pid='undefined'}};
+handle_info({'EXIT', Pid, _Reason}, #state{cf_module_old_pid={Pid, Ref}
+                                           ,call=Call
+                                          }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    LastAction = whapps_call:kvs_fetch('cf_last_action', Call),
+    lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
+    {'noreply', State#state{cf_module_old_pid='undefined'}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -524,7 +534,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
             {'reply', [{'cf_event_pids', Others}]}
     end.
 
--spec get_pid({pid(), _}) -> pid().
+-spec get_pid({pid(), any()}) -> pid().
 get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
@@ -588,12 +598,14 @@ code_change(_OldVsn, State, _Extra) ->
 -spec launch_cf_module(state()) -> state().
 launch_cf_module(#state{call=Call
                         ,flow=Flow
+                        ,cf_module_pid=OldPidRef
                        }=State) ->
     Module = <<(cf_module_prefix(Call))/binary, (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {PidRef, Action} = maybe_start_cf_module(Module, Data, Call),
     _ = cf_link(PidRef),
     State#state{cf_module_pid=PidRef
+                ,cf_module_old_pid=OldPidRef
                 ,call=whapps_call:kvs_store('cf_last_action', Action, Call)
                }.
 
@@ -610,18 +622,11 @@ cf_module_prefix(Call) ->
 cf_module_prefix(_Call, <<"sms">>) -> <<"cf_sms_">>;
 cf_module_prefix(_Call, _) -> <<"cf_">>.
 
--spec maybe_stop_caring('undefined' | pid_ref()) -> 'ok'.
-maybe_stop_caring('undefined') -> 'ok';
-maybe_stop_caring({P, R}) ->
-    unlink(P),
-    erlang:demonitor(R, ['flush']),
-    lager:debug("stopped caring about ~p(~p)", [P, R]).
-
 -spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
                                    {pid_ref() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = wh_util:to_atom(ModuleBin, 'true'),
-    try CFModule:module_info('imports') of
+    try CFModule:module_info('exports') of
         _ ->
             lager:info("moving to action '~s'", [CFModule]),
             spawn_cf_module(CFModule, Data, Call)
@@ -648,20 +653,24 @@ cf_module_skip(CFModule, _Call) ->
                              {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = wh_amqp_channel:consumer_pid(),
-    {spawn_monitor(
-       fun() ->
-               _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
-               wh_util:put_callid(whapps_call:call_id_direct(Call)),
-               try CFModule:handle(Data, Call) of
-                   _ -> 'ok'
-               catch
-                   _E:R ->
-                       ST = erlang:get_stacktrace(),
-                       lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-                       wh_util:log_stacktrace(ST),
-                       throw(R)
-               end
-       end), CFModule}.
+    {wh_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
+     ,CFModule
+    }.
+
+%% @private
+-spec cf_module_task(atom(), list(), whapps_call:call(), pid()) -> any().
+cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
+    _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
+    wh_util:put_callid(whapps_call:call_id_direct(Call)),
+    try CFModule:handle(Data, Call) of
+        _ -> 'ok'
+    catch
+        _E:R ->
+            ST = erlang:get_stacktrace(),
+            lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
+            wh_util:log_stacktrace(ST),
+            throw(R)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -40,6 +40,7 @@ call_command(Node, UUID, JObj) ->
                         ,fun maybe_handle_bypass_media/5
                         ,fun handle_ccvs/5
                         ,fun pre_exec/5
+                        ,fun handle_loopback/5
                         ,fun create_command/5
                         ,fun post_exec/5
                        ],
@@ -85,7 +86,7 @@ handle_ringback(Node, UUID, JObj) ->
         Media ->
             Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
             lager:debug("bridge has custom ringback: ~s", [Stream]),
-            ecallmgr_util:set(Node, UUID, [{<<"ringback">>, Stream}])
+            ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
 -spec maybe_early_media(atom(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -176,6 +177,22 @@ handle_ccvs(DP, _Node, _UUID, _Channel, JObj) ->
             DP
     end.
 
+-spec handle_loopback_key(ne_binary(), wh_json:object()) -> wh_proplist().
+handle_loopback_key(Key, JObj) ->
+    V = wh_util:to_binary(wh_json:is_false(Key, JObj, 'false')),
+    K = ecallmgr_util:get_fs_key(Key),
+    [{"application", <<"export ", K/binary, "=", V/binary>>}].
+
+-spec handle_loopback_keys(ne_binary(), wh_json:object(), wh_proplist()) -> wh_proplist().
+handle_loopback_keys([], _JObj, Acc) -> Acc;
+handle_loopback_keys([Key | Keys], JObj, Acc) ->
+    handle_loopback_keys(Keys, JObj, handle_loopback_key(Key, JObj) ++ Acc).
+
+-spec handle_loopback(wh_proplist(), atom(), ne_binary(), channel(), wh_json:object()) -> wh_proplist().
+handle_loopback(DP, _Node, _UUID, _Channel, JObj) ->
+    Keys = [<<"Simplify-Loopback">>, <<"Loopback-Bowout">>],
+    handle_loopback_keys(Keys, JObj, DP).
+
 -spec pre_exec(wh_proplist(), atom(), ne_binary(), channel(), wh_json:object()) -> wh_proplist().
 pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
     [{"application", "set continue_on_fail=true"}
@@ -185,6 +202,11 @@ pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
                                     ,?CHANNEL_VAR_PREFIX, "Inception"
                                     ,"="
                                     ,"${", ?CHANNEL_VAR_PREFIX, "Inception}"
+                                   ])}
+     ,{"application", lists:concat(["export "
+                                    ,?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID
+                                    ,"="
+                                    ,"${", ?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID, "}"
                                    ])}
      |DP
     ].

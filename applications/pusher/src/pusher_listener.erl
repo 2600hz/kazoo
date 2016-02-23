@@ -25,8 +25,9 @@
         ]).
 
 -include("pusher.hrl").
-
 -include_lib("nksip/include/nksip.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {subs_pid :: pid()
                 ,subs_ref :: reference()
@@ -62,7 +63,7 @@ handle_push(JObj, _Props) ->
 
     lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
 
-    wh_cache:store_local(?PUSHER_CACHE
+    kz_cache:store_local(?PUSHER_CACHE
                          ,Token
                          ,JObj
                          ,[{'expires', 20}]
@@ -91,7 +92,7 @@ maybe_process_reg_success(UA, JObj) ->
 
 maybe_process_reg_success('undefined', _UA, _JObj, _Params) -> 'ok';
 maybe_process_reg_success(Token, UA, JObj, Params) ->
-    case wh_cache:fetch_local(?PUSHER_CACHE, Token) of
+    case kz_cache:fetch_local(?PUSHER_CACHE, Token) of
         {'error', 'not_found'} -> maybe_update_push_token(UA, JObj, Params);
         {'ok', TokenJObj} -> send_reply(Token, TokenJObj)
     end.
@@ -145,7 +146,7 @@ build_push_fold(K, V, Acc, JObj, Params) ->
 
 -spec send_reply(ne_binary(), wh_json:object()) -> 'ok'.
 send_reply(Token, JObj) ->
-    wh_cache:erase_local(?PUSHER_CACHE, Token),
+    kz_cache:erase_local(?PUSHER_CACHE, Token),
     Queue = wh_json:get_value(<<"Server-ID">>, JObj),
     Payload = [{<<"Token-ID">>, Token}
                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -155,15 +156,11 @@ send_reply(Token, JObj) ->
     wh_amqp_worker:cast(Payload, fun(P) -> wapi_pusher:publish_targeted_push_resp(Queue, P) end).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
@@ -205,7 +202,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(term(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -219,7 +216,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
@@ -246,7 +243,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(term(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'DOWN', _Ref, 'process', _Pid, _R}, State) ->
     {'noreply', State};
 handle_info(_Info, State) ->
@@ -276,7 +273,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(term(), state()) -> 'ok'.
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("pusher listener terminating: ~p", [_Reason]).
 
@@ -288,7 +285,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(term(), state(), term()) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

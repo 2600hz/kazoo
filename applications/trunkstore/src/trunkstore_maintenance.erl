@@ -21,19 +21,19 @@
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.
 flush() ->
-    wh_cache:flush_local(?TRUNKSTORE_CACHE).
+    kz_cache:flush_local(?TRUNKSTORE_CACHE).
 
 flush(Account) ->
     AccountId = wh_util:format_account_id(Account),
 
-    Flush = wh_cache:filter_local(?TRUNKSTORE_CACHE
+    Flush = kz_cache:filter_local(?TRUNKSTORE_CACHE
                                   ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
                                  ),
-    _ = [wh_cache:erase_local(?TRUNKSTORE_CACHE, Key) || {Key, _Value} <- Flush],
+    _ = [kz_cache:erase_local(?TRUNKSTORE_CACHE, Key) || {Key, _Value} <- Flush],
     'ok'.
 
 migrate() ->
-    io:format("This command is ancient, if you REALLY know what you are duing run:~n"),
+    io:format("This command is ancient, if you REALLY know what you are doing run:~n"),
     io:format(" sup trunkstore_maintenance i_understand_migrate~n").
 
 i_understand_migrate() ->

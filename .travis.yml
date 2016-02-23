@@ -8,9 +8,7 @@ notifications:
       - "irc.freenode.org#2600hz-dev"
 
 otp_release:
-  - R16B
-  - R15B03
-  - R15B02
+  - 18.2
 
 addons:
   apt:
@@ -31,14 +29,13 @@ before_install:
 script: make compile
 
 after_success:
+  - if [[ 0 -ne `git status --porcelain -- applications/ core/ | wc -l` ]]; then echo Unstaged changes! && git status --porcelain && exit 1; fi
   - make xref
-  - kerl_deactivate
-  - source $HOME/otp/R16B/activate
-  - make build-plt
   - git fetch origin master:master
-  - files="$(git diff --name-only master.. | grep -v deps/)" || true
-  - $TRAVIS_BUILD_DIR/scripts/check-dialyzer.escript $files
-  - kerl_deactivate
-  - source $HOME/otp/$TRAVIS_OTP_RELEASE/activate
-  - ERL_LIBS="$HOME/proper" make test
+  - files="$(git diff --name-only master... -- application/ core/)" || true && echo $files
+  - make build-plt
+  - ./scripts/check-dialyzer.escript .kazoo.plt $files
+  - make build-release
+  - make compile-test
+  - ERL_LIBS="$HOME/proper" make eunit
   - ./scripts/check-whitespace.sh core/ applications/

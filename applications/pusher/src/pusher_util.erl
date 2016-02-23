@@ -27,7 +27,7 @@
                       ,'not_encrypted' | cipher_info()
                      }.
 
--type cipher_info() :: term().
+-type cipher_info() :: any().
                        %% {"RC2-CBC" | "DES-CBC" | "DES-EDE3-CBC"
                        %%  ,binary() | 'PBES2-params'
                        %% }.
@@ -37,7 +37,7 @@
 %% ====================================================================
 
 -type keycert() :: {'undefined' | {'PrivateKeyInfo', binary()}
-                    ,'undefined' | binary()
+                    ,api_binary()
                    }.
 -spec binary_to_keycert(binary()) -> keycert().
 binary_to_keycert(Binary) ->

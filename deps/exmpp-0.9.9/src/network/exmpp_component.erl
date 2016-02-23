@@ -153,7 +153,7 @@ set_controlling_process(Component,Client) when is_pid(Component), is_pid(Client)
 init([Pid]) ->
     inets:start(),
     exmpp_stringprep:start(),
-    {A1,A2,A3} = now(),
+    {A1,A2,A3} = erlang:timestamp(),
     random:seed(A1, A2, A3),
     {ok, setup, #state{client_pid=Pid}}.
 

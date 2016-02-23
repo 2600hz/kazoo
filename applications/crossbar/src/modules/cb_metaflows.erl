@@ -22,7 +22,7 @@
          ,delete/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"metaflows/crossbar_listing">>).
 

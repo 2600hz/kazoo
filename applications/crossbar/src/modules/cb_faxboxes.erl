@@ -14,13 +14,14 @@
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
+         ,validate_resource/1, validate_resource/2
          ,put/1
          ,post/2
          ,patch/2
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("kazoo_oauth/include/kazoo_oauth_types.hrl").
 
 -define(CB_LIST, <<"faxbox/crossbar_listing">>).
@@ -57,7 +58,7 @@
 -type fax_content_type() :: ne_binary().
 
 -type fax_file() :: {fax_field_name(), fax_file_name(), fax_file_content(), fax_content_type()}.
--type fax_files() :: [fax_file(),...] | [].
+-type fax_files() :: [fax_file()].
 
 %%%===================================================================
 %%% API
@@ -74,6 +75,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.faxboxes">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.faxboxes">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.faxboxes">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.validate_resource.faxboxes">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxboxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.faxboxes">>, ?MODULE, 'patch'),
@@ -109,6 +111,15 @@ allowed_methods(_BoxId) ->
 
 resource_exists() -> 'true'.
 resource_exists(_BoxId) -> 'true'.
+
+-spec validate_resource(cb_context:context()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+validate_resource(Context) -> Context.
+validate_resource(Context, FaxboxId) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), FaxboxId) of
+        {'ok', JObj} -> cb_context:store(Context, <<"faxbox">>, JObj);
+        _ -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -425,13 +436,13 @@ register_cloud_printer(Context, FaxboxId) ->
     Body = register_body(ResellerId, FaxboxId, Boundary),
     ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
     ContentLength = length(Body),
-    Options = [{'content_type', ContentType}
-               ,{'content_length', ContentLength}
+    Headers = [?GPC_PROXY_HEADER
+               ,{"Content-Type",ContentType}
+               ,{'Content-Length', ContentLength}
               ],
-    Headers = [?GPC_PROXY_HEADER, {"Content-Type",ContentType}],
     Url = wh_util:to_list(?GPC_URL_REGISTER),
-    case ibrowse:send_req(Url, Headers, 'post', Body, Options) of
-        {'ok', "200", _RespHeaders, RespJSON} ->
+    case kz_http:post(Url, Headers, Body) of
+        {'ok', 200, _RespHeaders, RespJSON} ->
             JObj = wh_json:decode(RespJSON),
             case wh_json:is_true(<<"success">>, JObj, 'false') of
                 'true' ->
@@ -441,7 +452,7 @@ register_cloud_printer(Context, FaxboxId) ->
                     []
             end;
         {'ok', _RespCode, _RespHeaders, _RespJSON} ->
-            lager:info("unexpected resp ~s: ~s", [_RespCode, _RespJSON]),
+            lager:info("unexpected resp ~p: ~s", [_RespCode, _RespJSON]),
             [];
         {'error', _R} ->
             lager:info("error querying: ~p", [_R]),

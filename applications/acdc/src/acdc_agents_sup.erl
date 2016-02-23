@@ -12,6 +12,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% API
 -export([start_link/0
          ,new/1, new/2, new/4
@@ -28,19 +30,18 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-define(CHILDREN, [?SUPER_TYPE('acdc_agent_sup', 'transient')]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec status() -> 'ok'.
 status() ->
@@ -56,7 +57,7 @@ new(JObj) ->
                                ,wh_doc:id(JObj)
                               )
     of
-        'undefined' -> supervisor:start_child(?MODULE, [JObj]);
+        'undefined' -> supervisor:start_child(?SERVER, [JObj]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
@@ -64,21 +65,21 @@ new(AcctId, AgentId) ->
     case find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
             {'ok', Agent} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId),
-            supervisor:start_child(?MODULE, [Agent]);
+            supervisor:start_child(?SERVER, [Agent]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
 new(AcctId, AgentId, AgentJObj, Queues) ->
     case find_agent_supervisor(AcctId, AgentId) of
-        'undefined' -> supervisor:start_child(?MODULE, [AgentJObj, AcctId, AgentId, Queues]);
+        'undefined' -> supervisor:start_child(?SERVER, [AgentJObj, AcctId, AgentId, Queues]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
 -spec new_thief(whapps_call:call(), ne_binary()) -> sup_startchild_ret().
-new_thief(Call, QueueId) -> supervisor:start_child(?MODULE, [Call, QueueId]).
+new_thief(Call, QueueId) -> supervisor:start_child(?SERVER, [Call, QueueId]).
 
 -spec workers() -> pids().
-workers() -> [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(?MODULE)].
+workers() -> [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(?SERVER)].
 
 restart_acct(AcctId) -> [acdc_agent_sup:restart(S) || S <- workers(), is_agent_in_acct(S, AcctId)].
 restart_agent(AcctId, AgentId) ->
@@ -98,7 +99,7 @@ is_agent_in_acct(Super, AcctId) ->
         _ -> 'false'
     end.
 
--spec agents_running() -> [{pid(), acdc_agent_listener:config()},...] | [].
+-spec agents_running() -> [{pid(), acdc_agent_listener:config()}].
 agents_running() ->
     [{W, catch acdc_agent_listener:config(acdc_agent_sup:listener(W))} || W <- workers()].
 
@@ -129,13 +130,9 @@ find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 1,
@@ -143,7 +140,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?SUPER_TYPE('acdc_agent_sup', 'transient')]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.
 
 %%%===================================================================
 %%% Internal functions

@@ -368,7 +368,7 @@ default_port(ftp)   -> 21.
 
 printable_date() ->
     {{Y,Mo,D},{H, M, S}} = calendar:local_time(),
-    {_,_,MicroSecs} = now(),
+    {_,_,MicroSecs} = erlang:timestamp(),
     [integer_to_list(Y),
      $-,
      integer_to_list(Mo),

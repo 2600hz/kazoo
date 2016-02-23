@@ -46,9 +46,46 @@ Webhooks are installed by the system administrator. You can query Crossbar to se
              "description": "Events for when the channel is answered by the endpoint",
              "id": "channel_answer",
              "name": "channel_answer"
-         }
+        },
+        {
+            "description": "Receive notifications when objects in Kazoo are changed",
+            "id": "object",
+            "modifiers": {
+                "action": {
+                    "description": "A list of object actions to handle",
+                    "items": [
+                        "doc_created",
+                        "doc_edited",
+                        "doc_deleted"
+                    ],
+                    "type": "array"
+                },
+                "type": {
+                    "description": "A list of object types to handle",
+                    "items": [
+                        "account",
+                        "callflow",
+                        "device",
+                        "faxbox",
+                        "media",
+                        "user",
+                        "vmbox"
+                    ],
+                    "type": "array"
+                },
+                "types": {
+                    "description": "A list of object types to handle",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "name": "object"
+        }
+
      ],
-     "page_size": 3,
+     "page_size": 4,
      "request_id": "{REQUEST_ID}",
      "revision": "{REVISION}",
      "status": "success"
@@ -64,7 +101,7 @@ Some webhooks will also include a `modifiers` object; these are parameters speci
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 
-Any webhooks with *disable\_reason* in the summary has been auto-disabled.
+Any webhooks with *disable_reason* in the summary has been auto-disabled.
 
 ### Create webhook
 
@@ -166,29 +203,46 @@ Webhooks will auto-disable failing hooks (if Kazoo can't reach your server, or y
 
 ### Base Payload
 
-* hook\_event: The type of hook being fired
-* call\_direction: "inbound" or "outbound", relative to Kazoo
+* hook_event: The type of hook being fired
+* call_direction: "inbound" or "outbound", relative to Kazoo
 * timestamp: gregorian timestamp of the event
-* account\_id: ID of the account generating the event
+* account_id: ID of the account generating the event
 * request: SIP Request
 * to: SIP To
 * from: SIP From
-* call\_id: SIP Call ID
-* other\_leg\_call\_id: If bridged, the Call ID of the other leg
-* caller\_id\_name: Caller ID Name
-* caller\_id\_number: Caller ID Number
-* callee\_id\_name: Callee Name
-* callee\_id\_number: Callee Number
+* call_id: SIP Call ID
+* other_leg_call_id: If bridged, the Call ID of the other leg
+* caller_id_name: Caller ID Name
+* caller_id_number: Caller ID Number
+* callee_id_name: Callee Name
+* callee_id_number: Callee Number
 
 Most of these fields should be present on all payloads.
 
 ### Hook Specific
 
-* channel\_create
-    * hook\_event: channel\_create
-* channel\_answer
-    * hook\_event: channel\_answer
+* channel_create
+    * hook_event: channel_create
+* channel_answer
+    * hook_event: channel_answer
 * channel_destroy
-    * hook\_event: channel\_destroy
-    * hangup\_cause: SIP Hangup Cause (NORMAL\_CLEARING, ORIGINATOR\_CANCEL, etc)
-    * hangup\_code: SIP Hangup Code (404, 503, etc)
+    * hook_event: channel_destroy
+    * hangup_cause: SIP Hangup Cause (NORMAL_CLEARING, ORIGINATOR_CANCEL, etc)
+    * hangup_code: SIP Hangup Code (404, 503, etc)
+* doc
+    * hook_event: doc
+    * action: doc_created, doc_updated, doc_deleted
+    * type: user, vmbox, callflow, account, device, faxbox, media
+
+### Hook Specific Custom Data
+
+#### Doc
+
+To restrict the kind of doc or the action or both. You can set the custom data to:
+
+```json
+{
+   "type": "user",
+   "action": "doc_edited"
+}
+```

@@ -42,16 +42,13 @@ park_call(JObj, Props, Call) ->
     whapps_call:cache(Call, ?APP_NAME).
 
 -spec handle_route_win(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_route_win(JObj, Props) ->
+handle_route_win(JObj, _Props) ->
     lager:info("CCCP has received a route win, taking control of the call"),
     'true' = wapi_route:win_v(JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     case whapps_call:retrieve(CallId, ?APP_NAME) of
         {'ok', Call} ->
-            Call1 = whapps_call:kvs_store('consumer_pid', self(), whapps_call:from_route_win(JObj, Call)),
-            Call2 = whapps_call:kvs_store('server_pid', props:get_value('server', Props), Call1),
-            whapps_call:cache(Call2, ?APP_NAME),
-            handle_cccp_call(Call2);
+            handle_cccp_call(whapps_call:from_route_win(JObj, Call));
         {'error', _R} ->
             lager:debug("Unable to find call record during route_win")
     end.
@@ -86,7 +83,6 @@ handle_callback(CallerNumber, Call) ->
                                       ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
                                       ,{<<"Auth-Doc-Id">>, AuthDocId}
                                      ]),
-            timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
             cccp_callback_sup:new(JObj);
         E ->
             lager:info("No caller information found for ~p. Won't call it back. (~p)", [CallerNumber, E])

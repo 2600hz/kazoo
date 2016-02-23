@@ -14,21 +14,25 @@
 %% API functions
 %% ====================================================================
 -export([migrate/0, migrate/1, migrate/2]).
+-export([migrate_outbound_faxes/0, migrate_outbound_faxes/1]).
 -export([flush/0]).
 
 -export([restart_job/1 , update_job/2]).
 -export([account_jobs/1, account_jobs/2]).
 -export([faxbox_jobs/1, faxbox_jobs/2]).
 -export([pending_jobs/0, active_jobs/0]).
+-export([load_smtp_attachment/2]).
 
 -define(DEFAULT_MIGRATE_OPTIONS, []).
 -define(OVERRIDE_DOCS, ['override_existing_document']).
+-define(DEFAULT_BATCH_SIZE, 100).
 
 -spec migrate() -> 'ok'.
 migrate() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
     lists:foldr(fun(A, C) -> migrate_faxes_fold(A, C, Total,?DEFAULT_MIGRATE_OPTIONS) end, 1, Accounts),
+    migrate_outbound_faxes(),
     'ok'.
 
 -spec migrate(ne_binaries() | ne_binary()) -> 'ok'.
@@ -198,7 +202,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec flush() -> 'ok'.
-flush() -> wh_cache:flush_local(?FAX_CACHE).
+flush() -> kz_cache:flush_local(?FAX_CACHE).
 
 account_jobs(AccountId) ->
     account_jobs(AccountId, <<"pending">>).
@@ -282,10 +286,10 @@ pending_jobs() ->
 
 -spec active_jobs() -> 'no_return'.
 active_jobs() ->
-    io:format("+--------------------------------+--------------------------------+-------------------+----------------------------------+----------------------------------+----------------------+----------------------+~n", []),
-    FormatString = "| ~-30s | ~-30s | ~-17s | ~-32s | ~-32s | ~-20s | ~-20s |~n",
-    io:format(FormatString, [<<"Node">>, <<"Job">>, <<"Date">>, <<"Account">>, <<"From">>, <<"To">>]),
-    io:format("+================================+================================+===================+==================================+==================================+======================+======================+~n", []),
+    io:format("+----------------------+--------------------------------+-------------------+----------------------------------+----------------------------------+----------------------+----------------------+~n", []),
+    FormatString = "| ~-20s | ~-30s | ~-17s | ~-32s | ~-32s | ~-20s | ~-20s |~n",
+    io:format(FormatString, [<<"Node">>, <<"Job">>, <<"Date">>, <<"Account">>, <<"FaxBox">>, <<"From">>, <<"To">>]),
+    io:format("+======================+================================+===================+==================================+==================================+======================+======================+~n", []),
     _ = case couch_mgr:get_results(?WH_FAXES_DB, <<"faxes/processing_by_node">>) of
             {'ok', Jobs} ->
                 [io:format(FormatString, [wh_json:get_value([<<"value">>, <<"node">>], JObj)
@@ -300,7 +304,7 @@ active_jobs() ->
             {'error', _Reason} ->
                 io:format("Error getting faxes~n", [])
         end,
-    io:format("+--------------------------------+--------------------------------+-------------------+----------------------------------+----------------------------------+----------------------+----------------------+~n", []),
+    io:format("+----------------------+--------------------------------+-------------------+----------------------------------+----------------------------------+----------------------+----------------------+~n", []),
     'no_return'.
 
 -spec restart_job(binary()) -> 'no_return'.
@@ -312,8 +316,8 @@ restart_job(JobID) ->
         end,
     'no_return'.
 
--spec update_job(binary(), binary()) -> 'ok' | {'error', _}.
--spec update_job(binary(), binary(), wh_json:object()) -> 'ok' | {'error', _}.
+-spec update_job(binary(), binary()) -> 'ok' | {'error', any()}.
+-spec update_job(binary(), binary(), wh_json:object()) -> 'ok' | {'error', any()}.
 update_job(JobID, State) ->
     case couch_mgr:open_doc(?WH_FAXES_DB, JobID) of
         {'error', _}=E -> E;
@@ -337,4 +341,89 @@ update_job(JobID, State, JObj) ->
                                ,Opts
                               ),
             'ok'
+    end.
+
+-spec migrate_outbound_faxes() -> 'ok'.
+migrate_outbound_faxes() ->
+    migrate_outbound_faxes(?DEFAULT_BATCH_SIZE).
+
+-spec migrate_outbound_faxes(ne_binary() | integer() | wh_proplist()) -> 'ok'.
+migrate_outbound_faxes(Number) when is_binary(Number) ->
+    migrate_outbound_faxes(wh_util:to_integer(Number));
+migrate_outbound_faxes(Number) when is_integer(Number) ->
+    io:format("start migrating outbound faxes with batch size ~p~n", [Number]),
+    migrate_outbound_faxes([{'limit', Number}]);
+migrate_outbound_faxes(Options) ->
+    case couch_mgr:all_docs(?WH_FAXES_DB, Options) of
+        {'error', _E} ->
+            io:format("failed to crawl faxes db: ~p~n", [ _E]);
+        {'ok', []} ->
+            io:format("finished crawling faxes db~n");
+        {'ok', Docs} ->
+            Last = migrate_outbound_faxes(Docs, 'undefined'),
+            migrate_outbound_faxes([{'startkey', next_key(Last)}
+                                    ,{'limit', props:get_value('limit', Options)}
+                                   ])
+    end.
+
+-spec migrate_outbound_faxes(wh_json:objects(), api_binary()) -> api_binary().
+migrate_outbound_faxes([], Acc) -> Acc;
+migrate_outbound_faxes([JObj | JObjs], _Acc) ->
+    DocId = wh_doc:id(JObj),
+    maybe_migrate_outbound_fax(DocId),
+    migrate_outbound_faxes(JObjs, DocId).
+
+-spec maybe_migrate_outbound_fax(ne_binary()) -> 'ok'.
+maybe_migrate_outbound_fax(<<"_design/", _/binary>>) -> 'ok';
+maybe_migrate_outbound_fax(DocId) ->
+    case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
+        {'ok', Doc} -> maybe_migrate_outbound_fax(wh_doc:type(Doc), Doc);
+        {'error', _E} -> io:format("error opening document ~s in faxes db~n", [DocId])
+    end.
+
+-spec maybe_migrate_outbound_fax(api_binary(), wh_json:object()) -> 'ok'.
+maybe_migrate_outbound_fax(<<"fax">>, JObj) ->
+    case wh_json:get_value(<<"pvt_job_status">>, JObj) of
+        <<"failed">> -> migrate_outbound_fax(JObj);
+        <<"completed">> -> migrate_outbound_fax(JObj);
+        _ -> 'ok'
+    end;
+maybe_migrate_outbound_fax(_Type, _JObj) -> 'ok'.
+
+-spec migrate_outbound_fax(wh_json:object()) -> 'ok'.
+migrate_outbound_fax(JObj) ->
+    FromId = wh_doc:id(JObj),
+    {Year, Month, _D} = wh_util:to_date(wh_doc:created(JObj)),
+    FromDB = wh_doc:account_db(JObj),
+    AccountId = wh_doc:account_id(JObj),
+    AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
+    kazoo_modb:create(AccountMODb),
+    ToDB = wh_util:format_account_modb(AccountMODb, 'encoded'),
+    ToId = ?MATCH_MODB_PREFIX(wh_util:to_binary(Year), wh_util:pad_month(Month),FromId),
+    case couch_mgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']) of
+        {'ok', _} -> io:format("document ~s/~s moved to ~s/~s~n", [FromDB, FromId, ToDB, ToId]);
+        {'error', _E} -> io:format("error ~p moving document ~s/~s to ~s/~s~n", [_E, FromDB, FromId, ToDB, ToId])
+    end.
+
+-spec next_key(binary()) -> ne_binary().
+next_key(<<>>) ->
+    <<"\ufff0">>;
+next_key(Bin) ->
+    <<Bin/binary, "\ufff0">>.
+
+-spec load_smtp_attachment(ne_binary(), ne_binary()) -> 'ok'.
+load_smtp_attachment(DocId, Filename) ->
+    case file:read_file(Filename) of
+        {'ok', FileContents} ->
+            CT = kz_mime:from_filename(Filename),
+            case couch_mgr:open_doc(?WH_FAXES_DB, DocId) of
+                {'ok', JObj} ->
+                    case fax_util:save_fax_attachment(JObj, FileContents, CT) of
+                        {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);
+                        {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
+                    end;
+                {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p~n", [DocId, Filename, E])
+            end;
+        Error ->
+            io:format("error obtaining file ~s contents for docid ~s : ~p~n", [Filename, DocId, Error])
     end.

@@ -23,11 +23,17 @@
 -export([hard_stop/1]).
 -export([transfer/1]).
 -export([control_usurped/1]).
+-export([channel_destroyed/1]).
+-export([stop_on_destroy/1
+         ,continue_on_destroy/1
+        ]).
 -export([get_branch_keys/1, get_all_branch_keys/1]).
 -export([attempt/1, attempt/2]).
 -export([wildcard_is_empty/1]).
 -export([callid_update/2]).
 -export([add_event_listener/2]).
+-export([next/1, next/2]).
+-export([update_call/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -41,6 +47,8 @@
 
 -include("callflow.hrl").
 -include_lib("whistle/src/wh_json.hrl").
+
+-define(SERVER, ?MODULE).
 
 -define(CALL_SANITY_CHECK, 30000).
 
@@ -56,22 +64,24 @@
                 ,flow = wh_json:new() :: wh_json:object()
                 ,flows = [] :: wh_json:objects()
                 ,cf_module_pid :: {pid(), reference()} | 'undefined'
+                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
                 ,self = self()
+                ,stop_on_destroy = 'true' :: boolean()
+                ,destroyed = 'false' :: boolean()
+                ,branch_count :: non_neg_integer()
                }).
 -type state() :: #state{}.
+
+-define(MAX_BRANCH_COUNT, whapps_config:get_integer(?CF_CONFIG_CAT, <<"max_branch_count">>, 50)).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {'ok', Pid} | 'ignore' | {'error', Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
@@ -79,7 +89,7 @@ start_link(Call) ->
     Bindings = [{'call', [{'callid', CallId}]}
                 ,{'self', []}
                ],
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', Bindings}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
@@ -97,6 +107,11 @@ get_call(Call) ->
 set_call(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     gen_server:cast(Srv, {'set_call', Call}).
+
+-spec update_call(whapps_call:call(), list()) -> whapps_call:call().
+update_call(Call, Routines) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    gen_server:call(Srv, {'update_call', Routines}).
 
 -spec continue(whapps_call:call() | pid()) -> 'ok'.
 -spec continue(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
@@ -121,6 +136,16 @@ branch(Flow, Srv) when is_pid(Srv) ->
 branch(Flow, Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
+
+-spec next(whapps_call:call() | pid()) -> api_object().
+-spec next(ne_binary(), whapps_call:call() | pid()) -> api_object().
+next(Srv) -> next(<<"_">>, Srv).
+
+next(Key, Srv) when is_pid(Srv) ->
+    gen_listener:call(Srv, {'next', Key});
+next(Key, Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    next(Key, Srv).
 
 -spec add_event_listener(whapps_call:call() | pid(), {atom(), list()}) -> 'ok'.
 add_event_listener(Srv, {_,_}=SpawnInfo) when is_pid(Srv) ->
@@ -155,6 +180,27 @@ control_usurped(Srv) when is_pid(Srv) ->
 control_usurped(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     control_usurped(Srv).
+
+-spec channel_destroyed(whapps_call:call() | pid()) -> 'ok'.
+channel_destroyed(Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, 'channel_destroyed');
+channel_destroyed(Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    channel_destroyed(Srv).
+
+-spec stop_on_destroy(whapps_call:call() | pid()) -> 'ok'.
+stop_on_destroy(Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, 'stop_on_destroy');
+stop_on_destroy(Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    stop_on_destroy(Srv).
+
+-spec continue_on_destroy(whapps_call:call() | pid()) -> 'ok'.
+continue_on_destroy(Srv) when is_pid(Srv) ->
+    gen_listener:cast(Srv, 'continue_on_destroy');
+continue_on_destroy(Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    continue_on_destroy(Srv).
 
 -spec callid_update(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 callid_update(CallId, Srv) when is_pid(Srv) ->
@@ -208,10 +254,10 @@ get_all_branch_keys(Call) ->
 
 -spec attempt(whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', term()}}.
+                     {'attempt_resp', {'error', any()}}.
 -spec attempt(ne_binary(), whapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', term()}}.
+                     {'attempt_resp', {'error', any()}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).
 
 attempt(Key, Srv) when is_pid(Srv) ->
@@ -261,7 +307,9 @@ init([Call]) ->
     CallId = whapps_call:call_id(Call),
     wh_util:put_callid(CallId),
     gen_listener:cast(self(), 'initialize'),
-    {'ok', #state{call=Call}}.
+    {'ok', #state{call=Call
+                  ,branch_count = ?MAX_BRANCH_COUNT
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -277,6 +325,9 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
+    NewCall = whapps_call:exec(Routines, Call),
+    {'reply', NewCall, State#state{call=NewCall}};
 handle_call('get_call', _From, #state{call=Call}=State) ->
     {'reply', {'ok', Call}, State};
 handle_call('callid', _From, #state{call=Call}=State) ->
@@ -307,6 +358,15 @@ handle_call('wildcard_is_empty', _From, #state{flow = Flow}=State) ->
         'undefined' -> {'reply', 'true', State};
         ChildFlow -> {'reply', wh_json:is_empty(ChildFlow), State}
     end;
+handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
+    {'reply'
+     ,wh_json:get_first_defined([[<<"children">>, Key]
+                                 ,[<<"children">>, <<"_">>]
+                                ]
+                                ,Flow
+                               )
+     ,State
+    };
 handle_call(_Request, _From, State) ->
     Reply = {'error', 'unimplemented'},
     {'reply', Reply, State}.
@@ -323,11 +383,15 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
+handle_cast({'continue', _}, #state{stop_on_destroy='true'
+                                    ,destroyed='true'
+                                   }=State) ->
+    lager:info("channel no longer active, not continuing"),
+    hard_stop(self()),
+    {'noreply', State};
 handle_cast({'continue', Key}, #state{flow=Flow
-                                      ,cf_module_pid=OldPidRef
                                      }=State) ->
     lager:info("continuing to child '~s'", [Key]),
-    maybe_stop_caring(OldPidRef),
 
     case wh_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
@@ -351,17 +415,38 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
+handle_cast('channel_destroyed', State) ->
+    {'noreply', State#state{destroyed='true'}};
+handle_cast('stop_on_destroy', State) ->
+    {'noreply', State#state{stop_on_destroy='true'}};
+handle_cast('continue_on_destroy', State) ->
+    {'noreply', State#state{stop_on_destroy='false'}};
 handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
-handle_cast({'branch', NewFlow}, #state{flow=Flow, flows=Flows}=State) ->
+
+handle_cast({'branch', _NewFlow}, #state{branch_count=BC}=State) when BC =< 0 ->
+    lager:warning("callflow exceeded max branch count, terminating"),
+    {'stop', 'normal', State};
+handle_cast({'branch', NewFlow}, #state{flow=Flow
+                                        ,flows=Flows
+                                        ,branch_count=BC
+                                       }=State) ->
     lager:info("callflow has been branched"),
     case wh_json:get_ne_value([<<"children">>, <<"_">>], Flow) of
         'undefined' ->
-            {'noreply', launch_cf_module(State#state{flow=NewFlow})};
+            {'noreply', launch_cf_module(State#state{flow=NewFlow
+                                                     ,branch_count=BC-1
+                                                    })};
         PrevFlow ->
-            {'noreply', launch_cf_module(State#state{flow=NewFlow, flows=[PrevFlow|Flows]})}
+            {'noreply', launch_cf_module(State#state{flow=NewFlow
+                                                     ,flows=[PrevFlow|Flows]
+                                                     ,branch_count=BC-1
+                                                    }
+                                        )
+            }
     end;
+
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     wh_util:put_callid(NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
@@ -371,30 +456,19 @@ handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     lager:info("binding to new call events"),
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
     {'noreply', State#state{call=whapps_call:set_call_id(NewCallId, Call)}};
-handle_cast({'add_event_listener', {M, A}}, #state{call=Call}=State) ->
-    lager:debug("trying to start evt listener ~s: ~p", [M, A]),
-    try cf_event_handler_sup:new(event_listener_name(Call, M), M, [whapps_call:clear_helpers(Call) | A]) of
-        {'ok', P} when is_pid(P) ->
-            lager:debug("started event listener ~p from ~s", [P, M]),
-            {'noreply', State};
-        _E ->
-            lager:debug("error starting event listener: ~p", [_E]),
-            {'noreply', State}
-    catch
-        _:_R ->
-            lager:info("failed to spawn ~s:~s: ~p", [M, _R]),
-            {'noreply', State}
-    end;
-handle_cast('initialize', #state{call=Call}) ->
+handle_cast({'add_event_listener', {Mod, Args}}, #state{call=Call}=State) ->
+    cf_util:start_event_listener(Call, Mod, Args),
+    {'noreply', State};
+handle_cast('initialize', #state{call=Call}=State) ->
     log_call_information(Call),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> whapps_call:kvs_store('consumer_pid', self(), C) end
-                ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
-                ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
+                ,fun(C) -> whapps_call:call_id_helper(fun ?MODULE:callid/2, C) end
+                ,fun(C) -> whapps_call:control_queue_helper(fun ?MODULE:control_queue/2, C) end
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
-    _ = wh_util:spawn('cf_singular_call_hooks', 'maybe_hook_call', [CallWithHelpers]),
-    {'noreply', #state{call=CallWithHelpers
+    _ = wh_util:spawn(fun cf_singular_call_hooks:maybe_hook_call/1, [CallWithHelpers]),
+    {'noreply', State#state{call=CallWithHelpers
                        ,flow=Flow
                       }};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
@@ -412,10 +486,6 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
-
--spec event_listener_name(whapps_call:call(), atom() | ne_binary()) -> ne_binary().
-event_listener_name(Call, Module) ->
-    <<(whapps_call:call_id_direct(Call))/binary, "-", (wh_util:to_binary(Module))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -443,13 +513,11 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, R
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'DOWN', _Ref, 'process', _Pid, 'normal'}, State) ->
     {'noreply', State};
-handle_info({'EXIT', Pid, 'normal'}, #state{call=Call
+handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
+                                            ,call=Call
                                            }=State) ->
+    erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
-    _ = case State#state.cf_module_pid of
-            {Pid, Ref} -> erlang:demonitor(Ref, ['flush']);
-            _ -> lager:debug("process ~s terminated normally", [Pid])
-        end,
     {'noreply', State#state{cf_module_pid='undefined'}};
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                            ,call=Call
@@ -459,6 +527,19 @@ handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
+handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_old_pid={Pid, Ref}
+                                            ,call=Call
+                                           }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_old_action', Call)]),
+    {'noreply', State#state{cf_module_old_pid='undefined'}};
+handle_info({'EXIT', Pid, _Reason}, #state{cf_module_old_pid={Pid, Ref}
+                                           ,call=Call
+                                          }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    LastAction = whapps_call:kvs_fetch('cf_old_action', Call),
+    lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
+    {'noreply', State#state{cf_module_old_pid='undefined'}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -475,6 +556,16 @@ handle_event(JObj, #state{cf_module_pid=PidRef
     CallId = whapps_call:call_id_direct(Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
+        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
+            channel_destroyed(Self),
+            {'reply', [{'cf_module_pid', get_pid(PidRef)}
+                       ,{'cf_event_pids', Others}
+                      ]};
+        {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->
+            channel_destroyed(Self),
+            {'reply', [{'cf_module_pid', get_pid(PidRef)}
+                       ,{'cf_event_pids', Others}
+                      ]};
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
             ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
             TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
@@ -526,7 +617,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
             {'reply', [{'cf_event_pids', Others}]}
     end.
 
--spec get_pid({pid(), _}) -> pid().
+-spec get_pid({pid(), any()}) -> pid().
 get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
@@ -594,27 +685,26 @@ launch_cf_module(#state{flow=?EMPTY_JSON_OBJECT}=State) ->
     State;
 launch_cf_module(#state{call=Call
                         ,flow=Flow
+                        ,cf_module_pid=OldPidRef
                        }=State) ->
-    lager:debug("launching next flow module: ~p", [Flow]),
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {PidRef, Action} = maybe_start_cf_module(Module, Data, Call),
     link(get_pid(PidRef)),
+    OldAction = whapps_call:kvs_fetch('cf_last_action', Call),
+    Routines = [{fun whapps_call:kvs_store/3, 'cf_old_action', OldAction}
+                ,{fun whapps_call:kvs_store/3, 'cf_last_action', Action}
+               ],
     State#state{cf_module_pid=PidRef
-                ,call=whapps_call:kvs_store('cf_last_action', Action, Call)
+                ,cf_module_old_pid=OldPidRef
+                ,call=whapps_call:exec(Routines, Call)
                }.
-
-maybe_stop_caring('undefined') -> 'ok';
-maybe_stop_caring({P, R}) ->
-    unlink(P),
-    erlang:demonitor(R, ['flush']),
-    lager:debug("stopped caring about ~p(~p)", [P, R]).
 
 -spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
                                    {{pid(), reference()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = wh_util:to_atom(ModuleBin, 'true'),
-    try CFModule:module_info('imports') of
+    try CFModule:module_info('exports') of
         _ ->
             lager:info("moving to action '~s'", [CFModule]),
             spawn_cf_module(CFModule, Data, Call)
@@ -639,23 +729,27 @@ cf_module_not_found(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec spawn_cf_module(CFModule, list(), whapps_call:call()) ->
-                             {{pid(), reference()}, CFModule}.
+                             {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = wh_amqp_channel:consumer_pid(),
-    {spawn_monitor(
-       fun() ->
-               _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
-               wh_util:put_callid(whapps_call:call_id_direct(Call)),
-               try CFModule:handle(Data, Call) of
-                   Result -> Result
-               catch
-                   _E:R ->
-                       ST = erlang:get_stacktrace(),
-                       lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-                       wh_util:log_stacktrace(ST),
-                       throw(R)
-               end
-       end), CFModule}.
+    {wh_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
+     ,CFModule
+    }.
+
+%% @private
+-spec cf_module_task(atom(), list(), whapps_call:call(), pid()) -> any().
+cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
+    _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
+    wh_util:put_callid(whapps_call:call_id_direct(Call)),
+    try CFModule:handle(Data, Call) of
+        Result -> Result
+    catch
+        _E:R ->
+            ST = erlang:get_stacktrace(),
+            lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
+            wh_util:log_stacktrace(ST),
+            throw(R)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

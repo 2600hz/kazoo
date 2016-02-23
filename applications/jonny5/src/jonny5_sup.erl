@@ -11,6 +11,8 @@
 
 -include("jonny5.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([init/1]).
 
@@ -23,6 +25,7 @@
 -define(CHILDREN, [?CACHE_ARGS(?JONNY5_CACHE, ?CACHE_PROPS)
                    ,?WORKER('jonny5_listener')
                    ,?WORKER('j5_channels')
+                   ,?WORKER('j5_balance_crawler_fsm')
                   ]).
 
 %% ===================================================================
@@ -31,13 +34,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -52,7 +53,7 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     wh_util:set_startup(),
     RestartStrategy = 'one_for_one',

@@ -8,9 +8,10 @@
 -define(CONFIG_CAT, <<"fax">>).
 
 -define(APP_NAME, <<"fax">>).
--define(APP_VERSION, <<"1.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(FAX_CACHE, 'fax_cache').
+-define(FAX_WORKER_POOL, 'fax_worker_pool').
 
 -define(FAX_CHANNEL_DESTROY_PROPS, [<<"Ringing-Seconds">>, <<"Billing-Seconds">>
                                     ,<<"0">>, <<"Duration-Seconds">>
@@ -58,6 +59,11 @@
                                         ,<<"application/vnd.ms-excel">>
                                         ,<<"application/vnd.ms-powerpoint">>
                                        ]).
+
+-define(SMTP_MSG_MAX_SIZE, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_max_msg_size">>, 10485670)).
+-define(SMTP_EXTENSIONS, [{"SIZE", wh_util:to_list(?SMTP_MSG_MAX_SIZE)}]).
+-define(SMTP_CALLBACK_OPTIONS, {'callbackoptions', ['extensions', ?SMTP_EXTENSIONS]}).
+-define(SMTP_PORT, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)).
 
 -define(FAX_HRL, 'true').
 -endif.

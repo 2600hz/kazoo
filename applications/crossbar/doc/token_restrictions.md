@@ -8,20 +8,21 @@ Language: en-US
 Module `cb_token_restrictions`.
 
 ## What is it?
-Token restrictions - set of rules saved in auth token document. This rules grant access to API URI-s.
-**If token document dont have any set of rules - then this module dont apply any restrictions to request.**
-This rules created when the system create auth token.
+Token restrictions - set of rules saved in auth token document. These rules grant access to API URIs.
+**If the token document doesn't have any rules then this module won't apply any restrictions to request.**
+These rules are created when the system creates an auth token.
 Rules can be loaded from system template or account template.
 System template located in `system_config/crossbar.token_restrictions`.
-Account template located in `{AccountDB}/token_restrictions`.
+Account template located in `{ACCOUNT_DB}/token_restrictions`.
 
 ## How it works?
-When you make request to Crossbar (API), the system load rules from token, which used for authentitcation, and try apply this rules to URI (`/v1/accounts/1234...xyz/devices/123...xyz/`).
-More information about URI structure you can find [here](basics.md).
-If system not found match for all parameters (endpoint name, account id, endpoint arguments, HTTP method), then it halt this request and return 403 error.
+When you make request to Crossbar (API), the system loads rules from auth token (used for authentitcation) and tries to apply the rules to URI (`/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/`).
+More information about URI structure can be found [here](basics.md).
+If Crossbar doesn't find a match for all parameters (endpoint name, account id, endpoint arguments, HTTP method), then it halts the request and returns a 403 error.
 
 ## Template structure
-Each template can have differnet rules for different authentication method and user privelege level.
+Each template can have different rules for different authentication methods and user privelege levels.
+
 ```JSON
 {
   "AUTH_METHOD_1": {
@@ -41,11 +42,13 @@ Each template can have differnet rules for different authentication method and u
   ...
 }
 ```
-`AUTH_METHOD_#` - name of used authentication method (`cb_api_auth`, `cb_user_auth`, etc) which created this auth token.
-`PRIV_LEVEL_#` - name of privilege level of authenticated user (`admin`, `user`, etc). This level set in `priv_level` property of user document. If authentication method dont have usern id (such as `cb_api_auth`) then select `admin` set of rules.
-`RULES` - set of rules which will be saved in auth token document.
-Auth method and priv level can be matched with "catch all" term - `"_"`. If no exact match for auth method or priv level, then system try use "catch all" rules.
-This search made at moment when token is created and result of this search will be saved in token document and applied to any further reqest, authenticated by this token.
+
+* `AUTH_METHOD_#` - name of authentication method (`cb_api_auth`, `cb_user_auth`, etc) which created this auth token.
+* `PRIV_LEVEL_#` - name of privilege level of authenticated user (`admin`, `user`, etc). This level is set in `priv_level` property of user document. If authentication method doesn't have a user associated (such as `cb_api_auth`) then select `admin` set of rules.
+* `RULES` - set of rules which will be saved in auth token document.
+
+Auth method and priv level can be matched with "catch all" term - `"_"`. If no exact match for auth method or priv level is found, the system will look for the 'catch all' rules, if any.
+The rules are loaded into the auth token document when it is created (after successful authentication) and will be applied to any request using the auth token created.
 
 Example template:
 ```JSON
@@ -70,6 +73,7 @@ Example template:
 ```
 
 ## Rules structure (saved in token document)
+
 ```JSON
 {
   "ENDPOINT_1": [
@@ -113,19 +117,19 @@ Example template:
   ...
 }
 ```
-`ENDPOINT_#` - any appropriate name of endpoint (`"devices"`, `"users"`, `"callflows"`, etc)
-`ACCOUNT_ID_#` - any appropriate account ID
-`ARG_#` - arguments for endpoint separated by `/`
-`VERB_#` - any appropriate HTTP method (`"GET"`, `"PUT"`, etc)
 
+* `ENDPOINT_#` - API endpoints (`"devices"`, `"users"`, `"callflows"`, etc)
+* `ACCOUNT_ID_#` - any appropriate account ID
+* `ARG_#` - arguments for endpoint separated by `/`
+* `VERB_#` - any appropriate HTTP method (`"GET"`, `"PUT"`, etc)
 
 ## Match order
 
 ### Endpoint match
 At this step module compare resource from URI with resource names in token restrictions.
-If URI is `/v1/accounts/1234...890/users/abc/xyz/` then endpoint will be `users`, and `abc`, `xyz` is arguments of this endpoint.
+If URI is `/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/{MODIFIER}/` then endpoint will be `users`, and `{USER_ID}`, `{MODIFIER}` are arguments of this endpoint.
 Rules applied to the last endpoint in URI.
-You can use "catch all" (`"_"`) endpoint name. First try found exact endpoint name, then try search for "catch all" name.
+You can use "catch all" (`"_"`) endpoint name. First tries exact endpoint name; if not found, try the catch-all (if it exists).
 
 ```JSON
 {
@@ -142,18 +146,21 @@ You can use "catch all" (`"_"`) endpoint name. First try found exact endpoint na
   ]
 }
 ```
-If not found match for endpoint- this request is halted and returned 403 error.
-Each endpoint contain list of objects with rules. Appropriate object select by `"allowed_account"` parameter.
+
+If a match is not found for the endpoint, this request is halted and a 403 error returned.
+Each endpoint contains a list of objects with rules. Appropriate object is selected by `"allowed_account"` parameter.
 
 ### Account match
-After system found endpoint it try match account ID for this request.
+
+After Crossbar finds the endpoint it tries to find rules for the requested account.
+
 ```JSON
 {
   "devices": [
     {
       "allowed_accounts": [
-        "90b771808407e7079bfc206d5e3c1a8a",
-        "83a5cb95ac8ce8bc79d6f9b148004cf4",
+        "{ACCOUNT_1_ID}",
+        "{ACCOUNT_2_ID}",
         "{AUTH_ACCOUNT_ID}"
       ],
       "rules": {
@@ -171,61 +178,97 @@ After system found endpoint it try match account ID for this request.
   ]
 }
 ```
- List of account IDs set in parameter `"allowed_accounts"`. You can write axact IDs or one of special macroses.
- `"{AUTH_ACCOUNT_ID}"` - match account which created auth token.
- `"{DESCENDANT_ACCOUNT_ID}"` - match any descendats accounts.
- `"_"` - match any account.
- **If object dont have parameter `"allowed_accounts"` then it match any account (equal to `"_"`).**
 
- ### Endpoint arguments match
- Endpoint argumnets matched with parameter `"rules"`.
- ```JSON
+List of account IDs set in parameter `"allowed_accounts"`. You can write exact IDs or one of the following special macros:
+
+* `"{AUTH_ACCOUNT_ID}"` - match request account id to the account of the auth token
+* `"{DESCENDANT_ACCOUNT_ID}"` - match any descendants of the auth account
+* `"_"` - match any account. **If the `"allowed_accounts"` parameter is missing, it is treated as a catch-all**
+
+The first endpoint-rule object matched to the requested account will be used in the next step of argument matching.
+
+### Endpoint arguments match
+
+Endpoint argumnets matched with parameter `"rules"`.
+
+```JSON
 {
   "devices": [
     {
       "allowed_accounts": [
-        "90b771808407e7079bfc206d5e3c1a8a"
+        "{ACCOUNT_ID}"
       ],
       "rules": {
         "/": [ ... ],
-        "1f6d4b82b4baafc74ba83186ee04b3d5": [ ... ],
+        "{DEVICE_ID}": [ ... ],
         "*": [ ... ]
       }
     }
   ]
 }
 ```
+
 The search is performed in the order in which they appear in the rules for first match. No more search after that.
 
-`/` - match empty argument list (catch `/v1/accounts/90b771808407e7079bfc206d5e3c1a8a/devices`).
+`/` - match empty argument list:
+**Matches**
+* `/v2/accounts/{ACCOUNT_ID}/devices`
 
-`*` - match any non empty argument (catch `.../devices/f61dd570039038eb97d7c656fe57ed9c`, but not `.../devices/f61dd570039038eb97d7c656fe57ed9c/sync`).
+`*` - match any single, non-empty argument
 
-`#` - match any argument list, empty to (catch `.../devices`, `.../devices/f61dd570039038eb97d7c656fe57ed9c`, `.../devices/f61dd570039038eb97d7c656fe57ed9c/sync`, etc). Single `#` work as "catch all" rule.
+**Matches**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_1_ID}`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_2_ID}`
+* etc
 
-`1f6d4b82b4baafc74ba83186ee04b3d5` - exact match (catch only `.../devices/1f6d4b82b4baafc74ba83186ee04b3d5`)
+**Doesn't Match**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
 
-If you have more than one argumnets, write them in one string, seprate with `/`.You can mix the with special characters, from above.
+`#` - match any arguments (or no arguments)
+**Matches**
+* `/v2/accounts/{ACCOUNT_ID}/devices`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
+* etc
 
-`*/*/*` - match eactly three arguments (catch `.../devices/1f6d4b82b4baafc74ba83186ee04b3d5/quickcall/+1234567890`).
+`{DEVICE_ID}` - exact match
+**Matches**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
 
-`f61dd570039038eb97d7c656fe57ed9c/#` - match `.../devices/1f6d4b82b4baafc74ba83186ee04b3d5`, `.../devices/1f6d4b82b4baafc74ba83186ee04b3d5/sync`, `.../devices/1f6d4b82b4baafc74ba83186ee04b3d5/quickcall/+1234567890`, etc.
+**Doesn't Match**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_1_ID}`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_2_ID}`
+* etc
+
+For matching more than one argument, you can use `/` to delineate how to process the arguments. You can mix and match special characters, explicit strings, etc.
+
+`*/*/*` - match exactly three arguments
+**Matches**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{DID}`
+
+`{DEVICE_ID}/#` - matches `{DEVICE_ID}` plus 0 or more arguments
+**Matches**
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync`
+* `/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{DID}`
+* etc
 
 ### HTTP method match
-After matching endpoint arguments, system try match HTTP method, used in this request.
- ```JSON
+If endpoint matching fails to find a match, Crossbar will try to match the HTTP method used.
+
+```JSON
 {
   "devices": [
     {
       "allowed_accounts": [
-        "90b771808407e7079bfc206d5e3c1a8a"
+        "{ACCOUNT_ID}"
       ],
       "rules": {
         "/": [
           "GET",
           "PUT"
         ],
-        "1f6d4b82b4baafc74ba83186ee04b3d5": [
+        "{DEVICE_ID}": [
           "_"
         ],
         "#": [
@@ -236,26 +279,26 @@ After matching endpoint arguments, system try match HTTP method, used in this re
   ]
 }
 ```
-List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE") or "allow any" method - `"_"`.
+
+List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE") or the "catch all" - `"_"`.
 
 ## Manage accounts templates
+
 ### Get current account template
-`GET /v1/accounts/{ACCOUNT_ID}/token_restrictions` return JSON like this:
+
+`GET /v2/accounts/{ACCOUNT_ID}/token_restrictions` return JSON like this:
+
 ```JSON
 {
   "data": {
     "restrictions": {
-      "_": {
-        "_": {
-          "about": [
+      "{AUTH_METHOD}": {
+        "{PRIV_LEVEL}": {
+          "{API_ENDPOINT}": [
             {
-              "allowed_accounts": [
-                "_"
-              ],
+              "allowed_accounts": {ACCOUNT_IDS},
               "rules": {
-                "/": [
-                  "GET"
-                ]
+                "{ARGUMENT_MATCH}":{HTTP_METHODS}
               }
             }
           ]
@@ -265,10 +308,13 @@ List can contain any valid HTTP method ("GET", "PUT", "POST", "PATCH", "DELETE")
   }
 }
 ```
-If account dont have token restrictions template - return 404 error.
+
+If the account doesn't have token restrictions, the API will return a 404 error.
 
 ### Create/update account template
-`POST /v1/accounts/{ACCOUNT_ID}/token_restrictions`
+
+`POST /v2/accounts/{ACCOUNT_ID}/token_restrictions`
+
 ```JSON
 {
   "data": {
@@ -295,4 +341,5 @@ If account dont have token restrictions template - return 404 error.
 ```
 
 ### Delete account template
-`DELETE /v1/accounts/{ACCOUNT_ID}/token_restrictions`
+
+`DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions`

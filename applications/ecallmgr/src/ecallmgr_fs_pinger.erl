@@ -35,8 +35,9 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
 start_link(Node, Options) ->
-    gen_server:start_link(?MODULE, [Node, Options], []).
+    gen_server:start_link(?SERVER, [Node, Options], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -131,6 +132,8 @@ handle_info('check_node_status', #state{node=Node, timeout=Timeout}=State) ->
             erlang:send_after(Timeout, self(), 'check_node_status'),
             {'noreply', State, 'hibernate'}
     end;
+handle_info('exit', State) ->
+    {stop, normal, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.

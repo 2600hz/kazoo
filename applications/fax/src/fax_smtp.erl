@@ -31,6 +31,8 @@
 
 -define(RELAY, 'true').
 -define(SMTP_MAX_SESSIONS, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_sessions">>, 50)).
+-define(DEFAULT_IMAGE_SIZE_CMD_FMT, <<"echo -n `identify -format \"%[fx:w]x%[fx:h]\" ~s`">>).
+-define(IMAGE_SIZE_CMD_FMT, whapps_config:get_binary(?CONFIG_CAT, <<"image_size_cmd_format">>, ?DEFAULT_IMAGE_SIZE_CMD_FMT)).
 
 -record(state, {
           options = [] :: list()
@@ -78,22 +80,13 @@ init(Hostname, SessionCount, Address, Options) ->
                          {'ok', pos_integer(), state()} |
                          {'ok', state()} |
                          error_message().
-handle_HELO(<<"invalid">>, State) ->
-    %% contrived example
-    {'error', "554 invalid hostname", State};
-handle_HELO(<<"trusted_host">>, State) ->
-    {'ok', State}; %% no size limit because we trust them.
 handle_HELO(Hostname, State) ->
-    lager:debug("HELO from ~s", [Hostname]),
-    {'ok', 655360, State}. % 640kb of HELO should be enough for anyone.
-%% If {ok, State} was returned here, we'd use the default 10mb limit
+   lager:debug("HELO from ~s, max message size is ~B", [Hostname, ?SMTP_MSG_MAX_SIZE]),
+   {'ok', ?SMTP_MSG_MAX_SIZE, State}.
 
 -spec handle_EHLO(binary(), list(), state()) ->
                          {'ok', list(), state()} |
                          error_message().
-handle_EHLO(<<"invalid">>, _Extensions, State) ->
-    %% contrived example
-    {'error', "554 invalid hostname", State};
 handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
     lager:debug("EHLO from ~s", [Hostname]),
     %% You can advertise additional extensions, or remove some defaults
@@ -106,31 +99,38 @@ handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
                             | Extensions
                            ]
                    end,
-    {'ok', MyExtensions, State}.
+    {'ok', filter_extensions(MyExtensions, Options), State}.
+
+-spec filter_extensions(wh_proplist(), wh_proplist()) -> wh_proplist().
+filter_extensions(BuilIn, Options) ->
+   Extensions = props:get_value('extensions', Options, ?SMTP_EXTENSIONS),
+   lists:filter(fun({N,_}) -> not props:is_defined(N, Extensions) end, BuilIn) ++ Extensions.
 
 -spec handle_MAIL(binary(), state()) -> {'ok', state()}.
-handle_MAIL(From, State) ->
+handle_MAIL(FromHeader, State) ->
+    From = wh_util:to_lower_binary(FromHeader),
     lager:debug("Checking Mail from ~s", [From]),
     {'ok', State#state{from=From}}.
 
 -spec handle_MAIL_extension(binary(), state()) ->
                                    'error'.
 handle_MAIL_extension(Extension, _State) ->
-    Error = io_lib:format("554 Unknown MAIL FROM extension ~s", [Extension]),
+    Error = wh_util:to_binary(io_lib:format("554 Unknown MAIL FROM extension ~s", [Extension])),
     lager:debug(Error),
     'error'.
 
 -spec handle_RCPT(binary(), state()) ->
                          {'ok', state()} |
                          {'error', string(), state()}.
-handle_RCPT(To, State) ->
+handle_RCPT(ToHeader, State) ->
+    To = wh_util:to_lower_binary(ToHeader),
     lager:debug("Checking Mail to ~s", [To]),
     check_faxbox((reset(State))#state{to=To}).
 
 -spec handle_RCPT_extension(binary(), state()) ->
                                    'error'.
 handle_RCPT_extension(Extension, _State) ->
-    Error = io_lib:format("554 Unknown RCPT TO extension ~s", [Extension]),
+    Error = wh_util:to_binary(io_lib:format("554 Unknown RCPT TO extension ~s", [Extension])),
     lager:debug(Error),
     'error'.
 
@@ -146,7 +146,7 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
     %% JMA: Can this be done with wh_util:rand_hex_binary() ?
     Reference = lists:flatten(
                   [io_lib:format("~2.16.0b", [X])
-                   || <<X>> <= erlang:md5(term_to_binary(erlang:now()))
+                   || <<X>> <= erlang:md5(term_to_binary(wh_util:now()))
                   ]),
 
     try mimemail:decode(Data) of
@@ -198,8 +198,8 @@ handle_other(<<"PROXY">>, Args, State) ->
     {State};
 handle_other(Verb, Args, State) ->
     %% You can implement other SMTP verbs here, if you need to
-    lager:debug("500 Error: command not recognized : ~p / ~p",[Verb,Args]),
-    {["500 Error: command not recognized : '", wh_util:to_list(Verb), "'"], State}.
+    lager:debug("500 Error: command not recognized : '~s ~s'",[Verb,Args]),
+    {["500 Error: command not recognized : '", Verb, "'"], State}.
 
 -spec handle_AUTH('login' | 'plain' | 'cram-md5', binary(), binary() | {binary(), binary()}, state()) ->
                          'error'.
@@ -211,13 +211,13 @@ handle_STARTTLS(State) ->
     lager:debug("SMTP TLS Started"),
     State.
 
--spec code_change(_, state(), _) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec terminate(_, state()) ->  {'ok', _, state()}.
+-spec terminate(any(), state()) ->  {'ok', any(), state()}.
 terminate('normal', State) ->
-    _ = wh_util:spawn(fun()-> handle_message(State) end),
+    _ = wh_util:spawn(fun handle_message/1, [State]),
     {'ok', 'normal', State};
 terminate(Reason, State) ->
     lager:debug("terminate ~p", [Reason]),
@@ -235,13 +235,14 @@ handle_message(#state{filename='undefined'}=State) ->
 handle_message(#state{errors=[], faxbox='undefined'}=State) ->
     maybe_faxbox_log(State#state{errors=[<<"no previous errors but no faxbox doc">>]});
 handle_message(#state{filename=Filename
-                         ,content_type=CT
+                         ,content_type=_CT
                          ,doc=Doc
                          ,errors=[]
                         }=State) ->
     lager:debug("checking file ~s", [Filename]),
     case file:read_file(Filename) of
         {'ok', FileContents} ->
+            CT = kz_mime:from_filename(Filename),
             case fax_util:save_fax_docs([Doc], FileContents, CT) of
                 'ok' ->
                     lager:debug("smtp fax document saved"),
@@ -319,7 +320,7 @@ error_doc() ->
       ,"-",(wh_util:rand_hex_binary(16))/binary
     >>.
 
--spec to_proplist(state() | api_object()) -> wh_proplist().
+-spec to_proplist(state()) -> wh_proplist().
 to_proplist(#state{}=State) ->
     props:filter_undefined(
       [{<<"To">>, State#state.to}
@@ -333,12 +334,25 @@ to_proplist(#state{}=State) ->
        ,{<<"Filename">>, State#state.filename}
        ,{<<"Errors">>, lists:reverse(State#state.errors)}
        ,{<<"Account-ID">>, State#state.account_id}
-       | to_proplist(State#state.faxbox)
-      ]);
-to_proplist('undefined') -> [];
-to_proplist(JObj) ->
+       | faxbox_to_proplist(State#state.faxbox)
+         ++ faxdoc_to_proplist(State#state.doc)
+      ]).
+
+
+-spec faxbox_to_proplist(api_object()) -> wh_proplist().
+faxbox_to_proplist('undefined') -> [];
+faxbox_to_proplist(JObj) ->
     props:filter_undefined(
       [{<<"FaxBox-ID">>, wh_doc:id(JObj)}
+      ]
+     ).
+
+-spec faxdoc_to_proplist(api_object()) -> wh_proplist().
+faxdoc_to_proplist('undefined') -> [];
+faxdoc_to_proplist(JObj) ->
+    props:filter_undefined(
+      [{<<"FaxDoc-ID">>, wh_doc:id(JObj)}
+       ,{<<"FaxDoc-DB">>, wh_doc:account_db(JObj)}
       ]
      ).
 
@@ -534,7 +548,7 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
                         ,errors=[]
                        };
         {'ok', [_JObj | _JObjs]} ->
-            Error = io_lib:format("user ~s : ~s has multiples faxboxes", [OwnerId, From]),
+            Error = wh_util:to_binary(io_lib:format("user ~s : ~s has multiples faxboxes", [OwnerId, From])),
             maybe_faxbox_by_rules(AccountId
                                   ,State#state{owner_id=OwnerId
                                                ,owner_email=From
@@ -542,7 +556,7 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
                                               }
                                  );
         _ ->
-            Error = io_lib:format("user ~s : ~s does not have a faxbox", [OwnerId, From]),
+            Error = wh_util:to_binary(io_lib:format("user ~s : ~s does not have a faxbox", [OwnerId, From])),
             lager:debug("user ~s : ~s from account ~s does not have a faxbox, trying by rules"
                         ,[OwnerId, From, AccountId]
                        ),
@@ -684,7 +698,7 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
                |Parts
               ], State) ->
     {_ , NewState}
-        = maybe_process_part(<<Type/binary, "/", SubType/binary>>
+        = maybe_process_part(fax_util:normalize_content_type(<<Type/binary, "/", SubType/binary>>)
                        ,Parameters
                        ,BodyPart
                        ,State
@@ -699,15 +713,21 @@ maybe_process_part(<<"application/octet-stream">>, Parameters, Body, State) ->
         <<"attachment">> ->
             Props = props:get_value(<<"disposition-params">>, Parameters, []),
             Filename = wh_util:to_lower_binary(props:get_value(<<"filename">>, Props, <<>>)),
-            Ext = filename:extension(Filename),
-            CT = fax_util:extension_to_content_type(Ext),
-            maybe_process_part(CT, Parameters, Body, State);
+            case kz_mime:from_filename(Filename) of
+                <<"application/octet-stream">> ->
+                    lager:debug("unable to determine content-type for extension : ~s", [Filename]),
+                    {'ok', State};
+                CT ->
+                    maybe_process_part(CT, Parameters, Body, State)
+            end;
          _Else ->
             lager:debug("part is not attachment"),
             {'ok', State}
     end;
 maybe_process_part(CT, _Parameters, Body, State) ->
     case {is_allowed_content_type(CT), CT} of
+        {true, <<"image/tiff">>} ->
+            process_part(CT, Body, State);
         {true, <<"image/", _/binary>>} ->
             maybe_process_image(CT, Body, State);
         {true, _} ->
@@ -720,7 +740,7 @@ maybe_process_part(CT, _Parameters, Body, State) ->
 -spec process_part(ne_binary(), binary() | mimemail:mimetuple(), state()) -> {'ok', state()}.
 process_part(CT, Body, State) ->
     lager:debug("part is ~s", [CT]),
-    Extension = fax_util:content_type_to_extension(CT),
+    Extension = kz_mime:to_extension(CT),
     {'ok', Filename} = write_tmp_file(Extension, Body),
     {'ok', State#state{filename=Filename
                        ,content_type=CT
@@ -788,7 +808,7 @@ maybe_process_image(CT, Body, Size, State) ->
                        [X, Y] -> {wh_util:to_integer(X), wh_util:to_integer(Y)}
                    end,
     {'ok', NewState = #state{filename = Filename}} = process_part(CT, Body, State),
-    Cmd = io_lib:format(<<"identify -format \"%[fx:w]x%[fx:h]\" ~s">>, [Filename]),
+    Cmd = io_lib:format(?IMAGE_SIZE_CMD_FMT, [Filename]),
     [W, H] = re:split(os:cmd(Cmd), "x"),
     Width = wh_util:to_integer(W),
     Height = wh_util:to_integer(H),

@@ -14,7 +14,7 @@
          ,number_builder/1
         ]).
 
--include("../konami.hrl").
+-include("konami.hrl").
 
 -spec handle(wh_json:object(), whapps_call:call()) ->
                     {'continue', whapps_call:call()}.

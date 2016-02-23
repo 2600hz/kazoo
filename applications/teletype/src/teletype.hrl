@@ -4,7 +4,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"teletype">>).
--define(APP_VERSION, <<"0.0.1">> ).
+-define(APP_VERSION, <<"4.0.0">> ).
 
 -define(PVT_TYPE, kz_notification:pvt_type()).
 
@@ -12,18 +12,18 @@
 
 -define(CACHE_NAME, 'teletype_cache').
 
--type mime_tuples() :: [mimemail:mimetuple(),...] | [].
+-type mime_tuples() :: [mimemail:mimetuple()].
 
 %% {ContentType, Filename, Content}
 -type attachment() :: {ne_binary(), ne_binary(), ne_binary()}.
--type attachments() :: [attachment(),...] | [].
+-type attachments() :: [attachment()].
 
 %% {ContentType, Content}
 -type rendered_template() :: {ne_binary(), iolist()}.
--type rendered_templates() :: [rendered_template(),...] | [].
+-type rendered_templates() :: [rendered_template()].
 
 %% {"to"/"cc"/etc, [Address,...]}
--type email_map() :: [{ne_binary(), ne_binaries()},...] | [].
+-type email_map() :: [{ne_binary(), ne_binaries()}].
 
 -type init_param() :: {'macros', wh_json:object()} |
                       {'text', ne_binary()} |
@@ -101,6 +101,7 @@
           ,?MACRO_VALUE(<<"user.last_name">>, <<"user_last_name">>, <<"Last Name">>, <<"Last name of the user">>)
           ,?MACRO_VALUE(<<"user.email">>, <<"user_email">>, <<"Email">>, <<"Email of the user">>)
           ,?MACRO_VALUE(<<"user.timezone">>, <<"user_timezone">>, <<"Timezone">>, <<"Timezone of the user">>)
+          ,?MACRO_VALUE(<<"user.username">>, <<"username">>, <<"Username">>, <<"Username">>)
          ]).
 
 -define(PORT_REQUEST_MACROS

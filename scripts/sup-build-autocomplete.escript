@@ -7,6 +7,19 @@
 
 -export([main/1]).
 
+%% This list has to never be empty! (nor contain empty strings)
+%% MUST be here only modules that don't end with '_maintenance',
+%% as these are automatically added anyway.
+-define(REQUIRED_MODULES, ["couch_compactor_fsm"
+                           ,"crossbar_bindings"
+                           ,"ecallmgr_config"
+                           ,"notify_account_crawler"
+                           ,"whapps_account_config"
+                           ,"whapps_config"
+                           ,"whapps_controller"
+                           ,"wnm_util"
+                          ]).
+
 %% API
 
 main([]) ->
@@ -32,7 +45,7 @@ dump(CompFile) ->
                     "    local cur prev\n"
                     "    _get_comp_words_by_ref cur prev\n"
                     "\n"
-                    "    local path=.`echo ${COMP_WORDS[*]} | sed 's/ /./g'`.\n"
+                    "    local path=.$(echo ${COMP_WORDS[*]} | sed 's/ /./g').\n"
                     "    # echo $path\n"
                     "\n"
                     "    args() {\n"
@@ -98,14 +111,17 @@ case_args({M,F} = MF) ->
     Asz = lists:reverse(get(MF)),
     %% io:format("Asz(~p) ~10000p\n", [MF, Asz]),
     ["            .sup.", to_list(M), $., to_list(F), ".*)"
-     " COMPREPLY=( $(compgen -W '--> ", spaces(uspaces(Asz)), "' -- $cur) ) ;;\n"
+     " COMPREPLY=( $(compgen -W '--> ", spaces(sep_vars(Asz)), "' -- $cur) ) ;;\n"
     ].
 
-uspaces(Lists) ->
-    %% Note the Unicode non-breaking space (not part of $IFS)
-    USpace = " ",
-    [ [$[, USpace, [[to_list(E), USpace] || E <- List], $]]
-      || List <- Lists ].
+sep_vars(Lists) ->
+    [ [$[, join_args($,, As), $]]
+      || As <- Lists ].
+
+join_args(_, []) -> "";
+join_args(_, [A]) -> to_list(A);
+join_args(Sep, [H|As]) ->
+    [to_list(H), [ [Sep,A] || A <- As ]].
 
 spaces(List) ->
     [[to_list(E), $\s] || E <- List].
@@ -170,7 +186,8 @@ find_modules(Path) ->
         'false' -> [];
         'true' ->
             AccFiles = fun (File, Acc) -> [File|Acc] end,
-            filelib:fold_files(Path, ".+_maintenance\\.beam", true, AccFiles, [])
+            Required = string:join(?REQUIRED_MODULES, "|"),
+            filelib:fold_files(Path, "(.+_maintenance|" ++ Required ++ ")\\.beam", true, AccFiles, [])
             %% filelib:fold_files(Path, ".+\\.beam", true, AccFiles, [])
     end.
 

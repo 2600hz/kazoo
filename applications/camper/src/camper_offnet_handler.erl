@@ -30,6 +30,8 @@
 
 -include("camper.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {exten :: api_binary()
                 ,stored_call :: whapps_call:call()
                 ,queue :: api_binary()
@@ -59,15 +61,11 @@
 -define(CONSUME_OPTIONS, []).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link([term()]) -> startlink_ret().
+-spec start_link(list()) -> startlink_ret().
 start_link(Args) ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', ?BINDINGS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}

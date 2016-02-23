@@ -10,7 +10,7 @@ if you have more than one whapps node running the fax application, you may want 
 ```
 # smtp configuration simple configuration for haproxy
 listen kazoo-fax-smtp
- bind *:2525
+ bind *:25
  mode tcp
   no option http-server-close
   maxconn 50

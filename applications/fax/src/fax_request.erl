@@ -28,6 +28,8 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {
           call :: whapps_call:call()
          ,action = 'receive' :: 'receive' | 'transmit'
@@ -70,14 +72,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(whapps_call:call(), wh_json:object()) -> startlink_ret().
 start_link(Call, JObj) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS(Call)}
                               ,{'responders', ?RESPONDERS}
                              ]
@@ -150,7 +149,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> handle_cast_return().
+-spec handle_cast(any(), state()) -> handle_cast_return().
 handle_cast('start_action', #state{call=_Call
                                    ,action='receive'
                                    ,owner_id=OwnerId
@@ -280,6 +279,7 @@ start_receive_fax(#state{call=Call
     LocalFile = get_fs_filename(NewState),
     send_status(NewState, list_to_binary(["New Fax from ", whapps_call:caller_id_number(Call)]), ?FAX_START, 'undefined'),
     whapps_call_command:answer(Call),
+    lager:debug("receive fax t.38 ~p / ~p", [ResourceFlag, ReceiveFlag]),
     whapps_call_command:receive_fax(ResourceFlag, ReceiveFlag, LocalFile, Call),
     {'noreply', NewState}.
 
@@ -361,7 +361,7 @@ maybe_add_owner_to_notify_list(List, OwnerEmail) ->
     NotifyList = fax_util:notify_email_list('undefined', OwnerEmail, List),
     wh_json:set_value([<<"email">>, <<"send_to">>], NotifyList, wh_json:new()).
 
--spec maybe_update_fax_settings_from_account(state()) -> _.
+-spec maybe_update_fax_settings_from_account(state()) -> any().
 maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
     case kz_account:fetch(whapps_call:account_id(Call)) of
         {'ok', JObj} ->
@@ -453,7 +453,7 @@ maybe_store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) ->
 
 -spec store_fax(wh_json:object(), state() ) ->
                        {'ok', ne_binary()} |
-                       {'error', _}.
+                       {'error', any()}.
 store_fax(JObj, #state{storage=#fax_storage{id=FaxDocId
                                             ,attachment_id=_AttachmentId
                                            }
@@ -559,7 +559,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                            ," " , wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)
                            ," UTC"
                           ]),
-    <<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxDocId,
+    ?MATCH_MODB_PREFIX(Year,Month,_) = FaxDocId,
     CdrId = <<(wh_util:to_binary(Year))/binary
               ,(wh_util:pad_month(Month))/binary
               ,"-"
@@ -572,6 +572,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                ,{<<"from_number">>, whapps_call:from_user(Call)}
                ,{<<"description">>, <<"fax document received">>}
                ,{<<"source_type">>, <<"incoming_fax">>}
+               ,{<<"folder">>, <<"inbox">>}
                ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
                ,{<<"owner_id">>, OwnerId}
                ,{<<"faxbox_id">>, FaxBoxId}

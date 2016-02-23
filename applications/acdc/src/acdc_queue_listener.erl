@@ -28,6 +28,7 @@
          ,timeout_member_call/1, timeout_member_call/2
          ,timeout_agent/2
          ,exit_member_call/1
+         ,exit_member_call_empty/1
          ,finish_member_call/1, finish_member_call/2
          ,ignore_member_call/3
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
@@ -49,6 +50,8 @@
         ]).
 
 -include("acdc.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {
           queue_id :: ne_binary()
@@ -98,15 +101,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(pid(), pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', [{'acdc_queue', [{'restrict_to', ['sync_req']}
                                                             ,{'account_id', AccountId}
                                                             ,{'queue_id', QueueId}
@@ -122,7 +121,7 @@ start_link(WorkerSup, MgrPid, AccountId, QueueId) ->
 accept_member_calls(Srv) ->
     gen_listener:cast(Srv, {'accept_member_calls'}).
 
--spec member_connect_req(pid(), wh_json:object(), _, api_binary()) -> 'ok'.
+-spec member_connect_req(pid(), wh_json:object(), any(), api_binary()) -> 'ok'.
 member_connect_req(Srv, MemberCallJObj, Delivery, Url) ->
     gen_listener:cast(Srv, {'member_connect_req', MemberCallJObj, Delivery, Url}).
 
@@ -149,6 +148,10 @@ timeout_member_call(Srv, JObj) ->
 -spec exit_member_call(pid()) -> 'ok'.
 exit_member_call(Srv) ->
     gen_listener:cast(Srv, {'exit_member_call'}).
+
+-spec exit_member_call_empty(pid()) -> 'ok'.
+exit_member_call_empty(Srv) ->
+    gen_listener:cast(Srv, {'exit_member_call_empty'}).
 
 -spec finish_member_call(pid()) -> 'ok'.
 -spec finish_member_call(pid(), wh_json:object()) -> 'ok'.
@@ -180,7 +183,7 @@ send_sync_req(Srv, Type) ->
 config(Srv) ->
     gen_listener:call(Srv, 'config').
 
--spec send_sync_resp(pid(), atom(), term(), wh_json:object()) -> 'ok'.
+-spec send_sync_resp(pid(), atom(), any(), wh_json:object()) -> 'ok'.
 send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
     gen_listener:cast(Srv, {'send_sync_resp', Strategy, StrategyState, ReqJObj}).
 
@@ -193,15 +196,9 @@ delivery(Srv) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the listener
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the listener
 %%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', #state{}}.
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->
     wh_util:put_callid(QueueId),
 
@@ -384,6 +381,23 @@ handle_cast({'exit_member_call'}, #state{delivery=Delivery
     lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_failure(Q, AccountId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"Caller exited the queue via DTMF">>),
+
+    {'noreply', clear_call_state(State), 'hibernate'};
+handle_cast({'exit_member_call_empty'}, #state{delivery=Delivery
+                                               ,call=Call
+                                               ,shared_pid=Pid
+                                               ,member_call_queue=Q
+                                               ,account_id=AccountId
+                                               ,queue_id=QueueId
+                                               ,my_id=MyId
+                                               ,agent_id=AgentId
+                                              }=State) ->
+    lager:debug("no agents left in queue to handle callers, kick everyone out"),
+
+    acdc_util:unbind_from_call_events(Call),
+    lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
+    acdc_queue_shared:ack(Pid, Delivery),
+    send_member_call_failure(Q, AccountId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"No agents left in queue">>),
 
     {'noreply', clear_call_state(State), 'hibernate'};
 handle_cast({'finish_member_call'}, #state{call='undefined'}=State) ->

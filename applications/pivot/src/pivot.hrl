@@ -9,7 +9,7 @@
 -define(PIVOT_CACHE, 'pivot_cache').
 
 -define(APP_NAME, <<"pivot">>).
--define(APP_VERSION, <<"0.5.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(PIVOT_HRL, 'true').
 -endif.

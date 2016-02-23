@@ -25,26 +25,28 @@
 -include("camper.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RINGING_TIMEOUT, 30).
 
--record('state', {'requests' :: dict()
-                  ,'requestor_queues' :: dict()
-                  ,'sipnames' :: dict()
+-record('state', {'requests' :: dict:dict()
+                  ,'requestor_queues' :: dict:dict()
+                  ,'sipnames' :: dict:dict()
                   ,'account_db' :: ne_binary()
                  }
        ).
 
 -type state() :: #state{}.
 
--spec get_requests(state()) -> dict().
+-spec get_requests(state()) -> dict:dict().
 get_requests(#state{'requests' = Val}) ->
     Val.
 
--spec get_requestor_queues(state()) -> dict().
+-spec get_requestor_queues(state()) -> dict:dict().
 get_requestor_queues(#state{'requestor_queues' = Val}) ->
     Val.
 
--spec get_sipnames(state()) -> dict().
+-spec get_sipnames(state()) -> dict:dict().
 get_sipnames(#state{'sipnames' = Val}) ->
     Val.
 
@@ -52,33 +54,29 @@ get_sipnames(#state{'sipnames' = Val}) ->
 get_account_db(#state{'account_db' = Val}) ->
     Val.
 
--spec set_requests(state(), dict()) -> state().
+-spec set_requests(state(), dict:dict()) -> state().
 set_requests(S, Val) ->
     S#state{'requests' = Val}.
 
--spec set_requestor_queues(state(), dict()) -> state().
+-spec set_requestor_queues(state(), dict:dict()) -> state().
 set_requestor_queues(S, Val) ->
     S#state{'requestor_queues' = Val}.
 
 -spec add_request(wh_json:object()) -> 'ok'.
 add_request(JObj) ->
-    gen_server:cast(?MODULE, {'add_request', JObj}).
+    gen_server:cast(?SERVER, {'add_request', JObj}).
 
 -spec available_device(ne_binary(), ne_binary()) -> 'ok'.
 available_device(AccountId, SIPName) ->
-    gen_server:cast(?MODULE, {'available_device', AccountId, SIPName}).
+    gen_server:cast(?SERVER, {'available_device', AccountId, SIPName}).
 
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -171,7 +169,7 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
--spec with_state(ne_binary(), dict(), fun((state()) -> state())) -> dict().
+-spec with_state(ne_binary(), dict:dict(), fun((state()) -> state())) -> dict:dict().
 with_state(AccountId, Global, F) ->
     Local = case dict:find(AccountId, Global) of
                 {'ok', #state{}=S} -> S;
@@ -182,7 +180,7 @@ with_state(AccountId, Global, F) ->
             end,
     dict:store(AccountId, F(Local), Global).
 
--spec maybe_handle_request(ne_binary(), queue(), state()) -> state().
+-spec maybe_handle_request(ne_binary(), queue:queue(), state()) -> state().
 maybe_handle_request(SIPName, Q, Local) ->
     case queue:out(Q) of
         {{'value', Requestor}, NewQ} ->
@@ -290,13 +288,13 @@ clear_request(Requestor, Exten, Local) ->
                         set_requests(set_requestor_queues(Acc, Qs1), Reqs)
                 end, Local, SIPNames).
 
--spec make_requests(ne_binaries(), {ne_binary(), ne_binary()}, ne_binary(), non_neg_integer()) -> dict().
+-spec make_requests(ne_binaries(), {ne_binary(), ne_binary()}, ne_binary(), non_neg_integer()) -> dict:dict().
 make_requests(SIPNames, Requestor, Exten, Timeout) ->
     R = lists:map(fun(SIPName) -> {SIPName, Requestor} end, SIPNames),
     {_, Seconds, _} = os:timestamp(),
     lists:foldl(fun(Req, Acc) -> dict:store(Req, {Exten, Seconds + Timeout}, Acc) end, dict:new(), R).
 
--spec maybe_update_queues(ne_binaries(), {ne_binary(), ne_binary()}, dict()) -> dict().
+-spec maybe_update_queues(ne_binaries(), {ne_binary(), ne_binary()}, dict:dict()) -> dict:dict().
 maybe_update_queues(SIPNames, Requestor, Queues) ->
     lists:foldl(fun(SIPName, Acc) ->
                         Q = case dict:find(SIPName, Acc) of
@@ -326,7 +324,7 @@ handle_info(?HOOK_EVT(_AccountId, _, JObj), State) ->
     AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     SIPName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
     lager:debug("available device: ~s(~s)", [SIPName, AcctId]),
-    camper_onnet_handler:available_device(AcctId, SIPName),
+    ?MODULE:available_device(AcctId, SIPName),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

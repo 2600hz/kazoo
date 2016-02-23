@@ -1,0 +1,45 @@
+ToName = fun (App) -> list_to_atom(hd(string:tokens(App,"-"))) end,
+
+Apps = [       App  || "applications/"++App <- filelib:wildcard("applications/*"), App /= "Makefile"],
+Core = [       App  ||         "core/"++App <- filelib:wildcard(        "core/*"), App /= "Makefile"],
+Deps = [ToName(App) ||         "deps/"++App <- filelib:wildcard(        "deps/*"), App /= "Makefile"],
+
+Base = [ {'++', Core}
+       , {'++', Apps}
+         %% skel Not a real app
+       , {'--', [skel]}
+
+       , {'++', Deps}
+         %% Name is amqp_client, not rabbitmq_erlang_client
+       , {'--', [rabbitmq_erlang_client]}, {'++',  [amqp_client]}
+         %% Manually added: is a dep of RabbitMQ client
+       , {'++', [rabbit_common]}
+         %% exmpp Duplicated modules: tls specified in ssl and exmpp
+       , {'--', [exmpp]}
+       ],
+LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
+Based = [{A, 'load'} || A <- lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) )],
+
+Config = "/etc/kazoo/app.config", %% SHOULD rename app.config to sys.config as OTP prefers it.
+case filelib:is_regular(Config) of
+    true ->  [{sys_config, Config}];
+    false -> [{sys_config, "rel/sys.config"}]
+end ++
+
+[ {lib_dirs, [ "applications"
+             , "core"
+             , "deps"
+             , hd(filelib:wildcard("deps/rabbitmq_erlang_client-*/deps"))
+             ]}
+
+, {include_src, false}
+
+, {extended_start_script, true}
+
+, {vm_args, "rel/vm.args"}
+
+, {release, {kazoo,"4.0.0"}
+  , Based
+  }
+
+].

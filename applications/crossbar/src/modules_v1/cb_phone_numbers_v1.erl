@@ -27,7 +27,7 @@
          ,populate_phone_numbers/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
@@ -599,7 +599,7 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
     HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
     Content = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
-    Options = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Options = [{'content_type', CT}],
     lager:debug("setting Content-Type to ~s", [CT]),
     case wh_number_manager:put_attachment(Number, Filename, Content, Options, AuthBy) of
         {'ok', NewDoc} ->

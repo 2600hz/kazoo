@@ -76,7 +76,7 @@ get_sid(go, State = #state{url = Url}) ->
 
 ready(poll, State = #state{transport_url = TransportUrl}) ->
     %% TODO Run request timeout == session timeout because we cannot detect async request termination
-    StartPollTS = erlang:now(),
+    StartPollTS = erlang:timestamp(),
     case ibrowse:send_req(TransportUrl, [], get, [], [{stream_to, self()}]) of
         {ibrowse_req_id, _ReqId} ->
             {next_state, wait_polling_result, State#state{start_poll_ts = StartPollTS}};
@@ -88,11 +88,11 @@ wait_polling_result(Event, State) ->
     {next_state, Event, State}.
 
 polling_result_ready(go, State = #state{sid = Sid, body = "1::", connected = false, start_poll_ts = StartPollTS}) ->
-    log_polling_req(Sid, StartPollTS, erlang:now()),
+    log_polling_req(Sid, StartPollTS, erlang:timestamp()),
     send_test_packets(State#state{connected = true});
 
 polling_result_ready(go, State = #state{sid = Sid, body = Body, send_packets = PrevPackets, connected = true, start_poll_ts = StartPollTS}) ->
-    log_polling_req(Sid, StartPollTS, erlang:now()),
+    log_polling_req(Sid, StartPollTS, erlang:timestamp()),
     Packets = socketio_data_protocol:decode(list_to_binary(Body)),
     case Packets of
         PrevPackets ->

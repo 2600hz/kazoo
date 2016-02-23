@@ -16,20 +16,21 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_Type, _Args) -> frontier:start_link().
+-spec start(application:start_type(), any()) -> startlink_ret().
+start(_Type, _Args) ->
+    _ = declare_exchanges(),
+    frontier_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
-stop(_State) -> frontier:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    wapi_frontier:declare_exchanges().

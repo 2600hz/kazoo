@@ -28,7 +28,7 @@ get_entity_type(Entity) ->
 
 -spec is_device_entity(ne_binary()) -> boolean().
 is_device_entity(Entity) ->
-    Realm = frontier_utils:extract_realm(Entity),
+    Realm = ?MODULE:extract_realm(Entity),
     Realm =/= Entity.
 
 -spec extract_realm(ne_binary()) -> ne_binary().

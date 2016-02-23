@@ -21,7 +21,7 @@
 -export([fetch/1, fetch/2, fetch/3, fetch/4
          ,set/2
          ,set_default/2
-         ,set_node/2
+         ,set_node/2, set_node/3
         ]).
 
 -compile([{'no_auto_import', [get/1]}]).
@@ -30,10 +30,10 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -spec flush() -> 'ok'.
--spec flush(wh_json:key()) -> 'ok' | {'error', _}.
+-spec flush(wh_json:key()) -> 'ok' | {'error', any()}.
 
 flush() ->
-    wh_cache:flush_local(?ECALLMGR_UTIL_CACHE),
+    kz_cache:flush_local(?ECALLMGR_UTIL_CACHE),
     flush('undefined').
 
 flush(Key) ->
@@ -48,7 +48,7 @@ flush(Key, Node) when not is_binary(Node) ->
     flush(Key, wh_util:to_binary(Node));
 flush(Key, Node) ->
     CacheKey = cache_key(Key, Node),
-    wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, CacheKey),
+    kz_cache:erase_local(?ECALLMGR_UTIL_CACHE, CacheKey),
     Req = [{<<"Category">>, <<"ecallmgr">>}
            ,{<<"Key">>, Key}
            ,{<<"Node">>, Node}
@@ -84,7 +84,7 @@ get(Key, Default, Node) when not is_binary(Key) ->
 get(Key, Default, Node) when not is_binary(Node) ->
     get(Key, Default, wh_util:to_binary(Node));
 get(Key, Default, Node) ->
-    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
+    case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
         {'ok', V} -> V;
         {'error', E} when E =:= 'not_found' orelse E =:= 'undefined' ->
             fetch(Key, Default, Node)
@@ -197,14 +197,14 @@ fetch(Key, Default, Node, RequestTimeout) ->
             Value
     end.
 
--spec maybe_cache_resp(ne_binary(), ne_binary(), term()) -> 'ok'.
+-spec maybe_cache_resp(ne_binary(), ne_binary(), any()) -> 'ok'.
 maybe_cache_resp(_, _ , 'undefined') -> 'ok';
 maybe_cache_resp(_, _ , 'null') -> 'ok';
 maybe_cache_resp(_, _ , <<"undefined">>) -> 'ok';
 maybe_cache_resp(_, _ , <<"null">>) -> 'ok';
 maybe_cache_resp(Key, Node, Value) ->
     CacheProps = [{'origin', {'db', ?WH_CONFIG_DB, <<"ecallmgr">>}}],
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+    kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                          ,cache_key(Key, Node)
                          ,Value
                          ,CacheProps).
@@ -219,7 +219,13 @@ set_default(Key, Value) ->
 
 -spec set_node(wh_json:key(), wh_json:json_term()) -> 'ok'.
 set_node(Key, Value) ->
-    set(Key, Value, wh_util:to_binary(node()), [{'node_specific', 'true'}]).
+    set_node(Key, Value, node()).
+
+-spec set_node(wh_json:key(), wh_json:json_term(), ne_binary() | atom()) -> 'ok'.
+set_node(Key, Value, Node) when is_atom(Node) ->
+    set_node(Key, Value, wh_util:to_binary(Node));
+set_node(Key, Value, Node) ->
+    set(Key, Value, Node, [{'node_specific', 'true'}]).
 
 -spec set(wh_json:key(), wh_json:json_term(), wh_json:key(), wh_proplist()) -> 'ok'.
 set(Key, Value, Node, Opt) when not is_binary(Key) ->
@@ -244,7 +250,7 @@ set(Key, Value, Node, Opt) ->
             lager:debug("set config for key '~s' failed: ~p", [Key, _R])
     end.
 
--spec get_response_value(wh_json:object(), term()) -> term().
+-spec get_response_value(wh_json:object(), any()) -> any().
 get_response_value(JObj, Default) ->
     case wh_json:get_value(<<"Value">>, JObj) of
         'undefined' -> Default;
@@ -254,6 +260,6 @@ get_response_value(JObj, Default) ->
         Value -> Value
     end.
 
--spec cache_key(term(), atom() | ne_binary()) ->
-                       {?MODULE, term(), atom() | ne_binary()}.
-cache_key(K, Node) -> {?MODULE, K, Node}.
+-spec cache_key(any(), atom() | ne_binary()) -> {?MODULE, any(), atom() | ne_binary()}.
+cache_key(K, Node) ->
+    {?MODULE, K, Node}.

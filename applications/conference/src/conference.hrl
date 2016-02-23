@@ -2,9 +2,10 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(APP_NAME, <<"conference">>).
--define(APP_VERSION, <<"2.0.0">>).
+-define(APP_VERSION, <<"4.0.0">>).
 
 -define(CONFIG_CAT, <<"conferences">>).
 
@@ -18,6 +19,8 @@
 
 -define(DEFAULT_EXIT_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)">>).
 -define(EXIT_TONE, whapps_config:get(?CONFIG_CAT, <<"exit_tone">>, ?DEFAULT_EXIT_TONE)).
+
+-define(SUPPORT_NAME_ANNOUNCEMENT, whapps_config:get_is_true(?CONFIG_CAT, <<"support_name_announcement">>, 'true')).
 
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
                                  ,{<<"caller-controls">>, <<"default">>}

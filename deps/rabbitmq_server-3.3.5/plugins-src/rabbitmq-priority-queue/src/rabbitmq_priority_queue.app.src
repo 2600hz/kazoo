@@ -1,7 +1,0 @@
-{application, rabbitmq_priority_queue,
- [{description, "Priority queue implementation"},
-  {vsn, "%%VSN%%"},
-  {modules, []},
-  {registered, []},
-  {env, []},
-  {applications, [rabbit]}]}.

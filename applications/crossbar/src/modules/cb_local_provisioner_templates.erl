@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2015, VoIP INC
 %%% @doc
 %%% Provision template module
 %%%
@@ -16,6 +16,7 @@
 %%% @contributors
 %%%   Jon Blanton
 %%%   Karl Anderson
+%%%   Pierre Fenoll
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_local_provisioner_templates).
@@ -33,7 +34,7 @@
          ,delete/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".provisioner_templates">>).
 -define(CB_LIST, <<"provisioner_templates/crossbar_listing">>).
@@ -49,15 +50,15 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.local_provisioner_templates">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"*.content_types_accepted.local_provisioner_templates">>, ?MODULE, content_types_accepted),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.local_provisioner_templates">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.local_provisioner_templates">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.local_provisioner_templates">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.local_provisioner_templates">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.local_provisioner_templates">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.local_provisioner_templates">>, ?MODULE, delete),
-    crossbar_bindings:bind(<<"*.finish_request.put.devices">>, ?MODULE, device_updated).
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.local_provisioner_templates">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.content_types_accepted.local_provisioner_templates">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.local_provisioner_templates">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.local_provisioner_templates">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.local_provisioner_templates">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.local_provisioner_templates">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.local_provisioner_templates">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.local_provisioner_templates">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.finish_request.put.devices">>, ?MODULE, 'device_updated').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -66,22 +67,21 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-content_types_provided(#cb_context{req_verb = ?HTTP_GET, auth_account_id=AccountId}=Context, DocId, ?IMAGE_REQ) ->
-    Db = wh_util:format_account_id(AccountId, 'encoded'),
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
+content_types_provided(Context, PT1, PT2) ->
+    content_types_provided(Context, PT1, PT2, cb_context:req_verb(Context)).
+
+content_types_provided(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
+    Db = wh_util:format_account_id(cb_context:auth_account_id(Context), 'encoded'),
     case couch_mgr:open_doc(Db, DocId) of
         {'error', _} -> Context;
         {'ok', JObj} ->
-            ContentType = case wh_doc:attachment_content_type(JObj, ?IMAGE_REQ) of
-                              'undefined' -> <<"application/octet-stream">>;
-                              CT -> CT
-                          end,
-            [Type, SubType] = binary:split(ContentType, <<"/">>),
+            CT = wh_doc:attachment_content_type(JObj, ?IMAGE_REQ, <<"application/octet-stream">>),
+            [Type, SubType] = binary:split(CT, <<"/">>),
             lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
-            cb_context:set_content_types_provided(Context
-                                                  ,[{'to_binary', [{Type, SubType}]}]
-                                                 )
+            cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
     end;
-content_types_provided(Context, _, _) ->
+content_types_provided(Context, _, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -90,12 +90,16 @@ content_types_provided(Context, _, _) ->
 %% Add content types accepted by this module
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_accepted(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-content_types_accepted(#cb_context{req_verb = ?HTTP_PUT}=Context, _, ?IMAGE_REQ) ->
-    Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
-content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _, ?IMAGE_REQ) ->
-    Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
-content_types_accepted(Context, _, _) ->
+-spec content_types_accepted(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec content_types_accepted(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
+content_types_accepted(Context, PT1, PT2) ->
+    content_types_accepted(Context, PT1, PT2, cb_context:req_verb(Context)).
+
+content_types_accepted(Context, _, ?IMAGE_REQ, ?HTTP_PUT) ->
+    cb_context:set_content_types_accepted(Context, [{'from_binary', ?MIME_TYPES}]);
+content_types_accepted(Context, _, ?IMAGE_REQ, ?HTTP_POST) ->
+    cb_context:set_content_types_accepted(Context, [{'from_binary', ?MIME_TYPES}]);
+content_types_accepted(Context, _, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -128,12 +132,9 @@ allowed_methods(_, ?IMAGE_REQ) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
-resource_exists(_, ?IMAGE_REQ) ->
-    true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
+resource_exists(_, ?IMAGE_REQ) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -144,81 +145,104 @@ resource_exists(_, ?IMAGE_REQ) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context) ->
+    validate_verb(Context, cb_context:req_verb(Context)).
+validate(Context, PT1) ->
+    validate_verb(Context, PT1, cb_context:req_verb(Context)).
+validate(Context, PT1, PT2) ->
+    validate_verb(Context, PT1, PT2, cb_context:req_verb(Context)).
+
+-spec validate_verb(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_verb(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+-spec validate_verb(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
+
+validate_verb(Context, ?HTTP_GET) ->
     load_provisioner_template_summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_verb(Context, ?HTTP_PUT) ->
     create_provisioner_template(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
+validate_verb(Context, DocId, ?HTTP_GET) ->
     load_provisioner_template(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
+validate_verb(Context, DocId, ?HTTP_POST) ->
     update_provisioner_template(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
+validate_verb(Context, DocId, ?HTTP_DELETE) ->
     load_provisioner_template(DocId, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId, ?IMAGE_REQ) ->
+validate_verb(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
     load_template_image(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, DocId, ?IMAGE_REQ) ->
-    upload_template_image(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId, ?IMAGE_REQ) ->
-    upload_template_image(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId, ?IMAGE_REQ) ->
+validate_verb(Context, _DocId, ?IMAGE_REQ, ?HTTP_PUT) ->
+    upload_template_image(Context);
+validate_verb(Context, _DocId, ?IMAGE_REQ, ?HTTP_POST) ->
+    upload_template_image(Context);
+validate_verb(Context, DocId, ?IMAGE_REQ, ?HTTP_DELETE) ->
     load_template_image(DocId, Context).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
-post(#cb_context{doc=JObj}=Context, DocId) ->
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, DocId) ->
     %% see note at top of file
+    JObj = cb_context:doc(Context),
     Template = wh_json:get_value(<<"template">>, JObj),
     Doc = wh_json:delete_key(<<"template">>, JObj),
-    case crossbar_doc:save(Context#cb_context{doc=Doc}) of
-        #cb_context{resp_status=success, resp_data=SavedResp}=Context1 ->
-            Opts = [{headers, [{content_type, "application/json"}]}],
-            case crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts) of
-                #cb_context{resp_data=success} ->
-                    Context1#cb_context{resp_data=wh_json:set_value(<<"template">>, Template, SavedResp)};
-                Else -> Else
+    Context1 = crossbar_doc:save(cb_context:set_doc(Context, Doc)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            SavedResp = cb_context:resp_data(Context1),
+            Opts = [{'content_type', <<"application/json">>}],
+            Ctx2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts),
+            case cb_context:resp_status(Ctx2) of
+                'success' ->
+                    cb_context:set_resp_data(Context1, wh_json:set_value(<<"template">>, Template, SavedResp));
+                _Error -> Ctx2
             end;
-        Else -> Else
+        _Error -> Context1
     end.
 
--spec put(#cb_context{}) -> #cb_context{}.
-put(#cb_context{doc=JObj}=Context) ->
+-spec put(cb_context:context()) -> cb_context:context().
+put(Context) ->
     %% see note at top of file
+    JObj = cb_context:doc(Context),
     Template = wh_json:get_value(<<"template">>, JObj),
     Doc = wh_json:delete_key(<<"template">>, JObj),
-    case crossbar_doc:save(Context#cb_context{doc=Doc}) of
-        #cb_context{resp_status=success, doc=SavedDoc, resp_data=SavedResp}=Context1 ->
+    Context1 = crossbar_doc:save(cb_context:set_doc(Context, Doc)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            SavedDoc  = cb_context:doc(Context1),
+            SavedResp = cb_context:resp_data(Context1),
             DocId = wh_doc:id(SavedDoc),
-            Opts = [{headers, [{content_type, "application/json"}]}],
-            case crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts) of
-                #cb_context{resp_status=success} ->
-                    Context1#cb_context{resp_data=wh_json:set_value(<<"template">>, Template, SavedResp)};
+            Opts = [{'content_type', <<"application/json">>}],
+            Ctx2 = crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts),
+            case cb_context:resp_status(Ctx2) of
+                'success' ->
+                    cb_context:set_resp_data(Context1, wh_json:set_value(<<"template">>, Template, SavedResp));
                 Else -> Else
             end;
         Else -> Else
     end.
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
--spec post(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-post(#cb_context{req_files=[{_, JObj}]}=Context, DocId, ?IMAGE_REQ) ->
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+post(Context, DocId, ?IMAGE_REQ) ->
+    [{_, JObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, JObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
-    Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
--spec put(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-put(#cb_context{req_files=[{_, JObj}]}=Context, DocId, ?IMAGE_REQ) ->
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+put(Context, DocId, ?IMAGE_REQ) ->
+    [{_, JObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, JObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], JObj, <<"application/octet-stream">>),
-    Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
+    Opts = [{'content_type', CT}],
     crossbar_doc:save_attachment(DocId, ?IMAGE_REQ, Contents, Context, Opts).
 
--spec delete(#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, DocId, ?IMAGE_REQ) ->
     crossbar_doc:delete_attachment(DocId, ?IMAGE_REQ, Context).
 
@@ -232,7 +256,7 @@ delete(Context, DocId, ?IMAGE_REQ) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_template_image(path_token(), #cb_context{}) -> #cb_context{}.
+-spec load_template_image(path_token(), cb_context:context()) -> cb_context:context().
 load_template_image(DocId, Context) ->
     crossbar_doc:load_attachment(DocId, ?IMAGE_REQ, Context).
 
@@ -242,8 +266,11 @@ load_template_image(DocId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec upload_template_image(path_token(), #cb_context{}) -> #cb_context{}.
-upload_template_image(_, #cb_context{req_files=[]}=Context) ->
+-spec upload_template_image(cb_context:context()) -> cb_context:context().
+-spec upload_template_image(cb_context:context(), cb_context:req_files()) -> cb_context:context().
+upload_template_image(Context) ->
+    upload_template_image(Context, cb_context:req_files(Context)).
+upload_template_image(Context, []) ->
     cb_context:add_validation_error(
         <<"file">>
         ,<<"required">>
@@ -252,9 +279,9 @@ upload_template_image(_, #cb_context{req_files=[]}=Context) ->
          ])
         ,Context
     );
-upload_template_image(_, #cb_context{req_files=[{_, _}]}=Context) ->
+upload_template_image(Context, [{_, _}]) ->
     crossbar_util:response(wh_json:new(), Context);
-upload_template_image(_, #cb_context{req_files=[_|_]}=Context) ->
+upload_template_image(Context, [_|_]) ->
    cb_context:add_validation_error(
         <<"file">>
         ,<<"maxItems">>
@@ -271,7 +298,7 @@ upload_template_image(_, #cb_context{req_files=[_|_]}=Context) ->
 %% provision template summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_provisioner_template_summary(#cb_context{}) -> #cb_context{}.
+-spec load_provisioner_template_summary(cb_context:context()) -> cb_context:context().
 load_provisioner_template_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -281,9 +308,9 @@ load_provisioner_template_summary(Context) ->
 %% Create a new provision template document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_provisioner_template(#cb_context{}) -> #cb_context{}.
-create_provisioner_template(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+-spec create_provisioner_template(cb_context:context()) -> cb_context:context().
+create_provisioner_template(Context) ->
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -292,15 +319,18 @@ create_provisioner_template(#cb_context{}=Context) ->
 %% Load a provision template document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_provisioner_template(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_provisioner_template(ne_binary(), cb_context:context()) -> cb_context:context().
 load_provisioner_template(DocId, Context) ->
     %% see note at top of file
-    case crossbar_doc:load(DocId, Context) of
-        #cb_context{resp_status=success, resp_data=RespJObj}=Context1 ->
-            case crossbar_doc:load_attachment(DocId, ?TEMPLATE_ATTCH, Context) of
-                #cb_context{resp_status=success, resp_data=TemplateJObj} ->
-                    Template = wh_json:decode(TemplateJObj),
-                    Context1#cb_context{resp_data=wh_json:set_value(<<"template">>, Template, RespJObj)};
+    Context1 = crossbar_doc:load(DocId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            RespJObj = cb_context:resp_data(Context1),
+            Ctx2 = crossbar_doc:load_attachment(DocId, ?TEMPLATE_ATTCH, Context),
+            case cb_context:resp_status(Ctx2) of
+                'success' ->
+                    Template = wh_json:decode(cb_context:resp_data(Ctx2)),
+                    cb_context:set_resp_data(Context1, wh_json:set_value(<<"template">>, Template, RespJObj));
                 Else -> Else
             end;
         Else -> Else
@@ -312,8 +342,8 @@ load_provisioner_template(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_provisioner_template(ne_binary(), #cb_context{}) -> #cb_context{}.
-update_provisioner_template(DocId, #cb_context{}=Context) ->
+-spec update_provisioner_template(ne_binary(), cb_context:context()) -> cb_context:context().
+update_provisioner_template(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).
 
@@ -323,14 +353,15 @@ update_provisioner_template(DocId, #cb_context{}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
-on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
-    C = Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
-                                                   ,{<<"pvt_provider">>, <<"provisioner.net">>}
-                                                   ,{<<"pvt_provisioner_type">>, <<"local">>}
-                                                  ], JObj)},
-    provisioner_util:get_provision_defaults(C);
-on_successful_validation(DocId, #cb_context{}=Context) ->
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', Context) ->
+    provisioner_util:get_provision_defaults(
+      cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
+                                                      ,{<<"pvt_provider">>, <<"provisioner.net">>}
+                                                      ,{<<"pvt_provisioner_type">>, <<"local">>}
+                                                     ], cb_context:doc(Context))
+                        ));
+on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context).
 
 %%--------------------------------------------------------------------
@@ -341,4 +372,4 @@ on_successful_validation(DocId, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"value">>, JObj) | Acc].

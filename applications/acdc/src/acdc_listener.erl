@@ -23,6 +23,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
@@ -37,11 +39,6 @@
                      {{'acdc_handlers', 'handle_route_req'}
                       ,[{<<"dialplan">>, <<"route_req">>}]
                      }
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{'acdc_handlers', 'handle_route_win'}
-                       ,[{<<"dialplan">>, <<"route_win">>}]
-                      }
                      ,{{'acdc_queue_handler', 'handle_config_change'}
                        ,[{<<"configuration">>, <<"*">>}]
                       }
@@ -52,14 +49,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
                              ], []).
@@ -70,15 +64,9 @@ start_link() ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
+%% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', #state{}}.
 init([]) -> {'ok', #state{}}.
 
 %%--------------------------------------------------------------------

@@ -24,10 +24,9 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
-start(_StartType, _StartArgs) -> acdc:start_link().
+-spec start(application:start_type(), any()) -> startapp_ret().
+start(_StartType, _StartArgs) ->
+    acdc_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,5 +34,6 @@ start(_StartType, _StartArgs) -> acdc:start_link().
 %% Implement the application stop behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
-stop(_State) -> acdc:stop().
+-spec stop(any()) -> any().
+stop(_State) ->
+    'ok'.

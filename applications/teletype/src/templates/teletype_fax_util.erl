@@ -13,7 +13,7 @@
          ,get_attachments/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 -define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
@@ -105,7 +105,7 @@ maybe_convert_attachment(Macros, ContentType, Bin) ->
     FromFormat = from_format_from_content_type(ContentType),
     lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
 
-    case teletype_fax_util:convert(FromFormat, ToFormat, Bin) of
+    case ?MODULE:convert(FromFormat, ToFormat, Bin) of
         {'ok', Converted} ->
             Filename = get_file_name(Macros, ToFormat),
             lager:debug("adding attachment as ~s", [Filename]),

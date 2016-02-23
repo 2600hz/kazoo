@@ -153,7 +153,7 @@ get_s2s(Domain) ->
 %%       Port = integer()
 
 get_servers(Service, Proto, Domain, DefaultPort) ->		  
-    {S1, S2, S3} = now(),
+    {S1, S2, S3} = erlang:timestamp(),
     random:seed(S1, S2, S3),
     Name = "_" ++ Service ++ "._" ++ Proto ++ "." ++ Domain,
     AddrList = case do_query(Name, Domain, DefaultPort) of

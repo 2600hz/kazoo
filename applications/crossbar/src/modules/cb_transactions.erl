@@ -16,7 +16,7 @@
          ,delete/2
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle_transactions/include/whistle_transactions.hrl").
 
 -define(CURRENT_BALANCE, <<"current_balance">>).
@@ -123,9 +123,30 @@ validate(Context, PathToken) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?DEBIT) ->
     case cb_context:resp_status(Context) of
-        'success' ->
-           maybe_create_debit_tansaction(Context);
-        _RespStatus -> Context
+        'success' -> maybe_debit_billing_id(Context);
+        _Error -> Context
+    end.
+
+%% Note: really similar to cb_braintree:maybe_charge_billing_id/2
+-spec maybe_debit_billing_id(cb_context:context()) -> cb_context:context().
+maybe_debit_billing_id(Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+
+    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
+        MasterAccountId ->
+            lager:debug("invoking a bookkeeper to remove requested credit"),
+            maybe_create_debit_tansaction(Context);
+        AuthAccountId when AuthAccountId =/= MasterAccountId ->
+            lager:debug("allowing reseller to remove credit without invoking a bookkeeper"),
+            maybe_create_debit_tansaction(Context);
+        ResellerId ->
+            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit"),
+            Resp = wh_json:from_list(
+                     [{<<"message">>, <<"Please contact your phone provider to remove credit.">>}
+                      ,{<<"cause">>, ResellerId}
+                     ]),
+            cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Resp, Context)
     end.
 
 -spec maybe_create_debit_tansaction(cb_context:context()) -> cb_context:context().
@@ -160,7 +181,9 @@ create_debit_tansaction(Context) ->
         wh_json:from_list(
           [{<<"auth_account_id">>, cb_context:auth_account_id(Context)}]
          ),
-    Routines = [fun(Tr) -> wh_transaction:set_reason(<<"admin_discretion">>, Tr) end
+    Reason = wh_json:get_value(<<"reason">>, JObj, <<"admin_discretion">>),
+
+    Routines = [fun(Tr) -> wh_transaction:set_reason(Reason, Tr) end
                 ,fun(Tr) -> wh_transaction:set_metadata(Meta, Tr) end
                 ,fun wh_transaction:save/1
                ],
@@ -413,7 +436,7 @@ correct_date_braintree_subscription_fold(Key, BSub) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_resp({'ok', _} | {'error', _}, cb_context:context()) -> cb_context:context().
+-spec send_resp({'ok', any()} | {'error', any()}, cb_context:context()) -> cb_context:context().
 send_resp({'ok', JObj}, Context) ->
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}

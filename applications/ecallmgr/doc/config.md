@@ -18,7 +18,7 @@ Version: 3.19
 |`inbound_rate_required`|boolean()|`false`|Is a rate required for the inbound call to proceed
 |`outbound_rate_required`|boolean()|`false`|Is a rate required for the outbound call to proceed
 |`node_down_grace_period`|integer()|10000|Time, in milliseconds, ecallmgr will flush the internal channels cache of channels from the down FreeSWITCH node
-|`fs_nodes`|list(string())|\[]|The list of FreeSWITCH servers to connect to when ecallmgr starts
+|`fs_nodes`|[string()]|\[]|The list of FreeSWITCH servers to connect to when ecallmgr starts
 |`acls`|json\_object()|`{}`|The list carrier/sbc/endpoint ACLs to load into FreeSWITCH
 |`send_registrar_notifications`|boolean()|`true`|Should ecallmgr figure out which registrar is the oldest and send a register update if the local ecallmgr is the oldest
 |`default_fax_extension`|string()|`.tiff`|What extension fax files should be stored with on the local FreeSWITCH disk
@@ -51,3 +51,4 @@ Version: 3.19
 |`max_channel_cleanup_timeout_ms`|integer()|60000|Time, in milliseconds, to check for too-old channels and remove them
 |`publish_channel_reconnect`|boolean()|`false`|Whether to publish a call event related to a node reconnecting (apps may need to check for their channel if the CHANNEL_DESTROY was missed)
 |`max_channel_update_s`|integer()|0|Limit, in seconds, to channel duration (0 for no limit). Channels exceeding this limit will be killed.
+|`should_detect_inband_dtmf`|boolean()|`false`|Whether to start the DTMF detection if telephone-event 101 isn't offered in the SDP.

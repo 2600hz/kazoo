@@ -11,10 +11,10 @@
 -export([fax_properties/1]).
 -export([collect_channel_props/1]).
 -export([save_fax_docs/3, save_fax_attachment/3]).
--export([content_type_to_extension/1, extension_to_content_type/1]).
 -export([notify_email_list/3]).
 -export([filter_numbers/1]).
 -export([is_valid_caller_id/2]).
+-export([normalize_content_type/1]).
 
 -include("fax.hrl").
 
@@ -44,55 +44,10 @@ collect_channel_props(JObj, List, Acc) ->
 -spec collect_channel_prop(ne_binary(), wh_json:object()) ->
                                   {wh_json:key(), wh_json:json_term()}.
 collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
-    <<"sip:", Code/binary>> = wh_json:get_value(Key, JObj),
+    <<"sip:", Code/binary>> = wh_json:get_value(Key, JObj, <<"sip:500">>),
     {Key, Code};
 collect_channel_prop(Key, JObj) ->
     {Key, wh_json:get_value(Key, JObj)}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known media types to extensions
-%% @end
-%%--------------------------------------------------------------------
--spec content_type_to_extension(ne_binary() | string() | list()) -> ne_binary().
-content_type_to_extension(CT) when not is_binary(CT) ->
-    content_type_to_extension(wh_util:to_binary(CT));
-content_type_to_extension(CT) when is_binary(CT) ->
-    Cmd = binary_to_list(<<"echo -n `grep -E '^", CT/binary, "\\s' /etc/mime.types "
-                           "2> /dev/null "
-                           "| head -n1 "
-                           "| awk '{print $2}'`">>),
-    case os:cmd(Cmd) of
-        [] ->
-            lager:debug("content-type ~s not handled, returning 'tmp'",[CT]),
-            <<"tmp">>;
-        Ext -> wh_util:to_binary(Ext)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known extensions to media types
-%% @end
-%%--------------------------------------------------------------------
--spec extension_to_content_type(ne_binary() | string() | list()) -> ne_binary().
-extension_to_content_type(Ext) when not is_binary(Ext) ->
-    extension_to_content_type(wh_util:to_binary(Ext));
-extension_to_content_type(<<".", Ext/binary>>) ->
-    extension_to_content_type(Ext);
-extension_to_content_type(Ext) when is_binary(Ext) ->
-    Cmd = binary_to_list(<<"echo -n `grep -E '\\s", Ext/binary, "($|\\s)' /etc/mime.types "
-                           "2> /dev/null "
-                           "| head -n1 "
-                           "| cut -f1`">>),
-    case os:cmd(Cmd) of
-        "" ->
-            lager:debug("extension ~s not handled, returning 'application/octet-stream'",[Ext]),
-            <<"application/octet-stream">>;
-        CT -> CT
-    end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -119,12 +74,12 @@ maybe_generate_random_filename(A) ->
 maybe_attach_extension(A, CT) ->
     case wh_util:is_empty(filename:extension(A)) of
         'false' -> A;
-        'true' -> <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+        'true' -> <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
     end.
 
 -spec save_fax_docs(wh_json:objects(), binary(), ne_binary()) ->
                            'ok' |
-                           {'error', term()}.
+                           {'error', any()}.
 save_fax_docs([], _FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES_DB, Doc) of
@@ -143,19 +98,17 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
                                  {'ok', wh_json:object()} |
                                  {'error', ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->
-    save_fax_attachment(JObj, FileContents, CT, whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5)).
+    MaxStorageRetry = whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
+    save_fax_attachment(JObj, FileContents, CT, MaxStorageRetry).
 
 save_fax_attachment(JObj, _FileContents, _CT, 0) ->
     DocId = wh_doc:id(JObj),
-    Rev = wh_doc:revision(JObj),
-    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, Rev]),
+    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, wh_doc:revision(JObj)]),
     {'error', <<"max retry saving attachment">>};
 save_fax_attachment(JObj, FileContents, CT, Count) ->
     DocId = wh_doc:id(JObj),
     Rev = wh_doc:revision(JObj),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
-            ,{'rev', Rev}
-           ],
+    Opts = [{'content_type', CT} ,{'rev', Rev}],
     Name = attachment_name(<<>>, CT),
     _ = couch_mgr:put_attachment(?WH_FAXES_DB, DocId, Name, FileContents, Opts),
     case check_fax_attachment(DocId, Name) of
@@ -223,3 +176,20 @@ is_valid_caller_id(Number, AccountId) ->
 
 -spec is_digit(integer()) -> boolean().
 is_digit(N) -> N >= $0 andalso N =< $9.
+
+-spec normalize_content_type(text()) -> ne_binary().
+normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/x-tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"image/x-tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"application/tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/x-tif">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"apppliction/x-tiff">>) -> <<"image/tiff">>;
+normalize_content_type(<<"application/pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"application/x-pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"text/pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<"text/x-pdf">>) -> <<"application/pdf">>;
+normalize_content_type(<<_/binary>> = Else) -> Else;
+normalize_content_type(CT) ->
+    normalize_content_type(wh_util:to_binary(CT)).

@@ -45,6 +45,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 %% How long should we wait for a response to our member_connect_req
 -define(COLLECT_RESP_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"queue_collect_resp_timeout">>, 2000)).
 -define(COLLECT_RESP_MESSAGE, 'collect_timer_expired').
@@ -105,13 +107,11 @@
 %% Creates a gen_fsm process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link(pid(), pid(), wh_json:object()) -> startlink_ret().
 start_link(MgrPid, ListenerPid, QueueJObj) ->
-    gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
+    gen_fsm:start_link(?SERVER, [MgrPid, ListenerPid, QueueJObj], []).
 
 refresh(FSM, QueueJObj) ->
     gen_fsm:send_all_state_event(FSM, {'refresh', QueueJObj}).
@@ -339,10 +339,7 @@ connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
             acdc_queue_listener:finish_member_call(Srv),
             {'next_state', 'ready', State};
         'false' ->
-            lager:debug("done waiting, no agents responded, let's ask again"),
-            webseq:note(?WSD_ID, self(), 'right', <<"no agents responded, trying again">>),
-            acdc_queue_listener:member_connect_re_req(Srv),
-            {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()}}
+            maybe_connect_re_req(MgrSrv, Srv, State)
     end;
 
 connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref}=State) ->
@@ -789,7 +786,7 @@ current_call(Call, QueueTimeLeft, Start) ->
                        ,{<<"wait_time">>, elapsed(Start)}
                       ]).
 
--spec elapsed('undefined' | reference() | wh_timeout() | integer()) -> api_integer().
+-spec elapsed(api_reference() | wh_timeout() | integer()) -> api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Ref) when is_reference(Ref) ->
     case erlang:read_timer(Ref) of
@@ -797,6 +794,37 @@ elapsed(Ref) when is_reference(Ref) ->
         Ms -> Ms div 1000
     end;
 elapsed(Time) -> wh_util:elapsed_s(Time).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Abort a queue call between connect_reqs if agents have left the
+%% building
+%%
+%% @spec maybe_connect_re_req(pid(), pid(), queue_fsm_state()) ->
+%%                   queue_fsm_state()
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_connect_re_req(pid(), pid(), queue_fsm_state()) ->
+                                {'next_state', atom(), queue_fsm_state()}
+                                | {'next_state', atom(), queue_fsm_state(), 'hibernate'}.
+maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
+                                                 ,queue_id=QueueId
+                                                 ,member_call=Call
+                                                }=State) ->
+    case acdc_queue_manager:are_agents_available(MgrSrv) of
+        'true' ->
+            lager:debug("done waiting, no agents responded, let's ask again"),
+            webseq:note(?WSD_ID, self(), 'right', <<"no agents responded, trying again">>),
+            acdc_queue_listener:member_connect_re_req(ListenerSrv),
+            {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()}};
+        'false' ->
+            lager:debug("all agents have left the queue, failing call"),
+            webseq:note(?WSD_ID, self(), 'right', <<"all agents have left the queue, failing call">>),
+            acdc_queue_listener:exit_member_call_empty(ListenerSrv),
+            acdc_stats:call_abandoned(AccountId, QueueId, whapps_call:call_id(Call), ?ABANDON_EMPTY),
+            {'next_state', 'ready', clear_member_call(State), 'hibernate'}
+    end.
 
 -spec accept_is_for_call(wh_json:object(), whapps_call:call()) -> boolean().
 accept_is_for_call(AcceptJObj, Call) ->

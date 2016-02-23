@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_sms_resources).
 
--include("../doodle.hrl").
+-include("doodle.hrl").
 
 -export([handle/2]).
 

@@ -17,7 +17,7 @@
          ,put/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
 
@@ -136,19 +136,18 @@ put(Context) ->
 maybe_authenticate_user(Context) ->
     LoginURL = crossbar_util:get_path(?SSO_URL, <<"login">>),
 
-    case ibrowse:send_req(wh_util:to_list(LoginURL)
-                          ,[{"Content-Type","application/json"}]
-                          ,'post'
-                          ,wh_json:encode(login_req(Context))
-                         )
+    case kz_http:post(wh_util:to_list(LoginURL)
+                      ,[{"Content-Type","application/json"}]
+                      ,wh_json:encode(login_req(Context))
+                     )
     of
-        {'ok', "200", RespHeaders, RespBody} ->
+        {'ok', 200, RespHeaders, RespBody} ->
             lager:debug("successfully authenticated to '~s'", [LoginURL]),
             cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(Context, RespHeaders, RespBody)}
                                          ,{fun cb_context:set_resp_status/2, 'success'}
                                         ]);
         {'ok', _RespCode, _RespHeaders, _RespBody} ->
-            lager:debug("recv non-200(~s) code from '~s': ~s", [_RespCode, LoginURL, _RespBody]),
+            lager:debug("recv non-200(~p) code from '~s': ~s", [_RespCode, LoginURL, _RespBody]),
             crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
         {'error', _Error} ->
             lager:debug("failed to query '~s': ~p", [LoginURL, _Error]),

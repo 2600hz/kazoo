@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% @end
@@ -15,22 +15,52 @@
 
 -define(IGNORED_APP, whapps_config:get(?CONFIG_CAT, <<"ignore_apps">>, [<<"milliwatt">>])).
 
+-define(LOOPBACK_KEY, <<"ignore_loopback_bowout">>).
+-define(IGNORE_LOOPBACK(AccountId), whapps_account_config:get_global(AccountId, ?CONFIG_CAT, ?LOOPBACK_KEY, 'true')).
+
 -export([handle_req/2]).
 
 handle_req(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     _ = wh_util:put_callid(JObj),
     couch_mgr:suppress_change_notice(),
-    maybe_ignore(JObj).
-
--spec maybe_ignore(wh_json:object()) -> 'ok'.
-maybe_ignore(JObj) ->
-    AppName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Application-Name">>], JObj),
-    case lists:member(AppName, ?IGNORED_APP) of
-        'false'-> handle_req(JObj);
-        'true' ->
-            lager:debug("ignoring cdr request from ~s", [AppName])
+    Routines = [fun maybe_ignore_app/1
+                ,fun maybe_ignore_loopback/1
+               ],
+    case lists:foldl(fun maybe_ignore_cdr/2, {JObj, []}, Routines) of
+        {_, []} -> handle_req(JObj);
+        {_, List} -> [lager:debug("~s", [M]) || M <- List]
     end.
+
+-spec maybe_ignore_cdr(fun(), {wh_json:object(), list()}) -> {wh_json:object(), list()}.
+maybe_ignore_cdr(Fun, {JObj, Acc}) ->
+    case Fun(JObj) of
+        {'true', M} -> {JObj, [M | Acc]};
+        _ -> {JObj, Acc}
+    end.
+
+-spec maybe_ignore_app(wh_json:object()) -> {boolean(), binary()}.
+maybe_ignore_app(JObj) ->
+    AppName = wh_util:to_binary(kz_call_event:application_name(JObj)),
+    {lists:member(AppName, ?IGNORED_APP),
+     <<"ignoring cdr request from ", AppName/binary>>
+    }.
+
+-spec maybe_ignore_loopback(wh_json:object()) -> {boolean(), binary()}.
+maybe_ignore_loopback(JObj) ->
+    {wh_util:is_true(?IGNORE_LOOPBACK(kz_call_event:account_id(JObj))) andalso
+         wh_json:is_true(<<"Channel-Is-Loopback">>, JObj) andalso
+         wh_json:is_true(<<"Channel-Loopback-Bowout">>, JObj) andalso
+         wh_json:is_true(<<"Channel-Loopback-Bowout-Execute">>, JObj) andalso
+         (is_normal_hangup_cause(kz_call_event:hangup_cause(JObj)) orelse
+              wh_json:get_ne_binary_value(<<"Channel-Loopback-Leg">>, JObj) =/= <<"B">>),
+     <<"ignoring cdr request for loopback channel">>
+    }.
+
+-spec is_normal_hangup_cause(api_binary()) -> boolean().
+is_normal_hangup_cause('undefined') -> 'true';
+is_normal_hangup_cause(<<"NORMAL", _/binary>>) -> 'true';
+is_normal_hangup_cause(_) -> 'false'.
 
 -spec handle_req(wh_json:object()) -> 'ok'.
 handle_req(JObj) ->
@@ -47,6 +77,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                 ,fun set_call_priority/3
                 ,fun maybe_set_e164_destination/3
                 ,fun is_conference/3
+                ,fun set_interaction/3
                 ,fun save_cdr/3
                ],
 
@@ -97,6 +128,9 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
 -spec set_doc_id(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 set_doc_id(_, Timestamp, JObj) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
+%% we should consider this because there is a lost channel in case of
+%% nightmare transfers
+%%    CallId = wh_util:rand_hex_binary(16),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     wh_doc:set_id(JObj, DocId).
 
@@ -117,7 +151,7 @@ is_conference(_AccountId, _Timestamp, JObj) ->
     maybe_leak_ccv(JObj, <<"is_conference">>, {fun wh_json:is_true/3, 'false'}).
 
 -spec maybe_leak_ccv(wh_json:object(), wh_json:key()) -> wh_json:object().
--spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), _}) -> wh_json:object().
+-spec maybe_leak_ccv(wh_json:object(), wh_json:key(), {fun(), any()}) -> wh_json:object().
 maybe_leak_ccv(JObj, Key) ->
     maybe_leak_ccv(JObj, Key, {fun wh_json:get_value/3, 'undefined'}).
 
@@ -131,6 +165,23 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
                                    ,wh_json:delete_key(CCVKey, JObj)
                                   )
     end.
+
+-spec set_interaction(api_binary(), gregorian_seconds(), wh_json:object()) ->
+                       wh_json:object().
+set_interaction(_AccountId, _Timestamp, JObj) ->
+    InteractionKey = [<<"custom_channel_vars">>, <<"call_interaction_id">>],
+    <<Time:11/binary, "-", Key/binary>> = Interaction = wh_json:get_value(InteractionKey, JObj),
+    Timestamp = wh_util:to_integer(Time),
+    CallId = wh_json:get_value(<<"call_id">>, JObj),
+    DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
+
+    wh_json:set_values(
+      [{<<"interaction_time">>, Timestamp}
+       ,{<<"interaction_key">>, Key}
+       ,{<<"interaction_id">>, Interaction}
+      ]
+      ,wh_json:delete_key(InteractionKey, wh_doc:set_id(JObj, DocId))
+     ).
 
 -spec save_cdr(api_binary(), gregorian_seconds(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->

@@ -16,7 +16,7 @@
          ,validate/1, validate/2, validate/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"pivot/crossbar_listing">>).
 -define(CB_DEBUG_LIST, <<"pivot/debug_listing">>).
@@ -260,7 +260,7 @@ normalize_debug_results(Context, List) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_debug_results_fold(wh_json:object(), dict()) -> dict().
+-spec normalize_debug_results_fold(wh_json:object(), dict:dict()) -> dict:dict().
 normalize_debug_results_fold(JObj, Dict) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     case dict:find(CallId, Dict) of

@@ -65,6 +65,8 @@
 
 -include("acdc.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {
          call :: whapps_call:call()
          ,acdc_queue_id :: ne_binary() % the ACDc Queue ID
@@ -86,7 +88,7 @@
          ,is_thief = 'false' :: boolean()
          ,agent :: agent()
          ,agent_call_ids = [] :: api_binaries() | wh_proplist()
-         ,cdr_urls = dict:new() :: dict() %% {CallId, Url}
+         ,cdr_urls = dict:new() :: dict:dict() %% {CallId, Url}
          ,agent_presence_id :: api_binary()
          }).
 
@@ -163,34 +165,28 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(pid(), wh_json:object()) -> startlink_ret().
 start_link(Supervisor, AgentJObj) ->
     AgentId = wh_doc:id(AgentJObj),
     AcctId = account_id(AgentJObj),
 
-    Queues = case wh_json:get_value(<<"queues">>, AgentJObj) of
-                 'undefined' -> [];
-                 Qs -> Qs
-             end,
+    Queues = wh_json:get_value(<<"queues">>, AgentJObj, []),
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
 start_link(Supervisor, _, _AcctId, _AgentId, []) ->
     lager:debug("agent ~s has no queues, not starting", [_AgentId]),
-    _ = wh_util:spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     'ignore';
 start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
     case acdc_agent_util:most_recent_status(AcctId, AgentId) of
         {'ok', <<"logged_out">>} ->
             lager:debug("agent ~s in ~s is logged out, not starting", [AgentId, AcctId]),
-            _ = wh_util:spawn('acdc_agent_sup', 'stop', [Supervisor]),
+            _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
             'ignore';
         {'ok', _S} ->
             lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
-            gen_listener:start_link(?MODULE
+            gen_listener:start_link(?SERVER
                                     ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
                                       ,{'responders', ?RESPONDERS}
                                      ]
@@ -203,7 +199,7 @@ start_link(Supervisor, ThiefCall, QueueId) ->
     AcctId = whapps_call:account_id(ThiefCall),
 
     lager:debug("starting thief agent ~s(~s)", [AgentId, AcctId]),
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
                               ,{'responders', ?RESPONDERS}
                              ]
@@ -416,7 +412,7 @@ handle_cast({'refresh_config', Qs}, #state{agent_queues=Queues}=State) ->
     {'noreply', State};
 handle_cast({'stop_agent', Req}, #state{supervisor=Supervisor}=State) ->
     lager:debug("stop agent requested by ~p", [Req]),
-    _ = wh_util:spawn('acdc_agent_sup', 'stop', [Supervisor]),
+    _ = wh_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
     {'noreply', State};
 
 handle_cast({'fsm_started', FSMPid}, State) ->
@@ -452,7 +448,7 @@ handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
                                        }=State) ->
     lager:debug("agent logged out of last known queue ~s, logging out", [Q]),
     logout_from_queue(AcctId, AgentId, Q),
-    acdc_agent_listener:logout_agent(self()),
+    ?MODULE:logout_agent(self()),
     {'noreply', State#state{agent_queues=[]}};
 handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
                                         ,acct_id=AcctId
@@ -510,7 +506,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
                      ,'hibernate'};
                 'true' ->
                     lager:debug("thief is done, going down"),
-                    acdc_agent_listener:stop(self()),
+                    ?MODULE:stop(self()),
                     {'noreply', State}
             end;
         _ ->
@@ -729,15 +725,22 @@ handle_cast({'send_sync_req'}, #state{my_id=MyId
                                       ,acct_id=AcctId
                                       ,agent_id=AgentId
                                      }=State) ->
-    lager:debug("sending sync request"),
-    send_sync_request(AcctId, AgentId, MyId, MyQ),
+    case MyQ of
+        'undefined' ->
+            lager:debug("queue not ready yet, waiting for sync request"),
+            timer:apply_after(100 , gen_listener, cast, [self(), {'send_sync_req'}]);
+         _ ->
+            lager:debug("queue retrieved: ~p , sending sync request", [MyQ]),
+            send_sync_request(AcctId, AgentId, MyId, MyQ)
+    end,
     {'noreply', State};
 
 handle_cast({'send_sync_resp', Status, ReqJObj, Options}, #state{my_id=MyId
                                                                  ,acct_id=AcctId
                                                                  ,agent_id=AgentId
+                                                                 ,my_q=MyQ
                                                                 }=State) ->
-    send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options),
+    send_sync_response(ReqJObj, AcctId, AgentId, MyId, MyQ, Status, Options),
     {'noreply', State};
 
 handle_cast({'send_status_update', Status}, #state{acct_id=AcctId
@@ -957,13 +960,13 @@ send_sync_request(AcctId, AgentId, MyId, MyQ) ->
            ],
     wapi_acdc_agent:publish_sync_req(Prop).
 
-send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options) ->
+send_sync_response(ReqJObj, AcctId, AgentId, MyId, MyQ, Status, Options) ->
     Prop = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Process-ID">>, MyId}
             ,{<<"Status">>, wh_util:to_binary(Status)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ReqJObj)}
-            | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | Options ++ wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
            ],
     Q = wh_json:get_value(<<"Server-ID">>, ReqJObj),
     lager:debug("sending sync resp to ~s", [Q]),

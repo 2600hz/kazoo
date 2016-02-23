@@ -37,7 +37,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_directory).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 
@@ -82,7 +82,7 @@
           ,name_audio_id :: api_binary() % pre-recorded audio of user's name
          }).
 -type directory_user() :: #directory_user{}.
--type directory_users() :: [directory_user(),...] | [].
+-type directory_users() :: [directory_user()].
 
 -record(directory, {
           sort_by = 'last' :: 'first' | 'last'
@@ -155,6 +155,9 @@ collect_digits(Call, State, CurrUsers, DTMF) ->
 	{'ok', <<>>} ->
 	    whapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
 	    directory_start(Call, State, CurrUsers);
+        {'ok', <<"0">>} ->
+            lager:info("caller chose to return to the main menu"),
+            cf_exe:continue(Call);
 	{'ok', DTMFS} ->
 	    maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
     end.
@@ -244,7 +247,7 @@ route_to_match(Call, Callflow) ->
 %%------------------------------------------------------------------------------
 %% Audio Prompts
 %%------------------------------------------------------------------------------
--spec play_user(whapps_call:call(), whapps_call_command:audio_macro_prompt(), _) ->
+-spec play_user(whapps_call:call(), whapps_call_command:audio_macro_prompt(), any()) ->
                        {'ok', binary()}.
 play_user(Call, UsernameTuple, _MatchNum) ->
     play_and_collect(Call, [{'prompt', ?PROMPT_RESULT_NUMBER}
@@ -359,7 +362,7 @@ get_sort_by(_) -> 'last'.
 
 -spec get_directory_listing(ne_binary(), ne_binary()) ->
                                    {'ok', directory_users()} |
-                                   {'error', term()}.
+                                   {'error', any()}.
 get_directory_listing(Db, DirId) ->
     case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{'key', DirId}, 'include_docs']) of
         {'ok', []} ->

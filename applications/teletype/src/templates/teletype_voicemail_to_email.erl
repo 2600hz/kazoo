@@ -12,7 +12,7 @@
          ,handle_new_voicemail/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_to_email">>).
 
@@ -30,8 +30,8 @@
            ])
        ).
 
--define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\nTranscription: {{voicemail.transcription|default:\"Not Enabled\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at (415) 886-7900 or email support@2600hz.com.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact (415) 886-7900 or email <a href=\"mailto:support@2600hz.com\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\\\a\\\\t H:i\"}}">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\\\a\\\\t H:i\"}}</td></tr></table><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>).
 -define(TEMPLATE_CATEGORY, <<"voicemail">>).
 -define(TEMPLATE_NAME, <<"Voicemail To Email">>).
@@ -79,14 +79,14 @@ handle_new_voicemail(JObj, _Props) ->
     {'ok', UserJObj} = get_owner(VMBox, DataJObj),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
+    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 
     %% If the box has emails, continue processing
     %% or If the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    (BoxEmails =/= [] orelse kzd_user:voicemail_notification_enabled(UserJObj))
+    (Emails =/= [] andalso
+     (kzd_user:voicemail_notification_enabled(UserJObj) orelse wh_json:is_empty(UserJObj)))
         orelse teletype_util:stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
-
-    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 
     ReqData =
         wh_json:set_values(
@@ -124,18 +124,11 @@ process_req(DataJObj) ->
               | build_template_data(DataJObj)
              ],
 
-    %% Load templates
-    Templates = teletype_templates:fetch(?TEMPLATE_ID, DataJObj),
-
     %% Populate templates
-    RenderedTemplates =
-        props:filter_undefined(
-          [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-           || {ContentType, Template} <- Templates
-          ]),
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_meta(?TEMPLATE_ID, AccountId),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, AccountId),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
@@ -262,13 +255,8 @@ build_date_called_data(DataJObj) ->
     DateCalled = date_called(DataJObj),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Timezone = wh_json:get_first_defined([[<<"voicemail">>, <<"timezone">>]
-                                          ,[<<"owner">>, <<"timezone">>]
-                                          ,[<<"account">>, <<"timezone">>]
-                                         ]
-                                         ,DataJObj
-                                         ,<<"UTC">>
-                                        ),
+    VMBox = wh_json:get_value(<<"voicemail">>, DataJObj),
+    Timezone = kzd_voicemail_box:timezone(VMBox, <<"UTC">>),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     lager:debug("using tz ~s (system ~s) for ~p", [Timezone, ClockTimezone, DateTime]),

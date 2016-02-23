@@ -19,6 +19,7 @@
          ,is_authorized/2
         ]).
 -export([from_jobj/1
+         ,from_ccvs/2
          ,to_jobj/1
         ]).
 
@@ -52,8 +53,9 @@
 -export([per_minute_cost/1]).
 -export([call_cost/1]).
 -export([ccvs/1]).
+-export([caller_network_address/1]).
 
--include_lib("jonny5.hrl").
+-include("jonny5.hrl").
 
 -record(request, {account_id :: api_binary()
                   ,account_billing :: api_binary()
@@ -118,9 +120,24 @@ from_jobj(JObj) ->
              ,request_ccvs = CCVs
             }.
 
+-spec from_ccvs(request(), wh_proplist()) -> request().
+from_ccvs(#request{request_ccvs=ReqCCVs
+                   ,request_jobj=ReqJObj
+                  }=Request, CCVs) ->
+    NewCCVs = wh_json:set_values(CCVs, ReqCCVs),
+
+    Request#request{account_id=props:get_value(<<"Account-ID">>, CCVs)
+                    ,request_ccvs=NewCCVs
+                    ,request_jobj=wh_json:set_value(<<"Custom-Channel-Vars">>, NewCCVs, ReqJObj)
+                   }.
+
+
 -spec request_number(ne_binary(), wh_json:object()) -> ne_binary().
 request_number(Number, CCVs) ->
-    case wh_json:get_value(<<"Original-Number">>, CCVs) of
+    case wh_json:get_first_defined([<<"E164-Destination">>
+                                    ,<<"Original-Number">>
+                                   ], CCVs
+                                  ) of
         'undefined' -> Number;
         Original ->
             lager:debug("using original number ~s instead of ~s", [Original, Number]),
@@ -484,3 +501,7 @@ per_minute_cost(#request{request_jobj=JObj}) ->
 -spec call_cost(request()) -> non_neg_integer().
 call_cost(#request{request_jobj=JObj}) ->
     wht_util:call_cost(JObj).
+
+-spec caller_network_address(request()) -> api_binary().
+caller_network_address(#request{request_jobj=JObj}) ->
+    wh_json:get_value(<<"From-Network-Addr">>, JObj).

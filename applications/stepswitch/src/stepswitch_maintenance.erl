@@ -115,11 +115,11 @@ pretty_print_resource([{Key, Value}|Props]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec flush() -> 'ok'.
-flush() -> wh_cache:flush_local(?STEPSWITCH_CACHE).
+flush() -> kz_cache:flush_local(?STEPSWITCH_CACHE).
 
 -spec cnam_flush() -> 'ok'.
 cnam_flush() ->
-    stepswitch_cnam:flush().
+    io:format("flushed ~p entries from cnam cache~n", [stepswitch_cnam:flush()]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -162,7 +162,12 @@ lookup_number(Number) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
             io:format("~-19s: ~s~n", [<<"Account-ID">>, AccountId]),
-            pretty_print_number_props(Props);
+            pretty_print_number_props(
+              props:insert_value(<<"classification">>
+                                 ,wnm_util:classify_number(Number, AccountId)
+                                 ,Props
+                                )
+             );
         {'error', 'not_found'} ->
             io:format("number not found~n")
     end.
@@ -197,28 +202,36 @@ reload_resources(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_number(text()) -> _.
+-spec process_number(text()) -> any().
 process_number(Number) -> process_number(Number, 'undefined').
 
--spec process_number(text(), text() | 'undefined') -> _.
-process_number(Number, 'undefined') ->
-    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), wh_json:new()),
+-spec process_number(text(), text() | 'undefined') -> any().
+process_number(Num, 'undefined') ->
+    JObj = wh_json:from_list([{<<"To-DID">>, wh_util:to_binary(Num)}]),
+    Number = stepswitch_util:get_outbound_destination(JObj),
+    Endpoints = stepswitch_resources:endpoints(Number
+                                               ,wapi_offnet_resource:jobj_to_req(JObj)
+                                              ),
     pretty_print_endpoints(Endpoints);
-process_number(Number, AccountId) ->
+process_number(Num, AccountId) ->
     JObj = wh_json:from_list([{<<"Account-ID">>, wh_util:to_binary(AccountId)}
                               ,{<<"Hunt-Account-ID">>, wh_util:to_binary(AccountId)}
+                              ,{<<"To-DID">>, wh_util:to_binary(Num)}
                              ]),
-    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), JObj),
+    Number = stepswitch_util:get_outbound_destination(JObj),
+    Endpoints = stepswitch_resources:endpoints(Number
+                                               ,wapi_offnet_resource:jobj_to_req(JObj)
+                                              ),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoints(wh_json:objects()) -> _.
+-spec pretty_print_endpoints(wh_json:objects()) -> any().
 pretty_print_endpoints([]) -> 'ok';
 pretty_print_endpoints([Endpoint|Endpoints]) ->
     _ = pretty_print_endpoint(wh_json:to_proplist(Endpoint)),
     io:format("~n"),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoint(wh_proplist()) -> _.
+-spec pretty_print_endpoint(wh_proplist()) -> any().
 pretty_print_endpoint([]) -> 'ok';
 pretty_print_endpoint([{_, []}|Props]) ->
     pretty_print_endpoint(Props);
@@ -237,7 +250,6 @@ pretty_print_endpoint([{<<"Custom-Channel-Vars">>, JObj}|Props]) ->
 pretty_print_endpoint([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
     pretty_print_endpoint(Props).
-
 
 %%--------------------------------------------------------------------
 %% @private

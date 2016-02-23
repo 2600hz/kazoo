@@ -27,11 +27,13 @@
 -spec allowed_apps(ne_binary()) -> wh_json:objects().
 allowed_apps(AccountId) ->
     ServicePlan = wh_services:service_plan_json(AccountId),
-    DefaultApps = load_default_apps(),
-    Apps = filter_apps(AccountId, DefaultApps),
     case has_all_apps_in_service_plan(ServicePlan) of
-        'true' -> Apps;
-        'false' -> find_enabled_apps(get_plan_apps(ServicePlan), Apps)
+        'true' ->
+            DefaultApps = load_default_apps(),
+            filter_apps(AccountId, DefaultApps);
+        'false' ->
+            Apps = find_enabled_apps(get_plan_apps(ServicePlan)),
+            filter_apps(AccountId, Apps)
     end.
 
 %%--------------------------------------------------------------------
@@ -60,7 +62,7 @@ is_authorized(AccountId, UserId, AppId) ->
             lager:error("failed to fetch apps store doc in ~s : ~p", [AccountId, _R]),
             'false';
         {'ok', Doc} ->
-            AppJObj = wh_json:get_value(AppId, kz_apps_store:apps(Doc)),
+            AppJObj = wh_json:get_value(AppId, kzd_apps_store:apps(Doc)),
             Allowed = wh_json:get_value(<<"allowed_users">>, AppJObj, <<"specific">>),
             Users = wh_json:get_value(<<"users">>, AppJObj, []),
             case {Allowed, Users} of
@@ -99,7 +101,7 @@ load_default_apps() ->
 %%--------------------------------------------------------------------
 -spec create_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 create_apps_store_doc(Account) ->
-    Doc = kz_apps_store:new(Account),
+    Doc = kzd_apps_store:new(Account),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     couch_mgr:save_doc(AccountDb, Doc).
 
@@ -114,7 +116,7 @@ create_apps_store_doc(Account) ->
 %%--------------------------------------------------------------------
 -spec get_apps_store_doc(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
 get_apps_store_doc(Account) ->
-    case kz_apps_store:fetch(Account) of
+    case kzd_apps_store:fetch(Account) of
         {'error', 'not_found'} ->
             cb_apps_maintenance:migrate(Account);
         Result -> Result
@@ -186,9 +188,12 @@ filter_apps(AccountId, Apps, JObj) ->
 %%--------------------------------------------------------------------
 -spec add_permissions(wh_json:object(), wh_json:object()) -> wh_json:object().
 add_permissions(App, JObj) ->
-    AppsPerm = kz_apps_store:apps(JObj),
-    AppPerm = wh_json:get_value(wh_doc:id(App), AppsPerm, wh_json:new()),
-    wh_json:merge_recursive([App, AppPerm]).
+    AppsPerm = kzd_apps_store:apps(JObj),
+    case wh_json:get_ne_value(wh_doc:id(App), AppsPerm) of
+        'undefined' -> App;
+        AppPerm ->
+            wh_json:merge_recursive([kzd_app:publish(App), AppPerm])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -197,7 +202,7 @@ add_permissions(App, JObj) ->
 %%--------------------------------------------------------------------
 -spec is_blacklisted(wh_json:object(), wh_json:object()) -> boolean().
 is_blacklisted(App, JObj) ->
-    Blacklist = kz_apps_store:blacklist(JObj),
+    Blacklist = kzd_apps_store:blacklist(JObj),
     lists:member(wh_doc:id(App), Blacklist).
 
 %%--------------------------------------------------------------------
@@ -277,12 +282,10 @@ get_plan_apps(ServicePlan) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_enabled_apps(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-find_enabled_apps(PlanAppsJObj, DefaultApps) ->
+-spec find_enabled_apps(wh_json:object()) -> wh_json:objects().
+find_enabled_apps(PlanAppsJObj) ->
     wh_json:foldl(
-        fun(PlanId, PlanApp, Acc) ->
-            find_enabled_apps_fold(PlanId, PlanApp, Acc, DefaultApps)
-        end
+        fun find_enabled_apps_fold/3
         ,[]
         ,PlanAppsJObj
     ).
@@ -292,12 +295,11 @@ find_enabled_apps(PlanAppsJObj, DefaultApps) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_enabled_apps_fold(ne_binary(), kzd_item_plan:doc(), wh_json:objects(), wh_json:objects()) ->
-                                    wh_json:objects().
-find_enabled_apps_fold(AppName, PlanApp, Acc, DefaultApps) ->
+-spec find_enabled_apps_fold(ne_binary(), kzd_item_plan:doc(), wh_json:objects()) -> wh_json:objects().
+find_enabled_apps_fold(AppName, PlanApp, Acc) ->
     AppId = wh_json:get_value(<<"app_id">>, PlanApp),
     case (not kzd_item_plan:is_enabled(PlanApp))
-        orelse find_app(AppName, AppId, DefaultApps)
+        orelse find_app(AppId, PlanApp)
     of
         'true' ->
             lager:debug("excluding app ~s(~s)", [AppName, AppId]),
@@ -315,24 +317,13 @@ find_enabled_apps_fold(AppName, PlanApp, Acc, DefaultApps) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec find_app(ne_binary(), ne_binary(), wh_json:objects()) ->
-                      api_object().
--spec find_app(ne_binary(), ne_binary(), wh_json:objects()
-               ,ne_binary(), ne_binary(), wh_json:object()
-              ) ->
-                      api_object().
-find_app(_AppName, _AppId, []) -> 'undefined';
-find_app(AppName, AppId, [AppJObj|DefaultApps]) ->
-    find_app(
-        AppName
-        ,AppId
-        ,DefaultApps
-        ,wh_doc:id(AppJObj)
-        ,wh_json:get_value(<<"name">>, AppJObj)
-        ,AppJObj
-    ).
-
-find_app(AppName, AppId, _DefaultApps ,AppId, AppName, AppJObj) ->
-    AppJObj;
-find_app(AppName, AppId, DefaultApps, _Id, _Name, _JObj) ->
-    find_app(AppName, AppId, DefaultApps).
+-spec find_app(ne_binary(), wh_json:object()) -> api_object().
+find_app(AppId, PlanApp) ->
+    Account = wh_json:get_first_defined([<<"account_db">>, <<"account_id">>], PlanApp),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AppId) of
+        {'ok', JObj} -> JObj;
+        {'error', _R} ->
+            lager:error("failed to get ~s in ~s: ~p", [AppId, AccountDb, _R]),
+            'undefined'
+    end.

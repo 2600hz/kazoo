@@ -23,7 +23,9 @@
          ,code_change/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
+
+-define(SERVER, ?MODULE).
 
 -record(state, {recovery_ref :: reference()}).
 
@@ -54,14 +56,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}
+    gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
@@ -77,7 +76,6 @@ publish_new_job(Context) ->
     AccountId = cb_context:account_id(Context),
     JobId = wh_doc:id(cb_context:doc(Context)),
     ReqId = cb_context:req_id(Context),
-
     publish(AccountId, JobId, ReqId).
 
 -spec publish(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
@@ -348,7 +346,7 @@ handle_cast(_Msg, State) ->
 handle_info({'timeout', Ref, ?RECOVERY_MESSAGE}
             ,#state{recovery_ref=Ref}=State
            ) ->
-    _Pid = wh_util:spawn(?MODULE, 'start_recovery', []),
+    _Pid = wh_util:spawn(fun start_recovery/0),
     lager:debug("starting recovery walker in ~p", [_Pid]),
     {'noreply', State#state{recovery_ref=start_timer()}, 'hibernate'};
 handle_info(_Info, State) ->
@@ -395,9 +393,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec job_modb(ne_binary(), ne_binary()) -> ne_binary().
-job_modb(AccountId, <<Year:4/binary, Month:2/binary, "-", _/binary>>) ->
+job_modb(AccountId, ?MATCH_MODB_PREFIX(Year,Month,_)) ->
     wh_util:format_account_mod_id(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month));
-job_modb(AccountId, <<Year:4/binary, Month:1/binary, "-", _/binary>>) ->
+job_modb(AccountId, ?MATCH_MODB_PREFIX_M1(Year,Month,_)) ->
     wh_util:format_account_mod_id(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)).
 
 -spec start_timer() -> reference().

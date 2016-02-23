@@ -56,11 +56,11 @@ maybe_dry_run_by_props(Context, Callback, Props, 'false') ->
 handle_dry_run_resp(Context, Callback, Services, RespJObj) ->
     case wh_json:is_empty(RespJObj) of
         'true' ->
-            lager:debug("this service update is not a drill people!"),
+            lager:debug("no dry_run charges to accept; this service update is not a drill people!"),
             save_an_audit_log(Context, Services),
             Callback();
         'false' ->
-            lager:debug("this service update is just a test, do not be alarmed"),
+            lager:debug("this update requires service changes to be accepted, do not be alarmed"),
             crossbar_util:response_402(RespJObj, Context)
     end.
 
@@ -75,7 +75,6 @@ maybe_dry_run_by_type(Context, Callback, Type, 'true') ->
 maybe_dry_run_by_type(Context, Callback, Type, 'false') ->
     UpdatedServices = calc_service_updates(Context, Type),
     RespJObj = dry_run(UpdatedServices),
-    lager:debug("not accepting charges: ~s", [wh_json:encode(RespJObj)]),
 
     handle_dry_run_resp(Context, Callback, UpdatedServices, RespJObj).
 
@@ -237,6 +236,9 @@ calc_service_updates(Context, <<"ips">>) ->
 calc_service_updates(Context, <<"branding">>) ->
     Services = fetch_service(Context),
     wh_service_whitelabel:reconcile(Services, <<"whitelabel">>);
+calc_service_updates(Context, <<"support">>) ->
+    Services = fetch_service(Context),
+    wh_service_ledgers:reconcile(Services, <<"support">>);
 calc_service_updates(_Context, _Type) ->
     lager:warning("unknown type ~p, cannot calculate service updates", [_Type]),
     'undefined'.
@@ -299,8 +301,9 @@ reconcile(Context) ->
             Context
     end.
 
--spec base_audit_log(cb_context:context()) -> wh_json:object().
-base_audit_log(Context) ->
+-spec base_audit_log(cb_context:context(), wh_services:services()) ->
+                            wh_json:object().
+base_audit_log(Context, Services) ->
     AccountJObj = cb_context:account_doc(Context),
     Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
 
@@ -310,7 +313,7 @@ base_audit_log(Context) ->
                   ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context)}
                   ,{fun kzd_audit_log:set_audit_account/3
                     ,cb_context:account_id(Context)
-                    ,base_audit_account(Context)
+                    ,base_audit_account(Context, Services)
                    }
                  ]
                ).
@@ -323,13 +326,17 @@ base_audit_log(Context) ->
 base_audit_log_fold({F, V}, Acc) -> F(Acc, V);
 base_audit_log_fold({F, V1, V2}, Acc) -> F(Acc, V1, V2).
 
--spec base_audit_account(cb_context:context()) -> wh_json:object().
-base_audit_account(Context) ->
+-spec base_audit_account(cb_context:context(), wh_services:services()) ->
+                                wh_json:object().
+base_audit_account(Context, Services) ->
     AccountName = kz_account:name(cb_context:account_doc(Context)),
+    Diff = wh_services:diff_quantities(Services),
 
     wh_json:from_list(
       props:filter_empty(
-        [{<<"account_name">>, AccountName}]
+        [{<<"account_name">>, AccountName}
+         ,{<<"diff_quantities">>, Diff}
+        ]
        )).
 
 -spec base_auth_user(cb_context:context()) -> wh_json:object().
@@ -346,7 +353,6 @@ base_auth_user(Context) ->
 -spec leak_auth_pvt_fields(wh_json:object()) -> wh_json:object().
 leak_auth_pvt_fields(JObj) ->
     wh_json:set_values([{<<"account_id">>, wh_doc:account_id(JObj)}
-                        ,{<<"auth_token">>, wh_doc:id(JObj)}
                         ,{<<"created">>, wh_doc:created(JObj)}
                        ]
                        ,wh_json:public_fields(JObj)
@@ -355,5 +361,19 @@ leak_auth_pvt_fields(JObj) ->
 -spec save_an_audit_log(cb_context:context(), wh_services:services() | 'undefined') -> 'ok'.
 save_an_audit_log(_Context, 'undefined') -> 'ok';
 save_an_audit_log(Context, Services) ->
-    BaseAuditLog = base_audit_log(Context),
+    BaseAuditLog = base_audit_log(Context, Services),
+    lager:debug("attempting to save audit log for ~s (~s)"
+                ,[cb_context:account_id(Context), wh_services:account_id(Services)]
+               ),
+    case cb_context:account_id(Context) =:= wh_services:account_id(Services) of
+        'true' -> 'ok';
+        'false' ->
+            (catch save_subaccount_audit_log(Context, BaseAuditLog))
+    end,
     kzd_audit_log:save(Services, BaseAuditLog).
+
+-spec save_subaccount_audit_log(cb_context:context(), kzd_audit_log:doc()) -> 'ok'.
+save_subaccount_audit_log(Context, BaseAuditLog) ->
+    MODb = cb_context:account_modb(Context),
+    {'ok', _Saved} = kazoo_modb:save_doc(MODb, BaseAuditLog),
+    lager:debug("saved sub account ~s's audit log", [cb_context:account_id(Context)]).

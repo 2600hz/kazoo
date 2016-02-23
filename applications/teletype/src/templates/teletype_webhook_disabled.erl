@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz Inc
+%%% @copyright (C) 2015-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
          ,handle_webhook_disabled/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"webhook_disabled">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
@@ -78,28 +78,19 @@ handle_webhook_disabled(JObj, _Props) ->
     process_req(wh_json:merge_jobjs(DataJObj, ReqData)).
 
 -spec process_req(wh_json:object()) -> 'ok'.
--spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
-    %% Load templates
-    process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
-
-process_req(_DataJObj, []) ->
-    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
-process_req(DataJObj, Templates) ->
     Macros = [{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"hook">>, hook_data(wh_json:get_value(<<"hook">>, DataJObj))}
              ],
 
     %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_meta(?TEMPLATE_ID
-                                      ,teletype_util:find_account_id(DataJObj)
-                                     ),
+        teletype_templates:fetch_notification(?TEMPLATE_ID
+                                             ,teletype_util:find_account_id(DataJObj)
+                                             ),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)

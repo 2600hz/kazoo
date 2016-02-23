@@ -5,10 +5,10 @@
 # ./dev-exec-mfa.sh module_name [start_fun [arg1 arg2 .... argN]]
 #
 
-DIR=`dirname $0`
+DIR=$(dirname $0)
 
 export ERL_CRASH_DUMP=$DIR/../$(date +%s)_apps_erl_crash.dump
-export ERL_LIBS=$DIR/../deps:$DIR/../core:$DIR/../applications/
+export ERL_LIBS="$ERL_LIBS":$DIR/../deps:$DIR/../core:$DIR/../applications/
 
 MODULE=$1
 FUN=$2

@@ -15,23 +15,20 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application start behaviour
-%% @end
+%% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
-                   {'ok', pid()} |
-                   {'error', startlink_err()}.
+-spec start(application:start_type(), any()) -> startapp_ret().
 start(_Type, _Args) ->
-    blackhole:start_link().
+    OK = blackhole_sup:start_link(),
+    _ = blackhole_bindings:init(), %% FIXME: the OTP way to supervise this?
+    OK.
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Implement the application stop behaviour
-%% @end
+%% @doc Implement the application stop behaviour
 %%--------------------------------------------------------------------
--spec stop(term()) -> 'ok'.
+-spec stop(any()) -> any().
 stop(_State) ->
-    cowboy:stop_listener('blackhole'),
-    blackhole:stop().
+    _ = cowboy:stop_listener('blackhole'),
+    _ = cowboy:stop_listener('socketio_http_listener'),
+    'ok'.

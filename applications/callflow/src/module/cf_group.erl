@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_group).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 -include_lib("whistle/src/api/wapi_dialplan.hrl").
 
 -export([handle/2]).
@@ -91,7 +91,7 @@ build_endpoints(JObj, Call) ->
       ]
      ).
 
--type endpoints_acc() :: [{ne_binary(), {'ok', wh_json:objects()}},...] | [].
+-type endpoints_acc() :: [{ne_binary(), {'ok', wh_json:objects()}}].
 
 -spec build_device_endpoints(endpoints_acc(), wh_proplist(), whapps_call:call()) ->
                                     endpoints_acc().

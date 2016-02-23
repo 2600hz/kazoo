@@ -16,7 +16,7 @@
          ,call_abandoned/4
          ,call_handled/4
          ,call_missed/5
-         ,call_processed/4
+         ,call_processed/5
 
          ,find_call/1
          ,call_stat_to_json/1
@@ -59,6 +59,8 @@
 
 -include("acdc.hrl").
 -include("acdc_stats.hrl").
+
+-define(SERVER, ?MODULE).
 
 %% Public API
 -spec call_waiting(api_binary()
@@ -115,13 +117,14 @@ call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_missed/1).
 
-call_processed(AccountId, QueueId, AgentId, CallId) ->
+call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Call-ID">>, CallId}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Processed-Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Hung-Up-By">>, Initiator}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_processed/1).
@@ -266,8 +269,9 @@ call_table_opts() ->
                     ]).
 -define(QUEUE_NAME, <<>>).
 
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE
+    gen_listener:start_link(?SERVER
                             ,[{'bindings', ?BINDINGS}
                               ,{'responders', ?RESPONDERS}
                               ,{'queue_name', ?QUEUE_NAME}
@@ -318,6 +322,7 @@ find_call(CallId) ->
           ,status_table_id :: ets:table_id()
          }).
 
+-spec init([]) -> {'ok', #state{}}.
 init([]) ->
     wh_util:put_callid(<<"acdc.stats">>),
     couch_mgr:suppress_change_notice(),
@@ -539,14 +544,14 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
 -spec archive_data() -> 'ok'.
 archive_data() ->
     Self = self(),
-    _ = wh_util:spawn(?MODULE, 'archive_call_data', [Self, 'false']),
-    _ = wh_util:spawn('acdc_agent_stats', 'archive_status_data', [Self, 'false']),
+    _ = wh_util:spawn(fun archive_call_data/2, [Self, 'false']),
+    _ = wh_util:spawn(fun acdc_agent_stats:archive_status_data/2, [Self, 'false']),
     'ok'.
 
 force_archive_data() ->
     Self = self(),
-    _ = wh_util:spawn(?MODULE, 'archive_call_data', [Self, 'true']),
-    _ = wh_util:spawn('acdc_agent_stats', 'archive_status_data', [Self, 'true']),
+    _ = wh_util:spawn(fun archive_call_data/2, [Self, 'true']),
+    _ = wh_util:spawn(fun acdc_agent_stats:archive_status_data/2, [Self, 'true']),
     'ok'.
 
 cleanup_data(Srv) ->
@@ -633,12 +638,12 @@ maybe_archive_call_data(Srv, Match) ->
             ]
     end.
 
--spec query_call_fold(call_stat(), dict()) -> dict().
+-spec query_call_fold(call_stat(), dict:dict()) -> dict:dict().
 query_call_fold(#call_stat{status=Status}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
     dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
 
--spec archive_call_fold(call_stat(), dict()) -> dict().
+-spec archive_call_fold(call_stat(), dict:dict()) -> dict:dict().
 archive_call_fold(#call_stat{account_id=AccountId}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
     dict:update(AccountId, fun(L) -> [Doc | L] end, [Doc], Acc).
@@ -653,6 +658,7 @@ call_stat_to_doc(#call_stat{id=Id
                             ,abandoned_timestamp=AbandonedT
                             ,handled_timestamp=HandledT
                             ,processed_timestamp=ProcessedT
+                            ,hung_up_by=HungUpBy
                             ,abandoned_reason=AbandonedR
                             ,misses=Misses
                             ,status=Status
@@ -671,6 +677,7 @@ call_stat_to_doc(#call_stat{id=Id
            ,{<<"abandoned_timestamp">>, AbandonedT}
            ,{<<"handled_timestamp">>, HandledT}
            ,{<<"processed_timestamp">>, ProcessedT}
+           ,{<<"hung_up_by">>, HungUpBy}
            ,{<<"abandoned_reason">>, AbandonedR}
            ,{<<"misses">>, misses_to_docs(Misses)}
            ,{<<"status">>, Status}
@@ -695,6 +702,7 @@ call_stat_to_json(#call_stat{id=Id
                              ,abandoned_timestamp=AbandonedT
                              ,handled_timestamp=HandledT
                              ,processed_timestamp=ProcessedT
+                             ,hung_up_by=HungUpBy
                              ,abandoned_reason=AbandonedR
                              ,misses=Misses
                              ,status=Status
@@ -712,6 +720,7 @@ call_stat_to_json(#call_stat{id=Id
          ,{<<"Abandoned-Timestamp">>, AbandonedT}
          ,{<<"Handled-Timestamp">>, HandledT}
          ,{<<"Processed-Timestamp">>, ProcessedT}
+         ,{<<"Hung-Up-By">>, HungUpBy}
          ,{<<"Abandoned-Reason">>, AbandonedR}
          ,{<<"Misses">>, misses_to_docs(Misses)}
          ,{<<"Status">>, Status}
@@ -827,6 +836,7 @@ handle_processed_stat(JObj, Props) ->
     Updates = props:filter_undefined(
                 [{#call_stat.agent_id, wh_json:get_value(<<"Agent-ID">>, JObj)}
                  ,{#call_stat.processed_timestamp, wh_json:get_value(<<"Processed-Timestamp">>, JObj)}
+                 ,{#call_stat.hung_up_by, wh_json:get_value(<<"Hung-Up-By">>, JObj)}
                  ,{#call_stat.status, <<"processed">>}
                 ]),
     update_call_stat(Id, Updates, Props).

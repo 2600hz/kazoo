@@ -66,7 +66,7 @@
          reset_parse_trail/2, load_library/3, load_library/4,
          shorten_filename/2, push_auto_escape/2, pop_auto_escape/1]).
 
--include_lib("merl/include/merl.hrl").
+-include_lib("syntax_tools/include/merl.hrl").
 -include("erlydtl_ext.hrl").
 
 

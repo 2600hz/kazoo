@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz Inc
+%%% @copyright (C) 2015-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
          ,handle_system_alert/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"system_alert">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
@@ -40,7 +40,6 @@
 -define(TEMPLATE_HTML_ACCOUNT, "{% if account %}<h2>Account</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Account ID: </td><td>{{account.id}}</td></tr><tr><td>Account Name: </td><td>{{account.name}}</td></tr><tr><td>Account Realm: </td><td>{{account.realm}}</td></tr></table>{% endif %}").
 -define(TEMPLATE_HTML_USER, "{% if user %}<h2>Admin</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>Name: </td><td>{{user.first_name}} {{user.last_name}}</td></tr><tr><td>Email: </td><td>{{user.email}}</td></tr><tr><td>Timezone: </td><td>{{user.timezone}}</td></tr></table>{% endif %}").
 -define(TEMPLATE_HTML_NUMBERS, "{% if account.pvt_wnm_numbers %}<h2>Phone Numbers</h2><ul>{% for number in account.pvt_wnm_numbers %}<li>{{number}}</li>{% endfor %}</ul>{% endif %}").
--define(TEMPLATE_HTML_SERVICE, "<h2>Service</h2><table cellpadding=\"4\" cellspacing=\"0\" border=\"0\"><tr><td>URL: </td><td>https://apps.2600hz.com/</td></tr><tr><td>Name: </td><td>VoIP Services</td></tr><tr><td>Service Provider: </td><td>2600hz</td></tr></table><p style=\"font-size:9pt;color:#CCCCCC\">Sent from {{system.hostname}}</p>").
 
 -define(TEMPLATE_HTML, wh_util:to_binary(
                          lists:flatten(
@@ -56,7 +55,6 @@
                             ,?TEMPLATE_HTML_ACCOUNT
                             ,?TEMPLATE_HTML_USER
                             ,?TEMPLATE_HTML_NUMBERS
-                            ,?TEMPLATE_HTML_SERVICE
                             ,?TEMPLATE_HTML_TAIL
                            ]
                           )
@@ -78,7 +76,6 @@
 -define(TEMPLATE_TEXT_ACCOUNT, "{% if account %}Account\nAccount ID: {{account.id}}\nAccount Name: {{account.name}}\nAccount Realm: {{account.realm}}\n\n{% endif %}").
 -define(TEMPLATE_TEXT_USER, "{% if user %}Admin\nName: {{user.first_name}} {{user.last_name}}\nEmail: {{user.email}}\nTimezone: {{user.timezone}}\n\n{% endif %}").
 -define(TEMPLATE_TEXT_NUMBERS, "{% if account.pvt_wnm_numbers %}Phone Numbers\n{% for number in account.pvt_wnm_numbers %}{{number}}\n{% endfor %}\n{% endif %}").
--define(TEMPLATE_TEXT_SERVICE, "Service\nURL: https://apps.2600hz.com/\nName: VoIP Services\nService Provider: 2600hz\n\nSent from {{system.hostname}}").
 
 -define(TEMPLATE_TEXT, wh_util:to_binary(
                          lists:flatten(
@@ -93,7 +90,6 @@
                             ,?TEMPLATE_TEXT_ACCOUNT
                             ,?TEMPLATE_TEXT_USER
                             ,?TEMPLATE_TEXT_NUMBERS
-                            ,?TEMPLATE_TEXT_SERVICE
                            ]
                           )
                         )
@@ -147,9 +143,9 @@ handle_req_as_http(JObj, 'undefined', UseEmail) ->
 handle_req_as_http(JObj, Url, UseEmail) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = wh_json:encode(JObj),
-
-    case ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Encoded) of
-        {'ok', "2" ++ _, _ResponseHeaders, _ResponseBody} ->
+    case kz_http:post(wh_util:to_list(Url), Headers, Encoded) of
+        {'ok', _2xx, _ResponseHeaders, _ResponseBody}
+          when (_2xx - 200) < 100 -> %% ie: match "2"++_
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);
         _Error ->
             lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),
@@ -161,20 +157,14 @@ handle_req_as_email(_JObj, 'false') ->
     lager:debug("email not enabled for system alerts");
 handle_req_as_email(JObj, 'true') ->
     %% Gather data for template
-    DataJObj = wh_json:normalize(JObj),
     case teletype_util:is_notice_enabled_default(?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured");
-        'true' -> process_req(DataJObj)
+        'true' -> process_req(wh_json:normalize(JObj))
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
--spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
     lager:debug("template is enabled for account, fetching templates for rendering"),
-    %% Load templates
-    process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID)).
-
-process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
@@ -184,12 +174,10 @@ process_req(DataJObj, Templates) ->
              ],
 
     %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros),
 
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_meta(?TEMPLATE_ID
+        teletype_templates:fetch_notification(?TEMPLATE_ID
                                       ,teletype_util:find_account_id(DataJObj)
                                      ),
 

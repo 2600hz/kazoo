@@ -14,6 +14,9 @@
          ,failure_status/0, failure_status/1
          ,enable_account_hooks/1
          ,enable_descendant_hooks/1
+         ,reset_webhooks_list/0
+         ,flush_account_failures/1
+         ,flush_hook_failures/2
         ]).
 
 -include("webhooks.hrl").
@@ -110,3 +113,32 @@ enable_account_hooks(AccountId) ->
 
 enable_descendant_hooks(AccountId) ->
     webhooks_util:reenable(AccountId, <<"descendants">>).
+
+-spec reset_webhooks_list() -> 'ok'.
+reset_webhooks_list() ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    Ids = get_webhooks(MasterAccountDb),
+    _ = couch_mgr:del_docs(MasterAccountDb, Ids),
+    webhooks_init:init_modules().
+
+-spec get_webhooks(ne_binary()) -> ne_binaries().
+get_webhooks(MasterAccountDb) ->
+    case couch_mgr:get_all_results(MasterAccountDb, ?WEBHOOK_META_LIST) of
+        {'error', _R} ->
+            io:format("failed to load view ~s in ~s", [?WEBHOOK_META_LIST, MasterAccountDb]),
+            [];
+        {'ok', JObjs} ->
+            [wh_json:get_value(<<"id">>, J) || J <- JObjs]
+    end.
+
+-spec flush_account_failures(ne_binary()) -> 'ok'.
+flush_account_failures(AccountId) ->
+    io:format("flushed ~p failure entries~n"
+              ,[webhooks_disabler:flush_failures(AccountId)]
+             ).
+
+-spec flush_hook_failures(ne_binary(), ne_binary()) -> 'ok'.
+flush_hook_failures(AccountId, HookId) ->
+    io:format("flushed ~p failure entries for ~s~n"
+              ,[webhooks_disabler:flush_failures(AccountId, HookId), HookId]
+             ).

@@ -26,11 +26,17 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_command'}
                       ,[{<<"conference">>, <<"command">>}]
                      }
                     ]).
--define(BINDINGS, [{'conference', [{'restrict_to', ['command']}]}]).
+-define(BINDINGS, [{'conference'
+                    ,[{'restrict_to', ['command']}
+                      ,'federate'
+                     ]}
+                  ]).
 %% This queue is used to round-robin conference commands among ALL the
 %% conference listeners with the hopes that the one receiving the command
 %% can send it to the focus (barring network connectivity)...
@@ -47,15 +53,13 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
-start_link(Node) ->
-    start_link(Node, []).
-
+-spec start_link(atom()) -> startlink_ret().
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
+start_link(Node) -> start_link(Node, []).
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE,
+    gen_listener:start_link(?SERVER,
                             [{'responders', ?RESPONDERS}
                              ,{'bindings', ?BINDINGS}
                              ,{'queue_name', ?QUEUE_NAME}
@@ -462,6 +466,16 @@ exec(Focus, ConferenceId, JObj) ->
                         freeswitch:api(Focus, 'expand', Command)
                 end,
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
+        {<<"play_macro">>, AppData} ->
+            Commands = wh_json:get_value(<<"Commands">>, AppData, []),
+            Result = lists:foldl(fun(Command, _Acc) ->
+                {<<"play">>, AppData2} = get_conf_command(<<"play">>, Focus, ConferenceId, Command),
+                Command2 = list_to_binary([ConferenceId, " play ", AppData2]),
+                Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command2]),
+                lager:debug("api to ~s: conference ~s", [Focus, Command2]),
+                freeswitch:api(Focus, 'conference', Command2)
+            end, 'undefined', Commands),
+            send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
             Focus =/= 'undefined' andalso lager:debug("execute on node ~s: conference ~s", [Focus, Command]),
@@ -539,7 +553,7 @@ get_conf_command(<<"tones">>, _Focus, _ConferenceId, JObj) ->
                            Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
                            wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
                        end || Tone <- Tones],
-            Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+            Arg = "tone_stream://" ++ string:join(FSTones, ";"),
             {<<"play">>, Arg}
     end;
 %% The following conference commands can optionally specify a participant
@@ -556,6 +570,8 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
                    end,
             {<<"play">>, Args}
     end;
+get_conf_command(<<"play_macro">>, _Focus, _ConferenceId, JObj) ->
+    {<<"play_macro">>, JObj};
 get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:stop_play_v(JObj) of
         'false' ->

@@ -34,8 +34,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_email(ne_binary(), 'undefined' | binary(), term()) ->
-                        'ok' | {'error', _}.
+-spec send_email(ne_binary(), api_binary(), any()) -> 'ok' | {'error', any()}.
 send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
@@ -111,7 +110,7 @@ normalize_proplist(Props) ->
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) when is_binary(V) ->
-    {normalize_value(K), mochiweb_html:escape(V)};
+    {normalize_value(K), kz_html:escape(V)};
 normalize_proplist_element({K, V}) ->
     {normalize_value(K), V};
 normalize_proplist_element(Else) ->
@@ -172,7 +171,7 @@ get_default_template(Category, Key) ->
 %%--------------------------------------------------------------------
 -spec render_template(api_binary(), atom(), wh_proplist()) ->
                                    {'ok', string()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 render_template(Template, DefaultTemplate, Props) ->
     case do_render_template(Template, DefaultTemplate, Props) of
         {'ok', R} -> {'ok', binary_to_list(iolist_to_binary(R))};
@@ -181,7 +180,7 @@ render_template(Template, DefaultTemplate, Props) ->
 
 -spec do_render_template(api_binary(), atom(), wh_proplist()) ->
                                    {'ok', string()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 do_render_template('undefined', DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
@@ -419,14 +418,8 @@ qr_code_image(Text) ->
     CHL = wh_util:uri_encode(Text),
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
-    case ibrowse:send_req(wh_util:to_list(Url)
-                          ,[]
-                          ,'get'
-                          ,[]
-                          ,[{'response', 'binary'}]
-                         )
-    of
-        {'ok', "200", _RespHeaders, RespBody} ->
+    case kz_http:get(wh_util:to_list(Url)) of
+        {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
             [{<<"image">>, base64:encode(RespBody)}];
         _E ->
@@ -450,8 +443,9 @@ post_json(Url, JObj, OnErrorCallback) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = wh_json:encode(JObj),
 
-    case ibrowse:send_req(wh_util:to_list(Url), Headers, 'post', Encoded) of
-        {'ok', "2" ++ _, _ResponseHeaders, _ResponseBody} ->
+    case kz_http:post(wh_util:to_list(Url), Headers, Encoded) of
+        {'ok', _2xx, _ResponseHeaders, _ResponseBody}
+          when (_2xx - 200) < 100 -> %% ie: match "2"++_
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);
         _Error ->
             lager:debug("failed to POST JSON data to ~p for reason: ~p", [Url,_Error]),

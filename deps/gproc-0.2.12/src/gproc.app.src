@@ -6,10 +6,11 @@
  [
   {description, "GPROC"},
   {vsn, "gproc-0.2.12"},
+  {modules, []},
+  {registered, []},
   {id, "GPROC"},
-  {registered, [ ] },
   %% NOTE: do not list applications which are load-only!
-  {applications, [ kernel, stdlib ] },
-  {mod, {gproc_app, []} }
+  {applications, [kernel, stdlib]},
+  {mod,{gproc_app, []}}
  ]
 }.

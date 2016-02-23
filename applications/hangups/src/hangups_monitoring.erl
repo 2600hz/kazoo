@@ -30,6 +30,8 @@
 
 -include("hangups.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(STAT_CHECK_MSG, 'stat_check').
 
 
@@ -40,14 +42,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?SERVER, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -110,7 +109,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(?STAT_CHECK_MSG, State) ->
-    _P = wh_util:spawn(?MODULE, 'check_stats', []),
+    _P = wh_util:spawn(fun check_stats/0),
     {'noreply', State#state{stat_timer_ref=start_timer()}, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

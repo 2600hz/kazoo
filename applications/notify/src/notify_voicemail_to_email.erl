@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
@@ -35,11 +35,6 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec stop_processing(string(), list()) -> no_return().
-stop_processing(Format, Args) ->
-    lager:debug(Format, Args),
-    throw('stop').
-
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_v(JObj),
@@ -47,33 +42,40 @@ handle_req(JObj, _Props) ->
 
     lager:debug("new voicemail left, sending to email if enabled"),
 
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
     AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
 
     VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
     {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, VMBoxId),
-
     {'ok', UserJObj} = get_owner(AccountDb, VMBox),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
+    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
 
     %% If the box has emails, continue processing
-    %% or If the voicemail notification is enabled on the user, continue processing
+    %% andalso the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    (BoxEmails =/= [] orelse kzd_user:voicemail_notification_enabled(UserJObj))
-        orelse stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
+    case Emails =/= [] andalso
+        (kzd_user:voicemail_notification_enabled(UserJObj) orelse wh_json:is_empty(UserJObj))
+    of
+        'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
+        'true' -> continue_processing(JObj, AccountDb, VMBox, Emails)
+    end.
 
-    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
+-spec continue_processing(wh_json:object(), ne_binary(), wh_json:object(), ne_binaries()) -> 'ok'.
+continue_processing(JObj, AccountDb, VMBox, Emails) ->
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+
 
     'ok' = notify_util:send_update(RespQ, MsgId, <<"pending">>),
     lager:debug("VM->Email enabled for user, sending to ~p", [Emails]),
     {'ok', AccountJObj} = kz_account:fetch(AccountDb),
-    Docs = [VMBox, UserJObj, AccountJObj],
+    Timezone = kzd_voicemail_box:timezone(VMBox, <<"UTC">>),
 
     Props = [{<<"email_address">>, Emails}
-             | create_template_props(JObj, Docs, AccountJObj)
+             | create_template_props(JObj, Timezone, AccountJObj)
             ],
 
     CustomTxtTemplate = wh_json:get_value(?EMAIL_TXT_TEMPLATE_KEY, AccountJObj),
@@ -111,8 +113,8 @@ get_owner(AccountDb, _VMBox, OwnerId) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
-create_template_props(Event, Docs, Account) ->
+-spec create_template_props(wh_json:object(), ne_binary(), wh_json:object()) -> wh_proplist().
+create_template_props(Event, Timezone, Account) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
     ToE164 = wh_json:get_value(<<"To-User">>, Event),
@@ -120,7 +122,6 @@ create_template_props(Event, Docs, Account) ->
     DateCalled = wh_json:get_integer_value(<<"Voicemail-Timestamp">>, Event),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}
@@ -166,9 +167,8 @@ magic_hash(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist(), {api_binary(), ne_binary()}) -> 'ok'.
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Resp) when is_list(To) ->
-    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Resp) || T <- To];
+-type respond_to() :: {api_binary(), ne_binary()}.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binaries(), wh_proplist(), respond_to()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     Service = props:get_value(<<"service">>, Props),
@@ -189,44 +189,48 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     AttachmentFileName = get_file_name(VMJObj, Props),
     lager:debug("attachment renamed to ~s", [AttachmentFileName]),
 
-    PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>),
-    HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>),
+    PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>, <<"7BIT">>),
+    HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>, <<"7BIT">>),
 
     %% Content Type, Subtype, Headers, Parameters, Body
-    Email = {<<"multipart">>, <<"mixed">>
-             ,[{<<"From">>, From}
-               ,{<<"To">>, To}
-               ,{<<"Subject">>, Subject}
-               ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
-              ]
-             ,ContentTypeParams
-             ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>
-                   ,props:filter_undefined(
-                      [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
-                       ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
-                      ])
-                   ,[], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>
-                    ,props:filter_undefined(
-                       [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
-                        ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
-                       ])
-                    ,[], iolist_to_binary(HTMLBody)}
-                 ]
-               }
-               ,{<<"audio">>, <<"mpeg">>
-                 ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
-                   ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
-                   ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+    Emails = [{T
+               ,{<<"multipart">>, <<"mixed">>
+                 ,[{<<"From">>, From}
+                   ,{<<"To">>, T}
+                   ,{<<"Subject">>, Subject}
+                   ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
                   ]
-                 ,[], AttachmentBin
+                 ,ContentTypeParams
+                 ,[{<<"multipart">>, <<"alternative">>, [], []
+                    ,[{<<"text">>, <<"plain">>
+                       ,props:filter_undefined(
+                          [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
+                           ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
+                          ])
+                       ,[], iolist_to_binary(TxtBody)}
+                      ,{<<"text">>, <<"html">>
+                        ,props:filter_undefined(
+                           [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
+                            ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
+                           ])
+                        ,[], iolist_to_binary(HTMLBody)}
+                     ]
+                   }
+                   ,{<<"audio">>, <<"mpeg">>
+                     ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+                       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
+                       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+                      ]
+                     ,[], AttachmentBin
+                    }
+                  ]
                 }
-              ]
-            },
-    case notify_util:send_email(From, To, Email) of
-        'ok' -> notify_util:send_update(RespQ, MsgId, <<"completed">>);
-        {'error', Reason} -> notify_util:send_update(RespQ, MsgId, <<"failed">>, Reason)
+              }
+              || T <- To
+             ],
+    case [notify_util:send_email(From, T, Email) || {T, Email} <- Emails] of
+        ['ok'|_] -> notify_util:send_update(RespQ, MsgId, <<"completed">>);
+        [{'error', Reason}|_] -> notify_util:send_update(RespQ, MsgId, <<"failed">>, Reason)
     end.
 
 %%--------------------------------------------------------------------
@@ -287,7 +291,7 @@ mime_to_extension(_) -> <<"wav">>.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec preaty_print_length('undefined' | integer() | wh_json:object()) -> ne_binary().
+-spec preaty_print_length(integer() | api_object()) -> ne_binary().
 preaty_print_length('undefined') ->
     <<"00:00">>;
 preaty_print_length(Milliseconds) when is_integer(Milliseconds) ->

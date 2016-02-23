@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2014, 2600Hz INC
+%%% @copyright (C) 2010-2016, 2600Hz INC
 %%% @doc
 %%% Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
@@ -26,6 +26,9 @@
          ,fold/2
          ,flush/0, flush/1, flush_mod/1
          ,modules_loaded/0
+        ]).
+
+-export([start_link/0
          ,init/0
         ]).
 
@@ -63,7 +66,7 @@
 -type map_results() :: [boolean() |
                         http_methods() |
                         {boolean() | 'halt', cb_context:context()}
-                        ,...] | [].
+                        ].
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     lager:debug("mapping ~s", [Routing]),
@@ -121,7 +124,7 @@ matches([R|Restrictions], Tokens) ->
 %% Helpers for the result set helpers
 %% @end
 %%-------------------------------------------------------------------------
--spec check_bool({boolean(), term()} | boolean()) -> boolean().
+-spec check_bool({boolean(), any()} | boolean()) -> boolean().
 check_bool({'true', _}) -> 'true';
 check_bool('true') -> 'true';
 check_bool(_) -> 'false'.
@@ -131,7 +134,7 @@ check_bool(_) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_failed({boolean() | 'halt', _} | boolean() | term()) -> boolean().
+-spec filter_out_failed({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
 filter_out_failed({'true', _}) -> 'true';
 filter_out_failed('true') -> 'true';
 filter_out_failed({'halt', _}) -> 'true';
@@ -145,7 +148,7 @@ filter_out_failed(Term) -> not wh_util:is_empty(Term).
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_out_succeeded({boolean() | 'halt', _} | boolean() | term()) -> boolean().
+-spec filter_out_succeeded({boolean() | 'halt', any()} | boolean() | any()) -> boolean().
 filter_out_succeeded({'true', _}) -> 'false';
 filter_out_succeeded('true') -> 'false';
 filter_out_succeeded({'halt', _}) -> 'true';
@@ -156,7 +159,7 @@ filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
--type bind_results() :: [bind_result(),...] | [].
+-type bind_results() :: [bind_result()].
 -spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
@@ -187,6 +190,11 @@ is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
 is_cb_module(Mod) -> is_cb_module(wh_util:to_binary(Mod)).
+
+-spec start_link() -> 'ignore'.
+start_link() ->
+    _ = init(),
+    'ignore'.
 
 -spec init() -> 'ok'.
 init() ->

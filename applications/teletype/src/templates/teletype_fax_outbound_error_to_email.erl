@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz Inc
+%%% @copyright (C) 2014-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
          ,handle_fax_outbound_error/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"fax_outbound_error_to_email">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
@@ -32,8 +32,8 @@
            ]
           )).
 
--define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %} \n\nnCaller ID: {% firstof fax.remote_station_id callee_id.number \"unknown number\" %}\nCaller Name: {% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %}\n\nCalled To: {{to.user}} (Originally dialed number)\nCalled On: {{fax.timestamp|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions about receiving faxes, please contact support at (415) 886-7900 or email support@2600hz.com.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3><table><tr><td>Caller ID</td><td>{% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{fax.timestamp|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions about receiving faxes, please contact (415) 886-7900 or email <a href=\"mailto:support@2600hz.com\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>">>).
+-define(TEMPLATE_TEXT, <<"Error : {% firstof error.fax_info error.call_info \"unknown error\" %} \n\nnCaller ID: {% firstof fax.remote_station_id callee_id.number \"unknown number\" %}\nCaller Name: {% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %}\n\nCalled To: {{to.user}} (Originally dialed number)\nCalled On: {% firstof fax.timestamp|date:\"l, F j, Y \\\\a\\\\t H:i\" date_called|date:\"l, F j, Y \\\\a\\\\t H:i\" %}">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>Error : {% firstof error.fax_info error.call_info \"unknown error\" %} </h3><table><tr><td>Caller ID</td><td>{% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{% firstof fax.timestamp|date:\"l, F j, Y \\\\a\\\\t H:i\" date_called|date:\"l, F j, Y \\\\a\\\\t H:i\" %}</td></tr></table><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Error Sending Fax to {% firstof callee_id.name fax.remote_station_id callee_id.number \"unknown number\" %} ({% firstof fax.remote_station_id callee_id.number \"unknown number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Outbound Fax Error to Email">>).
@@ -79,19 +79,14 @@ handle_fax_outbound_error(JObj, _Props) ->
 -spec process_req(wh_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = build_template_data(
-               wh_json:set_values([{<<"error">>, error_data(DataJObj)}], DataJObj)),
+               wh_json:set_values([{<<"error">>, error_data(DataJObj)}], DataJObj)
+              ),
 
     %% Load templates
-    Templates = teletype_templates:fetch(?TEMPLATE_ID, DataJObj),
-
-    %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates,
-                            Template =/= 'undefined'
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
     lager:debug("rendered templates"),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_meta(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)

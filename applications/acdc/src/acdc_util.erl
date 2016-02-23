@@ -67,13 +67,13 @@ send_cdr('undefined', _JObj, _Retries) ->
 send_cdr(Url, _JObj, 0) ->
     lager:debug("trying to send cdr to ~s failed retry count", [Url]);
 send_cdr(Url, JObj, Retries) ->
-    case ibrowse:send_req(wh_util:to_list(Url)
-                          ,[{"Content-Type", "application/json"}]
-                          ,'post', wh_json:encode(JObj)
-                          ,1000
-                         ) of
+    case kz_http:post(wh_util:to_list(Url)
+                     ,[{"Content-Type", "application/json"}]
+                     , wh_json:encode(JObj)
+                     ,[{'timeout', 1000}]
+                    ) of
         {'ok', _StatusCode, _RespHeaders, _RespBody} ->
-            lager:debug("cdr server at ~s responded with a ~s: ~s", [Url, _StatusCode, _RespBody]);
+            lager:debug("cdr server at ~s responded with a ~p: ~s", [Url, _StatusCode, _RespBody]);
         _Else ->
             lager:debug("sending cdr to server at ~s caused error: ~p", [Url, _Else]),
             send_cdr(Url, JObj, Retries-1)
@@ -104,22 +104,22 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
     cf_user:get_endpoints(AgentId, [], Call).
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), any()} | whapps_call:call()) -> 'ok'.
 bind_to_call_events(Call) ->
     bind_to_call_events(Call, self()).
 
--spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
+-spec bind_to_call_events(api_binary() | {api_binary(), any()} | whapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
 bind_to_call_events(Call, Pid) -> bind_to_call_events(whapps_call:call_id(Call), Pid).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | {api_binary(), any()} | whapps_call:call()) -> 'ok'.
 unbind_from_call_events(Call) ->
     unbind_from_call_events(Call, self()).
 
--spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
+-spec unbind_from_call_events(api_binary() | {api_binary(), any()} | whapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _Pid) -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);

@@ -19,7 +19,7 @@
          ,delete/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 %%%===================================================================
 %%% API
@@ -85,13 +85,13 @@ maybe_load_docs(Context) ->
         _Else -> Context1
     end.
 
--spec maybe_follow_groups(set(), cb_context:context()) -> cb_context:context().
+-spec maybe_follow_groups(sets:set(), cb_context:context()) -> cb_context:context().
 maybe_follow_groups(Ids, Context) ->
     JObjs = cb_context:doc(Context),
     Context1 = cb_context:set_doc(Context, []),
     maybe_follow_groups(JObjs, Ids, Context1).
 
--spec maybe_follow_groups(wh_json:objects(), set(), cb_context:context()) ->
+-spec maybe_follow_groups(wh_json:objects(), sets:set(), cb_context:context()) ->
                                  cb_context:context().
 maybe_follow_groups([], _, Context) ->
     maybe_update_docs(Context);
@@ -105,7 +105,7 @@ maybe_follow_groups([JObj|JObjs], Ids, Context) ->
             maybe_follow_groups(JObjs, Ids, Context1)
     end.
 
--spec follow_group(wh_json:object(), wh_json:objects(), set(), cb_context:context()) ->
+-spec follow_group(wh_json:object(), wh_json:objects(), sets:set(), cb_context:context()) ->
                           cb_context:context().
 follow_group(JObj, JObjs, Ids, Context) ->
     lager:debug("trying to follow group members"),
@@ -202,19 +202,20 @@ post(Context) ->
     JObjs = cb_context:doc(Context),
     maybe_save_docs(JObjs, Context).
 
--type docs() :: {wh_json:object(), wh_json:object()}.
+-spec maybe_save_docs(wh_json:objects(), cb_context:context()) ->
+                             cb_context:context().
+maybe_save_docs(JObjs, Context) ->
+    lists:foldl(fun maybe_save_doc/2, Context, JObjs).
 
--spec maybe_save_docs([docs()], cb_context:context()) -> cb_context:context().
-maybe_save_docs([], Context) ->
-    Context;
-maybe_save_docs([JObj|JObjs], Context) ->
-    maybe_save_docs(JObjs, maybe_save_doc(JObj, Context)).
+-spec maybe_save_doc(wh_json:object(), cb_context:context()) ->
+                            cb_context:context().
+maybe_save_doc(JObj, Context) ->
+    Doc = wh_json:get_value(<<"doc">>, JObj),
+    DbDoc = wh_json:get_value(<<"db_doc">>, JObj),
 
--spec maybe_save_doc(docs(), cb_context:context()) -> cb_context:context().
-maybe_save_doc({JObj,DbDoc}, Context) ->
-    case wh_doc:id(JObj) of
+    case wh_doc:id(Doc) of
         'undefined' -> Context;
-        Id -> maybe_save_doc(Id, JObj, DbDoc, Context)
+        Id -> maybe_save_doc(Id, Doc, DbDoc, Context)
     end.
 
 -spec maybe_save_doc(ne_binary(), wh_json:object(), wh_json:object(), cb_context:context()) ->
@@ -252,17 +253,20 @@ delete(Context) ->
     Context1 = cb_context:set_resp_data(Context, wh_json:new()),
     maybe_delete_docs(JObjs, Context1).
 
--spec maybe_delete_docs([docs()], cb_context:context()) -> cb_context:context().
-maybe_delete_docs([], Context) ->
-    Context;
-maybe_delete_docs([JObj|JObjs], Context) ->
-    maybe_delete_docs(JObjs, maybe_delete_doc(JObj, Context)).
+-spec maybe_delete_docs(wh_json:objects(), cb_context:context()) ->
+                               cb_context:context().
+maybe_delete_docs(JObjs, Context) ->
+    lists:foldl(fun maybe_delete_doc/2, Context, JObjs).
 
--spec maybe_delete_doc(docs(), cb_context:context()) -> cb_context:context().
-maybe_delete_doc({JObj,DbDoc}, Context) ->
-    case wh_doc:id(JObj) of
+-spec maybe_delete_doc(wh_json:object(), cb_context:context()) ->
+                              cb_context:context().
+maybe_delete_doc(JObj, Context) ->
+    Doc = wh_json:get_value(<<"doc">>, JObj),
+    DbDoc = wh_json:get_value(<<"db_doc">>, JObj),
+
+    case wh_doc:id(Doc) of
         'undefined' -> Context;
-        Id -> maybe_delete_doc(Id, JObj, DbDoc, Context)
+        Id -> maybe_delete_doc(Id, Doc, DbDoc, Context)
     end.
 
 -spec maybe_delete_doc(ne_binary(), wh_json:object(), wh_json:object(), cb_context:context()) ->
@@ -274,7 +278,8 @@ maybe_delete_doc(Id, JObj, DbDoc, Context) ->
             Details = [{'type', wh_doc:type(JObj)}],
             InterimContext = cb_context:add_system_error('invalid_bulk_type'
                                                          ,wh_json:from_list(Details)
-                                                         ,cb_context:new()),
+                                                         ,cb_context:new()
+                                                        ),
             import_results(Id, InterimContext, Context);
         Binding ->
             Setters = [{fun cb_context:set_req_verb/2, ?HTTP_DELETE}
@@ -318,7 +323,13 @@ import_results_success(Id, C, Context) ->
     Resp = wh_json:from_list([{<<"status">>, <<"success">>}]),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_data/2, wh_json:set_value(Id, Resp, JObj)}
-                         ,{fun cb_context:set_doc/2, [{Doc, DbDoc} | Docs]}
+                         ,{fun cb_context:set_doc/2
+                           ,[wh_json:from_list([{<<"doc">>, Doc}
+                                                ,{<<"db_doc">>, DbDoc}
+                                               ])
+                             | Docs
+                            ]
+                          }
                         ]).
 
 -spec import_results_error(ne_binary(), cb_context:context(), cb_context:context()) ->
@@ -330,13 +341,13 @@ import_results_error(Id, C, Context) ->
     Errors    = cb_context:resp_data(C),
     JObj      = cb_context:resp_data(Context),
     Resp = wh_json:from_list([{<<"status">>, Status}
-                             ,{<<"error">>, ErrorCode}
-                             ,{<<"message">>, ErrorMsg}
-                             ,{<<"data">>, Errors}
+                              ,{<<"error">>, ErrorCode}
+                              ,{<<"message">>, ErrorMsg}
+                              ,{<<"data">>, Errors}
                              ]),
     cb_context:set_resp_data(Context, wh_json:set_value(Id, Resp, JObj)).
 
--spec select_doc(ne_binary(), wh_json:objects()) -> wh_json:object() | 'undefined'.
+-spec select_doc(ne_binary(), wh_json:objects()) -> api_object().
 select_doc(_Id, []) -> 'undefined';
 select_doc(Id, [JObj|JObjs]) ->
     case wh_doc:id(JObj) of
@@ -344,7 +355,7 @@ select_doc(Id, [JObj|JObjs]) ->
         _ -> select_doc(Id, JObjs)
     end.
 
--spec get_doc_updates(cb_context:context()) -> 'undefined' | wh_json:object().
+-spec get_doc_updates(cb_context:context()) -> api_object().
 get_doc_updates(Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_value(<<"updates">>, JObj) of
@@ -352,7 +363,8 @@ get_doc_updates(Context) ->
         Updates -> wh_json:public_fields(Updates)
     end.
 
--spec update_docs(wh_json:object(), cb_context:context()) -> cb_context:context().
+-spec update_docs(wh_json:object(), cb_context:context()) ->
+                         cb_context:context().
 update_docs(Updates, Context) ->
     JObjs = [wh_json:merge_recursive(JObj, Updates)
              || JObj <- cb_context:doc(Context)
@@ -364,27 +376,21 @@ get_post_binding(<<"device">>) ->     <<"v1_resource.execute.post.devices">>;
 get_post_binding(<<"user">>) ->       <<"v1_resource.execute.post.users">>;
 get_post_binding(<<"conference">>) -> <<"v1_resource.execute.post.conferences">>;
 get_post_binding(<<"vmbox">>) ->      <<"v1_resource.execute.post.vmboxes">>;
-get_post_binding(<<_/binary>>) ->
-    'undefined';
-get_post_binding(JObj) ->
-    get_post_binding(wh_doc:type(JObj)).
+get_post_binding(<<_/binary>>) ->     'undefined';
+get_post_binding(JObj) ->             get_post_binding(wh_doc:type(JObj)).
 
 -spec get_delete_binding(wh_json:object() | ne_binary()) -> api_binary().
 get_delete_binding(<<"device">>) ->     <<"v1_resource.execute.delete.devices">>;
 get_delete_binding(<<"user">>) ->       <<"v1_resource.execute.delete.users">>;
 get_delete_binding(<<"conference">>) -> <<"v1_resource.execute.delete.conferences">>;
 get_delete_binding(<<"vmbox">>) ->      <<"v1_resource.execute.delete.vmboxes">>;
-get_delete_binding(<<_/binary>>) ->
-    'undefined';
-get_delete_binding(JObj) ->
-    get_delete_binding(wh_doc:type(JObj)).
+get_delete_binding(<<_/binary>>) ->     'undefined';
+get_delete_binding(JObj) ->             get_delete_binding(wh_doc:type(JObj)).
 
 -spec get_validate_binding(wh_json:object() | ne_binary()) -> api_binary().
 get_validate_binding(<<"device">>) ->     <<"v1_resource.validate.devices">>;
 get_validate_binding(<<"user">>) ->       <<"v1_resource.validate.users">>;
 get_validate_binding(<<"conference">>) -> <<"v1_resource.validate.conferences">>;
 get_validate_binding(<<"vmbox">>) ->      <<"v1_resource.validate.vmboxes">>;
-get_validate_binding(<<_/binary>>) ->
-    'undefined';
-get_validate_binding(JObj) ->
-    get_validate_binding(wh_doc:type(JObj)).
+get_validate_binding(<<_/binary>>) ->     'undefined';
+get_validate_binding(JObj) ->             get_validate_binding(wh_doc:type(JObj)).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015, 2600Hz Inc
+%%% @copyright (C) 2015-2016, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,7 @@
          ,handle_password_recovery/2
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".password_recovery">>).
 
@@ -24,9 +24,9 @@
                            ])
        ).
 
--define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your 2600hz VoIP Services account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please visit https://apps.2600hz.com/ and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>).
--define(TEMPLATE_HTML, <<"<html></head><body><h3>Hello {{user.first_name}} {{user.last_name}}</h3><p>This email is to inform you that the password for your 2600hz VoIP Services account \"{{account.name}}\" has been set to \"{{user.password}}\".</p><p>To login please visit <a href=\"https://apps.2600hz.com/\">2600hz.com</a> and use your normal username with the password \"{{user.password}}\".</p><p>Once you login you will be prompted to customize your password.</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"Password reset for your 2600hz VoIP Services account.">>).
+-define(TEMPLATE_TEXT, <<"Hello, {{user.first_name}} {{user.last_name}}.\n\nThis email is to inform you that the password for your VoIP services account \"{{account.name}}\" has been set to \"{{user.password}}\".\n\nTo login please visit the website and use your normal username with the password \"{{user.password}}\".\n\nOnce you login you will be prompted to customize your password.">>).
+-define(TEMPLATE_HTML, <<"<html></head><body><h3>Hello {{user.first_name}} {{user.last_name}}</h3><p>This email is to inform you that the password for your VoIP services account \"{{account.name}}\" has been set to \"{{user.password}}\".</p><p>To login please visit the website and use your normal username with the password \"{{user.password}}\".</p><p>Once you login you will be prompted to customize your password.</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"Password reset for your VoIP services account.">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Password Recovery">>).
 
@@ -94,28 +94,19 @@ get_user_fold(K, Acc, DataJObj) ->
     wh_json:set_value(K, wh_json:get_value(K, DataJObj), Acc).
 
 -spec process_req(wh_json:object()) -> 'ok'.
--spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
-    %% Load templates
-    process_req(DataJObj, teletype_templates:fetch(?TEMPLATE_ID, DataJObj)).
-
-process_req(_DataJObj, []) ->
-    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
-process_req(DataJObj, Templates) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
               ,{<<"account">>, teletype_util:account_params(DataJObj)}
               ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
 
     %% Populate templates
-    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
-                         || {ContentType, Template} <- Templates
-                        ],
+    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} =
-        teletype_templates:fetch_meta(?TEMPLATE_ID
-                                          ,teletype_util:find_account_id(DataJObj)
-                                         ),
+        teletype_templates:fetch_notification(?TEMPLATE_ID
+                                             ,teletype_util:find_account_id(DataJObj)
+                                             ),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)

@@ -30,6 +30,8 @@
 
 -include("fax.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(BINDINGS, [{'xmpp', [{'restrict_to', ['start']}]}
                    ,{'self', []}
                   ]).
@@ -50,15 +52,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
@@ -125,7 +123,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
-    _ = wh_util:spawn(?MODULE, 'start_all_printers', []),
+    _ = wh_util:spawn(fun start_all_printers/0),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -189,7 +187,7 @@ start_all_printers() ->
                  ]
     ].
 
--spec send_start_printer(ne_binary(), ne_binary()) -> _.
+-spec send_start_printer(ne_binary(), ne_binary()) -> any().
 send_start_printer(PrinterId, JID) ->
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"start">>}

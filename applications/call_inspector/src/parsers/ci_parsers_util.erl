@@ -27,7 +27,7 @@
 timestamp() ->
     timestamp(os:timestamp()).
 
--spec timestamp(ne_binary() | erlang:timestamp()) -> api_number().
+-spec timestamp(ne_binary() | wh_now()) -> api_number().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
@@ -58,7 +58,7 @@ open_file(Filename) ->
 parse_interval() ->
     2 * ?MILLISECONDS_IN_SECOND.  %% Milliseconds
 
--spec make_name(ne_binary() | {'parser_args', ne_binary(), _}) -> atom().
+-spec make_name(ne_binary() | {'parser_args', ne_binary(), any()}) -> atom().
 make_name(Bin)
   when is_binary(Bin) ->
     binary_to_atom(Bin, 'utf8');
@@ -76,6 +76,8 @@ make_name({'parser_args', Filename, _IP, _Port}) ->
 call_id(Data) ->
     sip_field([<<"Call-ID">>, <<"i">>], Data).
 
+%% @doc Gets the CSeq field from SIP transaction data.
+%%   To use with HEP or FreeSwitch data; Kamailio has another format!
 -spec c_seq(ne_binaries()) -> ne_binary().
 c_seq(Data) ->
     sip_field([<<"CSeq">>], Data).
@@ -103,7 +105,7 @@ try_all(Data, Field) ->
         <<Field:FieldSz/binary, _/binary>> ->
             case binary:split(Data, <<": ">>) of
                 [_Key, Value0] ->
-                    binary:part(Value0, {0, byte_size(Value0)});
+                    wh_util:truncate_right_binary(Value0, byte_size(Value0));
                 _ ->
                     'false'
             end;

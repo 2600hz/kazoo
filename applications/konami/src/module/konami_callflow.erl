@@ -13,7 +13,7 @@
 
 -export([handle/2]).
 
--include("../konami.hrl").
+-include("konami.hrl").
 
 -define(LIST_BY_NUMBER, <<"callflow/listing_by_number">>).
 

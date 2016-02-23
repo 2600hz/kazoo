@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz INC
+%%% @copyright (C) 2014-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,7 +9,8 @@
 -module(teletype_util).
 
 -export([send_email/3, send_email/4
-         ,render_subject/2, render/3
+         ,render_subject/2
+         ,render/3
          ,system_params/0
          ,account_params/1
          ,send_update/2, send_update/3
@@ -21,6 +22,8 @@
          ,find_account_db/1, find_account_db/2
          ,is_notice_enabled/3, is_notice_enabled_default/1
          ,should_handle_notification/1
+
+         ,get_parent_account_id/1
 
          ,default_from_address/1
          ,default_reply_to/1
@@ -40,9 +43,9 @@
                                   ]).
 
 -spec send_email(email_map(), ne_binary(), rendered_templates()) ->
-                        'ok' | {'error', _}.
+                        'ok' | {'error', any()}.
 -spec send_email(email_map(), ne_binary(), rendered_templates(), attachments()) ->
-                        'ok' | {'error', _}.
+                        'ok' | {'error', any()}.
 send_email(Emails, Subject, RenderedTemplates) ->
     send_email(Emails, Subject, RenderedTemplates, []).
 send_email(Emails, Subject, RenderedTemplates, Attachments) ->
@@ -96,7 +99,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     Doc = props:filter_undefined(
             [{<<"rendered_templates">>, wh_json:from_list(RenderedTemplates)}
              ,{<<"subject">>, Subject}
-             ,{<<"emails">>, wh_json:from_list(Emails)}
+             ,{<<"emails">>, wh_json:from_list(props:filter_undefined(Emails))}
              ,{<<"receipt">>, Receipt}
              ,{<<"error">>, Error}
              ,{<<"pvt_type">>, <<"notify_smtp_log">>}
@@ -105,9 +108,15 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
              ,{<<"pvt_created">>, wh_util:current_tstamp()}
              ,{<<"template_id">>, get('template_id')}
              ,{<<"template_account_id">>, get('template_account_id')}
+             ,{<<"_id">>, make_smtplog_id(AccountDb)}
             ]),
+    lager:debug("attempting to save notify smtp log"),
     _ = kazoo_modb:save_doc(AccountDb, wh_json:from_list(Doc)),
-    lager:debug("saved notify smtp log").
+    'ok'.
+
+-spec make_smtplog_id(ne_binary()) -> ne_binary().
+make_smtplog_id(?MATCH_MODB_SUFFIX_ENCODED(_Account, Year, Month)) ->
+    ?MATCH_MODB_PREFIX(Year, Month, wh_util:rand_hex_binary(16)).
 
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
 email_body(RenderedTemplates) ->
@@ -129,7 +138,7 @@ email_parameters([{Key, V}|T], Params) ->
     email_parameters(T, [{Key, V} | Params]).
 
 -spec relay_email(api_binaries(), ne_binary(), mimemail:mimetuple()) ->
-                         'ok' | {'error', _}.
+                         'ok' | {'error', any()}.
 relay_email(To, From, {_Type
                        ,_SubType
                        ,Addresses
@@ -162,14 +171,14 @@ maybe_relay_to_bcc(From, Encoded, Bcc) ->
     end.
 
 -spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries() | ne_binary()) ->
-          {'ok', ne_binary()} | {'error', _}.
+          {'ok', ne_binary()} | {'error', any()}.
 relay_to_bcc(From, Encoded, Bcc) when is_binary(Bcc) ->
     relay_encoded_email([Bcc], From, Encoded);
 relay_to_bcc(From, Encoded, Bcc) ->
     relay_encoded_email(Bcc, From, Encoded).
 
 -spec relay_encoded_email(api_binaries(), ne_binary(), ne_binary()) ->
-                                 {'ok', ne_binary()} | {'error', _}.
+                                 {'ok', ne_binary()} | {'error', any()}.
 relay_encoded_email('undefined', _From, _Encoded) ->
     lager:debug("failed to send email as the TO address(es) are missing"),
     {'error', 'invalid_to_addresses'};
@@ -188,7 +197,7 @@ relay_encoded_email(To, From, Encoded) ->
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
         {'relay_response', {'ok', Receipt}} ->
-            wh_cache:store_local(?CACHE_NAME
+            kz_cache:store_local(?CACHE_NAME
                                  ,{'receipt', Receipt}
                                  ,#email_receipt{to=To
                                                  ,from=From
@@ -301,7 +310,7 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Acc) ->
 
 -spec default_content_transfer_encoding(binary()) -> binary().
 default_content_transfer_encoding(<<"text/html">>) -> <<"base64">>;
-default_content_transfer_encoding(_) -> <<>>.
+default_content_transfer_encoding(_) -> <<"7BIT">>.
 
 -spec system_params() -> wh_proplist().
 system_params() ->
@@ -366,12 +375,11 @@ default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
 render_subject(Template, Macros) ->
     render(<<"subject">>, Template, Macros).
 
--spec render(ne_binary(), binary(), wh_proplist()) -> binary().
 render(TemplateId, Template, Macros) ->
     case teletype_renderer:render(TemplateId, Template, Macros) of
         {'ok', IOData} -> iolist_to_binary(IOData);
         {'error', _E} ->
-            lager:debug("failed to render template ~s: ~p '~s'", [TemplateId, _E, Template]),
+            lager:debug("failed to render '~s': ~p '~s'", [TemplateId, _E, Template]),
             throw({'error', 'template_error'})
     end.
 
@@ -379,7 +387,7 @@ render(TemplateId, Template, Macros) ->
 sort_templates(RenderedTemplates) ->
     lists:sort(fun sort_templates/2, RenderedTemplates).
 
--spec sort_templates({ne_binary(), _}, {ne_binary(), _}) -> boolean().
+-spec sort_templates({ne_binary(), any()}, {ne_binary(), any()}) -> boolean().
 sort_templates({K1, _}, {K2, _}) ->
     props:get_value(K1, ?TEMPLATE_RENDERING_ORDER, 1) =<
         props:get_value(K2, ?TEMPLATE_RENDERING_ORDER, 1).
@@ -469,9 +477,10 @@ find_account_admin_email(AccountId, AccountId) ->
         [] -> 'undefined';
         Emails -> Emails
     end;
+
 find_account_admin_email(AccountId, ResellerId) ->
     case query_account_for_admin_emails(AccountId) of
-        [] -> find_account_admin_email(ResellerId, wh_services:find_reseller_id(ResellerId));
+        [] -> find_account_admin_email(get_parent_account_id(AccountId), ResellerId);
         Emails -> Emails
     end.
 
@@ -597,15 +606,15 @@ is_notice_enabled(AccountId, ApiJObj, TemplateKey) ->
     case wh_json:is_true(<<"Preview">>, ApiJObj, 'false') of
         'true' -> 'true';
         'false' ->
-            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-            is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId)
+            ResellerAccountId = wh_services:find_reseller_id(AccountId),
+            is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId)
     end.
 
 -spec is_account_notice_enabled(api_binary(), ne_binary(), ne_binary()) -> boolean().
-is_account_notice_enabled('undefined', TemplateKey, _MasterAccountId) ->
+is_account_notice_enabled('undefined', TemplateKey, _ResellerAccountId) ->
     lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
     is_notice_enabled_default(TemplateKey);
-is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId) ->
+is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     TemplateId = teletype_templates:doc_id(TemplateKey),
 
@@ -613,12 +622,12 @@ is_account_notice_enabled(AccountId, TemplateKey, MasterAccountId) ->
         {'ok', TemplateJObj} ->
             lager:debug("account ~s has ~s, checking if enabled", [AccountId, TemplateId]),
             kz_notification:is_enabled(TemplateJObj);
-        _Otherwise when AccountId =/= MasterAccountId ->
-            lager:debug("account ~s is mute, checking reseller", [AccountId]),
+        _Otherwise when AccountId =/= ResellerAccountId ->
+            lager:debug("account ~s is mute, checking parent", [AccountId]),
             is_account_notice_enabled(
-              wh_services:find_reseller_id(AccountId)
+              get_parent_account_id(AccountId)
               ,TemplateId
-              ,MasterAccountId
+              ,ResellerAccountId
              );
         _Otherwise ->
             is_notice_enabled_default(TemplateKey)
@@ -634,6 +643,15 @@ is_notice_enabled_default(TemplateKey) ->
         _Otherwise ->
             lager:debug("system is mute, ~s not enabled", [TemplateId]),
             'false'
+    end.
+
+-spec get_parent_account_id(ne_binary()) -> api_binary().
+get_parent_account_id(AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:parent_account_id(JObj);
+        {'error', _E} ->
+            lager:error("failed to find parent account for ~s", [AccountId]),
+            'undefined'
     end.
 
 -spec find_addresses(wh_json:object(), wh_json:object(), ne_binary()) ->
@@ -693,8 +711,8 @@ find_address(Key, DataJObj, TemplateMetaJObj) ->
 -spec find_admin_emails(wh_json:object(), ne_binary(), wh_json:key()) ->
                                api_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
-    case teletype_util:find_account_rep_email(
-           teletype_util:find_account_id(DataJObj)
+    case ?MODULE:find_account_rep_email(
+           ?MODULE:find_account_id(DataJObj)
           )
     of
         'undefined' ->
@@ -706,19 +724,24 @@ find_admin_emails(DataJObj, ConfigCat, Key) ->
 -spec find_default(ne_binary(), wh_json:key()) -> api_binaries().
 find_default(ConfigCat, Key) ->
     case whapps_config:get(ConfigCat, <<"default_", Key/binary>>) of
-        'undefined' -> 'undefined';
+        'undefined' ->
+            lager:debug("no default in ~s for default_~s", [ConfigCat, Key]),
+            'undefined';
+        <<>> ->
+            lager:debug("empty default in ~s for default_~s", [ConfigCat, Key]),
+            'undefined';
         <<_/binary>> = Email -> [Email];
         Emails -> Emails
     end.
 
 -spec open_doc(ne_binary(), api_binary(), wh_json:object()) ->
                       {'ok', wh_json:object()} |
-                      {'error', _}.
+                      {'error', any()}.
 open_doc(Type, 'undefined', DataJObj) ->
     maybe_load_preview(Type, {'error', 'empty_doc_id'}, is_preview(DataJObj));
 open_doc(Type, DocId, DataJObj) ->
     AccountDb = find_account_db(Type, DataJObj),
-    case couch_mgr:open_doc(AccountDb, DocId) of
+    case couch_mgr:open_cache_doc(AccountDb, DocId) of
         {'ok', _JObj}=OK -> OK;
         {'error', _E}=Error ->
             maybe_load_preview(Type, Error, is_preview(DataJObj))
@@ -764,4 +787,4 @@ public_proplist(Key, JObj) ->
 -spec stop_processing(string(), list()) -> no_return().
 stop_processing(Format, Args) ->
     lager:debug(Format, Args),
-    throw('stop').
+    exit('normal').

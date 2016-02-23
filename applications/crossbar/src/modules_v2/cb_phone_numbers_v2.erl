@@ -27,7 +27,7 @@
          ,populate_phone_numbers/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
@@ -616,11 +616,11 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 summary(Context) ->
     Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
     case cb_context:resp_error_code(Context1) of
-        404 -> crossbar_util:response(wh_json:new(), Context1);
+        404 -> Context1;
         _Code ->
             Context2 = cb_context:set_resp_data(Context1, clean_summary(Context1)),
             case cb_context:resp_status(Context2) of
-                'success' ->  maybe_update_locality(Context2);
+                'success' -> maybe_update_locality(Context2);
                 _Status -> Context2
             end
     end.
@@ -629,7 +629,6 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% resource.
 %% @end
 %%--------------------------------------------------------------------
 -spec clean_summary(cb_context:context()) -> wh_json:object().
@@ -638,15 +637,52 @@ clean_summary(Context) ->
     Routines = [fun(JObj) -> wh_json:delete_key(<<"id">>, JObj) end
                 ,fun(JObj) -> wh_json:set_value(<<"numbers">>, JObj, wh_json:new()) end
                 ,fun(JObj) ->
-                         Service = wh_services:fetch(AccountId),
-                         Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
-                         wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
+                    Service = wh_services:fetch(AccountId),
+                    Quantity = wh_services:cascade_category_quantity(?WNM_PHONE_NUMBER_DOC, [], Service),
+                    wh_json:set_value(<<"casquade_quantity">>, Quantity, JObj)
+                 end
+                ,fun(JObj) ->
+                    QS = wh_json:to_proplist(cb_context:query_string(Context)),
+                    Numbers = wh_json:get_value(<<"numbers">>, JObj),
+                    wh_json:set_value(<<"numbers">>, apply_filters(QS, Numbers), JObj)
                  end
                ],
     lists:foldl(fun(F, JObj) -> F(JObj) end
                 ,cb_context:resp_data(Context)
                 ,Routines
                ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_filters(wh_proplist(), wh_json:object()) -> wh_json:object().
+apply_filters([], Numbers) -> Numbers;
+apply_filters([{<<"filter_", Key/binary>>, Value}|QS], Numbers) ->
+    Numbers1 = apply_filter(Key, Value, Numbers),
+    apply_filters(QS, Numbers1);
+apply_filters([{Key, _}|QS], Numbers) ->
+    lager:debug("unknown key ~s, ignoring", [Key]),
+    apply_filters(QS, Numbers).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec apply_filter(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+apply_filter(Key, Value, Numbers) ->
+    wh_json:foldl(
+        fun(Number, JObj, Acc) ->
+            case wh_json:get_value(Key, JObj) of
+                Value -> Acc;
+                _Else -> wh_json:delete_key(Number, Acc)
+            end
+        end
+        ,Numbers
+        ,Numbers
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -821,16 +857,17 @@ get_prefix(City) ->
             ReqParam = wh_util:uri_encode(binary:bin_to_list(City)),
             Req = binary:bin_to_list(<<Url/binary, "/", Country/binary, "/city?pattern=">>),
             Uri = lists:append(Req, ReqParam),
-            case ibrowse:send_req(Uri, [], 'get') of
-                {'error', _Reason}=E -> E;
-                {'ok', "200", _Headers, Body} ->
+            case kz_http:get(Uri) of
+                {'ok', 200, _Headers, Body} ->
                     JObj = wh_json:decode(Body),
                     case wh_json:get_value(<<"data">>, JObj) of
                         'undefined' -> {'error ', JObj};
                         Data -> {'ok', Data}
                     end;
                 {'ok', _Status, _Headers, Body} ->
-                    {'error', wh_json:decode(Body)}
+                    {'error', wh_json:decode(Body)};
+                {'error', _Reason}=E ->
+                    E
             end
     end.
 
@@ -871,9 +908,7 @@ update_locality(Context, Numbers) ->
         {'error', <<"missing phonebook url">>} -> Context;
         {'error', _} -> Context;
         {'ok', Localities} ->
-            _ = wh_util:spawn(fun() ->
-                                      update_phone_numbers_locality(Context, Localities)
-                              end),
+            _ = wh_util:spawn(fun update_phone_numbers_locality/2, [Context, Localities]),
             update_context_locality(Context, Localities)
     end.
 
@@ -909,7 +944,7 @@ update_context_locality_fold(Key, Value, JObj) ->
 %%--------------------------------------------------------------------
 -spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
                                            {'ok', wh_json:object()} |
-                                           {'error', _}.
+                                           {'error', any()}.
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
     DocId = wh_doc:id(cb_context:doc(Context), ?WNM_PHONE_NUMBER_DOC),
@@ -953,14 +988,14 @@ get_locality(Numbers, UrlType) ->
         Url ->
             ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
             Uri = <<Url/binary, "/locality/metadata">>,
-            case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
-                {'error', Reason} ->
-                    lager:error("number locality lookup failed: ~p", [Reason]),
-                    {'error', <<"number locality lookup failed">>};
-                {'ok', "200", _Headers, Body} ->
+            case kz_http:post(binary:bin_to_list(Uri), [], wh_json:encode(ReqBody)) of
+                {'ok', 200, _Headers, Body} ->
                     handle_locality_resp(wh_json:decode(Body));
                 {'ok', _Status, _, _Body} ->
                     lager:error("number locality lookup failed: ~p ~p", [_Status, _Body]),
+                    {'error', <<"number locality lookup failed">>};
+                {'error', Reason} ->
+                    lager:error("number locality lookup failed: ~p", [Reason]),
                     {'error', <<"number locality lookup failed">>}
             end
     end.
@@ -1109,7 +1144,7 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
     HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
     Content = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
-    Options = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    Options = [{'content_type', CT}],
     lager:debug("setting Content-Type to ~s", [CT]),
     case wh_number_manager:put_attachment(Number, Filename, Content, Options, AuthBy) of
         {'ok', NewDoc} ->

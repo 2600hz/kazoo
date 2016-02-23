@@ -37,6 +37,8 @@
 
 -include("crossbar.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {cleanup_timer_ref=start_cleanup_timer()
                 ,minute_timer_ref=start_minute_timer()
                 ,hour_timer_ref=start_hour_timer()
@@ -54,18 +56,15 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec status() -> wh_proplist().
 status() ->
-    gen_server:call(?MODULE, 'status').
+    gen_server:call(?SERVER, 'status').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -186,19 +185,19 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('cleanup', #state{cleanup_timer_ref=Ref}=State) ->
-    _Pid = wh_util:spawn(?MODULE, 'start_cleanup_pass', [Ref]),
+    _Pid = wh_util:spawn(fun start_cleanup_pass/1, [Ref]),
     lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
     {'noreply', State};
 handle_info('minute_cleanup', #state{minute_timer_ref=Ref}=State) ->
-    _Pid = wh_util:spawn('crossbar_bindings', 'map', [binding_minute(), []]),
+    _Pid = wh_util:spawn(fun crossbar_bindings:map/2, [binding_minute(), []]),
     _ = stop_timer(Ref),
     {'noreply', State#state{minute_timer_ref=start_minute_timer()}};
 handle_info('hour_cleanup', #state{hour_timer_ref=Ref}=State) ->
-    _Pid = wh_util:spawn('crossbar_bindings', 'map', [binding_hour(), []]),
+    _Pid = wh_util:spawn(fun crossbar_bindings:map/2, [binding_hour(), []]),
     _ = stop_timer(Ref),
     {'noreply', State#state{hour_timer_ref=start_hour_timer()}};
 handle_info('day_cleanup', #state{day_timer_ref=Ref}=State) ->
-    _Pid = wh_util:spawn('crossbar_bindings', 'map', [binding_day(), []]),
+    _Pid = wh_util:spawn(fun crossbar_bindings:map/2, [binding_day(), []]),
     _ = stop_timer(Ref),
     {'noreply', State#state{day_timer_ref=start_day_timer()}};
 handle_info(_Msg, State) ->
@@ -243,7 +242,7 @@ start_cleanup_pass(Ref) ->
          || Db <- Dbs
         ],
     lager:debug("pass completed for ~p", [Ref]),
-    gen_server:cast(?MODULE, {'cleanup_finished', Ref}).
+    gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 
 -spec db_routing_key(ne_binary()) -> ne_binary().
 db_routing_key(Db) ->

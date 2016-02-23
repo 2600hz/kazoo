@@ -57,15 +57,16 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
 maybe_authorize_channel(Props, Node) ->
     CallId = kzd_freeswitch:call_id(Props),
 
+    Referred = is_referred(Props),
     case kzd_freeswitch:channel_authorized(Props) of
-        <<"true">> ->
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+        <<"true">> when not Referred ->
+            kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,{'true', wh_json:new()}
                                 ),
             'true';
-        <<"false">> ->
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+        <<"false">> when not Referred ->
+            kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,'false'
                                 ),
@@ -73,7 +74,7 @@ maybe_authorize_channel(Props, Node) ->
         _Else ->
             case kzd_freeswitch:hunt_destination_number(Props) of
                 <<"conference">> ->
-                    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+                    kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                                          ,?AUTHZ_RESPONSE_KEY(CallId)
                                          ,{'true', wh_json:new()}
                                         ),
@@ -82,6 +83,11 @@ maybe_authorize_channel(Props, Node) ->
                     maybe_channel_recovering(Props, CallId, Node)
             end
     end.
+
+-spec is_referred(wh_proplist()) -> boolean().
+is_referred(Props) ->
+    kzd_freeswitch:ccv(Props, <<"Referred-By">>) =/= 'undefined'
+        orelse kzd_freeswitch:ccv(Props, <<"Referred-To">>) =/= 'undefined'.
 
 -spec maybe_channel_recovering(wh_proplist(), ne_binary(), atom()) -> boolean().
 maybe_channel_recovering(Props, CallId, Node) ->
@@ -177,7 +183,7 @@ authz_response(JObj, Props, CallId, Node) ->
 
 -spec set_ccv_trunk_usage(wh_json:object(), ne_binary(), atom()) -> 'ok'.
 set_ccv_trunk_usage(JObj, CallId, Node) ->
-    ecallmgr_util:set(Node
+    ecallmgr_fs_command:set(Node
                       ,CallId
                       ,[{Key, TrunkUsage}
                         || Key <- [<<"Account-Trunk-Usage">>
@@ -217,13 +223,15 @@ authorize_reseller(JObj, Props, CallId, Node) ->
             lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
             P = props:set_values([{?GET_CCV(<<"Reseller-ID">>), ResellerId}
                                   ,{?GET_CCV(<<"Reseller-Billing">>), Type}
-                                 ], Props),
+                                 ]
+                                 ,Props
+                                ),
             rate_call(P, CallId, Node)
     end.
 
 -spec rate_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
-    _P = wh_util:spawn(?MODULE, 'rate_channel', [Props, Node]),
+    _P = wh_util:spawn(fun rate_channel/2, [Props, Node]),
     lager:debug("rating call in ~p", [_P]),
     allow_call(Props, CallId, Node).
 
@@ -238,12 +246,12 @@ allow_call(Props, CallId, Node) ->
               ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
               ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+    kz_cache:store_local(?ECALLMGR_UTIL_CACHE
                          ,?AUTHZ_RESPONSE_KEY(CallId)
                          ,{'true', wh_json:from_list(Vars)}
                         ),
     _ = case props:is_true(<<"Call-Setup">>, Props, 'false') of
-            'false' -> ecallmgr_util:set(Node, CallId, Vars);
+            'false' -> ecallmgr_fs_command:set(Node, CallId, Vars);
             'true' -> 'ok'
         end,
     'true'.
@@ -253,8 +261,8 @@ maybe_deny_call(Props, CallId, Node) ->
     case ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') of
         'true' -> rate_call(Props, CallId, Node);
         'false' ->
-            wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), 'false'),
-            wh_util:spawn(?MODULE, 'kill_channel', [Props, Node]),
+            kz_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), 'false'),
+            wh_util:spawn(fun kill_channel/2, [Props, Node]),
             'false'
     end.
 
@@ -314,7 +322,7 @@ maybe_set_rating_ccvs(Props, JObj, Node) ->
 -spec set_rating_ccvs(wh_json:object(), atom()) -> 'ok'.
 set_rating_ccvs(JObj, Node) ->
     lager:debug("setting rating information"),
-    ecallmgr_util:set(Node
+    ecallmgr_fs_command:set(Node
                       ,wh_json:get_value(<<"Call-ID">>, JObj)
                       ,get_rating_ccvs(JObj)
                      ).
@@ -367,6 +375,8 @@ authz_req(Props) ->
        ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
        ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, wh_util:anonymous_caller_id_name())}
        ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, wh_util:anonymous_caller_id_number())}
+       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
+       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

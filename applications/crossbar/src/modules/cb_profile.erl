@@ -15,7 +15,7 @@
          ,req_finish/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(TRACE_PATH, whapps_config:get(?CONFIG_CAT, <<"trace_path">>, <<"/tmp">>)).
 
@@ -63,7 +63,7 @@ req_init(ProfileId, InitArgs) ->
     end,
     InitArgs.
 
--spec req_finish(cb_context:context() | api_binary()) -> _.
+-spec req_finish(cb_context:context() | api_binary()) -> any().
 req_finish('undefined') -> 'ok';
 req_finish(ProfileId) when is_binary(ProfileId) ->
     File = list_to_binary([?TRACE_PATH, ProfileId, ".trace"]),

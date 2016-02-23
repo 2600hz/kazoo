@@ -50,7 +50,7 @@ All requests are not paginated, with the exception of the `completed` state. Use
     curl -v -X PUT \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"numbers":{"+12025559000":{}}}}' \
+    -d '{"data":{"numbers":{"+12025559000":{}}, "name":"Porting 202.555.9000"}}' \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests
 
 ### List port request details
@@ -117,42 +117,42 @@ All requests are not paginated, with the exception of the `completed` state. Use
 
 ### Indicate a port is ready to be processed
 
-    curl -v -X POST \
+    curl -v -X PATCH \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/submitted
 
 ### Put port in pending
 
-    curl -v -X POST \
+    curl -v -X PATCH \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/pending
 
 ### Put port in progress (sent to losing carrier)
 
-    curl -v -X POST \
+    curl -v -X PATCH \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/scheduled
 
 ### Complete port, numbers will activate in the system, account will be billed
 
-    curl -v -X POST \
+    curl -v -X PATCH \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/completed
 
 ### Reject a port
 
-    curl -v -X POST \
+    curl -v -X PATCH \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/rejected
 
 ### Cancel a port
 
-    curl -v -X POST \
+    curl -v -X PATCH \
     -H "X-Auth-Token: {{AUTH_TOKEN}}" \
     -H "Content-Type: application/json" \
     http://{{SERVER}}:8000/v2/accounts/{{ACCOUNT_ID}}/port_requests/{{PORT_REQUEST_ID}}/canceled

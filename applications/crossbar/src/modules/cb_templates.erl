@@ -20,7 +20,7 @@
          ,account_created/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(DB_PREFIX, "template/").
 
@@ -206,7 +206,7 @@ create_template_db(TemplateName, Context) ->
 %% documents into the account
 %% @end
 %%--------------------------------------------------------------------
--spec import_template('undefined' | ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec import_template(api_binary(), ne_binary(), ne_binary()) -> 'ok'.
 import_template('undefined', _, _) -> 'ok';
 import_template(TemplateName, AccountId, AccountDb) ->
     %% TODO: use couch replication...
@@ -256,6 +256,6 @@ import_template_attachments([], _, _, _, _) -> 'ok';
 import_template_attachments([Attachment|Attachments], JObj, TemplateDb, AccountDb, Id) ->
     {'ok', Bin} = couch_mgr:fetch_attachment(TemplateDb, Id, Attachment),
     ContentType = wh_doc:attachment_content_type(JObj, Attachment),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(ContentType)}]}],
+    Opts = [{'content_type', ContentType}],
     _ = couch_mgr:put_attachment(AccountDb, Id, Attachment, Bin, Opts),
     import_template_attachments(Attachments, JObj, TemplateDb, AccountDb, Id).

@@ -38,14 +38,13 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(atom()) -> startlink_ret().
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
-start_link(Node, Options) -> gen_server:start_link(?MODULE, [Node, Options], []).
+start_link(Node, Options) ->
+    gen_server:start_link(?SERVER, [Node, Options], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -120,7 +119,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'fetch', 'directory', <<"domain">>, <<"name">>, _Value, Id, ['undefined' | Props]}
             ,#state{node=Node}=State) ->
-    _ = wh_util:spawn(?MODULE, 'handle_directory_lookup', [Id, Props, Node]),
+    _ = wh_util:spawn(fun handle_directory_lookup/3, [Id, Props, Node]),
     {'noreply', State};
 handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Props]}, #state{node=Node}=State) ->
     wh_util:spawn(
@@ -187,7 +186,7 @@ handle_directory_lookup(Id, Props, Node) ->
 -spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
     Domain = props:get_value(<<"domain">>, Props),
-    Realm = get_auth_realm(Props),
+    [Realm|_] = binary:split(get_auth_realm(Props), [<<":">>, <<";">>]),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
     ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Props),
     {'ok', Xml} = handle_lookup_resp(Method, Domain, Username, ReqResp),
@@ -243,16 +242,16 @@ handle_lookup_resp(_, _, _, {'error', _R}) ->
 
 -spec maybe_query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), wh_proplist()) ->
                                    {'ok', wh_json:object()} |
-                                   {'error', _}.
+                                   {'error', any()}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
-    case wh_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
+    case kz_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} -> query_registrar(Realm, Username, Node, Id, Method, Props)
     end.
 
 -spec query_registrar(ne_binary(), ne_binary(), atom(), ne_binary(), ne_binary(), wh_proplist()) ->
                              {'ok', wh_json:object()} |
-                             {'error', _}.
+                             {'error', any()}.
 query_registrar(Realm, Username, Node, Id, Method, Props) ->
     lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm, Method]),
     Req = [{<<"Msg-ID">>, Id}
@@ -283,7 +282,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
 
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need
-%%   to wait for conferences, ect.  Since Kamailio does not honor
+%%   to wait for conferences, etc.  Since Kamailio does not honor
 %%   Defer-Response we can use that flag on registrar errors
 %%   to queue in Kazoo but still advance Kamailio, just need to check here.
 -spec maybe_defered_error(ne_binary(), ne_binary(), wh_json:object()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
@@ -303,6 +302,6 @@ maybe_defered_error(Realm, Username, JObj) ->
                                       | OwnerIdProp
                                      ]}
                          ],
-            wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
+            kz_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             {'ok', JObj}
     end.

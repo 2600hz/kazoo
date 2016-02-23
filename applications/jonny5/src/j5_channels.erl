@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2012-2015, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -11,6 +11,7 @@
 
 -export([start_link/0]).
 -export([sync/0]).
+-export([flush/0]).
 -export([total_calls/1]).
 -export([resource_consuming/1]).
 -export([inbound_flat_rate/1]).
@@ -18,14 +19,14 @@
 -export([allotments/1]).
 -export([allotment_consumed/4]).
 -export([per_minute/1]).
--export([per_minute_cost/1]).
+-export([per_minute_cost/1, real_per_minute_cost/1]).
 -export([accounts/0]).
 -export([account/1]).
 -export([to_props/1]).
 -export([authorized/1]).
--export([remove/1]).
 -export([handle_authz_resp/2]).
 -export([handle_rate_resp/2]).
+-export([handle_channel_destroy/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -58,7 +59,7 @@
                   ,reseller_allotment = 'false' :: boolean() | '_'
                   ,soft_limit = 'false' :: boolean() | '_'
                   ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
-                  ,answered_timestamp :: 'undefined' | pos_integer() | '$1' | '_'
+                  ,answered_timestamp :: api_pos_integer() | '$1' | '_'
                   ,rate :: api_binary() | '_'
                   ,rate_increment :: api_binary() | '_'
                   ,rate_minimum :: api_binary() | '_'
@@ -71,7 +72,7 @@
                  }).
 
 -type channel() :: #channel{}.
--type channels() :: [channel(),...] | [].
+-type channels() :: [channel()].
 -export_type([channel/0
               ,channels/0
              ]).
@@ -84,12 +85,20 @@
                               ,'federate'
                              ]
                     }
+                   ,{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>, <<"CHANNEL_DISCONNECTED">>]}
+                              ,'federate'
+                             ]
+
+                    }
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
                       ,[{<<"authz">>, <<"authz_resp">>}]
                      }
                      ,{{?MODULE, 'handle_rate_resp'}
                        ,[{<<"rate">>, <<"resp">>}]
+                      }
+                     ,{{?MODULE, 'handle_channel_destroy'}
+                       ,[{<<"call_event">>, <<"*">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -101,12 +110,9 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                             ,?MODULE
@@ -120,7 +126,11 @@ start_link() ->
                            ).
 
 -spec sync() -> 'ok'.
-sync() -> gen_server:cast(?SERVER, 'synchronize_channels').
+sync() ->
+    gen_server:cast(?SERVER, 'synchronize_channels').
+
+-spec flush() -> 'ok'.
+flush() -> gen_server:cast(?SERVER, 'flush_channels').
 
 -spec total_calls(ne_binary()) -> non_neg_integer().
 total_calls(AccountId) ->
@@ -328,6 +338,27 @@ per_minute_cost(AccountId) ->
                         call_cost(Channel) + Cost
                 end, 0, ets:select(?TAB, MatchSpec)).
 
+-spec real_per_minute_cost(ne_binary()) -> non_neg_integer().
+real_per_minute_cost(AccountId) ->
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,account_billing = <<"per_minute">>
+                           ,_='_'
+                          }
+                  ,[]
+                  ,['$_']
+                 }
+                 ,{#channel{reseller_id = AccountId
+                            ,reseller_billing = <<"per_minute">>
+                            ,_='_'
+                           }
+                   ,[]
+                   ,['$_']
+                  }
+                ],
+    lists:foldl(fun(Channel, Cost) ->
+                        call_cost(Channel, 0) + Cost
+                end, 0, ets:select(?TAB, MatchSpec)).
+
 -spec accounts() -> ne_binaries().
 accounts() ->
     MatchSpec = [{#channel{account_id = '$1'
@@ -340,7 +371,7 @@ accounts() ->
                 ],
     accounts(ets:select(?TAB, MatchSpec), sets:new()).
 
--spec accounts(_, set()) -> ne_binaries().
+-spec accounts(any(), sets:set()) -> ne_binaries().
 accounts([], Accounts) ->
     lists:reverse(sets:to_list(Accounts));
 accounts([['undefined', 'undefined']|Ids], Accounts) ->
@@ -421,9 +452,6 @@ to_props(#channel{call_id=CallId
 -spec authorized(wh_json:object()) -> 'ok'.
 authorized(JObj) -> gen_server:cast(?SERVER, {'authorized', JObj}).
 
--spec remove(ne_binary()) -> 'ok'.
-remove(CallId) -> gen_server:cast(?SERVER, {'remove', CallId}).
-
 -spec handle_authz_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_authz_resp(JObj, _Props) ->
     'true' = wapi_authz:authz_resp_v(JObj),
@@ -437,6 +465,13 @@ handle_rate_resp(JObj, Props) ->
     'true' = wapi_rate:resp_v(JObj),
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'rate_resp', JObj}).
+
+-spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_channel_destroy(JObj, Props) ->
+    'true' = wapi_call:event_v(JObj),
+    CallId = kz_call_event:call_id(JObj),
+    Srv = props:get_value('server', Props),
+    gen_server:cast(Srv, {'remove', CallId}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -509,10 +544,19 @@ handle_cast({'rate_resp', JObj}, State) ->
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
     {'noreply', State};
-handle_cast({'wh_nodes', {'expire', _Node}}, #state{sync_ref=SyncRef}=State) ->
-    lager:debug("notifed that node ~s is no longer reachable, synchronizing channels", [_Node]),
-    self() ! {'synchronize_channels', SyncRef},
+handle_cast('flush_channels', State) ->
+    _ = ets:delete_all_objects(?TAB),
     {'noreply', State};
+handle_cast({'wh_nodes', {'expire', #wh_node{node=NodeName, whapps=Whapps}}}
+            ,#state{sync_ref=SyncRef}=State
+           ) ->
+    case props:get_value(<<"ecallmgr">>, Whapps) of
+        'undefined' -> {'noreply', State};
+        _WhappInfo ->
+            lager:debug("ecallmgr node ~s is no longer reachable, synchronizing channels", [NodeName]),
+            self() ! {'synchronize_channels', SyncRef},
+            {'noreply', State}
+    end;
 handle_cast({'authorized', JObj}, State) ->
     _ = ets:insert(?TAB, from_jobj(JObj)),
     {'noreply', State};
@@ -534,9 +578,10 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) ->
     Req = wh_api:default_headers(?APP_NAME, ?APP_VERSION),
-    _ = case whapps_util:amqp_pool_collect(Req
-                                           ,fun wapi_call:publish_query_channels_req/1
-                                           ,{'ecallmgr', 'true'})
+    _ = case wh_amqp_worker:call_collect(Req
+                                         ,fun wapi_call:publish_query_channels_req/1
+                                         ,{'ecallmgr', 'true'}
+                                        )
         of
             {'error', _R} ->
                 lager:error("could not reach ecallmgr channels: ~p", [_R]);
@@ -647,30 +692,30 @@ is_allotment(<<"allotment_", _/binary>>) -> 'true';
 is_allotment(_) -> 'false'.
 
 -type unique_channel() :: {ne_binary(), api_binary()}.
--type unique_channels() :: [unique_channel(),...] | [].
+-type unique_channels() :: [unique_channel()].
 
 -spec count_unique_calls(unique_channels()) -> non_neg_integer().
 count_unique_calls(Channels) ->
     sets:size(count_unique_calls(Channels, sets:new())).
 
--spec count_unique_calls(unique_channels(), set()) -> set().
+-spec count_unique_calls(unique_channels(), sets:set()) -> sets:set().
 count_unique_calls([], Set) -> Set;
 count_unique_calls([{CallId, 'undefined'}|Channels], Set) ->
     count_unique_calls(Channels, sets:add_element(CallId, Set));
 count_unique_calls([{_, CallId}|Channels], Set) ->
     count_unique_calls(Channels, sets:add_element(CallId, Set)).
 
--spec j5_channel_ids() -> set().
+-spec j5_channel_ids() -> sets:set().
 j5_channel_ids() ->
     sets:from_list(
       ets:select(?TAB, [{#channel{call_id='$1', _='_'}, [], ['$1']}])
      ).
 
--spec ecallmgr_channel_ids(wh_json:objects()) -> set().
+-spec ecallmgr_channel_ids(wh_json:objects()) -> sets:set().
 ecallmgr_channel_ids(JObjs) ->
     ecallmgr_channel_ids(JObjs, sets:new()).
 
--spec ecallmgr_channel_ids(wh_json:objects(), set()) -> set().
+-spec ecallmgr_channel_ids(wh_json:objects(), sets:set()) -> sets:set().
 ecallmgr_channel_ids([], ChannelIds) -> ChannelIds;
 ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
     Channels = wh_json:get_value(<<"Channels">>, JObj),
@@ -681,7 +726,7 @@ ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
                    end, ChannelIds, wh_json:get_keys(Channels))
      ).
 
--spec fix_channel_disparity(set(), set()) -> 'ok'.
+-spec fix_channel_disparity(sets:set(), sets:set()) -> 'ok'.
 fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds) ->
     Disparity = sets:to_list(sets:subtract(LocalChannelIds, EcallmgrChannelIds)),
     fix_channel_disparity(Disparity).
@@ -701,7 +746,7 @@ start_channel_sync_timer(State) ->
     State#state{sync_ref=SyncRef
                 ,sync_timer=TRef}.
 
--type non_neg_integers() :: [non_neg_integer(),...] | [].
+-type non_neg_integers() :: [non_neg_integer()].
 
 -spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
 sum_allotment_consumed(CycleStart, Span, Matches) ->
@@ -727,10 +772,13 @@ calculate_consumed(CycleStart, Span, CurrentTimestamp, Timestamp) ->
     end.
 
 -spec call_cost(channel()) -> non_neg_integer().
-call_cost(#channel{answered_timestamp='undefined'}=Channel) ->
-    wht_util:call_cost(billing_jobj(60, Channel));
-call_cost(#channel{answered_timestamp=Timestamp}=Channel) ->
-    BillingSeconds = wh_util:current_tstamp() - Timestamp + 60,
+call_cost(Channel) -> call_cost(Channel, 60).
+
+-spec call_cost(channel(), integer()) -> non_neg_integer().
+call_cost(#channel{answered_timestamp='undefined'}=Channel, Seconds) ->
+    wht_util:call_cost(billing_jobj(Seconds, Channel));
+call_cost(#channel{answered_timestamp=Timestamp}=Channel, Seconds) ->
+    BillingSeconds = wh_util:current_tstamp() - Timestamp + Seconds,
     wht_util:call_cost(billing_jobj(BillingSeconds, Channel)).
 
 -spec billing_jobj(non_neg_integer(), channel()) -> wh_json:object().

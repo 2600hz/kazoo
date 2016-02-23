@@ -10,21 +10,40 @@
 -behaviour(supervisor).
 
 -export([start_link/0
+         ,start_module/1, stop_module/1
         ]).
 -export([init/1]).
 
 -include("omnipresence.hrl").
 
+-define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(DEFAULT_MODULES, [<<"omnip_dialog">>
-                          ,<<"omnip_message_summary">>
-                          ,<<"omnip_presence">>
+-define(DEFAULT_MODULES, [<<"omnip_dialog_amqp">>
+                          ,<<"omnip_message_summary_amqp">>
+                          ,<<"omnip_presence_amqp">>
                          ]).
+
+-define(CHILDREN, [ ?WORKER(module(Module))
+                    || Module <- whapps_config:get(?CONFIG_CAT, <<"modules">>, ?DEFAULT_MODULES)
+                  ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+-spec start_module(ne_binary()) -> sup_startchild_ret().
+start_module(Module) ->
+    supervisor:start_child(?SERVER, ?WORKER(wh_util:to_atom(Module, 'true'))).
+
+-spec stop_module(ne_binary()) -> 'ok' | {'error', any()}.
+stop_module(Module) ->
+    case supervisor:terminate_child(?SERVER, wh_util:to_atom(Module, 'true')) of
+        'ok' ->
+            _ = supervisor:delete_child(?SERVER, wh_util:to_atom(Module, 'true')),
+            'ok';
+        {'error', _}=E -> E
+    end.
 
 %% TODO
 %% load / unload package
@@ -34,13 +53,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -55,7 +72,7 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(any()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
@@ -63,8 +80,14 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    Children = [ ?WORKER(wh_util:to_atom(H, 'true'))
-                 || H <- whapps_config:get(?CONFIG_CAT, <<"modules">>, ?DEFAULT_MODULES)
-               ],
+    {'ok', {SupFlags, ?CHILDREN}}.
 
-    {'ok', {SupFlags, Children}}.
+-spec module(ne_binary()) -> atom().
+module(<<"omnip_dialog">>) ->
+    module(<<"omnip_dialog_amqp">>);
+module(<<"omnip_presence">>) ->
+    module(<<"omnip_presence_amqp">>);
+module(<<"omnip_message_summary">>) ->
+    module(<<"omnip_message_summary_amqp">>);
+module(Module) ->
+    wh_util:to_atom(Module, 'true').

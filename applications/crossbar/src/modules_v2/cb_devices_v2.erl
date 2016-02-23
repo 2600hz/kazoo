@@ -26,7 +26,7 @@
          ,lookup_regs/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
 -define(CHECK_SYNC_PATH_TOKEN, <<"sync">>).
@@ -34,6 +34,7 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
+-define(OWNER_LIST, <<"devices/listing_by_owner">>).
 -define(CB_LIST_MAC, <<"devices/listing_by_macaddress">>).
 
 -define(KEY_MAC_ADDRESS, <<"mac_address">>).
@@ -242,6 +243,7 @@ validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _ToDial) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
+    _ = wh_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
     case changed_mac_address(Context) of
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
@@ -251,8 +253,7 @@ post(Context, DeviceId) ->
             _ = wh_util:spawn(
                   fun() ->
                           _ = provisioner_util:maybe_provision(Context2),
-                          _ = provisioner_util:maybe_sync_sip_data(Context1, 'device'),
-                          _ = crossbar_util:flush_registration(Context)
+                          _ = provisioner_util:maybe_sync_sip_data(Context1, 'device')
                   end),
             Context1;
         'false' ->
@@ -273,7 +274,7 @@ put(Context) ->
         fun() ->
             Context1 = crossbar_doc:save(Context),
             _ = maybe_aggregate_device('undefined', Context1),
-            _ = wh_util:spawn('provisioner_util', 'maybe_provision', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_provision/1, [Context1]),
             Context1
         end,
     crossbar_services:maybe_dry_run(Context, Callback).
@@ -283,7 +284,7 @@ delete(Context, DeviceId) ->
     _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
     _ = crossbar_util:flush_registration(Context),
-    _ = wh_util:spawn('provisioner_util', 'maybe_delete_provision', [Context]),
+    _ = wh_util:spawn(fun provisioner_util:maybe_delete_provision/1, [Context]),
     _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
 
@@ -298,9 +299,29 @@ delete(Context, DeviceId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary(cb_context:context()) -> cb_context:context().
+-spec load_device_summary(cb_context:context()) ->
+                                 cb_context:context().
+-spec load_device_summary(cb_context:context(), req_nouns()) ->
+                                 cb_context:context().
 load_device_summary(Context) ->
+    load_device_summary(Context, cb_context:req_nouns(Context)).
+
+load_device_summary(Context, [{<<"devices">>, []}
+                              ,{<<"users">>, [UserId]}
+                             |_]
+                   ) ->
+    load_users_device_summary(Context, UserId);
+load_device_summary(Context, _ReqNouns) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
+-spec load_users_device_summary(cb_context:context(), ne_binary()) ->
+                                       cb_context:context().
+load_users_device_summary(Context, UserId) ->
+    crossbar_doc:load_view(?OWNER_LIST
+                           ,[{'key', UserId}]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -552,7 +573,7 @@ lookup_regs(AccountRealm) ->
 extract_device_registrations(JObjs) ->
     sets:to_list(extract_device_registrations(JObjs, sets:new())).
 
--spec extract_device_registrations(wh_json:objects(), set()) -> set().
+-spec extract_device_registrations(wh_json:objects(), sets:set()) -> sets:set().
 extract_device_registrations([], Set) -> Set;
 extract_device_registrations([JObj|JObjs], Set) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),

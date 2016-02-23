@@ -16,14 +16,14 @@
          ,authenticate/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, authenticate).
+    crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate').
 
-authenticate(#cb_context{}) ->
+authenticate(Context) ->
     lager:debug("noauthn authenticating request"),
-    true.
+    cb_context:is_context(Context).

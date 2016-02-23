@@ -1,25 +1,15 @@
-PROJECT = gen_smtp
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
+PROJECT = gen_smtp
 
-FILES = $(shell ls ebin/*.beam | grep -v smtp_rfc822_parse)
+COMPILE_MOAR = src/smtp_rfc822_parse.erl
+CLEAN_MOAR = clean-lexer-parser
 
-all:
-	@./rebar compile
+all: compile
 
-compile:
-	@./rebar compile
+-include $(ROOT)/make/kz.mk
 
-clean:
-	@./rebar clean
+src/smtp_rfc822_parse.erl: src/smtp_rfc822_parse.yrl
+	erlc -o src/ $^
 
-test:
-	./rebar -C rebar.test.config get-deps
-	./rebar -C rebar.test.config compile
-	ERL_AFLAGS="-s ssl" 
-	./rebar -C rebar.test.config skip_deps=true eunit
-
-dialyze:
-	dialyzer $(FILES)
-
-.PHONY: compile clean test dialyze
+clean-lexer-parser:
+	$(if $(wildcard src/smtp_rfc822_parse.erl), rm src/smtp_rfc822_parse.erl)

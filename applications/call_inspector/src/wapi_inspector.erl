@@ -29,7 +29,7 @@
 -define(LOOKUP_REQ_TYPES, []).
 
 -define(LOOKUP_RESP_HEADERS, [<<"Chunks">>]).
--define(OPTIONAL_LOOKUP_RESP_HEADERS, [<<"Chunks">>, <<"Analysis">>]).
+-define(OPTIONAL_LOOKUP_RESP_HEADERS, [<<"Chunks">>, <<"Analysis">>, <<"Dialog-Entities">>]).
 -define(LOOKUP_RESP_VALUES, [{<<"Event-Category">>, <<"call_inspector">>}
                              ,{<<"Event-Name">>, <<"lookup_resp">>}
                             ]).

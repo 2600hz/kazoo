@@ -10,18 +10,15 @@
 -module(cb_ledgers).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
          ,authenticate/1
          ,authorize/1
-         ,validate/1, validate/2, validate/3
-         ,post/3
+         ,validate/1, validate/2
+         ,put/2
         ]).
 
--include("../crossbar.hrl").
-
--define(CB_LIST, <<"ledgers/crossbar_listing">>).
--define(LIST_BY_TYPE, <<"ledgers/listing_by_type">>).
+-include("crossbar.hrl").
 
 -define(CREDIT, <<"credit">>).
 -define(DEBIT, <<"debit">>).
@@ -44,7 +41,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.validate.ledgers">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.get.ledgers">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.ledgers">>, ?MODULE, 'post').
+    _ = crossbar_bindings:bind(<<"*.execute.put.ledgers">>, ?MODULE, 'put').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -57,12 +54,13 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
+
+allowed_methods(?CREDIT) ->
+    [?HTTP_PUT];
+allowed_methods(?DEBIT) ->
+    [?HTTP_PUT];
 allowed_methods(_) ->
     [?HTTP_GET].
-allowed_methods(_, ?CREDIT) ->
-    [?HTTP_POST];
-allowed_methods(_, ?DEBIT) ->
-    [?HTTP_POST].
 
 
 %%--------------------------------------------------------------------
@@ -78,8 +76,6 @@ allowed_methods(_, ?DEBIT) ->
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, ?CREDIT) -> 'true';
-resource_exists(_, ?DEBIT) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,25 +106,15 @@ authorize(_Context) -> 'false'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_ledgers(Context, cb_context:req_verb(Context)).
 
+validate(Context, ?CREDIT) ->
+    cb_context:validate_request_data(<<"ledgers">>, Context, fun is_admin/1);
+validate(Context, ?DEBIT) ->
+    cb_context:validate_request_data(<<"ledgers">>, Context, fun is_admin/1);
 validate(Context, Id) ->
     validate_ledger(Context, Id, cb_context:req_verb(Context)).
-
-validate(Context, Id, _Action) ->
-    validate_ledger(Context, Id, cb_context:req_verb(Context)).
-
--spec validate_ledgers(cb_context:context(), http_method()) -> cb_context:context().
-validate_ledgers(Context, ?HTTP_GET) ->
-    read_ledgers(Context).
-
--spec validate_ledger(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_ledger(Context, Id, ?HTTP_GET) ->
-    read_ledger(Context, Id);
-validate_ledger(Context, _Id, ?HTTP_POST) ->
-    cb_context:validate_request_data(<<"ledgers">>, Context, fun is_admin/1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -137,32 +123,59 @@ validate_ledger(Context, _Id, ?HTTP_POST) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-post(Context, Id, ?CREDIT) ->
-    credit_or_debit(Context, Id, ?CREDIT);
-post(Context, Id, ?DEBIT) ->
-    credit_or_debit(Context, Id, ?DEBIT).
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, ?CREDIT) ->
+    credit_or_debit(Context, ?CREDIT);
+put(Context, ?DEBIT) ->
+    credit_or_debit(Context, ?DEBIT).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec credit_or_debit(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-credit_or_debit(Context, Name, Action) ->
-    AccountId = cb_context:account_id(Context),
+-spec validate_ledgers(cb_context:context(), http_method()) -> cb_context:context().
+validate_ledgers(Context, ?HTTP_GET) ->
+    read_ledgers(Context).
+
+-spec validate_ledger(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_ledger(Context, Id, ?HTTP_GET) ->
+    read_ledger(Context, Id).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec credit_or_debit(cb_context:context(), ne_binary()) -> cb_context:context().
+credit_or_debit(Context, Action) ->
     ReqData = cb_context:req_data(Context),
-    Amount = wh_json:get_integer_value(<<"amount">>, ReqData, 0),
-    Desc = wh_json:get_ne_binary_value(<<"description">>, ReqData),
-    case process_action(Action, Name, Amount, AccountId, Desc) of
+
+    AccountId = cb_context:account_id(Context),
+    SrcService = wh_json:get_value([<<"source">>, <<"service">>], ReqData),
+    SrcId = wh_json:get_value([<<"source">>, <<"id">>], ReqData),
+    Usage = wh_json:to_proplist(wh_json:get_value(<<"usage">>, ReqData)),
+
+    Props =
+        props:filter_undefined([
+            {<<"amount">>, wh_json:get_value(<<"amount">>, ReqData)}
+            ,{<<"description">>, wh_json:get_value(<<"description">>, ReqData)}
+            ,{<<"period_start">>, wh_json:get_value([<<"period">>, <<"start">>], ReqData)}
+            ,{<<"period_end">>, wh_json:get_value([<<"period">>, <<"end">>], ReqData)}
+        ]),
+
+    case process_action(Action, SrcService, SrcId, AccountId, Usage, Props) of
         {'error', Reason} ->
             crossbar_util:response('error', Reason, Context);
-        {'ok', Ledger} ->
-            crossbar_util:response(kazoo_ledger:to_public_json(Ledger), Context)
+        {'ok', JObj} ->
+            JObj1 = wh_json:public_fields(JObj),
+            crossbar_util:response(JObj1, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -171,11 +184,14 @@ credit_or_debit(Context, Name, Action) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_action(ne_binary(), ne_binary(), integer(), ne_binary(), ne_binary()) -> {'ok', _} | {'error', _}.
-process_action(?CREDIT, Name, Amount, AccountId, Desc) ->
-    kz_ledger:credit(Name, Amount, AccountId, Desc);
-process_action(?DEBIT, Name, Amount, AccountId, Desc) ->
-    kz_ledger:debit(Name, Amount, AccountId, Desc).
+-spec process_action(ne_binary(), ne_binary(), ne_binary()
+                     ,ne_binary(), wh_proplist(), wh_proplist()) ->
+                            {'ok', wh_json:object()} |
+                            {'error', any()}.
+process_action(?CREDIT, SrcService, SrcId, Account, Usage, Props) ->
+    kz_ledger:credit(SrcService, SrcId, Account, Usage, Props);
+process_action(?DEBIT, SrcService, SrcId, Account, Usage, Props) ->
+    kz_ledger:debit(SrcService, SrcId, Account, Usage, Props).
 
 %%--------------------------------------------------------------------
 %% @private

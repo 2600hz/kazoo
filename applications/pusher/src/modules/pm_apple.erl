@@ -1,10 +1,11 @@
 -module(pm_apple).
 -behaviour(gen_server).
 
--include("../pusher.hrl").
-
+-include("pusher.hrl").
 -include_lib("apns/include/apns.hrl").
 -include_lib("apns/include/localized.hrl").
+
+-define(SERVER, ?MODULE).
 
 -export([start_link/0]).
 
@@ -21,18 +22,18 @@
 
 -spec start_link() -> startlink_ret().
 start_link() ->
-  gen_server:start_link({'local', ?MODULE}, ?MODULE, [],[]).
+  gen_server:start_link({'local', ?SERVER}, ?MODULE, [],[]).
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     wh_util:put_callid(?MODULE),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 
--spec handle_call(term(), pid_ref(), state()) -> handle_call_ret_state(state()).
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
--spec handle_cast(term(), state()) -> handle_cast_ret_state(state()).
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
     TokenApp = wh_json:get_value(<<"Token-App">>, JObj),
     maybe_send_push_notification(get_apns(TokenApp, ETS), JObj),
@@ -40,16 +41,16 @@ handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
--spec handle_info(term(), state()) -> handle_info_ret_state(state()).
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Request, State) ->
     {'noreply', State}.
 
--spec terminate(term(), state()) -> 'ok'.
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{tab=ETS}) ->
     ets:delete(ETS),
     'ok'.
 
--spec code_change(term(), state(), term()) -> {'ok', state()}.
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

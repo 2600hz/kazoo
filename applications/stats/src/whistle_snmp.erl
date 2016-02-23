@@ -18,7 +18,7 @@
 -include("stats.hrl").
 
 %%% get_oid - implementation function to read from a table.
--spec get_oid('get_next' | 'get', integer(), integer(), term()) -> any().
+-spec get_oid('get_next' | 'get', integer(), integer(), any()) -> any().
 get_oid('get_next', RowIndex, Cols, Table) ->
     lager:debug("Table: ~p Row: ~p Cols: ~p~n",[Table,RowIndex, Cols]),
     Value = stats_handler:get_next(Table,RowIndex,Cols),
@@ -30,9 +30,7 @@ kazoo_ver('get') ->
     {'value', wh_util:to_list(wh_util:whistle_version())}.
 
 %% @public
-%% @doc
-%% Create the directories and agent configuration files
-%% @end
+%% @doc Create the directories and agent configuration files
 -spec start() -> 'ok'.
 start() ->
     _ = application:start('snmp'),

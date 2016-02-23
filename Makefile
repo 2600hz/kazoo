@@ -1,4 +1,5 @@
 ROOT = .
+RELX = $(ROOT)/utils/relx/relx
 
 KAZOODIRS = core/Makefile \
 	    applications/Makefile
@@ -7,9 +8,9 @@ MAKEDIRS = deps/Makefile \
 	   core/Makefile \
 	   applications/Makefile
 
-.PHONY: $(MAKEDIRS) core deps apps
+.PHONY: $(MAKEDIRS) core deps apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-release build-release tar-release release
 
-all : compile
+all: compile rel/dev-vm.args
 
 compile: ACTION = all
 compile: $(MAKEDIRS)
@@ -19,37 +20,72 @@ $(MAKEDIRS):
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)
-	rm -f *crash.dump
-	rm -rf scripts/log/*
+	$(if $(wildcard *crash.dump), rm *crash.dump)
+	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
+	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 
-clean-test : ACTION = clean-test
-clean-test : $(KAZOODIRS)
+clean-test: ACTION = clean-test
+clean-test: $(KAZOODIRS)
 
-eunit: ACTION = test
-eunit: ERLC_OPTS += -DTEST
+clean-kazoo: ACTION = clean
+clean-kazoo: $(KAZOODIRS)
+
+compile-test: ACTION = compile-test
+compile-test: $(KAZOODIRS)
+
+eunit: ACTION = eunit
 eunit: $(KAZOODIRS)
 
-proper: ACTION = test
+proper: ACTION = eunit
 proper: ERLC_OPTS += -DPROPER
 proper: $(KAZOODIRS)
 
 test: ACTION = test
-test: ERLC_OPTS += -DTEST -DPROPER
+test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
 core:
-	$(MAKE) -C core all
+	$(MAKE) -C core/ all
 deps:
-	$(MAKE) -C deps all
+	$(MAKE) -C deps/ all
 apps:
-	$(MAKE) -C applications all
+	$(MAKE) -C applications/ all
 
 kazoo: core apps
 
+
+clean-release:
+	$(if $(wildcard _rel/), rm -r _rel/)
+	$(if $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args), \
+	  rm $(wildcard rel/relx.config rel/vm.args rel/dev-vm.args)  )
+
+build-release: rel/relx.config rel/vm.args
+	$(RELX) --config $< -V 2 release --relname 'kazoo'
+tar-release: rel/relx.config rel/vm.args
+	$(RELX) --config $< -V 2 release tar --relname 'kazoo'
+rel/relx.config: rel/relx.config.src
+	$(ROOT)/scripts/src2any.escript $<
+
+rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh
+	cp $^ $@
+rel/vm.args: rel/args rel/dev-vm.args
+	( cat $<; echo '$${KZname}' ) > $@
+
+## More ACTs at //github.com/erlware/relx/priv/templates/extended_bin
+release: ACT ?= console # start | attach | stop | console | foreground
+release: REL ?= whistle_apps # whistle_apps | ecallmgr | …
+release:
+ifeq ($(REL),ecallmgr)
+	@export KAZOO_APPS='ecallmgr'
+	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
+else
+	@RELX_REPLACE_OS_VARS=true KZname='-name $(REL)' _rel/kazoo/bin/kazoo $(ACT) "$$@"
+endif
+
 DIALYZER ?= dialyzer
-PLT ?= $(ROOT)/.kazoo.plt
-$(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src  -print)
-# $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin -print)
+PLT ?= .kazoo.plt
+$(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
+# $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
 	@$(DIALYZER) --no_native --build_plt --output_plt $(PLT) \
 	    --apps erts kernel stdlib crypto public_key ssl \
@@ -59,16 +95,28 @@ $(PLT):
 	done
 build-plt: $(PLT)
 
-dialyze-kazoo: TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin -print) $(shell find $(ROOT)/core -name ebin -print)
+dialyze-kazoo: TO_DIALYZE  = $(shell find $(ROOT)/applications $(ROOT)/core -name ebin)
 dialyze-kazoo: dialyze
-dialyze-apps:  TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin -print)
+dialyze-apps:  TO_DIALYZE  = $(shell find $(ROOT)/applications -name ebin)
 dialyze-apps: dialyze
-dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin -print)
+dialyze-core:  TO_DIALYZE  = $(shell find $(ROOT)/core         -name ebin)
 dialyze-core: dialyze
-dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin -print)
+dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: $(PLT)
-	@$(ROOT)/scripts/check-dialyzer.escript $(TO_DIALYZE)
+	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
-xref: EBINS = $(shell find $(ROOT) -name ebin -print)
+
+xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
-	@$(ROOT)/scripts/check-xref.escript $(EBINS)
+	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
+
+xref_release: TO_XREF = $(shell find $(ROOT)/_rel/kazoo/lib -name ebin)
+xref_release:
+	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
+
+
+sup_completion: sup_completion_file = $(ROOT)/sup.bash
+sup_completion: kazoo
+	@$(if $(wildcard $(sup_completion_file)), rm $(sup_completion_file))
+	@$(ROOT)/scripts/sup-build-autocomplete.escript $(sup_completion_file) applications/ core/
+	@echo SUP Bash completion file written at $(sup_completion_file)

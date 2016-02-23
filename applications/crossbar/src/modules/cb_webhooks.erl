@@ -11,6 +11,8 @@
 -module(cb_webhooks).
 
 -export([init/0
+         ,authorize/1
+         ,authenticate/1
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
@@ -21,7 +23,7 @@
          ,cleanup/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
@@ -42,8 +44,12 @@ init() ->
     _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
     _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
     _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
+    init_master_account_db(),
+    maybe_revise_schema(),
 
     Bindings = [{<<"*.allowed_methods.webhooks">>, 'allowed_methods'}
+                ,{<<"*.authorize">>, 'authorize'}
+                ,{<<"*.authenticate">>, 'authenticate'}
                 ,{<<"*.resource_exists.webhooks">>, 'resource_exists'}
                 ,{<<"*.validate.webhooks">>, 'validate'}
                 ,{<<"*.execute.put.webhooks">>, 'put'}
@@ -54,6 +60,76 @@ init() ->
                 ,{crossbar_cleanup:binding_system(), 'cleanup'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
+
+-spec init_master_account_db() -> 'ok'.
+init_master_account_db() ->
+    case whapps_util:get_master_account_db() of
+        {'ok', MasterAccountDb} ->
+            _ = couch_mgr:revise_doc_from_file(MasterAccountDb
+                                               ,'webhooks'
+                                               ,<<"webhooks.json">>
+                                              ),
+            lager:debug("ensured view into master db");
+        {'error', _E} ->
+            lager:warning("master account not set yet, unable to load view: ~p", [_E])
+    end.
+
+-spec maybe_revise_schema() -> 'ok'.
+-spec maybe_revise_schema(wh_json:object()) -> 'ok'.
+-spec maybe_revise_schema(wh_json:object(), ne_binary()) -> 'ok'.
+maybe_revise_schema() ->
+    case wh_json_schema:load(<<"webhooks">>) of
+        {'ok', SchemaJObj} ->
+            maybe_revise_schema(SchemaJObj);
+        {'error', _E} ->
+            lager:warning("failed to find webhooks schema: ~p", [_E])
+    end.
+
+maybe_revise_schema(SchemaJObj) ->
+    case whapps_util:get_master_account_db() of
+        {'ok', MasterDb} -> maybe_revise_schema(SchemaJObj, MasterDb);
+        {'error', _E} ->
+            lager:warning("master account not set yet, unable to revise schema: ~p", [_E])
+    end.
+
+maybe_revise_schema(SchemaJObj, MasterDb) ->
+    case couch_mgr:get_results(MasterDb, ?AVAILABLE_HOOKS) of
+        {'ok', []} ->
+            lager:warning("no hooks are registered; have you started the webhooks app?");
+        {'error', _E} ->
+            lager:warning("failed to find registered webhooks: ~p", [_E]);
+        {'ok', Hooks} ->
+            revise_schema(SchemaJObj, [wh_json:get_value(<<"key">>, Hook) || Hook <- Hooks])
+    end.
+
+-spec revise_schema(wh_json:object(), ne_binaries()) -> 'ok'.
+revise_schema(SchemaJObj, HookNames) ->
+    Updated = wh_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
+    case couch_mgr:save_doc(?WH_SCHEMA_DB, Updated) of
+        {'ok', _} -> lager:info("added hooks enum to schema: ~p", [HookNames]);
+        {'error', _E} -> lager:warning("failed to add hooks enum to schema: ~p", [_E])
+    end.
+
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize(http_method(), req_nouns()) -> boolean().
+authorize(?HTTP_GET, [{<<"webhooks">>, []}]) ->
+    lager:debug("authorizing request"),
+    'true';
+authorize(_Verb, _Nouns) -> 'false'.
+
+authenticate(Context) ->
+    authenticate(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), http_method(), req_nouns()) ->
+                          {'true', cb_context:context()} |
+                          'false'.
+authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
+    lager:debug("authenticating request"),
+    {'true', Context};
+authenticate(_Context, _Verb, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -179,7 +255,7 @@ delete(Context, _) ->
 -spec delete_account(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_account(Context, AccountId) ->
     lager:debug("account ~s deleted, removing any webhooks", [AccountId]),
-    wh_util:spawn(fun() -> delete_account_webhooks(AccountId) end),
+    wh_util:spawn(fun delete_account_webhooks/1, [AccountId]),
     Context.
 
 -spec delete_account_webhooks(ne_binary()) -> 'ok'.
@@ -406,7 +482,7 @@ get_summary_start_key(Context) ->
 get_attempts_start_key(Context) ->
     get_start_key(Context, wh_json:new(), fun wh_util:to_integer/1).
 
--spec get_start_key(cb_context:context(), term(), fun()) -> term().
+-spec get_start_key(cb_context:context(), any(), fun()) -> any().
 get_start_key(Context, Default, Formatter) ->
     case cb_context:req_value(Context, <<"start_key">>) of
         'undefined' -> Default;

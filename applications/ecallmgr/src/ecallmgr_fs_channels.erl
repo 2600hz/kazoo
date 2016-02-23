@@ -51,6 +51,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_query_auth_id'}
                       ,[{<<"call_event">>, <<"query_auth_id_req">>}]
                      }
@@ -84,15 +86,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'responders', ?RESPONDERS}
                                                           ,{'bindings', ?BINDINGS}
                                                           ,{'queue_name', ?QUEUE_NAME}
                                                           ,{'queue_options', ?QUEUE_OPTIONS}
@@ -101,7 +99,7 @@ start_link() ->
 
 -spec sync(atom(), ne_binaries()) -> 'ok'.
 sync(Node, Channels) ->
-    gen_server:cast(?MODULE, {'sync_channels', Node, Channels}).
+    gen_server:cast(?SERVER, {'sync_channels', Node, Channels}).
 
 -spec summary() -> 'ok'.
 summary() ->
@@ -147,23 +145,23 @@ show_all() ->
 
 -spec flush_node(string() | binary() | atom()) -> 'ok'.
 flush_node(Node) ->
-    gen_server:cast(?MODULE, {'flush_node', wh_util:to_atom(Node, 'true')}).
+    gen_server:cast(?SERVER, {'flush_node', wh_util:to_atom(Node, 'true')}).
 
 -spec new(channel()) -> 'ok'.
 new(#channel{}=Channel) ->
-    gen_server:call(?MODULE, {'new_channel', Channel}).
+    gen_server:call(?SERVER, {'new_channel', Channel}).
 
 -spec destroy(ne_binary(), atom()) -> 'ok'.
 destroy(UUID, Node) ->
-    gen_server:cast(?MODULE, {'destroy_channel', UUID, Node}).
+    gen_server:cast(?SERVER, {'destroy_channel', UUID, Node}).
 
--spec update(ne_binary(), pos_integer(), _) -> 'ok'.
+-spec update(ne_binary(), pos_integer(), any()) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
 
 -spec updates(ne_binary(), wh_proplist()) -> 'ok'.
 updates(UUID, Updates) ->
-    gen_server:call(?MODULE, {'channel_updates', UUID, Updates}).
+    gen_server:call(?SERVER, {'channel_updates', UUID, Updates}).
 
 -spec count() -> non_neg_integer().
 count() -> ets:info(?CHANNELS_TBL, 'size').
@@ -298,6 +296,9 @@ handle_channel_status(JObj, _Props) ->
                    ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
                    ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
                    ,{<<"Other-Leg-Call-ID">>, wh_json:get_value(<<"other_leg">>, Channel)}
+                   ,{<<"Realm">>, wh_json:get_value(<<"realm">>, Channel)}
+                   ,{<<"Username">>, wh_json:get_value(<<"username">>, Channel)}
+                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel))}
                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ]
@@ -389,7 +390,7 @@ handle_call(_, _, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> {'noreply', state()}.
+-spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'destroy_channel', UUID, Node}, State) ->
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
                   ,[{'andalso', {'=:=', '$2', {'const', Node}}
@@ -444,7 +445,7 @@ handle_cast({'flush_node', Node}, State) ->
         [] ->
             lager:debug("no locally handled channels");
         LocalChannels ->
-            _P = wh_util:spawn(fun() -> handle_channels_disconnected(LocalChannels) end),
+            _P = wh_util:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
             lager:debug("sending channel disconnecteds for local channels: ~p", [LocalChannels])
     end,
 
@@ -809,7 +810,7 @@ maybe_cleanup_old_channels() ->
     case max_channel_uptime() of
         N when N =< 0 -> 'ok';
         MaxAge ->
-            _P = wh_util:spawn(?MODULE, 'cleanup_old_channels', [MaxAge]),
+            _P = wh_util:spawn(fun cleanup_old_channels/1, [MaxAge]),
             'ok'
     end.
 

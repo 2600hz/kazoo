@@ -412,11 +412,33 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
     OldUsername = kz_device:sip_username(OldDevice),
 
     case kz_device:sip_username(NewDevice) of
-        OldUsername -> 'ok';
+        OldUsername -> maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice);
         NewUsername ->
             lager:debug("the SIP username has changed, sending a registration flush for both"),
             flush_registration(OldUsername, Realm),
             flush_registration(NewUsername, Realm)
+    end.
+
+-spec maybe_flush_registration_on_ownerid(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_flush_registration_on_ownerid(Realm, OldDevice, NewDevice) ->
+    OldOwnerId = kz_device:owner_id(OldDevice),
+
+    case kz_device:owner_id(NewDevice) of
+        OldOwnerId -> maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice);
+        _NewOwnerId ->
+            lager:debug("the device owner_id has changed, sending a registration flush"),
+            flush_registration(kz_device:sip_username(OldDevice), Realm)
+    end.
+
+-spec maybe_flush_registration_on_enabled(api_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_flush_registration_on_enabled(Realm, OldDevice, NewDevice) ->
+    OldEnabled = kz_device:enabled(OldDevice),
+
+    case kz_device:enabled(NewDevice) of
+        OldEnabled -> 'ok';
+        _NewEnabled ->
+            lager:debug("the device enabled has changed, sending a registration flush"),
+            flush_registration(kz_device:sip_username(OldDevice), Realm)
     end.
 
 %%--------------------------------------------------------------------
@@ -426,10 +448,10 @@ maybe_flush_registration_on_username(Realm, OldDevice, NewDevice) ->
 %%--------------------------------------------------------------------
 -spec move_account(ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'error', any()}.
 -spec move_account(ne_binary(), wh_json:object(), ne_binaries()) ->
                           {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'error', any()}.
 move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
     case validate_move(AccountId, ToAccount) of
         {'error', _E}=Error -> Error;
@@ -479,13 +501,13 @@ validate_move(AccountId, ToAccount) ->
 %%--------------------------------------------------------------------
 -spec move_descendants(ne_binary(), ne_binaries()) ->
                               {'ok', 'done'} |
-                              {'error', _}.
+                              {'error', any()}.
 move_descendants(<<_/binary>> = AccountId, Tree) ->
     update_descendants_tree(get_descendants(AccountId), Tree).
 
 -spec update_descendants_tree(ne_binaries(), ne_binaries()) ->
                                      {'ok', 'done'} |
-                                     {'error', _}.
+                                     {'error', any()}.
 update_descendants_tree([], _) -> {'ok', 'done'};
 update_descendants_tree([Descendant|Descendants], Tree) ->
     AccountId = wh_util:format_account_id(Descendant, 'raw'),
@@ -516,7 +538,7 @@ update_descendants_tree([Descendant|Descendants], Tree) ->
 %%--------------------------------------------------------------------
 -spec move_service(ne_binary(), ne_binaries(), api_boolean()) ->
                           {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'error', any()}.
 move_service(AccountId, NewTree, Dirty) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _E}=Error -> Error;
@@ -526,7 +548,7 @@ move_service(AccountId, NewTree, Dirty) ->
 
 -spec move_service_doc(ne_binaries(), api_boolean(), wh_json:object()) ->
                           {'ok', wh_json:object()} |
-                          {'error', _}.
+                          {'error', any()}.
 move_service_doc(NewTree, Dirty, JObj) ->
     PreviousTree = kz_account:tree(JObj),
     Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
@@ -604,7 +626,7 @@ get_tree(<<_/binary>> = Account) ->
 %%--------------------------------------------------------------------
 -spec replicate_account_definition(wh_json:object()) ->
                                           {'ok', wh_json:object()} |
-                                          {'error', _}.
+                                          {'error', any()}.
 replicate_account_definition(JObj) ->
     AccountId = wh_doc:id(JObj),
     case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
@@ -618,7 +640,7 @@ replicate_account_definition(JObj) ->
 %% Flag all descendants of the account id as disabled
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account(api_binary()) -> 'ok' | {'error', _}.
+-spec disable_account(api_binary()) -> 'ok' | {'error', any()}.
 disable_account('undefined') -> 'ok';
 disable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}
@@ -639,7 +661,7 @@ disable_account(AccountId) ->
 %% Flag all descendants of the account id as enabled
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account(api_binary()) -> 'ok' | {'error', _}.
+-spec enable_account(api_binary()) -> 'ok' | {'error', any()}.
 enable_account('undefined') -> ok;
 enable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}
@@ -892,18 +914,21 @@ maybe_remove_attachments(Context) ->
              )
     end.
 
--spec create_auth_token(cb_context:context(), atom() | ne_binary()) -> cb_context:context().
-create_auth_token(Context, Method) ->
+-spec create_auth_token(cb_context:context(), atom()) ->
+                               cb_context:context().
+create_auth_token(Context, AuthModule) ->
     JObj = cb_context:doc(Context),
     case wh_json:is_empty(JObj) of
         'true' ->
             lager:debug("empty doc, no auth token created"),
             ?MODULE:response('error', <<"invalid credentials">>, 401, Context);
         'false' ->
-            create_auth_token(Context, Method, JObj)
+            create_auth_token(Context, AuthModule, JObj)
     end.
 
-create_auth_token(Context, Method, JObj) ->
+-spec create_auth_token(cb_context:context(), atom(), wh_json:object()) ->
+                               cb_context:context().
+create_auth_token(Context, AuthModule, JObj) ->
     Data = cb_context:req_data(Context),
 
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
@@ -914,8 +939,8 @@ create_auth_token(Context, Method, JObj) ->
                ,{<<"owner_id">>, OwnerId}
                ,{<<"as">>, wh_json:get_value(<<"as">>, Data)}
                ,{<<"api_key">>, wh_json:get_value(<<"api_key">>, Data)}
-               ,{<<"restrictions">>, get_token_restrictions(Method, AccountId, OwnerId)}
-               ,{<<"method">>, wh_util:to_binary(Method)}
+               ,{<<"restrictions">>, get_token_restrictions(AuthModule, AccountId, OwnerId)}
+               ,{<<"method">>, wh_util:to_binary(AuthModule)}
               ]),
     JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
                                              ,wh_util:format_account_id(AccountId, 'encoded')
@@ -938,60 +963,63 @@ create_auth_token(Context, Method, JObj) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end.
 
--spec get_token_restrictions(ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
-get_token_restrictions(Method, AccountId, OwnerId) ->
-    %% dont restrict SuperAdmin
+-spec get_token_restrictions(atom(), ne_binary(), ne_binary()) ->
+                                    api_object().
+get_token_restrictions(AuthModule, AccountId, OwnerId) ->
     case wh_util:is_system_admin(AccountId) of
         'true' -> 'undefined';
         'false' ->
-            Restrictions = case get_account_token_restrictions(AccountId, Method) of
-                'undefined' -> get_system_token_restrictions(Method);
-                AccountRestrictions -> AccountRestrictions
-            end,
+            Restrictions =
+                case get_account_token_restrictions(AccountId, AuthModule) of
+                    'undefined' -> get_system_token_restrictions(AuthModule);
+                    AccountRestrictions -> AccountRestrictions
+                end,
             PrivLevel = get_priv_level(AccountId, OwnerId),
             get_priv_level_restrictions(Restrictions, PrivLevel)
     end.
 
 -spec get_priv_level(ne_binary(), ne_binary()) -> api_binary().
-%%
 %% for api_auth tokens we force "admin" priv_level
-%%
-get_priv_level(_AccountId, 'undefined') -> <<"admin">>;
-
+get_priv_level(_AccountId, 'undefined') ->
+    whapps_config:get(cb_token_restrictions:config_cat()
+                      ,<<"default_priv_level">>
+                      ,<<"admin">>
+                     );
 get_priv_level(AccountId, OwnerId) ->
     AccountDB = wh_util:format_account_db(AccountId),
     {'ok', Doc} = couch_mgr:open_cache_doc(AccountDB, OwnerId),
     wh_json:get_ne_value(<<"priv_level">>, Doc).
 
--spec get_system_token_restrictions(ne_binary()) -> api_object().
-get_system_token_restrictions(Method) ->
-    case whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, Method) of
+-spec get_system_token_restrictions(atom()) -> api_object().
+get_system_token_restrictions(AuthModule) ->
+    case whapps_config:get(cb_token_restrictions:config_cat(), AuthModule) of
         'undefined' ->
-            whapps_config:get(<<(?CONFIG_CAT)/binary, ".token_restrictions">>, <<"_">>);
+            whapps_config:get(cb_token_restrictions:config_cat(), ?CATCH_ALL);
         MethodRestrictions -> MethodRestrictions
     end.
 
--spec get_account_token_restrictions(ne_binary(), ne_binary()) -> api_object().
-get_account_token_restrictions(AccountId, Method) ->
+-spec get_account_token_restrictions(ne_binary(), atom()) -> api_object().
+get_account_token_restrictions(AccountId, AuthModule) ->
     AccountDB = wh_util:format_account_db(AccountId),
     case couch_mgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
+        {'error', _} -> 'undefined';
         {'ok', RestrictionsDoc} ->
             wh_json:get_first_defined(
-              [[<<"restrictions">>, wh_util:to_binary(Method)]
-               ,[<<"restrictions">>, <<"_">>]
+              [[<<"restrictions">>, wh_util:to_binary(AuthModule)]
+               ,[<<"restrictions">>, ?CATCH_ALL]
               ]
               ,RestrictionsDoc
-             );
-        {'error', _} -> 'undefined'
+             )
     end.
 
--spec get_priv_level_restrictions(api_object(), api_binary()) -> api_object().
-get_priv_level_restrictions('undefined', _PrivLevel) -> 'undefined';
+-spec get_priv_level_restrictions(api_object(), ne_binary()) -> api_object().
+get_priv_level_restrictions('undefined', _PrivLevel) ->
+    'undefined';
 get_priv_level_restrictions(Restrictions, PrivLevel) ->
     RestrictionLevels = wh_json:get_keys(Restrictions),
     case lists:member(PrivLevel, RestrictionLevels) of
-        'true' -> wh_json:get_ne_value(PrivLevel, Restrictions);
-        'false' -> wh_json:get_ne_value(<<"_">>, Restrictions)
+        'true' -> wh_json:get_json_value(PrivLevel, Restrictions);
+        'false' -> wh_json:get_json_value(?CATCH_ALL, Restrictions)
     end.
 
 %%--------------------------------------------------------------------
@@ -1216,7 +1244,7 @@ get_devices_by_owner(AccountDb, OwnerId) ->
 %%--------------------------------------------------------------------
 -spec load_descendants_count(wh_proplist()) ->
                                     {'ok', wh_proplist()} |
-                                    {'error', _}.
+                                    {'error', any()}.
 load_descendants_count(ViewOptions) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
         {'error', _E}=Resp -> Resp;

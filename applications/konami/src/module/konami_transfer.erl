@@ -36,7 +36,7 @@
          ,code_change/4
         ]).
 
--include("../konami.hrl").
+-include("konami.hrl").
 
 -define(WSD_ENABLED, 'true').
 
@@ -1027,9 +1027,11 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
 
     CCVs = props:filter_undefined(
              [{<<"Account-ID">>, whapps_call:account_id(Call)}
-              ,{<<"Authorizing-ID">>, whapps_call:account_id(Call)}
+              ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
+              ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
               ,{<<"Channel-Authorized">>, 'true'}
               ,{<<"From-URI">>, <<CallerIdNumber/binary, "@", (whapps_call:account_realm(Call))/binary>>}
+              ,{<<"Metaflow-App">>, ?APP_NAME}
               ,{<<"Ignore-Early-Media">>, 'true'}
              ]),
 
@@ -1059,7 +1061,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                  ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                  ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>
                                                       ,<<"Authorizing-Type">>, <<"Authorizing-ID">>
-                                                      ,<<"Channel-Authorized">>
+                                                      ,<<"Channel-Authorized">>, <<"Metaflow-App">>
                                                      ]}
                  ,{<<"Application-Name">>, <<"park">>}
                  ,{<<"Timeout">>, ?DEFAULT_TARGET_TIMEOUT}

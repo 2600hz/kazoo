@@ -1,50 +1,78 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2015, 2600Hz INC
 %%% @doc
 %%% "data":{
+%%%   "action": "manual" | "list"
 %%%   "media_id":"id_of_media"
+%%%   "id":"{LIST_ID}" // the list referenced above is kept in a couchdb document with this id
+%%%                    // required for  action:"list"
 %%%   // optional after this
 %%%   "interdigit_timeout":2000
 %%% }
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   William Lloyd
 %%%-------------------------------------------------------------------
 -module(cf_dynamic_cid).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".dynamic_cid">>).
 
--record(prompts, {accept_tone =
-                      whapps_config:get_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>),
-                  reject_tone =
-                      wh_media_util:get_prompt(
-                        whapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
-                       ),
-                  default_prompt =
-                      wh_media_util:get_prompt(
-                        whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
-                       )
-                 }).
+-define(CONFIG_BIN(Key, Default)
+        ,whapps_config:get_binary(?MOD_CONFIG_CAT, Key, Default)
+       ).
+-define(CONFIG_INT(Key, Default)
+        ,whapps_config:get_integer(?MOD_CONFIG_CAT, Key, Default)
+       ).
+
+-record(prompts, {
+          accept_tone =
+              ?CONFIG_BIN(<<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
+          ,reject_tone =
+              wh_media_util:get_prompt(
+                ?CONFIG_BIN(<<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
+               )
+          ,default_prompt =
+              wh_media_util:get_prompt(
+                ?CONFIG_BIN(<<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
+               )
+         }).
 -type prompts() :: #prompts{}.
 
 -record(dynamic_cid, {
-          prompts = #prompts{} :: prompts(),
-          max_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_digits">>, 10),
-          min_digits = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_digits">>, 10),
-          whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>),
-          default_cid = whapps_config:get_binary(
-                          ?MOD_CONFIG_CAT
-                          ,<<"default_cid">>
-                          ,wh_util:anonymous_caller_id_number()
-                         )
+          prompts = #prompts{} :: prompts()
+          ,max_digits = ?CONFIG_INT(<<"max_digits">>, 10) :: integer()
+          ,min_digits = ?CONFIG_INT(<<"min_digits">>, 10) :: integer()
+          ,whitelist = ?CONFIG_BIN(<<"whitelist_regex">>, <<"\\d+">>) :: ne_binary()
          }).
 
 %%--------------------------------------------------------------------
 %% @public
+%% @doc
+%% Entry point for this module, based on the payload will either
+%% connect a caller to check_voicemail or compose_voicemail.
+%% @end
+%%--------------------------------------------------------------------
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle(Data, Call) ->
+    case wh_json:get_value(<<"action">>, Data) of
+        <<"list">> ->
+            lager:info("user is choosing a caller id for this call from couchdb doc"),
+	    handle_list(Data, Call);
+        <<"lists">> ->
+            lager:info("using account's lists/entries view to get new cid info"),
+	    handle_lists(Data, Call);
+        _ ->
+	    lager:info("user must manually enter on keypad the caller id for this call"),
+	    handle_manual(Data, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
 %% @doc
 %% Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
@@ -54,8 +82,8 @@
 %%       comeback and make it correctly ;)
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle(Data, Call) ->
+-spec handle_manual(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_manual(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,
     _ = whapps_call_command:b_play(<<"silence_stream://100">>, Call),
@@ -68,7 +96,7 @@ handle(Data, Call) ->
     Min = DynamicCID#dynamic_cid.min_digits,
     Max = DynamicCID#dynamic_cid.max_digits,
     Regex = DynamicCID#dynamic_cid.whitelist,
-    DefaultCID = DynamicCID#dynamic_cid.default_cid,
+    DefaultCID = whapps_call:caller_id_number(Call),
 
     Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>
                                            ,Data
@@ -104,7 +132,179 @@ handle(Data, Call) ->
 
     {'ok', C1} = cf_exe:get_call(Call),
     Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', CID}
-               ,{fun whapps_call:set_caller_id_number/2, CID}
+	       ,{fun whapps_call:set_caller_id_number/2, CID}
               ],
     cf_exe:set_call(whapps_call:exec(Updates, C1)),
     cf_exe:continue(Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Entry point for this module
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_list(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_list(Data, Call) ->
+    {NewCidInfo, Dest} = get_list_entry(Data, Call),
+    NewCallerIdNumber = wh_json:get_value(<<"number">>, NewCidInfo),
+    NewCallerIdName = wh_json:get_value(<<"name">>, NewCidInfo),
+    proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call).
+
+-spec handle_lists(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_lists(Data, Call) ->
+    case get_lists_entry(Data, Call) of
+        {<<>>, <<>>, _} ->
+            _ = whapps_call_command:answer(Call),
+            _ = whapps_call_command:prompt(<<"menu-invalid_entry">>, Call),
+            _ = whapps_call_command:queued_hangup(Call);
+        {NewCallerIdName, NewCallerIdNumber, Dest} ->
+            proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call);
+        _ ->
+            _ = whapps_call_command:answer(Call),
+            _ = whapps_call_command:prompt(<<"fault-can_not_be_completed_at_this_time">>, Call),
+            _ = whapps_call_command:queued_hangup(Call)
+    end.
+
+-spec proceed_with_call(ne_binary(), ne_binary(), binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
+proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
+    lager:debug("callerid number is about to be changed from: ~p to: ~p ", [whapps_call:caller_id_number(Call), NewCallerIdNumber]),
+    Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
+               ,{fun whapps_call:set_caller_id_number/2, NewCallerIdNumber}
+               ,{fun whapps_call:set_caller_id_name/2, NewCallerIdName}
+              ],
+    cf_exe:set_call(whapps_call:exec(Updates, Call)),
+    Number = wnm_util:to_e164(Dest),
+    lager:info("send the call onto real destination of: ~s", [Number]),
+    maybe_route_to_callflow(Data, Call, Number).
+
+-spec maybe_route_to_callflow(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
+maybe_route_to_callflow(Data, Call, Number) ->
+    case cf_util:lookup_callflow(Number, whapps_call:account_id(Call)) of
+        {'ok', Flow, 'true'} ->
+            lager:info("callflow ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)]),
+            Updates = [{fun whapps_call:set_request/2
+                        ,list_to_binary([Number, "@", whapps_call:request_realm(Call)])
+                       }
+                       ,{fun whapps_call:set_to/2
+                         ,list_to_binary([Number, "@", whapps_call:to_realm(Call)])
+                        }
+                      ],
+            {'ok', C} = cf_exe:get_call(Call),
+            cf_exe:set_call(whapps_call:exec(Updates, C)),
+            maybe_restrict_call(Data, Call, Number, Flow);
+        _ ->
+            lager:info("failed to find a callflow to satisfy ~s", [Number]),
+            _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
+	    cf_exe:stop(Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_restrict_call(wh_json:object(), whapps_call:call(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_restrict_call(Data, Call, Number, Flow) ->
+    case should_restrict_call(Data, Call, Number) of
+        'true' ->
+            lager:info("Not allowed to call this destination, terminate", []),
+            _ = whapps_call_command:answer(Call),
+            _ = whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
+            _ = whapps_call_command:queued_hangup(Call),
+            'ok';
+        'false' ->
+            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec should_restrict_call(wh_json:object(), whapps_call:call(), ne_binary()) ->
+                                  boolean().
+should_restrict_call(Data, Call, Number) ->
+    case wh_json:is_true(<<"enforce_call_restriction">>, Data, 'true') of
+        'true' -> should_restrict_call(Call, Number);
+        'false' ->
+            lager:info("not enforcing call restrictions"),
+            'false'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec should_restrict_call(whapps_call:call(), ne_binary()) -> boolean().
+should_restrict_call(Call, Number) ->
+    case  cf_endpoint:get(Call) of
+        {'error', _} -> 'false';
+        {'ok', JObj} ->
+            Classification = wnm_util:classify_number(Number),
+            lager:info("classified number as ~s", [Classification]),
+            wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Pull in document from couch with the callerid switching information inside..
+%% @end
+%%--------------------------------------------------------------------
+-spec get_list_entry(wh_json:object(), whapps_call:call()) ->
+                            {wh_json:object(), binary()} |
+                            {'error', couch_mgr:couchbeam_error()}.
+get_list_entry(Data, Call) ->
+    ListId = wh_json:get_ne_value(<<"id">>, Data),
+    AccountDb = whapps_call:account_db(Call),
+
+    case couch_mgr:open_cache_doc(AccountDb, ListId) of
+        {'ok', ListJObj} ->
+            LengthDigits = wh_json:get_ne_value(<<"length">>, ListJObj),
+	    lager:debug("digit length to limit lookup key in number: ~p ", [LengthDigits]),
+	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
+	    lager:debug("capture_group ~s ", [CaptureGroup]),
+	    <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
+	    lager:debug("CIDKey ~p to lookup in couchdb doc", [CIDKey]),
+            JObj = wh_json:get_ne_value(<<"entries">>, ListJObj),
+            lager:info("list of possible values to use: ~p", [JObj]),
+	    NewCallerId = wh_json:get_value(CIDKey, JObj),
+	    lager:info("new caller id data : ~p",  [NewCallerId]),
+	    {NewCallerId, Dest};
+	{'error', Reason} = E ->
+            lager:info("failed to load match list box ~s: ~p", [ListId, Reason]),
+            E
+    end.
+
+-spec get_lists_entry(wh_json:object(), whapps_call:call()) ->
+                             {binary(), binary(), binary()} |
+                             {'error', couch_mgr:couchbeam_error()}.
+get_lists_entry(Data, Call) ->
+    ListId = wh_json:get_ne_value(<<"id">>, Data),
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:get_results(AccountDb,<<"lists/entries">>,[{'key', ListId}]) of
+        {'ok', Entries} ->
+	    CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
+	    <<CIDKey:2/binary, Dest/binary>> = CaptureGroup,
+            {NewCallerIdName, NewCallerIdNumber} = cid_key_lookup(CIDKey, Entries),
+            {NewCallerIdName, NewCallerIdNumber, Dest};
+	{'error', Reason} = E ->
+            lager:info("failed to load match list box ~s: ~p", [ListId, Reason]),
+            E
+    end.
+
+-spec cid_key_lookup(binary(), wh_json:objects()) -> {binary(), binary()}.
+cid_key_lookup(CIDKey, Entries) ->
+    case lists:foldl(fun(Entry, Acc) -> cidkey_wanted(CIDKey, Entry, Acc) end, [], Entries) of
+        [{NewCallerIdName, NewCallerIdNumber}|_] -> {NewCallerIdName, NewCallerIdNumber};
+        _ -> {<<>>, <<>>}
+    end.
+
+-spec cidkey_wanted(binary(), wh_json:object(), proplist()) -> proplist().
+cidkey_wanted(CIDKey, Entry, Acc) ->
+    case wh_json:get_binary_value([<<"value">>, <<"cid_key">>], Entry) == CIDKey of
+        'true' -> Acc ++ [{wh_json:get_binary_value([<<"value">>, <<"cid_name">>], Entry), wh_json:get_value([<<"value">>, <<"cid_number">>], Entry)}];
+        'false' -> Acc
+    end.
+

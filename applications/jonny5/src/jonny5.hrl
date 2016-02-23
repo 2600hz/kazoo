@@ -7,7 +7,13 @@
 
 -define(DEFAULT_RATE, 0.5).
 
--define(APP_VERSION, <<"2.0.0">>).
+-define(INBOUND_ACCOUNT_TYPES,
+        [<<"account">>
+         ,<<"device">>
+         ,<<"sys_info">>
+        ]).
+
+-define(APP_VERSION, <<"4.0.0">>).
 -define(APP_NAME, <<"jonny5">>).
 
 -type tristate_integer() :: -1 | non_neg_integer().

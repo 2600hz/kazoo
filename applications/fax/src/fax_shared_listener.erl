@@ -26,6 +26,9 @@
         ]).
 
 -include("fax.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
+
+-define(SERVER, ?MODULE).
 
 -define(NOTIFY_RESTRICT, ['outbound_fax'
                           ,'outbound_fax_error'
@@ -45,13 +48,13 @@
                        ,[{<<"xmpp_event">>, <<"push">>}]
                       }
                      ,{{'fax_cloud', 'handle_faxbox_created'}
-                       ,[{<<"configuration">>, <<"doc_created">>}]
+                       ,[{<<"configuration">>, ?DOC_CREATED}]
                       }
                      ,{{'fax_cloud', 'handle_faxbox_edited'}
-                       ,[{<<"configuration">>, <<"doc_edited">>}]
+                       ,[{<<"configuration">>, ?DOC_EDITED}]
                       }
                      ,{{'fax_cloud', 'handle_faxbox_deleted'}
-                       ,[{<<"configuration">>, <<"doc_deleted">>}]
+                       ,[{<<"configuration">>, ?DOC_DELETED}]
                       }
                      ,{{?MODULE, 'new_request'}
                        ,[{<<"dialplan">>, <<"fax_req">>}]
@@ -73,15 +76,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
@@ -175,7 +174,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("fax listener terminating: ~p", [_Reason]).
+    lager:debug("fax shared listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

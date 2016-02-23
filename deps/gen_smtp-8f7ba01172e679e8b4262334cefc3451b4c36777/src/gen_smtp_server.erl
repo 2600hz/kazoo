@@ -125,7 +125,6 @@ init([Module, Configurations]) ->
 		{port, ?PORT}, {protocol, tcp}, {family, inet}],
     case Configurations of
         [FirstConfig|_] when is_list(FirstConfig) ->
-            error_logger:info_msg("~p starting at ~p~n", [?MODULE, node()]),
             Listeners = [extract_listener(Config, DefaultConfig) || Config <- Configurations],
             case lists:dropwhile(fun(R) -> element(1, R) =/= error end, Listeners) of
                 [] ->
@@ -148,7 +147,6 @@ extract_listener(Config, DefaultConfig) ->
     ListenOptions = [binary, {ip, IP}, Family],
     case socket:listen(Protocol, Port, ListenOptions) of
         {ok, ListenSocket} -> %%Create first accepting process
-            error_logger:info_msg("~p listening on ~p:~p via ~p~n", [?MODULE, IP, Port, Protocol]),
             socket:begin_inet_async(ListenSocket),
             #listener{port = socket:extract_port_from_socket(ListenSocket),
                       hostname = Hostname, sessionoptions = SessionOptions,
@@ -192,7 +190,7 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 				link(Pid),
                 case socket:controlling_process(ClientSocket, Pid) of
                     'ok' ->
-                        io:format("new smtp session on ~s : current sessions ~p~n", [Module , length(CurSessions) + 1]),
+%%                        io:format("new smtp session on ~s : current sessions ~p~n", [Module , length(CurSessions) + 1]),
                         CurSessions ++[Pid];
                     {'error', closed} ->
                         Pid ! {tcp_closed, ClientSocket},
@@ -233,7 +231,6 @@ handle_info(_Info, State) ->
 %% @hidden
 -spec terminate(Reason :: any(), State :: #state{}) -> 'ok'.
 terminate(Reason, State) ->
-	io:format("Terminating due to ~p~n", [Reason]),
 	lists:foreach(fun(#listener{socket=S}) -> catch socket:close(S) end, State#state.listeners),
 	ok.
 

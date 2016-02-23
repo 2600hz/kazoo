@@ -24,6 +24,8 @@
 -include("omnipresence.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
+-define(SERVER, ?MODULE).
+
 -record(state, {subs_pid :: pid()
                 ,subs_ref :: reference()
                }).
@@ -88,17 +90,14 @@
 %%%===================================================================
 -spec start_listener() -> 'ok'.
 start_listener() ->
-    gen_listener:cast(?MODULE, {'ready'}).
+    gen_listener:cast(?SERVER, {'ready'}).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [], []).
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -189,9 +188,6 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
-handle_info(?HOOK_EVT(_, EventName, JObj), State) ->
-    _ = wh_util:spawn('omnip_subscriptions', 'handle_channel_event', [EventName, JObj]),
-    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.

@@ -87,8 +87,8 @@
 -type load_view_params() :: #load_view_params{}.
 
 -spec pagination_page_size() -> pos_integer().
--spec pagination_page_size(cb_context:context()) -> 'undefined' | pos_integer().
--spec pagination_page_size(cb_context:context(), ne_binary()) -> 'undefined' | pos_integer().
+-spec pagination_page_size(cb_context:context()) -> api_pos_integer().
+-spec pagination_page_size(cb_context:context(), ne_binary()) -> api_pos_integer().
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
@@ -242,11 +242,11 @@ merge(DataJObj, JObj, Context) ->
 -spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
                                 cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = ?MODULE:load(Id, Context),
     Context2 = case cb_context:resp_status(Context1) of
                    'success' ->
                        PubJObj = wh_doc:public_fields(cb_context:req_data(Context)),
-                       PatchedJObj = wh_json:merge_jobjs(PubJObj, cb_context:doc(Context1)),
+                       PatchedJObj = wh_json:merge_recursive(cb_context:doc(Context1), PubJObj),
                        cb_context:set_req_data(Context, PatchedJObj);
                    _Status ->
                        Context1
@@ -383,10 +383,8 @@ load_view(#load_view_params{view=View
                                                )
     end.
 
--spec limit_by_page_size(api_binary() | pos_integer()) ->
-                                'undefined' | pos_integer().
--spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) ->
-                                'undefined' | pos_integer().
+-spec limit_by_page_size(api_binary() | pos_integer()) -> api_pos_integer().
+-spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) -> api_pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
@@ -504,7 +502,7 @@ save(Context, [_|_]=JObjs, Options) ->
             handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end;
 save(Context, JObj, Options) ->
@@ -515,7 +513,7 @@ save(Context, JObj, Options) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
 
@@ -549,7 +547,7 @@ ensure_saved(Context, JObj, Options) ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj1} ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
-            _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
 
@@ -626,7 +624,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
 
 -spec maybe_delete_doc(cb_context:context(), ne_binary()) ->
                               {'ok', _} |
-                              {'error', _}.
+                              {'error', any()}.
 maybe_delete_doc(Context, DocId) ->
     AccountDb = cb_context:account_db(Context),
     case couch_mgr:open_doc(AccountDb, DocId) of
@@ -699,7 +697,7 @@ do_delete(Context, JObj, CouchFun) ->
                         ,[wh_doc:id(JObj), cb_context:account_db(Context)]
                        ),
             Context1 = handle_couch_mgr_success(JObj, Context),
-            _ = wh_util:spawn('provisioner_util', 'maybe_send_contact_list', [Context1]),
+            _ = wh_util:spawn(fun provisioner_util:maybe_send_contact_list/1, [Context1]),
             Context1
     end.
 
@@ -751,7 +749,7 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined') ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined') ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
     update_pagination_envelope_params(Context
@@ -761,7 +759,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize) ->
                                       ,cb_context:should_paginate(Context)
                                      ).
 
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary()) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined', api_binary()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
     update_pagination_envelope_params(Context
@@ -771,7 +769,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                       ,cb_context:should_paginate(Context)
                                      ).
 
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary(), boolean()) ->
+-spec update_pagination_envelope_params(cb_context:context(), any(), non_neg_integer() | 'undefined', api_binary(), boolean()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, _StartKey, _PageSize, _NextStartKey, 'false') ->
     lager:debug("pagination disabled, removing resp envelope keys"),
@@ -915,6 +913,9 @@ apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
                                     || JObj <- JObjs,
                                        filtered_doc_by_qs(JObj, HasQSFilter, Context)
                                    ]),
+    lager:debug("filter resulted in ~p out of ~p objects"
+                ,[length(Filtered), length(JObjs)]
+               ),
     case Direction of
         'ascending' -> Filtered;
         'descending' -> lists:reverse(Filtered)
@@ -1183,7 +1184,7 @@ has_qs_filter(Context) ->
 %% represents a filter parameter
 %% @end
 %%--------------------------------------------------------------------
--spec is_filter_key({binary(), term()}) -> boolean().
+-spec is_filter_key({binary(), any()}) -> boolean().
 is_filter_key({<<"filter_", _/binary>>, _}) -> 'true';
 is_filter_key({<<"has_key", _/binary>>, _}) -> 'true';
 is_filter_key({<<"key_missing", _/binary>>, _}) -> 'true';
@@ -1219,9 +1220,7 @@ filter_doc_by_querystring(Doc, QueryString) ->
 should_filter_doc(Doc, K, V) ->
     try filter_prop(Doc, K, V) of
         'undefined' -> 'true';
-        Bool ->
-            lager:debug("doc filtered by ~s(~p): ~s", [K, V, Bool]),
-            Bool
+        Bool -> Bool
     catch
         _E:_R ->
             lager:debug("failed to process filter ~s: ~s:~p", [K, _E, _R]),
@@ -1234,7 +1233,7 @@ should_filter_doc(Doc, K, V) ->
 %% Returns 'true' or 'false' if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop(wh_json:object(), ne_binary(), term()) -> api_boolean().
+-spec filter_prop(wh_json:object(), ne_binary(), any()) -> api_boolean().
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not should_filter(Doc, Key, Val);
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
@@ -1264,17 +1263,37 @@ upperbound(DocTimestamp, QSTimestamp) ->
 lowerbound(DocTimestamp, QSTimestamp) ->
     QSTimestamp =< DocTimestamp.
 
+-spec should_filter(binary(), ne_binary()) -> boolean().
 -spec should_filter(wh_json:object(), ne_binary(), wh_json:json_term()) -> boolean().
+should_filter(Val, Val) -> 'true';
+should_filter(Val, FilterVal) ->
+    try wh_json:decode(FilterVal) of
+        List when is_list(List) ->
+            lists:member(Val, List);
+        _Data ->
+            lager:debug("data is not a list: ~p", [_Data]),
+            'false'
+    catch
+        _Error -> 'false'
+    end.
+
 should_filter(Doc, Key, Val) ->
-    Keys = binary:split(Key, <<".">>, ['global']),
-    wh_json:get_binary_value(Keys, Doc, <<>>) =:= wh_util:to_binary(Val).
+    Keys = binary_key_to_json_key(Key),
+    should_filter(
+        wh_json:get_binary_value(Keys, Doc, <<>>)
+        ,wh_util:to_binary(Val)
+    ).
 
 -spec has_key(wh_json:object(), ne_binary()) -> boolean().
 has_key(Doc, Key) ->
-    Keys = binary:split(Key, <<".">>, ['global']),
+    Keys = binary_key_to_json_key(Key),
     wh_json:get_value(Keys, Doc) =/= 'undefined'.
 
 -spec has_value(wh_json:object(), ne_binary()) -> boolean().
 has_value(Doc, Key) ->
-    Keys = binary:split(Key, <<".">>, ['global']),
+    Keys = binary_key_to_json_key(Key),
     wh_json:get_ne_value(Keys, Doc) =/= 'undefined'.
+
+-spec binary_key_to_json_key(ne_binary()) -> ne_binaries().
+binary_key_to_json_key(Key) ->
+    binary:split(Key, <<".">>, ['global']).

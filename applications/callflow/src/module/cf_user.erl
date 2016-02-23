@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_user).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2
          ,get_endpoints/3
@@ -46,7 +46,7 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
+-spec maybe_handle_bridge_failure(any(), whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
     case cf_util:handle_bridge_failure(Reason, Call) of
         'not_found' -> cf_exe:continue(Call);

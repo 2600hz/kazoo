@@ -21,7 +21,9 @@
 
 -include("omnipresence.hrl").
 
--record(state, {subs_pid = 'undefined' :: pid() | 'undefined'
+-define(SERVER, ?MODULE).
+
+-record(state, {subs_pid = 'undefined' :: api_pid()
                 ,subs_ref :: reference()
                 ,queue = 'undefined' :: api_binary()
                 ,consuming = 'false' :: boolean()
@@ -55,14 +57,11 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
@@ -215,7 +214,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec maybe_sync_subscriptions(boolean(), binary()) -> '0k'.
+-spec maybe_sync_subscriptions(boolean(), binary()) -> 'ok'.
 maybe_sync_subscriptions('false', _) -> 'ok';
 maybe_sync_subscriptions('true', Queue) ->
     Payload = wh_json:from_list(

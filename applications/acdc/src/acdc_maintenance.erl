@@ -312,7 +312,7 @@ queue_summary(AcctId, QueueId) ->
             QQueueId =:= QueueId
       ]).
 
--spec show_queues_summary([{pid(), {ne_binary(), ne_binary()}},...] | []) -> 'ok'.
+-spec show_queues_summary([{pid(), {ne_binary(), ne_binary()}}]) -> 'ok'.
 show_queues_summary([]) -> 'ok';
 show_queues_summary([{P, {AcctId, QueueId}}|Qs]) ->
     lager:info("  Supervisor: ~p Acct: ~s Queue: ~s~n", [P, AcctId, QueueId]),
@@ -399,7 +399,7 @@ agent_summary(AcctId, AgentId) ->
             AAgentId =:= AgentId
       ]).
 
--spec show_agents_summary([{pid(), acdc_agent_listener:config()},...] | []) -> 'ok'.
+-spec show_agents_summary([{pid(), acdc_agent_listener:config()}]) -> 'ok'.
 show_agents_summary([]) -> 'ok';
 show_agents_summary([{P, {AcctId, QueueId, _AMQPQueue}}|Qs]) ->
     lager:info("  Supervisor: ~p Acct: ~s Agent: ~s", [P, AcctId, QueueId]),

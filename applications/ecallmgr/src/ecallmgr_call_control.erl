@@ -1,5 +1,5 @@
 %%%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2015, 2600Hz
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
 %%% A Control Queue is created by the lookup_route function in the
@@ -36,7 +36,6 @@
 %%% something else executed that might have been related to the main
 %%% application's execute (think set commands, like playback terminators);
 %%% we can note the event happened, and continue looping as we were.
-%%%
 %%% @end
 %%%
 %%% @contributors
@@ -49,9 +48,6 @@
 
 %% API
 -export([start_link/5, stop/1]).
--export([handle_call_command/2]).
--export([handle_conference_command/2]).
--export([handle_call_events/2]).
 -export([queue_name/1]).
 -export([callid/1]).
 -export([node/1]).
@@ -77,6 +73,7 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(KEEP_ALIVE, 2 * ?MILLISECONDS_IN_MINUTE). %% after hangup, keep alive for 2 minutes
 
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
@@ -84,7 +81,7 @@
 -record(state, {
           node :: atom()
          ,call_id :: ne_binary()
-         ,command_q = queue:new() :: queue()
+         ,command_q = queue:new() :: queue:queue()
          ,current_app :: api_binary()
          ,current_cmd :: api_object()
          ,start_time = os:timestamp() :: wh_now()
@@ -103,16 +100,7 @@
          }).
 -type state() :: #state{}.
 
--define(RESPONDERS, [{{?MODULE, 'handle_call_command'}
-                      ,[{<<"call">>, <<"command">>}]
-                     }
-                     ,{{?MODULE, 'handle_conference_command'}
-                       ,[{<<"conference">>, <<"command">>}]
-                      }
-                     ,{{?MODULE, 'handle_call_events'}
-                       ,[{<<"call_event">>, <<"*">>}]
-                      }
-                    ]).
+-define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -122,11 +110,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
+%% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link(atom(), ne_binary(), api_binary(), api_binary(), wh_json:object()) -> startlink_ret().
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
@@ -142,11 +126,12 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
                 ,{'dialplan', []}
                 ,{'self', []}
                ],
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
                                       ,{'bindings', Bindings}
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
+                                      ,'serialize_handle_event'
                                      ]
                             ,[Node, CallId, FetchId, ControllerQ, CCVs]).
 
@@ -199,31 +184,6 @@ fs_nodeup(Srv, Node) ->
 -spec fs_nodedown(pid(), atom()) -> 'ok'.
 fs_nodedown(Srv, Node) ->
     gen_server:cast(Srv, {'fs_nodedown', Node}).
-
--spec handle_call_command(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_call_command(JObj, Props) ->
-    Srv = props:get_value('server', Props),
-    gen_listener:cast(Srv, {'dialplan', JObj}).
-
--spec handle_conference_command(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_conference_command(JObj, Props) ->
-    Srv = props:get_value('server', Props),
-    gen_listener:cast(Srv, {'dialplan', JObj}).
-
--spec handle_call_events(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_call_events(JObj, Props) ->
-    Srv = props:get_value('server', Props),
-    wh_util:put_callid(wh_json:get_value(<<"Call-ID">>, JObj)),
-    case wh_json:get_value(<<"Event-Name">>, JObj) of
-        <<"usurp_control">> ->
-            case wh_json:get_value(<<"Fetch-ID">>, JObj)
-                =:= props:get_value('fetch_id', Props)
-            of
-                'false' -> gen_listener:cast(Srv, {'usurp_control', JObj});
-                'true' -> 'ok'
-            end;
-        _Else -> 'ok'
-    end.
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -365,13 +325,15 @@ handle_cast(_, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [CallId | Props]}, #state{call_id=CallId
-                                                ,fetch_id=FetchId
+                                                ,node=Node
                                                }=State) ->
     JObj = ecallmgr_call_events:to_json(Props),
     Application = wh_json:get_value(<<"Application-Name">>, JObj),
     case props:get_first_defined([<<"Event-Subclass">>
                                   ,<<"Event-Name">>
-                                 ], Props)
+                                 ]
+                                 ,Props
+                                )
     of
         <<"whistle::", _/binary>> ->
             {'noreply', handle_execute_complete(Application, JObj, State)};
@@ -387,42 +349,37 @@ handle_info({'event', [CallId | Props]}, #state{call_id=CallId
                     {'stop', 'normal', State}
             end;
         <<"sofia::transferee">> ->
-            case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
-                FetchId ->
-                    lager:info("we have been transferred, terminate immediately"),
-                    {'stop', 'normal', State};
-                _Else ->
-                    lager:info("we were a different instance of this transferred call"),
-                    {'noreply', State}
-            end;
+            handle_transferee(Props, State);
         <<"sofia::replaced">> ->
-            case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
-                FetchId ->
-                    ReplacedBy = props:get_value(<<"att_xfer_replaced_by">>, Props),
-                    {'noreply', handle_sofia_replaced(ReplacedBy, State)};
-                _Else ->
-                    lager:info("sofia replaced on our channel but different fetch id~n"),
-                    {'noreply', State}
-            end;
+            handle_replaced(Props, State);
         <<"sofia::intercepted">> ->
-            lager:debug("sofia::intercepted not handled in call control"),
+            'ok' = handle_intercepted(Node, CallId, Props),
             {'noreply', State};
         <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->
             gen_listener:cast(self(), {'channel_redirected', JObj}),
             {'stop', 'normal', State};
+        <<"sofia::transferor">> ->
+            handle_transferor(Props, State);
         _Else ->
             {'noreply', State}
     end;
-handle_info({'event', [_ | Props]}, State) ->
+handle_info({'event', [_X | Props]}, State) ->
     case props:get_first_defined([<<"Event-Subclass">>
                                   ,<<"Event-Name">>
-                                 ], Props)
+                                 ]
+                                 ,Props
+                                )
     of
         <<"CHANNEL_CREATE">> ->
             {'noreply', handle_channel_create(Props, State)};
         <<"CHANNEL_DESTROY">> ->
             {'noreply', handle_channel_destroy(Props, State)};
-        _Else -> {'noreply', State}
+        <<"sofia::transferor">> ->
+            props:to_log(Props, <<"TRANSFEROR OTHER ", _X/binary>>),
+            {'noreply', State};
+        _Else ->
+            lager:debug("CALL CONTROL NOT HANDLED ~s", [_Else]),
+            {'noreply', State}
     end;
 handle_info({'force_queue_advance', CallId}, #state{call_id=CallId}=State) ->
     {'noreply', force_queue_advance(State)};
@@ -476,8 +433,33 @@ handle_info(_Msg, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{fetch_id=FetchId}) ->
-    {'reply', [{'fetch_id', FetchId}]}.
+handle_event(JObj, #state{fetch_id=FetchId}) ->
+    _ = case wh_util:get_event_type(JObj) of
+            {<<"call">>, <<"command">>} -> handle_call_command(JObj);
+            {<<"conference">>, <<"command">>} -> handle_conference_command(JObj);
+            {<<"call_event">>, _} -> handle_call_events(JObj, FetchId)
+        end,
+    'ignore'.
+
+-spec handle_call_command(wh_json:object()) -> 'ok'.
+handle_call_command(JObj) ->
+    gen_listener:cast(self(), {'dialplan', JObj}).
+
+-spec handle_conference_command(wh_json:object()) -> 'ok'.
+handle_conference_command(JObj) ->
+    gen_listener:cast(self(), {'dialplan', JObj}).
+
+-spec handle_call_events(wh_json:object(), ne_binary()) -> 'ok'.
+handle_call_events(JObj, FetchId) ->
+    wh_util:put_callid(wh_json:get_value(<<"Call-ID">>, JObj)),
+    case wh_json:get_value(<<"Event-Name">>, JObj) of
+        <<"usurp_control">> ->
+            case wh_json:get_value(<<"Fetch-ID">>, JObj) =:= FetchId of
+                'false' -> gen_listener:cast(self(), {'usurp_control', JObj});
+                'true' -> 'ok'
+            end;
+        _Else -> 'ok'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -565,13 +547,13 @@ handle_channel_destroyed(_,  #state{sanity_check_tref=SCTRef
     %% channel_destory (the last event we will ever receive from freeswitch for this call)
     %% then create an error and force advance. This will happen with dialplan actions that
     %% have not been executed on freeswitch but were already queued (for example in xferext).
-    %% Commonly events like masquerade, noop, ect
+    %% Commonly events like masquerade, noop, etc
     _ = case CurrentApp =:= 'undefined'
             orelse is_post_hangup_command(CurrentApp)
         of
             'true' -> 'ok';
             'false' ->
-                send_error_resp(CallId, CurrentCmd),
+                maybe_send_error_resp(CallId, CurrentCmd),
                 self() ! {'force_queue_advance', CallId}
         end,
     State#state{keep_alive_ref=get_keep_alive_ref(State#state{is_call_up='false'})
@@ -603,7 +585,7 @@ force_queue_advance(#state{call_id=CallId
                         execute_control_request(Cmd, State);
                     'false' ->
                         lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
-                        send_error_resp(CallId, Cmd),
+                        maybe_send_error_resp(CallId, Cmd),
                         self() ! {'force_queue_advance', CallId}
                 end,
             MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd),
@@ -623,7 +605,7 @@ handle_execute_complete(<<"noop">>, JObj, #state{msg_id=CurrMsgId}=State) ->
     NoopId = wh_json:get_value(<<"Application-Response">>, JObj),
     case NoopId =:= CurrMsgId of
         'false' ->
-            lager:debug("recieved noop execute complete with incorrect id ~s (expecting ~s)"
+            lager:debug("received noop execute complete with incorrect id ~s (expecting ~s)"
                         ,[NoopId, CurrMsgId]
                        ),
             State;
@@ -656,7 +638,7 @@ handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
         'false' -> State
     end.
 
--spec flush_group_id(queue(), api_binary(), ne_binary()) -> queue().
+-spec flush_group_id(queue:queue(), api_binary(), ne_binary()) -> queue:queue().
 flush_group_id(CmdQ, 'undefined', _) -> CmdQ;
 flush_group_id(CmdQ, GroupId, AppName) ->
     Filter = wh_json:from_list([{<<"Application-Name">>, AppName}
@@ -684,7 +666,7 @@ forward_queue(#state{call_id = CallId
                     'true' -> execute_control_request(Cmd, State);
                     'false' ->
                         lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
-                        send_error_resp(CallId, Cmd),
+                        maybe_send_error_resp(CallId, Cmd),
                         self() ! {'force_queue_advance', CallId}
                 end,
             MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>),
@@ -702,12 +684,13 @@ forward_queue(#state{call_id = CallId
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_sofia_replaced(ne_binary(), state()) -> state().
-handle_sofia_replaced(CallId, #state{call_id=CallId}=State) -> State;
-handle_sofia_replaced(ReplacedBy, #state{call_id=CallId
-                                         ,node=Node
-                                         ,other_legs=Legs
-                                         ,command_q=CommandQ
-                                        }=State) ->
+handle_sofia_replaced(<<_/binary>> = CallId, #state{call_id=CallId}=State) ->
+    State;
+handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{call_id=CallId
+                                                        ,node=Node
+                                                        ,other_legs=Legs
+                                                        ,command_q=CommandQ
+                                                       }=State) ->
     lager:info("updating callid from ~s to ~s", [CallId, ReplacedBy]),
     unbind_from_events(Node, CallId),
     unreg_for_call_related_events(CallId),
@@ -717,9 +700,6 @@ handle_sofia_replaced(ReplacedBy, #state{call_id=CallId
     bind_to_events(Node, ReplacedBy),
     reg_for_call_related_events(ReplacedBy),
     gen_listener:add_binding(self(), 'call', [{'callid', ReplacedBy}]),
-
-    lager:debug("ensuring event listener exists"),
-    _ = ecallmgr_call_sup:start_event_process(Node, ReplacedBy),
 
     lager:info("...call id updated, continuing post-transfer"),
     Commands = [wh_json:set_value(<<"Call-ID">>, ReplacedBy, JObj)
@@ -748,6 +728,7 @@ handle_channel_create(Props, #state{call_id=CallId}=State) ->
 -spec add_leg(wh_proplist(), ne_binary(), state()) -> state().
 add_leg(Props, LegId, #state{other_legs=Legs
                              ,call_id=CallId
+                             ,node=Node
                             }=State) ->
     case lists:member(LegId, Legs) of
         'true' -> State;
@@ -760,6 +741,12 @@ add_leg(Props, LegId, #state{other_legs=Legs
                           wh_amqp_channel:consumer_pid(ConsumerPid),
                           publish_leg_addition(props:set_value(<<"Other-Leg-Unique-ID">>, CallId, Props))
                   end),
+            _ = case ecallmgr_fs_channel:fetch(CallId) of
+                    {'ok', Channel} ->
+                        CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+                        ecallmgr_fs_command:set(Node, LegId, [{<<?CALL_INTERACTION_ID>>, CDR}]);
+                    _ -> 'ok'
+                end,
             State#state{other_legs=[LegId|Legs]}
     end.
 
@@ -882,7 +869,7 @@ handle_dialplan(JObj, #state{call_id=CallId
                     'true' -> execute_control_request(Cmd, State);
                     'false' ->
                         lager:debug("command '~s' is not valid after hangup, ignoring", [AppName]),
-                        send_error_resp(CallId, Cmd),
+                        maybe_send_error_resp(CallId, Cmd),
                         self() ! {'force_queue_advance', CallId}
                 end,
             MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd),
@@ -899,7 +886,7 @@ handle_dialplan(JObj, #state{call_id=CallId
     end.
 
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
--spec insert_command(state(), insert_at_options(), wh_json:object()) -> queue().
+-spec insert_command(state(), insert_at_options(), wh_json:object()) -> queue:queue().
 insert_command(#state{node=Node
                       ,call_id=CallId
                       ,command_q=CommandQ
@@ -962,7 +949,7 @@ execute_queue_commands([Command|Commands], DefJObj, State) ->
             execute_queue_commands(Commands, DefJObj, State)
     end.
 
--spec insert_command_into_queue(queue(), 'tail' | 'head', wh_json:object()) -> queue().
+-spec insert_command_into_queue(queue:queue(), 'tail' | 'head', wh_json:object()) -> queue:queue().
 insert_command_into_queue(Q, Position, JObj) ->
     InsertFun = queue_insert_fun(Position),
     case wh_json:get_value(<<"Application-Name">>, JObj) of
@@ -971,7 +958,7 @@ insert_command_into_queue(Q, Position, JObj) ->
         _Else -> InsertFun(JObj, Q)
     end.
 
--spec insert_queue_command_into_queue(function(), queue(), wh_json:object()) -> queue().
+-spec insert_queue_command_into_queue(function(), queue:queue(), wh_json:object()) -> queue:queue().
 insert_queue_command_into_queue(InsertFun, Q, JObj) ->
     'true' = wapi_dialplan:queue_v(JObj),
     DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)),
@@ -1017,7 +1004,7 @@ queue_insert_fun('head') ->
 %% @end
 %%--------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue('undefined' | list(), queue()) -> queue().
+-spec maybe_filter_queue('undefined' | list(), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
@@ -1118,7 +1105,7 @@ execute_control_request(Cmd, #state{node=Node
             ST = erlang:get_stacktrace(),
             lager:debug("invalid command ~s: ~p", [wh_json:get_value(<<"Application-Name">>, Cmd), ErrMsg]),
             wh_util:log_stacktrace(ST),
-            send_error_resp(CallId, Cmd),
+            maybe_send_error_resp(CallId, Cmd),
             Srv ! {'force_queue_advance', CallId},
             'ok';
         'throw':{'msg', ErrMsg} ->
@@ -1151,6 +1138,15 @@ which_call_leg(CmdLeg, OtherLegs, CallId) ->
         'false' -> CallId
     end.
 
+-spec maybe_send_error_resp(ne_binary(), wh_json:object()) -> 'ok'.
+-spec maybe_send_error_resp(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_send_error_resp(CallId, Cmd) ->
+  AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
+  maybe_send_error_resp(AppName, CallId, Cmd).
+
+maybe_send_error_resp(<<"hangup">>, _CallId, _Cmd) -> 'ok';
+maybe_send_error_resp(_, CallId, Cmd) -> send_error_resp(CallId, Cmd).
+
 -spec send_error_resp(ne_binary(), wh_json:object()) -> 'ok'.
 send_error_resp(CallId, Cmd) ->
     send_error_resp(CallId
@@ -1177,7 +1173,7 @@ send_error_resp(CallId, Cmd, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_keep_alive_ref(state()) -> 'undefined' | reference().
+-spec get_keep_alive_ref(state()) -> api_reference().
 get_keep_alive_ref(#state{is_call_up='true'}) -> 'undefined';
 get_keep_alive_ref(#state{keep_alive_ref='undefined'
                           ,is_call_up='false'
@@ -1233,3 +1229,71 @@ unreg_for_call_related_events(CallId) ->
     (catch gproc:unreg({'p', 'l', {'call_control', CallId}})),
     (catch gproc:unreg({'p', 'l', ?LOOPBACK_BOWOUT_REG(CallId)})),
     'ok'.
+
+-spec handle_replaced(wh_proplist(), state()) ->
+                             {'noreply', state()}.
+handle_replaced(Props, #state{fetch_id=FetchId
+                              ,node=Node
+                              ,call_id=CallId
+                             }=State) ->
+    case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
+        FetchId ->
+            ReplacedBy = props:get_value(<<"att_xfer_replaced_by">>, Props),
+            {'ok', Channel} = ecallmgr_fs_channel:fetch(ReplacedBy),
+            OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),
+            OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+            CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+            ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+            ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+            {'noreply', handle_sofia_replaced(ReplacedBy, State)};
+        _Else ->
+            lager:info("sofia replaced on our channel but different fetch id~n"),
+            {'noreply', State}
+    end.
+
+-spec handle_transferee(wh_proplist(), state()) ->
+                               {'noreply', state()}.
+handle_transferee(Props, #state{fetch_id=FetchId
+                                ,node=_Node
+                                ,call_id=CallId
+                               }=State) ->
+    case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
+        FetchId ->
+            lager:info("we (~s) have been transferred, terminate immediately", [CallId]),
+            {'stop', 'normal', State};
+        _Else ->
+            lager:info("we were a different instance of this transferred call"),
+            {'noreply', State}
+    end.
+
+-spec handle_transferor(wh_proplist(), state()) ->
+                               {'noreply', state()}.
+handle_transferor(_Props, #state{fetch_id=_FetchId
+                                ,node=_Node
+                                ,call_id=_CallId
+                               }=State) ->
+    {'noreply', State}.
+
+-spec handle_intercepted(atom(), ne_binary(), wh_proplist()) ->
+                                'ok'.
+handle_intercepted(Node, CallId, Props) ->
+    _ = case {props:get_value(<<"Core-UUID">>, Props)
+              ,props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props)
+             }
+        of
+            {A, A} -> 'ok';
+            {_, 'undefined'} ->
+                UUID = props:get_value(<<"intercepted_by">>, Props),
+                case ecallmgr_fs_channel:fetch(UUID) of
+                    {'ok', Channel} ->
+                        CDR = wh_json:get_value(<<"interaction_id">>, Channel),
+                        kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+                        ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}]);
+                    _ -> 'ok'
+                end;
+            _ ->
+                UUID = props:get_value(<<"intercepted_by">>, Props),
+                CDR = props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), Props),
+                ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
+        end.

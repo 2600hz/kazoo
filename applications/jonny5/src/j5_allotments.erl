@@ -23,7 +23,7 @@ authorize(Request, Limits) ->
     Allotment = find_allotment(Request, Limits),
     maybe_consume_allotment(Allotment, Request, Limits).
 
--spec maybe_consume_allotment('undefined'| wh_json:object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
+-spec maybe_consume_allotment(api_object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_consume_allotment('undefined', Request, _) ->
     lager:debug("account has no allotment", []),
     Request;
@@ -36,16 +36,19 @@ maybe_consume_allotment(Allotment, Request, Limits) ->
     case allotment_consumed_so_far(Allotment, Limits) of
         {'error', _R} when GroupConsumed > (Amount - Minimum) ->
             lager:debug("account ~s has used all ~ws of their allotment"
-                        ,[AccountId, Amount]),
+                        ,[AccountId, Amount]
+                       ),
             Request;
         {'error', _R} -> Request;
         Consumed when (Consumed + GroupConsumed) > (Amount - Minimum) ->
             lager:debug("account ~s has used all ~ws of their allotment"
-                        ,[AccountId, Amount]),
+                        ,[AccountId, Amount]
+                       ),
             Request;
         Consumed ->
             lager:debug("account ~s has ~ws remaining of their allotment"
-                        ,[AccountId, Amount - Consumed - GroupConsumed]),
+                        ,[AccountId, Amount - Consumed - GroupConsumed]
+                       ),
             Classification = wh_json:get_value(<<"classification">>, Allotment),
             j5_request:authorize(<<"allotment_", Classification/binary>>, Request, Limits)
     end.
@@ -102,7 +105,8 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     Timestamp = wh_util:current_tstamp(),
     Id = <<CallId/binary, "-allotment-consumption">>,
     lager:debug("adding allotment debit ~s to ledger ~s for ~wsec"
-                ,[Id, LedgerDb, Seconds]),
+                ,[Id, LedgerDb, Seconds]
+               ),
     Props =
         props:filter_undefined(
           [{<<"_id">>, Id}
@@ -150,9 +154,8 @@ find_allotment_by_classification(Direction, Classification, Limits) ->
 find_allotment_by_classification(Classification, Limits) ->
     Allotments = j5_limits:allotments(Limits),
     lager:debug("checking if account ~s has any allotments for ~s"
-                ,[j5_limits:account_id(Limits)
-                  ,Classification
-                 ]),
+                ,[j5_limits:account_id(Limits), Classification]
+               ),
     case wh_json:get_value(Classification, Allotments) of
         'undefined' -> 'undefined';
         Allotment -> wh_json:set_value(<<"classification">>, Classification, Allotment)
@@ -166,7 +169,7 @@ find_allotment_by_classification(Classification, Limits) ->
 %%--------------------------------------------------------------------
 -spec allotment_consumed_so_far(wh_json:object(), j5_limits:limits()) ->
                                        integer() |
-                                       {'error', _}.
+                                       {'error', any()}.
 allotment_consumed_so_far(Allotment, Limits) ->
     Classification = wh_json:get_value(<<"classification">>, Allotment),
     Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
@@ -181,7 +184,7 @@ allotment_consumed_so_far(Allotment, Limits) ->
 
 -spec allotment_consumed_so_far(non_neg_integer(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
                                        integer() |
-                                       {'error', _}.
+                                       {'error', any()}.
 allotment_consumed_so_far(_, _, _, _, Attempts) when Attempts > 2 -> 0;
 allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
@@ -191,13 +194,14 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
                    ,{'reduce', 'false'}
                   ],
     case couch_mgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
+        {'ok', JObjs} -> sum_allotment_consumed_so_far(JObjs, CycleStart);
         {'error', 'not_found'} ->
             add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts);
         {'error', _R}=Error ->
             lager:debug("unable to get consumed quanity for ~s allotment from ~s: ~p"
-                        ,[Classification, LedgerDb, _R]),
-            Error;
-        {'ok', JObjs} -> sum_allotment_consumed_so_far(JObjs, CycleStart)
+                        ,[Classification, LedgerDb, _R]
+                       ),
+            Error
     end.
 
 -spec sum_allotment_consumed_so_far(wh_json:objects(), non_neg_integer()) -> non_neg_integer().
@@ -218,7 +222,7 @@ sum_allotment_consumed_so_far([JObj|JObjs], CycleStart, Seconds) ->
 
 -spec add_transactions_view(ne_binary(), non_neg_integer(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
                                    integer() |
-                                   {'error', _}.
+                                   {'error', any()}.
 add_transactions_view(LedgerDb, CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     _ = couch_mgr:revise_views_from_folder(LedgerDb, 'jonny5'),
     allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1).

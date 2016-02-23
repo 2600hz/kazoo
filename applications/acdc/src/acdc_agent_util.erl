@@ -22,10 +22,6 @@
          ,changed/2
         ]).
 
--export([async_most_recent_ets_statuses/4
-         ,async_most_recent_db_statuses/4
-        ]).
-
 -include("acdc.hrl").
 
 -spec update_status(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
@@ -134,22 +130,23 @@ most_recent_statuses(AccountId, Options) when is_list(Options) ->
     most_recent_statuses(AccountId, props:get_value(<<"Agent-ID">>, Options), Options).
 
 most_recent_statuses(AccountId, AgentId, Options) ->
-    Self = self(),
-
-    ETS = spawn_monitor(?MODULE, 'async_most_recent_ets_statuses', [AccountId, AgentId, Options, Self]),
-
-    DB = maybe_start_db_lookup('async_most_recent_db_statuses', AccountId, AgentId, Options, Self),
+    ETS = wh_util:spawn_monitor(fun async_most_recent_ets_statuses/4, [AccountId, AgentId, Options, self()]),
+    DB = maybe_start_db_lookup('async_most_recent_db_statuses'
+                               ,fun async_most_recent_db_statuses/4
+                               ,AccountId, AgentId, Options, self()
+                              ),
 
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
 
--spec maybe_start_db_lookup(atom(), ne_binary(), api_binary(), list(), pid()) ->
+-spec maybe_start_db_lookup(atom(), fun(), ne_binary(), api_binary(), list(), pid()) ->
                                    pid_ref() | 'undefined'.
-maybe_start_db_lookup(F, AccountId, AgentId, Options, Self) ->
-    case wh_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AccountId, AgentId)) of
+maybe_start_db_lookup(F, Fun, AccountId, AgentId, Options, Self) ->
+    case kz_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AccountId, AgentId)) of
         {'ok', _} -> 'undefined';
         {'error', 'not_found'} ->
-            spawn_monitor(?MODULE, F, [AccountId, AgentId, Options, Self])
+            wh_util:spawn_monitor(Fun, [AccountId, AgentId, Options, Self])
     end.
+
 db_fetch_key(F, AccountId, AgentId) -> {F, AccountId, AgentId}.
 
 -spec maybe_reduce_statuses(api_binary(), wh_json:object()) ->
@@ -172,7 +169,7 @@ reduce_agent_statuses(_, Data, {T, _}=Acc) ->
         _:_ -> Acc
     end.
 
--type receive_info() :: [{pid(), reference()} | 'undefined',...] | [].
+-type receive_info() :: [{pid(), reference()} | 'undefined'].
 -spec receive_statuses(receive_info()) ->
                               wh_json:object().
 -spec receive_statuses(receive_info(), wh_json:object()) ->
@@ -204,8 +201,8 @@ clear_monitor(Ref) ->
     after 0 -> 'ok'
     end.
 
--spec async_most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) ->
-                                            'ok'.
+%% @private
+-spec async_most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) -> 'ok'.
 async_most_recent_ets_statuses(AccountId, AgentId, Options, Pid) ->
     case most_recent_ets_statuses(AccountId, AgentId, Options) of
         {'ok', Statuses} ->
@@ -216,25 +213,23 @@ async_most_recent_ets_statuses(AccountId, AgentId, Options, Pid) ->
             'ok'
     end.
 
--spec async_most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) ->
-                                           'ok'.
+%% @private
+-spec async_most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) -> 'ok'.
 async_most_recent_db_statuses(AccountId, AgentId, Options, Pid) ->
     case most_recent_db_statuses(AccountId, AgentId, Options) of
         {'ok', Statuses} ->
             Pid ! {'statuses', Statuses, self()},
-            wh_cache:store_local(?ACDC_CACHE, db_fetch_key('async_most_recent_db_statuses', AccountId, AgentId), 'true'),
+            kz_cache:store_local(?ACDC_CACHE, db_fetch_key('async_most_recent_db_statuses', AccountId, AgentId), 'true'),
             'ok';
         {'error', _E} ->
             Pid ! {'statuses', wh_json:new(), self()},
             'ok'
     end.
 
--spec most_recent_ets_statuses(ne_binary()) ->
-                                      statuses_return() |
-                                      {'error', _}.
--spec most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist()) ->
-                                      statuses_return() |
-                                      {'error', _}.
+-spec most_recent_ets_statuses(ne_binary()) -> statuses_return() |
+                                               {'error', any()}.
+-spec most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist()) -> statuses_return() |
+                                                                            {'error', any()}.
 most_recent_ets_statuses(AccountId) ->
     most_recent_ets_statuses(AccountId, 'undefined', []).
 
@@ -261,10 +256,10 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
 
 -spec most_recent_db_statuses(ne_binary()) ->
                                      statuses_return() |
-                                     {'error', _}.
+                                     {'error', any()}.
 -spec most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
-                                      {'error', _}.
+                                      {'error', any()}.
 most_recent_db_statuses(AccountId) ->
     most_recent_db_statuses(AccountId, 'undefined', []).
 most_recent_db_statuses(AccountId, ?NE_BINARY = AgentId) ->

@@ -37,8 +37,9 @@ handle_job_notify(JObj, _Props) ->
     end,
 
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
-    {'ok', FaxJObj} = couch_mgr:open_doc(?WH_FAXES_DB, JobId),
-    lager:debug("Checking if JobId ~s is a cloud printer job",[JobId]),
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+    lager:debug("Checking if JobId ~s in db ~s is a cloud printer job",[JobId, AccountDb]),
+    {'ok', FaxJObj} = couch_mgr:open_doc(AccountDb, JobId),
     case wh_json:get_value(<<"cloud_job_id">>, FaxJObj) of
         'undefined' ->
             lager:debug("JobId ~s is not a cloud printer job",[JobId]);
@@ -71,13 +72,13 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
     case get_printer_oauth_credentials(PrinterId) of
         {'ok', Authorization} ->
             Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
-            case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
-                {'ok', "200", _RespHeaders, RespBody} ->
+            case kz_http:get(wh_util:to_list(URL), Headers) of
+                {'ok', 200, _RespHeaders, RespBody} ->
                     JObj = wh_json:decode(RespBody),
                     JObjs = wh_json:get_value(<<"jobs">>, JObj, []),
-                    _P = wh_util:spawn(?MODULE, 'maybe_process_job', [JObjs, Authorization]),
+                    _P = wh_util:spawn(fun maybe_process_job/2, [JObjs, Authorization]),
                     lager:debug("maybe processing job in ~p", [_P]);
-                {'ok', "403", _RespHeaders, _RespBody} ->
+                {'ok', 403, _RespHeaders, _RespBody} ->
                     lager:debug("something wrong with oauth credentials"),
                     _ = [lager:debug("resp header: ~p", [_RespHeader]) || _RespHeader <- _RespHeaders],
                     lager:debug("body: ~s", [_RespBody]);
@@ -126,15 +127,15 @@ fetch_ticket(JobId, Authorization) ->
     Headers = [?GPC_PROXY_HEADER
                ,{"Authorization",Authorization}
               ],
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
-        {'ok', "200", _RespHeaders, RespBody} ->
+    case kz_http:get(wh_util:to_list(URL), Headers) of
+        {'ok', 200, _RespHeaders, RespBody} ->
             wh_json:decode(RespBody);
         Response ->
             lager:debug("unexpected result fetching ticket : ~p",[Response]),
             wh_json:new()
     end.
 
--spec update_job_status(ne_binary(), ne_binary(), ne_binary() | wh_json:object()) -> _.
+-spec update_job_status(ne_binary(), ne_binary(), ne_binary() | wh_json:object()) -> any().
 update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>=Status) ->
     StateObj = wh_json:set_value(<<"state">>, wh_json:set_value(<<"type">>, Status, wh_json:new()), wh_json:new()),
     update_job_status(PrinterId, JobId, StateObj);
@@ -174,8 +175,8 @@ send_update_job_status(JobId, Status, Authorization) ->
 
     Body = props:to_querystring(Fields),
 
-    case ibrowse:send_req(wh_util:to_list(?JOBCTL_URL), Headers, 'post', Body) of
-        {'ok', "200", _RespHeaders, RespBody} ->
+    case kz_http:post(wh_util:to_list(?JOBCTL_URL), Headers, Body) of
+        {'ok', 200, _RespHeaders, RespBody} ->
             JObj = wh_json:decode(RespBody),
             case wh_json:is_true(<<"success">>, JObj) of
                 'true' ->
@@ -189,13 +190,13 @@ send_update_job_status(JobId, Status, Authorization) ->
 
 -spec download_file(ne_binary(), ne_binary()) ->
                            {'ok', ne_binary(), ne_binary()} |
-                           {'error', _}.
+                           {'error', any()}.
 download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
-        {'ok', "200", RespHeaders, RespBody} ->
+    case kz_http:get(wh_util:to_list(URL), Headers) of
+        {'ok', 200, RespHeaders, RespBody} ->
             CT = wh_util:to_binary(props:get_value("Content-Type", RespHeaders)),
-            Ext = fax_util:content_type_to_extension(CT),
+            Ext = kz_mime:to_extension(CT),
             FileName = <<"/tmp/fax_printer_"
                          ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
                          ,"."
@@ -243,7 +244,7 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
 
 -spec save_fax_document(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
                                {'ok', wh_json:object()} |
-                               {'error', _}.
+                               {'error', any()}.
 save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     {'ok', FaxBoxDoc} = get_faxbox_doc(PrinterId),
 
@@ -306,9 +307,9 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
 
 -spec get_faxbox_doc(ne_binary()) ->
                             {'ok', wh_json:object()} |
-                            {'error', _}.
+                            {'error', any()}.
 get_faxbox_doc(PrinterId) ->
-    case wh_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
+    case kz_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
         {'ok', _Doc}=OK -> OK;
         {'error', _} ->
             fetch_faxbox_doc(PrinterId)
@@ -316,7 +317,7 @@ get_faxbox_doc(PrinterId) ->
 
 -spec fetch_faxbox_doc(ne_binary()) ->
                               {'ok', wh_json:object()} |
-                              {'error', _}.
+                              {'error', any()}.
 fetch_faxbox_doc(PrinterId) ->
     ViewOptions = [{'key', PrinterId}, 'include_docs'],
     case couch_mgr:get_results(?WH_FAXES_DB, <<"faxbox/cloud">>, ViewOptions) of
@@ -325,7 +326,7 @@ fetch_faxbox_doc(PrinterId) ->
             Doc = wh_json:get_value(<<"doc">>, JObj),
             FaxBoxDoc = maybe_get_faxbox_owner_email(Doc),
             CacheProps = [{'origin', [{'db', ?WH_FAXES_DB, wh_doc:id(Doc)}] }],
-            wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc, CacheProps),
+            kz_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc, CacheProps),
             {'ok', FaxBoxDoc}
     end.
 
@@ -353,9 +354,9 @@ get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
 
 -spec get_printer_oauth_credentials(ne_binary()) ->
                                            {'ok', ne_binary()} |
-                                           {'error', _}.
+                                           {'error', any()}.
 get_printer_oauth_credentials(PrinterId) ->
-    case wh_cache:peek_local(?FAX_CACHE, {'gcp', PrinterId }) of
+    case kz_cache:peek_local(?FAX_CACHE, {'gcp', PrinterId }) of
         {'ok', _Auth}=OK -> OK;
         {'error', _} ->
             fetch_printer_oauth_credentials(PrinterId)
@@ -363,7 +364,7 @@ get_printer_oauth_credentials(PrinterId) ->
 
 -spec fetch_printer_oauth_credentials(ne_binary()) ->
                                              {'ok', ne_binary()} |
-                                             {'error', _}.
+                                             {'error', any()}.
 fetch_printer_oauth_credentials(PrinterId) ->
     case get_faxbox_doc(PrinterId) of
         {'error', _}=E -> E;
@@ -372,7 +373,7 @@ fetch_printer_oauth_credentials(PrinterId) ->
             RefreshToken = #oauth_refresh_token{token = wh_json:get_value(<<"pvt_cloud_refresh_token">>, JObj)},
             {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
             Auth = wh_util:to_list(kazoo_oauth_util:authorization_header(Token)),
-            wh_cache:store_local(?FAX_CACHE, {'gcp', PrinterId}, Auth, [{'expires', Expires}]),
+            kz_cache:store_local(?FAX_CACHE, {'gcp', PrinterId}, Auth, [{'expires', Expires}]),
             {'ok', Auth}
     end.
 
@@ -388,7 +389,7 @@ handle_faxbox_created(JObj, _Props) ->
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
     ResellerId = kzd_services:reseller_id(Doc),
     AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
-    wh_util:spawn(?MODULE, 'check_registration', [AppId, State, Doc]).
+    wh_util:spawn(fun check_registration/3, [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
 check_registration('undefined', _, _JObj) -> 'ok';
@@ -398,8 +399,8 @@ check_registration(AppId, <<"registered">>, JObj) ->
     PoolingUrlPart = wh_json:get_value(<<"pvt_cloud_polling_url">>, JObj),
     PoolingUrl = wh_util:to_list(<<PoolingUrlPart/binary, AppId/binary>>),
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
-    case ibrowse:send_req(PoolingUrl, [?GPC_PROXY_HEADER], 'get') of
-        {'ok', "200", _RespHeaders, RespXML} ->
+    case kz_http:get(PoolingUrl, [?GPC_PROXY_HEADER]) of
+        {'ok', 200, _RespHeaders, RespXML} ->
             JObjPool = wh_json:decode(RespXML),
             Result = wh_json:get_value(<<"success">>, JObjPool, 'false'),
             process_registration_result(Result, AppId, JObj,JObjPool );
@@ -408,7 +409,7 @@ check_registration(AppId, <<"registered">>, JObj) ->
     end;
 check_registration(_, _, _JObj) -> 'ok'.
 
--spec process_registration_result(boolean(), ne_binary(), wh_json:object(), wh_json:object() ) -> _.
+-spec process_registration_result(boolean(), ne_binary(), wh_json:object(), wh_json:object() ) -> any().
 process_registration_result('true', AppId, JObj, Result) ->
     _AccountId = wh_doc:account_id(JObj),
     _PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
@@ -477,7 +478,7 @@ update_printer(JObj) ->
     {'ok', _} = couch_mgr:ensure_saved(?WH_FAXES_DB, JObj),
     'ok'.
 
--spec handle_faxbox_deleted(wh_json:object(), wh_proplist()) -> _.
+-spec handle_faxbox_deleted(wh_json:object(), wh_proplist()) -> any().
 handle_faxbox_deleted(JObj, _Props) ->
     lager:debug("faxbox_deleted ~p",[JObj]),
     'true' = wapi_conf:doc_update_v(JObj),

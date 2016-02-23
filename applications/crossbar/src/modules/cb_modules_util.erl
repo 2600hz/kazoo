@@ -31,7 +31,9 @@
          ,remove_plaintext_password/1
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
+
+-define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
 
 -spec range_view_options(cb_context:context()) ->
                                 {gregorian_seconds(), gregorian_seconds()} |
@@ -97,7 +99,7 @@ range_modb_view_options(Context, 'undefined', SuffixKeys) ->
 range_modb_view_options(Context, PrefixKeys, 'undefined') ->
     range_modb_view_options(Context, PrefixKeys, []);
 range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
-    case cb_modules_util:range_view_options(Context) of
+    case ?MODULE:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
             range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
         Context1 -> Context1
@@ -107,7 +109,7 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys) ->
                                      {'ok', crossbar_doc:view_options()} |
                                      cb_context:context().
 range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
-    case cb_modules_util:range_view_options(Context, ?MAX_RANGE, <<"created">>, CreatedFrom, CreatedTo) of
+    case ?MODULE:range_view_options(Context, ?MAX_RANGE, <<"created">>, CreatedFrom, CreatedTo) of
         {CreatedFrom, CreatedTo} ->
             range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo);
         Context1 -> Context1
@@ -197,7 +199,7 @@ maybe_originate_quickcall(Context) ->
         [] ->
             cb_context:add_system_error('unspecified_fault', Context);
         Endpoints ->
-            originate_quickcall(Endpoints, Call, default_bleg_cid(Call, Context))
+            originate_quickcall(Endpoints, Call, Context)
     end.
 
 -spec create_call_from_context(cb_context:context()) -> whapps_call:call().
@@ -235,10 +237,31 @@ request_specific_extraction_funs_from_nouns(Context, ?USERS_QCALL_NOUNS(UserId, 
 request_specific_extraction_funs_from_nouns(_Context, _ReqNouns) ->
     [].
 
+-spec filter_number_regex(ne_binary(), ne_binary()) -> ne_binary().
+filter_number_regex(Number, Regex) ->
+    case re:run(Number, Regex, [{'capture', 'all_but_first', 'binary'}]) of
+        {'match', [Match|_]} ->
+            lager:info("filtered number using regex ~p, result: ~p", [Regex, Match]),
+            Match;
+
+        _NotMatching ->
+            lager:warning("tried to filter number ~p with regex ~p, but no match found", [Number, Regex]),
+            Number
+    end.
+
 -spec build_number_uri(cb_context:context(), ne_binary()) -> ne_binary().
 build_number_uri(Context, Number) ->
+    QueryStr  = cb_context:query_string(Context),
+    FilterVal = wh_json:get_value(<<"number_filter">>, QueryStr, <<"true">>),
+
+    UseNumber = case FilterVal of
+        <<"false">> -> Number;
+        <<"true">>  -> binary:replace(Number, ?QCALL_NUMBER_FILTER, <<>>, ['global']);
+        FilterRegex -> filter_number_regex(Number, FilterRegex)
+    end,
+
     Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
-    <<Number/binary, "@", Realm/binary>>.
+    <<UseNumber/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(whapps_call:call(), cb_context:context()) -> wh_json:objects().
 -spec get_endpoints(whapps_call:call(), cb_context:context(), req_nouns()) -> wh_json:objects().
@@ -277,16 +300,6 @@ aleg_cid(Number, Call) ->
                ],
     lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
 
--spec default_bleg_cid(whapps_call:call(), cb_context:context()) -> cb_context:context().
-default_bleg_cid(Call, Context) ->
-    {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
-    Defaults = wh_json:from_list([{<<"cid-name">>, CIDName}
-                                  ,{<<"cid-number">>, CIDNumber}
-                                 ]),
-    cb_context:set_query_string(Context
-                                ,wh_json:merge_jobjs(cb_context:query_string(Context), Defaults)
-                               ).
-
 -spec originate_quickcall(wh_json:objects(), whapps_call:call(), cb_context:context()) ->
                                  cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
@@ -301,37 +314,42 @@ originate_quickcall(Endpoints, Call, Context) ->
                 'true' -> wh_util:rand_hex_binary(16);
                 'false' -> cb_context:req_id(Context)
             end,
-    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-quickcall">>,
-    Request = [{<<"Application-Name">>, <<"transfer">>}
-               ,{<<"Application-Data">>, get_application_data(Context)}
-               ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, update_endpoints(CallId, AutoAnswer, Endpoints)}
-               ,{<<"Timeout">>, get_timeout(Context)}
-               ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
-               ,{<<"Media">>, get_media(Context)}
-               ,{<<"Outbound-Caller-ID-Name">>, <<"Device QuickCall">>}
-               ,{<<"Outbound-Caller-ID-Number">>, whapps_call:request_user(Call)}
-               ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
-               ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
-               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
-               ,{<<"Continue-On-Fail">>, 'false'}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-               | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_resource:publish_originate_req(props:filter_undefined(Request)),
+
+    {DefaultCIDNumber, DefaultCIDName} = cf_attributes:caller_id(<<"external">>, Call),
+
+    Request = props:filter_undefined(
+                [{<<"Application-Name">>, <<"transfer">>}
+                ,{<<"Application-Data">>, get_application_data(Context)}
+                ,{<<"Msg-ID">>, MsgId}
+                ,{<<"Endpoints">>, update_quickcall_endpoints(AutoAnswer, Endpoints)}
+                ,{<<"Timeout">>, get_timeout(Context)}
+                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
+                ,{<<"Media">>, get_media(Context)}
+                ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_param(Context, <<"cid-name">>, <<"Device QuickCall">>)}
+                ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_param(Context, <<"cid-number">>, whapps_call:request_user(Call))}
+                ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context, DefaultCIDName)}
+                ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context, DefaultCIDNumber)}
+                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+                ,{<<"Continue-On-Fail">>, 'false'}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+                ,{<<"Simplify-Loopback">>, <<"true">>}
+                 | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+                ]),
+    wh_amqp_worker:cast(Request, fun wapi_resource:publish_originate_req/1),
     JObj = wh_json:normalize(wh_json:from_list(wh_api:remove_defaults(Request))),
     crossbar_util:response_202(<<"quickcall initiated">>, JObj, cb_context:set_resp_data(Context, Request)).
 
--spec update_endpoints(ne_binary(), boolean(), wh_json:objects()) -> wh_json:objects().
-update_endpoints(CallId, AutoAnswer, [Endpoint]) ->
+-spec update_quickcall_endpoints(boolean(), wh_json:objects()) -> wh_json:objects().
+update_quickcall_endpoints(AutoAnswer, [Endpoint]) ->
     WithAA = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], AutoAnswer, Endpoint),
-    [set_outbound_call_id(CallId, WithAA)];
-update_endpoints(CallId, _AutoAnswer, Endpoints) ->
-    [set_outbound_call_id(CallId, Endpoint) || Endpoint <- Endpoints].
+    [set_quickcall_outbound_call_id(WithAA)];
+update_quickcall_endpoints(_AutoAnswer, Endpoints) ->
+    [set_quickcall_outbound_call_id(Endpoint) || Endpoint <- Endpoints].
 
--spec set_outbound_call_id(ne_binary(), wh_json:object()) -> wh_json:object().
-set_outbound_call_id(CallId, Endpoint) ->
+-spec set_quickcall_outbound_call_id(wh_json:object()) -> wh_json:object().
+set_quickcall_outbound_call_id(Endpoint) ->
+    CallId = <<(wh_util:rand_hex_binary(18))/binary, "-quickcall">>,
     wh_json:set_value(<<"Outbound-Call-ID">>, CallId, Endpoint).
 
 -spec get_application_data(cb_context:context()) -> wh_json:object().
@@ -367,16 +385,16 @@ get_media(Context) ->
         _Else -> <<"process">>
     end.
 
--spec get_caller_id_name(cb_context:context()) -> api_binary().
-get_caller_id_name(Context) ->
-    case cb_context:req_value(Context, <<"cid-name">>) of
+-spec get_caller_id_name(cb_context:context(), api_binary()) -> api_binary().
+get_caller_id_name(Context, Default) ->
+    case cb_context:req_value(Context, <<"cid-name">>, Default) of
         'undefined' -> 'undefined';
         CIDName -> wh_util:uri_decode(CIDName)
     end.
 
--spec get_caller_id_number(cb_context:context()) -> api_binary().
-get_caller_id_number(Context) ->
-    case cb_context:req_value(Context, <<"cid-number">>) of
+-spec get_caller_id_number(cb_context:context(), api_binary()) -> api_binary().
+get_caller_id_number(Context, Default) ->
+    case cb_context:req_value(Context, <<"cid-number">>, Default) of
         'undefined' -> 'undefined';
         CIDNumber -> wh_util:uri_decode(CIDNumber)
     end.

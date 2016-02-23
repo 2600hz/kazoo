@@ -21,7 +21,7 @@
          ,delete/2, delete/3
         ]).
 
--include("../crossbar.hrl").
+-include("crossbar.hrl").
 
 -define(CB_LIST, <<"lists/crossbar_listing">>).
 
@@ -95,13 +95,13 @@ validate(Context, ListId, EntryId) ->
 
 -spec validate_lists(cb_context:context(), http_method()) -> cb_context:context().
 validate_lists(Context, ?HTTP_GET) ->
-    load_lists(fetch_reduce_limit(), Context);
+    load_lists(Context);
 validate_lists(Context, ?HTTP_PUT) ->
     check_list_schema('undefined', Context).
 
 -spec validate_list(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_list(Context, ListId, ?HTTP_GET) ->
-    load_list(fetch_reduce_limit(), Context, ListId);
+    load_list(Context, ListId);
 validate_list(Context, ListId, ?HTTP_POST) ->
     check_list_schema(ListId, Context);
 validate_list(Context, ListId, ?HTTP_PUT) ->
@@ -131,7 +131,7 @@ check_list_schema(ListId, Context) ->
             crossbar_util:response('error', <<"API changed: entries not acceptable">>, 406, Context)
     end.
 
--spec filter_list_req_data({ne_binary(), _}) -> boolean().
+-spec filter_list_req_data({ne_binary(), any()}) -> boolean().
 filter_list_req_data({Key, _Val})
   when Key =:= <<"name">>;
        Key =:= <<"org">>;
@@ -157,8 +157,10 @@ check_list_entry_schema(ListId, EntryId, Context) ->
 -spec entry_schema_success(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 entry_schema_success(Context, ListId, EntryId) ->
     Pattern = wh_json:get_value(<<"pattern">>, cb_context:doc(Context)),
-    case re:compile(Pattern) of
+    case is_binary(Pattern) andalso re:compile(Pattern) of
         {'ok', _CompiledRe} ->
+            on_entry_successful_validation(ListId, EntryId, Context);
+        'false' ->
             on_entry_successful_validation(ListId, EntryId, Context);
         {'error', {Reason0, Pos}} ->
             Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
@@ -221,18 +223,13 @@ delete(Context, _ListId, _EntryId) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
--spec load_lists(boolean(), cb_context:context()) -> cb_context:context().
-load_lists(false, Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                           ,[{'group_level', 1}]
-                           ,Context
-                           ,fun normalize_view_results/2);
-load_lists(true, Context) ->
+-spec load_lists(cb_context:context()) -> cb_context:context().
+load_lists(Context) ->
     Entries = cb_context:doc(crossbar_doc:load_view(<<"lists/entries">>
                                                     ,[]
-                                                    ,Context
+                                                    ,cb_context:set_query_string(Context, wh_json:new())
                                                     ,fun normalize_view_results/2)),
-    crossbar_doc:load_view(<<"lists/crossbar_listing_v2">>
+    crossbar_doc:load_view(?CB_LIST
                            ,[]
                            ,Context
                            ,load_entries_and_normalize(Entries)).
@@ -242,10 +239,8 @@ load_entries_and_normalize(AllEntries) ->
     fun(JObj, Acc) ->
             Val = wh_json:get_value(<<"value">>, JObj),
             ListId = wh_json:get_value(<<"id">>, Val),
-            ListEntries = wh_json:from_list(
-                            [{wh_json:get_value(<<"_id">>, X), wh_json:public_fields(X)}
-                             || X <- lists:filter(filter_entries_by_list_id(ListId), AllEntries)]),
-            [wh_json:set_value(<<"entries">>, ListEntries, Val)|Acc]
+            ListEntries = lists:filter(filter_entries_by_list_id(ListId), AllEntries),
+            [wh_json:set_value(<<"entries">>, entries_from_list(ListEntries), Val)|Acc]
     end.
 
 -spec filter_entries_by_list_id(ne_binary()) -> fun((wh_json:object()) -> boolean()).
@@ -254,23 +249,19 @@ filter_entries_by_list_id(Id) ->
             wh_json:get_value(<<"list_id">>, Entry) =:= Id
     end.
 
--spec load_list(boolean(), cb_context:context(), ne_binary()) -> cb_context:context().
-load_list(false, Context, ListId) ->
-    crossbar_doc:load_view(?CB_LIST
-                           ,[{'group_level', 1}, {'key', ListId}]
-                           ,Context
-                           ,fun normalize_view_results/2);
-load_list(true, Context, ListId) ->
+-spec entries_from_list(wh_json:objects()) -> wh_json:object().
+entries_from_list(Entries) ->
+    wh_json:from_list([{wh_json:get_value(<<"_id">>, X), wh_json:public_fields(X)}
+                       || X <- Entries
+                      ]).
+
+-spec load_list(cb_context:context(), ne_binary()) -> cb_context:context().
+load_list(Context, ListId) ->
     Entries = cb_context:doc(crossbar_doc:load_view(<<"lists/entries">>
-                                                    ,[]
+                                                    ,[{'key', ListId}]
                                                     ,Context
                                                     ,fun normalize_view_results/2)),
-    crossbar_doc:load_view(<<"lists/crossbar_listing_v2">>
-                           ,[{'key', ListId}]
-                           ,Context
-                           ,load_entries_and_normalize(Entries)).
-
--spec fetch_reduce_limit() -> boolean().
-fetch_reduce_limit() ->
-    {'ok', Config} = couch_mgr:open_doc(<<"_config">>, <<"query_server_config">>),
-    wh_util:to_boolean(wh_json:get_binary_boolean(<<"reduce_limit">>, Config)).
+    Context1 = crossbar_doc:load(ListId, Context),
+    Doc = cb_context:doc(Context1),
+    Doc1 = wh_json:public_fields(wh_json:set_value(<<"entries">>, entries_from_list(Entries), Doc)),
+    cb_context:set_resp_data(Context1, Doc1).

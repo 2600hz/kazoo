@@ -42,7 +42,7 @@
 %%%-------------------------------------------------------------------
 -module(cf_intercept_feature).
 
--include("../callflow.hrl").
+-include("callflow.hrl").
 
 -export([handle/2]).
 

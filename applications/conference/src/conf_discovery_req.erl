@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
@@ -12,7 +11,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> _.
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Options) ->
     'true' = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
@@ -172,6 +171,7 @@ handle_search_error(Conference, Call, Srv) ->
     try amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
         'ok' ->
             lager:debug("initial participant creating conference on switch nodename '~p'", [whapps_call:switch_hostname(Call)]),
+            maybe_play_name(Conference, Call, Srv),
             conf_participant:set_conference(Conference, Srv),
             conf_participant:join_local(Srv),
             wait_for_creation(Conference)
@@ -222,11 +222,13 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
 
 -spec maybe_play_name(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 maybe_play_name(Conference, Call, Srv) ->
-    case whapps_conference:play_name_on_join(Conference) of
+    case whapps_conference:play_name_on_join(Conference)
+        andalso ?SUPPORT_NAME_ANNOUNCEMENT
+    of
         'true' ->
             PronouncedName = case conf_pronounced_name:lookup_name(Call) of
                                  'undefined' ->
-                                     lager:debug("Recording pronunciation of the name"),
+                                     lager:debug("recording pronunciation of the name"),
                                      conf_pronounced_name:record(Call);
                                  Value ->
                                      lager:debug("has pronounced name: ~p", [Value]),
@@ -255,7 +257,9 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
             conf_participant:join_local(Srv);
         _Else ->
             lager:debug("running conference is on a different switch, bridging to ~s: ~p", [_Else, JObj]),
-            conf_participant:set_conference(Conference, Srv),
+            ParticipantHostname = wh_json:get_value(<<"Switch-Hostname">>, hd(wh_json:get_value(<<"Participants">>, JObj))),
+            Conference2 = whapps_conference:set_focus(ParticipantHostname, Conference),
+            conf_participant:set_conference(Conference2, Srv),
             conf_participant:join_remote(Srv, JObj)
     end.
 
@@ -264,13 +268,13 @@ discovery_failed(Call, _) -> whapps_call_command:hangup(Call).
 
 -spec validate_conference_id(api_binary(), whapps_call:call()) ->
                                     {'ok', whapps_conference:conference()} |
-                                    {'error', _}.
+                                    {'error', any()}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
 
 -spec validate_conference_id(api_binary(), whapps_call:call(), pos_integer()) ->
                                     {'ok', whapps_conference:conference()} |
-                                    {'error', _}.
+                                    {'error', any()}.
 validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
     lager:debug("caller has failed to provide a valid conference number to many times"),
     _ = whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
@@ -295,7 +299,7 @@ validate_conference_id(ConferenceId, Call, Loop) ->
 
 -spec validate_collected_conference_id(whapps_call:call(), non_neg_integer(), binary()) ->
                                               {'ok', whapps_conference:conference()} |
-                                              {'error', _}.
+                                              {'error', any()}.
 validate_collected_conference_id(Call, Loop, Digits) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{'key', Digits}
@@ -313,7 +317,7 @@ validate_collected_conference_id(Call, Loop, Digits) ->
 
 -spec validate_conference_pin(api_boolean(), whapps_conference:conference(), whapps_call:call(), pos_integer()) ->
                                      {'ok', whapps_conference:conference()} |
-                                     {'error', term()}.
+                                     {'error', any()}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     lager:debug("caller has failed to provide a valid conference pin to many times"),
     _ = whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
@@ -342,7 +346,7 @@ validate_conference_pin(_, Conference, Call, Loop) ->
 
 -spec validate_if_pin_is_for_moderator(whapps_conference:conference(), whapps_call:call(), non_neg_integer(), binary()) ->
                                               {'ok', whapps_conference:conference()} |
-                                              {'error', _}.
+                                              {'error', any()}.
 validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
     MemberPins = whapps_conference:member_pins(Conference),
     ModeratorPins = whapps_conference:moderator_pins(Conference),
@@ -368,7 +372,7 @@ validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
 
 -spec validate_collected_member_pins(whapps_conference:conference(), whapps_call:call(), non_neg_integer(), binary()) ->
                                             {'ok', whapps_conference:conference()} |
-                                            {'error', _}.
+                                            {'error', any()}.
 validate_collected_member_pins(Conference, Call, Loop, Digits) ->
     Pins = whapps_conference:member_pins(Conference),
     case lists:member(Digits, Pins)
@@ -385,7 +389,7 @@ validate_collected_member_pins(Conference, Call, Loop, Digits) ->
 
 -spec validate_collected_conference_pin(whapps_conference:conference(), whapps_call:call(), pos_integer(), binary()) ->
                                                {'ok', whapps_conference:conference()} |
-                                               {'error', _}.
+                                               {'error', any()}.
 validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
     Pins = whapps_conference:moderator_pins(Conference),
     case lists:member(Digits, Pins)

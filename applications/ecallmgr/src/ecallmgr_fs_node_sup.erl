@@ -31,11 +31,6 @@
 
 -include("ecallmgr.hrl").
 
--define(CHILD(Name, Mod, Args), fun(N, 'ecallmgr_fs_event_stream_sup' = M, A) ->
-                                        {N, {M, 'start_link', A}, 'permanent', 'infinity', 'supervisor', [N]};
-                                   (N, M, A) ->
-                                        {N, {M, 'start_link', A}, 'permanent', 6 * ?MILLISECONDS_IN_SECOND, 'worker', [N]}
-                                end(Name, Mod, Args)).
 -define(CHILDREN, [<<"node">>, <<"authn">>, <<"route">>, <<"channel">>
                    ,<<"config">>, <<"resource">>, <<"notify">>
                    ,<<"conference">>
@@ -49,12 +44,11 @@
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% Starts the supervisor
-%% @end
+%% @doc Starts the supervisor
 %%--------------------------------------------------------------------
 -spec start_link(atom(), wh_proplist()) -> startlink_ret().
-start_link(Node, Options) -> supervisor:start_link({'local', Node}, ?MODULE, [Node, Options]).
+start_link(Node, Options) ->
+    supervisor:start_link({'local', Node}, ?MODULE, [Node, Options]).
 
 node_srv(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "edon_").
@@ -114,20 +108,33 @@ init([Node, Options]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     NodeB = wh_util:to_binary(Node),
-    Children = [ begin
-                     Name = wh_util:to_atom(<<NodeB/binary, "_", H/binary>>, 'true'),
-                     Mod = wh_util:to_atom(<<"ecallmgr_fs_", H/binary>>, 'true'),
-                     lager:debug("starting handler ~s", [Name]),
-                     ?CHILD(Name, Mod, [Node, Options])
-                 end
-                 || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)
-               ],
+    Args = [Node, Options],
+    Children = [ child_name(NodeB, Args, H) || H <- ecallmgr_config:get(<<"modules">>, ?CHILDREN)],
 
     {'ok', {SupFlags, Children}}.
 
--spec srv([{atom(), pid(), _, _},...] | [], list()) -> api_pid().
+-spec child_name(binary(), list(), binary() | tuple()) -> any().
+child_name(NodeB, Args, {<<"supervisor">>, Module}) ->
+    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?SUPER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, {<<"worker">>, Module}) ->
+    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?WORKER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, <<"event_stream_sup">>=Module) ->
+    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?SUPER_NAME_ARGS(Mod, Name, Args);
+child_name(NodeB, Args, <<_/binary>>=Module) ->
+    Name = wh_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = wh_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    ?WORKER_NAME_ARGS(Mod, Name, Args).
+
+-spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';
 srv([{Name, Pid, _, _} | Children], Suffix) ->
+    %% FIXME: use lists:suffix
     case lists:prefix(Suffix, lists:reverse(wh_util:to_list(Name))) of
         'true' -> Pid;
         'false' -> srv(Children, Suffix)

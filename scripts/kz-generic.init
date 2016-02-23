@@ -11,7 +11,7 @@
 . /etc/rc.d/init.d/functions
 
 KZ_DIR="/opt/kazoo"
-KZ_APP=`basename $0`
+KZ_APP=$(basename $0)
 KZ_APP=${KZ_APP#*-}
 LOCKFILE=${LOCKFILE-/var/lock/subsys/${KZ_APP}}
 USER="kazoo"
@@ -36,7 +36,7 @@ start() {
     cd ${KZ_DIR}
     export HOME=${KZ_DIR}
     export ERL_CRASH_DUMP=$(date +%s)_${KZ_APP}_erl_crash.dump
-    export ERL_LIBS=${KZ_DIR}/deps:${KZ_DIR}/core:${KZ_DIR}/applications
+    export ERL_LIBS="$ERL_LIBS":${KZ_DIR}/deps:${KZ_DIR}/core:${KZ_DIR}/applications
     ensure_cookie
     daemon --user=${USER} --pidfile="nofile" "erl -name ${KZ_APP} -args_file /etc/kazoo/vm.args -detached -s ${KZ_APP} >/dev/null &"
     RETVAL=$?

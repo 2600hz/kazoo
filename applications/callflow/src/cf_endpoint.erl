@@ -10,14 +10,15 @@
 %%%-------------------------------------------------------------------
 -module(cf_endpoint).
 
--include("callflow.hrl").
-
 -export([get/1, get/2]).
 -export([flush_account/1, flush/2]).
 -export([build/2, build/3]).
 -export([create_call_fwd_endpoint/3
          ,create_sip_endpoint/3
         ]).
+
+-include("callflow.hrl").
+-include_lib("whistle/include/wapi_conf.hrl").
 
 -define(NON_DIRECT_MODULES, ['cf_ring_group', 'acdc_util']).
 
@@ -70,18 +71,15 @@
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get(whapps_call:call()) ->
-                 {'ok', wh_json:object()} |
-                 {'error', _}.
--spec get(api_binary(), ne_binary() | whapps_call:call()) ->
-                 {'ok', wh_json:object()} |
-                 {'error', _}.
+-spec get(whapps_call:call()) -> cf_api_std_return().
+-spec get(api_binary(), ne_binary() | whapps_call:call()) -> cf_api_std_return().
+
 get(Call) -> get(whapps_call:authorizing_id(Call), Call).
 
 get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
-    case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}) of
+    case kz_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}) of
         {'ok', Endpoint} -> {'ok', Endpoint};
         {'error', 'not_found'} ->
             maybe_fetch_endpoint(EndpointId, AccountDb)
@@ -106,7 +104,7 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
                                  {'error', 'not_device_nor_user'}.
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
     EndpointTypes = [<<"device">>, <<"user">>, <<"account">>],
-    EndpointType = wh_doc:type(JObj),
+    EndpointType = endpoint_type_as(wh_doc:type(JObj)),
     case lists:member(EndpointType, EndpointTypes) of
         'false' ->
             lager:info("endpoint module does not manage document type ~s", [EndpointType]),
@@ -115,12 +113,16 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
             has_endpoint(JObj, EndpointId, AccountDb, EndpointType)
     end.
 
+-spec endpoint_type_as(api_binary()) -> api_binary().
+endpoint_type_as(<<"click2call">>) -> <<"device">>;
+endpoint_type_as(Type) -> Type.
+
 -spec has_endpoint(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
                           {'ok', wh_json:object()}.
 has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
     Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
-    catch wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+    catch kz_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
     {'ok', Endpoint}.
 
 -spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) -> list().
@@ -175,28 +177,27 @@ merge_attributes(Endpoint, Type) ->
            ],
     merge_attributes(Endpoint, Type, Keys).
 
-merge_attributes(Endpoint, <<"user">>, Keys) ->
-    merge_attributes(Keys, 'undefined', 'undefined', Endpoint);
-merge_attributes(Endpoint, _Type, Keys) ->
-    merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
+merge_attributes(Owner, <<"user">>, Keys) ->
+    case kz_account:fetch(wh_doc:account_id(Owner)) of
+        {'ok', Account} -> merge_attributes(Keys, Account, wh_json:new(), Owner);
+        {'error', _} -> merge_attributes(Keys, wh_json:new(), wh_json:new(), Owner)
+    end;
+merge_attributes(Device, <<"device">>, Keys) ->
+    Owner = get_user(wh_doc:account_db(Device), Device),
+    Endpoint = wh_json:set_value(<<"owner_id">>, wh_doc:id(Owner), Device),
+    case kz_account:fetch(wh_doc:account_id(Device)) of
+        {'ok', Account} -> merge_attributes(Keys, Account, Endpoint, Owner);
+        {'error', _} -> merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
+    end;
+merge_attributes(Account, <<"account">>, Keys) ->
+   merge_attributes(Keys, Account, wh_json:new(), wh_json:new());
+merge_attributes(Endpoint, Type, _Keys) ->
+    lager:debug("unhandled endpoint type on merge attributes : ~p : ~p", [Type, Endpoint]),
+    wh_json:new().
 
 -spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
                               wh_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
-merge_attributes(Keys, Account, Endpoint, 'undefined') ->
-    AccountDb = wh_doc:account_db(Endpoint),
-    JObj = get_user(AccountDb, Endpoint),
-    merge_attributes(Keys
-                     ,Account
-                     ,wh_json:set_value(<<"owner_id">>, wh_doc:id(JObj), Endpoint)
-                     ,JObj);
-merge_attributes(Keys, Account, 'undefined', Owner) ->
-    merge_attributes(Keys, Account, wh_json:new(), Owner);
-merge_attributes(Keys, 'undefined', Endpoint, Owner) ->
-    case kz_account:fetch(wh_doc:account_id(Endpoint)) of
-        {'ok', JObj} -> merge_attributes(Keys, JObj, Endpoint, Owner);
-        {'error', _} -> merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
-    end;
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
     Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),
     Update = merge_call_restrictions(Classifiers, Account, Endpoint, Owner),
@@ -270,7 +271,7 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
     Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
-                                     ,fun(_, V) -> wh_util:is_not_empty(V) end
+                                     ,fun(_, V) -> not wh_util:is_empty(V) end
                                     ),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
 
@@ -281,7 +282,7 @@ merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) -
             'true' -> [AccountJAttr, UserJAttr, EndpointJAttr];
             'false' -> [AccountJAttr, EndpointJAttr, UserJAttr]
         end,
-    wh_json:merge_recursive(Merging, fun(_, V) -> wh_util:is_not_empty(V) end).
+    wh_json:merge_recursive(Merging, fun(_, V) -> not wh_util:is_empty(V) end).
 
 -spec get_record_call_properties(wh_json:object()) -> wh_json:object().
 get_record_call_properties(JObj) ->
@@ -454,11 +455,11 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 %% Flush the callflow cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush_account(ne_binary()) -> _.
--spec flush(ne_binary(), ne_binary()) -> _.
+-spec flush_account(ne_binary()) -> any().
+-spec flush(ne_binary(), ne_binary()) -> any().
 flush_account(AccountDb) ->
     ToRemove =
-        wh_cache:filter_local(?CALLFLOW_CACHE, fun({?MODULE, Db, _Id}, _Value) ->
+        kz_cache:filter_local(?CALLFLOW_CACHE, fun({?MODULE, Db, _Id}, _Value) ->
                                                        Db =:= AccountDb;
                                                   (_, _) -> 'false'
                                                end),
@@ -466,18 +467,21 @@ flush_account(AccountDb) ->
     'ok'.
 
 flush(Db, Id) ->
-    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}),
+    kz_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}),
     {'ok', Rev} = couch_mgr:lookup_doc_rev(Db, Id),
     Props =
         [{<<"ID">>, Id}
          ,{<<"Database">>, Db}
          ,{<<"Rev">>, Rev}
-         ,{<<"Type">>, <<"device">>}
-         | wh_api:default_headers(<<"configuration">>, <<"doc_edited">>
-                                      ,?APP_NAME, ?APP_VERSION)
+         ,{<<"Type">>, kz_device:type()}
+         | wh_api:default_headers(<<"configuration">>
+                                  ,?DOC_EDITED
+                                  ,?APP_NAME
+                                  ,?APP_VERSION
+                                 )
         ],
     Fun = fun(P) ->
-                  wapi_conf:publish_doc_update('edited', Db, <<"device">>, Id, P)
+                  wapi_conf:publish_doc_update('edited', Db, kz_device:type(), Id, P)
           end,
     whapps_util:amqp_pool_send(Props, Fun).
 
@@ -516,26 +520,36 @@ build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
         {'error', _}=E -> E
     end;
 build(Endpoint, Properties, Call) ->
-    case should_create_endpoint(Endpoint, Properties, Call) of
-        'ok' -> create_endpoints(Endpoint, Properties, Call);
+    Call1 = maybe_rewrite_caller_id(Endpoint, Call),
+    case should_create_endpoint(Endpoint, Properties, Call1) of
+        'ok' -> create_endpoints(Endpoint, Properties, Call1);
         {'error', _}=E -> E
     end.
 
+-spec maybe_rewrite_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+maybe_rewrite_caller_id(Endpoint, Call) ->
+    case wh_json:get_ne_value(<<"caller_id_options">>, Endpoint) of
+        'undefined' -> Call;
+        CidOptions  ->
+            whapps_call:maybe_format_caller_id(Call, wh_json:get_value(<<"format">>, CidOptions))
+    end.
+
 -spec should_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                          'ok' | {'error', _}.
+                                          'ok' | {'error', any()}.
 should_create_endpoint(Endpoint, Properties, Call) ->
     Routines = [fun maybe_missing_resource_type/3
                 ,fun maybe_owner_called_self/3
                 ,fun maybe_endpoint_called_self/3
                 ,fun maybe_endpoint_disabled/3
                 ,fun maybe_do_not_disturb/3
+                ,fun maybe_exclude_from_queues/3
                ],
     should_create_endpoint(Routines, Endpoint, Properties, Call).
 
 -type ep_routine_v() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) -> 'ok' | _).
 -type ep_routines_v() :: [ep_routine_v()].
 -spec should_create_endpoint(ep_routines_v(), wh_json:object(), wh_json:object(),  whapps_call:call()) ->
-                                          'ok' | {'error', _}.
+                                          'ok' | {'error', any()}.
 should_create_endpoint([], _, _, _) -> 'ok';
 should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_function(Routine, 3) ->
     case Routine(Endpoint, Properties, Call) of
@@ -661,6 +675,17 @@ maybe_do_not_disturb(Endpoint, _, _) ->
             {'error', 'do_not_disturb'}
     end.
 
+-spec maybe_exclude_from_queues(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                        'ok' |
+                                        {'error', 'exclude_from_queues'}.
+maybe_exclude_from_queues(Endpoint, _, Call) ->
+    case is_binary(whapps_call:custom_channel_var(<<"Queue-ID">>, Call))
+        andalso wh_json:is_true(<<"exclude_from_queues">>, Endpoint)
+    of
+        'false' -> 'ok';
+        'true' -> {'error', 'exclude_from_queues'}
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -681,9 +706,16 @@ create_endpoints(Endpoint, Properties, Call) ->
     case lists:foldl(Fun, [], Routines) of
         [] -> {'error', 'no_endpoints'};
         Endpoints ->
-            cf_util:maybe_start_metaflows(Call, Endpoints),
+            maybe_start_metaflows(Call, Endpoints),
             {'ok', Endpoints}
     end.
+
+maybe_start_metaflows(Call, Endpoints) ->
+    maybe_start_metaflows(whapps_call:call_id_direct(Call), Call, Endpoints).
+
+maybe_start_metaflows('undefined', _Call, _Endpoints) -> 'ok';
+maybe_start_metaflows(_, Call, Endpoints) ->
+    cf_util:maybe_start_metaflows(Call, Endpoints).
 
 -type ep_routine() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  {'error', _} | wh_json:object()).
@@ -853,47 +885,20 @@ get_clid(Endpoint, Properties, Call, Type) ->
 
 -spec maybe_record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
 maybe_record_call(Endpoint, Call) ->
-    case is_call_recording(Call) orelse is_sms(Call) of
+    case is_sms(Call)
+        orelse whapps_call:call_id_direct(Call) =:= 'undefined'
+    of
         'true' -> 'ok';
-        'false' -> maybe_start_call_recording(wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()), Call)
+        'false' ->
+            Data = wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()),
+            _ = cf_util:maybe_start_call_recording(Data, Call),
+            'ok'
     end.
-
--spec is_call_recording(whapps_call:call()) -> boolean().
-is_call_recording(Call) ->
-    case wh_cache:peek_local(?CALLFLOW_CACHE, call_recording_cache_key(Call)) of
-        {'ok', _} -> 'true';
-        {'error', 'not_found'} -> 'false'
-    end.
-
--spec call_recording_cache_key(whapps_call:call()) ->
-                                      {?MODULE, 'recording', ne_binary()}.
-call_recording_cache_key(Call) ->
-    {?MODULE, 'recording', whapps_call:call_id(Call)}.
-
--spec maybe_start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
-maybe_start_call_recording(RecordCall, Call) ->
-    case wh_util:is_empty(RecordCall) of
-        'true' -> 'ok';
-        'false' -> start_call_recording(RecordCall, Call)
-    end.
-
--spec start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
-start_call_recording(RecordCall, Call) ->
-    wh_cache:store_local(
-      ?CALLFLOW_CACHE
-      ,call_recording_cache_key(Call)
-      ,'true'
-      ,[{'expires', 60}]
-     ),
-    Data = wh_json:set_value(<<"spawned">>, 'true', RecordCall),
-    _P = wh_util:spawn('cf_record_call', 'handle', [Data, Call]),
-    lager:debug("spawned record_call handler in ~p", [_P]).
 
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
     Clid = get_clid(Endpoint, Properties, Call),
-    _ = maybe_record_call(Endpoint, Call),
     create_sip_endpoint(Endpoint, Properties, Clid, Call).
 
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), clid(), whapps_call:call()) ->
@@ -941,7 +946,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
 -spec maybe_get_t38(wh_json:object(), whapps_call:call()) -> wh_proplist().
 maybe_get_t38(Endpoint, Call) ->
     Opt =
-        case cf_endpoint:get(Call) of
+        case ?MODULE:get(Call) of
             {'ok', JObj} -> wh_json:is_true([<<"media">>, <<"fax_option">>], JObj);
             {'error', _} -> 'undefined'
         end,
@@ -1026,7 +1031,7 @@ get_sip_transport(SIPJObj) ->
         Transport -> Transport
     end.
 
--spec validate_sip_transport(_) -> api_binary().
+-spec validate_sip_transport(any()) -> api_binary().
 validate_sip_transport(<<"tcp">>) -> <<"tcp">>;
 validate_sip_transport(<<"udp">>) -> <<"udp">>;
 validate_sip_transport(<<"tls">>) -> <<"tls">>;
@@ -1094,7 +1099,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
            end,
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, whapps_call:request_user(Call))}
-            ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary, "/context_2">>}
+            ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary>>}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
             ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
@@ -1214,8 +1219,23 @@ generate_sip_headers(Endpoint, Acc, Call) ->
     HeaderFuns = [fun maybe_add_sip_headers/1
                   ,fun(J) -> maybe_add_alert_info(J, Endpoint, Inception) end
                   ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
+                  ,fun(J) -> maybe_add_diversion(J, Endpoint, Inception, Call) end
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, Acc, HeaderFuns).
+
+-spec maybe_add_diversion(wh_json:object(), wh_json:object(), api_binary(), whapps_call:call()) -> wh_json:object().
+maybe_add_diversion(JObj, Endpoint, _Inception, Call) ->
+    ShouldAddDiversion = whapps_call:authorizing_id(Call) =:= 'undefined'
+                         andalso wh_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], Endpoint, 'false')
+                         andalso whapps_config:get_is_true(?CF_CONFIG_CAT, <<"should_add_diversion_header">>, 'false'),
+    case ShouldAddDiversion of
+        'true' ->
+            Diversion = list_to_binary(["<sip:", whapps_call:request(Call), ">", ";reason=unconditional"]),
+            lager:debug("add diversion as ~s", [Diversion]),
+            Diversions = wh_json:get_list_value(<<"Diversions">>, JObj, []),
+            wh_json:set_value(<<"Diversions">>, [Diversion | Diversions], JObj);
+        'false' -> JObj
+    end.
 
 -spec maybe_add_sip_headers(wh_json:object()) -> wh_json:object().
 maybe_add_sip_headers(JObj) ->
@@ -1273,6 +1293,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                ,fun maybe_set_encryption_flags/1
                ,fun set_sip_invite_domain/1
                ,fun maybe_set_call_waiting/1
+               ,fun maybe_auto_answer/1
               ],
     Acc0 = {Endpoint, Call, CallFwd, wh_json:new()},
     {_Endpoint, _Call, _CallFwd, JObj} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
@@ -1328,8 +1349,27 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
      ,wh_json:set_values([{<<"Call-Forward">>, <<"true">>}
                           ,{<<"Authorizing-Type">>, <<"device">>}
+                          | bowout_settings(whapps_call:call_id_direct(Call) =:= 'undefined')
                          ], JObj)
     }.
+
+-spec bowout_settings(boolean()) -> wh_proplist().
+bowout_settings('true') ->
+     [{<<"Simplify-Loopback">>, <<"true">>}
+      ,{<<"Loopback-Bowout">>, <<"true">>}
+     ];
+bowout_settings('false') ->
+     [{<<"Simplify-Loopback">>, <<"false">>}
+      ,{<<"Loopback-Bowout">>, <<"true">>}
+     ].
+
+-spec maybe_auto_answer(ccv_acc()) -> ccv_acc().
+maybe_auto_answer({Endpoint, Call, CallFwd, JObj}=Acc) ->
+    case whapps_call:custom_channel_var(<<"Auto-Answer-Loopback">>, Call) of
+        'undefined' -> Acc;
+        AutoAnswer ->
+            {Endpoint, Call, CallFwd, wh_json:set_value(<<"Auto-Answer">>, AutoAnswer, JObj)}
+    end.
 
 -spec maybe_set_confirm_properties(ccv_acc()) -> ccv_acc().
 maybe_set_confirm_properties({Endpoint, Call, CallFwd, JObj}=Acc) ->

@@ -11,7 +11,7 @@
 -module(ecallmgr_fs_xml).
 
 -export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
-         ,route_resp_xml/1 ,authn_resp_xml/1, reverse_authn_resp_xml/1
+         ,route_resp_xml/2 ,authn_resp_xml/1, reverse_authn_resp_xml/1
          ,acl_xml/1, not_found/0, empty_response/0
          ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
          ,sip_channel_xml/1
@@ -49,13 +49,11 @@ sip_profiles_xml(JObj) ->
 
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
+-spec sip_channel_xml(wh_proplist()) -> {'ok', iolist()}.
 sip_channel_xml(Props) ->
     ParamsEl = params_el([param_el(K, V) || {K, V} <- Props]),
-
     ChannelEl = channel_el(props:get_value(<<"uuid">>, Props), ParamsEl),
-
     SectionEl = section_el(<<"channels">>, ChannelEl),
-
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 -spec authn_resp_xml(api_terms()) -> {'ok', iolist()}.
@@ -216,12 +214,13 @@ conference_profile_xml(Name, Params) ->
     ParamEls = [param_el(K, V) || {K, V} <- wh_json:to_proplist(Params)],
     profile_el(Name, ParamEls).
 
--spec route_resp_xml(api_terms()) -> {'ok', iolist()}.
-route_resp_xml([_|_]=RespProp) -> route_resp_xml(wh_json:from_list(RespProp));
-route_resp_xml(RespJObj) ->
+-spec route_resp_xml(api_terms(), wh_proplist()) -> {'ok', iolist()}.
+route_resp_xml([_|_]=RespProp, Props) -> route_resp_xml(wh_json:from_list(RespProp), Props);
+route_resp_xml(RespJObj, Props) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj)
                    ,wh_json:get_value(<<"Routes">>, RespJObj, [])
                    ,RespJObj
+                   , Props
                   ).
 
 %% Prop = Route Response
@@ -266,8 +265,8 @@ should_bypass_media(RouteJObj) ->
         _ -> "false" %% default to not bypassing media
     end.
 
--spec route_resp_xml(ne_binary(), wh_json:objects(), wh_json:object()) -> {'ok', iolist()}.
-route_resp_xml(<<"bridge">>, Routes, JObj) ->
+-spec route_resp_xml(ne_binary(), wh_json:objects(), wh_json:object(), wh_proplist()) -> {'ok', iolist()}.
+route_resp_xml(<<"bridge">>, Routes, JObj, Props) ->
     lager:debug("creating a bridge XML response"),
     LogEl = route_resp_log_winning_node(),
     RingbackEl = route_resp_ringback(JObj),
@@ -277,30 +276,32 @@ route_resp_xml(<<"bridge">>, Routes, JObj) ->
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
-    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
-    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ Extensions ++ [FailExtEl]),
+    Context = hunt_context(Props),
+    ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ unset_custom_sip_headers(Props) ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"park">>, _Routes, JObj) ->
+route_resp_xml(<<"park">>, _Routes, JObj, Props) ->
     Exten = [route_resp_log_winning_node()
              ,route_resp_set_winning_node()
              ,route_resp_bridge_id()
              ,route_resp_ringback(JObj)
              ,route_resp_transfer_ringback(JObj)
              ,route_resp_pre_park_action(JObj)
-             | route_resp_ccvs(JObj) ++ [action_el(<<"park">>)]
+             ,maybe_start_dtmf_action(Props)
+             | route_resp_ccvs(JObj) ++ unset_custom_sip_headers(Props) ++ [action_el(<<"park">>)]
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
-    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ParkExtEl]),
+    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
+    ContextEl = context_el(Context, [ParkExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"error">>, _Routes, JObj) ->
+route_resp_xml(<<"error">>, _Routes, JObj, Props) ->
     Section = wh_json:get_value(<<"Fetch-Section">>, JObj, <<"dialplan">>),
-    route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj);
+    route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj, Props);
 
-route_resp_xml(<<"dialplan_error">>, _Routes, JObj) ->
+route_resp_xml(<<"dialplan_error">>, _Routes, JObj, _Props) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -315,7 +316,7 @@ route_resp_xml(<<"dialplan_error">>, _Routes, JObj) ->
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"chatplan_error">>, _Routes, JObj) ->
+route_resp_xml(<<"chatplan_error">>, _Routes, JObj, _Props) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [action_el(<<"reply">>, [ErrCode, ErrMsg])],
@@ -324,16 +325,16 @@ route_resp_xml(<<"chatplan_error">>, _Routes, JObj) ->
     SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"sms">>, _Routes, JObj) ->
+route_resp_xml(<<"sms">>, _Routes, _JObj, Props) ->
     lager:debug("creating a chatplan XML response"),
     StopActionEl = action_el(<<"stop">>, <<"stored">>),
     StopExtEl = extension_el(<<"chat plan">>, <<"false">>, [condition_el([StopActionEl])]),
-    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
+    Context = hunt_context(Props),
     ContextEl = context_el(Context, [StopExtEl]),
     SectionEl = section_el(<<"chatplan">>, <<"Chat Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"sms_error">>, _Routes, JObj) ->
+route_resp_xml(<<"sms_error">>, _Routes, JObj, _Props) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -346,8 +347,18 @@ route_resp_xml(<<"sms_error">>, _Routes, JObj) ->
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 route_resp_bridge_id() ->
-    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)]),
+    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)], 'true'),
     condition_el(Action, ?GET_CCV(<<"Bridge-ID">>), <<"^$">>).
+
+-spec unset_custom_sip_headers(wh_proplist()) -> xml_els().
+unset_custom_sip_headers(Props) ->
+    case get_custom_sip_headers(Props) of
+        [] -> [];
+        [{K,_}] -> [action_el(<<"unset">>, K)];
+        [{K1, _} | KVs] ->
+            Keys = ["^^;", K1] ++ [<<";", K/binary>> || {K, _} <- KVs],
+            [action_el(<<"multiunset">>, list_to_binary(Keys))]
+    end.
 
 -spec not_found() -> {'ok', iolist()}.
 not_found() ->
@@ -378,13 +389,15 @@ route_resp_ringback(JObj) ->
 route_resp_ccvs(JObj) ->
     case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
         'undefined' -> [];
-        CCVs ->
-            wh_json:foldl(fun route_resp_ccv/3, [], CCVs)
+        CCVs -> [action_el(<<"kz_multiset">>, route_ccvs_list(wh_json:to_proplist(CCVs)) )]
     end.
 
--spec route_resp_ccv(wh_json:key(), wh_json:json_term(), xml_els()) -> xml_els().
-route_resp_ccv(Key, Value, Els) ->
-    [action_el(<<"set">>, ecallmgr_util:get_fs_kv(Key, Value)) | Els].
+-spec route_ccvs_list(wh_proplist()) -> ne_binary().
+route_ccvs_list(CCVs) ->
+    L = [wh_util:to_list(ecallmgr_util:get_fs_kv(K, V))
+         || {K, V} <- CCVs
+        ],
+    <<"^^;", (wh_util:to_binary(string:join(L, ";")))/binary>>.
 
 -spec route_resp_transfer_ringback(wh_json:object()) -> xml_el().
 route_resp_transfer_ringback(JObj) ->
@@ -404,6 +417,20 @@ route_resp_pre_park_action(JObj) ->
         <<"ring_ready">> -> action_el(<<"ring_ready">>);
         <<"answer">> -> action_el(<<"answer">>);
         _Else -> 'undefined'
+    end.
+
+-spec maybe_start_dtmf_action(wh_proplist()) -> 'undefined' | xml_el().
+maybe_start_dtmf_action(Props) ->
+    case ecallmgr_config:is_true(<<"should_detect_inband_dtmf">>) of
+        'false' -> 'undefined';
+        'true' -> check_dtmf_type(Props)
+    end.
+
+-spec check_dtmf_type(wh_proplist()) -> 'undefined' | xml_el().
+check_dtmf_type(Props) ->
+    case props:get_value(<<"variable_switch_r_sdp">>, Props, <<"101 telephone-event">>) of
+        <<"101 telephone-event">> -> 'undefined';
+        _ -> action_el(<<"start_dtmf">>)
     end.
 
 -spec get_leg_vars(wh_json:object() | wh_proplist()) -> iolist().
@@ -488,6 +515,12 @@ get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
 get_channel_vars({<<"Enable-T38-Gateway">>, Direction}, Vars) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">> | Vars];
 
+get_channel_vars({<<"Confirm-File">>, V}, Vars) ->
+    [list_to_binary(["group_confirm_file='"
+        ,wh_util:to_list(ecallmgr_util:media_path(V, 'extant', get('callid'), wh_json:new()))
+        ,"'"
+    ]) | Vars];
+
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> Vars;
@@ -570,9 +603,19 @@ get_channel_params_fold(Key, Val) ->
             {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
     end.
 
--spec get_custom_sip_headers(wh_json:object()) -> wh_json:json_proplist().
+-spec get_custom_sip_headers(wh_json:object() | wh_proplist()) -> wh_json:json_proplist().
+get_custom_sip_headers([_|_]=Props) ->
+    [normalize_custom_sip_header_name(P) || P <- props:filter(fun is_custom_sip_header/1, Props)];
 get_custom_sip_headers(JObj) ->
     wh_json:to_proplist(wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())).
+
+-spec normalize_custom_sip_header_name(any()) -> any().
+normalize_custom_sip_header_name({<<"variable_", K/binary>>, V}) -> {K, V};
+normalize_custom_sip_header_name(A) -> A.
+
+-spec is_custom_sip_header(any()) -> boolean().
+is_custom_sip_header({<<"variable_sip_h_X-", _/binary>>, _}) -> 'true';
+is_custom_sip_header(_) -> 'false'.
 
 -spec arrange_acl_node({ne_binary(), wh_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
@@ -588,6 +631,10 @@ arrange_acl_node({_, JObj}, Dict) ->
             lager:debug("creating new list xml for ~s", [AclList]),
             orddict:store(AclList, prepend_child(acl_list_el(AclList), NodeEl), Dict)
     end.
+
+-spec hunt_context(wh_proplist()) -> api_binary().
+hunt_context(Props) ->
+    props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
 %%%-------------------------------------------------------------------
 %% XML record creators and helpers
@@ -632,9 +679,12 @@ config_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
+-spec channel_el(api_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
+channel_el('undefined', Content) -> Content;
 channel_el(UUID, Content) ->
     channel_el(UUID, <<"channel ", (wh_util:to_binary(UUID))/binary, " tracked by kazoo">>, Content).
 
+-spec channel_el(ne_binary(), ne_binary(), xml_el() | xml_els()) -> xml_el().
 channel_el(UUID, Desc, #xmlElement{}=Content) ->
     channel_el(UUID, Desc, [Content]);
 channel_el(UUID, Desc, Content) ->
@@ -832,14 +882,14 @@ extension_el(Children) ->
 extension_el(Name, 'undefined', Children) ->
     #xmlElement{name='extension'
                 ,attributes=[xml_attrib('name', Name)]
-                ,content=Children
+                ,content=[Child || Child <- Children, Child =/= 'undefined']
                };
 extension_el(Name, Continue, Children) ->
     #xmlElement{name='extension'
                 ,attributes=[xml_attrib('name', Name)
                              ,xml_attrib('continue', wh_util:is_true(Continue))
                             ]
-                ,content=Children
+                ,content=[Child || Child <- Children, Child =/= 'undefined']
                }.
 
 -spec condition_el(xml_el() | xml_els() | 'undefined') -> xml_el().
@@ -863,6 +913,7 @@ condition_el(Children, Field, Expression) ->
 
 -spec action_el(xml_attrib_value()) -> xml_el().
 -spec action_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec action_el(xml_attrib_value(), xml_attrib_value(), boolean()) -> xml_el().
 action_el(App) ->
     #xmlElement{name='action'
                 ,attributes=[xml_attrib('application', App)]
@@ -871,6 +922,13 @@ action_el(App, Data) ->
     #xmlElement{name='action'
                 ,attributes=[xml_attrib('application', App)
                              ,xml_attrib('data', Data)
+                            ]
+               }.
+action_el(App, Data, Inline) ->
+    #xmlElement{name='action'
+                ,attributes=[xml_attrib('application', App)
+                             ,xml_attrib('data', Data)
+							 ,xml_attrib('inline', wh_util:to_binary(Inline))
                             ]
                }.
 
