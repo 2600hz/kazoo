@@ -71,6 +71,6 @@ dialyze: $(PLT) compile
 	@$(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE)
 
 
-xref: TO_XREF = $(EBINS)
+xref: TO_XREF = ebin/  #FIXME: set TO_XREF to an app's dependencies' ebin/ directories
 xref: compile
 	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
