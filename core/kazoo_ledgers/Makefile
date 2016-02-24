@@ -5,4 +5,4 @@ EBINS = $(ROOT)/core/kazoo_ledgers/ebin
 
 all: compile
 
--include $(ROOT)/make/kz.mk
+include ../kz.mk
