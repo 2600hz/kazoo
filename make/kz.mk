@@ -73,4 +73,4 @@ dialyze: $(PLT) compile
 
 xref: TO_XREF = ebin/  #FIXME: set TO_XREF to an app's dependencies' ebin/ directories
 xref: compile
-	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
+	@ERL_LIBS=$(ELIBS):$(ROOT)/applications $(ROOT)/scripts/check-xref.escript $(TO_XREF)
