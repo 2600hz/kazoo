@@ -310,7 +310,7 @@ find_enabled_apps_fold(AppName, PlanApp, Acc, DefaultApps) ->
             Acc;
         AppJObj ->
             lager:debug("including app ~s(~s) from plan", [AppName, AppId]),
-            [AppJObj|Acc]
+            [wh_json:delete_key(<<"published">>, AppJObj)|Acc]
     end.
 
 %%--------------------------------------------------------------------
