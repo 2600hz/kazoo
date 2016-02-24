@@ -8,7 +8,7 @@ KAZOODIRS = core/Makefile applications/Makefile
 all: compile rel/dev-vm.args
 
 compile: ACTION = all
-compile: dependencies $(KAZOODIRS)
+compile: deps $(KAZOODIRS)
 
 $(KAZOODIRS):
 	$(MAKE) -C $(@D) $(ACTION)
