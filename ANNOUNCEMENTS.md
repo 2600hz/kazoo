@@ -30,7 +30,9 @@ Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward 
 
 #### Number Manager
 
-Upgrading to 4.0 will shift number management from `core/whistle_number_manager` to `core/kazoo_number_manager`. The upgrade process *should* be seamless from the user's perspective.
+Upgrading to 4.0 will shift number management from `core/whistle_number_manager` to `core/kazoo_number_manager`.
+The upgrade process *should* be seamless from the user's perspective, with some exceptions:
+* API calls for attachments and port requests all go to `cb_port_requests`
 
 #### CouchDB
 
