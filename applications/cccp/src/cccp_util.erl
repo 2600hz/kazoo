@@ -288,7 +288,7 @@ bridge_to_loopback(CallId, ToDID, CID,  CtrlQ, AccountId) ->
 
 -spec bridge(ne_binary(), ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 bridge(CallId, ToDID, CID, Q, CtrlQ, AccountId, AccountCID) ->
-    case wnm_util:is_reconcilable(ToDID) of
+    case knm_converters:is_reconcilable(ToDID) of
         'true' ->
             case knm_number:lookup_account(ToDID) of
                 {'ok',_,_} ->
