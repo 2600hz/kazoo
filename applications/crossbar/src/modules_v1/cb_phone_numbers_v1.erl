@@ -264,7 +264,7 @@ validate_2(Context, ?HTTP_GET, ?CLASSIFIERS) ->
                              ,knm_converters:available_classifiers()
                             );
 validate_2(Context, ?HTTP_GET, Number) ->
-    read(Number, Context);
+    read(Context, Number);
 validate_2(Context, ?HTTP_POST, _Number) ->
     validate_request(Context);
 validate_2(Context, ?HTTP_PUT, _Number) ->
@@ -293,7 +293,7 @@ validate_3(Context, ?HTTP_GET, Number, ?IDENTIFY) ->
 validate(Context, PathToken1, PathToken2, PathToken3) ->
     validate_4(Context, cb_context:req_verb(Context), PathToken1, PathToken2, PathToken3).
 validate_4(Context, ?HTTP_DELETE, Number, ?PORT_DOCS, _) ->
-    read(Number, Context);
+    read(Context, Number);
 validate_4(Context, _, PathToken1, PathToken2, PathToken3) ->
     validate_files(Context, cb_context:req_files(Context), PathToken1, PathToken2, PathToken3).
 
@@ -310,7 +310,7 @@ validate_files(Context, [], _, ?PORT_DOCS, _) ->
 validate_files(Context, [{_, FileObj}], Number, ?PORT_DOCS, Name) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
     Context1 = cb_context:set_req_files(Context, [{FileName, FileObj}]),
-    read(Number, Context1);
+    read(Context1, Number);
 validate_files(Context, _, _, ?PORT_DOCS, _) ->
     lager:debug("Multiple files in request to save attachment"),
     cb_context:add_validation_error(

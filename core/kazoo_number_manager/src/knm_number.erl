@@ -411,7 +411,7 @@ updates_require_save(PhoneNumber, Updaters) ->
                 ,Updaters
                ).
 
--type set_fun() :: fun((knm_phone_number:knm_phone_number(), term()) -> knm_phone_number:knm_phone_number()).
+-type set_fun() :: fun((knm_phone_number:knm_phone_number(), any()) -> knm_phone_number:knm_phone_number()).
 
 -type up_req_el() :: {ne_binary(), api_binary(), set_fun()}.
 -type up_req_els() :: [up_req_el()].
