@@ -3,4 +3,4 @@ PROJECT = whistle_media
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk

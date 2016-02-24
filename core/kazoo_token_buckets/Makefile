@@ -3,4 +3,4 @@ PROJECT = kazoo_token_buckets
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk

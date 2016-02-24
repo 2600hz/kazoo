@@ -3,4 +3,4 @@ PROJECT = milliwatt
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk

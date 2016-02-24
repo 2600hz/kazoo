@@ -5,4 +5,4 @@ SOURCES = src/wh_gen_changes.erl src/*.erl
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk

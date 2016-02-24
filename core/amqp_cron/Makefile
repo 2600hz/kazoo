@@ -5,4 +5,4 @@ TEST_EBINS = $(ROOT)/core/amqp_leader/ebin
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk

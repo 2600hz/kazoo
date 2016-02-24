@@ -5,4 +5,4 @@ TEST_EBINS = $(ROOT)/applications/crossbar/ebin
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk

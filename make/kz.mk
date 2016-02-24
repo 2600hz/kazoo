@@ -9,6 +9,7 @@ ERLC_OPTS += +debug_info -Iinclude -Isrc
 ## Use pedantic flags when compiling apps from applications/ & core/
 ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars
 
+ELIBS = $(ERL_LIBS):$(ROOT)/deps:$(ROOT)/core
 EBINS += $(ROOT)/core/whistle/ebin \
 	$(wildcard $(ROOT)/deps/lager/ebin)
 TEST_EBINS += $(EBINS)
@@ -25,7 +26,7 @@ compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json
 
 ebin/$(PROJECT).app: $(wildcard $(SOURCES))
 	@mkdir -p ebin/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 
@@ -40,7 +41,7 @@ test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(wildcard $(TEST_SOURCES))
 	@mkdir -p test/
 	@mkdir -p ebin/
-	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -o ebin/ $(TEST_SOURCES)
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -o ebin/ $(TEST_SOURCES)
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 
@@ -54,11 +55,11 @@ clean-test: $(CLEAN_MOAR)
 
 ## Use this one when debugging
 test: compile-test
-	ERL_LIBS=$(ERL_LIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 ## Use this one when CI
 eunit:
-	ERL_LIBS=$(ERL_LIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 
 PLT ?= $(ROOT)/.kazoo.plt
