@@ -3,4 +3,4 @@ PROJECT = whistle_config
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk

@@ -3,4 +3,4 @@ PROJECT = whistle_number_manager
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk

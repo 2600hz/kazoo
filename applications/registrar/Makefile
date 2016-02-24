@@ -7,7 +7,7 @@ all: compile
 COMPILE_MOAR = priv/comp128.so
 CLEAN_MOAR = clean-so
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk
 
 
 ERL_INCLUDES := $(wildcard $(shell dirname `which erl`)/../erts-*/include)

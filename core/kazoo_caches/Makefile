@@ -3,4 +3,4 @@ PROJECT = kazoo_caches
 
 all: compile
 
-include ../kz.mk
+include $(ROOT)/make/kz.mk
