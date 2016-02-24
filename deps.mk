@@ -27,7 +27,7 @@ dep_hep = git https://github.com/lazedo/hep 1.5.4
 
 dep_ecsv = git https://github.com/lazedo/ecsv 0.2.1
 
-dep_nkli = git https://github.com/NetComposer/nklib
+dep_nklib = git https://github.com/NetComposer/nklib
 
 dep_nksip = git https://github.com/NetComposer/nksip
 
