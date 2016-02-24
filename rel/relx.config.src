@@ -1,24 +1,16 @@
 ToName = fun (App) -> list_to_atom(hd(string:tokens(App,"-"))) end,
 
-Apps = [       App  || "applications/"++App <- filelib:wildcard("applications/*"), App /= "Makefile" andalso  App /= "kz.mk"],
-Core = [       App  ||         "core/"++App <- filelib:wildcard(        "core/*"), App /= "Makefile" andalso  App /= "kz.mk"],
-Deps = [ToName(App) ||         "deps/"++App <- filelib:wildcard(        "deps/*"), App /= "Makefile" andalso  App /= "kz.mk"],
+Apps = [ list_to_atom(App)  || "applications/"++App = Dir <- filelib:wildcard("applications/*"), filelib:is_dir(Dir)],
+Core = [ list_to_atom(App)  ||         "core/"++App = Dir <- filelib:wildcard(        "core/*"), filelib:is_dir(Dir)],
+Deps = [ list_to_atom(App)  ||         "deps/"++App = Dir <- filelib:wildcard(        "deps/*"), filelib:is_dir(Dir)],
 
-Base = [ {'++', Core}
-       , {'++', Apps}
-         %% skel Not a real app
-       , {'--', [skel]}
-
-       , {'++', Deps}
-         %% Manually remove: is a build-only dep of RabbitMQ client
-         ,{'--', ['rabbitmq_codegen']}
-         %% exmpp Duplicated modules: tls specified in ssl and exmpp
-       , {'--', [exmpp]}
-         %% .erlang.mk is for tracking dependencies
-       , {'--', ['.erlang.mk']}
-       ],
-LeftAssocAsItShouldBe = fun ({Op,Arg}, Acc) -> (fun erlang:Op/2)(Acc, Arg) end,
-Based = [{A, 'load'} || A <- lists:sort( lists:foldl(LeftAssocAsItShouldBe, [], Base) )],
+Filter = ['rabbitmq_codegen'
+          ,'.erlang.mk'
+          ,'.settings'
+          ,'skel'
+         ],  
+Base = lists:filter(fun(A) -> not lists:member(A, Filter) end, Apps ++ Core ++ Deps),
+Based = [{A, 'load'} || A <- lists:sort(Base) ],
 
 Config = "/etc/kazoo/app.config", %% SHOULD rename app.config to sys.config as OTP prefers it.
 case filelib:is_regular(Config) of
