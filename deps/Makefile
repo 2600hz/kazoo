@@ -6,5 +6,5 @@ clean::
 	$(if $(wildcard .erlang.mk), rm -rf .erlang.mk)
 
 
--include ./deps.mk
+-include ../deps.mk
 -include ../erlang.mk
