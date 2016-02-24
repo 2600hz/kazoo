@@ -26,13 +26,23 @@
 handle(Data, Call) ->
     UserId = wh_doc:id(Data),
     Endpoints = get_endpoints(UserId, Data, Call),
+    FailOnSingleReject = wh_json:get_value(<<"fail_on_single_reject">>, Data, 'undefined'),
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
 
+    Command = [{<<"Application-Name">>, <<"bridge">>}
+        ,{<<"Endpoints">>, Endpoints}
+        ,{<<"Timeout">>, Timeout}
+        ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+        ,{<<"Fail-On-Single-Reject">>, FailOnSingleReject}
+        ,{<<"Dial-Endpoint-Method">>, Strategy}
+        ,{<<"Ignore-Forward">>, <<"false">>}
+    ],
+
     lager:info("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0
-        andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call)
+        andalso bridge(Command, Timeout, Call)
     of
         'false' ->
             lager:notice("user ~s has no endpoints", [UserId]),
@@ -71,3 +81,8 @@ get_endpoints(UserId, Data, Call) ->
                             {'error', _E} -> Acc
                         end
                 end, [], cf_attributes:owned_by(UserId, <<"device">>, Call)).
+
+-spec bridge(wh_proplist(), integer(), whapps_call:call()) -> whapps_api_bridge_return().
+bridge(Command, Timeout, Call) ->
+    whapps_call_command:send_command(Command, Call),
+    whapps_call_command:b_bridge_wait(Timeout, Call).
