@@ -90,8 +90,6 @@
 
 -include("kz_data.hrl").
 
--define(VALID_DBNAME, is_binary(DbName) andalso byte_size(DbName) > 0).
-
 -define(UUID_SIZE, 16).
 
 %%%===================================================================
@@ -503,7 +501,7 @@ db_delete(DbName) ->
 -spec db_archive(ne_binary(), ne_binary()) -> 'ok'.
 db_archive(DbName) ->
  Folder = whapps_config:get(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
- archive(DbName, filename:join([<<Folder/binary, "/", Db/binary, ".json">>])).
+ db_archive(DbName, filename:join([<<Folder/binary, "/", DbName/binary, ".json">>])).
 
 db_archive(DbName, Filename) when ?VALID_DBNAME ->
     kzs_db:db_archive(get_server(), DbName, Filename);
