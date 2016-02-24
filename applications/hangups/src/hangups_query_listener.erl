@@ -65,46 +65,48 @@ handle_query(JObj, _Props) ->
 
     handle_query(JObj, N, wh_json:is_true(<<"Raw-Data">>, JObj)).
 
-handle_query(JObj, N, 'true') ->
-    lager:debug("finding raw stats for ~s", [N]),
-    publish_resp(JObj, raw_resp(N));
+%% handle_query(JObj, N, 'true') ->
+%%     lager:debug("finding raw stats for ~s", [N]),
+%%     publish_resp(JObj, raw_resp(N));
+handle_query(_JObj, _N, 'true') ->
+    lager:error("who is using this ?");
 handle_query(JObj, N, 'false') ->
     lager:debug("finding meter stats for '~p'", [N]),
     publish_resp(JObj, meter_resp(N)).
 
--spec raw_resp(#meter{} | ne_binary()) -> wh_proplist().
-raw_resp(#meter{one = OneMin
-                ,five = FiveMin
-                ,fifteen = FifteenMin
-                ,day = OneDay
-                ,count = Count
-                ,start_time = StartTime
-               }) ->
-    [{<<"one">>, ewma_to_json(OneMin)}
-     ,{<<"five">>, ewma_to_json(FiveMin)}
-     ,{<<"fifteen">>, ewma_to_json(FifteenMin)}
-     ,{<<"day">>, ewma_to_json(OneDay)}
-     ,{<<"count">>, Count}
-     ,{<<"start_time">>, StartTime}
-    ];
-raw_resp(Name) ->
-    raw_resp(folsom_metrics_meter:get_value(Name)).
-
--spec ewma_to_json(#ewma{}) -> wh_json:object().
-ewma_to_json(#ewma{alpha=Alpha
-                   ,interval=Interval
-                   ,initialized=Init
-                   ,rate=Rate
-                   ,total=Total
-                  }) ->
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"alpha">>, Alpha}
-         ,{<<"interval">>, Interval}
-         ,{<<"initialized">>, Init}
-         ,{<<"rate">>, Rate}
-         ,{<<"total">>, Total}
-        ])).
+%% -spec raw_resp(#meter{} | ne_binary()) -> wh_proplist().
+%% raw_resp(#meter{one = OneMin
+%%                 ,five = FiveMin
+%%                 ,fifteen = FifteenMin
+%%                 ,day = OneDay
+%%                 ,count = Count
+%%                 ,start_time = StartTime
+%%                }) ->
+%%     [{<<"one">>, ewma_to_json(OneMin)}
+%%      ,{<<"five">>, ewma_to_json(FiveMin)}
+%%      ,{<<"fifteen">>, ewma_to_json(FifteenMin)}
+%%      ,{<<"day">>, ewma_to_json(OneDay)}
+%%      ,{<<"count">>, Count}
+%%      ,{<<"start_time">>, StartTime}
+%%     ];
+%% raw_resp(Name) ->
+%%     raw_resp(folsom_metrics_meter:get_value(Name)).
+%%
+%% -spec ewma_to_json(#ewma{}) -> wh_json:object().
+%% ewma_to_json(#ewma{alpha=Alpha
+%%                    ,interval=Interval
+%%                    ,initialized=Init
+%%                    ,rate=Rate
+%%                    ,total=Total
+%%                   }) ->
+%%     wh_json:from_list(
+%%       props:filter_undefined(
+%%         [{<<"alpha">>, Alpha}
+%%          ,{<<"interval">>, Interval}
+%%          ,{<<"initialized">>, Init}
+%%          ,{<<"rate">>, Rate}
+%%          ,{<<"total">>, Total}
+%%         ])).
 
 -spec meter_resp(ne_binary()) -> wh_proplist().
 -spec meter_resp(ne_binary(), wh_proplist()) -> wh_proplist().

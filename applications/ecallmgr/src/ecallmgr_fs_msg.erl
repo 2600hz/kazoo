@@ -44,7 +44,7 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
@@ -303,7 +303,7 @@ format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
             [#uri{user=_ToUser
                   ,domain=ToIP
                   ,port=ToPort
-                 }=_ToContact] = nksip_parse:uris(Contact),
+                 }=_ToContact] = kzsip_uri:uris(Contact),
             {'ok', props:filter_empty(
                      [{"to", wh_util:to_list(ToURI)}
                       ,{"to_sip_ip", wh_util:to_list(ToIP)}
@@ -322,7 +322,7 @@ format_route_endpoint(Endpoint, _Props, _JObj) ->
     [#uri{user=_ToUser
           ,domain=ToIP
           ,port=ToPort
-         }=_ToContact] = nksip_parse:uris(ToURI),
+         }=_ToContact] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
              [{"to", wh_util:to_list(ToURI)}
               ,{"to_sip_ip", wh_util:to_list(ToIP)}
@@ -340,7 +340,7 @@ format_bounce_endpoint(Endpoint, Props, JObj) ->
     [#uri{user=_ToUser
           ,domain=ToIP
           ,port=ToPort
-         }=_ToContact] = nksip_parse:uris(ToURI),
+         }=_ToContact] = kzsip_uri:uris(ToURI),
     {'ok', props:filter_empty(
       [{"to", wh_util:to_list(To)}
        ,{"to_sip_ip", wh_util:to_list(ToIP)}
@@ -392,7 +392,7 @@ get_event_uris_props({K, F}, Props) ->
     get_event_uris_props( get_uri( props:get_value(F, Props) ), K);
 get_event_uris_props('undefined', _) -> [];
 get_event_uris_props(Uri, Base) ->
-    [#uri{user=User, domain=Realm}=_URI] = nksip_parse:uris(Uri),
+    [#uri{user=User, domain=Realm}=_URI] = kzsip_uri:uris(Uri),
     [{Base, <<User/binary, "@", Realm/binary>>}
      ,{<<Base/binary, "-User">>, User }
      ,{<<Base/binary, "-Realm">>, Realm }].

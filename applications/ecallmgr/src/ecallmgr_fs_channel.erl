@@ -49,7 +49,7 @@
 -compile([{'no_auto_import', [node/1]}]).
 
 -include("ecallmgr.hrl").
--include_lib("nksip/include/nksip.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -464,11 +464,11 @@ handle_channel_req(UUID, FetchId, Props, Node, Pid) ->
     case fetch_channel(UUID) of
         'undefined' -> channel_not_found(Node, FetchId);
         Channel ->
-            [Uri] = nksip_parse_uri:uris(props:get_value(<<"switch_url">>, Channel)),
-            URL = nksip_unparse:ruri(
+            [Uri] = kzsip_uri:uris(props:get_value(<<"switch_url">>, Channel)),
+            URL = kzsip_uri:ruri(
                     #uri{user= props:get_value(<<"refer-to-user">>, Props)
                          ,domain= props:get_value(<<"realm">>, Channel)
-                         ,opts=[{<<"fs_path">>, nksip_unparse:ruri(Uri#uri{user= <<>>})}]
+                         ,opts=[{<<"fs_path">>, kzsip_uri:ruri(Uri#uri{user= <<>>})}]
                         }),
             build_channel_resp(FetchId, Props, Node, URL, ForChannel, channel_ccvs(Channel))
     end.

@@ -1,9 +1,0 @@
-{application, nksip_plugins, [
-    {description, "NkSIP Standard Plugins"},
-    {vsn, "0.1.0"},
-    {modules, []},
-    {registered, []},
-    {mod, {nksip_plugins_app, []}},
-    {applications, [kernel, stdlib, nksip]},
-    {env, []}
-]}.

@@ -1,9 +1,0 @@
-/.eunit/
-/.rebar/
-/c_src/*o
-/deps/
-/ebin/
-/logs/
-/priv/*so
-/test/*.beam
-

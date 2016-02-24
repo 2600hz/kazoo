@@ -21,7 +21,7 @@
         ]).
 
 -include("camper.hrl").
--include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
 -define(SERVER, ?MODULE).
 

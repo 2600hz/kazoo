@@ -11,16 +11,7 @@
 *.o
 *.pid
 *.dump
-deps/*/rebar
-core/*/test/*.app
-applications/*/priv/archive_data/*
-applications/*/test/*.app
-deps/*/test
-deps/*/examples
-deps/erlang_localtime-*/include/tz_index.hrl
-deps/zucchini-*/src/zucchini_lexer.erl
-deps/zucchini-*/src/zucchini_parser.erl
-deps/erlydtl-*/src/erlydtl_parser.erl
+
 /.edts
 .project
 .settings
@@ -31,6 +22,13 @@ _rel/
 rel/relx.config
 rel/dev-vm.args
 rel/vm.args
+
+erlang.mk
+.erlang.mk
+
+deps/
+
 core/whistle/src/kz_mime.erl
 core/whistle/mime.types
 
+applications/*/priv/archive_data/*

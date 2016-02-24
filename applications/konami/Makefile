@@ -1,9 +1,6 @@
 ROOT = ../..
 PROJECT = konami
 
-EBINS = $(ROOT)/core/whistle_apps/ebin \
-	$(wildcard $(ROOT)/deps/nksip-*/ebin)
-
 all: compile
 
--include $(ROOT)/make/kz.mk
+include $(ROOT)/make/kz.mk

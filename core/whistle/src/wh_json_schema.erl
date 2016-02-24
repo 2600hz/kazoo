@@ -17,13 +17,14 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--spec load(ne_binary()) -> {'ok', wh_json:object()} |
-                           {'error', any()}.
+-spec load(ne_binary() | string()) -> {'ok', wh_json:object()} |
+                                      {'error', any()}.
 load(<<_/binary>> = Schema) ->
     case couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
         {'ok', JObj} -> {'ok', wh_json:insert_value(<<"id">>, Schema, JObj)}
-    end.
+    end;
+load(Schema) -> load(wh_util:to_binary(Schema)).
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.

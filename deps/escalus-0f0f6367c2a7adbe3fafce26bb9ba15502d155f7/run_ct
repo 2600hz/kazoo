@@ -1,8 +1,0 @@
-#!/bin/bash
-SUITE_CMD=""
-
-if [ -n "$SUITE" ]
-then SUITE_CMD="-suite $SUITE"
-fi
-
-ct_run -config test/test.config -logdir logs -dir test $SUITE_CMD -erl_args -pa $PWD/ebin $PWD/deps/*/ebin

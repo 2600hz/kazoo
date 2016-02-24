@@ -80,5 +80,17 @@
                      }).
 -type copy_doc() :: #wh_copy_doc{}.
 
+
+%% Temporary fix
+-record(wh_gen_changes_state, {
+    start_ref,
+    changes_pid,
+    last_seq=0,
+    mod,
+    modstate,
+    db,
+    options}).
+
+
 -define(WH_COUCH_HRL, 'true').
 -endif.

@@ -272,21 +272,7 @@ get_new_conn(Host, Port, Opts) ->
 server_info(#server{}=Conn) -> couchbeam:server_info(Conn).
 
 -spec server_url(server()) -> ne_binary().
-server_url(#server{host=Host, port=Port, options=Options}) ->
-    UserPass = case props:get_value('basic_auth', Options) of
-                   'undefined' -> <<>>;
-                   {U, P} -> list_to_binary([U, <<":">>, P])
-               end,
-    Protocol = case wh_util:is_true(props:get_value('is_ssl', Options)) of
-                   'false' -> <<"http">>;
-                   'true' -> <<"https">>
-               end,
-
-    list_to_binary([Protocol, <<"://">>, UserPass
-                    ,<<"@">>, wh_util:to_binary(Host)
-                    ,<<":">>, wh_util:to_binary(Port)
-                    ,<<"/">>
-                   ]).
+server_url(#server{url=Url}) -> Url.
 
 -spec db_url(server(), ne_binary()) -> ne_binary().
 db_url(#server{}=Conn, DbName) ->
@@ -367,8 +353,8 @@ do_db_compact(#db{}=Db) ->
     end.
 
 -spec do_db_view_cleanup(db()) -> boolean().
-do_db_view_cleanup(#db{}=Db) ->
-    'ok' =:= ?RETRY_504(couchbeam:view_cleanup(Db)).
+do_db_view_cleanup(#db{}=_Db) -> 'true'.
+%    'ok' =:= ?RETRY_504(couchbeam:view_cleanup(Db)).
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(server(), ne_binary(), ne_binary()) -> boolean().
@@ -469,8 +455,8 @@ do_fetch_results_count(Db, DesignDoc, Options) ->
 -spec do_get_design_info(couchbeam_db(), ne_binary()) ->
                                 {'ok', wh_json:object()} |
                                 couchbeam_error().
-do_get_design_info(#db{}=Db, Design) ->
-    ?RETRY_504(couchbeam:design_info(Db, Design)).
+do_get_design_info(#db{}=_Db, _Design) ->  {'error', 'not_found'}.
+%    ?RETRY_504(couchbeam:design_info(Db, Design)).
 
 %% Document related functions --------------------------------------------------
 
@@ -841,8 +827,8 @@ do_fetch_attachment(#db{}=Db, DocId, AName) ->
 -spec do_stream_attachment(couchbeam_db(), ne_binary(), ne_binary(), pid()) ->
                                   {'ok', reference()} |
                                   couchbeam_error().
-do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
-    couchbeam:stream_fetch_attachment(Db, DocId, AName, Caller).
+do_stream_attachment(#db{}=_Db, _DocId, _AName, _Caller) ->  {'error', 'not_found'}.
+%    couchbeam:stream_fetch_attachment(Db, DocId, AName, Caller).
 
 -spec do_put_attachment(couchbeam_db(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                                {'ok', wh_json:object()} |

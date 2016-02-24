@@ -3,4 +3,4 @@ PROJECT = kazoo_modb
 
 all: compile
 
--include $(ROOT)/make/kz.mk
+include $(ROOT)/make/kz.mk
