@@ -17,7 +17,7 @@ ERLC_OPTS += $(KZ_APP_OTPS) +debug_info -Iinclude -Isrc
 
 
 EBINS += $(ROOT)/core/whistle/ebin \
-	$(wildcard $(ROOT)/deps/lager-*/ebin)
+	$(wildcard $(ROOT)/deps/lager/ebin)
 TEST_EBINS += $(EBINS)
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
@@ -61,7 +61,7 @@ clean-test: $(CLEAN_MOAR)
 
 ## Use this one when debugging
 test: compile-test
-	erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	 ERL_LIBS=$(ERL_LIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 ## Use this one when CI
 eunit:
