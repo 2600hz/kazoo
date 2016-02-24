@@ -241,8 +241,8 @@ routing_data(ToDID, AccountId, Settings) ->
     DIDOptions = wh_json:get_value(<<"DID_Opts">>, Settings, wh_json:new()),
     HuntAccountId = wh_json:get_value([<<"server">>, <<"hunt_account_id">>], Settings),
     RouteOpts = wh_json:get_value(<<"options">>, DIDOptions, []),
-    NumConfig = case wh_number_manager:get_public_fields(ToDID, AccountId) of
-                    {'ok', Fields} -> Fields;
+    NumConfig = case knm_number:get(ToDID, [{'auth_by', AccountId}]) of
+                    {'ok', KNum} -> knm_number:to_public_json(KNum);
                     {'error', _} -> wh_json:new()
                 end,
     AuthU = wh_json:get_value(<<"auth_user">>, AuthOpts),
