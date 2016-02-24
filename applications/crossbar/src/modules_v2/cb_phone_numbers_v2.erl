@@ -565,12 +565,12 @@ create_port(Context, Number, ReqJObj) ->
 -spec reserve_number(cb_context:context(), path_token(), wh_json:object()) ->
                             cb_context:context().
 reserve_number(Context, Number, ReqJObj) ->
-    Result = wh_number_manager:reserve_number(Number
-                                              ,cb_context:account_id(Context)
-                                              ,cb_context:auth_account_id(Context)
-                                              ,cb_context:doc(Context)
-                                              ,cb_context:accepting_charges(Context)
-                                             ),
+    Options = [{'assigned_to', cb_context:account_id(Context)}
+               ,{'auth_by', cb_context:auth_account_id(Context)}
+               ,{'dry_run', cb_context:accepting_charges(Context)}
+               ,{'public_fields', cb_context:doc(Context)}
+              ],
+    Result = knm_number:reserve(Number, Options),
     Fun = fun() ->
                   NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
                   ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?RESERVE)

@@ -20,6 +20,7 @@
          ,buy/2, buy/3
          ,save/1
          ,reconcile/3
+         ,reserve/2
         ]).
 
 -export([phone_number/1, set_phone_number/2
@@ -172,6 +173,27 @@ create_phone_number(Number) ->
                 ,fun dry_run_or_number/1
                ],
     apply_number_routines(Number, Routines).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Fetches then transition an existing number to the reserved state.
+%% Similar to wh_number_manager:reserve_number
+%% @end
+%%--------------------------------------------------------------------
+-spec reserve(ne_binary(), knm_number_options:options()) -> knm_number_return().
+reserve(Num, Options) ->
+    case ?MODULE:get(Num, Options) of
+        {'ok', Number} ->
+            Priors = [?NUMBER_STATE_RESERVED, ?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_AVAILABLE],
+            ensure_state(phone_number(Number), Priors),
+            Routines = [fun knm_number_states:to_reserved/1
+                        ,fun save_number/1
+                        ,fun dry_run_or_number/1
+                       ],
+            apply_number_routines(Number, Routines);
+        _Other -> _Other
+    end.
 
 -spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
