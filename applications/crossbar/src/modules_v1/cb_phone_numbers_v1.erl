@@ -12,17 +12,16 @@
 -module(cb_phone_numbers_v1).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
          ,billing/1
-         ,content_types_accepted/4
-         ,validate/1, validate/2, validate/3, validate/4
+         ,validate/1, validate/2, validate/3
          ,validate_request/1
          ,authorize/1
          ,authenticate/1
-         ,put/2, put/3, put/4
-         ,post/2, post/4
-         ,delete/2, delete/4
+         ,put/2, put/3
+         ,post/2
+         ,delete/2
          ,summary/1
          ,populate_phone_numbers/1
         ]).
@@ -30,8 +29,6 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
--define(PORT_DOCS, <<"docs">>).
--define(PORT, <<"port">>).
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
 
@@ -104,7 +101,6 @@ populate_phone_numbers(Context) ->
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 
@@ -119,17 +115,10 @@ allowed_methods(_, ?ACTIVATE) ->
     [?HTTP_PUT];
 allowed_methods(_, ?RESERVE) ->
     [?HTTP_PUT];
-allowed_methods(_, ?PORT) ->
-    [?HTTP_PUT];
-allowed_methods(_, ?PORT_DOCS) ->
-    [?HTTP_GET];
 allowed_methods(_, ?IDENTIFY) ->
     [?HTTP_GET];
 allowed_methods(?COLLECTION, ?ACTIVATE) ->
     [?HTTP_PUT].
-
-allowed_methods(_, ?PORT_DOCS, _) ->
-    [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -142,20 +131,14 @@ allowed_methods(_, ?PORT_DOCS, _) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> boolean().
--spec resource_exists(path_token(), path_token(), path_token()) -> boolean().
 resource_exists() -> 'true'.
 
 resource_exists(_) -> 'true'.
 
 resource_exists(_, ?ACTIVATE) -> 'true';
 resource_exists(_, ?RESERVE) -> 'true';
-resource_exists(_, ?PORT) -> 'true';
-resource_exists(_, ?PORT_DOCS) -> 'true';
 resource_exists(_, ?IDENTIFY) -> 'true';
 resource_exists(_, _) -> 'false'.
-
-resource_exists(_, ?PORT_DOCS, _) -> 'true';
-resource_exists(_, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -206,23 +189,6 @@ authorize(Context) ->
 authorize(?HTTP_GET, [{?KNM_PHONE_NUMBERS_DOC,[]}]) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
--spec content_types_accepted(cb_context:context(), http_method()) -> cb_context:context().
-content_types_accepted(Context, _Number, ?PORT_DOCS, _Name) ->
-    content_types_accepted(Context, cb_context:req_verb(Context)).
-
-content_types_accepted(Context, ?HTTP_PUT) ->
-    cb_context:set_content_types_accepted(Context, [{'from_binary', ?MIME_TYPES}]);
-content_types_accepted(Context, ?HTTP_POST) ->
-    cb_context:set_content_types_accepted(Context, [{'from_binary', ?MIME_TYPES}]).
-
-%%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% This function determines if the parameters and content are correct
@@ -234,14 +200,9 @@ content_types_accepted(Context, ?HTTP_POST) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 -spec validate_1(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_2(cb_context:context(), http_method(), path_token()) -> cb_context:context().
 -spec validate_3(cb_context:context(), http_method(), path_token(), path_token()) -> cb_context:context().
--spec validate_4(cb_context:context(), http_method(), path_token(), path_token(), path_token()) ->
-                        cb_context:context().
--spec validate_files(cb_context:context(), req_files(), path_token(), path_token(), path_token()) ->
-                            cb_context:context().
 
 validate(Context) ->
     validate_1(Context, cb_context:req_verb(Context)).
@@ -283,47 +244,10 @@ validate_3(Context, ?HTTP_PUT, _Number, ?ACTIVATE) ->
     end;
 validate_3(Context, ?HTTP_PUT, _Number, ?RESERVE) ->
     validate_request(Context);
-validate_3(Context, ?HTTP_PUT, _Number, ?PORT) ->
-    validate_request(Context);
-validate_3(Context, ?HTTP_GET, Number, ?PORT_DOCS) ->
-    list_attachments(Number, Context);
 validate_3(Context, ?HTTP_GET, Number, ?IDENTIFY) ->
     identify(Context, Number).
 
-validate(Context, PathToken1, PathToken2, PathToken3) ->
-    validate_4(Context, cb_context:req_verb(Context), PathToken1, PathToken2, PathToken3).
-validate_4(Context, ?HTTP_DELETE, Number, ?PORT_DOCS, _) ->
-    read(Context, Number);
-validate_4(Context, _, PathToken1, PathToken2, PathToken3) ->
-    validate_files(Context, cb_context:req_files(Context), PathToken1, PathToken2, PathToken3).
-
-validate_files(Context, [], _, ?PORT_DOCS, _) ->
-    lager:debug("No files in request to save attachment"),
-    cb_context:add_validation_error(
-        <<"file">>
-        ,<<"required">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide an port document">>}
-         ])
-        ,Context
-    );
-validate_files(Context, [{_, FileObj}], Number, ?PORT_DOCS, Name) ->
-    FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
-    Context1 = cb_context:set_req_files(Context, [{FileName, FileObj}]),
-    read(Context1, Number);
-validate_files(Context, _, _, ?PORT_DOCS, _) ->
-    lager:debug("Multiple files in request to save attachment"),
-    cb_context:add_validation_error(
-        <<"file">>
-        ,<<"maxItems">>
-        ,wh_json:from_list([
-            {<<"message">>, <<"Please provide a single port document per request">>}
-         ])
-        ,Context
-    ).
-
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
     set_response(collection_process(Context), <<>>, Context);
 post(Context, Number) ->
@@ -334,12 +258,8 @@ post(Context, Number) ->
     Result = knm_number:update(Number, Updaters, Options),
     set_response(Result, Number, Context).
 
-post(Context, Number, ?PORT_DOCS, _) ->
-    put_attachments(Number, Context, cb_context:req_files(Context)).
-
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
@@ -354,13 +274,6 @@ put(Context, Number) ->
 put(Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
     set_response(Results, <<>>, Context);
-put(Context, Number, ?PORT) ->
-    Result = wh_number_manager:port_in(Number
-                                       ,cb_context:account_id(Context)
-                                       ,cb_context:auth_account_id(Context)
-                                       ,cb_context:doc(Context)
-                                      ),
-    set_response(Result, Number, Context);
 put(Context, Number, ?ACTIVATE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
                ,{'public_fields', cb_context:doc(Context)}
@@ -377,17 +290,9 @@ put(Context, Number, ?RESERVE) ->
                ,{'public_fields', cb_context:doc(Context)}
               ],
     Result = knm_number:reserve(Number, Options),
-    set_response(Result, Number, Context);
-put(Context, Number, ?PORT_DOCS) ->
-    put_attachments(Number, Context, cb_context:req_files(Context)).
+    set_response(Result, Number, Context).
 
-put(Context, Number, ?PORT_DOCS, _) ->
-    put_attachments(Number, Context, cb_context:req_files(Context)).
-
--spec delete(cb_context:context(), path_token()) ->
-                    cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
-                    cb_context:context().
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
     Results = collection_process(Context),
     set_response(Results, <<>>, Context);
@@ -395,11 +300,6 @@ delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
     Result = knm_number:delete(Number, Options),
-    set_response(Result, Number, Context).
-
-delete(Context, Number, ?PORT_DOCS, Name) ->
-    FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
-    Result = wh_number_manager:delete_attachment(Number, FileName, cb_context:auth_account_id(Context)),
     set_response(Result, Number, Context).
 
 -spec summary(cb_context:context()) -> cb_context:context().
@@ -532,42 +432,7 @@ get_numbers(QueryString) ->
 %%--------------------------------------------------------------------
 -spec validate_request(cb_context:context()) -> cb_context:context().
 validate_request(Context) ->
-    maybe_add_porting_email(Context).
-
-maybe_add_porting_email(Context) ->
-    JObj = cb_context:req_data(Context),
-    case wh_json:get_ne_value(<<"port">>, JObj) =/= 'undefined'
-        andalso wh_json:get_ne_value([<<"port">>, <<"email">>], JObj) =:= 'undefined'
-    of
-        'false' -> check_phone_number_schema(Context);
-        'true' -> add_porting_email(Context)
-    end.
-
-add_porting_email(Context) ->
-    JObj = cb_context:req_data(Context),
-    case get_auth_user_email(Context) of
-        'undefined' -> check_phone_number_schema(Context);
-        Email ->
-            J = wh_json:set_value([<<"port">>, <<"email">>], Email, JObj),
-            check_phone_number_schema(cb_context:set_req_data(Context, J))
-    end.
-
-check_phone_number_schema(Context) ->
     cb_context:validate_request_data(?KNM_PHONE_NUMBERS_DOC, Context).
-
-get_auth_user_email(Context) ->
-    JObj = cb_context:auth_doc(Context),
-    AccountId = cb_context:auth_account_id(Context),
-
-    case wh_json:get_value(<<"owner_id">>, JObj) of
-        'undefined' -> 'undefined';
-        UserId ->
-            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            case kz_datamgr:open_doc(AccountDb, UserId) of
-                {'ok', User} -> wh_json:get_value(<<"email">>, User);
-                {'error', _} -> 'undefined'
-            end
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -581,41 +446,6 @@ validate_delete(Context) ->
       cb_context:set_resp_status(Context, 'success')
       ,'undefined'
      ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
-%% @end
-%%--------------------------------------------------------------------
--spec list_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
-list_attachments(Number, Context) ->
-    Result = wh_number_manager:list_attachments(Number, cb_context:auth_account_id(Context)),
-    set_response(Result, Number, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec put_attachments(ne_binary(), cb_context:context(), wh_proplist()) ->
-                             cb_context:context().
-put_attachments(_, Context, []) ->
-    cb_context:set_resp_status(Context, 'success');
-put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
-    AuthBy = cb_context:auth_account_id(Context),
-    HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
-    Content = wh_json:get_value(<<"contents">>, FileObj),
-    CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
-    Options = [{'content_type', CT}],
-    lager:debug("setting Content-Type to ~s", [CT]),
-    case wh_number_manager:put_attachment(Number, Filename, Content, Options, AuthBy) of
-        {'ok', NewDoc} ->
-            put_attachments(Number, cb_context:set_resp_data(Context, NewDoc), Files);
-        Result ->
-            set_response(Result, Number, Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
