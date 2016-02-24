@@ -61,8 +61,11 @@ init() ->
     DomainsSchema = load(CrossbarDir, ?DOMAINS_SCHEMA),
     DomainHostsSchema = load(CrossbarDir, ?HOSTS_SCHEMA),
 
-    LoaderFun = fun(?DOMAINS_SCHEMA) -> DomainsSchema;
-                   (?HOSTS_SCHEMA) -> DomainHostsSchema
+    LoaderFun = fun A(?DOMAINS_SCHEMA) -> DomainsSchema;
+                    A(?HOSTS_SCHEMA) -> DomainHostsSchema;
+                    A(X) when not is_binary(X) -> A(wh_util:to_binary(X));
+                    A(X) -> io:format("error: schema ~p not found", [X]),
+                          'undefined'
                 end,
 
     #state{domains=DomainsSchema

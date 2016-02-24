@@ -18,6 +18,7 @@ dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1ae
 
 dep_jiffy = hex 0.14.7
 
+dep_jesse = git https://github.com/for-GET/jesse 9e7830001deb78b57ce2ae15049afb7fecb8d386 
 
 ### need to update upstream ###
 dep_socketio = git https://github.com/lazedo/socket.io-cowboy 0.2
@@ -26,9 +27,3 @@ dep_hep = git https://github.com/lazedo/hep 1.5.4
 
 dep_ecsv = git https://github.com/lazedo/ecsv 0.2.1
 
-## martelo ##
-dep_nksip = git https://github.com/NetComposer/nksip
-dep_nklib = git https://github.com/NetComposer/nklib
-dep_nkservice = git https://github.com/NetComposer/nkservice
-dep_nkpacket = git https://github.com/NetComposer/nkpacket
-dep_nkdocker = git https://github.com/NetComposer/nkdocker
