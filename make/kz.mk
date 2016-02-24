@@ -5,16 +5,9 @@
 ## pipefail enforces that the command fails even when run through a pipe
 SHELL = /bin/bash -o pipefail
 
-
+ERLC_OPTS += +debug_info -Iinclude -Isrc
 ## Use pedantic flags when compiling apps from applications/ & core/
-ifeq ($(findstring deps, $(abspath Makefile)), deps)
-    KZ_APP_OTPS =
-else
-    KZ_APP_OTPS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars
-endif
-
-ERLC_OPTS += $(KZ_APP_OTPS) +debug_info -Iinclude -Isrc
-
+ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars
 
 EBINS += $(ROOT)/core/whistle/ebin \
 	$(wildcard $(ROOT)/deps/lager/ebin)
@@ -61,11 +54,11 @@ clean-test: $(CLEAN_MOAR)
 
 ## Use this one when debugging
 test: compile-test
-	 ERL_LIBS=$(ERL_LIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	ERL_LIBS=$(ERL_LIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 ## Use this one when CI
 eunit:
-	erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	ERL_LIBS=$(ERL_LIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 
 PLT ?= $(ROOT)/.kazoo.plt
