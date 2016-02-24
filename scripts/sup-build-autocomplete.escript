@@ -17,7 +17,6 @@
                            ,"whapps_account_config"
                            ,"whapps_config"
                            ,"whapps_controller"
-                           ,"wnm_util"
                           ]).
 
 %% API
