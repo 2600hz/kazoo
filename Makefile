@@ -1,34 +1,26 @@
 ROOT = .
 RELX = $(ROOT)/utils/relx/relx
 
-KAZOODIRS = core/Makefile \
-	    applications/Makefile
+KAZOODIRS = core/Makefile applications/Makefile
 
-DEPS_DIR = deps/Makefile
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release tar-release release
 
-MAKEDIRS = core/Makefile \
-	   applications/Makefile
-
-.PHONY: $(MAKEDIRS) core deps apps xref xref_release dialyze dialyze-apps dialyze-core dialyze-kazoo clean clean-release build-release tar-release release
-
-all: deps compile rel/dev-vm.args
+all: compile rel/dev-vm.args
 
 compile: ACTION = all
-compile: deps $(MAKEDIRS)
+compile: dependencies $(KAZOODIRS)
 
-$(MAKEDIRS):
+$(KAZOODIRS):
 	$(MAKE) -C $(@D) $(ACTION)
 
 clean: ACTION = clean
-clean: clean-deps $(MAKEDIRS)
+clean: $(KAZOODIRS)
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 
-clean-deps: 
-	rm -rf deps
-	mkdir deps
-	cp Makefile.deps deps/Makefile
+clean-deps:
+	$(MAKE) -C deps/ clean
 
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
@@ -50,26 +42,17 @@ test: ACTION = test
 test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
+deps: deps/.erlang.mk
+.erlang.mk: ERLANGMK_VERSION = '2.0.0-pre.2'
+.erlang.mk:
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/$(ERLANGMK_VERSION)/erlang.mk' -O $(ROOT)/erlang.mk
+deps/.erlang.mk: .erlang.mk
+	$(MAKE) -f erlang.mk deps
+	$(MAKE) -C deps/ all
+
 core:
 	$(MAKE) -C core/ all
-	
-deps:
-ifneq (SKIP_DEPS,1)
-ifeq ($(wildcard deps/Makefile),)
-	@mkdir deps
-	@cp Makefile.deps deps/Makefile
-endif
-ifeq ($(wildcard erlang.mk),)
-	@wget https://raw.githubusercontent.com/ninenines/erlang.mk/master/erlang.mk
-	@cp Makefile Makefile.1
-	$(MAKE) -f erlang.mk bootstrap
-	@rm -rf src
-	@cp Makefile.1 Makefile
-	@rm Makefile.1
-endif
-	$(MAKE) -C deps/ deps
-endif
-	
+
 apps:
 	$(MAKE) -C applications/ all
 
