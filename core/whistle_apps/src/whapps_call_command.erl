@@ -56,6 +56,7 @@
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
          ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7, b_bridge/8
          ,unbridge/1, unbridge/2, unbridge/3
+         ,b_bridge_wait/2
         ]).
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
