@@ -30,5 +30,4 @@ core/whistle/mime.types
 erlang.mk
 .erlang.mk
 
-deps/
-!deps/Makefile
+deps/*/
