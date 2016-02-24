@@ -8,4 +8,4 @@ EBINS = $(ROOT)/core/kazoo_oauth/ebin \
 
 all: compile
 
--include $(ROOT)/make/kz.mk
+include ../kz.mk

@@ -11,4 +11,4 @@ TEST_EBINS = $(ROOT)/applications/crossbar/ebin \
 
 all: compile
 
--include $(ROOT)/make/kz.mk
+include ../kz.mk

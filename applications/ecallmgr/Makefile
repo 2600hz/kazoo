@@ -6,4 +6,4 @@ EBINS = $(ROOT)/core/kazoo_documents/ebin \
 
 all: compile
 
--include $(ROOT)/make/kz.mk
+include ../kz.mk

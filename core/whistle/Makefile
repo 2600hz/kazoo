@@ -21,7 +21,7 @@ GEN_OUT = src/kz_mime.erl
 
 all: compile
 
--include $(ROOT)/make/kz.mk
+include ../kz.mk
 
 clean-generated:
 	$(if $(wildcard src/kz_mime.erl), rm src/kz_mime.erl)
