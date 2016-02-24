@@ -185,13 +185,18 @@ create_phone_number(Number) ->
 reserve(Num, Options) ->
     case ?MODULE:get(Num, Options) of
         {'ok', Number} ->
-            Priors = [?NUMBER_STATE_RESERVED, ?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_AVAILABLE],
-            ensure_state(phone_number(Number), Priors),
-            Routines = [fun knm_number_states:to_reserved/1
-                        ,fun save_number/1
-                        ,fun dry_run_or_number/1
-                       ],
-            apply_number_routines(Number, Routines);
+            States = [?NUMBER_STATE_RESERVED, ?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_AVAILABLE],
+            State = knm_phone_number:state(phone_number(Number)),
+            case lists:member(State, States) of
+                'true' ->
+                    Routines = [fun knm_number_states:to_reserved/1
+                                ,fun save_number/1
+                                ,fun dry_run_or_number/1
+                               ],
+                    apply_number_routines(Number, Routines);
+                'false' ->
+                    {'error', {'invalid_state_transition', State}}
+            end;
         _Other -> _Other
     end.
 
