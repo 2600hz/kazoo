@@ -446,7 +446,7 @@ validate_port_docs_upload(Context, _Name, _Number, _Files) ->
                   cb_context:context().
 post(Context, ?FIX) ->
     AccountId = cb_context:account_id(Context),
-    _ = wh_number_fix:fix_account_numbers(AccountId),
+    _ = knm_maintenance:fix_by_account(AccountId),
     summary(Context);
 post(Context, ?COLLECTION) ->
     post_collection(Context, cb_context:req_json(Context));
