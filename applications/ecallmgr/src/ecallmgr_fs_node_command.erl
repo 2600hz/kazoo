@@ -27,7 +27,7 @@ exec_cmd(<<"send_http">>, 'undefined', JObj, _Node) ->
     reply_error(<<"no arguments">>, JObj);
 exec_cmd(<<"send_http">>, Args, JObj, Node) ->
     lager:debug("received http_send command"),
-    Url = wh_json:get_value(<<"Url">>, Args),
+    Url = wh_json:get_ne_binary_value(<<"Url">>, Args),
     File = wh_json:get_value(<<"File-Name">>, Args),
     Filename = ecallmgr_util:recording_filename(File),
     Method = <<"http_", (wh_json:get_value(<<"Http-Method">>, Args, <<"put">>))/binary>>,

@@ -433,7 +433,7 @@ get_redirected(Props) ->
                 'undefined' -> {'undefined' , 'undefined'};
                 Contact ->
                     [#uri{ext_opts=Opts}=Uri] = kzsip_uri:uris(Contact),
-                    {kzsip_uri:ruri(Uri#uri{ext_opts='undefined'}) , props:get_value(<<"reason">>,Opts)}
+                    {kzsip_uri:ruri(Uri#uri{ext_opts=[]}) , props:get_value(<<"reason">>,Opts)}
             end;
         _ -> {'undefined' , 'undefined'}
     end.
