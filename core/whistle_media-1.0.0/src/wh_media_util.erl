@@ -205,10 +205,12 @@ media_path(Path, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prompt_path(ne_binary()) -> ne_binary().
--spec prompt_path(ne_binary(), ne_binary()) -> ne_binary().
+-spec prompt_path(api_binary(), ne_binary()) -> ne_binary().
 prompt_path(PromptId) ->
     prompt_path(?WH_MEDIA_DB, PromptId).
 
+prompt_path('undefined', PromptId) ->
+    prompt_path(?WH_MEDIA_DB, PromptId);
 prompt_path(Db, <<"/system_media/", PromptId/binary>>) ->
     prompt_path(Db, PromptId);
 prompt_path(Db, PromptId) ->
