@@ -660,11 +660,7 @@ delete(Context, 'soft') ->
         {'error', _E} -> soft_delete(Context, wh_doc:revision(Doc))
     end;
 delete(Context, 'permanent') ->
-    JObj = cb_context:doc(Context),
-    Del = wh_json:from_list([{<<"_id">>, wh_doc:id(JObj)}
-                             ,{<<"_rev">>, wh_doc:revision(JObj)}
-                            ]),
-    do_delete(Context, Del, fun couch_mgr:del_doc/2).
+    do_delete(Context, cb_context:doc(Context), fun couch_mgr:del_doc/2).
 
 -spec soft_delete(cb_context:context(), api_binary()) -> cb_context:context().
 soft_delete(Context, Rev) ->
