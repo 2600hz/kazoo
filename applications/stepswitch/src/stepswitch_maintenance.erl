@@ -162,11 +162,9 @@ lookup_number(Number) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
             io:format("~-19s: ~s~n", [<<"Account-ID">>, AccountId]),
+            Classification = knm_converters:classify(Number),
             pretty_print_number_props(
-              props:insert_value(<<"classification">>
-                                 ,wnm_util:classify_number(Number, AccountId)
-                                 ,Props
-                                )
+              props:insert_value(<<"classification">>, Classification, Props)
              );
         {'error', 'not_found'} ->
             io:format("number not found~n")

@@ -762,9 +762,9 @@ create_resource(JObj, Resources) ->
     case wh_json:get_value(<<"classifiers">>, JObj) of
         'undefined' -> [resource_from_jobj(JObj) | Resources];
         ResourceClassifiers ->
-            AccountId = wh_doc:account_id(JObj),
+            AvailableClassifiers = wh_json:to_proplist(knm_converters:available_classifiers()),
             create_resource(wh_json:to_proplist(ResourceClassifiers)
-                            ,wh_json:to_proplist(wnm_util:available_classifiers(AccountId))
+                            ,AvailableClassifiers
                             ,JObj
                             ,Resources
                            )
