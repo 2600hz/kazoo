@@ -50,9 +50,15 @@ clean-deps:
 deps: deps/Makefile
 	$(MAKE) -C deps/ all
 deps/Makefile: .erlang.mk
-	mkdir deps
-	$(MAKE) -f erlang.mk deps
-	cp $(ROOT)/make/Makefile.deps deps/Makefile
+### we need to preserve our makefile because erlang.mk download needs bootstrap and overwrites it
+	mkdir -p deps
+	cp -f Makefile Makefile.1
+	$(MAKE) -f erlang.mk bootstrap
+### restore & leanup after erlang.mk bootstrap
+	cp -f Makefile.1 Makefile
+	rm -f Makefile.1
+	rm -rf src
+	cp -f $(ROOT)/make/Makefile.deps deps/Makefile
 
 core:
 	$(MAKE) -C core/ all
