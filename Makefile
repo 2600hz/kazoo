@@ -19,9 +19,6 @@ clean: $(KAZOODIRS)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 
-clean-deps:
-	$(MAKE) -C deps/ clean
-
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
 
@@ -42,13 +39,20 @@ test: ACTION = test
 test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
-deps: deps/.erlang.mk
+clean-deps:
+	$(if $(wildcard deps/), $(MAKE) -C deps/ clean)
+	$(if $(wildcard deps/), rm -r deps/)
+
 .erlang.mk: ERLANGMK_VERSION = '2.0.0-pre.2'
 .erlang.mk:
 	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/$(ERLANGMK_VERSION)/erlang.mk' -O $(ROOT)/erlang.mk
-deps/.erlang.mk: .erlang.mk
-	$(MAKE) -f erlang.mk deps
+
+deps: deps/Makefile
 	$(MAKE) -C deps/ all
+deps/Makefile: .erlang.mk
+	mkdir deps
+	$(MAKE) -f erlang.mk deps
+	cp $(ROOT)/make/Makefile.deps deps/Makefile
 
 core:
 	$(MAKE) -C core/ all
