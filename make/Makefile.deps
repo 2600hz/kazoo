@@ -1,3 +1,5 @@
+ROOT = ..
+
 DEPS_DIR = $(CURDIR)
 ERLC_OPTS += +debug_info
 
@@ -6,5 +8,5 @@ clean::
 	$(if $(wildcard .erlang.mk), rm -rf .erlang.mk)
 
 
-include ../deps.mk
--include ../erlang.mk
+include $(ROOT)/make/deps.mk
+include $(ROOT)/erlang.mk

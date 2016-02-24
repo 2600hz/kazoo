@@ -11,7 +11,6 @@
 *.o
 *.pid
 *.dump
-applications/*/priv/archive_data/*
 
 /.edts
 .project
@@ -24,10 +23,12 @@ rel/relx.config
 rel/dev-vm.args
 rel/vm.args
 
-core/whistle/src/kz_mime.erl
-core/whistle/mime.types
-
 erlang.mk
 .erlang.mk
 
-deps/*/
+deps/
+
+core/whistle/src/kz_mime.erl
+core/whistle/mime.types
+
+applications/*/priv/archive_data/*
