@@ -147,10 +147,11 @@ load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
-            Context1 = check_document_type(DocId, Context, JObj, Options),
-            case cb_context:resp_status(Context1) of
-                'success' -> handle_successful_load(Context1, JObj);
-                _Status -> Context1
+            case check_document_type(DocId, Context, JObj, Options) of
+                'true' -> handle_successful_load(Context, JObj);
+                'false' ->
+                    ErrorCause = wh_json:from_list([{<<"cause">>, DocId}]),
+                    cb_context:add_system_error('bad_identifier', ErrorCause, Context)
             end
     end;
 load([], Context, _Options, _RespStatus) ->
@@ -161,14 +162,12 @@ load([_|_]=IDs, Context, Opts, _RespStatus) ->
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
             Docs = extract_included_docs(JObjs),
-            Context1 = check_document_type(IDs, Context, Docs, Opts),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    cb_context:store(handle_couch_mgr_success(Docs, Context)
-                                     ,'db_doc'
-                                     ,Docs
-                                    );
-                _Status -> Context1
+            case check_document_type(IDs, Context, Docs, Opts) of
+                'true' ->
+                    cb_context:store(handle_couch_mgr_success(Docs, Context), 'db_doc', Docs);
+                'fasle' ->
+                    ErrorCause = wh_json:from_list([{<<"cause">>, IDs}]),
+                    cb_context:add_system_error('bad_identifier', ErrorCause, Context)
             end
     end.
 
@@ -180,37 +179,32 @@ get_open_function(Options) ->
     end.
 
 -spec check_document_type(api_binary(), cb_context:context(), wh_json:object(), wh_proplist()) ->
-                              cb_context:context().
+                                  boolean().
 check_document_type(DocId, Context, JObj, Options) when is_binary(DocId) ->
     JObjType = wh_doc:type(JObj),
     ExpectedType = props:get_value(?OPTION_EXPECTED_TYPE, Options),
     [{Noun, _}| _] = cb_context:req_nouns(Context),
     ReqType = normalize_requested_resource_name(Noun),
-    case document_type_match(JObjType, ExpectedType, ReqType) of
-        'true' -> Context;
-        'false' ->
-            ErrorCause = wh_json:from_list([{<<"cause">>, DocId}]),
-            cb_context:add_system_error('bad_identifier', ErrorCause, Context)
-    end;
-check_document_type([], Context, _, _) -> Context;
+    document_type_match(JObjType, ExpectedType, ReqType);
+check_document_type([], _Context, _JObjs, _Options) ->
+    'true';
 check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
-    Context1 = check_document_type(DocId, Context, JObj, Options),
-    case cb_context:resp_status(Context1) of
-        'success' -> check_document_type(DocIds, Context, JObjs, Options);
-        _Status -> Context1
+    case check_document_type(DocId, Context, JObj, Options) of
+        'true' -> check_document_type(DocIds, Context, JObjs, Options);
+        'false' -> 'false'
     end.
 
 -spec document_type_match(api_binary(), api_binary(), ne_binary()) -> boolean().
 document_type_match('undefined', _ExpectedType, _ReqType) ->
-    io:format("document doesn't have type, requested type is ~p~n", [_ReqType]),
+    lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
     'true';
 document_type_match(_JObjType, 'any', _) -> 'true';
 document_type_match(ExpectedType, ExpectedType, _) -> 'true';
 document_type_match(ReqType, _, ReqType) ->
-    io:format("expected type is not specified, checking against requested type ~p~n", [ReqType]),
+    lager:debug("expected type is not specified, checking against requested type ~p", [ReqType]),
     'true';
 document_type_match(_JObjType, _ExpectedType, _ReqType) ->
-    io:format("the document type ~s does not match the expected type ~s nor the requested type ~s~n"
+    lager:warning("the document type ~s does not match the expected type ~s nor the requested type ~s"
               ,[_JObjType, _ExpectedType, _ReqType]),
     'false'.
 

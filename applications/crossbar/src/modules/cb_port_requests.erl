@@ -1503,7 +1503,7 @@ get_phone_numbers_doc(Context) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Context1 = crossbar_doc:load(?KNM_PHONE_NUMBERS_DOC
                                  ,cb_context:set_account_db(Context, AccountDb)
-                                 ,?TYPE_CHECK_OPTION(<<"port_request">>)),
+                                 ,?TYPE_CHECK_OPTION(<<"phone_numbers">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
             {'ok', cb_context:doc(Context1)};
