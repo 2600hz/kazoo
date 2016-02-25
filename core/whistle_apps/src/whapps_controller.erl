@@ -31,7 +31,7 @@
           ,'gcm','gen_smtp','goldrush','gproc'
           ,'inets'
           ,'kazoo_bindings','kazoo_caches','kazoo_documents', 'kazoo_etsmgr'
-          ,'kazoo_modb'
+          ,'kazoo_modb','kazoo_number_manager'
           ,'kazoo_oauth','kazoo_token_buckets','kazoo_web', 'kernel'
           ,'lager', 'lager_syslog'
           ,'nksip'
@@ -40,7 +40,7 @@
           ,'sasl','socketio','ssl','stdlib','syntax_tools','syslog'
           ,'webseq'
           ,'whistle','whistle_amqp','whistle_apps','whistle_config'
-          ,'whistle_couch','whistle_media','whistle_number_manager'
+          ,'whistle_couch','whistle_media',
           ,'whistle_services','whistle_stats','whistle_transactions'
           ,'xmerl'
           ,'zucchini'
