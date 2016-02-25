@@ -10,8 +10,8 @@ Version: 4.0
 The Kazoo number manager aims for the following:
 
 1. Provide a consistent interface to number management
-2. Abstract concepts of carriers, providers, convertors, etc, to allow a more easily pluggable system
-3. Simplify how numbers move from various states and between accounts
+1. Abstract concepts of carriers, providers, convertors, etc, to allow a more easily pluggable system
+1. Simplify how numbers move from various states and between accounts
 
 ## Interface
 
@@ -40,6 +40,8 @@ The `knm_gen_carrier` module provides an Erlang behaviour which all carrier modu
 ### Providers
 
 The `knm_providers` module provides the interface to the enabled provider modules. Just as the `knm_carriers` module abstracts the carrier, `knm_proviers` abstracts the provider modules, allowing providers to be added/removed without needing knowledge of which provider modules are in play.
+
+The `knm_gen_provider` module provides an Erlang behaviour which all provider modules must implement.
 
 ### Convertors
 

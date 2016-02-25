@@ -8,7 +8,7 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_cnam_notifier).
--behaviour(knm_providers).
+-behaviour(knm_gen_provider).
 
 -export([save/1]).
 -export([delete/1]).
