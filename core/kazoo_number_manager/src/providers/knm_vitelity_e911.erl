@@ -9,9 +9,11 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_vitelity_e911).
+-behaviour(knm_providers).
 
 -export([save/1]).
 -export([delete/1]).
+-export([has_emergency_services/1]).
 -export([is_valid_location/1]).
 -export([get_location/1]).
 
@@ -57,6 +59,18 @@ delete(Number) ->
             lager:debug("removing e911 information"),
             _ = remove_number(Number),
             knm_services:deactivate_feature(Number, ?VITELITY_KEY)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec has_emergency_services(knm_number:knm_number()) -> boolean().
+has_emergency_services(Number) ->
+    case knm_phone_number:feature(knm_number:phone_number(Number), ?VITELITY_KEY) of
+        'undefined' -> 'false';
+        _Else -> 'true'
     end.
 
 %%--------------------------------------------------------------------

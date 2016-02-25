@@ -12,6 +12,15 @@
 
 -export([save/1]).
 -export([delete/1]).
+-export([has_emergency_services/1]).
+
+%% To be implemented by knm provider modules:
+
+-callback save(knm_number:knm_number()) -> knm_number:knm_number().
+
+-callback delete(knm_number:knm_number()) -> knm_number:knm_number().
+
+-callback has_emergency_services(knm_number:knm_number()) -> boolean().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -33,6 +42,15 @@ save(Number) ->
 delete(Number) ->
     exec(Number, 'delete').
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Return whether a number has emergency services enabled
+%%--------------------------------------------------------------------
+-spec has_emergency_services(knm_number:number()) -> boolean().
+has_emergency_services(Number) ->
+    F = fun (Provider) -> apply_action(Number, 'has_emergency_services', Provider) end,
+    lists:foldl(fun erlang:'or'/2, 'false', lists:filtermap(F, provider_modules())).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -42,36 +60,44 @@ delete(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type exec_action() :: 'save' | 'delete'.
+-type exec_action() :: 'save' | 'delete' | 'has_emergency_services'.
 -spec exec(knm_number:knm_number(), exec_action()) ->
                   knm_number:knm_number().
 -spec exec(knm_number:knm_number(), exec_action(), ne_binaries()) ->
                   knm_number:knm_number().
 
 -ifdef(TEST).
--define(PROVIDER_MODULES, ?DEFAULT_PROVIDER_MODULES).
+provider_modules() ->
+    ?DEFAULT_PROVIDER_MODULES.
 -else.
--define(PROVIDER_MODULES
-        ,whapps_config:get(?KNM_CONFIG_CAT
-                           ,<<"providers">>
-                           ,?DEFAULT_PROVIDER_MODULES
-                          )
-       ).
+provider_modules() ->
+    whapps_config:get(?KNM_CONFIG_CAT, <<"providers">>, ?DEFAULT_PROVIDER_MODULES).
 -endif.
 
 exec(Number, Action) ->
-    Providers = ?PROVIDER_MODULES,
-    exec(Number, Action, Providers).
+    exec(Number, Action, provider_modules()).
 
-exec(Number, _, []) ->
-    Number;
-exec(Number, Action, [Provider|Providers]) ->
+exec(Num, Action, Providers) ->
+    lists:foldl(
+      fun (Provider, Number) ->
+              case apply_action(Number, Action, Provider) of
+                  {'true', Ret} -> Ret;
+                  'false' -> Number
+              end
+      end
+      ,Num
+      ,Providers
+     ).
+
+-spec apply_action(knm_number:knm_number(), exec_action(), ne_binary()) ->
+                          {'true', any()} | 'false'.
+apply_action(Number, Action, Provider) ->
     case wh_util:try_load_module(<<"knm_", Provider/binary>>) of
         'false' ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
-            exec(Number, Action, Providers);
+            'false';
         Module ->
-            Number1 = erlang:apply(Module, Action, [Number]),
+            Ret = erlang:apply(Module, Action, [Number]),
             lager:debug("successfully attempted ~s:~s/1", [Module, Action]),
-            exec(Number1, Action, Providers)
+            {'true', Ret}
     end.

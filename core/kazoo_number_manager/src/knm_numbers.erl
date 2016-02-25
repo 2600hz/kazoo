@@ -17,6 +17,7 @@
          ,assigned_to_app/1 ,assigned_to_app/2
          ,buy/2
          ,free/1
+         ,emergency_enabled/1
         ]).
 
 -include("knm.hrl").
@@ -183,6 +184,11 @@ assigned_to_app([{Num, App}|Props], Options, Acc) ->
 buy(Nums, Account) ->
     [knm_number:buy(Num, Account) || Num <- Nums].
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec free(ne_binary()) -> 'ok'.
 free(AccountId)
   when is_binary(AccountId) ->
@@ -242,6 +248,44 @@ check_to_free_number(_AccountId, Number, _OtherAccountId) ->
                  ]
                ).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Find an account's numbers that have emergency services enabled
+%%--------------------------------------------------------------------
+-spec emergency_enabled(ne_binary()) -> {'ok', knm_number:knm_numbers()} |
+                                        {'error', any()}.
+emergency_enabled(Account)
+  when is_binary(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, ?KNM_PHONE_NUMBERS_DOC) of
+        {'ok', JObj} ->
+            Numbers = wh_json:get_keys(wh_json:public_fields(JObj)),
+            Options = [{'assigned_to', wh_util:format_account_id(Account, 'raw')}
+                      ],
+            PhoneNumbers = fetch(Numbers, Options),
+            EnabledNumbers =
+                [PhoneNumber || PhoneNumber <- PhoneNumbers,
+                                knm_providers:has_emergency_services(PhoneNumber)],
+            {'ok', EnabledNumbers};
+        {'error', _R}=Error ->
+            Error
+    end.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec fetch(ne_binaries(), knm_number_options:opions()) ->
+                   knm_number:knm_numbers().
+fetch(Numbers, Options) ->
+    lists:foldl(
+      fun (Number, Acc) ->
+              case knm_phone_number:fetch(Number, Options) of
+                  {'ok', PN} ->
+                      [knm_number:set_phone_number(knm_number:new(), PN) | Acc];
+                  _Else -> Acc
+              end
+      end
+      ,[]
+      ,Numbers
+     ).
