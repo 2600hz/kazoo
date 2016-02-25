@@ -306,6 +306,7 @@ init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
     end.
 
 -spec add_mapping(ne_binary(), fun(), wh_json:objects()) -> 'ok'.
+-spec add_mapping(ne_binary(), fun(), wh_json:objects(), pid()) -> 'ok'.
 add_mapping(Db, SendFun, JObjs) ->
     add_mapping(Db, SendFun, JObjs, whereis(?MODULE)).
 
