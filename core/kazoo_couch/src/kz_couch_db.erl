@@ -19,7 +19,7 @@
          ,db_info/1
          ,db_info/2
          ,db_exists/2
-         ,db_archive/2
+         ,db_archive/3
         ]).
 
 -include("kz_couch.hrl").
@@ -81,29 +81,30 @@ db_info(#server{}=Conn, DbName) ->
 db_exists(#server{}=Conn, DbName) ->
     couchbeam:db_exists(Conn, wh_util:to_list(DbName)).
 
--spec db_archive(server(), ne_binary()) -> 'ok'.
-db_archive(#server{}=Conn, Filename) ->
-    {'ok', DbInfo} = db_info(Conn),
+-spec db_archive(server(), ne_binary(), ne_binary()) -> 'ok'.
+db_archive(#server{}=Conn, DbName, Filename) ->
+    Db = get_db(Conn, DbName),
+    {'ok', DbInfo} = db_info(Conn, DbName),
     {'ok', File} = file:open(Filename, ['write']),
     'ok' = file:write(File, <<"[">>),
     io:format("archiving to ~s~n", [Filename]),
     MaxDocs = whapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
-    archive(Conn, File, MaxDocs, wh_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
+    archive(Db, File, MaxDocs, wh_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
     'ok' = file:write(File, <<"]">>),
     file:close(File).
 
 %% MaxDocs = The biggest set of docs to pull from Couch
 %% N = The number of docs in the DB that haven't been archived
 %% Pos = Which doc will the next query start from (the offset)
--spec archive(server(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+-spec archive(db(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 archive(Db, _File,  _MaxDocs, 0, _Pos) ->
     io:format("    archive ~s complete~n", [Db]);
-archive(Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
+archive(#db{}=Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
     ViewOptions = [{'limit', N}
                    ,{'skip', Pos}
                    ,'include_docs'
                   ],
-    case kzs_mgr:all_docs(Db, ViewOptions) of
+    case kz_couch_view:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
         {'ok', Docs} ->
             'ok' = archive_docs(File, Docs),
@@ -118,7 +119,7 @@ archive(Db, File, MaxDocs, N, Pos) ->
                    ,{'skip', Pos}
                    ,'include_docs'
                   ],
-    case kzs_mgr:all_docs(Db, ViewOptions) of
+    case kz_couch_view:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
         {'ok', Docs} ->
             'ok' = archive_docs(File, Docs),

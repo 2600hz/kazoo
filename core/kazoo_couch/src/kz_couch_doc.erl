@@ -169,14 +169,6 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
 perform_save_docs(Db, Docs, Options) ->
     ?RETRY_504(couchbeam:save_docs(Db, Docs, Options)).
 
-%% -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
-%% maybe_set_docid(Doc) ->
-%%     case wh_doc:id(Doc) of
-%%         'undefined' -> wh_doc:set_id(Doc, kzs_mgr:get_uuid());
-%%         _ -> Doc
-%%     end.
-
-
 %% Helpers for getting Couchbeam records ---------------------------------------
 
 

@@ -10,7 +10,7 @@
 
 
 %% Doc related
--export([open_cache_doc/2, open_cache_doc/3
+-export([open_cache_doc/4
          ,add_to_doc_cache/3
          ,flush_cache_doc/2
          ,flush_cache_doc/3
@@ -23,24 +23,16 @@
 
 -include("kz_data.hrl").
 
--spec open_cache_doc(text(), ne_binary()) ->
+-spec open_cache_doc(server(), text(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:object()} |
                             data_error() |
                             {'error', 'not_found'}.
-open_cache_doc(DbName, DocId) ->
-    open_cache_doc(DbName, DocId, []).
-
--spec open_cache_doc(text(), ne_binary(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
-open_cache_doc(DbName, DocId, Options) ->
+open_cache_doc(Server, DbName, DocId, Options) ->
     case kz_cache:peek_local(?KZ_DATA_CACHE, {?MODULE, DbName, DocId}) of
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-%            case kzs_doc:open_doc(Server, DbName, DocId, remove_non_couchbeam_options(Options)) of
-            case kz_datamgr:open_doc(DbName, DocId, Options) of
+            case kzs_doc:open_doc(Server, DbName, DocId, Options) of
                 {'error', _}=E ->
                     maybe_cache_failure(DbName, DocId, Options, E),
                     E;
@@ -49,10 +41,6 @@ open_cache_doc(DbName, DocId, Options) ->
                     Ok
             end
     end.
-
-%% -spec remove_non_couchbeam_options(wh_proplist()) -> wh_proplist().
-%% remove_non_couchbeam_options(Options) ->
-%%     props:delete_keys(['cache_failures'], Options).
 
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), data_error()) -> 'ok'.
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), data_error(), atoms()) -> 'ok'.

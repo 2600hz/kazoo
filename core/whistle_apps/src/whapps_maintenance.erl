@@ -773,7 +773,6 @@ migrate_media() ->
 migrate_media_fold(AccountDb, Current, Total) ->
     io:format("migrating media in database (~p/~p) '~s'", [Current, Total, AccountDb]),
     _ = migrate_media(AccountDb),
-    couch_compactor_fsm:compact_db(AccountDb),
     Current + 1.
 
 migrate_media(Account) when not is_binary(Account) ->

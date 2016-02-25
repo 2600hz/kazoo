@@ -15,7 +15,7 @@
          ,all_design_docs/3
          ,get_results/4
          ,get_results_count/4
-         ,all_docs/3
+         ,all_docs/2, all_docs/3
         ]).
 
 -include("kz_couch.hrl").
@@ -49,6 +49,11 @@ all_design_docs(#server{}=Conn, DBName, Options) ->
               | Options
              ],
     do_fetch_results(Db, 'all_docs', Filter).
+
+-spec all_docs(db(), view_options()) -> {'ok', wh_json:objects()} |
+                                        couchbeam_error().
+all_docs(#db{}=Db, Options) ->
+    do_fetch_results(Db, 'all_docs', Options).
 
 -spec all_docs(server(), ne_binary(), view_options()) ->
                       {'ok', wh_json:objects()} |
