@@ -8,7 +8,7 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_vitelity_cnam).
--behaviour(knm_providers).
+-behaviour(knm_gen_provider).
 
 -export([save/1]).
 -export([delete/1]).

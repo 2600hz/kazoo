@@ -9,7 +9,7 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_dash_e911).
--behaviour(knm_providers).
+-behaviour(knm_gen_provider).
 
 -export([save/1]).
 -export([delete/1]).

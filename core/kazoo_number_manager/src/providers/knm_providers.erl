@@ -14,14 +14,6 @@
 -export([delete/1]).
 -export([has_emergency_services/1]).
 
-%% To be implemented by knm provider modules:
-
--callback save(knm_number:knm_number()) -> knm_number:knm_number().
-
--callback delete(knm_number:knm_number()) -> knm_number:knm_number().
-
--callback has_emergency_services(knm_number:knm_number()) -> boolean().
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

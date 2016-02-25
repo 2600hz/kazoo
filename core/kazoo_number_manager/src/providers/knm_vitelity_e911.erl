@@ -9,7 +9,7 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_vitelity_e911).
--behaviour(knm_providers).
+-behaviour(knm_gen_provider).
 
 -export([save/1]).
 -export([delete/1]).
