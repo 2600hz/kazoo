@@ -1007,8 +1007,6 @@ request_media_url(MediaName, CallId, JObj, Type) ->
             MediaUrl = wh_json:find(<<"Stream-URL">>, MediaResp, <<>>),
             CacheProps = media_url_cache_props(MediaName),
 
-            lager:debug("cache props for ~s: ~p", [MediaName, CacheProps]),
-
             _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                      ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                                      ,MediaUrl
