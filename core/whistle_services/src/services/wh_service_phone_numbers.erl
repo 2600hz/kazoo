@@ -131,11 +131,11 @@ update_number_quantities(Services, JObj) ->
 %%--------------------------------------------------------------------
 -spec is_number_billable(ne_binary(), api_binary() | atom()) -> boolean().
 is_number_billable(DID, 'undefined') ->
-    case (catch wnm_number:get(DID)) of
-        {'EXIT', _E} ->
-            lager:debug("failed to get ~s: ~p", [DID, _E]),
+    case knm_number:get(DID) of
+        {'error', _R} ->
+            lager:debug("failed to get ~s: ~p", [DID, _R]),
             'false';
-        Number ->
+        {'ok', Number} ->
             case knm_phone_number:module_name(Number) of
                 'undefined' ->
                     lager:debug("number ~s had no number manager module, not billable", [DID]),
@@ -153,8 +153,8 @@ is_number_billable(DID, M) ->
         'false' ->
             lager:debug("number ~s is not billable: ~s", [DID, Module]),
             'false';
-        Err ->
-            lager:debug("number ~s is not billable due to provider ~s error: ~p", [DID, Module, Err]),
+        _Else ->
+            lager:debug("number ~s is not billable due to provider ~s error: ~p", [DID, Module, _Else]),
             'false'
     end.
 
