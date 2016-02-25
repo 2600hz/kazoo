@@ -8,13 +8,13 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_cnam_notifier).
+-behaviour(knm_providers).
 
 -export([save/1]).
 -export([delete/1]).
+-export([has_emergency_services/1]).
 
 -include("knm.hrl").
-
--define(SERVER, ?MODULE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -53,6 +53,14 @@ delete(Number) ->
                                               ,?FEATURE_OUTBOUND_CNAM
                                               ,?FEATURE_CNAM
                                              ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec has_emergency_services(knm_number:knm_number()) -> boolean().
+has_emergency_services(_Number) -> 'false'.
 
 %%%===================================================================
 %%% Internal functions

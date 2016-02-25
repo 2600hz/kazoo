@@ -9,9 +9,11 @@
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(knm_dash_e911).
+-behaviour(knm_providers).
 
 -export([save/1]).
 -export([delete/1]).
+-export([has_emergency_services/1]).
 
 -include("knm.hrl").
 
@@ -74,6 +76,18 @@ delete(Number) ->
                        ),
             _ = remove_number(Number),
             knm_services:deactivate_feature(Number, ?DASH_KEY)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec has_emergency_services(knm_number:knm_number()) -> boolean().
+has_emergency_services(Number) ->
+    case knm_phone_number:feature(knm_number:phone_number(Number), ?DASH_KEY) of
+        'undefined' -> 'false';
+        _Else -> 'true'
     end.
 
 %%%===================================================================
