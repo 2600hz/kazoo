@@ -273,7 +273,7 @@ db_exists(DbName) ->
 
 %% -spec admin_db_exists(text()) -> boolean().
 %% admin_db_exists(DbName) when ?VALID_DBNAME ->
-%%     kzs_db:db_exists(wh_couch_connections:get_admin_server(), DbName);
+%%     kzs_db:db_exists(kz_dataconnections:get_admin_server(), DbName);
 %% admin_db_exists(DbName) ->
 %%     case maybe_convert_dbname(DbName) of
 %%         {'ok', Db} -> admin_db_exists(Db);
@@ -294,7 +294,7 @@ db_info() ->
     kzs_db:db_info(get_server()).
 
 %% admin_db_info() ->
-%%     kzs_db:db_info(wh_couch_connections:get_admin_server()).
+%%     kzs_db:db_info(kz_dataconnections:get_admin_server()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -554,7 +554,7 @@ add_to_doc_cache(DbName, DocId, Doc) ->
                       {'ok', wh_json:object()}
                       | data_error().
 update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
-    case kzs_cache:open_cache_doc(DbName, DocId) of
+    case open_cache_doc(DbName, DocId) of
         {'ok', JObj} ->
             NewJObj = Fun(JObj),
             maybe_save_doc(DbName, NewJObj, JObj);
@@ -635,7 +635,7 @@ admin_open_doc(DbName, DocId) ->
     admin_open_doc(DbName, DocId, []).
 
 admin_open_doc(DbName, DocId, Options) when ?VALID_DBNAME->
-    kzs_doc:open_doc(wh_couch_connections:get_admin_server(), DbName, DocId, Options);
+    kzs_doc:open_doc(kz_dataconnections:get_admin_server(), DbName, DocId, Options);
 admin_open_doc(DbName, DocId, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> admin_open_doc(Db, DocId, Options);

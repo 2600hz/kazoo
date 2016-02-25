@@ -259,6 +259,6 @@ devices(UserJObj) ->
 -spec fetch(ne_binary(), ne_binary()) -> {'ok', doc()} | {'error', any()}.
 fetch(<<_/binary>> = AccountId, <<_/binary>> = UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    couch_mgr:open_cache_doc(AccountDb, UserId);
+    kz_datamgr:open_cache_doc(AccountDb, UserId);
 fetch(_, _) ->
     {'error', 'invalid_parametres'}.
