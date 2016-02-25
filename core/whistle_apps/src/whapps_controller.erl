@@ -40,7 +40,7 @@
           ,'sasl','socketio','ssl','stdlib','syntax_tools','syslog'
           ,'webseq'
           ,'whistle','whistle_amqp','whistle_apps','whistle_config'
-          ,'whistle_couch','whistle_media',
+          ,'whistle_couch','whistle_media'
           ,'whistle_services','whistle_stats','whistle_transactions'
           ,'xmerl'
           ,'zucchini'
