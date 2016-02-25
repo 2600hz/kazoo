@@ -50,7 +50,7 @@ clean-deps:
 deps: deps/Makefile
 	$(MAKE) -C deps/ all
 deps/Makefile: .erlang.mk
-	mkdir deps
+	mkdir -p deps
 	$(MAKE) -f erlang.mk deps
 	cp $(ROOT)/make/Makefile.deps deps/Makefile
 
