@@ -1087,7 +1087,6 @@ publish(Action, Db, Doc) ->
     IsHardDeleted = wh_doc:is_deleted(Doc),
 
     EventName = doc_change_event_name(Action, IsSoftDeleted orelse IsHardDeleted),
-    lager:debug("media event name ~s (~p/~p): ~p", [EventName, IsSoftDeleted, IsHardDeleted, Doc]),
 
     Props =
         [{<<"ID">>, Id}
