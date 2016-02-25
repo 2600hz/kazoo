@@ -26,6 +26,7 @@
 -callback db_info(_, _) -> any().
 -callback db_exists(_, _) -> boolean().
 -callback db_archive(_, _, _) -> any().
+-callback db_list(_, _) -> any().
 
 %% Document operations
 -callback open_doc(_, _, _, _) -> any().

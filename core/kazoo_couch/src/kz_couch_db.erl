@@ -20,6 +20,7 @@
          ,db_info/2
          ,db_exists/2
          ,db_archive/3
+         ,db_list/2
         ]).
 
 -include("kz_couch.hrl").
@@ -60,6 +61,11 @@ db_replicate(#server{}=Conn, Prop) when is_list(Prop) ->
     couchbeam:replicate(Conn, wh_json:from_list(Prop));
 db_replicate(#server{}=Conn, JObj) ->
     couchbeam:replicate(Conn, JObj).
+
+-spec db_list(server(), view_options()) ->
+          {'ok', wh_json:objects() | ne_binaries()} | couchbeam_error().
+db_list(#server{}=Conn, Options) ->
+    couchbeam:all_dbs(Conn, Options).
 
 -spec db_view_cleanup(server(), ne_binary()) -> boolean().
 db_view_cleanup(#server{}=Conn, DbName) ->

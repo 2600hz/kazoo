@@ -325,9 +325,10 @@ number_to_db_name(_) ->
 
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->
-    {'ok', Dbs} = kz_datamgr:admin_all_docs(<<"dbs">>, [{'startkey', ?WNM_DB_PREFIX}
-                                                       ,{'endkey', <<?WNM_DB_PREFIX_L, "\ufff0">>}
-                                                      ]),
+    {'ok', Dbs} = kz_datamgr:db_list([{'startkey', ?WNM_DB_PREFIX}
+                                      ,{'endkey', <<?WNM_DB_PREFIX_L, "\ufff0">>}
+                                     ]),
+    lager:debug("DBS ~p", [Dbs]),
     [cow_qs:urlencode(wh_doc:id(View))
      || View <- Dbs
     ].

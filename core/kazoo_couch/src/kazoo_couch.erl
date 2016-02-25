@@ -28,6 +28,7 @@
          ,db_info/1, db_info/2
          ,db_exists/2
          ,db_archive/3
+         ,db_list/2
         ]).
 
 %% Document operations
@@ -116,6 +117,9 @@ db_exists(Server, DbName) ->
 
 db_archive(Server, DbName, Filename) ->
     kz_couch_db:db_archive(Server, DbName, Filename).
+
+db_list(Server, Options) ->
+    kz_couch_db:db_list(Server, Options).
 
 %% Document operations
 open_doc(Server, DbName, DocId, Options) ->

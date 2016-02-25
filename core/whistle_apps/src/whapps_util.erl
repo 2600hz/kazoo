@@ -257,10 +257,9 @@ find_oldest_doc([First|Docs]) ->
 get_all_accounts() -> get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
-    {'ok', Dbs} = kz_datamgr:admin_all_docs(<<"dbs">>
-                                          ,[{'startkey', <<"account/">>}
-                                            ,{'endkey', <<"account/\ufff0">>}
-                                           ]),
+    {'ok', Dbs} = kz_datamgr:db_list([{'startkey', <<"account/">>}
+                                      ,{'endkey', <<"account/\ufff0">>}
+                                     ]),
     [wh_util:format_account_id(Id, Encoding)
      || Db <- Dbs,
         is_account_db((Id = wh_doc:id(Db)))

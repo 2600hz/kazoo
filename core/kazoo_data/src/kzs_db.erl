@@ -19,6 +19,7 @@
          ,db_info/2
          ,db_exists/2
          ,db_archive/3
+         ,db_list/2
         ]).
 
 
@@ -65,3 +66,8 @@ db_exists({App, Conn}, DbName) -> App:db_exists(Conn, DbName).
 
 -spec db_archive(server(), ne_binary(), ne_binary()) -> boolean().
 db_archive({App, Conn}, DbName, Filename) -> App:db_archive(Conn, DbName, Filename).
+
+
+-spec db_list(server(), view_options()) -> {'ok', wh_json:objects()} | data_error().
+db_list({App, Conn}, Options) ->
+    App:db_list(Conn, Options).
