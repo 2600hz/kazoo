@@ -147,21 +147,29 @@ load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
-            check_document_type(DocId, Context, JObj, Options)
+            Context1 = check_document_type(DocId, Context, JObj, Options),
+            case cb_context:resp_status(Context1) of
+                'success' -> handle_successful_load(Context1, JObj);
+                _Status -> Context1
+            end
     end;
 load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
 load([_|_]=IDs, Context, Opts, _RespStatus) ->
     Opts1 = [{'keys', IDs}, 'include_docs' | Opts],
-    io:format("crossbar_doc load IDs"),
     case kz_datamgr:all_docs(cb_context:account_db(Context), Opts1) of
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
             Docs = extract_included_docs(JObjs),
-            cb_context:store(handle_couch_mgr_success(Docs, Context)
-                             ,'db_doc'
-                             ,Docs
-                            )
+            Context1 = check_document_type(IDs, Context, Docs, Opts),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    cb_context:store(handle_couch_mgr_success(Docs, Context)
+                                     ,'db_doc'
+                                     ,Docs
+                                    );
+                _Status -> Context1
+            end
     end.
 
 -spec get_open_function(wh_proplist()) -> function().
@@ -173,34 +181,53 @@ get_open_function(Options) ->
 
 -spec check_document_type(api_binary(), cb_context:context(), wh_json:object(), wh_proplist()) ->
                               cb_context:context().
-check_document_type(DocId, Context, JObj, Options) ->
+check_document_type(DocId, Context, JObj, Options) when is_binary(DocId) ->
     JObjType = wh_doc:type(JObj),
     ExpectedType = props:get_value(?OPTION_EXPECTED_TYPE, Options),
-    [{ReqType, _}| _] = cb_context:req_nouns(Context),
+    [{Noun, _}| _] = cb_context:req_nouns(Context),
+    ReqType = normalize_requested_resource_name(Noun),
     case document_type_match(JObjType, ExpectedType, ReqType) of
-        'true' -> handle_successful_load(Context, JObj);
+        'true' -> Context;
         'false' ->
             ErrorCause = wh_json:from_list([{<<"cause">>, DocId}]),
             cb_context:add_system_error('bad_identifier', ErrorCause, Context)
+    end;
+check_document_type([], Context, _, _) -> Context;
+check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
+    Context1 = check_document_type(DocId, Context, JObj, Options),
+    case cb_context:resp_status(Context1) of
+        'success' -> check_document_type(DocIds, Context, JObjs, Options);
+        _Status -> Context1
     end.
 
 -spec document_type_match(api_binary(), api_binary(), ne_binary()) -> boolean().
 document_type_match('undefined', _ExpectedType, _ReqType) ->
-    io:format("document doesn't have type, _ReqType: ~p~n", [_ReqType]),
+    io:format("document doesn't have type, requested type is ~p~n", [_ReqType]),
     'true';
-document_type_match(_JObjType, 'any', _) ->
-    io:format("allowing any expected type!~n", []),
-    'true';
-document_type_match(ExpectedType, ExpectedType, _) ->
-    io:format("expected type is not specified, checking against module name, Mod: ~p~n", [ExpectedType]),
-    'true';
+document_type_match(_JObjType, 'any', _) -> 'true';
+document_type_match(ExpectedType, ExpectedType, _) -> 'true';
 document_type_match(ReqType, _, ReqType) ->
-    io:format("matched, Type: ~p ~n~n", [ReqType]),
+    io:format("expected type is not specified, checking against requested type ~p~n", [ReqType]),
     'true';
 document_type_match(_JObjType, _ExpectedType, _ReqType) ->
     io:format("the document type ~s does not match the expected type ~s nor the requested type ~s~n"
               ,[_JObjType, _ExpectedType, _ReqType]),
     'false'.
+
+-spec normalize_requested_resource_name(ne_binary()) -> ne_binary().
+normalize_requested_resource_name(Name) ->
+    case props:get_value(Name, ?SPECIAL_EXPECTED_TYPE) of
+        'undefined' -> depluralize_resource_name(Name);
+        Special -> Special
+    end.
+
+-spec depluralize_resource_name(ne_binary()) -> ne_binary().
+depluralize_resource_name(Name) ->
+    Size = byte_size(Name) - 1,
+    case Name of
+        <<Bin:Size/binary, L:8>> when L == $s -> Bin;
+        Bin -> Bin
+    end.
 
 -spec handle_successful_load(cb_context:context(), wh_json:object()) -> cb_context:context().
 -spec handle_successful_load(cb_context:context(), wh_json:object(), boolean()) -> cb_context:context().

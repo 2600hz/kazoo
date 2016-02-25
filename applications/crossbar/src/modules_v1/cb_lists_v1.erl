@@ -111,11 +111,11 @@ validate_list(Context, ListId, ?HTTP_DELETE) ->
 
 -spec validate_list_entry(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 validate_list_entry(Context, _ListId, EntryId, ?HTTP_GET) ->
-    crossbar_doc:load(EntryId, Context);
+    crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(<<"list_entry">>));
 validate_list_entry(Context, ListId, EntryId, ?HTTP_POST) ->
     check_list_entry_schema(ListId, EntryId, Context);
 validate_list_entry(Context, _ListId, EntryId, ?HTTP_DELETE) ->
-    crossbar_doc:load(EntryId, Context).
+    crossbar_doc:load(EntryId, Context, ?TYPE_CHECK_OPTION(<<"list_entry">>)).
 
 -spec check_list_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_list_schema(ListId, Context) ->
@@ -146,7 +146,7 @@ on_successful_validation('undefined', Context) ->
                        ,wh_json:set_values(Props, cb_context:doc(Context))
                       );
 on_successful_validation(ListId, Context) ->
-    crossbar_doc:load_merge(ListId, Context).
+    crossbar_doc:load_merge(ListId, Context, ?TYPE_CHECK_OPTION(<<"list">>)).
 
 -spec check_list_entry_schema(path_token(), api_binary(), cb_context:context()) -> cb_context:context().
 check_list_entry_schema(ListId, EntryId, Context) ->
@@ -182,7 +182,7 @@ on_entry_successful_validation(_ListId, 'undefined', Context) ->
                        ,wh_json:set_values([{<<"pvt_type">>, <<"list_entry">>}]
                                            ,cb_context:doc(Context)));
 on_entry_successful_validation(_ListId, EntryId, Context) ->
-    crossbar_doc:load_merge(EntryId, Context).
+    crossbar_doc:load_merge(EntryId, Context, ?TYPE_CHECK_OPTION(<<"list_entry">>)).
 
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
@@ -261,7 +261,7 @@ load_list(Context, ListId) ->
                                                     ,[{'key', ListId}]
                                                     ,Context
                                                     ,fun normalize_view_results/2)),
-    Context1 = crossbar_doc:load(ListId, Context),
+    Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(<<"list">>)),
     Doc = cb_context:doc(Context1),
     Doc1 = wh_json:public_fields(wh_json:set_value(<<"entries">>, entries_from_list(Entries), Doc)),
     cb_context:set_resp_data(Context1, Doc1).

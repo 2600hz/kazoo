@@ -667,7 +667,7 @@ find_whitelabel(Context, Domain) ->
 %%--------------------------------------------------------------------
 -spec load_whitelabel_meta(cb_context:context(), ne_binary()) -> cb_context:context().
 load_whitelabel_meta(Context, WhitelabelId) ->
-    crossbar_doc:load(WhitelabelId, Context).
+    crossbar_doc:load(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
 
 -spec find_whitelabel_meta(cb_context:context(), ne_binary()) -> cb_context:context().
 find_whitelabel_meta(Context, Domain) ->
@@ -793,7 +793,7 @@ on_successful_validation(Context, 'undefined') ->
                              ], cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc);
 on_successful_validation(Context, WhitelabelId) ->
-    crossbar_doc:load_merge(WhitelabelId, Context).
+    crossbar_doc:load_merge(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -889,7 +889,7 @@ is_domain_unique(AccountId, Domain) ->
 maybe_update_account_definition(Context) ->
     maybe_update_account_definition(Context, cb_context:resp_status(Context)).
 maybe_update_account_definition(Context, 'success') ->
-    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context),
+    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context, ?TYPE_CHECK_OPTION(kz_account:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             AccountDoc = cb_context:doc(Context1),
@@ -912,7 +912,7 @@ maybe_cleanup_account_definition(Context) ->
     maybe_cleanup_account_definition(Context, cb_context:resp_status(Context)).
 
 maybe_cleanup_account_definition(Context, 'success') ->
-    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context),
+    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context, ?TYPE_CHECK_OPTION(kz_account:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
             AccountDoc = cb_context:doc(Context1),

@@ -97,7 +97,7 @@ validate(Context, Id) ->
 
 -spec validate_resource_templates(http_method(), path_token(), cb_context:context()) -> cb_context:context().
 validate_resource_templates(?HTTP_GET, Id, Context) ->
-    crossbar_doc:load(Id, Context);
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"resource_template">>));
 validate_resource_templates(?HTTP_POST, Id, Context) ->
     case is_allowed_to_update(Context) of
         'true' -> validate_request(Id, Context);
@@ -110,7 +110,7 @@ validate_resource_templates(?HTTP_PATCH, Id, Context) ->
     end;
 validate_resource_templates(?HTTP_DELETE, Id, Context) ->
     case is_allowed_to_update(Context) of
-        'true' -> crossbar_doc:load(Id, Context);
+        'true' -> crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"resource_template">>));
         'false' -> forbidden(Context)
     end.
 
@@ -229,7 +229,7 @@ on_successful_validation('undefined', Context) ->
     JObj = wh_doc:set_type(cb_context:req_data(Context), <<"resource_template">>),
     cb_context:set_resp_status(cb_context:set_doc(Context, JObj), 'success');
 on_successful_validation(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"resource_template">>)),
     case cb_context:resp_status(Context1) of
         'success' -> merge(Context1);
         _Status -> Context1

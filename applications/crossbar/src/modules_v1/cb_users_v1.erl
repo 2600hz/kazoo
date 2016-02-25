@@ -155,8 +155,7 @@ validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 -spec validate_user_id(api_binary(), cb_context:context(), wh_json:object()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
     case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
-        {'ok', Doc} ->
-            validate_request_type(UserId, Context, Doc);
+        {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
             cb_context:add_system_error(
                 'bad_identifier'
@@ -164,13 +163,6 @@ validate_user_id(UserId, Context) ->
                 ,Context
             );
         {'error', _R} -> crossbar_util:response_db_fatal(Context)
-    end.
-
-validate_request_type(UserId, Context, Doc) ->
-    case wh_doc:type(Doc) =:= kzd_user:type() of
-        'true' -> validate_user_id(UserId, Context, Doc);
-        'false' ->
-            cb_context:add_system_error('bad_identifier', wh_json:from_list([{<<"cause">>, UserId}]), Context)
     end.
 
 validate_user_id(UserId, Context, Doc) ->
@@ -407,7 +399,8 @@ set_photo(JObj, Context) ->
 set_org(JObj, Context) ->
     case wh_json:get_value(<<"org">>
                            ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
-                                                             ,Context)))
+                                                             ,Context
+                                                             ,?TYPE_CHECK_OPTION(kzd_user:type()))))
     of
         'undefined' -> JObj;
         Val -> wh_json:set_value(<<"org">>, Val, JObj)
@@ -563,7 +556,7 @@ load_user_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_user(api_binary(), cb_context:context()) -> cb_context:context().
-load_user(UserId, Context) -> crossbar_doc:load(UserId, Context).
+load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -643,7 +636,7 @@ on_successful_validation('undefined', Context) ->
                                                 )
                             );
 on_successful_validation(UserId, Context) ->
-    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context)).
+    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type()))).
 
 -spec maybe_import_credintials(api_binary(), cb_context:context()) -> cb_context:context().
 maybe_import_credintials(UserId, Context) ->

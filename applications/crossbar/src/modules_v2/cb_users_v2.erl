@@ -736,6 +736,7 @@ set_org(JObj, Context) ->
     case wh_json:get_value(<<"org">>
                           ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
                                                            ,Context
+                                                           ,?TYPE_CHECK_OPTION(kzd_user:type())
                                                            )
                                          )
                           )

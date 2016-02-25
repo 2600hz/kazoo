@@ -231,7 +231,7 @@ create(Context) ->
 -spec read(ne_binary(), cb_context:context(), ne_binary()) ->
                   cb_context:context().
 read(Id, Context, Node) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     cb_context:set_resp_data(Context1
                              ,wh_json:get_value(Node, cb_context:doc(Context1), wh_json:new())
                             ).
@@ -239,7 +239,7 @@ read(Id, Context, Node) ->
 -spec read_for_delete(ne_binary(), cb_context:context()) ->
                              cb_context:context().
 read_for_delete(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     case cb_context:resp_status(Context) of
         'success' -> Context1;
         _Status ->
@@ -257,7 +257,7 @@ read_for_delete(Id, Context) ->
 -spec update(ne_binary(), cb_context:context(), ne_binary()) ->
                     cb_context:context().
 update(Id, Context, Node) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     update(Id, Node, Context1, cb_context:resp_status(Context1)).
 
 update(_Id, Node, Context, 'success') ->

@@ -980,7 +980,6 @@ validate(Context) ->
 
 validate(Context, ReqNouns) ->
     Context1 = validate_resources(Context, ReqNouns),
-    io:format("api_util validate ReqNouns ~p~n~n", [ReqNouns]),
     case succeeded(Context1) of
         'true' ->
             Context2 = validate_data(Context1, ReqNouns),
@@ -1053,7 +1052,6 @@ succeeded(Context) -> cb_context:resp_status(Context) =:='success'.
 execute_request(Req, Context) ->
     case cb_context:req_nouns(Context) of
         [{Mod, Params}|_] ->
-            io:format("execute_request Mod ~p~n~n", [Mod]),
             execute_request(Req, Context, Mod, Params, cb_context:req_verb(Context));
         _ReqNouns ->
             {'false', Req, Context}

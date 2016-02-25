@@ -174,6 +174,21 @@
 
 -define(OPTION_EXPECTED_TYPE, 'expected_type').
 -define(TYPE_CHECK_OPTION(ExpectedType), [{?OPTION_EXPECTED_TYPE, ExpectedType}]).
+-define(TYPE_CHECK_OPTION_ANY, ?TYPE_CHECK_OPTION(<<"any">>)).
+
+-define(SPECIAL_EXPECTED_TYPE, [{<<"allotments">>, <<"limits">>}
+                                ,{<<"connectivity">>, <<"sys_info">>}
+                                ,{<<"directories">>, <<"directory">>}
+                                ,{<<"faxes">>, <<"fax">>}
+                                ,{<<"global_provisioner_templates">>, <<"provisioner_template">>}
+                                ,{<<"global_resources">>, <<"resource">>}
+                                ,{<<"local_provisioner_templates">>, <<"provisioner_template">>}
+                                ,{<<"local_resources">>, <<"resource">>}
+                                ,{<<"rate_limit">>, <<"resource">>}
+                                ,{<<"sms">>, <<"sms">>}
+                                ,{<<"phone_numbers">>, <<"phone_numbers">>} %% weird...
+                                ,{<<"vmboxes">>, <<"vmbox">>}
+                               ]).
 
 -define(CROSSBAR_HRL, 'true').
 -endif.

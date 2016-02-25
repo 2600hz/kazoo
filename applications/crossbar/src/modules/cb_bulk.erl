@@ -79,7 +79,7 @@ validate(Context) ->
 maybe_load_docs(Context) ->
     JObj = cb_context:req_data(Context),
     Ids = sets:from_list(wh_json:get_value(<<"ids">>, JObj, [])),
-    Context1 = crossbar_doc:load(sets:to_list(Ids), Context),
+    Context1 = crossbar_doc:load(sets:to_list(Ids), Context, ?TYPE_CHECK_OPTION_ANY),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_follow_groups(Ids, Context1);
         _Else -> Context1
@@ -115,7 +115,7 @@ follow_group(JObj, JObjs, Ids, Context) ->
                                       'false' -> sets:add_element(Id, S)
                                   end
                           end, sets:new(), wh_json:get_keys(<<"endpoints">>, JObj)),
-    Context1 = crossbar_doc:load(sets:to_list(Members), Context),
+    Context1 = crossbar_doc:load(sets:to_list(Members), Context, ?TYPE_CHECK_OPTION_ANY),
     case cb_context:resp_status(Context1) of
         'success' ->
             NewJObjs = cb_context:doc(Context1),
