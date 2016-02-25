@@ -86,6 +86,8 @@
                          ,<<"pvt_account_id">>
                          ,<<"pvt_created">>
                          ,<<"pvt_modified">>
+                         ,<<"_deleted">>
+                         ,<<"pvt_deleted">>
                         ]).
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()}].
@@ -782,7 +784,14 @@ maybe_tombstone(JObj) ->
     maybe_tombstone(JObj, wh_json:is_true(<<"_deleted">>, JObj, 'false')).
 
 maybe_tombstone(JObj, 'true') ->
-    wh_json:delete_keys(?PUBLISH_FIELDS, JObj);
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"_id">>, wh_doc:id(JObj)}
+         ,{<<"_rev">>, wh_doc:revision(JObj)}
+         ,{<<"_deleted">>, 'true'}
+        ]
+       )
+     );
 maybe_tombstone(JObj, 'false') -> JObj.
 
 -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
@@ -1075,7 +1084,9 @@ publish(Action, Db, Doc) ->
     Id = wh_doc:id(Doc),
 
     IsSoftDeleted = wh_doc:is_soft_deleted(Doc),
-    EventName = doc_change_event_name(Action, IsSoftDeleted),
+    IsHardDeleted = wh_doc:is_deleted(Doc),
+
+    EventName = doc_change_event_name(Action, IsSoftDeleted orelse IsHardDeleted),
 
     Props =
         [{<<"ID">>, Id}
