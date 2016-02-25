@@ -143,7 +143,7 @@ post(Context) -> crossbar_doc:save(Context).
 %%--------------------------------------------------------------------
 -spec load_limit(cb_context:context()) -> cb_context:context().
 load_limit(Context) ->
-    maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context)).
+    maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -164,7 +164,7 @@ update_limits(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context)).
+    maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))).
 
 %%--------------------------------------------------------------------
 %% @private

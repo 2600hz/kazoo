@@ -505,7 +505,7 @@ delete_account(Context, AccountId) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"queue">>)),
     case cb_context:resp_status(Context1) of
         'success' -> load_queue_agents(Id, Context1);
         _Status -> Context1
@@ -539,7 +539,7 @@ on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"queue">>}],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(QueueId, Context) ->
-    crossbar_doc:load_merge(QueueId, Context).
+    crossbar_doc:load_merge(QueueId, Context, ?TYPE_CHECK_OPTION(<<"queue">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -595,7 +595,7 @@ add_queue_to_agents_diff(_Id, Context, []) ->
       ,[]
      );
 add_queue_to_agents_diff(Id, Context, AgentIds) ->
-    Context1 = crossbar_doc:load(AgentIds, Context),
+    Context1 = crossbar_doc:load(AgentIds, Context, ?TYPE_CHECK_OPTION(<<"queue">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:set_doc(Context1
@@ -639,7 +639,7 @@ rm_queue_from_agents(_Id, Context, []) ->
     cb_context:set_resp_status(Context, 'success');
 rm_queue_from_agents(Id, Context, [_|_]=AgentIds) ->
     lager:debug("remove agents: ~p", [AgentIds]),
-    Context1 = crossbar_doc:load(AgentIds, Context),
+    Context1 = crossbar_doc:load(AgentIds, Context, ?TYPE_CHECK_OPTION(<<"queue">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
             lager:debug("removed agents successfully"),

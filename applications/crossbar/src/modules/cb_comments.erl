@@ -373,7 +373,7 @@ load_doc(Context, <<"port_requests">>, [Id]) ->
                       ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                       ,?TYPE_CHECK_OPTION(<<"port_request">>));
 load_doc(Context, _Type, [Id]) ->
-    crossbar_doc:load(Id, Context);
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION_ANY);
 load_doc(Context, _Type, _) ->
     cb_context:add_system_error('bad_identifier', Context).
 

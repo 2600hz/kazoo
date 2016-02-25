@@ -140,7 +140,6 @@ put(Context, ?RECOVERY) ->
 %%--------------------------------------------------------------------
 -spec maybe_get_auth_token(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_get_auth_token(Context, Token) ->
-    io:format("maybe_get_auth_token Token ~p~n~n", [Token]),
     Context1 = crossbar_doc:load(Token, Context),
     case cb_context:resp_status(Context1) of
         'success' ->

@@ -687,7 +687,8 @@ set_photo(JObj, Context) ->
 set_org(JObj, Context) ->
     case wh_json:get_value(<<"org">>
                            ,cb_context:doc(crossbar_doc:load(cb_context:account_id(Context)
-                                                             ,Context)))
+                                                             ,Context
+                                                             ,?TYPE_CHECK_OPTION(kzd_user:type()))))
     of
         'undefined' -> JObj;
         Val -> wh_json:set_value(<<"org">>, Val, JObj)
