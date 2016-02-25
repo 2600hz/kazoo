@@ -324,10 +324,10 @@ originate_quickcall(Endpoints, Call, Context) ->
                ,{<<"Timeout">>, get_timeout(Context)}
                ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Context)}
                ,{<<"Media">>, get_media(Context)}
-               ,{<<"Outbound-Caller-ID-Name">>, cb_context:req_param(Context, <<"cid-name">>, <<"Device QuickCall">>)}
-               ,{<<"Outbound-Caller-ID-Number">>, cb_context:req_param(Context, <<"cid-number">>, whapps_call:request_user(Call))}
-               ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context, DefaultCIDName)}
-               ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context, DefaultCIDNumber)}
+               ,{<<"Outbound-Caller-ID-Name">>, get_caller_id_name(Context, <<"Device QuickCall">>)}
+               ,{<<"Outbound-Caller-ID-Number">>, get_caller_id_number(Context, whapps_call:request_user(Call))}
+               ,{<<"Outbound-Callee-ID-Name">>, DefaultCIDName}
+               ,{<<"Outbound-Callee-ID-Number">>, DefaultCIDNumber}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, 'false'}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
