@@ -32,7 +32,7 @@ open_cache_doc(Server, DbName, DocId, Options) ->
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            case kzs_doc:open_doc(Server, DbName, DocId, Options) of
+            case kzs_doc:open_doc(Server, DbName, DocId, remove_cache_options(Options)) of
                 {'error', _}=E ->
                     maybe_cache_failure(DbName, DocId, Options, E),
                     E;
@@ -41,6 +41,10 @@ open_cache_doc(Server, DbName, DocId, Options) ->
                     Ok
             end
     end.
+
+-spec remove_cache_options(wh_proplist()) -> wh_proplist().
+remove_cache_options(Options) ->
+    props:delete_keys(['cache_failures'], Options).
 
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), data_error()) -> 'ok'.
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), data_error(), atoms()) -> 'ok'.

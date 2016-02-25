@@ -25,6 +25,7 @@
          ,db_delete/1
          ,db_replicate/1
          ,db_archive/1, db_archive/2
+         ,db_list/0, db_list/1
         ]).
 %% -export([admin_db_exists/1
 %%          ,admin_db_info/0, admin_db_info/1
@@ -42,8 +43,8 @@
          ,flush_cache_doc/2, flush_cache_doc/3
          ,flush_cache_docs/0, flush_cache_docs/1
          ,add_to_doc_cache/3
-         ,open_doc/2, admin_open_doc/2
-         ,open_doc/3, admin_open_doc/3
+         ,open_doc/2,open_doc/3
+%         ,admin_open_doc/2, admin_open_doc/3
          ,del_doc/2, del_docs/2
          ,lookup_doc_rev/2
          ,update_doc/3, update_doc/4
@@ -56,9 +57,9 @@
          ,load_fixtures_from_folder/2
          ,all_docs/1
          ,all_design_docs/1
-         ,admin_all_docs/1
+%         ,admin_all_docs/1, admin_all_docs/2
          ,all_docs/2
-         ,all_design_docs/2, admin_all_docs/2
+         ,all_design_docs/2
          ,copy_doc/3, copy_doc/4, copy_doc/5
          ,move_doc/3, move_doc/4, move_doc/5
         ]).
@@ -623,24 +624,24 @@ open_doc(DbName, DocId, Options) ->
     end.
 
 
--spec admin_open_doc(text(), ne_binary()) ->
-                            {'ok', wh_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
--spec admin_open_doc(text(), ne_binary(), wh_proplist()) ->
-                            {'ok', wh_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
-admin_open_doc(DbName, DocId) ->
-    admin_open_doc(DbName, DocId, []).
-
-admin_open_doc(DbName, DocId, Options) when ?VALID_DBNAME->
-    kzs_doc:open_doc(kz_dataconnections:get_admin_server(), DbName, DocId, Options);
-admin_open_doc(DbName, DocId, Options) ->
-    case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> admin_open_doc(Db, DocId, Options);
-        {'error', _}=E -> E
-    end.
+%% -spec admin_open_doc(text(), ne_binary()) ->
+%%                             {'ok', wh_json:object()} |
+%%                             data_error() |
+%%                             {'error', 'not_found'}.
+%% -spec admin_open_doc(text(), ne_binary(), wh_proplist()) ->
+%%                             {'ok', wh_json:object()} |
+%%                             data_error() |
+%%                             {'error', 'not_found'}.
+%% admin_open_doc(DbName, DocId) ->
+%%     admin_open_doc(DbName, DocId, []).
+%% 
+%% admin_open_doc(DbName, DocId, Options) when ?VALID_DBNAME->
+%%     kzs_doc:open_doc(kz_dataconnections:get_admin_server(), DbName, DocId, Options);
+%% admin_open_doc(DbName, DocId, Options) ->
+%%     case maybe_convert_dbname(DbName) of
+%%         {'ok', Db} -> admin_open_doc(Db, DocId, Options);
+%%         {'error', _}=E -> E
+%%     end.
 
 -spec all_docs(text()) ->
                       {'ok', wh_json:objects()} |
@@ -660,22 +661,31 @@ all_docs(DbName, Options) ->
         {'error', _}=E -> E
     end.
 
--spec admin_all_docs(text()) -> {'ok', wh_json:objects()} |
-                                data_error().
+-spec db_list() -> {'ok', wh_json:objects()} | data_error().
+-spec db_list(wh_proplist()) -> {'ok', wh_json:objects()} | data_error().
 
--spec admin_all_docs(text(), wh_proplist()) -> {'ok', wh_json:objects()} |
-                                               data_error().
+db_list() ->
+    db_list([]).
 
-admin_all_docs(DbName) ->
-    admin_all_docs(DbName, []).
+db_list(Options) ->
+    kzs_db:db_list(get_server(), Options).
 
-admin_all_docs(DbName, Options) when ?VALID_DBNAME ->
-    kzs_view:all_docs(kz_dataconnections:get_admin_server(), DbName, Options);
-admin_all_docs(DbName, Options) ->
-    case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> admin_all_docs(Db, Options);
-        {'error', _}=E -> E
-    end.
+%% -spec admin_all_docs(text()) -> {'ok', wh_json:objects()} |
+%%                                 data_error().
+%% 
+%% -spec admin_all_docs(text(), wh_proplist()) -> {'ok', wh_json:objects()} |
+%%                                                data_error().
+%% 
+%% admin_all_docs(DbName) ->
+%%     admin_all_docs(DbName, []).
+%% 
+%% admin_all_docs(DbName, Options) when ?VALID_DBNAME ->
+%%     kzs_view:all_docs(kz_dataconnections:get_admin_server(), DbName, Options);
+%% admin_all_docs(DbName, Options) ->
+%%     case maybe_convert_dbname(DbName) of
+%%         {'ok', Db} -> admin_all_docs(Db, Options);
+%%         {'error', _}=E -> E
+%%     end.
 
 -spec all_design_docs(text()) -> {'ok', wh_json:objects()} |
                                  data_error().

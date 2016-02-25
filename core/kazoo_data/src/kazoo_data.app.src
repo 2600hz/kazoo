@@ -10,6 +10,7 @@
                   , crypto
                   , public_key
                   , lager
+                  , whistle_config
                   ]}
   ,{mod, {kazoo_data, []}}
  ]}.
