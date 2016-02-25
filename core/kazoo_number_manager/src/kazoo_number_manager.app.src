@@ -17,7 +17,6 @@
 
                  , lager
                  , cowlib
-                 , ejson
                  ]},
   {mod, {kazoo_number_manager_app, []}}
  ]}.
