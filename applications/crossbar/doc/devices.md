@@ -357,6 +357,8 @@ curl -v -X POST \
 
 Ring the device; once answered, connect to `{NUMBER}`
 
+In this scenario, the device is considered the `callee` while the `{NUMBER}` side is considered the caller (helpful to know when debugging a call!).
+
 Query string options:
 
 Key | Type | Description
