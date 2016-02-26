@@ -3,7 +3,7 @@
   {description, "Conferencing Service Provider"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [conference_sup, conf_participant_sup]},
+  {registered, [conference_cache, conference_sup, conf_participant_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

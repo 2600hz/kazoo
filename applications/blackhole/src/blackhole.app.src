@@ -3,7 +3,7 @@
   {description, "blackhole - websocket"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [blackhole_listener, blackhole_sup, blackhole_tracking]},
+  {registered, [blackhole_cache, blackhole_listener, blackhole_sup, blackhole_tracking]},
   {applications, [ kernel
                  , stdlib
                  , crypto

@@ -3,7 +3,7 @@
   {description, "DTH - Integration with DTH Billing System"}
   ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, [dth_sup]}
+  ,{registered, [dth_cache, dth_sup]}
   ,{applications, [ kernel
                   , stdlib
 		  , crypto

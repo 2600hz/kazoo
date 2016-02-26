@@ -3,7 +3,7 @@
   {description, "Spy Vs Spy - Eavesdrop on a call or group of calls"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [spyvsspy_sup]},
+  {registered, [spyvsspy_cache, spyvsspy_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

@@ -3,7 +3,7 @@
   {description, "Fax - Why is everyone faxinated with fax?"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [fax_worker_pool_sup, fax_requests_sup, fax_xmpp_sup, fax_sup]},
+  {registered, [fax_cache, fax_worker_pool_sup, fax_requests_sup, fax_xmpp_sup, fax_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

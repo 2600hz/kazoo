@@ -3,7 +3,7 @@
   {description, "Whistle Services provides billing and service limit support"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [whistle_services_sup]},
+  {registered, [whistle_services_cache, whistle_services_sup]},
   {applications, [ kernel
                  , stdlib
 

@@ -3,7 +3,7 @@
   {description, "ACDc - Automatic Call Distribution commander"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [acdc_sup, acdc_recordings_sup, acdc_agents_sup, acdc_queues_sup, acdc_stats_sup, acdc_agent_manager]},
+  {registered, [acdc_cache, acdc_sup, acdc_recordings_sup, acdc_agents_sup, acdc_queues_sup, acdc_stats_sup, acdc_agent_manager]},
   {applications, [ kernel
                  , stdlib
                  , crypto

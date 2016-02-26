@@ -3,7 +3,7 @@
   {description, "Stats - Kazoo"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [stats_sup]},
+  {registered, [stats_cache, stats_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

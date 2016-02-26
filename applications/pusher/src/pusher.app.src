@@ -3,7 +3,7 @@
   {description, "pusher - wake the dead"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [pm_google, pm_apple, pusher_sup, pusher_module_sup]},
+  {registered, [pusher_cache, pm_google, pm_apple, pusher_sup, pusher_module_sup]},
   {applications, [ kernel
                  , stdlib
                  , public_key

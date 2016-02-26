@@ -3,7 +3,7 @@
   {description, "Omnipresence - Who's doing what when"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [omnip_message_summary_sip, omnipresence_proxy, omnip_message_summary_amqp, omnipresence_shared_listener, omnip_subscriptions, omnip_sup, omnipresence_sup, omnip_dialog_sip, omnip_dialog_amqp, omnip_presence_amqp, omnip_presence_sip]},
+  {registered, [omnipresence_cache, omnip_message_summary_sip, omnipresence_proxy, omnip_message_summary_amqp, omnipresence_shared_listener, omnip_subscriptions, omnip_sup, omnipresence_sup, omnip_dialog_sip, omnip_dialog_amqp, omnip_presence_amqp, omnip_presence_sip]},
   {applications, [ kernel
                  , stdlib
                  , crypto

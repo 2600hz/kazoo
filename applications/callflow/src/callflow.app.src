@@ -3,7 +3,7 @@
   {description, "Callflow - traversing through the tree..."}
   ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, [cf_event_handler_sup, callflow_sup, cf_exe_sup]}
+  ,{registered, [callflow_cache, cf_event_handler_sup, callflow_sup, cf_exe_sup]}
   ,{applications, [ kernel
                   , stdlib
 		  , crypto
