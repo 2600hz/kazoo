@@ -46,7 +46,8 @@ save_doc({App, Conn}, DbName, Doc, Options) ->
                            Ok;
         Else -> Else
     catch
-        _Ex:Er -> {'error', {_Ex, Er}}
+        Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
+                 'failed'
     end.
 
 
@@ -80,7 +81,8 @@ ensure_saved({App, Conn}, DbName, Doc, Options) ->
                            Ok;
         Else -> Else
     catch
-        _Ex:Er -> {'error', {_Ex, Er}}
+        Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
+                 'failed'
     end.
 
 -spec del_doc(server(), ne_binary(), wh_json:object() | ne_binary()) ->

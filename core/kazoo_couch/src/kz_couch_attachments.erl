@@ -61,6 +61,7 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_del_attachment(Db, DocId, AName,  kz_couch_util:maybe_add_rev(Db, DocId, Options)).
 
+-spec attachment_url(server(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> ne_binary().
 attachment_url(#server{}=Conn, DbName, DocId, AName, Options) ->
     DocName = maybe_add_extension(AName, Options),
     list_to_binary([kz_couch_util:db_url(Conn, DbName)
@@ -108,6 +109,7 @@ do_del_attachment(#db{}=Db, DocId, AName, Options) ->
     Doc = wh_util:to_binary(http_uri:encode(wh_util:to_list(DocId))),
     ?RETRY_504(couchbeam:delete_attachment(Db, Doc, AName, Options)).
 
+-spec maybe_add_extension(ne_binary(), wh_proplist()) -> ne_binary().
 maybe_add_extension(AName, Options) ->
     case {props:get_value('content_type', Options), filename:extension(AName)} of
         {'undefined', _} -> AName;
@@ -115,6 +117,7 @@ maybe_add_extension(AName, Options) ->
         _ -> AName
     end.
 
+-spec maybe_add_revision(wh_proplist()) -> binary().
 maybe_add_revision(Options) ->
     case props:get_value('revision', Options) of
         'undefined' -> <<>>;
