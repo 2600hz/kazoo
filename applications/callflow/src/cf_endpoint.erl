@@ -1216,7 +1216,7 @@ generate_sip_headers(Endpoint, Call) ->
 generate_sip_headers(Endpoint, Acc, Call) ->
     Inception = whapps_call:inception(Call),
 
-    HeaderFuns = [fun maybe_add_sip_headers/1
+    HeaderFuns = [fun(J) -> maybe_add_sip_headers(J, Endpoint, Call) end
                   ,fun(J) -> maybe_add_alert_info(J, Endpoint, Inception) end
                   ,fun(J) -> maybe_add_aor(J, Endpoint, Call) end
                   ,fun(J) -> maybe_add_diversion(J, Endpoint, Inception, Call) end
@@ -1237,12 +1237,26 @@ maybe_add_diversion(JObj, Endpoint, _Inception, Call) ->
         'false' -> JObj
     end.
 
--spec maybe_add_sip_headers(wh_json:object()) -> wh_json:object().
-maybe_add_sip_headers(JObj) ->
-    case kz_device:custom_sip_headers(JObj) of
-        'undefined' -> JObj;
-        CustomHeaders -> wh_json:merge_jobjs(CustomHeaders, JObj)
+-spec maybe_add_sip_headers(wh_json:object(), wh_json:object(), whapps_call:call()) -> wh_json:object().
+maybe_add_sip_headers(JObj, Endpoint, Call) ->
+    case ?MODULE:get(Call) of
+        {'ok', AuthorizingEndpoint} ->
+            MergeFuns = [fun() -> kz_device:custom_sip_headers(Endpoint) end
+                         ,fun() -> kz_device:custom_sip_headers_inbound(Endpoint) end
+                         ,fun() -> kz_device:custom_sip_headers_outbound(AuthorizingEndpoint) end
+                        ],
+            Fun = fun(Routine, Acc) ->
+                      merge_custom_sip_headers(Routine(), Acc)
+                  end,
+            lists:foldl(Fun, JObj, MergeFuns);
+        {'error', _} -> JObj
     end.
+
+-spec merge_custom_sip_headers(wh_json:object(), wh_json:object()) -> wh_json:object().
+merge_custom_sip_headers('undefined', JObj) ->
+    JObj;
+merge_custom_sip_headers(CustomHeaders, JObj) ->
+    wh_json:merge_jobjs(CustomHeaders, JObj).
 
 -spec maybe_add_alert_info(wh_json:object(), wh_json:object(), api_binary()) -> wh_json:object().
 maybe_add_alert_info(JObj, Endpoint, 'undefined') ->
