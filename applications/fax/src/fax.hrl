@@ -65,5 +65,7 @@
 -define(SMTP_CALLBACK_OPTIONS, {'callbackoptions', ['extensions', ?SMTP_EXTENSIONS]}).
 -define(SMTP_PORT, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)).
 
+-define(FAX_EXTENSION, <<"tiff">>).
+
 -define(FAX_HRL, 'true').
 -endif.

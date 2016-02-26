@@ -91,7 +91,9 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object()) -> 'ok'.
 flush_cache_doc(#db{name=Name}, Doc) ->
-    flush_cache_doc(#db{name=Name}, Doc, []).
+    flush_cache_doc(#db{name=Name}, Doc, []);
+flush_cache_doc(Db, Doc) when is_binary(Db) ->
+    flush_cache_doc(Db, Doc, []).
 
 -spec flush_cache_doc(ne_binary() | db(), ne_binary() | wh_json:object(), wh_proplist()) -> 'ok'.
 flush_cache_doc(#db{name=Name}, Doc, Options) ->

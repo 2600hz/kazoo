@@ -19,6 +19,8 @@
          ,format_error/1
         ]).
 
+-export([maybe_add_rev/3]).
+
 -include("kz_couch.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
@@ -197,3 +199,34 @@ format_error('timeout') -> 'timeout';
 format_error(E) ->
     lager:warning("unformatted error: ~p", [E]),
     E.
+
+-spec maybe_add_rev(couchbeam_db(), ne_binary(), wh_proplist()) -> wh_proplist().
+maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
+    case props:get_value('rev', Options) =:= 'undefined'
+        andalso do_fetch_rev(Db, DocId)
+    of
+        <<_/binary>> = Rev ->
+            lager:debug("adding rev ~s to options", [Rev]),
+            [{'rev', Rev} | Options];
+        'false' ->
+            lager:debug("rev is in options list: ~p", [Options]),
+            Options;
+        {'error', 'not_found'} ->
+            lager:debug("failed to find rev of ~s in ~p, not_found in db", [DocId, _Name]),
+            Options;
+        {'error', 'empty_doc_id'} ->
+            lager:debug("failed to find doc id ~p", [DocId]),
+            Options;
+        _Else ->
+            lager:debug("unknown rev format for ~p: ~p", [DocId, _Else]),
+            Options
+    end.
+
+-spec do_fetch_rev(couchbeam_db(), ne_binary()) ->
+                          ne_binary() |
+                          couchbeam_error().
+do_fetch_rev(#db{}=Db, DocId) ->
+    case wh_util:is_empty(DocId) of
+        'true' -> {'error', 'empty_doc_id'};
+        'false' -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId))
+    end.

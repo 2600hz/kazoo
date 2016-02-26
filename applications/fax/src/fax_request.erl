@@ -605,29 +605,17 @@ attachment_url(#state{storage=#fax_storage{id=FaxDocId
                                            ,db=AccountDb
                                           }
                      }) ->
-    _ = case kz_datamgr:open_doc(AccountDb, FaxDocId) of
-            {'ok', JObj} ->
-                maybe_delete_attachments(AccountDb, JObj);
-            {'error', _} -> 'ok'
-        end,
-    Rev = case kz_datamgr:lookup_doc_rev(AccountDb, FaxDocId) of
-              {'ok', R} -> <<"?rev=", R/binary>>;
-              _ -> <<>>
-          end,
-    list_to_binary([wh_couch_connections:get_url(), AccountDb
-                    ,"/", FaxDocId
-                    ,"/", AttachmentId, ".tiff"
-                    ,Rev
-                   ]).
+    Options = [{'content_type', kz_mime:from_extension(?FAX_EXTENSION)}],
+    kz_datamgr:attachment_url(AccountDb, FaxDocId, AttachmentId, Options).
 
--spec maybe_delete_attachments(ne_binary(), wh_json:object()) -> 'ok'.
-maybe_delete_attachments(AccountDb, JObj) ->
-    case wh_doc:maybe_remove_attachments(JObj) of
-        {'false', _} -> 'ok';
-        {'true', Removed} ->
-            kz_datamgr:save_doc(AccountDb, Removed),
-            lager:debug("removed attachments from faxdoc")
-    end.
+%% -spec maybe_delete_attachments(ne_binary(), wh_json:object()) -> 'ok'.
+%% maybe_delete_attachments(AccountDb, JObj) ->
+%%     case wh_doc:maybe_remove_attachments(JObj) of
+%%         {'false', _} -> 'ok';
+%%         {'true', Removed} ->
+%%             kz_datamgr:save_doc(AccountDb, Removed),
+%%             lager:debug("removed attachments from faxdoc")
+%%     end.
 
 -spec fax_fields(wh_json:object()) -> wh_json:object().
 fax_fields(JObj) ->

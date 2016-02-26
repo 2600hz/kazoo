@@ -260,9 +260,8 @@ get_all_accounts(Encoding) ->
     {'ok', Dbs} = kz_datamgr:db_list([{'startkey', <<"account/">>}
                                       ,{'endkey', <<"account/\ufff0">>}
                                      ]),
-    [wh_util:format_account_id(Id, Encoding)
-     || Db <- Dbs,
-        is_account_db((Id = wh_doc:id(Db)))
+    [wh_util:format_account_id(Db, Encoding)
+     || Db <- Dbs, is_account_db(Db)
     ].
 
 -spec get_all_accounts_and_mods() -> ne_binaries().

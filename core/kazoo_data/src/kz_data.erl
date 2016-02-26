@@ -44,6 +44,7 @@
 -callback stream_attachment(_, _, _, _, _) -> any().
 -callback put_attachment(_, _, _, _, _, _) -> any().
 -callback delete_attachment(_, _, _, _, _) -> any().
+-callback attachment_url(_, _, _, _, _) -> any().
 
 %% View-related
 -callback design_info(_, _, _) -> any().

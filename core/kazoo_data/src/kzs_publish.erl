@@ -8,8 +8,7 @@
 -module(kzs_publish).
 
 
--export([prepare_publish/1
-         ,maybe_publish_db/2
+-export([maybe_publish_db/2
          ,maybe_publish_doc/3
          ,maybe_publish_docs/3
          ,publish_db/2
@@ -21,24 +20,11 @@
 -include("kz_data.hrl").
 -include_lib("whistle/include/wapi_conf.hrl").
 
-
--spec maybe_tombstone(wh_json:object()) -> wh_json:object().
--spec maybe_tombstone(wh_json:object(), boolean()) -> wh_json:object().
-maybe_tombstone(JObj) ->
-    maybe_tombstone(JObj, wh_json:is_true(<<"_deleted">>, JObj, 'false')).
-
-maybe_tombstone(JObj, 'true') ->
-    wh_json:delete_keys(?PUBLISH_FIELDS, JObj);
-maybe_tombstone(JObj, 'false') -> JObj.
-
--spec prepare_publish(wh_json:object()) ->
-                             {wh_json:object(), wh_json:object()}.
-prepare_publish(JObj) ->
-    {maybe_tombstone(JObj), wh_json:from_list(publish_fields(JObj))}.
-
--spec maybe_publish_docs(db(), wh_json:objects(), wh_json:objects()) -> 'ok'.
-maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
-    case kz_datamgr:change_notice() of
+-spec maybe_publish_docs(ne_binary(), wh_json:objects(), wh_json:objects()) -> 'ok'.
+maybe_publish_docs(Db, Docs, JObjs) ->
+    case kz_datamgr:change_notice()
+        andalso should_publish_db_changes(Db)
+    of
         'true' ->
             _ = wh_util:spawn(
                   fun() ->
@@ -51,13 +37,14 @@ maybe_publish_docs(#db{}=Db, Docs, JObjs) ->
         'false' -> 'ok'
     end.
 
--spec maybe_publish_doc(db(), wh_json:object(), wh_json:object()) -> 'ok'.
-maybe_publish_doc(#db{}=Db, Doc, JObj) ->
+-spec maybe_publish_doc(ne_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+maybe_publish_doc(Db, Doc, JObj) ->
     case kz_datamgr:change_notice()
+        andalso should_publish_db_changes(Db)
         andalso should_publish_doc(Doc)
     of
         'true' ->
-            _ = wh_util:spawn(fun publish_doc/3, [Db, Doc, JObj]),
+            _ = wh_util:spawn(fun() -> publish_doc(Db, Doc, JObj) end),
             'ok';
         'false' -> 'ok'
     end.
@@ -66,7 +53,7 @@ maybe_publish_doc(#db{}=Db, Doc, JObj) ->
 maybe_publish_db(DbName, Action) ->
     case kz_datamgr:change_notice() of
         'true' ->
-            _ = wh_util:spawn(fun publish_db/2, [DbName, Action]),
+            _ = wh_util:spawn(fun() -> publish_db(DbName, Action) end),
             'ok';
         'false' -> 'ok'
     end.
@@ -78,8 +65,13 @@ should_publish_doc(Doc) ->
         _Else -> 'true'
     end.
 
--spec publish_doc(db(), wh_json:object(), wh_json:object()) -> 'ok'.
-publish_doc(#db{name=DbName}, Doc, JObj) ->
+-spec should_publish_db_changes(ne_binary()) -> boolean().
+should_publish_db_changes(DbName) ->
+    Key = <<"publish_", (wh_util:to_binary(kzs_util:db_classification(DbName)))/binary, "_changes">>,
+    whapps_config:get_is_true(?CONFIG_CAT, Key, 'true').
+
+-spec publish_doc(ne_binary(), wh_json:object(), wh_json:object()) -> 'ok'.
+publish_doc(DbName, Doc, JObj) ->
     case wh_doc:is_soft_deleted(Doc)
         orelse wh_json:is_true(<<"_deleted">>, Doc)
     of
@@ -112,8 +104,9 @@ publish_db(DbName, Action) ->
 -spec publish_fields(wh_json:object()) -> wh_proplist().
 -spec publish_fields(wh_json:object(), wh_json:object()) -> wh_json:object().
 publish_fields(Doc) ->
-    [{Key, V} || Key <- ?PUBLISH_FIELDS,
-                 not wh_util:is_empty(V = wh_json:get_value(Key, Doc))
+    [{Key, V} ||
+        Key <- ?PUBLISH_FIELDS,
+        wh_util:is_not_empty(V = wh_json:get_value(Key, Doc))
     ].
 
 publish_fields(Doc, JObj) ->
@@ -125,7 +118,9 @@ publish(Action, Db, Doc) ->
     Id = wh_doc:id(Doc),
 
     IsSoftDeleted = wh_doc:is_soft_deleted(Doc),
-    EventName = doc_change_event_name(Action, IsSoftDeleted),
+    IsHardDeleted = wh_doc:is_deleted(Doc),
+
+    EventName = doc_change_event_name(Action, IsSoftDeleted orelse IsHardDeleted),
 
     Props =
         [{<<"ID">>, Id}
@@ -143,7 +138,7 @@ publish(Action, Db, Doc) ->
                                  )
         ],
     Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
-    whapps_util:amqp_pool_send(Props, Fun).
+    wh_amqp_worker:cast(Props, Fun).
 
 -spec doc_change_event_name(wapi_conf:action(), boolean()) -> ne_binary().
 doc_change_event_name(_Action, 'true') ->
@@ -157,5 +152,3 @@ doc_acct_id(Db, Doc) ->
         'undefined' -> wh_util:format_account_id(Db, 'raw');
         AccountId -> AccountId
     end.
-
-

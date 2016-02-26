@@ -12,7 +12,6 @@
                   , whistle_config
                   , kazoo_data
                   , whistle_amqp
-                  , kazoo_data_cache
                   , whistle_services
                   , kazoo_documents
                   , whistle_number_manager

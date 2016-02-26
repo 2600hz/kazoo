@@ -16,6 +16,7 @@
          ,put_attachment/6
          ,delete_attachment/4
          ,delete_attachment/5
+         ,attachment_url/5
         ]).
 
 
@@ -62,3 +63,12 @@ delete_attachment(Server, DbName, DocId, AName) ->
 
 delete_attachment({App, Conn}, DbName, DocId, AName, Options) ->
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
+
+attachment_url({App, Conn}, DbName, DocId, AttachmentId, Options) ->
+    %% FECTH PROVIDER FOR ACCOUNTDB/DOCTYPE
+    %% FETCH URL FROM PROVIDER
+    %% CAN DEFER TO DATACONNECTION
+    %% OR CREATE A PROXY URL WITH CALLBACK
+    %% SUP PROXY
+    %% FOR NOW DEFER TO DRIVER
+    App:attachment_url(Conn, DbName, DocId, AttachmentId, Options).

@@ -48,6 +48,7 @@
          ,stream_attachment/5
          ,put_attachment/6
          ,delete_attachment/5
+         ,attachment_url/5
         ]).
 
 %% View-related
@@ -162,6 +163,8 @@ put_attachment(Server, DbName, DocId, AName, Contents, Options) ->
 delete_attachment(Server, DbName, DocId, AName, Options) ->
     kz_couch_attachments:delete_attachment(Server, DbName, DocId, AName, Options).
 
+attachment_url(Server, DbName, DocId, AName, Options) ->
+    kz_couch_attachments:attachment_url(Server, DbName, DocId, AName, Options).
 
 %% View-related
 design_info(Server, DBName, Design) ->
