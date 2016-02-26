@@ -3,7 +3,7 @@
   {description, "doodle - sms store and forward"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [doodle_shared_listener, doodle_sup, doodle_exe_sup, doodle_event_handler_sup, doodle_inbound_listener_sup]},
+  {registered, [doodle_cache, doodle_shared_listener, doodle_sup, doodle_exe_sup, doodle_event_handler_sup, doodle_inbound_listener_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

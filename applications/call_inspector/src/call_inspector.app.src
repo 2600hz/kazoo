@@ -3,7 +3,7 @@
   {description, "An inspectortron application useful for quickly troubleshooting issues"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [ci_parsers_sup, ci_datastore, ci_analyzers_sup, call_inspector_sup]},
+  {registered, [call_inspector_cache, ci_parsers_sup, ci_datastore, ci_analyzers_sup, call_inspector_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

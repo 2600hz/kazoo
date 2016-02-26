@@ -3,7 +3,7 @@
   {description, "Whistle Media provides support for generating media URLs as well as proxing media files"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [wh_media_map, wh_media_cache_sup, whistle_media_sup]},
+  {registered, [media_mgr_cache, wh_media_map, wh_media_cache_sup, whistle_media_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto

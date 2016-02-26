@@ -3,7 +3,7 @@
   {description, "Skel - A webhookseton application useful for quickly creating services"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [webhooks_sup, webhooks_shared_listener]},
+  {registered, [webhooks_cache, webhooks_sup, webhooks_shared_listener]},
   {applications, [ kernel
                  , stdlib
                  , crypto

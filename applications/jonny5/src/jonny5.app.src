@@ -3,7 +3,7 @@
   {description, "Jonny 5 - Short circuit accounts exceeding call volume"},
   {vsn, "4.0.0"},
   {modules, []},
-  {registered, [j5_channels, jonny5_listener, jonny5_sup]},
+  {registered, [jonny5_cache, j5_channels, jonny5_listener, jonny5_sup]},
   {applications, [ kernel
                  , stdlib
                  , crypto
