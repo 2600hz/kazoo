@@ -30,7 +30,5 @@
                          ,'webhooks'
                         ]).
 
--define(WHAPPS_GETBY_CACHE, 'whapps_getby_cache').
-
 -define(WHISTLE_APPS_HRL, 'true').
 -endif.

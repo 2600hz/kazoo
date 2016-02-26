@@ -61,6 +61,7 @@
 -export([system_report/2, system_report/3]).
 
 -include("whistle_apps.hrl").
+-include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
 -define(REPLICATE_ENCODING, 'encoded').
 -define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
@@ -71,7 +72,7 @@
 -define(ACCT_BY_NAME_CACHE(Name), {?MODULE, 'account_by_name', Name}).
 -define(ACCT_BY_REALM_CACHE(Name), {?MODULE, 'account_by_realm', Name}).
 -define(ACCT_BY_IP_CACHE(IP), {?MODULE, 'account_by_ip', IP}).
--define(GET_BY_CACHE_ORIGIN, [{'origin', [ {'db', ?WH_ACCOUNTS_DB, <<"account">>}]}]).
+-define(GET_BY_CACHE_ORIGIN, [{'origin', [{'db', ?WH_ACCOUNTS_DB, <<"account">>}]}]).
 
 %%--------------------------------------------------------------------
 %% @doc
