@@ -4,8 +4,8 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_system_config.hrl").
+-include_lib("kazoo_caches/include/kazoo_caches.hrl").
 
--define(WHAPPS_CONFIG_CACHE, 'whapps_config_cache').
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
 -define(CONFIG_FILE, "/etc/kazoo/config.ini").
 
@@ -30,9 +30,12 @@
                                      ,{'file', 'error'}
                                     ]}
                           ]).
--type section() :: 'bigcouch' | 'amqp' |
-                   'whistle_apps' | 'ecallmgr' |
-                   'zone' | 'log'.
+-type section() :: 'amqp' |
+                   'bigcouch' |
+                   'ecallmgr' |
+                   'log' |
+                   'whistle_apps' |
+                   'zone'.
 
 -define(WHISTLE_CONFIG_HRL, 'true').
 -endif.
