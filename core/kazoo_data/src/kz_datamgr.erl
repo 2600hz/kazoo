@@ -69,6 +69,7 @@
          ,stream_attachment/3
          ,put_attachment/4, put_attachment/5
          ,delete_attachment/3, delete_attachment/4
+         ,attachment_url/3, attachment_url/4
         ]).
 
 %% Views
@@ -612,6 +613,10 @@ flush_cache_docs(DbName) ->
                       {'ok', wh_json:object()} |
                       data_error() |
                       {'error', 'not_found'}.
+-spec open_doc(server(), text(), ne_binary(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      data_error() |
+                      {'error', 'not_found'}.
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
@@ -622,6 +627,9 @@ open_doc(DbName, DocId, Options) ->
         {'ok', Db} -> open_doc(Db, DocId, Options);
         {'error', _}=E -> E
     end.
+
+open_doc(Server, DbName, DocId, Options) ->
+    kzs_doc:open_doc(Server, DbName, DocId, Options).
 
 
 %% -spec admin_open_doc(text(), ne_binary()) ->
@@ -1095,3 +1103,68 @@ db_classification(DBName) -> kzs_util:db_classification(DBName).
 
 -spec format_error(any()) -> any().
 format_error(Error) -> kzs_server:format_error(Error).
+
+attachment_url(DbName, DocId, AttachmentId) ->
+    case filename:extension(AttachmentId) of
+        [] -> attachment_url(DbName, DocId, AttachmentId, []);
+        Ext ->
+            Options = [{'content_type', kz_mime:from_extension(Ext)}],
+            attachment_url(DbName, DocId, AttachmentId, Options)
+    end.
+            
+attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
+    Server = get_server(),
+    RequiredOptions = [{'doc_type', fun wh_doc:type/1}
+                       ,{'revision', fun wh_doc:revision/1}
+                      ],
+    Fun = fun() -> case open_doc(Server, DbName, DocId, []) of
+                       {'ok', JObj} -> JObj;
+                       _ -> wh_json:new()
+                   end
+          end,
+    case maybe_add_required_options(Options, RequiredOptions, Fun) of
+        {'ok', NewOptions} -> kzs_attachments:attachment_url(Server
+                                                             ,DbName
+                                                             ,DocId
+                                                             ,AttachmentId
+                                                             ,NewOptions
+                                                            );
+        {'error', Missing} = Error -> lager:debug("missing required options : ~p", [Missing]),
+                                      Error
+    end;
+attachment_url(DbName, DocId, AttachmentId, Options) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> attachment_url(Db, DocId, AttachmentId, Options);
+        {'error', _}=E -> E
+    end.
+
+maybe_add_required_options(Options, RequiredOptions, Fun) ->
+    case has_required_options(Options, RequiredOptions) of
+        'true' -> {'ok', Options};
+        'false' -> add_required_options(Options, RequiredOptions, Fun())
+    end.
+
+has_required_options(Options, RequiredOptions) ->
+    missing_required_options(Options, RequiredOptions) =:= [].
+
+missing_required_options(Options, RequiredOptions) ->
+    lists:foldl(fun({Key, _}, Acc) ->
+                        case props:is_defined(Key, Options) of
+                            'true' -> Acc;
+                            'false' -> [Key | Acc]
+                        end
+                end, [], RequiredOptions).
+
+add_required_options(Options, RequiredOptions, JObj) ->
+    {_, NewOptions} = lists:foldl(fun add_required_option/2, {JObj, Options}, RequiredOptions),
+    case missing_required_options(NewOptions, RequiredOptions) of
+        [] -> {'ok', NewOptions};
+        Missing -> {'error', Missing}
+    end.
+
+add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
+    case props:is_defined(Key, Options) of
+        'true' -> Acc;
+        'false' -> {JObj, props:filter_undefined([{Key, Fun(JObj)} | Options])}
+    end.
+        

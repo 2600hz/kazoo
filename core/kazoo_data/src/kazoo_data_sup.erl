@@ -15,17 +15,16 @@
 
 -export([start_link/0
          ,init/1
-         ,compactor_pid/0
         ]).
 
-%% -define(ORIGIN_BINDINGS, [[]]).
-%% -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-%%                       ,'new_node_flush'
-%%                       ,'channel_reconnect_flush'
-%%                      ]).
+-define(ORIGIN_BINDINGS, [[]]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                      ,'new_node_flush'
+                      ,'channel_reconnect_flush'
+                     ]).
 
 -define(CHILDREN, [?WORKER('kazoo_data_init')
-%                   ,?CACHE_ARGS(?KZ_DATA_CACHE, ?CACHE_PROPS)
+                   ,?CACHE_ARGS(?KZ_DATA_CACHE, ?CACHE_PROPS)
                    ,?SUPER('kz_dataconnection_sup')
                    ,?WORKER('kz_dataconnections')
                    ,?WORKER('kazoo_data_bootstrap')
@@ -42,13 +41,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec compactor_pid() -> api_pid().
-compactor_pid() ->
-    case [P || {'couch_compactor_fsm', P, 'worker', _} <- supervisor:which_children(?SERVER)] of
-        [Pid] -> Pid;
-        [] -> 'undefined'
-    end.
 
 %% ===================================================================
 %% Supervisor callbacks

@@ -15,6 +15,7 @@
          ,put_attachment/6
          ,delete_attachment/4
          ,delete_attachment/5
+         ,attachment_url/5
         ]).
 
 -include("kz_couch.hrl").
@@ -44,7 +45,8 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
 
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
-    do_put_attachment(Db, DocId, AName, Contents, kz_couch_util:maybe_add_rev(Db, DocId, Options)).
+%    do_put_attachment(Db, DocId, AName, Contents, kz_couch_util:maybe_add_rev(Db, DocId, Options)).
+    do_put_attachment(Db, DocId, AName, Contents, Options).
 
 -spec delete_attachment(server(), ne_binary(), ne_binary(), ne_binary()) ->
                                {'ok', wh_json:object()} |
@@ -58,6 +60,14 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
 delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_del_attachment(Db, DocId, AName,  kz_couch_util:maybe_add_rev(Db, DocId, Options)).
+
+attachment_url(#server{}=Conn, DbName, DocId, AName, Options) ->
+    DocName = maybe_add_extension(AName, Options),
+    list_to_binary([kz_couch_util:db_url(Conn, DbName)
+                    ,"/", DocId
+                    ,"/", DocName
+                    , maybe_add_revision(Options)
+                   ]).
 
 %% Internal Attachment-related functions ---------------------------------------
 -spec do_fetch_attachment(couchbeam_db(), ne_binary(), ne_binary()) ->
@@ -84,3 +94,17 @@ do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
 do_del_attachment(#db{}=Db, DocId, AName, Options) ->
     Doc = wh_util:to_binary(http_uri:encode(wh_util:to_list(DocId))),
     ?RETRY_504(couchbeam:delete_attachment(Db, Doc, AName, Options)).
+
+maybe_add_extension(AName, Options) ->
+    case {props:get_value('content_type', Options), filename:extension(AName)} of
+        {'undefined', _} -> AName;
+        {CT, []} -> <<AName, ".", (kz_mime:to_extension(CT))/binary>>;
+        _ -> AName
+    end.
+
+maybe_add_revision(Options) ->
+    case props:get_value('revision', Options) of
+        'undefined' -> <<>>;
+        Rev -> <<"?rev=", Rev/binary>>
+    end.
+

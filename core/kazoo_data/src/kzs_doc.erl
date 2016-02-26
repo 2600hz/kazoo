@@ -40,13 +40,29 @@ open_doc({App, Conn}, DbName, DocId, Options) ->
                       {'ok', wh_json:object()} |
                       data_error().
 save_doc({App, Conn}, DbName, Doc, Options) ->
-    App:save_doc(Conn, DbName, Doc, Options).
+    {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
+    try App:save_doc(Conn, DbName, PreparedDoc, Options) of
+        {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+                           Ok;
+        Else -> Else
+    catch
+        _Ex:Er -> {'error', {_Ex, Er}}
+    end.
+
+
 
 -spec save_docs(server(), ne_binary(), wh_json:objects(), wh_proplist()) ->
                        {'ok', wh_json:objects()} |
                        data_error().
 save_docs({App, Conn}, DbName, Docs, Options) ->
-    App:save_docs(Conn, DbName, Docs, Options).
+    {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
+    try App:save_docs(Conn, DbName, PreparedDocs, Options) of
+        {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+                           Ok;
+        Else -> Else
+    catch
+        _Ex:Er -> {'error', {_Ex, Er}}
+    end.
 
 -spec lookup_doc_rev(server(), ne_binary(), ne_binary()) ->
                             {'ok', ne_binary()} |
@@ -92,3 +108,42 @@ copy_doc({App, Conn}, CopySpec, Options) ->
                       data_error().
 move_doc({App, Conn}, CopySpec, Options) ->
     App:move_doc(Conn, CopySpec, Options).
+
+
+-spec prepare_doc_for_save(db(), wh_json:object()) -> {wh_json:object(), wh_json:object()}.
+-spec prepare_doc_for_save(db(), wh_json:object(), boolean()) -> {wh_json:object(), wh_json:object()}.
+prepare_doc_for_save(Db, JObj) ->
+    prepare_doc_for_save(Db, JObj, wh_util:is_empty(wh_doc:id(JObj))).
+prepare_doc_for_save(_Db, JObj, 'true') ->
+    prepare_publish(maybe_set_docid(JObj));
+prepare_doc_for_save(Db, JObj, 'false') ->
+    kzs_cache:flush_cache_doc(Db, JObj),
+    prepare_publish(JObj).
+
+-spec prepare_publish(wh_json:object()) -> {wh_json:object(), wh_json:object()}.
+prepare_publish(JObj) ->
+    {maybe_tombstone(JObj), wh_json:from_list(kzs_publish:publish_fields(JObj))}.
+
+-spec maybe_tombstone(wh_json:object()) -> wh_json:object().
+-spec maybe_tombstone(wh_json:object(), boolean()) -> wh_json:object().
+maybe_tombstone(JObj) ->
+    maybe_tombstone(JObj, wh_json:is_true(<<"_deleted">>, JObj, 'false')).
+
+maybe_tombstone(JObj, 'true') ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"_id">>, wh_doc:id(JObj)}
+         ,{<<"_rev">>, wh_doc:revision(JObj)}
+         ,{<<"_deleted">>, 'true'}
+        ]
+       )
+     );
+maybe_tombstone(JObj, 'false') -> JObj.
+
+-spec maybe_set_docid(wh_json:object()) -> wh_json:object().
+maybe_set_docid(Doc) ->
+    case wh_doc:id(Doc) of
+        'undefined' -> wh_doc:set_id(Doc, kz_datamgr:get_uuid());
+        _ -> Doc
+    end.
+
