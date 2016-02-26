@@ -45,7 +45,7 @@
 
 -define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).
 
--define(CALLFLOW_CACHE, 'callflow_cache').
+-define(CACHE_NAME, 'callflow_cache').
 
 -define(CF_ATTR_LOWER_KEY, <<109,108,112,112>>).
 -define(CF_ATTR_UPPER_KEY, <<109,097,120,095,112,114,101,099,101,100,101,110,099,101>>).

@@ -3,7 +3,7 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--define(JONNY5_CACHE, 'jonny5_cache').
+-define(CACHE_NAME, 'jonny5_cache').
 
 -define(DEFAULT_RATE, 0.5).
 

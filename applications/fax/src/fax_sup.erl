@@ -20,8 +20,11 @@
 -export([init/1]).
 
 
--define(ORIGIN_BINDINGS, [[{'db', ?WH_FAXES_DB}, {'type', <<"faxbox">>}]]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+-define(ORIGIN_BINDINGS, [[{'db', ?WH_FAXES_DB}, {'type', <<"faxbox">>}]
+                         ]).
+
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
 
 -define(SMTP_ARGS, ['fax_smtp' ,[[{'port', ?SMTP_PORT}
 %% in case we want to make the settings constant per execution
@@ -29,7 +32,7 @@
                                 ]]]).
 
 -define(CHILDREN, [?WORKER('fax_init')
-                   ,?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
+                   ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                    ,?SUPER('fax_worker_pool_sup')
                    ,?SUPER('fax_requests_sup')
                    ,?SUPER('fax_xmpp_sup')
@@ -51,9 +54,9 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec cache_proc() -> {'ok', ?FAX_CACHE}.
+-spec cache_proc() -> {'ok', ?CACHE_NAME}.
 cache_proc() ->
-    {'ok', ?FAX_CACHE}.
+    {'ok', ?CACHE_NAME}.
 
 -spec listener_proc() -> {'ok', pid()}.
 listener_proc() ->

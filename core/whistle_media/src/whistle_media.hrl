@@ -10,6 +10,8 @@
 -define(APP_NAME, <<"media_srv">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
+-define(CACHE_NAME, 'media_mgr_cache').
+
 -define(MEDIA_DB, <<"system_media">>).
 -define(PORT_RANGE, 0). % use 0 to have OS assign port #, {Low, Hi} for range of ports to try
 -define(PORT_OPTIONS, ['binary'

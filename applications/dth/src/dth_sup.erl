@@ -18,7 +18,7 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE(?DTH_CACHE)
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
                    ,?WORKER('dth_listener')
                   ]).
 

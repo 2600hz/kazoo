@@ -11,6 +11,8 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(BLACKHOLE_CONFIG_CAT, <<"blackhole">>).
 
+-define(CACHE_NAME, 'blackhole_cache').
+
 -define(DEFAULT_MODULES, ['bh_token_auth']).
 
 -define(VERSION_SUPPORTED, [<<"v1">>]).

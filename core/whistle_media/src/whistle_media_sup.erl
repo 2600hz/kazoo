@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("whistle_media.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -18,7 +18,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER_APP_INIT('whistle_media_init', 20 * ?SECONDS_IN_MINUTE)
-                   ,?CACHE('media_mgr_cache')
+                   ,?CACHE(?CACHE_NAME)
                    ,?WORKER_ARGS('kazoo_etsmgr_srv'
                                 ,[
                                   [{'table_id', wh_media_map:table_id()}

@@ -21,13 +21,14 @@
 
 -define(SERVER, ?MODULE).
 
+-define(ORIGIN_BINDINGS, [[{'type', kz_notification:pvt_type()}]
+                         ]).
+
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
 -define(CHILDREN, [?WORKER('crossbar_init')
                    ,?SUPER('crossbar_module_sup')
-                   ,?CACHE_ARGS(?CROSSBAR_CACHE, [{'origin_bindings'
-                                                   ,[[{'type', kz_notification:pvt_type()}]]
-                                                  }
-                                                 ]
-                               )
+                   ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                    ,?WORKER('crossbar_cleanup')
                    ,?WORKER('crossbar_bindings')
                   ]

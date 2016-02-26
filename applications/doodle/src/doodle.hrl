@@ -10,7 +10,7 @@
 -define(APP_VERSION, <<"4.0.0">> ).
 -define(CONFIG_CAT, <<"doodle">>).
 
--define(DOODLE_CACHE, 'doodle_cache').
+-define(CACHE_NAME, 'doodle_cache').
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 

@@ -8,5 +8,7 @@
 -define(APP_NAME, <<"spyvsspy">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
+-define(CACHE_NAME, 'spyvsspy_cache').
+
 -define(SPYVSSPY_HRL, true).
 -endif.

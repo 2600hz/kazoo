@@ -18,7 +18,7 @@
 
 -define(SS_CONFIG_CAT, <<"stepswitch">>).
 
--define(STEPSWITCH_CACHE, 'stepswitch_cache').
+-define(CACHE_NAME, 'stepswitch_cache').
 -define(STEPSWITCH_CNAM_POOL, 'stepswitch_cnam_pool').
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).

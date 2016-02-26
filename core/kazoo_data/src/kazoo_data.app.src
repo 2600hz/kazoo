@@ -4,7 +4,7 @@
   ,{id, "108013a5-95e7-4e18-5757-344d22bebce8"}
   ,{vsn, "4.0.0"}
   ,{modules, []}
-  ,{registered, [kazoo_data_app, kazoo_data_sup]}
+  ,{registered, [kazoo_data_cache, kazoo_data_plan_cache, kazoo_data_app, kazoo_data_sup]}
   ,{applications, [ kernel
                   , stdlib
                   , crypto

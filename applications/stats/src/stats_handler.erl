@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(stats_handler).
 
--define(STATS_CACHE, 'stats_cache').
+-include("stats.hrl").
 
 -export([get_db/1
          ,handle_event/2
@@ -27,7 +27,7 @@ handle_event(JObj, Props) ->
     lager:debug("event occurred ~p ~p",[JObj, Props]).
 
 get_db(Table) ->
-    case kz_cache:peek_local(?STATS_CACHE, Table) of
+    case kz_cache:peek_local(?CACHE_NAME, Table) of
         {'ok', Records} -> Records;
         _ -> []
     end.
@@ -35,7 +35,7 @@ get_db(Table) ->
 save_db(_, []) -> 'ok';
 save_db(Table, Values) ->
     lager:debug("trying to store in ~s: ~p", [Table, Values]),
-    kz_cache:store_local(?STATS_CACHE, Table, Values).
+    kz_cache:store_local(?CACHE_NAME, Table, Values).
 
 store_items('undefined', _, Vals) ->
     lager:debug("cannot find the node name ~p~n",[Vals]),

@@ -115,7 +115,7 @@ pretty_print_resource([{Key, Value}|Props]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec flush() -> 'ok'.
-flush() -> kz_cache:flush_local(?STEPSWITCH_CACHE).
+flush() -> kz_cache:flush_local(?CACHE_NAME).
 
 -spec cnam_flush() -> 'ok'.
 cnam_flush() ->

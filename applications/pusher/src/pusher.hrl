@@ -10,7 +10,7 @@
 
 -define(CONFIG_CAT, <<"pusher">>).
 
--define(PUSHER_CACHE, 'pusher_cache').
+-define(CACHE_NAME, 'pusher_cache').
 
 -define(TOKEN_KEY, <<"Token-ID">>).
 -define(TOKEN_PROXY_KEY, <<"Proxy-Path">>).

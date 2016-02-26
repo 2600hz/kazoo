@@ -20,9 +20,11 @@
                           ,[{'type', <<"user">>}]
                           ,[{'type', <<"device">>}]
                          ]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
--define(CHILDREN, [?CACHE_ARGS(?JONNY5_CACHE, ?CACHE_PROPS)
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
+
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                    ,?WORKER('jonny5_listener')
                    ,?WORKER('j5_channels')
                    ,?WORKER('j5_balance_crawler_fsm')
