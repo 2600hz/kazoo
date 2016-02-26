@@ -8,13 +8,12 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(kz_cache).
-
 -behaviour(gen_listener).
 
 -export([start_link/0, start_link/1
          ,start_link/2, start_link/3
-         ,stop_local/1
         ]).
+-export([stop_local/1].)
 -export([store/2, store/3]).
 -export([peek/1]).
 -export([fetch/1, fetch_keys/0]).
@@ -78,7 +77,7 @@
                 ,expire_node_flush = 'false' :: boolean()
                 ,expire_period = ?EXPIRE_PERIOD :: wh_timeout()
                 ,expire_period_ref :: reference()
-                ,props = [] :: list()
+                ,props = [] :: wh_proplist()
                 ,has_monitors = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -90,18 +89,14 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
 -spec start_link(atom()) -> startlink_ret().
--spec start_link(atom(), list() | wh_timeout()) -> startlink_ret().
--spec start_link(atom(), wh_timeout(), list()) -> startlink_ret().
+-spec start_link(atom(), wh_proplist()) -> startlink_ret().
 
-start_link() -> start_link(?SERVER).
-start_link(Name) -> start_link(Name, ?EXPIRE_PERIOD).
+start_link(Name) when is_atom(Name) ->
+    start_link(Name, ?EXPIRE_PERIOD, []).
 
 start_link(Name, Props) when is_list(Props) ->
-    start_link(Name, ?EXPIRE_PERIOD, Props);
-start_link(Name, ExpirePeriod) ->
-    start_link(Name, ExpirePeriod, []).
+    start_link(Name, ?EXPIRE_PERIOD, Props).
 
 start_link(Name, ExpirePeriod, Props) ->
     case props:get_value('origin_bindings', Props) of
@@ -393,7 +388,7 @@ pointer_tab(Tab) ->
 monitor_tab(Tab) ->
     to_tab(Tab, "_monitors").
 
--spec to_tab(atom(), list()) -> atom().
+-spec to_tab(atom(), string()) -> atom().
 to_tab(Tab, Suffix) ->
     wh_util:to_atom(wh_util:to_list(Tab) ++ Suffix, 'true').
 
