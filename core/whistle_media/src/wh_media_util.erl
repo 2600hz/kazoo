@@ -9,7 +9,7 @@
 
 
 -export([recording_url/2]).
--export([base_url/1, base_url/2, base_url/3]).
+-export([base_url/2, base_url/3]).
 -export([convert_stream_type/1
          ,normalize_media/3
         ]).
@@ -128,32 +128,32 @@ recording_url(CallId, Data) ->
 max_recording_time_limit() ->
     whapps_config:get_integer(?WHM_CONFIG_CAT, <<"max_recording_time_limit">>, ?SECONDS_IN_HOUR).
 
-base_url(Host) ->
-    Port = wh_couch_connections:get_port(),
-    base_url(Host, Port).
+%% base_url(Host) ->
+%%     Port = wh_couch_connections:get_port(),
+%%     base_url(Host, Port).
 
 base_url(Host, Port) ->
     base_url(Host, Port, 'proxy_playback').
 
-base_url(Host, Port, 'direct_playback') ->
-    case ?AUTH_PLAYBACK of
-        'false' -> build_url(Host, Port, [], []);
-        'true' ->
-            {Username, Password} = wh_couch_connections:get_creds(),
-            build_url(Host, Port, Username, Password)
-    end;
+%% base_url(Host, Port, 'direct_playback') ->
+%%     case ?AUTH_PLAYBACK of
+%%         'false' -> build_url(Host, Port, [], []);
+%%         'true' ->
+%%             {Username, Password} = wh_couch_connections:get_creds(),
+%%             build_url(Host, Port, Username, Password)
+%%     end;
 base_url(Host, Port, 'proxy_playback') ->
     case ?AUTH_PLAYBACK of
         'false' -> build_url(Host, Port, [], []);
         'true' -> build_url(Host, Port, ?AUTH_USERNAME, ?AUTH_PASSWORD)
     end;
-base_url(Host, Port, 'direct_store') ->
-    case ?USE_AUTH_STORE of
-        'false' -> build_url(Host, Port, [], []);
-        'true' ->
-            {Username, Password} = wh_couch_connections:get_creds(),
-            build_url(Host, Port, Username, Password)
-    end;
+%% base_url(Host, Port, 'direct_store') ->
+%%     case ?USE_AUTH_STORE of
+%%         'false' -> build_url(Host, Port, [], []);
+%%         'true' ->
+%%             {Username, Password} = wh_couch_connections:get_creds(),
+%%             build_url(Host, Port, Username, Password)
+%%     end;
 base_url(Host, Port, 'proxy_store') ->
     case ?USE_AUTH_STORE of
         'false' -> build_url(Host, Port, [], []);

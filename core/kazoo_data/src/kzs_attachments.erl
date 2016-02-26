@@ -50,6 +50,7 @@ put_attachment(Server, DbName, DocId, AName, Contents) ->
 
 put_attachment({App, Conn}, DbName, DocId, AName, Contents, Options) ->
     %% maybe translation here and redirection
+    kzs_cache:flush_cache_doc(DbName, DocId),
     App:put_attachment(Conn, DbName, DocId, AName, Contents, Options).
 
 -spec delete_attachment(server(), ne_binary(), ne_binary(), ne_binary()) ->

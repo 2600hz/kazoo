@@ -116,24 +116,8 @@ maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
         'false' -> maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment);
         'true' ->
-            lager:debug("using local haproxy as proxy"),
-            DefaultHost = case wh_couch_connections:get_host() of
-                              "localhost" -> wh_network_utils:get_hostname();
-                              Else -> Else
-                          end,
-            Host = whapps_config:get_binary(?CONFIG_CAT, <<"bigcouch_host">>, wh_util:to_binary(DefaultHost)),
-            Port = whapps_config:get_binary(?CONFIG_CAT, <<"bigcouch_port">>, wh_couch_connections:get_port()),
-            StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
-            Permissions = case StreamType =:= <<"store">> of
-                              'true' -> 'direct_store';
-                              'false' -> 'direct_playback'
-                          end,
-            {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary
-                     ,Db/binary
-                     ,"/", Id/binary
-                     ,"/", Attachment/binary
-                   >>
-            }
+            Url = kz_datamgr:attachment_url(Db, Id, Attachment),
+            {'ok', Url}
     end.
 
 -spec maybe_media_manager_proxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->

@@ -18,3 +18,4 @@ dep_nksip = git https://github.com/NetComposer/nksip
 dep_socketio = git https://github.com/lazedo/socket.io-cowboy 0.2
 dep_hep = git https://github.com/lazedo/hep 1.5.4
 dep_ecsv = git https://github.com/lazedo/ecsv 0.2.1
+dep_couchbeam = git https://github.com/lazedo/couchbeam ada39580fae0c99d002bc05a7c818e7bdf6b2ee6
