@@ -4,8 +4,8 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle/include/kz_system_config.hrl").
 
--define(KZ_DATA_CACHE, 'kazoo_data_cache').
--define(KZ_DP_CACHE, 'kazoo_data_plan_cache').
+-define(CACHE_NAME, 'kazoo_data_cache').
+-define(KAZOO_DATA_PLAN_CACHE, 'kazoo_data_plan_cache').
 
 -define(CONFIG_CAT, <<"datamgr">>).
 

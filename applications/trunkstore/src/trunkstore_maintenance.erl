@@ -21,15 +21,15 @@
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.
 flush() ->
-    kz_cache:flush_local(?TRUNKSTORE_CACHE).
+    kz_cache:flush_local(?CACHE_NAME).
 
 flush(Account) ->
     AccountId = wh_util:format_account_id(Account),
 
-    Flush = kz_cache:filter_local(?TRUNKSTORE_CACHE
+    Flush = kz_cache:filter_local(?CACHE_NAME
                                   ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
                                  ),
-    _ = [kz_cache:erase_local(?TRUNKSTORE_CACHE, Key) || {Key, _Value} <- Flush],
+    _ = [kz_cache:erase_local(?CACHE_NAME, Key) || {Key, _Value} <- Flush],
     'ok'.
 
 migrate() ->

@@ -9,7 +9,7 @@
 -define(APP_NAME, <<"acdc">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--define(ACDC_CACHE, 'acdc_cache').
+-define(CACHE_NAME, 'acdc_cache').
 
 -define(ABANDON_TIMEOUT, 'member_timeout').
 -define(ABANDON_EXIT, 'member_exit').

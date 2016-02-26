@@ -6,7 +6,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle/include/wh_api.hrl").
 
--define(PIVOT_CACHE, 'pivot_cache').
+-define(CACHE_NAME, 'pivot_cache').
 
 -define(APP_NAME, <<"pivot">>).
 -define(APP_VERSION, <<"4.0.0">>).

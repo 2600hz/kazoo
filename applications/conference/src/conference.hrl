@@ -9,7 +9,7 @@
 
 -define(CONFIG_CAT, <<"conferences">>).
 
--define(CONFERENCE_CACHE, 'conference_cache').
+-define(CACHE_NAME, 'conference_cache').
 
 -define(DEFAULT_PROFILE_NAME, <<"default">>).
 

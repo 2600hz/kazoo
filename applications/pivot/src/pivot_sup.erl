@@ -17,7 +17,7 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE(?PIVOT_CACHE)
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
                    ,?SUPER('pivot_calls_sup')
                    ,?WORKER('pivot_listener')
                   ]).

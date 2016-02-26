@@ -20,7 +20,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?CACHE('hotornot_cache')
+-define(CHILDREN, [?CACHE(?CACHE_NAME)
                    ,?WORKER('hotornot_listener')
                   ]).
 

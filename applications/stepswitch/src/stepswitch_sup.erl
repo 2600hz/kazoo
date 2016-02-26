@@ -20,9 +20,11 @@
                          ,[{'type', <<"number">>}]
                          ,[{'type', <<"dedicated_ip">>}]
                          ]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
--define(CHILDREN, [?CACHE_ARGS(?STEPSWITCH_CACHE, ?CACHE_PROPS)
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
+
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                    ,?SUPER('stepswitch_cnam_pool_sup')
                    ,?SUPER('stepswitch_request_sup')
                    ,?WORKER('stepswitch_listener')

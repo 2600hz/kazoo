@@ -19,7 +19,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?SUPER('pusher_module_sup')
                    ,?WORKER('pusher_listener')
-                   ,?CACHE(?PUSHER_CACHE)
+                   ,?CACHE(?CACHE_NAME)
                   ]).
 
 %% ===================================================================

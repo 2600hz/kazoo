@@ -16,12 +16,14 @@
 
 -define(SERVER, ?MODULE).
 
+-define(ORIGIN_BINDINGS, [[{'db', ?WH_SERVICES_DB, kzd_services:type()}]
+                         ]).
+
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
+
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE_ARGS(?SERVICES_CACHE
-                               ,[{'origin_bindings'
-                                  ,[[{'db', ?WH_SERVICES_DB, kzd_services:type()}]]
-                                 }]
-                              )
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                    ,?WORKER('wh_services_modb')
                    ,?WORKER('wh_service_sync')
                   ]).

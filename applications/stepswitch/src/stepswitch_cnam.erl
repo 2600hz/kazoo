@@ -85,7 +85,7 @@ lookup(JObj) ->
               'false' -> knm_converters:normalize(Number);
               'true'  -> Number
           end,
-    case kz_cache:fetch_local(?STEPSWITCH_CACHE, cache_key(Num)) of
+    case kz_cache:fetch_local(?CACHE_NAME, cache_key(Num)) of
         {'ok', CNAM} ->
             update_request(JObj, CNAM, 'true');
         {'error', 'not_found'} ->
@@ -108,7 +108,7 @@ update_request(JObj, CNAM, FromCache) ->
 
 -spec flush() -> non_neg_integer().
 flush() ->
-    kz_cache:filter_erase_local(?STEPSWITCH_CACHE, fun flush_entries/2).
+    kz_cache:filter_erase_local(?CACHE_NAME, fun flush_entries/2).
 
 -spec flush_entries(any(), any()) -> boolean().
 flush_entries(?CACHE_KEY(_), _) -> 'true';
@@ -264,7 +264,7 @@ fetch_cnam(Number, JObj) ->
         'undefined' -> 'undefined';
         CNAM ->
             CacheProps = [{'expires', whapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}],
-            kz_cache:store_local(?STEPSWITCH_CACHE, cache_key(Number), CNAM, CacheProps),
+            kz_cache:store_local(?CACHE_NAME, cache_key(Number), CNAM, CacheProps),
             CNAM
     end.
 

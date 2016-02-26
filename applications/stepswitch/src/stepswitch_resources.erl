@@ -638,12 +638,12 @@ get() -> get('undefined').
 
 -spec get(api_binary()) -> resources().
 get('undefined') ->
-    case kz_cache:fetch_local(?STEPSWITCH_CACHE, 'global_resources') of
+    case kz_cache:fetch_local(?CACHE_NAME, 'global_resources') of
         {'ok', Resources} -> Resources;
         {'error', 'not_found'} -> fetch_global_resources()
     end;
 get(AccountId) ->
-    case kz_cache:fetch_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}) of
+    case kz_cache:fetch_local(?CACHE_NAME, {'local_resources', AccountId}) of
         {'ok', Resources} -> Resources;
         {'error', 'not_found'} -> fetch_local_resources(AccountId)
     end.
@@ -687,7 +687,7 @@ fetch_global_resources() ->
             CacheProps = [{'origin', [{'db', ?RESOURCES_DB, <<"resource">>}]}],
             Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
             Resources = resources_from_jobjs(Docs),
-            kz_cache:store_local(?STEPSWITCH_CACHE, 'global_resources', Resources, CacheProps),
+            kz_cache:store_local(?CACHE_NAME, 'global_resources', Resources, CacheProps),
             Resources
     end.
 
@@ -709,7 +709,7 @@ fetch_local_resources(AccountId) ->
         {'ok', JObjs} ->
             LocalResources = fetch_local_resources(AccountId, JObjs),
             CacheProps = [{'origin', [{'db', AccountDb, <<"resource">>}]}],
-            kz_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
+            kz_cache:store_local(?CACHE_NAME, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
 

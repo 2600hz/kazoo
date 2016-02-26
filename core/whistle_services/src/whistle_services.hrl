@@ -10,7 +10,7 @@
 
 -define(WHS_CONFIG_CAT, <<"services">>).
 
--define(SERVICES_CACHE, 'whistle_services_cache').
+-define(CACHE_NAME, 'whistle_services_cache').
 
 -ifndef(TEST).
 -define(SUPPORT_BILLING_ID, whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"support_billing_id">>, 'true')).
