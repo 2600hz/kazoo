@@ -215,7 +215,14 @@ get_sip_headers(Data, Call) ->
                         end
                 end
                ],
-    CustomHeaders = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
+    AuthEndCSH = case cf_endpoint:get(Call) of
+                     {'ok', AuthorizingEndpoint} ->
+                         kz_device:custom_sip_headers_outbound(AuthorizingEndpoint);
+                     _ -> wh_json:new()
+                 end,
+    CSH = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
+    CustomHeaders = wh_json:merge_jobjs(AuthEndCSH, CSH),
+
 
     Diversions = whapps_call:custom_sip_header(<<"Diversions">>, Call),
 
