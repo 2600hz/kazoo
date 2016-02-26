@@ -49,9 +49,7 @@
 -type media() :: {api_binary(), ne_binary()}.
 
 -type store_url() :: 'false' |
-                     {'true', 'local'} |
-                     {'true', 'third_party'} |
-                     {'true', atom()} |
+                     {'true'} |
                      {'true', 'other', ne_binary()}.
 
 -record(state, {url                        :: api_binary()

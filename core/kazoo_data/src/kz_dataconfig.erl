@@ -26,7 +26,7 @@ connection() ->
 connection(List) when is_list(List) ->
     connection(maps:from_list(List));
 connection(#{driver := App, tag := Tag}=Map) ->
-    ensure_driver_app(App),
+    _ = ensure_driver_app(App),
     is_driver_app(App),
     #data_connection{props=Map, app=App, tag=Tag};
 connection(#{}=Map) ->

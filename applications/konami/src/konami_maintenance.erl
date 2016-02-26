@@ -48,7 +48,7 @@ add_default_account_metaflow(AccountId) ->
 
 -spec intro_builder(wh_json:object(), save_fun()) -> 'ok'.
 intro_builder(Default, SaveFun) ->
-    application:ensure_started('konami'),
+    _ = application:ensure_started('konami'),
     io:format("The current default metaflow:~n"),
     io:format("  Binding Digit: ~s~n"
               ,[wh_json:get_value(<<"binding_digit">>, Default, konami_config:binding_digit())]

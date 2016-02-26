@@ -9,7 +9,7 @@
 
 -record(data_connection, {id = wh_util:current_tstamp()
                           ,app :: atom()
-                          ,props :: #{}
+                          ,props = #{} :: #{}
                           ,server
                           ,connected = 'false' :: boolean()
                           ,ready = 'false' :: boolean()
