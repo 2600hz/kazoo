@@ -57,6 +57,8 @@
          ,from_magic_hash/1
         ]).
 
+-export([media_local_store_url/2]).
+
 -include("whistle_apps.hrl").
 
 -define(REPLICATE_ENCODING, 'encoded').
@@ -708,3 +710,10 @@ to_magic_hash(Bin) ->
 -spec from_magic_hash(ne_binary()) -> ne_binary().
 from_magic_hash(Bin) ->
     zlib:unzip(wh_util:from_hex_binary(Bin)).
+
+-spec media_local_store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
+media_local_store_url(Call, JObj) ->
+    AccountDb = whapps_call:account_db(Call),
+    MediaId = wh_doc:id(JObj),
+    MediaName = wh_json:get_value(<<"name">>, JObj),
+    kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).

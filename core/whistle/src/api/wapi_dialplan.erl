@@ -70,7 +70,7 @@
 -export([dial_method_single/0
          ,dial_method_simultaneous/0
          ,terminators/1, terminators_v/1
-         ,local_store_url/2, offsite_store_url/2
+         ,offsite_store_url/2
         ]).
 
 -export([bind_q/2
@@ -1162,18 +1162,6 @@ terminators_v(_) -> 'false'.
 
 terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
--spec local_store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
-local_store_url(Call, JObj) ->
-    AccountDb = whapps_call:account_db(Call),
-    MediaId = wh_doc:id(JObj),
-    MediaName = wh_json:get_value(<<"name">>, JObj),
-
-    Rev = wh_doc:revision(JObj),
-    list_to_binary([wh_couch_connections:get_url(), AccountDb
-                    ,"/", MediaId
-                    ,"/", MediaName
-                    ,"?rev=", Rev
-                   ]).
 
 -spec offsite_store_url(api_binary(), ne_binary()) -> ne_binary().
 offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
