@@ -642,7 +642,7 @@ open_doc(Server, DbName, DocId, Options) ->
 %%                             {'error', 'not_found'}.
 %% admin_open_doc(DbName, DocId) ->
 %%     admin_open_doc(DbName, DocId, []).
-%% 
+%%
 %% admin_open_doc(DbName, DocId, Options) when ?VALID_DBNAME->
 %%     kzs_doc:open_doc(kz_dataconnections:get_admin_server(), DbName, DocId, Options);
 %% admin_open_doc(DbName, DocId, Options) ->
@@ -680,13 +680,13 @@ db_list(Options) ->
 
 %% -spec admin_all_docs(text()) -> {'ok', wh_json:objects()} |
 %%                                 data_error().
-%% 
+%%
 %% -spec admin_all_docs(text(), wh_proplist()) -> {'ok', wh_json:objects()} |
 %%                                                data_error().
-%% 
+%%
 %% admin_all_docs(DbName) ->
 %%     admin_all_docs(DbName, []).
-%% 
+%%
 %% admin_all_docs(DbName, Options) when ?VALID_DBNAME ->
 %%     kzs_view:all_docs(kz_dataconnections:get_admin_server(), DbName, Options);
 %% admin_all_docs(DbName, Options) ->
@@ -1111,7 +1111,7 @@ attachment_url(DbName, DocId, AttachmentId) ->
             Options = [{'content_type', kz_mime:from_extension(Ext)}],
             attachment_url(DbName, DocId, AttachmentId, Options)
     end.
-            
+
 attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME ->
     Server = get_server(),
     RequiredOptions = [{'doc_type', fun wh_doc:type/1}
@@ -1167,4 +1167,3 @@ add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
         'true' -> Acc;
         'false' -> {JObj, props:filter_undefined([{Key, Fun(JObj)} | Options])}
     end.
-        

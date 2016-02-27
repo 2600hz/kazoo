@@ -29,7 +29,7 @@
 
 get_db(#server{}=Conn, DbName) ->
     kz_couch_util:get_db(Conn, DbName).
-              
+
 %%% DB-related functions ---------------------------------------------
 -spec db_compact(server(), ne_binary()) -> boolean().
 db_compact(#server{}=Conn, DbName) ->

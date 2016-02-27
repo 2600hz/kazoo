@@ -94,7 +94,7 @@ new_connection(#kz_couch_connection{host=Host
                ,{'connect_timeout', 500}
                ,{'connect_options', [{'keepalive', true}]}
 %               ,{'timeout', 'infinity'}
-              ], 
+              ],
     get_new_conn(Host, Port, Options);
 new_connection(#{}=Map) ->
     new_connection(maps:fold(fun connection_parse/3, #kz_couch_connection{}, Map)).
@@ -112,8 +112,8 @@ connection_parse(password, V, Conn) ->
     Conn#kz_couch_connection{password=V};
 connection_parse(K, V, #kz_couch_connection{options=Options}=Conn) ->
     Conn#kz_couch_connection{options = [{K, V} | Options]}.
-    
-  
+
+
 -spec get_new_conn(nonempty_string() | ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', server()} |
                           {'error', 'timeout'} |
@@ -154,7 +154,7 @@ server_url(#server{url=Url}) -> Url.
 %%                    'false' -> <<"http">>;
 %%                    'true' -> <<"https">>
 %%                end,
-%% 
+%%
 %%     list_to_binary([Protocol, <<"://">>, UserPass
 %%                     ,<<"@">>, wh_util:to_binary(Host)
 %%                     ,<<":">>, wh_util:to_binary(Port)
