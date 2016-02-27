@@ -20,7 +20,7 @@
 
 -include("kz_couch.hrl").
 
--type ddoc() :: atom() | ne_binary | {ne_binary(), ne_binary()}.
+-type ddoc() :: atom() | ne_binary() | {ne_binary(), ne_binary()}.
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(server(), ne_binary(), ne_binary()) -> boolean().

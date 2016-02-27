@@ -113,7 +113,8 @@ do_del_attachment(#db{}=Db, DocId, AName, Options) ->
 maybe_add_extension(AName, Options) ->
     case {props:get_value('content_type', Options), filename:extension(AName)} of
         {'undefined', _} -> AName;
-        {CT, []} -> <<AName, ".", (kz_mime:to_extension(CT))/binary>>;
+        {CT, []} -> Ext = kz_mime:to_extension(CT),
+                    <<AName/binary, ".", Ext/binary>>;
         _ -> AName
     end.
 
