@@ -7,7 +7,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whistle_apps_app).
-
 -behaviour(application).
 
 -include_lib("whistle/include/wh_types.hrl").

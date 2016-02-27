@@ -28,11 +28,11 @@ init() ->
                 [] ->
                     lager:warning("failed to set whistle_apps cookie for node ~s", [node()]);
                 [Cookie|_] ->
-                    erlang:set_cookie(erlang:node(), Cookie),
+                    erlang:set_cookie(node(), Cookie),
                     lager:info("setting whistle_apps cookie to ~p", [Cookie])
             end;
         [Cookie|_] ->
-            erlang:set_cookie(erlang:node(), Cookie),
+            erlang:set_cookie(node(), Cookie),
             lager:info("setting whistle_apps cookie to ~p", [Cookie])
     end,
     set_loglevel().
