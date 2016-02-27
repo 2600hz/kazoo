@@ -121,10 +121,11 @@ move_doc({App, Conn}, CopySpec, Options) ->
     App:move_doc(Conn, CopySpec, Options).
 
 
--spec prepare_doc_for_save(db(), wh_json:object()) -> {wh_json:object(), wh_json:object()}.
--spec prepare_doc_for_save(db(), wh_json:object(), boolean()) -> {wh_json:object(), wh_json:object()}.
+-spec prepare_doc_for_save(ne_binary(), wh_json:object()) -> {wh_json:object(), wh_json:object()}.
+-spec prepare_doc_for_save(ne_binary(), wh_json:object(), boolean()) -> {wh_json:object(), wh_json:object()}.
 prepare_doc_for_save(Db, JObj) ->
     prepare_doc_for_save(Db, JObj, wh_util:is_empty(wh_doc:id(JObj))).
+
 prepare_doc_for_save(_Db, JObj, 'true') ->
     prepare_publish(maybe_set_docid(JObj));
 prepare_doc_for_save(Db, JObj, 'false') ->

@@ -49,7 +49,7 @@
 -type media() :: {api_binary(), ne_binary()}.
 
 -type store_url() :: 'false' |
-                     {'true'} |
+                     'true' |
                      {'true', 'other', ne_binary()}.
 
 -record(state, {url                        :: api_binary()
@@ -495,7 +495,7 @@ save_recording(#state{call=Call, media=Media}=State, 'true') ->
             lager:info("store url: ~s", [StoreUrl]),
             store_recording(Media, StoreUrl, Call, 'true')
     end;
-save_recording(#state{call=Call, media=Media}, {'true', 'other', Url}) ->
+save_recording(#state{call=Call, media=Media}, {'true', 'local', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(Media, Url, Call, 'other').
 
