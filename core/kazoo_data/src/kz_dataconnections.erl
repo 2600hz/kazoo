@@ -88,7 +88,6 @@ get_server(Tag) ->
                                    ,app = '$1'
                                    ,server = '$2'
                                    ,tag = Tag
-                                   ,_ = '_'
                                       }
                   ,[]
                   ,[{{'$1', '$2'}}]
