@@ -49,7 +49,7 @@
 -type media() :: {api_binary(), ne_binary()}.
 
 -type store_url() :: 'false' |
-                     'true' |
+                     {'true', 'local'} |
                      {'true', 'other', ne_binary()}.
 
 -record(state, {url                        :: api_binary()
@@ -462,7 +462,7 @@ store_url(#state{doc_db=Db
                  ,doc_id=MediaId
                  ,media={_,MediaName}
                  ,format=Ext
-                 ,should_store='true'
+                 ,should_store={'true', 'local'}
                 }, Rev) ->
     Options = [{'revision', Rev}
                ,{'content_type', kz_mime:from_extension(Ext)}
@@ -479,13 +479,16 @@ should_store_recording(Url) ->
     end.
 
 should_store_recording() ->
-    whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false').
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
+        'true' -> {'true', 'local'};
+        'false' -> 'false'
+    end.
 
 -spec save_recording(state(), store_url()) -> 'ok'.
 save_recording(#state{media={_, MediaName}}, 'false') ->
     lager:info("not configured to store recording ~s", [MediaName]),
     gen_server:cast(self(), 'stop');
-save_recording(#state{call=Call, media=Media}=State, 'true') ->
+save_recording(#state{call=Call, media=Media}=State, {'true', 'local'}) ->
     case maybe_store_recording_meta(State) of
         {'error', Err} ->
             lager:warning("error storing metadata : ~p", [Err]),
@@ -493,9 +496,9 @@ save_recording(#state{call=Call, media=Media}=State, 'true') ->
         Rev ->
             StoreUrl = store_url(State, Rev),
             lager:info("store url: ~s", [StoreUrl]),
-            store_recording(Media, StoreUrl, Call, 'true')
+            store_recording(Media, StoreUrl, Call, 'local')
     end;
-save_recording(#state{call=Call, media=Media}, {'true', 'local', Url}) ->
+save_recording(#state{call=Call, media=Media}, {'true', 'other', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(Media, Url, Call, 'other').
 
@@ -504,7 +507,7 @@ store_recording(Media, Url, Call, 'other') ->
     StoreUrl = append_path(Url, Media),
     lager:debug("appending filename to url: ~s", [StoreUrl]),
     store(Media, StoreUrl, Call);
-store_recording(Media, StoreUrl, Call, 'true') ->
+store_recording(Media, StoreUrl, Call, 'local') ->
     store(Media, StoreUrl, Call).
 
 -spec append_path(ne_binary(), {ne_binary(), ne_binary()}) -> ne_binary().
