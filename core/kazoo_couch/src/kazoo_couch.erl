@@ -87,7 +87,7 @@ format_error(Error) ->
 %% Connection operations
 get_db(Server, DbName) ->
     kz_couch_util:get_db(Server, DbName).
-    
+
 server_url(Server) ->
     kz_couch_util:server_url(Server).
 

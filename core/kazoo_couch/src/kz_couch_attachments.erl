@@ -86,7 +86,7 @@ do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
                            Ret;
         Else -> Else
     end.
-                       
+
 relay_stream_attachment(Caller, Ref) ->
     relay_stream_attachment(Caller, Ref, couchbeam:stream_attachment(Ref)).
 

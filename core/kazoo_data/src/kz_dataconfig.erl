@@ -22,7 +22,7 @@ connection() ->
     [Section] = wh_config:get('data', 'config', ['bigcouch']),
     Props = props:get_value('generic', wh_config:get(Section), []),
     connection(Props).
-    
+
 connection(List) when is_list(List) ->
     connection(maps:from_list(List));
 connection(#{driver := App, tag := Tag}=Map) ->
