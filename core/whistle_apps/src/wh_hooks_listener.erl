@@ -8,7 +8,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wh_hooks_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -87,7 +86,6 @@ init([]) ->
     wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     wapi_call:declare_exchanges(),
-    _ = wh_util:spawn(fun whistle_apps_sup:start_child/1, [?CACHE(?HOOKS_CACHE_NAME)]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------

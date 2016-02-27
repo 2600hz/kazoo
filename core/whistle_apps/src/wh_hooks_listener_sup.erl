@@ -5,25 +5,19 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(whistle_apps_sup).
-
+-module(wh_hooks_listener_sup).
 -behaviour(supervisor).
 
--export([start_link/0
-         ,initialize_whapps/1
-         ,init/1
-         ,start_child/1
-        ]).
+-export([start_link/0]).
+-export([init/1]).
 
--include("whapps_call_command.hrl").
 -include("whistle_apps.hrl").
+-include("wh_hooks.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?SUPER('wh_hooks_listener_sup')
-                   ,?WORKER('wh_nodes')
-                   ,?WORKER('whistle_apps_init')
-                   ,?WORKER('whapps_controller')
+-define(CHILDREN, [?WORKER('wh_hooks_listener')
+                   ,?CACHE(?HOOKS_CACHE_NAME)
                   ]).
 
 %% ===================================================================
@@ -37,13 +31,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec initialize_whapps(atoms()) -> sup_startchild_ret().
-initialize_whapps(Whapps) ->
-    supervisor:start_child(?SERVER, ?SUPER_ARGS('whapps_sup', Whapps)).
-
-start_child(Spec) ->
-    supervisor:start_child(?SERVER, Spec).
 
 %% ===================================================================
 %% Supervisor callbacks
