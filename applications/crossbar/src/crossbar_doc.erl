@@ -219,7 +219,7 @@ normalize_requested_resource_name(Name) ->
 depluralize_resource_name(Name) ->
     Size = byte_size(Name) - 1,
     case Name of
-        <<Bin:Size/binary, L:8>> when L == $s -> Bin;
+        <<Bin:Size/binary, "s">> -> Bin;
         Bin -> Bin
     end.
 
