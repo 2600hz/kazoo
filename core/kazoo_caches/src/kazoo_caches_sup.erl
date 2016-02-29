@@ -18,6 +18,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?WHAPPS_CONFIG_PROPS)
+                   ,?CACHE('kzc_global_cache')
                    ,?CACHE(?WHAPPS_CALL_CACHE)
                    ,?CACHE_ARGS(?WHAPPS_GETBY_CACHE, ?WHAPPS_GETBY_PROPS)
                   ]).
