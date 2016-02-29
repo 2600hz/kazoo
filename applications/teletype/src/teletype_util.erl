@@ -202,7 +202,7 @@ relay_encoded_email(To, From, Encoded) ->
                                      ,timestamp = wh_util:current_tstamp()
                                      ,call_id = wh_util:get_callid()
                                     },
-            Props = [{'expires', ?MILLISECONDS_IN_HOUR}]),
+            Props = [{'expires', ?MILLISECONDS_IN_HOUR}],
             kzc_cache:store(?CACHE_NAME, Key, ToCache, Props),
             _ = lager:debug("relayed message: ~p", [Receipt]),
             {'ok', binary:replace(Receipt, <<"\r\n">>, <<>>, ['global'])};

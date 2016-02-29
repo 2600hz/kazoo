@@ -175,7 +175,7 @@ handle_channel_event(JObj, _Props) ->
 maybe_handle_event(JObj, CallId, <<"CHANNEL_DESTROY">>) ->
     lager:debug("caching CHANNEL_DESTROY for ~s", [CallId]),
     Key = terminated_cache_key(CallId),
-    Props = [{'expires', ?CACHE_TERMINATED_CALLID}]
+    Props = [{'expires', ?CACHE_TERMINATED_CALLID}],
     kzc_cache:store(?CACHE_NAME, Key, 'terminated', Props),
     handle_the_event(JObj);
 maybe_handle_event(JObj, CallId, <<"CHANNEL_CREATE">> = _EventName) ->

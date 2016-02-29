@@ -113,7 +113,7 @@ lookup_did(DID, AccountId) ->
                     lager:info("cache miss for ~s, found result with id ~s", [DID, wh_doc:id(ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
-                    Key = {'lookup_did', DID, AccountId}
+                    Key = {'lookup_did', DID, AccountId},
                     kzc_cache:store(?CACHE_NAME, Key, Resp, CacheProps),
                     {'ok', Resp};
                 {'ok', [ViewJObj | _Rest]} ->
