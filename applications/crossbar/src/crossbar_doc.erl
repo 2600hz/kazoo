@@ -11,7 +11,7 @@
 
 -export([load/2, load/3
          ,load_from_file/2
-         ,load_merge/2, load_merge/3
+         ,load_merge/2, load_merge/3, load_merge/4
          ,merge/3
          ,patch_and_validate/3
          ,load_view/3, load_view/4, load_view/5, load_view/6
@@ -137,16 +137,18 @@ load(DocId, Context, Options) ->
     load(DocId, Context, Options, cb_context:resp_status(Context)).
 
 load(_DocId, Context, _Options, 'error') -> Context;
-load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
-    OpenFun = case props:get_is_true('use_cache', Opts, 'true') of
-                  'true' ->  fun couch_mgr:open_cache_doc/3;
-                  'false' -> fun couch_mgr:open_doc/3
-              end,
-    case OpenFun(cb_context:account_db(Context), DocId, Opts) of
+load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
+    OpenFun = get_open_function(Options),
+    case OpenFun(cb_context:account_db(Context), DocId, Options) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
-            handle_successful_load(Context, JObj)
+            case check_document_type(DocId, Context, JObj, Options) of
+                'true' -> handle_successful_load(Context, JObj);
+                'false' ->
+                    ErrorCause = wh_json:from_list([{<<"cause">>, DocId}]),
+                    cb_context:add_system_error('bad_identifier', ErrorCause, Context)
+            end
     end;
 load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
@@ -156,10 +158,65 @@ load([_|_]=IDs, Context, Opts, _RespStatus) ->
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
             Docs = extract_included_docs(JObjs),
-            cb_context:store(handle_couch_mgr_success(Docs, Context)
-                             ,'db_doc'
-                             ,Docs
-                            )
+            case check_document_type(IDs, Context, Docs, Opts) of
+                'true' ->
+                    cb_context:store(handle_couch_mgr_success(Docs, Context), 'db_doc', Docs);
+                'fasle' ->
+                    ErrorCause = wh_json:from_list([{<<"cause">>, IDs}]),
+                    cb_context:add_system_error('bad_identifier', ErrorCause, Context)
+            end
+    end.
+
+-spec get_open_function(wh_proplist()) -> function().
+get_open_function(Options) ->
+    case props:get_is_true('use_cache', Options, 'true') of
+        'true' ->  fun couch_mgr:open_cache_doc/3;
+        'false' -> fun couch_mgr:open_doc/3
+    end.
+
+-spec check_document_type(api_binary(), cb_context:context(), wh_json:object(), wh_proplist()) ->
+                                  boolean().
+check_document_type(DocId, Context, JObj, Options) when is_binary(DocId) ->
+    JObjType = wh_doc:type(JObj),
+    ExpectedType = props:get_value(?OPTION_EXPECTED_TYPE, Options),
+    [{Noun, _}| _] = cb_context:req_nouns(Context),
+    ReqType = normalize_requested_resource_name(Noun),
+    document_type_match(JObjType, ExpectedType, ReqType);
+check_document_type([], _Context, _JObjs, _Options) ->
+    'true';
+check_document_type([DocId|DocIds], Context, [JObj|JObjs], Options) ->
+    case check_document_type(DocId, Context, JObj, Options) of
+        'true' -> check_document_type(DocIds, Context, JObjs, Options);
+        'false' -> 'false'
+    end.
+
+-spec document_type_match(api_binary(), api_binary(), ne_binary()) -> boolean().
+document_type_match('undefined', _ExpectedType, _ReqType) ->
+    lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
+    'true';
+document_type_match(_JObjType, 'any', _) -> 'true';
+document_type_match(ExpectedType, ExpectedType, _) -> 'true';
+document_type_match(ReqType, _, ReqType) ->
+    lager:debug("expected type is not specified, checking against requested type ~p", [ReqType]),
+    'true';
+document_type_match(_JObjType, _ExpectedType, _ReqType) ->
+    lager:warning("the document type ~s does not match the expected type ~s nor the requested type ~s"
+              ,[_JObjType, _ExpectedType, _ReqType]),
+    'false'.
+
+-spec normalize_requested_resource_name(ne_binary()) -> ne_binary().
+normalize_requested_resource_name(Name) ->
+    case props:get_value(Name, ?SPECIAL_EXPECTED_TYPE) of
+        'undefined' -> depluralize_resource_name(Name);
+        Special -> Special
+    end.
+
+-spec depluralize_resource_name(ne_binary()) -> ne_binary().
+depluralize_resource_name(Name) ->
+    Size = byte_size(Name) - 1,
+    case Name of
+        <<Bin:Size/binary, "s">> -> Bin;
+        Bin -> Bin
     end.
 
 -spec handle_successful_load(cb_context:context(), wh_json:object()) -> cb_context:context().
@@ -209,26 +266,31 @@ load_from_file(Db, File) ->
 %%--------------------------------------------------------------------
 -spec load_merge(ne_binary(), cb_context:context()) ->
                         cb_context:context().
--spec load_merge(ne_binary(), wh_json:object(), cb_context:context()) ->
+-spec load_merge(ne_binary(), cb_context:context(), wh_proplist()) ->
                         cb_context:context().
--spec load_merge(ne_binary(), wh_json:object(), cb_context:context(), api_object()) ->
+-spec load_merge(ne_binary(), wh_json:object(), cb_context:context(), wh_proplist()) ->
+                        cb_context:context().
+-spec load_merge(ne_binary(), wh_json:object(), cb_context:context(), wh_proplist(), api_object()) ->
                         cb_context:context().
 
 load_merge(DocId, Context) ->
-    load_merge(DocId, cb_context:doc(Context), Context).
+    load_merge(DocId, cb_context:doc(Context), Context, []).
 
-load_merge(DocId, DataJObj, Context) ->
-    load_merge(DocId, DataJObj, Context, cb_context:load_merge_bypass(Context)).
+load_merge(DocId, Context, Options) ->
+    load_merge(DocId, cb_context:doc(Context), Context, Options).
 
-load_merge(DocId, DataJObj, Context, 'undefined') ->
-    Context1 = load(DocId, Context),
+load_merge(DocId, DataJObj, Context, Options) ->
+    load_merge(DocId, DataJObj, Context, Options, cb_context:load_merge_bypass(Context)).
+
+load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
+    Context1 = load(DocId, Context, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
             lager:debug("loaded doc ~s(~s), merging", [DocId, wh_doc:revision(cb_context:doc(Context1))]),
             merge(DataJObj, cb_context:doc(Context1), Context1);
         _Status -> Context1
     end;
-load_merge(_DocId, _DataJObj, Context, BypassJObj) ->
+load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
     handle_couch_mgr_success(BypassJObj, Context).
 
 -spec merge(wh_json:object(), wh_json:object(), cb_context:context()) ->

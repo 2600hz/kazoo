@@ -171,7 +171,7 @@ create(Config, Context) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Config, Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,5 +205,5 @@ validate_patch(Config, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_request_data(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_request_data(Id, Context) ->
-    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
+    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(<<"config">>)) end,
     cb_context:validate_request_data(<<"configs">>, Context, OnSuccess).

@@ -322,9 +322,9 @@ create(Context) ->
 read(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
     Year  = wh_util:to_integer(YYYY),
     Month = wh_util:to_integer(MM),
-    crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month));
+    crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(<<"fax">>));
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"fax">>)).
 
 -spec load_incoming_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_incoming_fax_doc(Id, Context) ->
@@ -381,7 +381,7 @@ get_fax_running_status(Id, Q) ->
 %%--------------------------------------------------------------------
 -spec load_fax_meta(ne_binary(), cb_context:context()) -> cb_context:context().
 load_fax_meta(FaxId, Context) ->
-    crossbar_doc:load(FaxId, Context).
+    crossbar_doc:load(FaxId, Context, ?TYPE_CHECK_OPTION(<<"fax">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -435,7 +435,8 @@ on_successful_validation('undefined', Context) ->
                                           )
                        );
 on_successful_validation(DocId, Context) ->
-    maybe_reset_job(crossbar_doc:load_merge(DocId, Context), cb_context:resp_status(Context)).
+    maybe_reset_job(crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"fax">>))
+                    ,cb_context:resp_status(Context)).
 
 -spec initial_job_status(req_files()) -> ne_binary().
 initial_job_status([]) -> <<"pending">>;

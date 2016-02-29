@@ -398,7 +398,7 @@ delete(Context, Number, ?PORT_DOCS, Name) ->
 
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context),
+    Context1 = crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context, ?TYPE_CHECK_OPTION(?WNM_PHONE_NUMBER_DOC)),
     case cb_context:resp_error_code(Context1) of
         404 -> crossbar_util:response(wh_json:new(), Context1);
         _ -> cb_context:set_resp_data(Context1, clean_summary(Context1))

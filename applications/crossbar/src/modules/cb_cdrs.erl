@@ -592,9 +592,9 @@ remove_qs_keys(Context) ->
 -spec load_cdr(ne_binary(), cb_context:context()) -> cb_context:context().
 load_cdr(?MATCH_MODB_PREFIX(Year,Month,_) = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
-    AcctDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
-    Context1 = cb_context:set_account_db(Context, AcctDb),
-    crossbar_doc:load(CDRId, Context1);
+    AccountDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    Context1 = cb_context:set_account_db(Context, AccountDb),
+    crossbar_doc:load(CDRId, Context1, ?TYPE_CHECK_OPTION(<<"cdr">>));
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
     crossbar_util:response('error', <<"could not find cdr with supplied id">>, 404, Context).

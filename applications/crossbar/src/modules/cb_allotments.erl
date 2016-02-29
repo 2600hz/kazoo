@@ -103,14 +103,16 @@ post(Context) ->
 %%--------------------------------------------------------------------
 -spec load_allotments(cb_context:context()) -> cb_context:context().
 load_allotments(Context) ->
-    Context1 = maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context)),
+    Context1 = maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))),
     Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context1), wh_json:new()),
     cb_context:set_resp_data(Context1, Allotments).
 
 
 -spec load_consumed(cb_context:context()) -> cb_context:context().
 load_consumed(Context) ->
-    Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(crossbar_doc:load(?PVT_TYPE, Context)), wh_json:new()),
+    Allotments = wh_json:get_json_value(?PVT_ALLOTMENTS
+                                        ,cb_context:doc(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)))
+                                        ,wh_json:new()),
     Mode = get_consumed_mode(Context),
     {ContextResult, _, Result} = wh_json:foldl(fun foldl_consumed/3, {Context, Mode, wh_json:new()}, Allotments),
     case cb_context:resp_status(ContextResult) of
@@ -203,7 +205,7 @@ maybe_req_seconds(Context, Key) ->
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
     case is_allowed(Context) of
-        'true' -> maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context));
+        'true' -> maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)));
         'false' -> crossbar_util:response_400(<<"sub-accounts of non-master resellers must contact the reseller to change their allotments">>, wh_json:new(), Context)
     end.
 

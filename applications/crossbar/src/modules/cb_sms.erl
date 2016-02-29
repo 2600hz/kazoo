@@ -150,9 +150,9 @@ create(Context) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(Year,Month,_) = Id, Context) ->
     Context1 = cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
-    crossbar_doc:load(Id, Context1);
+    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"sms">>));
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"sms">>)).
 
 
 %%--------------------------------------------------------------------

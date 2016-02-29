@@ -136,7 +136,7 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"temporal_rule_set">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -183,7 +183,7 @@ on_successful_validation('undefined', Context) ->
     Doc = cb_context:doc(Context),
     cb_context:set_doc(Context, wh_doc:set_type(Doc, <<"temporal_rule_set">>));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"temporal_rule_set">>)).
 
 %%--------------------------------------------------------------------
 %% @private
