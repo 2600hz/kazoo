@@ -334,7 +334,9 @@ add_mapping(Db, SendFun, JObjs) ->
 
 add_mapping(Db, _SendFun, JObjs, Srv) when Srv =:= self() ->
     AccountId = wh_util:format_account_id(Db, 'raw'),
-    [maybe_add_prompt(AccountId, JObj) || JObj <- JObjs],
+    _ = [maybe_add_prompt(AccountId, wh_json:get_value(<<"doc">>, JObj))
+         || JObj <- JObjs
+        ],
     'ok';
 add_mapping(Db, SendFun, JObjs, Srv) ->
      AccountId = wh_util:format_account_id(Db, 'raw'),
@@ -344,7 +346,14 @@ add_mapping(Db, SendFun, JObjs, Srv) ->
 -spec maybe_add_prompt(ne_binary(), wh_json:object()) -> 'ok'.
 -spec maybe_add_prompt(ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
 maybe_add_prompt(AccountId, JObj) ->
-    maybe_add_prompt(AccountId, JObj, wh_json:get_value(<<"prompt_id">>, JObj)).
+    maybe_add_prompt(AccountId
+                    ,JObj
+                    ,wh_json:get_first_defined([<<"prompt_id">>
+                                               ,[<<"doc">>, <<"prompt_id">>]
+                                               ]
+                                              ,JObj
+                                              )
+                    ).
 
 maybe_add_prompt(?WH_MEDIA_DB, JObj, 'undefined') ->
     Id = wh_doc:id(JObj),
