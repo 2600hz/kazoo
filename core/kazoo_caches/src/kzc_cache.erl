@@ -241,7 +241,7 @@ wait_for_key(Srv, Key, Timeout) ->
 
 -spec get_props_datastore(wh_proplist()) -> module().
 get_props_datastore(Props) ->
-    props:get_value('kzc_datastore', Props, 'kzc_ets_listener').
+    props:get_value('kzc_datastore', Props, ?DEFAULT_DATASTORE).
 
 -spec get_props_expires(wh_proplist()) -> wh_timeout().
 get_props_expires(Props) ->

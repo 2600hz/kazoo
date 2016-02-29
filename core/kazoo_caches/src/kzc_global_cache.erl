@@ -10,8 +10,6 @@
 %%%-------------------------------------------------------------------
 -module(kzc_global_cache).
 
--export([start_link/0]).
-
 -export([store/2, store/3]).
 -export([peek/1]).
 -export([fetch/1, fetch_keys/0]).
@@ -26,11 +24,6 @@
 -define(SERVER, ?MODULE).
 
 %%% API
-
--spec start_link() -> startlink_ret().
-start_link() ->
-    Props = [{'kzc_datastore', 'kzc_ets_listener'}],
-    kzc_cache:start_link(?SERVER, Props).
 
 -spec store(any(), any()) -> 'ok'.
 -spec store(any(), any(), wh_proplist()) -> 'ok'.

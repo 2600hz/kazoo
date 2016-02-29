@@ -9,6 +9,8 @@
 -define(APP_VERSION, <<"4.0.0">> ).
 
 
+-define(DEFAULT_DATASTORE, 'kzc_ets_listener').
+
 -define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour
 -define(EXPIRE_PERIOD, 10 * ?MILLISECONDS_IN_SECOND).
 -define(EXPIRE_PERIOD_MSG, 'expire_cache_objects').
