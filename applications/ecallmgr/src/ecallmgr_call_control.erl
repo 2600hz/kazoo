@@ -1242,7 +1242,7 @@ handle_replaced(Props, #state{fetch_id=FetchId
             OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),
             OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
             CDR = wh_json:get_value(<<"interaction_id">>, Channel),
-            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+            kzc_cache:store(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
             ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
             ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
             {'noreply', handle_sofia_replaced(ReplacedBy, State)};
@@ -1287,7 +1287,7 @@ handle_intercepted(Node, CallId, Props) ->
                 case ecallmgr_fs_channel:fetch(UUID) of
                     {'ok', Channel} ->
                         CDR = wh_json:get_value(<<"interaction_id">>, Channel),
-                        kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+                        kzc_cache:store(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
                         ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}]);
                     _ -> 'ok'
                 end;

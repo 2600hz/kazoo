@@ -199,7 +199,7 @@ refresh_blacklist(WSDL) ->
 refresh_blacklist_response(Response) ->
     BlockListEntries = get_blocklist_entries(Response),
     lager:debug("Entries: ~p", [BlockListEntries]),
-    kz_cache:store_local(?CACHE_NAME, dth_util:blacklist_cache_key(), BlockListEntries).
+    kzc_cache:store(?CACHE_NAME, dth_util:blacklist_cache_key(), BlockListEntries).
 
 -spec get_blocklist_entries(#'p:GetBlockListResponse'{}) -> wh_json:object().
 get_blocklist_entries(#'p:GetBlockListResponse'{

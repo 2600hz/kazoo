@@ -72,7 +72,7 @@ check_failed_attempts() ->
 -spec find_failures() -> failures().
 -spec find_failures([tuple()]) -> failures().
 find_failures() ->
-    Keys = kz_cache:fetch_keys_local(?CACHE_NAME),
+    Keys = kzc_cache:fetch_keys(?CACHE_NAME),
     find_failures(Keys).
 
 -spec flush_hooks(wh_json:objects()) -> non_neg_integer().
@@ -94,9 +94,7 @@ flush_failures(AccountId, HookId) ->
     FilterFun = fun(K, _V) ->
                         maybe_remove_failure(K, AccountId, HookId)
                 end,
-    kz_cache:filter_erase_local(?CACHE_NAME
-                                ,FilterFun
-                               ).
+    kzc_cache:filter_erase(?CACHE_NAME, FilterFun).
 
 -spec maybe_remove_failure(tuple(), ne_binary(), api_binary()) -> boolean().
 maybe_remove_failure(?FAILURE_CACHE_KEY(AccountId, HookId, _Timestamp)
@@ -161,13 +159,12 @@ disable_hook(AccountId, HookId) ->
 
 -spec filter_cache(ne_binary(), ne_binary()) -> non_neg_integer().
 filter_cache(AccountId, HookId) ->
-    kz_cache:filter_erase_local(?CACHE_NAME
-                                ,fun(?FAILURE_CACHE_KEY(A, H, _), _) ->
-                                         lager:debug("maybe remove ~s/~s", [A, H]),
-                                         A =:= AccountId andalso H =:= HookId;
-                                    (_K, _V) -> 'false'
-                                 end
-                               ).
+    Filter = fun(?FAILURE_CACHE_KEY(A, H, _), _) ->
+                     lager:debug("maybe remove ~s/~s", [A, H]),
+                     A =:= AccountId andalso H =:= HookId;
+                (_K, _V) -> 'false'
+             end,
+    kzc_cache:filter_erase(?CACHE_NAME, Filter).
 
 -spec send_notification(ne_binary(), ne_binary()) -> 'ok'.
 send_notification(AccountId, HookId) ->

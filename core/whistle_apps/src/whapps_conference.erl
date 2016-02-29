@@ -515,7 +515,7 @@ kvs_update_counter(Key, Number, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
 
 -spec flush() -> 'ok'.
-flush() -> kz_cache:flush_local(?WHAPPS_CALL_CACHE).
+flush() -> kzc_cache:flush(?WHAPPS_CALL_CACHE).
 
 -spec cache(whapps_conference:conference()) -> 'ok'.
 -spec cache(whapps_conference:conference(), pos_integer()) -> 'ok'.
@@ -525,12 +525,12 @@ cache(#whapps_conference{}=Conference) ->
 
 cache(#whapps_conference{id=ConferenceId}=Conference, Expires) ->
     CacheProps = [{'expires', Expires}],
-    kz_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}, Conference, CacheProps).
+    kzc_cache:store(?WHAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}, Conference, CacheProps).
 
 -spec retrieve(ne_binary()) -> {'ok', whapps_conference:conference()} |
                                {'error', 'not_found'}.
 retrieve(ConferenceId) ->
-    kz_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).
+    kzc_cache:fetch(?WHAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).
 
 -spec call(whapps_conference:conference()) -> whapps_call:call() | 'undefined'.
 call(#whapps_conference{call=Call}) -> Call.

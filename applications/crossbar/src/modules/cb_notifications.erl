@@ -970,7 +970,7 @@ fetch_summary_available(Context) ->
 
 -spec cache_available(cb_context:context()) -> 'ok'.
 cache_available(Context) ->
-    kz_cache:store_local(?CACHE_NAME
+    kzc_cache:store(?CACHE_NAME
                          ,{?MODULE, 'available'}
                          ,cb_context:doc(Context)
                          ,[{'origin', [{'db', cb_context:account_db(Context), kz_notification:pvt_type()}]}]
@@ -978,7 +978,7 @@ cache_available(Context) ->
 
 -spec flush() -> non_neg_integer().
 flush() ->
-    kz_cache:filter_erase_local(?CACHE_NAME, fun is_cache_key/2).
+    kzc_cache:filter_erase(?CACHE_NAME, fun is_cache_key/2).
 
 -spec is_cache_key(any(), any()) -> boolean().
 is_cache_key({?MODULE, 'available'}, _) -> 'true';
@@ -987,7 +987,7 @@ is_cache_key(_K, _V) -> 'false'.
 -spec fetch_available() -> {'ok', wh_json:objects()} |
                            {'error', 'not_found'}.
 fetch_available() ->
-    kz_cache:fetch_local(?CACHE_NAME, {?MODULE, 'available'}).
+    kzc_cache:fetch(?CACHE_NAME, {?MODULE, 'available'}).
 
 -spec summary_account(cb_context:context()) -> cb_context:context().
 -spec summary_account(cb_context:context(), wh_json:objects()) -> cb_context:context().

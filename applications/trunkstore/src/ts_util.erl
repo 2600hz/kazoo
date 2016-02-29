@@ -98,10 +98,7 @@ constrain_weight(W) -> W.
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_cache:fetch_local(?CACHE_NAME
-                              ,{'lookup_did', DID, AccountId}
-                             )
-    of
+    case kzc_cache:fetch(?CACHE_NAME, {'lookup_did', DID, AccountId}) of
         {'ok', _}=Resp ->
             lager:info("cache hit for ~s", [DID]),
             Resp;
@@ -116,22 +113,16 @@ lookup_did(DID, AccountId) ->
                     lager:info("cache miss for ~s, found result with id ~s", [DID, wh_doc:id(ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
-                    kz_cache:store_local(?CACHE_NAME
-                                         ,{'lookup_did', DID, AccountId}
-                                         ,Resp
-                                         ,CacheProps
-                                        ),
+                    Key = {'lookup_did', DID, AccountId}
+                    kzc_cache:store(?CACHE_NAME, Key, Resp, CacheProps),
                     {'ok', Resp};
                 {'ok', [ViewJObj | _Rest]} ->
                     lager:notice("multiple results for did ~s in acct ~s", [DID, AccountId]),
                     lager:info("cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_doc:id(ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_doc:id(ViewJObj), ValueJObj),
-                    kz_cache:store_local(?CACHE_NAME
-                                         ,{'lookup_did', DID, AccountId}
-                                         ,Resp
-                                         ,CacheProps
-                                        ),
+                    Key = {'lookup_did', DID, AccountId},
+                    kzc_cache:store(?CACHE_NAME, Key, Resp, CacheProps),
                     {'ok', Resp};
                 {'error', _}=E ->
                     lager:info("cache miss for ~s, error ~p", [DID, E]),
@@ -173,10 +164,7 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
     end;
 lookup_user_flags(Name, Realm, AccountId, _) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case kz_cache:fetch_local(?CACHE_NAME
-                              ,{'lookup_user_flags', Realm, Name, AccountId}
-                             )
-    of
+    case kzc_cache:fetch(?CACHE_NAME, {'lookup_user_flags', Realm, Name, AccountId}) of
         {'ok', _}=Result ->
             lager:info("cache hit for ~s@~s", [Name, Realm]),
             Result;
@@ -200,10 +188,8 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     {'ok', AccountJObj} = kz_account:fetch(AccountId),
                     Restriction = wh_json:get_value(<<"call_restriction">>, AccountJObj, wh_json:new()),
                     FlagsJObj = wh_json:set_value(<<"call_restriction">>, Restriction, JObj),
-                    kz_cache:store_local(?CACHE_NAME
-                                         ,{'lookup_user_flags', Realm, Name, AccountId}
-                                         ,FlagsJObj
-                                        ),
+                    Key = {'lookup_user_flags', Realm, Name, AccountId},
+                    kzc_cache:store(?CACHE_NAME, Key, FlagsJObj),
                     {'ok', FlagsJObj}
             end
     end.

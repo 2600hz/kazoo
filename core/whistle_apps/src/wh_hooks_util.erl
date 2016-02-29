@@ -186,7 +186,7 @@ lookup_account_id(JObj) ->
     case kz_call_event:account_id(JObj) of
         'undefined' ->
             Number = get_inbound_destination(JObj),
-            case kz_cache:peek_local(?HOOKS_CACHE_NAME, cache_key_number(Number)) of
+            case kzc_cache:peek(?HOOKS_CACHE_NAME, cache_key_number(Number)) of
                 {'ok', AccountId} -> {'ok', AccountId};
                 {'error', 'not_found'} -> fetch_account_id(Number)
             end;
@@ -198,7 +198,7 @@ fetch_account_id(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
             CacheProps = [{'origin', {'db', knm_converters:to_db(Number), Number}}],
-            kz_cache:store_local(?HOOKS_CACHE_NAME, cache_key_number(Number), AccountId, CacheProps),
+            kzc_cache:store(?HOOKS_CACHE_NAME, cache_key_number(Number), AccountId, CacheProps),
             {'ok', AccountId};
         {'error', _}=Error -> Error
     end.

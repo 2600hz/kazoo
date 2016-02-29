@@ -141,7 +141,7 @@ most_recent_statuses(AccountId, AgentId, Options) ->
 -spec maybe_start_db_lookup(atom(), fun(), ne_binary(), api_binary(), list(), pid()) ->
                                    pid_ref() | 'undefined'.
 maybe_start_db_lookup(F, Fun, AccountId, AgentId, Options, Self) ->
-    case kz_cache:fetch_local(?CACHE_NAME, db_fetch_key(F, AccountId, AgentId)) of
+    case kzc_cache:fetch(?CACHE_NAME, db_fetch_key(F, AccountId, AgentId)) of
         {'ok', _} -> 'undefined';
         {'error', 'not_found'} ->
             wh_util:spawn_monitor(Fun, [AccountId, AgentId, Options, Self])
@@ -219,7 +219,7 @@ async_most_recent_db_statuses(AccountId, AgentId, Options, Pid) ->
     case most_recent_db_statuses(AccountId, AgentId, Options) of
         {'ok', Statuses} ->
             Pid ! {'statuses', Statuses, self()},
-            kz_cache:store_local(?CACHE_NAME, db_fetch_key('async_most_recent_db_statuses', AccountId, AgentId), 'true'),
+            kzc_cache:store(?CACHE_NAME, db_fetch_key('async_most_recent_db_statuses', AccountId, AgentId), 'true'),
             'ok';
         {'error', _E} ->
             Pid ! {'statuses', wh_json:new(), self()},

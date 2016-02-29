@@ -79,7 +79,7 @@ get(Call) -> get(whapps_call:authorizing_id(Call), Call).
 get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
-    case kz_cache:peek_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}) of
+    case kzc_cache:peek(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}) of
         {'ok', Endpoint} -> {'ok', Endpoint};
         {'error', 'not_found'} ->
             maybe_fetch_endpoint(EndpointId, AccountDb)
@@ -122,7 +122,7 @@ endpoint_type_as(Type) -> Type.
 has_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
     Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
-    catch kz_cache:store_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+    catch kzc_cache:store(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
     {'ok', Endpoint}.
 
 -spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) -> list().
@@ -458,16 +458,16 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 -spec flush_account(ne_binary()) -> any().
 -spec flush(ne_binary(), ne_binary()) -> any().
 flush_account(AccountDb) ->
-    ToRemove =
-        kz_cache:filter_local(?CACHE_NAME, fun({?MODULE, Db, _Id}, _Value) ->
-                                                   Db =:= AccountDb;
-                                              (_, _) -> 'false'
-                                           end),
+    Filter = fun({?MODULE, Db, _Id}, _Value) ->
+                     Db =:= AccountDb;
+                (_, _) -> 'false'
+             end,
+    ToRemove = kzc_cache:filter(?CACHE_NAME, Filter),
     _ = [flush(Db, Id)|| {{?MODULE, Db, Id}, _} <- ToRemove],
     'ok'.
 
 flush(Db, Id) ->
-    kz_cache:erase_local(?CACHE_NAME, {?MODULE, Db, Id}),
+    kzc_cache:erase(?CACHE_NAME, {?MODULE, Db, Id}),
     {'ok', Rev} = kz_datamgr:lookup_doc_rev(Db, Id),
     Props =
         [{<<"ID">>, Id}

@@ -174,19 +174,17 @@ handle_channel_event(JObj, _Props) ->
 -spec maybe_handle_event(wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
 maybe_handle_event(JObj, CallId, <<"CHANNEL_DESTROY">>) ->
     lager:debug("caching CHANNEL_DESTROY for ~s", [CallId]),
-    kz_cache:store_local(?CACHE_NAME
-                         ,terminated_cache_key(CallId)
-                         ,'terminated'
-                         ,[{'expires', ?CACHE_TERMINATED_CALLID}]
-                        ),
+    Key = terminated_cache_key(CallId),
+    Props = [{'expires', ?CACHE_TERMINATED_CALLID}]
+    kzc_cache:store(?CACHE_NAME, Key, 'terminated', Props),
     handle_the_event(JObj);
 maybe_handle_event(JObj, CallId, <<"CHANNEL_CREATE">> = _EventName) ->
-    case kz_cache:fetch_local(?CACHE_NAME, terminated_cache_key(CallId)) of
+    case kzc_cache:fetch(?CACHE_NAME, terminated_cache_key(CallId)) of
         {'error', 'not_found'} -> handle_the_event(JObj);
         _Else -> lager:warning("received ~s but call is terminated already, dropping", [_EventName])
     end;
 maybe_handle_event(JObj, CallId, <<"CHANNEL_ANSWER">> = _EventName) ->
-    case kz_cache:fetch_local(?CACHE_NAME, terminated_cache_key(CallId)) of
+    case kzc_cache:fetch(?CACHE_NAME, terminated_cache_key(CallId)) of
         {'error', 'not_found'} -> handle_the_event(JObj);
         _Else -> lager:warning("received ~s but call is terminated already, dropping", [_EventName])
     end;
@@ -203,7 +201,7 @@ terminated_cache_key(CallId) ->
 
 -spec cached_terminated_callids() -> ne_binaries().
 cached_terminated_callids() ->
-    [CallId || {'terminated', CallId} <- kz_cache:fetch_keys_local(?CACHE_NAME)].
+    [CallId || {'terminated', CallId} <- kzc_cache:fetch_keys(?CACHE_NAME)].
 
 -spec table_id() -> 'omnipresence_subscriptions'.
 table_id() -> 'omnipresence_subscriptions'.

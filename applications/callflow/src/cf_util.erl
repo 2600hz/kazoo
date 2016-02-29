@@ -100,7 +100,7 @@ presence_parking_slot(Username, Realm) ->
 
 -spec maybe_presence_parking_slot_resp(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
 maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
-    case kz_cache:fetch_local(?CACHE_NAME, ?PARKING_PRESENCE_KEY(AccountDb, Username)) of
+    case kzc_cache:fetch(?CACHE_NAME, ?PARKING_PRESENCE_KEY(AccountDb, Username)) of
         {'ok', 'false'} -> 'not_found';
         {'ok', SlotNumber} ->
             presence_parking_slot_resp(Username, Realm, AccountDb, SlotNumber);
@@ -112,16 +112,16 @@ maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
 maybe_presence_parking_flow(Username, Realm, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     _ = lookup_callflow(Username, AccountId),
-    case kz_cache:fetch_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Username, AccountDb)) of
+    case kzc_cache:fetch(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Username, AccountDb)) of
         {'error', 'not_found'} -> 'not_found';
         {'ok', Flow} ->
             case wh_json:get_value([<<"flow">>, <<"module">>], Flow) of
                 <<"park">> ->
                     SlotNumber = wh_json:get_ne_value(<<"capture_group">>, Flow, Username),
-                    kz_cache:store_local(?CACHE_NAME, ?PARKING_PRESENCE_KEY(AccountDb, Username), SlotNumber),
+                    kzc_cache:store(?CACHE_NAME, ?PARKING_PRESENCE_KEY(AccountDb, Username), SlotNumber),
                     presence_parking_slot_resp(Username, Realm, AccountDb, SlotNumber);
                 _Else ->
-                    kz_cache:store_local(?CACHE_NAME, ?PARKING_PRESENCE_KEY(AccountDb, Username), 'false'),
+                    kzc_cache:store(?CACHE_NAME, ?PARKING_PRESENCE_KEY(AccountDb, Username), 'false'),
                     'not_found'
             end
     end.
@@ -139,7 +139,7 @@ manual_presence(Username, Realm) ->
 
 -spec check_manual_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 check_manual_presence(Username, Realm, AccountDb) ->
-    case kz_cache:fetch_local(?CACHE_NAME, ?MANUAL_PRESENCE_KEY(AccountDb)) of
+    case kzc_cache:fetch(?CACHE_NAME, ?MANUAL_PRESENCE_KEY(AccountDb)) of
         {'ok', JObj} -> manual_presence_resp(Username, Realm, JObj);
         {'error', 'not_found'} -> fetch_manual_presence_doc(Username, Realm, AccountDb)
     end.
@@ -149,11 +149,11 @@ fetch_manual_presence_doc(Username, Realm, AccountDb) ->
     case kz_datamgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
         {'ok', JObj} ->
             CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
-            kz_cache:store_local(?CACHE_NAME, ?MANUAL_PRESENCE_KEY(AccountDb), JObj, CacheProps),
+            kzc_cache:store(?CACHE_NAME, ?MANUAL_PRESENCE_KEY(AccountDb), JObj, CacheProps),
             manual_presence_resp(Username, Realm, JObj);
         {'error', 'not_found'} ->
             CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
-            kz_cache:store_local(?CACHE_NAME, ?MANUAL_PRESENCE_KEY(AccountDb), wh_json:new(), CacheProps);
+            kzc_cache:store(?CACHE_NAME, ?MANUAL_PRESENCE_KEY(AccountDb), wh_json:new(), CacheProps);
         {'error', _} -> 'not_found'
     end.
 
@@ -461,7 +461,7 @@ correct_media_path(Media, Call) ->
                                        {'ok', ne_binaries()} |
                                        {'error', any()}.
 owner_ids_by_sip_username(AccountDb, Username) ->
-    case kz_cache:peek_local(?CACHE_NAME, ?SIP_USER_OWNERS_KEY(AccountDb, Username)) of
+    case kzc_cache:peek(?CACHE_NAME, ?SIP_USER_OWNERS_KEY(AccountDb, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             get_owner_ids_by_sip_username(AccountDb, Username)
@@ -477,7 +477,7 @@ get_owner_ids_by_sip_username(AccountDb, Username) ->
             EndpointId = wh_doc:id(JObj),
             OwnerIds = wh_json:get_value(<<"value">>, JObj, []),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
-            kz_cache:store_local(?CACHE_NAME, ?SIP_USER_OWNERS_KEY(AccountDb, Username), OwnerIds, CacheProps),
+            kzc_cache:store(?CACHE_NAME, ?SIP_USER_OWNERS_KEY(AccountDb, Username), OwnerIds, CacheProps),
             {'ok', OwnerIds};
         {'ok', []} ->
             lager:debug("sip username ~s not in account db ~s", [Username, AccountDb]),
@@ -497,7 +497,7 @@ get_owner_ids_by_sip_username(AccountDb, Username) ->
                                          {'ok', ne_binary()} |
                                          {'error', 'not_found'}.
 endpoint_id_by_sip_username(AccountDb, Username) ->
-    case kz_cache:peek_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username)) of
+    case kzc_cache:peek(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
            get_endpoint_id_by_sip_username(AccountDb, Username)
@@ -512,7 +512,7 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
         {'ok', [JObj]} ->
             EndpointId = wh_doc:id(JObj),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
-            kz_cache:store_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username), EndpointId, CacheProps),
+            kzc_cache:store(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username), EndpointId, CacheProps),
             {'ok', EndpointId};
         {'ok', []} ->
             lager:debug("sip username ~s not in account db ~s", [Username, AccountDb]),
@@ -649,18 +649,18 @@ do_lookup_callflow(Number, Db) ->
                 {'error', _} -> maybe_use_nomatch(Number, Db);
                 {'ok', {Flow, Capture}} ->
                     F = wh_json:set_value(<<"capture_group">>, Capture, Flow),
-                    kz_cache:store_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), F),
+                    kzc_cache:store(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), F),
                     {'ok', F, 'false'}
             end;
         {'ok', []} -> {'error', 'not_found'};
         {'ok', [JObj]} ->
             Flow = wh_json:get_value(<<"doc">>, JObj),
-            kz_cache:store_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
+            kzc_cache:store(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
             {'ok', Flow, Number =:= ?NO_MATCH_CF};
         {'ok', [JObj | _Rest]} ->
             lager:info("lookup resulted in more than one result, using the first"),
             Flow = wh_json:get_value(<<"doc">>, JObj),
-            kz_cache:store_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
+            kzc_cache:store(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Number, Db), Flow),
             {'ok', Flow, Number =:= ?NO_MATCH_CF}
     end.
 
@@ -1080,7 +1080,7 @@ mailbox(AccountDb, VMNumber) ->
 -spec maybe_cached_mailbox(ne_binary(), integer()) -> {'ok', wh_json:object()} |
                                                       {'error', any()}.
 maybe_cached_mailbox(AccountDb, VMNumber) ->
-    case kz_cache:peek_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber)) of
+    case kzc_cache:peek(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} -> get_mailbox(AccountDb, VMNumber)
     end.
@@ -1094,7 +1094,7 @@ get_mailbox(AccountDb, VMNumber) ->
             Doc = wh_json:get_value(<<"doc">>, JObj),
             EndpointId = wh_doc:id(Doc),
             CacheProps = [{'origin', {'db', AccountDb, EndpointId}}],
-            kz_cache:store_local(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber), Doc, CacheProps),
+            kzc_cache:store(?CACHE_NAME, ?VM_CACHE_KEY(AccountDb, VMNumber), Doc, CacheProps),
             {'ok', Doc};
         {'ok', [_JObj1, _JObj2 | _]} ->
             lager:debug("multiple voicemail boxes with same number (~s)  in account db ~s", [VMNumber, AccountDb]),

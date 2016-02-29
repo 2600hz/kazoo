@@ -366,7 +366,7 @@ get_account_by_ip(IP) ->
                             {'ok', wh_proplist()} |
                             {'error', 'not_found'}.
 get_ccvs_by_ip(IP) ->
-    case kz_cache:peek_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP)) of
+    case kzc_cache:peek(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP)) of
         {'ok', {'error', 'not_found'}=E} -> E;
         {'error', 'not_found'} -> do_get_ccvs_by_ip(IP);
         {'ok', _AccountCCVs} = OK -> OK
@@ -379,12 +379,12 @@ do_get_ccvs_by_ip(IP) ->
     case kz_datamgr:get_results(?WH_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}]) of
         {'ok', []} ->
             lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
-            kz_cache:store_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), {'error', 'not_found'}),
+            kzc_cache:store(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), {'error', 'not_found'}),
             {'error', 'not_found'};
         {'ok', [Doc|_]} ->
             lager:debug("found IP ~s in db ~s (~s)", [IP, ?WH_SIP_DB, wh_doc:id(Doc)]),
             AccountCCVs = account_ccvs_from_ip_auth(Doc),
-            kz_cache:store_local(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), AccountCCVs),
+            kzc_cache:store(?WHAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), AccountCCVs),
             {'ok', AccountCCVs};
         {'error', _E} = Error ->
             lager:debug("error looking up by IP: ~s: ~p", [IP, _E]),
@@ -417,7 +417,7 @@ get_accounts_by_name(Name) ->
 
 -spec get_accounts_by(ne_binary(), tuple(), ne_binary()) -> getby_return().
 get_accounts_by(What, CacheKey, View) ->
-    case kz_cache:peek_local(?WHAPPS_GETBY_CACHE, CacheKey) of
+    case kzc_cache:peek(?WHAPPS_GETBY_CACHE, CacheKey) of
         {'ok', [AccountDb]} -> {'ok', AccountDb};
         {'ok', [_|_]=AccountDbs} -> {'multiples', AccountDbs};
         {'error', 'not_found'} ->
@@ -445,7 +445,7 @@ do_get_accounts_by(What, CacheKey, View) ->
 
 -spec cache(tuple(), ne_binaries()) -> 'ok'.
 cache(Key, AccountDbs) ->
-    kz_cache:store_local(?WHAPPS_GETBY_CACHE, Key, AccountDbs, ?GET_BY_CACHE_ORIGIN).
+    kzc_cache:store(?WHAPPS_GETBY_CACHE, Key, AccountDbs, ?GET_BY_CACHE_ORIGIN).
 
 %%--------------------------------------------------------------------
 %% @public

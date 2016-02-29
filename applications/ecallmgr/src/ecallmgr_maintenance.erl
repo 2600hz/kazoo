@@ -521,11 +521,11 @@ registrar_sync() ->
 
 -spec flush_authn() -> 'ok'.
 flush_authn() ->
-    kz_cache:flush_local(?ECALLMGR_AUTH_CACHE).
+    kzc_cache:flush(?ECALLMGR_AUTH_CACHE).
 
 -spec flush_util() -> 'ok'.
 flush_util() ->
-    kz_cache:flush_local(?ECALLMGR_UTIL_CACHE).
+    kzc_cache:flush(?ECALLMGR_UTIL_CACHE).
 
 -spec show_channels() -> 'no_return'.
 show_channels() ->

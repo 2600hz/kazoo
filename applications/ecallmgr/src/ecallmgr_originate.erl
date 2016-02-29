@@ -117,7 +117,7 @@ handle_originate_execute(JObj, Props) ->
             ServerId ->
                 gen_listener:cast(Srv, {'update_server_id', ServerId})
         end,
-    kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
+    kzc_cache:store(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}, 'true'),
     gen_listener:cast(Srv, {'originate_execute'}).
 
 %%%===================================================================
@@ -809,7 +809,7 @@ start_control_process(#state{originate_req=JObj
     case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ServerId, wh_json:new()) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
-            kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
+            kzc_cache:store(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
             lager:debug("started control pid ~p for uuid ~s", [CtrlPid, Id]),
             {'ok', State#state{control_pid=CtrlPid}};
         {'error', _E}=E ->

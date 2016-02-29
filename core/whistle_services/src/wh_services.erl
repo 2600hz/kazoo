@@ -205,19 +205,17 @@ fetch_and_build(AccountId) ->
                                    {'ok', services()} |
                                    {'error', 'not_found'}.
 fetch_cached_services(AccountId) ->
-    kz_cache:fetch_local(?CACHE_NAME, services_cache_key(AccountId)).
+    kzc_cache:fetch(?CACHE_NAME, services_cache_key(AccountId)).
 
 -spec cache_services(ne_binary(), services()) -> 'ok'.
 cache_services(AccountId, Services) ->
-    kz_cache:store_local(?CACHE_NAME
-                         ,services_cache_key(AccountId)
-                         ,Services
-                         ,[{'origin', [{'db', ?WH_SERVICES_DB, AccountId}]}]
-                        ).
+    Key = services_cache_key(AccountId),
+    Props = [{'origin', [{'db', ?WH_SERVICES_DB, AccountId}]}],
+    kzc_cache:store(?CACHE_NAME, Key, Services, Props).
 
 -spec flush_services() -> 'ok'.
 flush_services() ->
-    kz_cache:flush_local(?CACHE_NAME).
+    kzc_cache:flush(?CACHE_NAME).
 
 -spec services_cache_key(AccountId :: ne_binary()) ->
                                 {?MODULE, ne_binary()}.

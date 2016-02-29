@@ -330,7 +330,7 @@ process_stream(<<"sofia::transferor">> = EventName, UUID, Props, Node) ->
             lager:debug("found refer uuid ~s for interaction caching", [ReferUUID]),
             {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID),
             CDR = wh_json:get_value(<<"interaction_id">>, Channel),
-            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, ReferUUID, CDR),
+            kzc_cache:store(?ECALLMGR_INTERACTION_CACHE, ReferUUID, CDR),
             lager:debug("caching interaction id ~s for callid ~s", [CDR, ReferUUID]),
             ecallmgr_fs_command:set(Node, ReferUUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
     end,
@@ -429,7 +429,7 @@ maybe_send_call_event(CallId, Props, Node) ->
 
 -spec maybe_start_event_listener(atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
-    case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
+    case kzc_cache:fetch(?ECALLMGR_UTIL_CACHE, {UUID, 'start_listener'}) of
         {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> 'ok'
     end.

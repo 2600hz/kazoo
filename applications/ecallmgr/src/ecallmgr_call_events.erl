@@ -609,7 +609,7 @@ specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
     Vars = ecallmgr_util:custom_channel_vars(Props),
     lager:debug("checking interaction cache for ~s", [UUID]),
-    case kz_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, UUID) of
+    case kzc_cache:peek(?ECALLMGR_INTERACTION_CACHE, UUID) of
         {'ok', CDR} ->
             NewVars = props:set_value(<<?CALL_INTERACTION_ID>>, CDR, Vars),
             lager:debug("found interaction cache ~s for ~s", [CDR, UUID]),
@@ -1146,7 +1146,7 @@ get_is_loopback(_) -> 'true'.
 -spec callee_call_event_props(wh_proplist()) -> wh_proplist().
 callee_call_event_props(Props) ->
     UUID = get_call_id(Props),
-    case kz_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}) of
+    case kzc_cache:peek(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}) of
         {'ok', Channel} when Channel#channel.callee_number =/= 'undefined' ->
             [{<<"Callee-ID-Number">>, Channel#channel.callee_number}
              ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}

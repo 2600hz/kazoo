@@ -21,7 +21,7 @@
 -include("jonny5.hrl").
 
 -spec flush() -> 'ok'.
-flush() -> kz_cache:flush_local(?CACHE_NAME).
+flush() -> kzc_cache:flush(?CACHE_NAME).
 
 -spec flush_channels() -> 'ok'.
 flush_channels() -> j5_channels:flush().

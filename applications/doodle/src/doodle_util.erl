@@ -209,7 +209,7 @@ remove_keys(Call, Keys) ->
                                     {'ok', ne_binary()} |
                                     {'error', any()}.
 endpoint_id_from_sipdb(Realm, Username) ->
-    case kz_cache:peek_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username)) of
+    case kzc_cache:peek(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             get_endpoint_id_from_sipdb(Realm, Username)
@@ -228,7 +228,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
             EndpointId = wh_doc:id(JObj),
             AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
             CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
-            kz_cache:store_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username), {AccountDb, EndpointId}, CacheProps),
+            kzc_cache:store(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username), {AccountDb, EndpointId}, CacheProps),
             {'ok', EndpointId};
         {'ok', []} ->
             lager:debug("sip username ~s not in sip_db", [Username]),
@@ -242,7 +242,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
                                  {'ok', wh_json:object()} |
                                  {'error', any()}.
 endpoint_from_sipdb(Realm, Username) ->
-    case kz_cache:peek_local(?CACHE_NAME, ?SIP_ENDPOINT_KEY(Realm, Username)) of
+    case kzc_cache:peek(?CACHE_NAME, ?SIP_ENDPOINT_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             get_endpoint_from_sipdb(Realm, Username)
@@ -263,7 +263,7 @@ get_endpoint_from_sipdb(Realm, Username) ->
             EndpointId = wh_doc:id(JObj),
             CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
             Doc = wh_json:get_value(<<"doc">>, JObj),
-            kz_cache:store_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username), Doc, CacheProps),
+            kzc_cache:store(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username), Doc, CacheProps),
             {'ok', Doc};
         {'ok', []} ->
             lager:debug("sip username ~s not in sip_db", [Username]),
@@ -413,7 +413,7 @@ get_inbound_destination(JObj) ->
                            {'error', any()}.
 lookup_number(Number) ->
     Num = knm_converters:normalize(Number),
-    case kz_cache:fetch_local(?CACHE_NAME, cache_key_number(Num)) of
+    case kzc_cache:fetch(?CACHE_NAME, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
             lager:debug("cached number ~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
@@ -427,7 +427,7 @@ fetch_number(Num) ->
     case knm_number:lookup_account(Num) of
         {'ok', AccountId, Props} ->
             CacheProps = [{'origin', [{'db', knm_converters:to_db(Num), Num}, {'type', <<"number">>}]}],
-            kz_cache:store_local(?CACHE_NAME, cache_key_number(Num), {AccountId, Props}, CacheProps),
+            kzc_cache:store(?CACHE_NAME, cache_key_number(Num), {AccountId, Props}, CacheProps),
             lager:debug("~s is associated with account ~s", [Num, AccountId]),
             {'ok', AccountId, Props};
         {'error', Reason}=E ->
@@ -444,7 +444,7 @@ cache_key_number(Number) ->
                         {'error', any()}.
 lookup_mdn(Number) ->
     Num = knm_converters:normalize(Number),
-    case kz_cache:fetch_local(?CACHE_NAME, cache_key_mdn(Num)) of
+    case kzc_cache:fetch(?CACHE_NAME, cache_key_mdn(Num)) of
         {'ok', {Id, OwnerId}} ->
             lager:debug("cached number ~s is associated with ~s/~s", [Num, OwnerId, Id]),
             {'ok', Id, OwnerId};
@@ -483,7 +483,7 @@ fetch_mdn_result(AccountId, Num) ->
                               {'ok', ne_binary(), api_binary()}.
 cache_mdn_result(AccountDb, Id, OwnerId) ->
     CacheProps = [{'origin', [{'db', AccountDb, Id}]}],
-    kz_cache:store_local(?CACHE_NAME, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
+    kzc_cache:store(?CACHE_NAME, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
     {'ok', Id, OwnerId}.
 
 -spec cache_key_mdn(ne_binary()) -> {'sms_mdn', ne_binary()}.

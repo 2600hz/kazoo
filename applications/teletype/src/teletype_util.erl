@@ -186,9 +186,8 @@ relay_encoded_email([], _From, _Encoded) ->
     lager:debug("failed to send email as the TO addresses list is empty"),
     {'error', 'no_to_addresses'};
 relay_encoded_email(To, From, Encoded) ->
-    Self = self(),
-
     lager:debug("relaying from ~s to ~p", [From, To]),
+    Self = self(),
     gen_smtp_client:send({From, To, Encoded}
                          ,smtp_options()
                          ,fun(X) -> Self ! {'relay_response', X} end
@@ -197,15 +196,14 @@ relay_encoded_email(To, From, Encoded) ->
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
         {'relay_response', {'ok', Receipt}} ->
-            kz_cache:store_local(?CACHE_NAME
-                                 ,{'receipt', Receipt}
-                                 ,#email_receipt{to=To
-                                                 ,from=From
-                                                 ,timestamp=wh_util:current_tstamp()
-                                                 ,call_id=wh_util:get_callid()
-                                                }
-                                 ,[{'expires', ?MILLISECONDS_IN_HOUR}]
-                                ),
+            Key = {'receipt', Receipt},
+            ToCache = #email_receipt{to = To
+                                     ,from = From
+                                     ,timestamp = wh_util:current_tstamp()
+                                     ,call_id = wh_util:get_callid()
+                                    },
+            Props = [{'expires', ?MILLISECONDS_IN_HOUR}]),
+            kzc_cache:store(?CACHE_NAME, Key, ToCache, Props),
             _ = lager:debug("relayed message: ~p", [Receipt]),
             {'ok', binary:replace(Receipt, <<"\r\n">>, <<>>, ['global'])};
         {'relay_response', {'error', _Type, Message}} ->

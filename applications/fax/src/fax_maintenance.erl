@@ -202,7 +202,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec flush() -> 'ok'.
-flush() -> kz_cache:flush_local(?CACHE_NAME).
+flush() -> kzc_cache:flush(?CACHE_NAME).
 
 account_jobs(AccountId) ->
     account_jobs(AccountId, <<"pending">>).

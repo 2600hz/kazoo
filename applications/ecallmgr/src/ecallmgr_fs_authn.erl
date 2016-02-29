@@ -244,7 +244,7 @@ handle_lookup_resp(_, _, _, {'error', _R}) ->
                                    {'ok', wh_json:object()} |
                                    {'error', any()}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
-    case kz_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
+    case kzc_cache:peek(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} -> query_registrar(Realm, Username, Node, Id, Method, Props)
     end.
@@ -302,6 +302,6 @@ maybe_defered_error(Realm, Username, JObj) ->
                                       | OwnerIdProp
                                      ]}
                          ],
-            kz_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
+            kzc_cache:store(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             {'ok', JObj}
     end.

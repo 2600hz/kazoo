@@ -121,7 +121,7 @@ refresh(Value) ->
 -spec flush() -> 'ok'.
 flush() ->
     crossbar_config:flush(),
-    kz_cache:flush_local(?CACHE_NAME).
+    kzc_cache:flush(?CACHE_NAME).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -17,7 +17,7 @@
 -spec receipts() -> 'ok'.
 receipts() ->
     io:format(?RECEIPT_FORMAT, [<<>>, <<"Call or Msg ID">>, <<"Receipt">>, <<"To">>, <<"From">>, <<"Time">>]),
-    Receipts = kz_cache:filter_local(?CACHE_NAME, fun filter_receipts/2),
+    Receipts = kzc_cache:filter(?CACHE_NAME, fun filter_receipts/2),
     Sorted = lists:usort(fun sort_receipts/2, Receipts),
     lists:foldl(fun print_receipt/2, 1, Sorted),
     'ok'.

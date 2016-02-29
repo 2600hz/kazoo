@@ -289,9 +289,9 @@ maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props) ->
 
 -spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
 wait_for_authz(Section, Node, FetchId, CallId, JObj, Props) ->
-    case kz_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
+    case kzc_cache:wait_for_key(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
         {'ok', {'true', AuthzCCVs}} ->
-            _ = kz_cache:erase_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
+            _ = kzc_cache:erase(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
             CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
             J = wh_json:set_value(<<"Custom-Channel-Vars">>
                                   ,wh_json:merge_jobjs(CCVs, AuthzCCVs)

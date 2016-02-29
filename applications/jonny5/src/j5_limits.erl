@@ -66,7 +66,7 @@
 -spec get(ne_binary()) -> limits().
 get(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    case kz_cache:peek_local(?CACHE_NAME, ?LIMITS_KEY(AccountId)) of
+    case kzc_cache:peek(?CACHE_NAME, ?LIMITS_KEY(AccountId)) of
         {'ok', Limits} -> Limits;
         {'error', 'not_found'} -> fetch(AccountId)
     end.
@@ -98,7 +98,7 @@ fetch(Account) ->
                      ,disconnect_active_calls = get_limit_boolean(<<"disconnect_active_calls">>, JObj, 'false')
                     },
     CacheProps = [{'origin', {'db', AccountDb}}],
-    kz_cache:store_local(?CACHE_NAME, ?LIMITS_KEY(AccountId), Limits, CacheProps),
+    kzc_cache:store(?CACHE_NAME, ?LIMITS_KEY(AccountId), Limits, CacheProps),
     Limits.
 
 -spec cached() -> [limits()].
@@ -106,7 +106,7 @@ cached() ->
     IsLimit = fun (_, #limits{}) -> 'true';
                   (_, _) -> 'false'
               end,
-    [Limit || {_, Limit} <- kz_cache:filter_local(?CACHE_NAME, IsLimit)].
+    [Limit || {_, Limit} <- kzc_cache:filter(?CACHE_NAME, IsLimit)].
 
 %%--------------------------------------------------------------------
 %% @public

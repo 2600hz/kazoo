@@ -37,7 +37,9 @@
 
 -type predicate2() :: fun((any(), any()) -> boolean()).
 
--export_type([predicate2/0]).
+-export_type([predicate2/0
+              ,store_options/0
+             ]).
 
 
 %%% API

@@ -572,7 +572,7 @@ process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     end;
 process_specific_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
     {'ok', Channel} = fetch(UUID, 'record'),
-    kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}, Channel),
+    kzc_cache:store(?ECALLMGR_INTERACTION_CACHE, {'channel', UUID}, Channel),
     _ = ecallmgr_fs_channels:destroy(UUID, Node),
     maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
@@ -792,7 +792,7 @@ maybe_update_interaction_id(Props, Node, _) ->
         'undefined' -> 'ok';
         CallId ->
             CDR = props:get_value(?GET_CCV_HEADER(<<?CALL_INTERACTION_ID>>), Props),
-            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+            kzc_cache:store(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
             case fetch(CallId) of
                 {'ok', Channel} ->
                     OtherLeg = wh_json:get_value(<<"other_leg">>, Channel),

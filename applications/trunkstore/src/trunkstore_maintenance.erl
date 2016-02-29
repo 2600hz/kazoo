@@ -21,15 +21,13 @@
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.
 flush() ->
-    kz_cache:flush_local(?CACHE_NAME).
+    kzc_cache:flush(?CACHE_NAME).
 
 flush(Account) ->
     AccountId = wh_util:format_account_id(Account),
-
-    Flush = kz_cache:filter_local(?CACHE_NAME
-                                  ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
-                                 ),
-    _ = [kz_cache:erase_local(?CACHE_NAME, Key) || {Key, _Value} <- Flush],
+    Filter = fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end,
+    Flush = kzc_cache:filter(?CACHE_NAME, Filter),
+    _ = [kzc_cache:erase(?CACHE_NAME, Key) || {Key, _Value} <- Flush],
     'ok'.
 
 migrate() ->

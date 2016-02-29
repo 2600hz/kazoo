@@ -18,7 +18,7 @@ init() ->
 handle_req(JObj, _Props) ->
     true = dth_api:blacklist_req_v(JObj),
 
-    {ok, Blacklist} = kz_cache:fetch_local(?CACHE_NAME, dth_util:blacklist_cache_key()),
+    {ok, Blacklist} = kzc_cache:fetch(?CACHE_NAME, dth_util:blacklist_cache_key()),
     {ok, JSON} = dth_api:blacklist_resp([{<<"Accounts">>, Blacklist}
                                          | wh_api:default_headers(<<>>, <<"dth">>, <<"blacklist_resp">>, ?APP_NAME, ?APP_VERSION)
                                         ]),

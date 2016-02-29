@@ -20,7 +20,7 @@
 
 -spec flush() -> 'ok'.
 flush() ->
-    kz_cache:flush_local(?CACHE_NAME).
+    kzc_cache:flush(?CACHE_NAME).
 
 -spec start_check_sms_by_device_id(ne_binary(), ne_binary()) -> pid().
 start_check_sms_by_device_id(AccountId, DeviceId) ->
