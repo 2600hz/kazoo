@@ -1,7 +1,7 @@
 ROOT = ..
 
 DEPS_DIR = $(CURDIR)
-ERLC_OPTS += +debug_info
+ERLC_OPTS += +debug_info -DWITH_JIFFY=1
 
 clean::
 	$(if $(wildcard ./*/), rm -rf ./*/)
