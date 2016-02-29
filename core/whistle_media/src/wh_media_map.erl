@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2015, 2600Hz
+%%% @copyright (C) 2014-2016, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,6 +13,7 @@
 -export([start_link/0
          ,prompt_path/3
          ,handle_media_doc/2
+         ,flush/0
         ]).
 
 %% ETS related
@@ -39,8 +40,8 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'conf', [{'doc_type', <<"media">>}]}
-                  ]).
+-define(BINDINGS, [{'conf', [{'doc_type', <<"media">>}]}]).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_media_doc'}
                      ,[{<<"configuration">>, <<"*">>}]
                      }
@@ -76,6 +77,10 @@ start_link() ->
                             ,[]
                            ).
 
+-spec flush() -> 'ok'.
+flush() ->
+    gen_listener:cast(?MODULE, 'flush').
+
 -spec prompt_path(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
 prompt_path(AccountId, PromptId, L) ->
     Language = wh_util:to_lower_binary(L),
@@ -105,23 +110,21 @@ handle_media_doc(JObj, _Props) ->
 -spec handle_media_doc_change(wh_json:object(), ne_binary()) -> 'ok'.
 handle_media_doc_change(JObj, ?DOC_DELETED) ->
     MediaId = wh_json:get_value(<<"ID">>, JObj),
+    PromptId = extract_prompt_id(MediaId),
     Database = wh_json:get_value(<<"Database">>, JObj),
-    gen_listener:cast(?SERVER, {'rm_mapping'
-                                ,wh_util:format_account_id(Database, 'raw')
-                                ,MediaId
-                               });
+    gen_listener:cast(?SERVER, {'rm_mapping', Database, PromptId});
 handle_media_doc_change(JObj, _Change) ->
-    {'ok', Doc} = couch_mgr:open_doc(wh_json:get_value(<<"Database">>, JObj)
-                                     ,wh_json:get_value(<<"ID">>, JObj)
-                                    ),
-    gen_listener:cast(?SERVER, {'add_mapping'
-                                ,wh_json:get_first_defined([<<"pvt_account_id">>
-                                                            ,<<"pvt_account_db">>
-                                                           ]
-                                                           ,Doc
-                                                          )
-                                ,Doc
-                               }).
+    Db = wh_json:get_value(<<"Database">>, JObj),
+    {'ok', Doc} = couch_mgr:open_doc(Db, wh_json:get_value(<<"ID">>, JObj)),
+    gen_listener:cast(?MODULE, {'add_mapping', Db, Doc}).
+
+-spec extract_prompt_id(ne_binary()) -> ne_binary().
+extract_prompt_id(<<_Lang:5/binary, "%2F", PromptId/binary>>) ->
+    PromptId;
+extract_prompt_id(<<_Lang:2/binary, "%2F", PromptId/binary>>) ->
+    PromptId;
+extract_prompt_id(MediaId) ->
+    MediaId.
 
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE.
@@ -172,10 +175,17 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'add_mapping', AccountId, JObj}, _From, State) ->
-    _ = maybe_add_prompt(AccountId, JObj),
+handle_call({'add_mapping', ?WH_MEDIA_DB, JObj}, _From, State) ->
+    _ = maybe_add_prompt(?WH_MEDIA_DB, JObj),
+     {'reply', 'ok', State};
+handle_call({'add_mapping', Account, JObj}, _From, State) ->
+    _ = maybe_add_prompt(wh_util:format_account_id(Account), JObj),
     {'reply', 'ok', State};
-handle_call({'rm_mapping', AccountId, PromptId}, _From, State) ->
+handle_call({'rm_mapping', ?WH_MEDIA_DB, PromptId}, _From, State) ->
+    lager:debug("removing prompt mappings for ~s/~s", [?WH_MEDIA_DB, PromptId]),
+    {'reply', ets:delete(table_id(), mapping_id(?WH_MEDIA_DB, PromptId)), State};
+handle_call({'rm_mapping', Account, PromptId}, _From, State) ->
+    AccountId = wh_util:format_account_id(Account),
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
     {'reply', ets:delete(table_id(), mapping_id(AccountId, PromptId)), State};
 handle_call({'new_map', Map}, _From, State) ->
@@ -196,10 +206,23 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'add_mapping', AccountId, JObj}, State) ->
-    _ = maybe_add_prompt(AccountId, JObj),
+handle_cast('flush', State) ->
+    ets:delete_all_objects(table_id()),
+    lager:debug("flushed all media mappings"),
+    _ = wh_util:spawn(fun init_map/0),
     {'noreply', State};
-handle_cast({'rm_mapping', AccountId, PromptId}, State) ->
+handle_cast({'add_mapping', ?WH_MEDIA_DB, JObj}, State) ->
+    _ = maybe_add_prompt(?WH_MEDIA_DB, JObj),
+    {'noreply', State};
+handle_cast({'add_mapping', AccountId, JObj}, State) ->
+    _ = maybe_add_prompt(wh_util:format_account_id(AccountId), JObj),
+    {'noreply', State};
+handle_cast({'rm_mapping', ?WH_MEDIA_DB, PromptId}, State) ->
+    lager:debug("removing prompt mappings for ~s/~s", [?WH_MEDIA_DB, PromptId]),
+    ets:delete(table_id(), mapping_id(?WH_MEDIA_DB, PromptId)),
+    {'noreply', State};
+handle_cast({'rm_mapping', Account, PromptId}, State) ->
+    AccountId = wh_util:format_account_id(Account),
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
     ets:delete(table_id(), mapping_id(AccountId, PromptId)),
     {'noreply', State};
