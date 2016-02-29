@@ -15,7 +15,6 @@
          ,sip_ip/1, sip_ip/2, set_sip_ip/2
          ,sip_invite_format/1, sip_invite_format/2, set_sip_invite_format/2
          ,sip_route/1, sip_route/2, set_sip_route/2
-         ,custom_sip_headers/1, custom_sip_headers/2, set_custom_sip_headers/2
          ,custom_sip_headers_inbound/1, custom_sip_headers_inbound/2, set_custom_sip_headers_inbound/2
          ,custom_sip_headers_outbound/1, custom_sip_headers_outbound/2, set_custom_sip_headers_outbound/2
 
@@ -120,30 +119,25 @@ sip_route(DeviceJObj) ->
 sip_route(DeviceJObj, Default) ->
     wh_json:get_value(?IP, DeviceJObj, Default).
 
--spec custom_sip_headers(doc()) -> api_object().
--spec custom_sip_headers(doc(), Default) -> wh_json:object() | Default.
-custom_sip_headers(DeviceJObj) ->
-    custom_sip_headers(DeviceJObj, 'undefined').
-
-custom_sip_headers(DeviceJObj, Default) ->
-    case wh_json:get_value(?CUSTOM_SIP_HEADERS_KV_ONLY, DeviceJObj) of
-        'undefined' -> Default;
-        CustomHeaders ->
-            wh_json:filter(fun filter_custom_sip_headers/1, CustomHeaders)
-    end.
-
--spec filter_custom_sip_headers({ne_binary(), any()}) -> boolean().
-filter_custom_sip_headers({<<"in">>, _}) -> 'false';
-filter_custom_sip_headers({<<"out">>, _}) -> 'false';
-filter_custom_sip_headers(_) -> 'true'.
-
 -spec custom_sip_headers_inbound(doc()) -> api_object().
 -spec custom_sip_headers_inbound(doc(), Default) -> wh_json:object() | Default.
 custom_sip_headers_inbound(DeviceJObj) ->
     custom_sip_headers_inbound(DeviceJObj, 'undefined').
 
 custom_sip_headers_inbound(DeviceJObj, Default) ->
-    wh_json:get_value(?CUSTOM_SIP_HEADERS_IN, DeviceJObj, Default).
+    LegacyCSH = wh_json:filter(fun filter_custom_sip_headers/1
+                               ,wh_json:get_value(?CUSTOM_SIP_HEADERS_KV_ONLY, DeviceJObj, wh_json:new())),
+    InCSH = wh_json:get_value(?CUSTOM_SIP_HEADERS_IN, DeviceJObj, wh_json:new()),
+    CustomHeaders = wh_json:merge_jobjs(InCSH, LegacyCSH),
+    case wh_json:is_empty(CustomHeaders) of
+        'false' -> CustomHeaders;
+        'true' -> Default
+    end.
+
+-spec filter_custom_sip_headers({ne_binary(), any()}) -> boolean().
+filter_custom_sip_headers({<<"in">>, _}) -> 'false';
+filter_custom_sip_headers({<<"out">>, _}) -> 'false';
+filter_custom_sip_headers(_) -> 'true'.
 
 -spec custom_sip_headers_outbound(doc()) -> api_object().
 -spec custom_sip_headers_outbound(doc(), Default) -> wh_json:object() | Default.
@@ -188,10 +182,6 @@ set_sip_invite_format(DeviceJObj, Ip) ->
 -spec set_sip_route(doc(), ne_binary()) -> doc().
 set_sip_route(DeviceJObj, Ip) ->
     wh_json:set_value(?IP, Ip, DeviceJObj).
-
--spec set_custom_sip_headers(doc(), wh_json:object()) -> doc().
-set_custom_sip_headers(Device, Headers) ->
-    wh_json:set_value(?CUSTOM_SIP_HEADERS, Headers, Device).
 
 -spec set_custom_sip_headers_inbound(doc(), wh_json:object()) -> doc().
 set_custom_sip_headers_inbound(Device, Headers) ->

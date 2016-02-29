@@ -1226,8 +1226,7 @@ generate_sip_headers(Endpoint, Acc, Call) ->
 maybe_add_sip_headers(JObj, Endpoint, Call) ->
     case ?MODULE:get(Call) of
         {'ok', AuthorizingEndpoint} ->
-            MergeFuns = [fun() -> kz_device:custom_sip_headers(Endpoint) end
-                         ,fun() -> kz_device:custom_sip_headers_inbound(Endpoint) end
+            MergeFuns = [fun() -> kz_device:custom_sip_headers_inbound(Endpoint) end
                          ,fun() -> kz_device:custom_sip_headers_outbound(AuthorizingEndpoint) end
                         ],
             Fun = fun(Routine, Acc) ->
