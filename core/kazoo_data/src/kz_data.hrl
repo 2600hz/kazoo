@@ -8,10 +8,10 @@
 -define(CONFIG_CAT, <<"datamgr">>).
 
 -record(data_connection, {id = wh_util:current_tstamp()
-                          ,app :: atom()
-                          ,props = #{} :: #{}
-                          ,server
-                          ,connected = 'false' :: boolean()
+                          ,app :: atom() | '$1'
+                          ,props = #{} :: #{} | '_'
+                          ,server :: any() | '$2'
+                          ,connected = 'false' :: boolean() | '_'
                           ,ready = 'false' :: boolean()
                           ,tag :: atom()
                          }).
