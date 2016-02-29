@@ -27,13 +27,6 @@
          ,db_archive/1, db_archive/2
          ,db_list/0, db_list/1
         ]).
-%% -export([admin_db_exists/1
-%%          ,admin_db_info/0, admin_db_info/1
-%%          ,admin_db_compact/1
-%%          ,admin_db_view_cleanup/1
-%%          ,admin_design_info/2
-%%          ,admin_design_compact/2
-%%         ]).
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3
@@ -44,7 +37,6 @@
          ,flush_cache_docs/0, flush_cache_docs/1
          ,add_to_doc_cache/3
          ,open_doc/2,open_doc/3
-%         ,admin_open_doc/2, admin_open_doc/3
          ,del_doc/2, del_docs/2
          ,lookup_doc_rev/2
          ,update_doc/3, update_doc/4
@@ -57,7 +49,6 @@
          ,load_fixtures_from_folder/2
          ,all_docs/1
          ,all_design_docs/1
-%         ,admin_all_docs/1, admin_all_docs/2
          ,all_docs/2
          ,all_design_docs/2
          ,copy_doc/3, copy_doc/4, copy_doc/5
