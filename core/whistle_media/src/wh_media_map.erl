@@ -173,7 +173,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'add_mapping', AccountId, JObj}, _From, State) ->
-    _ = wh_util:spawn(fun maybe_add_prompt/2, [AccountId, JObj]),
+    _ = maybe_add_prompt(AccountId, JObj),
     {'reply', 'ok', State};
 handle_call({'rm_mapping', AccountId, PromptId}, _From, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
@@ -197,7 +197,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'add_mapping', AccountId, JObj}, State) ->
-    _ = wh_util:spawn(fun maybe_add_prompt/2, [AccountId, JObj]),
+    _ = maybe_add_prompt(AccountId, JObj),
     {'noreply', State};
 handle_cast({'rm_mapping', AccountId, PromptId}, State) ->
     lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
@@ -306,9 +306,16 @@ init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
 
 -spec add_mapping(ne_binary(), fun(), wh_json:objects()) -> 'ok'.
 add_mapping(Db, SendFun, JObjs) ->
+    add_mapping(Db, SendFun, JObjs, whereis(?MODULE)).
+
+add_mapping(Db, _SendFun, JObjs, Srv) when Srv =:= self() ->
     AccountId = wh_util:format_account_id(Db, 'raw'),
-    _ = [SendFun(?MODULE, {'add_mapping', AccountId, wh_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs],
-    'ok'.
+    [maybe_add_prompt(AccountId, JObj) || JObj <- JObjs],
+    'ok';
+add_mapping(Db, SendFun, JObjs, Srv) ->
+     AccountId = wh_util:format_account_id(Db, 'raw'),
+    _ = [SendFun(Srv, {'add_mapping', AccountId, wh_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs],
+     'ok'.
 
 -spec maybe_add_prompt(ne_binary(), wh_json:object()) -> 'ok'.
 -spec maybe_add_prompt(ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
@@ -337,18 +344,24 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
     #media_map{languages=Langs}=Map = get_map(AccountId, PromptId),
 
     lager:debug("adding language ~s for prompt ~s to map for ~s", [Lang, PromptId, AccountId]),
-    gen_listener:call(?MODULE, {'insert_map'
-                               ,Map#media_map{account_id=AccountId
-                                             ,prompt_id=PromptId
-                                             ,languages=wh_json:set_value(Lang
-                                                                         ,wh_media_util:prompt_path(wh_doc:account_id(JObj)
-                                                                                                   ,wh_doc:id(JObj)
-                                                                                                   )
-                                                                         ,Langs
-                                                                         )
-                                             }
-                               }
-                     ).
+    UpdatedMap = Map#media_map{account_id=AccountId
+                              ,prompt_id=PromptId
+                              ,languages=wh_json:set_value(Lang
+                                                          ,wh_media_util:prompt_path(wh_doc:account_id(JObj, ?WH_MEDIA_DB)
+                                                                                    ,wh_doc:id(JObj)
+                                                                                    )
+                                                          ,Langs
+                                                          )
+                              },
+
+    insert_map(UpdatedMap).
+
+insert_map(Map) ->
+    insert_map(Map, whereis(?MODULE)).
+insert_map(Map, Srv) when Srv =:= self() ->
+    ets:insert(table_id(), Map);
+insert_map(Map, Srv) ->
+    gen_listener:call(Srv, {'insert_map', Map}).
 
 -spec get_map(ne_binary()) -> media_map().
 -spec get_map(ne_binary(), ne_binary()) -> media_map().
@@ -380,12 +393,19 @@ get_map(AccountId, PromptId) ->
 init_account_map(AccountId, PromptId) ->
     SystemMap = get_map(PromptId),
     MapId = mapping_id(AccountId, PromptId),
-    'true' = gen_listener:call(?MODULE
-                              ,{'new_map', SystemMap#media_map{id=MapId
-                                                              ,account_id=AccountId
-                                                              }
-                               }
-                              ).
+
+    AccountMap = SystemMap#media_map{id=MapId
+                                    ,account_id=AccountId
+                                    },
+    new_map(AccountMap).
+
+new_map(Map) ->
+    new_map(Map, whereis(?MODULE)).
+
+new_map(Map, Srv) when Srv =:= self() ->
+    ets:insert_new(table_id(), Map);
+new_map(Map, Srv) ->
+   'true' = gen_listener:call(Srv, {'new_map', Map}).
 
 -spec load_account_map(ne_binary(), ne_binary()) -> media_map().
 load_account_map(AccountId, PromptId) ->
@@ -403,7 +423,7 @@ load_account_map(AccountId, PromptId) ->
         {'ok', []} ->
             lager:debug("account ~s has 0 languages for prompt ~s", [AccountId, PromptId]);
         {'ok', PromptFiles} ->
-            lager:debug("account ~s has prompts for prompt ~s", [AccountId, PromptId]),
+            lager:debug("account ~s has language prompts for prompt ~s", [AccountId, PromptId]),
             add_mapping(AccountId, fun gen_listener:call/2, PromptFiles);
         {'error', _E} ->
             lager:debug("failed to load account ~s prompts: ~p", [AccountId, _E])
