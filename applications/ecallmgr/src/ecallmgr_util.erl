@@ -41,6 +41,7 @@
 -export([fix_contact/3]).
 
 -include_lib("whistle/src/api/wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 -include("ecallmgr.hrl").
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
@@ -1015,6 +1016,15 @@ media_url_cache_props(<<"/", _/binary>> = MediaName) ->
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             [{'origin', {'db', AccountDb, MediaId}}];
         _Parts -> []
+    end;
+media_url_cache_props(<<"prompt://", Prompt/binary>>) ->
+    case binary:split(Prompt, <<"/">>) of
+        [?WH_MEDIA_DB, _MediaId] ->
+            [{'origin', {'db', ?WH_MEDIA_DB, <<"media">>}}];
+        [AccountId, _MediaId] ->
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+            [{'origin', {'db', AccountDb, <<"media">>}}];
+        _ -> []
     end;
 media_url_cache_props(<<"tts://", Text/binary>>) ->
     Id = wh_util:binary_md5(Text),
