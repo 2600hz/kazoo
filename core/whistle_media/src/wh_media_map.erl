@@ -40,7 +40,7 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'conf', [{'doc_type', <<"media">>}]}]).
+-define(BINDINGS, [{'conf', [{'doc_type', <<"media">>}, 'federate']}]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_media_doc'}
                      ,[{<<"configuration">>, <<"*">>}]
