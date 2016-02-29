@@ -131,7 +131,6 @@ start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
-                                      ,'serialize_handle_event'
                                      ]
                             ,[Node, CallId, FetchId, ControllerQ, CCVs]).
 
