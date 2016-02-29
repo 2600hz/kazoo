@@ -589,9 +589,9 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                               ,payload=Payload
                                              }}
             ,#state{params=Params}=State) ->
-    _ = case props:is_true('serialize_handle_event', Params, 'false') of
-            'true' -> ?MODULE:handle_event(Payload, CT, BD, State);
-            'false' -> wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State])
+    _ = case props:is_true('spawn_handle_event', Params, 'false') of
+            'true' -> wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]);
+            'false' -> ?MODULE:handle_event(Payload, CT, BD, State)
         end,
     {'noreply', State};
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
