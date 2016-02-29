@@ -32,6 +32,7 @@
          ,modified/1, modified/2, set_modified/2
          ,vsn/1, vsn/2, set_vsn/2
          ,set_soft_deleted/2, is_soft_deleted/1
+         ,set_deleted/1, set_deleted/2, is_deleted/1
 
          ,account_id/1, account_id/2, set_account_id/2
          ,account_db/1, account_db/2, set_account_db/2
@@ -49,17 +50,21 @@
                    ,fun add_id/3
                   ]).
 
+%% CouchDB Keys
+-define(KEY_ATTACHMENTS, <<"_attachments">>).
+-define(KEY_DELETED, <<"_deleted">>).
 -define(KEY_ID, <<"_id">>).
 -define(KEY_REV, <<"_rev">>).
--define(KEY_ATTACHMENTS, <<"_attachments">>).
--define(KEY_PVT_TYPE, <<"pvt_type">>).
--define(KEY_ACCOUNT_ID, <<"pvt_account_id">>).
+
+%% Private Kazoo Keys
 -define(KEY_ACCOUNT_DB, <<"pvt_account_db">>).
+-define(KEY_ACCOUNT_ID, <<"pvt_account_id">>).
 -define(KEY_CREATED, <<"pvt_created">>).
 -define(KEY_MODIFIED, <<"pvt_modified">>).
+-define(KEY_NODE, <<"pvt_node">>).
+-define(KEY_PVT_TYPE, <<"pvt_type">>).
 -define(KEY_SOFT_DELETED, <<"pvt_deleted">>).
 -define(KEY_VSN, <<"pvt_vsn">>).
--define(KEY_NODE, <<"pvt_node">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -314,6 +319,17 @@ set_soft_deleted(JObj, IsSoftDeleted) ->
 -spec is_soft_deleted(wh_json:object()) -> boolean().
 is_soft_deleted(JObj) ->
     wh_json:is_true(?KEY_SOFT_DELETED, JObj).
+
+-spec set_deleted(wh_json:object()) -> wh_json:object().
+-spec set_deleted(wh_json:object(), boolean()) -> wh_json:object().
+set_deleted(JObj) ->
+    set_deleted(JObj, 'true').
+set_deleted(JObj, Bool) when is_boolean(Bool) ->
+    wh_json:set_value(?KEY_DELETED, Bool, JObj).
+
+-spec is_deleted(wh_json:object()) -> boolean().
+is_deleted(JObj) ->
+    wh_json:is_true(?KEY_DELETED, JObj, 'false').
 
 -spec created(wh_json:object()) -> api_integer().
 -spec created(wh_json:object(), Default) -> integer() | Default.
