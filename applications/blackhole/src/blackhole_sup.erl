@@ -21,8 +21,7 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE(?CACHE_NAME)
-                   ,?WORKER('blackhole_listener')
+-define(CHILDREN, [?WORKER('blackhole_listener')
                    ,?WORKER('blackhole_tracking')
                   ]).
 

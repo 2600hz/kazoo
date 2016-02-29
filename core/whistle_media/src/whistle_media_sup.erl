@@ -17,17 +17,16 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE(?CACHE_NAME)
+-define(CHILDREN, [?SUPER('wh_media_cache_sup')
                    ,?WORKER_ARGS('kazoo_etsmgr_srv'
-                                ,[
-                                  [{'table_id', wh_media_map:table_id()}
-                                  ,{'table_options', wh_media_map:table_options()}
-                                  ,{'find_me_function', fun wh_media_map:find_me_function/0}
-                                  ,{'gift_data', wh_media_map:gift_data()}
-                                  ]
-                                 ])
+                                 ,[
+                                   [{'table_id', wh_media_map:table_id()}
+                                    ,{'table_options', wh_media_map:table_options()}
+                                    ,{'find_me_function', fun wh_media_map:find_me_function/0}
+                                    ,{'gift_data', wh_media_map:gift_data()}
+                                   ]
+                                  ])
                    ,?WORKER('wh_media_map')
-                   ,?SUPER('wh_media_cache_sup')
                    ,?WORKER('wh_media_proxy')
                   ]).
 
