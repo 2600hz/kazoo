@@ -150,8 +150,8 @@
 -define(SUPER_NAME_ARGS(I, N, Args), {N, {I, 'start_link', Args}, 'permanent', 'infinity', 'supervisor', [I]}).
 -define(SUPER_NAME_ARGS_TYPE(N, I, Args, Type), {N, {I, 'start_link', Args}, Type, 'infinity', 'supervisor', [I]}).
 
--define(CACHE(N), {N, {'kz_cache', 'start_link', [N]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kz_cache']}).
--define(CACHE_ARGS(N, Arg), {N, {'kz_cache', 'start_link', [N, Arg]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kz_cache']}).
+-define(CACHE(N), {N, {'kzc_cache', 'start_link', [N]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kzc_cache']}).
+-define(CACHE_ARGS(N, Arg), {N, {'kzc_cache', 'start_link', [N, Arg]}, 'permanent', 5 * ?MILLISECONDS_IN_SECOND, 'worker', ['kzc_cache']}).
 
 %% Recreate the non-exported types defined in the erlang gen_server source
 -type startlink_err() :: {'already_started', pid()} |
