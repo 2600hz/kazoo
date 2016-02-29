@@ -9,8 +9,6 @@
 
 -define(CONFIG_CAT, <<"conferences">>).
 
--define(CACHE_NAME, 'conference_cache').
-
 -define(DEFAULT_PROFILE_NAME, <<"default">>).
 
 -define(DEFAULT_ENTRY_TONE, <<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>).

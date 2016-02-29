@@ -17,8 +17,7 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE(?CACHE_NAME)
-                   ,?WORKER('spyvsspy_listener')
+-define(CHILDREN, [?WORKER('spyvsspy_listener')
                   ]).
 
 %% ===================================================================
