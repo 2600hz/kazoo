@@ -19,6 +19,7 @@
 
 -spec load(ne_binary() | string()) -> {'ok', wh_json:object()} |
                                       {'error', any()}.
+load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<_/binary>> = Schema) ->
     case kz_datamgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
