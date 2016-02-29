@@ -356,6 +356,8 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
 
     insert_map(UpdatedMap).
 
+-spec insert_map(media_map()) -> 'ok' | 'true'.
+-spec insert_map(media_map(), pid()) -> 'ok' | 'true'.
 insert_map(Map) ->
     insert_map(Map, whereis(?MODULE)).
 insert_map(Map, Srv) when Srv =:= self() ->
@@ -399,6 +401,8 @@ init_account_map(AccountId, PromptId) ->
                                     },
     new_map(AccountMap).
 
+-spec new_map(media_map()) -> 'true'.
+-spec new_map(media_map(), pid()) -> 'true'.
 new_map(Map) ->
     new_map(Map, whereis(?MODULE)).
 
