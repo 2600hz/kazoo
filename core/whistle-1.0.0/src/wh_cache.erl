@@ -236,7 +236,9 @@ fetch_local(Srv, K) ->
 -spec erase_local(atom(), any()) -> 'ok'.
 erase_local(Srv, K) ->
     case peek_local(Srv, K) of
-        {'ok', _} -> gen_server:cast(Srv, {'erase', K});
+        {'ok', _} ->
+            lager:debug("found ~p, erasing", [K]),
+            gen_server:cast(Srv, {'erase', K});
         {'error', 'not_found'} -> 'ok'
     end.
 
@@ -338,7 +340,7 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {_, Ref, _} -> {'error', 'timeout'}
     end.
 
--spec handle_document_change(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_document_change(wh_json:object(), wh_proplist()) -> any().
 handle_document_change(JObj, Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     Srv = props:get_value('server', Props),
@@ -348,7 +350,7 @@ handle_document_change(JObj, Props) ->
 
     maybe_erase_changed(Srv, Db, Type, Id, props:get_value('table_id', Props)).
 
--spec maybe_erase_changed(pid(), ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
+-spec maybe_erase_changed(pid(), ne_binary(), ne_binary(), ne_binary(), atom()) -> any().
 maybe_erase_changed(Srv, Db, Type, Id, Tab) ->
     MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
                  ,[]
@@ -371,16 +373,11 @@ maybe_erase_changed(Srv, Db, Type, Id, Tab) ->
                  ,['$_']
                  }
                 ],
-    Objects = ets:select(Tab, MatchSpec),
-    Objects =/= [] andalso lager:debug("erasing changed doc ~s/~s (type ~s)"
-                                       ,[Db, Id, Type]
-                                      ),
-
     lists:foldl(fun(Obj, Removed) ->
                         erase_changed(Obj, Removed, Srv)
                 end
                ,[]
-               ,Objects
+               ,ets:select(Tab, MatchSpec)
                ).
 
 -spec erase_changed(cache_obj(), list(), pid()) -> list().
@@ -388,7 +385,7 @@ erase_changed(#cache_obj{type='pointer', value=Key}, Removed, Srv) ->
     case lists:member(Key, Removed) of
         'true' -> Removed;
         'false' ->
-            lager:debug("removing updated cache object ~-300p", [Key]),
+            lager:debug("removing updated cache pointer ~-300p", [Key]),
             gen_listener:cast(Srv, {'erase', Key}),
             [Key | Removed]
     end;
@@ -575,8 +572,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+handle_event(_JObj, #state{tab=Tab}=_State) ->
+    {'reply', [{'table_id', Tab}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -796,8 +793,7 @@ insert_origin_pointers([Origin|Origins], #cache_obj{key=Key}=CacheObj, Tab) ->
                                       }),
     insert_origin_pointers(Origins, CacheObj, Tab).
 
--spec log_removed(integer() | 'ok', ne_binary()) -> 'ok'.
-log_removed('ok', _Key) -> 'ok';
+-spec log_removed(integer(), ne_binary()) -> 'ok'.
 log_removed(0, _Key) -> 'ok';
 log_removed(Removed, Key) ->
     lager:debug("removed ~b objects for ~p", [Removed, Key]).
