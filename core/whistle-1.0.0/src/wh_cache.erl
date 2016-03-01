@@ -236,9 +236,7 @@ fetch_local(Srv, K) ->
 -spec erase_local(atom(), any()) -> 'ok'.
 erase_local(Srv, K) ->
     case peek_local(Srv, K) of
-        {'ok', _} ->
-            lager:debug("found ~p, erasing", [K]),
-            gen_server:cast(Srv, {'erase', K});
+        {'ok', _} -> gen_server:cast(Srv, {'erase', K});
         {'error', 'not_found'} -> 'ok'
     end.
 
