@@ -10,7 +10,7 @@
 
 
 %% Doc related
--export([open_cache_doc/4
+-export([open_cache_doc/3
          ,add_to_doc_cache/3
          ,flush_cache_doc/2
          ,flush_cache_doc/3
